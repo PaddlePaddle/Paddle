@@ -167,9 +167,7 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       stream(stream::kind::eager).submit(pipeline).wait();
 
       z->set_layout(DataLayout::kMKLDNN);
-      z->set_format((MKLDNNMemoryFormat)dst_memory->get_primitive_desc()
-                        .desc()
-                        .data.format);
+      z->set_format(platform::GetMKLDNNFormat(*dst_memory));
     }
   }
 };

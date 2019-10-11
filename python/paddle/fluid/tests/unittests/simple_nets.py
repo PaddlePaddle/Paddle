@@ -16,10 +16,7 @@ import paddle.fluid as fluid
 import numpy as np
 
 
-def simple_fc_net(use_feed=None):
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-
+def simple_fc_net_with_inputs(img, label, class_num=10):
     hidden = img
     for _ in range(4):
         hidden = fluid.layers.fc(
@@ -28,10 +25,16 @@ def simple_fc_net(use_feed=None):
             act='relu',
             bias_attr=fluid.ParamAttr(
                 initializer=fluid.initializer.Constant(value=1.0)))
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+    prediction = fluid.layers.fc(hidden, size=class_num, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
     loss = fluid.layers.mean(loss)
     return loss
+
+
+def simple_fc_net(use_feed=None):
+    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    return simple_fc_net_with_inputs(img, label, class_num=10)
 
 
 def fc_with_batchnorm(use_feed=None):

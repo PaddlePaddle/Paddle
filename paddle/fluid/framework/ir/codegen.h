@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,20 +21,18 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class CodeGen {
+class CodeGenerator {
  public:
-  std::string GetKernelCode(std::vector<OperationExpression> expression);
+  explicit CodeGenerator(CodeTemplate code_template);
+  std::string GenerateCode(TemplateVariable template_var);
+  // TODO(wangchao66) std::string GenerateCode(const Graph& graph)
 
   // TODO(wangchao): add a more general interface
   // std::string Generate(const std::string name, const
   // std::unordered_set<Node*> subgraph);
 
  private:
-  std::string GetDeclarationCode(
-      std::vector<paddle::framework::ir::OperationExpression> expression);
-  std::string GetOffsetCode();
-  std::string GetComputeCode(
-      std::vector<paddle::framework::ir::OperationExpression> expression);
+  CodeTemplate code_template_;
 };
 }  // namespace ir
 }  // namespace framework

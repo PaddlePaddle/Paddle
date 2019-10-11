@@ -301,11 +301,9 @@ DEFINE_double(memory_fraction_of_eager_deletion, 1.0,
  * Allocator related FLAG
  * Name: FLAGS_allocator_strategy
  * Since Version: 1.2
- * Value Range: string, {naive_best_fit, auto_groth}, default=naive_best_fit
+ * Value Range: string, {naive_best_fit, auto_growth}, default=naive_best_fit
  * Example:
- * Note: Allocator policy for selecting Paddle Paddle.
- *       The allocator strategy is under development and the non-legacy
- *       allocator is not yet stable.
+ * Note: For selecting allocator policy of PaddlePaddle.
  */
 DEFINE_string(allocator_strategy, "naive_best_fit",
               "The allocation strategy. naive_best_fit means the original best "
@@ -437,3 +435,17 @@ DEFINE_uint64(reallocate_gpu_memory_in_mb, 0ul,
               "FLAGS_fraction_of_gpu_memory_to_use");
 
 #endif
+
+/**
+ * Scope related FLAG
+ * Name: local_exe_sub_scope_limit
+ * Since Version: 1.6.0
+ * Value Range: double, default=256 (MB)
+ * Example:
+ * Note:
+ */
+DEFINE_double(local_exe_sub_scope_limit, 256.0,  // MBytes
+              "The memory up limit of sub-scopes of local execution scope for "
+              "each CUDAPlace. If you don't need to limit the memory, "
+              "you should set FLAGS_local_exe_sub_scope_limit=-1. "
+              "The default value is 256 MBytes.");
