@@ -158,7 +158,7 @@ def cast(x, dtype):
             bool, float15, float32, float64, int8, int32, int64, uint8.
 
     Returns:
-        Variable: A Tensor with the same shape as input.
+        Variable: A Tensor with the same shape as input's.
 
     Examples:
         .. code-block:: python
@@ -205,7 +205,7 @@ def concat(input, axis=0, name=None):
     This OP concatenates the input along the axis.
 
     Args:
-        input(list): List of input tensors with data type float32, float64, int32,
+        input(list): List of input Tensors with data type float32, float64, int32,
             int64.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -215,7 +215,7 @@ def concat(input, axis=0, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A tensor with the same data type as input.
+        Variable: A Tensor with the same data type as input's.
 
     Examples:
         .. code-block:: python
@@ -259,7 +259,7 @@ def tensor_array_to_tensor(input, axis=1, name=None):
     This OP concatenates the input LodTensorArray along the axis.
 
     Args:
-        input(list): A LodTensorArray with data type float32, float64, int32,
+        input(Variable): A LodTensorArray with data type float32, float64, int32,
             int64.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -269,7 +269,7 @@ def tensor_array_to_tensor(input, axis=1, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: A LoDTensor with the same data type with input
+        Variable: A LoDTensor with the same data type as input's
         Variable: The input LodTensorArray items' dims along the axis.
 
     Examples:
@@ -651,7 +651,7 @@ def argsort(input, axis=-1, name=None):
     :attr:`input`.
 
     Args:
-        x(Variable): An input N-D Tensor with type float32, float64, int16,
+        input(Variable): An input N-D Tensor with type float32, float64, int16,
             int32, int64, uint8.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
@@ -661,9 +661,9 @@ def argsort(input, axis=-1, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        tuple: A tuple of sorted data Variable(with the same shape and type as
-        input) and the sorted indices(with the same shape as input and with
-        type int64).
+        tuple: A tuple of sorted data Variable(with the same shape and data
+        type as input) and the sorted indices(with the same shape as input's
+        and with data type int64).
 
     Examples:
         .. code-block:: python
