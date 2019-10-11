@@ -12378,21 +12378,69 @@ def gaussian_random_batch_size_like(input,
 def sum(x):
     """
     ${comment}
+    
+    Case 1:
+    ::
+        Input:
+            Input. Shape = [2, 3]
+            Input = [[1, 2, 3],
+                     [4, 5, 6]]
+
+        Output:
+            The output. Shape = [2, 3]
+            Output = [[1, 2, 3],
+                      [4, 5, 6]]
+
+    Case 2:
+    ::
+        Input:
+            First input:
+            Input1. Shape = [2, 3]
+            Input1 = [[1, 2, 3],
+                      [4, 5, 6]]
+
+        The second input:
+            Input2. Shape = [2, 3]
+            Input2 = [[7, 8, 9],
+                      [10, 11, 12]]
+
+        Output:
+            The output. Shape = [2, 3]
+            Output = [[8, 10, 12],
+                      [14, 16, 18]]
 
     Args:
-        x (Variable): ${x_comment}
+        x (Variable|list(Variable)): ${x_comment}
 
     Returns:
-        out (Variable): ${out_comment}
+        Variable: ${out_comment}
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            input0 = layers.data(name="input0", shape=[13, 11], dtype='float32')
-            input1 = layers.data(name="input1", shape=[13, 11], dtype='float32')
-            out = layers.sum([input0,input1])
+
+            input0 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=5)
+            input1 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=3)
+            sum = fluid.layers.sum([input0, input1])
+
+            # You can print out 'sum' via executor.
+            out = fluid.layers.Print(sum, message="the sum of input0 and input1: ")
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_main_program())
+
+            # The printed result is:
+            # 1570701754	the sum of input0 and input1: 	The place is:CPUPlace
+            # Tensor[sum_0.tmp_0]
+            #    shape: [2,3,]
+            #    dtype: l
+            #    data: 8,8,8,8,8,8,
+
+            # the sum of input0 and input1 is 2-D Tensor with shape [2,3].
+            # dtype is the corresponding C++ data type, which may vary in different environments.
+            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t, 
+            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
+            #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
     helper = LayerHelper('sum', **locals())
@@ -14903,85 +14951,90 @@ class PyFuncRegistry(object):
 @templatedoc()
 def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     """
-    PyFunc Operator.
+    This API is used to register customized OP to Fluid. The forward  function 
+    of the registered OP is ``func`` and the backward function of that is 
+    ``backward_func``. Paddle will call ``func`` at forward runtime  and call 
+    ``backward_func`` at backward runtime(if ``backward_func`` is not  None). 
+    ``x`` is the input of ``func``, whose type must be LoDTensor; ``out`` is 
+    the output of ``func``, whose type can be either LoDTensor or NumPy array.
 
-    User can use :code:`py_func` to register operators in Python side.
-    The inputs of :code:`func` is :code:`LoDTensor` and outputs can be
-    numpy array or :code:`LoDTensor`. Paddle would call the registered
-    :code:`func` in forward part, and call :code:`backward_func` in
-    backward part (if :code:`backward_func` is not None).
+    The input of the backward function ``backward_func`` is ``x``, ``out`` and 
+    the gradient of ``out``. If some variables of ``out`` have no gradient, the 
+    relevant input variable of ``backward_func`` is None. If some variables of 
+    ``x`` do not have a gradient, the user should return None in ``backward_func``.
 
-    User should set the right data type and shape of :code:`out` before
-    calling this function. However, data types and shapes of gradients of
-    :code:`out` and :code:`x` would be inferred automatically.
+    The data type and shape of ``out`` should also be set correctly before this 
+    API is called, and the data type and shape of the gradient of ``out`` and 
+    ``x`` will be inferred automatically.
 
-    Input orders of :code:`backward_func` would be: forward inputs
-    :code:`x`, forward outputs :code:`out` and backward input gradients of
-    :code:`out`. If some variables of :code:`out` have no gradient, the input
-    tensor would be None in Python side. If some variables of :code:`in` have
-    no gradient, users should return None.
-
-    This function can also be used to debug the running network. User can
-    add a :code:`py_func` operator without output, and print input
-    :code:`x` inside :code:`func`.
+    This API can also be used to debug the neural network by setting the ``func``
+    as a function that only print variables.
 
     Args:
-        func (callable): forward Python function.
-        x (Variable|list(Variable)|tuple(Variable)): inputs of :code:`func`.
-        out (Variable|list(Variable)|tuple(Variable)): outputs of :code:`func`.
-            Paddle cannot infer shapes and data types of :code:`out`. Users
-            should create :code:`out` beforehand.
-        backward_func (callable|None): backward Python function.
-                                       None means no backward. Default None.
-        skip_vars_in_backward_input (Variable|list(Variable)|tuple(Variable)):
-            Variables that are not needed in :code:`backward_func` inputs.
-            These variables must be any of :code:`x` and :code:`out`.
-            If set, these vars would not be inputs of :code:`backward_func`,
-            Only useful when :code:`backward_func` is not None. Default None.
-
-    Returns:
-        out (Variable|list(Variable)|tuple(Variable)): input :code:`out`
+        func (callable): The forward function of the registered OP. When the network
+            is running, the forward output ``out`` will be calculated according to this 
+            function and the forward input ``x``.
+        x (Variable): The input of the forward function ``func``, its type can be 
+            Variable | tuple[Variable] | list[Variale], in which Variable is LoDTensor.
+        out (Variable): The output of the forward function ``func``, its type can be
+            Variable | tuple[Variable] | list[Variale], in which Variable can be either 
+            LoDTensor or NumPy array. Since Paddle cannot automatically infer the shape
+            and data type of ``out``, ``out`` must be created in advance.
+        backward_func (callable, optional): The backward function of the registered OP. 
+            Its default value is None, which means there is no reverse calculation. If 
+            it is not None, ``backward_func`` is called to calculate the gradient of 
+            ``x`` when the network is at backward runtime.
+        skip_vars_in_backward_input (Variable, optional): It's used to limit the input 
+            variable list of ``backward_func``, and it can be single Variable, tuple[Variable]
+            or list[Variable]. It must belong to either ``x`` or ``out``. The default 
+            value is None, which means that no variables need to be removed from ``x`` 
+            and ``out``. If it is not None, these variables will not be the input of 
+            ``backward_func``. This parameter is only useful when ``backward_func`` is 
+            not None.
+    
+    Returns: 
+        Variable: The output ``out`` of the forward function ``func``.
 
     Examples:
+        .. code-block:: python
 
-        >>> import paddle.fluid as fluid
-        >>> import six
-        >>>
-        >>> def create_tmp_var(name, dtype, shape):
-        >>>     return fluid.default_main_program().current_block().create_var(
-        >>>         name=name, dtype=dtype, shape=shape)
-        >>>
-        >>> # tanh activation has been provided by Paddle C++ op
-        >>> # Here, we only use tanh to be an example to show the usage
-        >>> # of py_func
-        >>> def tanh(x):
-        >>>     return np.tanh(x)
-        >>>
-        >>> # forward input x is skipped
-        >>> def tanh_grad(y, dy):
-        >>>     return np.array(dy) * (1 - np.square(np.array(y)))
-        >>>
-        >>> def debug_func(x):
-        >>>     print(x)
-        >>>
-        >>> def simple_net(img, label):
-        >>>     hidden = img
-        >>>     for idx in six.moves.range(4):
-        >>>         hidden = fluid.layers.fc(hidden, size=200)
-        >>>         new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
-        >>>             dtype=hidden.dtype, shape=hidden.shape)
-        >>>
-        >>>         # user-defined layers with forward and backward
-        >>>         hidden = fluid.layers.py_func(func=tanh, x=hidden,
-        >>>             out=new_hidden, backward_func=tanh_grad,
-        >>>             skip_vars_in_backward_input=hidden)
-        >>>
-        >>>         # user-defined debug layers to print variables
-        >>>         fluid.layers.py_func(func=debug_func, x=hidden, out=None)
-        >>>
-        >>>     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-        >>>     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-        >>>     return fluid.layers.mean(loss)
+            import paddle.fluid as fluid
+            import six
+
+            def create_tmp_var(name, dtype, shape):
+            return fluid.default_main_program().current_block().create_var(
+            name=name, dtype=dtype, shape=shape)
+
+            # Tanh activation function provided by Paddle C++ op
+            # Here, tanh is used as an example to show how to use py_func
+            def tanh(x):
+                return np.tanh(x)
+
+            # Skip forward input x
+            def tanh_grad(y, dy):
+                return np.array(dy) * (1 - np.square(np.array(y)))
+
+            def debug_func(x):
+                print(x)
+
+            def simple_net(img, label):
+                hidden = img
+                for idx in six.moves.range(4):
+                    hidden = fluid.layers.fc(hidden, size=200)
+                    new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
+                        dtype=hidden.dtype, shape=hidden.shape)
+
+                    # User-defined forward and backward 
+                    hidden = fluid.layers.py_func(func=tanh, x=hidden,
+                        out=new_hidden, backward_func=tanh_grad,
+                        skip_vars_in_backward_input=hidden)
+
+                    # User-defined debugging layer, which can print out variable details
+                    fluid.layers.py_func(func=debug_func, x=hidden, out=None)
+
+                prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+                loss = fluid.layers.cross_entropy(input=prediction, label=label)
+                return fluid.layers.mean(loss)
     """
     helper = LayerHelper('py_func', **locals())
     if x is None:
