@@ -363,7 +363,7 @@ paddle.fluid.layers.IfElse.false_block (ArgSpec(args=['self'], varargs=None, key
 paddle.fluid.layers.IfElse.input (ArgSpec(args=['self', 'x'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.layers.IfElse.output (ArgSpec(args=['self'], varargs='outs', keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.layers.IfElse.true_block (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.layers.DynamicRNN ('paddle.fluid.layers.control_flow.DynamicRNN', ('document', '70750d4b94000575566368f85337640a'))
+paddle.fluid.layers.DynamicRNN ('paddle.fluid.layers.control_flow.DynamicRNN', ('document', 'cc7209c675ec5841efd10c9d2f1028d9'))
 paddle.fluid.layers.DynamicRNN.__init__ (ArgSpec(args=['self', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.layers.DynamicRNN.block (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '7935170393923803885fa461c3f3cfbc'))
 paddle.fluid.layers.DynamicRNN.memory (ArgSpec(args=['self', 'init', 'shape', 'value', 'need_reorder', 'dtype'], varargs=None, keywords=None, defaults=(None, None, 0.0, False, 'float32')), ('document', '904250e0e51498e5c52711e667c20941'))
