@@ -7477,7 +7477,7 @@ def transpose(x, perm, name=None):
     perm[i]-th dimension of `input`.
 
     Args:
-        x (Variable): The input Tensor.
+        x (Variable): The input Tensor, optional dtype: float16, float32, float64, int32, int64.
         perm (list): A permutation of the dimensions of `input`.
         name (str): The name of this layer. It is optional.
 
