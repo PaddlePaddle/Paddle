@@ -30,14 +30,17 @@ __all__ = ['Layer']
 
 
 class Layer(core.Layer):
-    """Layers composed of operators.
+    """Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
-    Args:
-        name_scope: prefix name used by the layer to name parameters.
+    Parameters:
+        name_scope (str): prefix name used by the layer to name parameters.
             If prefix is "my_model/layer_1", parameter name in MyLayer
             can be "my_model/layer_1/MyLayer/w_n", where w is the parameter
             base name and n is an unique suffix auto-generated.
-        dtype: data type for the variables in the layer.
+        dtype (core.VarDesc.VarType, optional): data type for the variables in the layer. Default: core.VarDesc.VarType.FP32.
+    
+    Returns:
+        None
     """
 
     def __init__(self, name_scope, dtype=core.VarDesc.VarType.FP32):
@@ -62,7 +65,8 @@ class Layer(core.Layer):
 
           Full name is composed by name_scope + "/" + MyLayer.__class__.__name__
 
-        Returns full name of this name.
+        Returns:
+            str: full name of this layer.
         """
         return self._full_name
 
@@ -72,16 +76,17 @@ class Layer(core.Layer):
                          dtype,
                          is_bias=False,
                          default_initializer=None):
-        """Create parameters for this layers.
+        """Create parameters for this layer.
+        
+        Parameters:
+            attr(ParamAttr): Parameter attribute of weight. Please refer to ref:`api_fluid_ParamAttr'
+            shape(list): shape of the parameter
+            dtype(float or int or core.VarDesc.VarType): data type of this parameter
+            is_bias(bool, optional): if this is a bias parameter. Default: False
+            default_initializer(Initializer, optional): the default initializer for this parameter. If set None, defaule initializer will be used. Default: None
 
-           Args:
-               attr: [ParamAttr] should be the parameter attribute for this parameter
-               shape: shape of the paramter
-               dtype: data type of this parameter
-               is_bias: if this is a bias parameter
-               default_initializer: set the default initializer for this parameter
-
-        Returns created parameter Variable.
+        Returns:
+            :ref:`api_guide_Variable_en` : created parameter.
         """
         if isinstance(attr, ParamAttr) and (attr.name is not None):
             attr.name = ".".join([self._full_name, attr.name])
@@ -96,15 +101,16 @@ class Layer(core.Layer):
                         persistable=None,
                         dtype=None,
                         type=core.VarDesc.VarType.LOD_TENSOR):
-        """Create Variable for this layers.
+        """Create Variable for this layer.
 
-           Args:
-               name: name of the variable
-               persistable: if set this variable persistable
-               dtype: data type of data in the variable
-               type: type of the variable
+        Parameters:
+            name: name of the variable
+            persistable: if set this variable persistable
+            dtype: data type of data in the variable
+            type: type of the variable
 
-        Returns created Variable.
+        Returns:
+            :ref:`api_guide_Variable_en` : created Variable.
         """
         if name is not None:
             var_name = ".".join([self._full_name, name])
@@ -116,13 +122,14 @@ class Layer(core.Layer):
             name=var_name, persistable=persistable, dtype=dtype, type=type)
 
     def parameters(self, include_sublayers=True):
-        """Returns a list of Parameters from current and sub-layers.
+        """Returns a list of all Parameters from current layer and its sub-layers.
 
-        Args:
-            include_sublayers: If true, also include the parameters from
-            sublayers.
+        Parameters:
+            include_sublayers(bool, optional): Whether include the parameters of sublayers. If True, also include the parameters from
+            sublayers. Default: True
 
-        Returns a list of Parameters.
+        Returns:
+            list of :ref:`api_guide_Variable_en` : a list of Parameters.
         """
         ret = [p for p in self._parameters.values()]
         if include_sublayers:
@@ -134,10 +141,11 @@ class Layer(core.Layer):
     def sublayers(self, include_sublayers=True):
         """Returns a list of sub layers.
 
-        Args:
-            include_sublayers: If true, also include the layers from sublayers.
+        Parameters:
+            include_sublayers: Whether return the sublayers of sublayers. If True, also include the sublayers of sublayers.
 
-        Returns a list of sub layers.
+        Returns:
+            list of Layer : a list of sub layers.
         """
         ret = [l for l in self._sub_layers.values()]
         if include_sublayers:
@@ -175,11 +183,11 @@ class Layer(core.Layer):
 
           Added sublayer can be access like self.name.
 
-        Args:
-            name: name of this sublayer.
-            sublayer: an instance of Layer.
+        Parameters:
+            name(str): name of this sublayer.
+            sublayer(Layer): an instance of Layer.
         Returns:
-            the sublayer passed in.
+            Layer: the sublayer passed in.
         """
         assert isinstance(sublayer, core.Layer)
 
@@ -191,11 +199,11 @@ class Layer(core.Layer):
 
           Added parameter can be access like self.name.
 
-        Args:
+        Parameters:
             name: name of this sublayer.
             parameter: an instance of Parameter.
         Returns:
-            the parameter passed in.
+            Parameter: the parameter passed in.
         """
         assert isinstance(parameter, framework.Parameter)
 
@@ -257,12 +265,12 @@ class Layer(core.Layer):
         '''
         Get all parameter of current and sub-layers. And set all the parameters into a dict
 
-        Args:
-            destination(dict|optical) : If provide, all the parameter will set to this dict . Defaul is None
-            include_sublayers(bool) : If true, also include the parameters from sublayers.
+        Parameters:
+            destination(dict, optional) : If provide, all the parameter will set to this dict . Default: None
+            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
 
         Retruns:
-            state_dict(dict) : dict contains all the parameters
+            dict: a dict contains all the parameters
 
         Examples:
             .. code-block:: python                                                                                              
@@ -295,9 +303,9 @@ class Layer(core.Layer):
         '''
         Set parameter from stat_dict. All the parameter will be reset by the tensor in the stat_dict
 
-        Args:
+        Parameters:
             state_dict(dict) : Dict contains all the Parameter
-            include_sublayers(bool) : If true, also include the parameters from sublayers.
+            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
         Returns:
             None
 
@@ -323,9 +331,9 @@ class Layer(core.Layer):
 
         This api will be Deprecated. Please use set_dict
 
-        Args:
+        Parameters:
             state_dict(dict) : Dict contains all the Parameter
-            include_sublayers(bool) : If true, also include the parameters from sublayers.
+            include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
         Returns:
             None
 
