@@ -341,6 +341,13 @@ def assign(input, output=None):
     if output is None:
         output = helper.create_variable_for_type_inference(dtype=input.dtype)
     if isinstance(input, Variable):
+        if convert_dtype(input.dtype) not in [
+                'float32', 'float64', 'int32', 'int64'
+        ]:
+            raise TypeError(
+                "When the type of 'input' in assign is Variable, the data "
+                "type of 'input' must be float32, float64, int32 or int64, "
+                "but received %s." % convert_dtype(input.dtype))
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
@@ -352,7 +359,10 @@ def assign(input, output=None):
             value_name = "int32_values"
             values = [int(v) for v in input.flat]
         else:
-            raise ValueError("Unsupported dtype %s", input.dtype)
+            raise TypeError(
+                "When the type of 'input' in assign is numpy.ndarray, "
+                "the data type of 'input' must be float32 or int32, but "
+                "received %s." % convert_dtype(dtype))
         if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
@@ -366,7 +376,8 @@ def assign(input, output=None):
                 value_name: values
             })
     else:
-        raise ValueError("Wrong type for assign input: %s" % type(input))
+        raise TypeError("The type of 'input' in assign must be Variable or "
+                        "numpy.ndarray, but received %s" % type(input))
 
     return output
 
