@@ -255,14 +255,27 @@ def generate_activation_fn(op_type):
         return output
 
     func.__name__ = op_type
-    func.__doc__ = _generate_doc_string_(op_proto)
+    func.__doc__ = _generate_doc_string_(
+        op_proto,
+        additional_args_lines=[
+            "name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` ."
+        ])
     func.__doc__ = func.__doc__ + """
 Examples:
     .. code-block:: python
 
         import paddle.fluid as fluid
-        data = fluid.layers.data(name="input", shape=[None, 32, 784])
-        result = fluid.layers.%s(data)
+        import numpy as np
+
+        inputs = fluid.layers.data(name="x", shape = [1], dtype='float32')
+        output = fluid.layers.%s(inputs)
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(fluid.default_startup_program())
+
+        img = np.array([1.0, 1.0, 1.0, 1.0]).astype(np.float32)
+        res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+        print(res)
 """ % op_type
     return func
 
