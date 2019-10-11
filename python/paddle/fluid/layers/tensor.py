@@ -35,17 +35,18 @@ __all__ = [
 
 def create_tensor(dtype, name=None, persistable=False):
     """
-    Create an variable, which will hold a LoDTensor with data type dtype.
+    Create a variable, which will hold a Tensor with data type dtype.
 
     Args:
-        dtype(string): 'float32'|'int32'|..., the data type of the
-            created tensor.
-        name(string): The name of the created tensor, if not set,
-            the name will be a random unique one.
+        dtype(string|numpy.dtype): the data type of Tensor to be created, the
+            data type is bool, float16, float32, float64, int8, int16, int32 and int64.
+        name(string, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
         persistable(bool): Set the persistable flag of the create tensor.
+            default value is False.
 
     Returns:
-        Variable: The tensor variable storing the created tensor.
+        Variable: The tensor to be created according to dtype.
 
     Examples:
         .. code-block:: python
@@ -374,28 +375,35 @@ def assign(input, output=None):
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
-    **fill_constant**
-
-    This function creates a tensor with specified `shape` and `dtype`, and
+    This OP creates a Tensor with specified `shape` and `dtype`, and
     initializes it with a constant specifed by `value`.
 
-    The attribute `stop_gradient` of the created tensor is set to True.
+    The attribute `stop_gradient` of the created Tensor is setted to True.
 
     Args:
-        shape(tuple|list|None): Shape of the output tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor.
-        value(float): The constant value used to initialize the output tensor.
-        out(Variable): The output tensor.
-        force_cpu(True|False): data should be on CPU if set true.
+        shape(tuple|list): Shape of the Tensor to be created.
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
+            be float16, float32, float64, int32, int64.
+        value(float): The constant value used to initialize the Tensor to be created.
+        force_cpu(True): data should be on CPU if it's true, defalut value is False.
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
 
     Returns:
-        Variable: The tensor variable storing the output.
+        Variable: Tensor which is created according to shape and dtype.
+
+    Raise:
+        TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
+        and the data type of out Tensor must be the same as the dtype. 
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
+          data1 = fluid.layers.fill_constant(shape=[2,1], value=0, dtype='int64') #data1=[[0],[0]]
+          data2 = fluid.layers.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1) 
+          #data1=[[5], [5]] data2=[[5], [5]]
     """
 
     helper = LayerHelper("fill_constant", **locals())
@@ -437,34 +445,36 @@ def fill_constant_batch_size_like(input,
                                   input_dim_idx=0,
                                   output_dim_idx=0):
     """
-    ${comment}
-
-    It also sets *stop_gradient* to True.
+    This OP creates a Tesnor accroding the shape and dtype, and initializes the
+    Tensor with the constants provided in ``value``. When the input is LoDTensor
+    and the input_dim_idx is 0, the output_dim_idx dimension is set to the value
+    of the batch_size input by the input, the Stop_gradient attribute of the created
+    Tensor is False by default.
 
     Args:
-        input(${input_type}): ${input_comment}.
-
-        shape(${shape_type}): ${shape_comment}.
-
-        dtype(${dtype_type}): ${dtype_comment}.
-
-        value(${value_type}): ${value_comment}.
-
-        input_dim_idx(${input_dim_idx_type}): ${input_dim_idx_comment}.
-
-        output_dim_idx(${output_dim_idx_type}): ${output_dim_idx_comment}.
+        input(Variable): Tensor which data type is float32, float64, int32 and int64.
+        shape(list): The shape of Tensor to be created, Tensor's shape may be changed
+            according the input.
+        dtype(np.dtype|core.VarDesc.VarType|str): The data type of created Tensor which
+            can be float32, float64, int32, int64.
+        value(float|int): The constant value used to initialize the Tensor to be created. 
+        input_dim_idx(int): When the value is 0 and the input is LoDTensor, the output_dim_idx
+            dimension of the created Tensor is set to the batch_size value of input.
+            The default value is 0.
+        output_dim_idx(int): Used to specify which dimension of Tensor is created to be set
+            the value of batch_size of input Tensor. The default value is 0.
 
     Returns:
-        ${out_comment}.
+        Variable: Tensor which will be created according to dtype.
 
     Examples:
 
         .. code-block:: python
 
              import paddle.fluid as fluid
-             like = fluid.layers.data(name='like', shape=[1], dtype='float32')
+             like = fluid.layers.fill_constant(shape=[1,2], value=10, dtype='int64') #like=[[10, 10]]
              data = fluid.layers.fill_constant_batch_size_like(
-                         input=like, shape=[1], value=0, dtype='int64')
+                    input=like, shape=[1], value=0, dtype='int64') #like=[[10, 10]] data=[0]
 
     """
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
@@ -774,10 +784,10 @@ def has_inf(x):
     Test if any of x contains an infinity number
 
     Args:
-       x(variable): The Tensor/LoDTensor to be checked.
+       x (Variable): The Tensor/LoDTensor to be checked.
 
     Returns:
-        Variable: The tensor variable storing the output, only a bool value.
+       Variable: The tensor variable storing the output, only a bool value, indicating that whether there is infinity number in x or not.
     
     Examples:
         .. code-block:: python
@@ -798,10 +808,10 @@ def has_nan(x):
     Test if any of x contains a NAN
 
     Args:
-       x(variable): The Tensor/LoDTensor to be checked.
+       x (Variable): The Tensor/LoDTensor to be checked.
 
     Returns:
-        Variable: The tensor variable storing the output, only a bool value.
+       Variable: The tensor variable storing the output, only a bool value, indicating that whether there is NAN in x or not.
     
     Examples:
         .. code-block:: python
