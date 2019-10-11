@@ -61,9 +61,7 @@ class Layer(core.Layer):
         framework._dygraph_tracer().eval_mode()
 
     def full_name(self):
-        """Full name for this layers.
-
-          Full name is composed by name_scope + "/" + MyLayer.__class__.__name__
+        """Full name for this layer, composed by name_scope + "/" + MyLayer.__class__.__name__
 
         Returns:
             str: full name of this layer.
@@ -79,7 +77,7 @@ class Layer(core.Layer):
         """Create parameters for this layer.
         
         Parameters:
-            attr(ParamAttr): Parameter attribute of weight. Please refer to ref:`api_fluid_ParamAttr'
+            attr(ParamAttr): Parameter attribute of weight. Please refer to :ref:`api_fluid_ParamAttr'
             shape(list): shape of the parameter
             dtype(float or int or core.VarDesc.VarType): data type of this parameter
             is_bias(bool, optional): if this is a bias parameter. Default: False
@@ -197,7 +195,7 @@ class Layer(core.Layer):
     def add_parameter(self, name, parameter):
         """Adds a Parameter instance.
 
-          Added parameter can be access like self.name.
+        Added parameter can be access like self.name.
 
         Parameters:
             name: name of this sublayer.
