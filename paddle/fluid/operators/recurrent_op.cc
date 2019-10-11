@@ -48,7 +48,9 @@ static void ClearStepScopes(const platform::DeviceContext &dev_ctx,
   dev_ctx.Wait();
 
   for (auto *sub_scope : *step_scopes) {
-    parent_scope->DeleteScope(sub_scope);
+    if (parent_scope->HasKid(sub_scope)) {
+      parent_scope->DeleteScope(sub_scope);
+    }
   }
 
   step_scopes->clear();
