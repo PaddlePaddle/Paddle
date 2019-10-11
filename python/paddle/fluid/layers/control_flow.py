@@ -1988,7 +1988,7 @@ class IfElse(object):
 class DynamicRNN(object):
     """
     **Note: the input of this class should be LoDTensor which holds the
-    information of variable-length sequence. If the input is fixed-length Tensor,
+    information of variable-length sequences. If the input is fixed-length Tensor,
     please use StaticRNN (fluid.layers.** :ref:`api_fluid_layers_StaticRNN` **) for
     better performance.**
 
@@ -2003,7 +2003,7 @@ class DynamicRNN(object):
     length is larger than the time step will participate the remaining calculation.
 
     If defined :code:`drnn = DynamicRNN()`, then users can call :code:`drnn()`
-    to abtain the result sequences. It is a LoDTensor gained by merging all
+    to obtain the result sequences. It is a LoDTensor gained by merging all
     time steps's output. When RNN's input sequence x meets :code:`x.lod_level == 1`,
     the output LoDTensor will have the same LoD with x. The result of :code:`drnn()`
     includes RNN's outputs of all time steps, users can call
