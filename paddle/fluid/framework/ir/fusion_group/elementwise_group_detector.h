@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/ir/node.h"
 

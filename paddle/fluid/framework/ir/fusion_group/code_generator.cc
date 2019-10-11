@@ -12,28 +12,25 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-#include <string>
-#include <vector>
-#include "paddle/fluid/framework/ir/codegen_helper.h"
+#include "paddle/fluid/framework/ir/code_generator.h"
+#include <set>
+#include <sstream>
+#include "paddle/fluid/framework/ir/code_generator_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class CodeGenerator {
- public:
-  explicit CodeGenerator(CodeTemplate code_template);
-  std::string GenerateCode(TemplateVariable template_var);
-  // TODO(wangchao66) std::string GenerateCode(const Graph& graph)
+CodeGenerator::CodeGenerator(CodeTemplate code_template) {
+  code_template_ = code_template;
+}
 
-  // TODO(wangchao): add a more general interface
-  // std::string Generate(const std::string name, const
-  // std::unordered_set<Node*> subgraph);
-
- private:
-  CodeTemplate code_template_;
-};
+// In order to get the right result of expression, we need to calculate and
+// store the expression as suffix Expressions using vector.
+std::string CodeGenerator::GenerateCode(TemplateVariable template_var) {
+  auto cuda_kernel = kernel_function + code_template_.Format(template_var);
+  return cuda_kernel;
+}
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
