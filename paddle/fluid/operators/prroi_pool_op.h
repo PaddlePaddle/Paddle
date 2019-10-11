@@ -21,7 +21,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-HOSTDEVICE T PrRoIPoolingGetData(const T* data, const int h, const int w,
+inline HOSTDEVICE T PrRoIPoolingGetData(const T* data, const int h, const int w,
                                  const int height, const int width) {
   bool overflow = (h < 0) || (w < 0) || (h >= height) || (w >= width);
   T retVal = overflow ? 0.0f : data[h * width + w];
@@ -29,7 +29,7 @@ HOSTDEVICE T PrRoIPoolingGetData(const T* data, const int h, const int w,
 }
 
 template <typename T>
-HOSTDEVICE T PrRoIPoolingMatCalculation(const T* this_data, const int s_h,
+inline HOSTDEVICE T PrRoIPoolingMatCalculation(const T* this_data, const int s_h,
                                         const int s_w, const int e_h,
                                         const int e_w, const T y0, const T x0,
                                         const T y1, const T x1, const int h0,
@@ -73,7 +73,7 @@ HOSTDEVICE T PrRoIPoolingMatCalculation(const T* this_data, const int s_h,
 }
 
 template <typename T>
-HOSTDEVICE void PrRoIPoolingDistributeDiff(T* diff, const T top_diff,
+inline HOSTDEVICE void PrRoIPoolingDistributeDiff(T* diff, const T top_diff,
                                            const int h, const int w,
                                            const int height, const int width,
                                            const T coeff) {
@@ -124,19 +124,19 @@ HOSTDEVICE void PrRoIPoolingMatDistributeDiff(
 }
 
 template <typename T>
-HOSTDEVICE void CPUAccumulateRois(T* offset, T data) {
+inline HOSTDEVICE void CPUAccumulateRois(T* offset, T data) {
   *offset += data;
 }
 
 template <typename T>
-HOSTDEVICE static T PrRoIPoolingGetCoeff(T dh, T dw) {
+inline HOSTDEVICE static T PrRoIPoolingGetCoeff(T dh, T dw) {
   dw = dw > 0 ? dw : -dw;
   dh = dh > 0 ? dh : -dh;
   return (1.0f - dh) * (1.0f - dw);
 }
 
 template <typename T, typename H, typename W>
-HOSTDEVICE static T PrRoIPoolingInterpolation(const T* data, const H h,
+inline HOSTDEVICE static T PrRoIPoolingInterpolation(const T* data, const H h,
                                               const W w, const int height,
                                               const int width) {
   T retVal = 0.0f;
@@ -164,14 +164,14 @@ HOSTDEVICE static T PrRoIPoolingInterpolation(const T* data, const H h,
 }
 
 template <typename T>
-HOSTDEVICE T PrRoIPoolingSingleCoorIntegral(T s, T t, T c1, T c2) {
+inline HOSTDEVICE T PrRoIPoolingSingleCoorIntegral(T s, T t, T c1, T c2) {
   return 0.5f * (t * t - s * s) * c2 +
          (t - 0.5f * t * t - s + 0.5f * s * s) * c1;
 }
 
 template <typename T, typename Functor, typename MaxFunctor,
           typename MinFunctor>
-HOSTDEVICE void PrRoIPoolingCoorBackward(
+inline HOSTDEVICE void PrRoIPoolingCoorBackward(
     int s_w, int e_w, int s_h, int e_h, int width, int height, T win_start_w,
     T win_start_h, T win_end_w, T win_end_h, int pw, int ph,
     const int pooled_width, const int pooled_height, T win_size,

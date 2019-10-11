@@ -60,15 +60,15 @@ class TestPRROIPoolOp(OpTest):
         for bno in range(self.batch_size):
             self.rois_lod[0].append(bno + 1)
             for i in range(bno + 1):
-                x1 = np.random.random_integers(
+                x1 = np.random.uniform(
                     0, self.width // self.spatial_scale - self.pooled_width)
-                y1 = np.random.random_integers(
+                y1 = np.random.uniform(
                     0, self.height // self.spatial_scale - self.pooled_height)
 
-                x2 = np.random.random_integers(x1 + self.pooled_width,
-                                               self.width // self.spatial_scale)
-                y2 = np.random.random_integers(
-                    y1 + self.pooled_height, self.height // self.spatial_scale)
+                x2 = np.random.uniform(x1 + self.pooled_width,
+                                       self.width // self.spatial_scale)
+                y2 = np.random.uniform(y1 + self.pooled_height,
+                                       self.height // self.spatial_scale)
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
         self.rois_num = len(rois)
