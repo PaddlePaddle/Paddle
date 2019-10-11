@@ -50,6 +50,9 @@ class TestMeanOpError(OpTest):
             input2 = fluid.layers.data(
                 name='input2', shape=[12, 10], dtype="int32")
             self.assertRaises(TypeError, fluid.layers.mean, input2)
+            input3 = fluid.layers.data(
+                name='input3', shape=[4], dtype="float16")
+            fluid.layers.softmax(input3)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

@@ -318,8 +318,8 @@ class MatMulOp : public framework::OperatorWithKernel {
           mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
               mat_dim_x.batch_size_ == 0 || mat_dim_y.batch_size_ == 0,
           "ShapeError: The batch size of the two matrices should be equal, or "
-          "zero.\n"
-          "But received x_shape: %s, y_shape: %s.",
+          "at least one is zero.\n"
+          "But received X's shape: %s, Y's shape: %s.",
           DumpMatrixShape(mat_dim_x).c_str(),
           DumpMatrixShape(mat_dim_y).c_str());
     }
@@ -331,20 +331,20 @@ class MatMulOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_LE(
         head_number, mat_dim_x.width_,
         "ShapeError: Unsatisfied mkl acceleration library requirements: "
-        "head_number "
-        "(%d) must be equal to x_width. But received x_shape: %s.",
+        "The number of heads "
+        "(%d) must be equal to X's width. But received X's shape: %s.",
         head_number, DumpMatrixShape(mat_dim_x).c_str());
 
     if (!split_vertical_y && head_number > 0) {
       dim_out_y = head_number * mat_dim_y.width_;
     }
 #else
-    PADDLE_ENFORCE_EQ(mat_dim_x.width_, mat_dim_y.height_,
-                      "ShapeError: x_width should be equal to the y_height, "
-                      "but received x_shape: %s,"
-                      "y_shape: %s.",
-                      DumpMatrixShape(mat_dim_x).c_str(),
-                      DumpMatrixShape(mat_dim_y).c_str());
+    PADDLE_ENFORCE_EQ(
+        mat_dim_x.width_, mat_dim_y.height_,
+        "ShapeError: Input X's width should be equal to the Y's height, "
+        "but received X's shape: %s,"
+        "Y's shape: %s.",
+        DumpMatrixShape(mat_dim_x).c_str(), DumpMatrixShape(mat_dim_y).c_str());
 #endif
 
     if (mat_dim_x.batch_size_ != 0) {
