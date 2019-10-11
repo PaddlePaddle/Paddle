@@ -97,6 +97,7 @@ class FleetDistRunnerBase(object):
         optimizer = fluid.optimizer.SGD(LEARNING_RATE)
         optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
+
         out = self.do_training(fleet)
 
     def net(self, batch_size=4, lr=0.01):
@@ -181,12 +182,13 @@ class TestFleetBase(unittest.TestCase):
 
     def _run_cluster(self, model, envs):
         env = {'CPU_NUM': '1'}
+        env.update(envs)
+
         python_path = self._python_interp
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             python_path += " -m coverage run --branch -p"
-        env.update(envs)
 
         tr_cmd = "{0} {1} --role trainer --endpoints {2} --current_id {{}} --trainers {3}".format(
             python_path, model, self._ps_endpoints, self._trainers)

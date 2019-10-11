@@ -32,16 +32,21 @@ class Vol2ColFunctor<platform::CPUDeviceContext, T> {
                   const framework::Tensor& vol,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  framework::Tensor* col) const {
+                  const std::vector<int>& paddings, framework::Tensor* col,
+                  const DataLayout data_layout) const {
     PADDLE_ENFORCE_EQ(vol.dims().size(), 4,
                       "The dimension of vol should be 4.");
     PADDLE_ENFORCE_EQ(col->dims().size(), 7,
                       "The dimension of col should be 7.");
-    int input_channels = vol.dims()[0];
-    int input_depth = vol.dims()[1];
-    int input_height = vol.dims()[2];
-    int input_width = vol.dims()[3];
+
+    int input_channels =
+        (data_layout == DataLayout::kNCHW ? vol.dims()[0] : vol.dims()[3]);
+    int input_depth =
+        (data_layout == DataLayout::kNCHW ? vol.dims()[1] : vol.dims()[0]);
+    int input_height =
+        (data_layout == DataLayout::kNCHW ? vol.dims()[2] : vol.dims()[1]);
+    int input_width =
+        (data_layout == DataLayout::kNCHW ? vol.dims()[3] : vol.dims()[2]);
     int filter_depth = col->dims()[1];
     int filter_height = col->dims()[2];
     int filter_width = col->dims()[3];
@@ -59,6 +64,7 @@ class Vol2ColFunctor<platform::CPUDeviceContext, T> {
     int pad_h_down = paddings_size_is_6 ? paddings[3] : paddings[1];
     int pad_w_left = paddings_size_is_6 ? paddings[4] : paddings[2];
     int pad_w_right = paddings_size_is_6 ? paddings[5] : paddings[2];
+
     PADDLE_ENFORCE_EQ((input_depth + pad_d_forth + pad_d_back -
                        ((dilations[0] * (filter_depth - 1) + 1))) /
                               strides[0] +
@@ -97,10 +103,16 @@ class Vol2ColFunctor<platform::CPUDeviceContext, T> {
 
             int col_idx =
                 ((c * output_depth + d) * output_height + h) * output_width + w;
-            int vol_idx =
-                ((c_in * input_depth + d_pad) * input_height + h_pad) *
-                    input_width +
-                w_pad;
+            int vol_idx;
+            if (data_layout == DataLayout::kNCHW) {
+              vol_idx = ((c_in * input_depth + d_pad) * input_height + h_pad) *
+                            input_width +
+                        w_pad;
+            } else {
+              vol_idx = ((d_pad * input_height + h_pad) * input_width + w_pad) *
+                            input_channels +
+                        c_in;
+            }
             col_data[col_idx] =
                 (h_pad < 0 || h_pad >= input_height || w_pad < 0 ||
                  w_pad >= input_width || d_pad < 0 || d_pad >= input_depth)
@@ -126,16 +138,21 @@ class Col2VolFunctor<platform::CPUDeviceContext, T> {
                   const framework::Tensor& col,
                   const std::vector<int>& dilations,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  framework::Tensor* vol) const {
+                  const std::vector<int>& paddings, framework::Tensor* vol,
+                  const DataLayout data_layout) const {
     PADDLE_ENFORCE_EQ(vol->dims().size(), 4,
                       "The dimension of vol should be 4.");
     PADDLE_ENFORCE_EQ(col.dims().size(), 7,
                       "The dimension of col should be 7.");
-    int input_channels = vol->dims()[0];
-    int input_depth = vol->dims()[1];
-    int input_height = vol->dims()[2];
-    int input_width = vol->dims()[3];
+
+    int input_channels =
+        (data_layout == DataLayout::kNCHW ? vol->dims()[0] : vol->dims()[3]);
+    int input_depth =
+        (data_layout == DataLayout::kNCHW ? vol->dims()[1] : vol->dims()[0]);
+    int input_height =
+        (data_layout == DataLayout::kNCHW ? vol->dims()[2] : vol->dims()[1]);
+    int input_width =
+        (data_layout == DataLayout::kNCHW ? vol->dims()[3] : vol->dims()[2]);
     int filter_depth = col.dims()[1];
     int filter_height = col.dims()[2];
     int filter_width = col.dims()[3];
@@ -191,11 +208,17 @@ class Col2VolFunctor<platform::CPUDeviceContext, T> {
 
             if (h_pad >= 0 && h_pad < input_height && w_pad >= 0 &&
                 w_pad < input_width && d_pad >= 0 && d_pad < input_depth) {
-              int vol_idx =
-                  ((cIm * input_depth + d_pad) * input_height + h_pad) *
-                      input_width +
-                  w_pad;
-
+              int vol_idx;
+              if (data_layout == DataLayout::kNCHW) {
+                vol_idx = ((cIm * input_depth + d_pad) * input_height + h_pad) *
+                              input_width +
+                          w_pad;
+              } else {
+                vol_idx =
+                    ((d_pad * input_height + h_pad) * input_width + w_pad) *
+                        input_channels +
+                    cIm;
+              }
               int col_idx =
                   ((c * output_depth + d) * output_height + h) * output_width +
                   w;

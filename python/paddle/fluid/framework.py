@@ -62,17 +62,20 @@ _dygraph_current_expected_place_ = None
 
 def in_dygraph_mode():
     """
-    Check program status(tracer), Whether it runs in dygraph mode or not
+    This function checks whether the program runs in dynamic graph mode or not.
+    You can turn on dynamic graph mode with :ref:`api_fluid_dygraph_guard` api.
 
     Returns:
-        out (boolean): True if the program is running in dynamic graph mode
+        bool: Whether the program is running in dynamic graph mode.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             if fluid.in_dygraph_mode():
-                pass
+                print('running in dygraph mode')
+            else:
+                print('not running in dygraph mode')
 
     """
     return _dygraph_tracer_ is not None
@@ -147,27 +150,44 @@ def is_compiled_with_cuda():
     return core.is_compiled_with_cuda()
 
 
+def _var_base_to_np(var_base):
+    """
+    convert VarBase tp numpy
+    
+    Args:
+        var_base(VarBase) : the VarBase to convert
+    Returns (np.ndarray): the np.ndarray contain the value of VarBase
+
+    """
+    var = var_base._copy_to(core.CPUPlace(), True)
+    return np.array(var.value().get_tensor())
+
+
 def cuda_places(device_ids=None):
     """
-    Create a list of :code:`fluid.CUDAPlace` objects.
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
+        The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
+
+    This function creates a list of :code:`fluid.CUDAPlace` objects.
 
     If :code:`device_ids` is None, environment variable of
-    :code:`FLAGS_selected_gpus` would be checked first. If
+    :code:`FLAGS_selected_gpus` would be checked first. For example, if
     :code:`FLAGS_selected_gpus=0,1,2`, the returned list would
     be [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
     If :code:`FLAGS_selected_gpus` is not set, all visible
-    gpu places would be returned.  
+    gpu places would be returned according to the :code:`CUDA_VISIBLE_DEVICES` environment variable.
 
     If :code:`device_ids` is not None, it should be the device
-    ids of gpus. For example, if :code:`device_ids=[0,1,2]`, 
+    ids of GPUs. For example, if :code:`device_ids=[0,1,2]`,
     the returned list would be 
     [fluid.CUDAPlace(0), fluid.CUDAPlace(1), fluid.CUDAPlace(2)].
     
-    Args: 
-        device_ids (None|list(int)|tuple(int)): gpu device id list.
+    Parameters:
+        device_ids (list or tuple of int, optional): list of GPU device ids.
 
     Returns:
-        out (list(fluid.CUDAPlace)): gpu place list.
+        list of fluid.CUDAPlace: Created GPU place list.
 
     Examples:
         .. code-block:: python
@@ -187,18 +207,20 @@ def cuda_places(device_ids=None):
 
 def cpu_places(device_count=None):
     """
-    Create a list of :code:`fluid.CPUPlace` objects.
+    This function creates a list of :code:`fluid.CPUPlace` objects, and returns the created list.
     
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
     If :code:`CPU_NUM` is not set, the default value is 1,
     i.e. CPU_NUM=1.
+    :code:`CPU_NUM` indicates the number of devices used in the current task.
+    The running of the program can be accelerated if :code:`CPU_NUM` is the same as the number of physical cores.
 
-    Args:
-        device_count (None|int): device number.
+    Parameters:
+        device_count (int, optional): device number. Default: None.
 
     Returns:
-        out (list(fluid.CPUPlace)): cpu place list.
+        list of fluid.CPUPlace: Created list of CPU places.
 
     Examples:
         .. code-block:: python
@@ -214,18 +236,20 @@ def cpu_places(device_count=None):
 
 def cuda_pinned_places(device_count=None):
     """
-    Create a list of :code:`fluid.CUDAPinnedPlace` objects.
+    This function creates a list of :code:`fluid.CUDAPinnedPlace` objects.
 
     If :code:`device_count` is None, the device count would
     be determined by environment variable :code:`CPU_NUM`. 
-    If :code:`CPU_NUM` is not set, the device count would
-    be determined by :code:`multiprocessing.cpu_count()`. 
+    If :code:`CPU_NUM` is not set, the default value is 1,
+    i.e. CPU_NUM=1.
+    :code:`CPU_NUM` indicates the number of devices used in the current task.
+    The running of the program can be accelerated if :code:`CPU_NUM` is the same as the number of physical cores.
 
-    Args:
-        device_count (None|int): device number.
+    Parameters:
+        device_count (int, optional): device number. Default: None.
 
     Returns:
-        out (list(fluid.CUDAPinnedPlace)): cuda pinned place list.
+        list of fluid.CUDAPinnedPlace: Created list of CUDA pinned places.
 
     Examples:
         .. code-block:: python
@@ -274,27 +298,46 @@ def name_scope(prefix=None):
     """
     Generate hierarchical name prefix for the operators.
 
-    Note: This should only used for debugging and visualization purpose.
-    Don't use it for serious analysis such as graph/program transformations.
+    Note: 
+        This should only used for debugging and visualization purpose.
+        Don't use it for serious analysis such as graph/program transformations.
 
     Args:
-        prefix(str): prefix.
+        prefix(str, optional): prefix. Default is none.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
           with fluid.name_scope("s1"):
-              a = fluid.layers.data(name='data', shape=[1], dtype='int32')
-              b = a + 1
-              with fluid.name_scope("s2"):
-                  c = b * 1
-              with fluid.name_scope("s3"):
-                  d = c / 1
+             a = fluid.data(name='data', shape=[None, 1], dtype='int32')
+             b = a + 1
+             with fluid.name_scope("s2"):
+                c = b * 1
+             with fluid.name_scope("s3"):
+                d = c / 1
           with fluid.name_scope("s1"):
-              f = fluid.layers.pow(d, 2.0)
+                f = fluid.layers.pow(d, 2.0)
           with fluid.name_scope("s4"):
-              g = f - 1
+                g = f - 1
+
+          # Op are created in the default main program.  
+          for op in fluid.default_main_program().block(0).ops:
+              # elementwise_add is created in /s1/
+              if op.type == 'elementwise_add':
+                  assert op.desc.attr("op_namescope") == '/s1/'
+              # elementwise_mul is created in '/s1/s2'
+              elif op.type == 'elementwise_mul':
+                  assert op.desc.attr("op_namescope") == '/s1/s2/'
+              # elementwise_div is created in '/s1/s3'
+              elif op.type == 'elementwise_div':
+                  assert op.desc.attr("op_namescope") == '/s1/s3/'
+              # elementwise_sum is created in '/s4'
+              elif op.type == 'elementwise_sub':
+                  assert op.desc.attr("op_namescope") == '/s4/'
+              # pow is created in /s1_1/
+              elif op.type == 'pow':
+                  assert op.desc.attr("op_namescope") == '/s1_1/'
     """
     # TODO(panyx0718): Only [0-9a-z].
     # in dygraph we don't need namescope since it will cause mem leak
@@ -461,6 +504,7 @@ class Variable(object):
                  stop_gradient=False,
                  is_data=False,
                  need_check_feed=False,
+                 belong_to_optimizer=False,
                  **kwargs):
         self.block = block
         if name is None:
@@ -469,6 +513,8 @@ class Variable(object):
         if dtype is not None:
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
+
+        self.belong_to_optimizer = belong_to_optimizer
 
         if in_dygraph_mode():
             # record vars in tracer rather than blocks
@@ -670,15 +716,25 @@ class Variable(object):
                     out = fc(t)  # call with different weight
 
         """
-        assert isinstance(value, (Variable, np.ndarray))
-        if list(value.shape) != list(self.shape):
-            raise ValueError(
-                "The shape of the new value must be the same as that of the original Variable."
-            )
-        self_tensor = self._ivar.value().get_tensor()
+        assert isinstance(value, (Variable, np.ndarray, core.VarBase)), \
+                "Variable set_value function, arguments type only support Variable, numpy, VarBase"
+
+        value_np = value
         if isinstance(value, Variable):
-            value = value._ivar.value().get_tensor().__array__()
-        self_tensor.set(value, _current_expected_place())
+            value_np = value.numpy()
+        elif isinstance(value, core.VarBase):
+            value_np = _var_base_to_np(value)
+        self_tensor = self._ivar.value().get_tensor()
+
+        self_tensor_np = np.array(self_tensor)
+
+        assert self_tensor_np.shape == value_np.shape,  \
+                                      "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format( self._ivar.name, self_tensor_np.shape, value_np.shape)
+
+        assert self_tensor_np.dtype == value_np.dtype,  \
+                                      "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format( self._ivar.name, self_tensor_np.dtype, value_np.dtype)
+
+        self_tensor.set(value_np, _current_expected_place())
 
     @dygraph_only
     def backward(self, backward_strategy=None):

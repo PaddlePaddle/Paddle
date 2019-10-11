@@ -667,7 +667,7 @@ def py_reader(capacity,
     """
     logging.warn(
         'paddle.fluid.layers.py_reader() may be deprecated in the near future. '
-        'Please use paddle.fluid.io.PyReader() instead.')
+        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
     return _py_reader(
         capacity=capacity,
         shapes=shapes,
@@ -747,6 +747,9 @@ def create_py_reader_by_data(capacity,
              except fluid.core.EOFException:
                  reader.reset()
     """
+    logging.warn(
+        'paddle.fluid.layers.create_py_reader_by_data() may be deprecated in the near future. '
+        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
     return _py_reader(
         capacity=capacity,
         shapes=None,
@@ -787,30 +790,27 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
 
 def double_buffer(reader, place=None, name=None):
     """
-    Wrap a double buffer reader. The data will copy to target place with a
-    double buffer queue. If the target place is None, the place that executor
-    perform on will be used.
+    Wrap a double buffer reader. The class Reader contains DecoratedReader and FileReader. Moreover, the DecoratedReader is inherited by CustomReader and BufferedReader. This function is related to BufferedReader. The data will copy to target place with a double buffer queue. If the target place is None, the place that executor perform on will be used.
+
 
     Args:
-        reader(Variable): the reader variable need to be wrapped.
-        place(Place): the place of target data. Default is the sample place of
-            executor perform.
-
-        name(str): Variable name. None if the user does not care.
+        reader (Variable): The Reader Variable need to be wrapped.
+        place (Place, optional): The place of target data, such as CPU, GPU, and if use GPU, it's necessary to point out which card is involved. Default is the sample place of executor perform.
+        name (str, optional): Variable name. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None. 
 
     Returns:
-        wrapped reader with double buffer.
+        Variable(Reader): wrapped reader with double buffer.
 
     Examples:
-        .. code-block:: python
+        ..  code-block:: python
           
-           import paddle.fluid as fluid
-           reader = fluid.layers.py_reader(capacity=64,
-                                           shapes=[(-1, 1, 28, 28), (-1, 1)],
-                                           dtypes=['float32', 'int64'],
-                                           use_double_buffer=False)
-           reader = fluid.layers.double_buffer(reader)
-           image, label = fluid.layers.read_file(reader)
+            import paddle.fluid as fluid
+            reader = fluid.layers.py_reader(capacity=64,
+                                            shapes=[(-1, 1, 28, 28), (-1, 1)],
+                                            dtypes=['float32', 'int64'],
+                                            use_double_buffer=False)
+            reader = fluid.layers.double_buffer(reader)
+            image, label = fluid.layers.read_file(reader)
     """
     attrs = dict()
     if place is not None:
@@ -857,24 +857,25 @@ def read_file(reader):
         return out
 
 
-@templatedoc()
 def load(out, file_path, load_as_fp16=None):
     """
-    ${comment}
-
-    >>> import paddle.fluid as fluid
-    >>> tmp_tensor = fluid.layers.create_tensor(dtype='float32')
-    >>> fluid.layers.load(tmp_tensor, "./tmp_tensor.bin")
+    Load operator will load a LoDTensor / SelectedRows variable from disk file.
 
     Args:
-        out(${out_type}): ${out_comment}.
+        out(Variable): The LoDTensor / SelectedRows need to be loaded..
 
-        file_path(${file_path_type}): ${file_path_comment}.
+        file_path(STRING): Variable will be loaded from "file_path".
 
-        load_as_fp16(${load_as_fp16_type}): ${load_as_fp16_comment}.
-
+        load_as_fp16(BOOLEAN): If true, the tensor will be first loaded and then converted to float16 data type. Otherwise, the tensor will be directly loaded without data type conversion. Default is false..
     Returns:
         None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            tmp_tensor = fluid.layers.create_tensor(dtype='float32')
+            fluid.layers.load(tmp_tensor, "./tmp_tensor.bin")
     """
     helper = LayerHelper("load", **locals())
     attrs = {"file_path": file_path}
