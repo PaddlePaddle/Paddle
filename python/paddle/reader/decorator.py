@@ -60,13 +60,33 @@ def cache(reader):
 def map_readers(func, *readers):
     """
     Creates a data reader that outputs return value of function using
-    output of each data readers as arguments.
+    output of each data reader as arguments.
 
-    :param func: function to use. The type of func should be (Sample) => Sample
-    :type: callable
-    :param readers: readers whose outputs will be used as arguments of func.
-    :return: the created data reader.
-    :rtype: callable
+    If input readers output the following data entries: 2 3,
+    and the input func is mul(x, y),
+    the output of the resulted reader will be 6.
+
+
+    Args:
+        func: a function to read data and compute result, the output of this function 
+              will be set as the output of the resulted data reader.
+        readers (Reader|list of Reader): list of readers whose outputs will be used as arguments of func.
+ 
+    Returns:
+        the resulted data reader (Reader)
+
+    Examples:
+
+        .. code-block:: python
+
+         import paddle.reader
+         d = {"h": 0, "i": 1}
+         def func(x):
+             return d[x]
+         def reader():
+             yield "h"
+             yield "i"
+         map_reader_result = paddle.reader.map_readers(func, reader)
     """
 
     def reader():
@@ -187,16 +207,29 @@ def compose(*readers, **kwargs):
     The composed reader will output:
     (1, 2, 3, 4, 5)
 
-    :param readers: readers that will be composed together.
-    :param check_alignment: if True, will check if input readers are aligned
-        correctly. If False, will not check alignment and trailing outputs
-        will be discarded. Defaults to True.
-    :type check_alignment: bool
+    Args:
+        readers (Reader|list of Reader): readers that will be composed together. 
+        check_alignment(bool, optional): Indicates whether the input readers are checked for
+                              alignment. If True, whether input readers are aligned
+                              correctly will be checked, else alignment will not be checkout and trailing outputs
+                              will be discarded. Defaults to True.
 
-    :return: the new data reader.
+    Returns: 
+        the new data reader (Reader).
 
-    :raises ComposeNotAligned: outputs of readers are not aligned.
-        Will not raise when check_alignment is set to False.
+    Raises:
+        ComposeNotAligned: outputs of readers are not aligned. This will not raise if check_alignment is set to False.
+  
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          def reader_creator_10(dur):
+              def reader():
+                 for i in range(10):
+                     yield i
+              return reader
+          reader = fluid.io.compose(reader_creator_10(0), reader_creator_10(0))
     """
     check_alignment = kwargs.pop('check_alignment', True)
 
