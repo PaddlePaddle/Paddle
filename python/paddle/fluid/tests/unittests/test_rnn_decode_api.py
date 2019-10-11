@@ -114,11 +114,11 @@ class TestDynamicDecode(unittest.TestCase):
         beam_size = 8
         max_length = self.seq_len
 
-        src = fluid.data(name="src", shape=[None, None], dtype='int64')
-        src_len = fluid.data(name="src_len", shape=[None], dtype='int64')
+        src = layers.data(name="src", shape=[-1, 1], dtype='int64')
+        src_len = layers.data(name="src_len", shape=[-1], dtype='int64')
 
-        trg = fluid.data(name="trg", shape=[None, None], dtype='int64')
-        trg_len = fluid.data(name="trg_len", shape=[None], dtype='int64')
+        trg = layers.data(name="trg", shape=[-1, 1], dtype='int64')
+        trg_len = layers.data(name="trg_len", shape=[-1], dtype='int64')
 
         src_embeder = lambda x: fluid.embedding(
             x,
