@@ -44,8 +44,6 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
 void SparseAllReduceOpHandle::RunImplEncoded() {
   platform::RecordEvent record_event(Name());
 
-  WaitInputVarGenerated();
-
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
   PADDLE_ENFORCE_EQ(
@@ -87,6 +85,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   PADDLE_ENFORCE(nranks_ > 1);
   std::vector<std::function<void()>> all_reduce_calls;
 
+  std::vector<memory::AllocationPtr> allocations;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto &place = places_[i];
     auto &in = *ins[i];
@@ -104,7 +103,6 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     int dev_id = boost::get<platform::CUDAPlace>(place).device;
     auto *nccl_ctxs = nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, false);
     auto &nccl_ctx = nccl_ctxs->at(dev_id);
-    auto *dev_ctx = nccl_ctxs->DevCtx(dev_id);
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
 
@@ -112,8 +110,9 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     // dgc use ncclAllGather to get all the encoded data
     // so the buffer need nranks.
     int buf_size = nranks_ * encode_size;
-    auto tmp_ious_data = memory::Alloc(*dev_ctx, buf_size);
+    auto tmp_ious_data = memory::Alloc(place, buf_size);
     void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
+    allocations.push_back(std::move(tmp_ious_data));
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
              << ", nranks:" << nranks_ << ", gather_buf size:" << buf_size
@@ -126,6 +125,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     });
   }
 
+  WaitInputVarGenerated();
   NCCLAllReduceFunc(all_reduce_calls);
 }
 
