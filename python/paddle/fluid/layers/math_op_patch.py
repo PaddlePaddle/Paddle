@@ -93,14 +93,48 @@ def monkey_patch_variable():
 
     def astype(self, dtype):
         """
+        **Notes**:
+            **The variable must be a** :ref:`api_fluid_Tensor`
+
         Cast a variable to a specified data type.
-        NOTE: The variable must be a Tensor
+
         Args:
+
             self(Variable): The source variable
-            dtype: The target dtype
+
+            dtype: The target data type
 
         Returns:
-            Variable with new dtype
+            Variable: Variable with new dtype
+
+        Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                startup_prog = fluid.Program()
+                main_prog = fluid.Program()
+                with fluid.program_guard(startup_prog, main_prog):
+                    original_variable = fluid.data(name = "new_variable", shape=[2,2], dtype='float32')
+                    new_variable = original_variable.astype('int64')
+                    print("new var's dtype is: {}".format(new_variable.dtype))
+
+            In Dygraph Mode:
+
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                x = np.ones([2, 2], np.float32)
+                with fluid.dygraph.guard():
+                    original_variable = fluid.dygraph.to_variable(x)
+                    print("original var's dtype is: {}, numpy dtype is {}".format(original_variable.dtype, original_variable.numpy().dtype))
+                    new_variable = original_variable.astype('int64')
+                    print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
+
         """
         block = current_block(self)
         out = create_new_tmp_var(block, dtype)

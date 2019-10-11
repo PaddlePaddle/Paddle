@@ -43,7 +43,8 @@ class ErrorClipByValue(BaseErrorClipAttr):
     """
     Clips tensor values to the range [min, max].
 
-    Given a tensor t, this operation clips its value to min and max inplace.
+    Given a tensor ``t`` (see Examples below), this operation clips its value \
+    to ``min`` and ``max`` inplace.
 
     - Any values less than min are set to min.
     - Any values greater than max are set to max.
@@ -51,7 +52,7 @@ class ErrorClipByValue(BaseErrorClipAttr):
     Args:
         max (float): The maximum value to clip by.
         min (float, optional): The minimum value to clip by. if not set by user, \
-        will be set to -max by framework.
+        will be set to ``-max`` by framework.
 
     Examples:
         .. code-block:: python
@@ -138,10 +139,10 @@ class GradientClipByValue(BaseGradientClipAttr):
     """
     Clips gradient values to the range [min, max].
 
-    Given a tensor t, this operation clips its value to min and max inplace.
+    Given a tensor ``t``, this operation clips its value to ``min`` and ``max`` inplace.
 
-    - Any values less than min are set to min.
-    - Any values greater than max are set to max.
+    - Any values less than min are set to ``min``.
+    - Any values greater than max are set to ``max``.
 
     Args:
         max (float): The maximum value to clip by.
@@ -234,9 +235,12 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
     """
     Clips values of multiple tensors by the ratio of the sum of their norms.
 
-    Given a list of tensors t_list, and a clipping ratio clip_norm, this
-    operation returns a list of clipped tensors list_clipped and the global
-    norm (global_norm) of all tensors in t_list.
+    Given a list of tensors ``t_list`` , and a clipping ratio ``clip_norm``,
+    this operation returns a instance of this class as first parameter of
+    ``set_gradient_clip`` method, second parameter of ``set_gradient_clip`` 
+    is used to compute clipped tensors list ``list_clipped`` (default value 
+    is ``None``, compute global norm ``global_norm`` based in all tensors).
+    global norm (global_norm) of all tensors in t_list.
 
     To perform the clipping, the values :math:`t\_list[i]` are set to:
 
@@ -261,6 +265,10 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle.fluid.core as core
+            import paddle
+
+            place = core.CPUPlace()
             prog = fluid.framework.Program()
             startup_program = fluid.framework.Program()
             with fluid.program_guard(
@@ -272,14 +280,40 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
                 predict = fluid.layers.fc(input=hidden2, size=10, act='softmax')
                 cost = fluid.layers.cross_entropy(input=predict, label=label)
                 avg_cost = fluid.layers.mean(cost)
+
             prog_clip = prog.clone()
             avg_cost_clip = prog_clip.block(0).var(avg_cost.name)
+
+            p_g = fluid.backward.append_backward(loss=avg_cost)
             p_g_clip = fluid.backward.append_backward(loss=avg_cost_clip)
 
-            with fluid.program_guard(main_program=prog_clip):
+            with fluid.program_guard(main_program=prog_clip, startup_program=startup_program):
                 fluid.clip.set_gradient_clip(
                     fluid.clip.GradientClipByGlobalNorm(clip_norm=2.0))
                 p_g_clip = fluid.clip.append_gradient_clip_ops(p_g_clip)
+
+            grad_list = [elem[1] for elem in p_g]
+            grad_clip_list = [elem[1] for elem in p_g_clip]
+
+            train_reader = paddle.batch(
+                paddle.reader.shuffle(
+                    paddle.dataset.mnist.train(), buf_size=8192),
+                batch_size=128)
+
+            exe = fluid.Executor(place)
+            feeder = fluid.DataFeeder(feed_list=[image, label], place=place)
+            exe.run(startup_program)
+
+            count = 0
+            for data in train_reader():
+                count += 1
+                print("count:%s" % count)
+                if count > 5:
+                    break
+                out = exe.run(prog, feed=feeder.feed(data), fetch_list=grad_list)
+                out_clip = exe.run(prog_clip,
+                                   feed=feeder.feed(data),
+                                   fetch_list=grad_clip_list)
 
     """
 
@@ -360,7 +394,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
             import paddle.fluid as fluid
 
             def network():
-                image = fluid.layers.data(name='image', shape=[28], dtype='float32')
+                image = fluid.data(name='image', shape=[None, 28], dtype='float32')
                 param_attr1 = fluid.ParamAttr("fc1_param")
                 fc1 = fluid.layers.fc(image, size=10, param_attr=param_attr1)
                 param_attr2 = fluid.ParamAttr("fc2_param")
