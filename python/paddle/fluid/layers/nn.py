@@ -355,6 +355,9 @@ def fc(input,
                 "The type of 'input' in fc must be Variable, but received %s" %
                 (type(input)))
     dtype = helper.input_dtype()
+    if convert_dtype(dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'input' in fc only support float16 in GPU now.")
     if convert_dtype(dtype) not in ['float16, float32', 'float64']:
         raise TypeError(
             "The data type of 'input' in fc must be float16, float32 or float64, but received %s."
