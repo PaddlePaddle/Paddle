@@ -137,8 +137,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
             place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
             layouts = ["NCHW", "NHWC"]
             for layout in layouts:
-                for activation, alpha in zip([None, 'elu', 'leaky_relu'],
-                                             [0., 1., 0.02]):
+                for activation, alpha in zip(['elu', 'leaky_relu'],
+                                             [1., 0.02]):
                     for infer_only in [False, True]:
                         self.compare(place, layout, infer_only, activation,
                                      alpha, use_cuda)
