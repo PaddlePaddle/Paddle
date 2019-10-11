@@ -295,7 +295,7 @@ paddle.fluid.layers.teacher_student_sigmoid_loss (ArgSpec(args=['input', 'label'
 paddle.fluid.layers.huber_loss (ArgSpec(args=['input', 'label', 'delta'], varargs=None, keywords=None, defaults=None), ('document', '9d93ee81f7a3e526d68bb280bc695d6c'))
 paddle.fluid.layers.kldiv_loss (ArgSpec(args=['x', 'target', 'reduction', 'name'], varargs=None, keywords=None, defaults=('mean', None)), ('document', '45f3ebbcb766fca84cb2fe6307086573'))
 paddle.fluid.layers.npair_loss (ArgSpec(args=['anchor', 'positive', 'labels', 'l2_reg'], varargs=None, keywords=None, defaults=(0.002,)), ('document', '3828c4bd81c25af0ab955f52d453c587'))
-paddle.fluid.layers.pixel_shuffle (ArgSpec(args=['x', 'upscale_factor'], varargs=None, keywords=None, defaults=None), ('document', '4733dcfde54e4cd7cb8b7080d4fb18a9'))
+paddle.fluid.layers.pixel_shuffle (ArgSpec(args=['x', 'upscale_factor'], varargs=None, keywords=None, defaults=None), ('document', '577a8daeca4a1f7f85cc63fa009ce971'))
 paddle.fluid.layers.fsp_matrix (ArgSpec(args=['x', 'y'], varargs=None, keywords=None, defaults=None), ('document', '3a4eb7cce366f5fd8bc38b42b6af5ba1'))
 paddle.fluid.layers.continuous_value_model (ArgSpec(args=['input', 'cvm', 'use_cvm'], varargs=None, keywords=None, defaults=(True,)), ('document', 'b335b531931cc8b2d19c65980eadfc1e'))
 paddle.fluid.layers.where (ArgSpec(args=['condition'], varargs=None, keywords=None, defaults=None), ('document', '68810eedf448f2cb3abd46518dd46c39'))
