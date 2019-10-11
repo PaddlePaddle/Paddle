@@ -79,25 +79,25 @@ softshrink.__doc__ = """
 :strong:`Softshrink Activation Operator`
 
 ..  math::
-    out = \begin{cases}
-            x - \alpha, \text{if } x > \alpha \\
-            x + \alpha, \text{if } x < -\alpha \\
-            0,  \text{otherwise}
-            \end{cases}
+    out = \\begin{cases}
+            x - \\alpha, \\text{if } x > \\alpha \\\\
+            x + \\alpha, \\text{if } x < -\\alpha \\\\
+            0,  \\text{otherwise}
+          \\end{cases}
 
 
 Args:
-    x: Input of Softshrink operator
-    alpha (FLOAT): non-negative offset
+    x: Input of Softshrink operator, an N-D Tensor, with data type float32, float64 or float16.
+    alpha (float): non-negative offset
     
 Returns:
-    Output of Softshrink operator
+    Output of Softshrink operator with the same type of input.
 
 Examples:
     .. code-block:: python
     
         import paddle.fluid as fluid
-        data = fluid.layers.data(name="input", shape=[784])
+        data = fluid.data(name="input", shape=[None, 784])
         result = fluid.layers.softshrink(x=data, alpha=0.3)
 """
 
@@ -137,12 +137,24 @@ def cumsum(x, axis=None, exclusive=None, reverse=None):
     return _cum_sum_(**kwargs)
 
 
-cumsum.__doc__ = _cum_sum_.__doc__ + """
-Examples:
+cumsum.__doc__ = """
+The cumulative sum of the elements along a given axis. By default, the first element of the result is the same of the first element of the input. If exlusive is true, the first element of the result is 0.
 
-    >>> import paddle.fluid as fluid
-    >>> data = fluid.layers.data(name="input", shape=[32, 784])
-    >>> result = fluid.layers.cumsum(data, axis=0)
+Args:
+    x (Variable): Input of cumsum operator, the Tensor/LoDTensor needed to be cumsumed. 
+    axis (int, optional): The dimenstion to accumulate along. -1 means the last dimenstion. Default is -1.
+    exclusive (bool, optional): Whether to perform exclusive cumsum. Default is False.
+    reverse (bool, optional): If true, the cumsum is performed in the reversed direction. Default is False.
+
+Returns:
+    Variable(Tensor/LoDTensor): The result of cumsum operator, output of cumsum operator. 
+
+Examples:
+    .. code-block:: python
+        
+        import paddle.fluid as fluid
+        data = fluid.layers.data(name="input", shape=[32, 784])
+        result = fluid.layers.cumsum(data, axis=0)
 """
 
 __all__ += ['thresholded_relu']

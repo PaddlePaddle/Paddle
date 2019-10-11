@@ -14,8 +14,7 @@
 
 __all__ = [
     'cache', 'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned', 'firstn', 'xmap_readers', 'PipeReader',
-    'multiprocess_reader', 'Fake'
+    'ComposeNotAligned', 'firstn', 'xmap_readers', 'multiprocess_reader'
 ]
 
 from threading import Thread
@@ -102,19 +101,33 @@ def map_readers(func, *readers):
 
 def shuffle(reader, buf_size):
     """
-    Creates a data reader whose data output is shuffled.
+    paddle.fluid.io.shuffle ( :ref:`api_fluid_io_shuffle` ) is recommended to use,
+    and paddle.reader.shuffle is an alias.
 
-    Output from the iterator that created by original reader will be
-    buffered into shuffle buffer, and then shuffled. The size of shuffle buffer
-    is determined by argument buf_size.
+    This API creates a decorated reader that outputs the shuffled data.
 
-    :param reader: the original reader whose output will be shuffled.
-    :type reader: callable
-    :param buf_size: shuffle buffer size.
-    :type buf_size: int
+    The output data from the origin reader will be saved into a buffer, 
+    and then shuffle the data. The size of buffer is determined by argument buf_size.
+ 
+    Args:
+        reader(callable): the original reader whose data will be shuffled.
+        buf_size(int): the size of shuffled buffer.
 
-    :return: the new reader whose output is shuffled.
-    :rtype: callable
+    Returns:
+        callable: a decorated reader.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            def reader():
+                for i in range(5):
+                    yield i
+            shuffled_reader = fluid.io.shuffle(reader, 3)
+            for e in shuffled_reader():
+                print(e)
+            # outputs are 0~4 unordered arrangement
     """
 
     def data_reader():
@@ -208,16 +221,29 @@ def compose(*readers, **kwargs):
     The composed reader will output:
     (1, 2, 3, 4, 5)
 
-    :param readers: readers that will be composed together.
-    :param check_alignment: if True, will check if input readers are aligned
-        correctly. If False, will not check alignment and trailing outputs
-        will be discarded. Defaults to True.
-    :type check_alignment: bool
+    Args:
+        readers (Reader|list of Reader): readers that will be composed together. 
+        check_alignment(bool, optional): Indicates whether the input readers are checked for
+                              alignment. If True, whether input readers are aligned
+                              correctly will be checked, else alignment will not be checkout and trailing outputs
+                              will be discarded. Defaults to True.
 
-    :return: the new data reader.
+    Returns: 
+        the new data reader (Reader).
 
-    :raises ComposeNotAligned: outputs of readers are not aligned.
-        Will not raise when check_alignment is set to False.
+    Raises:
+        ComposeNotAligned: outputs of readers are not aligned. This will not raise if check_alignment is set to False.
+  
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          def reader_creator_10(dur):
+              def reader():
+                 for i in range(10):
+                     yield i
+              return reader
+          reader = fluid.io.compose(reader_creator_10(0), reader_creator_10(0))
     """
     check_alignment = kwargs.pop('check_alignment', True)
 
@@ -291,14 +317,31 @@ def buffered(reader, size):
 
 def firstn(reader, n):
     """
-    Limit the max number of samples that reader could return.
+    paddle.fluid.io.firstn ( :ref:`api_fluid_io_firstn` ) is recommended to use,
+    and paddle.reader.firstn is an alias.
+    
+    This API creates a decorated reader, and limits the max number of 
+    samples that reader could return.
 
-    :param reader: the data reader to read from.
-    :type reader: callable
-    :param n: the max number of samples that return.
-    :type n: int
-    :return: the decorated reader.
-    :rtype: callable
+    Args:
+        reader(callable): the input reader.
+        n(int): the max number of samples in the reader.
+
+    Returns:
+        callable: the decorated reader.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            def reader():
+                for i in range(100):
+                    yield i
+            firstn_reader = fluid.io.firstn(reader, 5)
+            for e in firstn_reader():
+                print(e)
+            # the outputs are: 0 1 2 3 4  
     """
 
     # TODO(yuyang18): Check if just drop the reader, could clean the opened
@@ -517,116 +560,3 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
         return pipe_reader
     else:
         return queue_reader
-
-
-def _buf2lines(buf, line_break="\n"):
-    # FIXME: line_break should be automatically configured.
-    lines = buf.split(line_break)
-    return lines[:-1], lines[-1]
-
-
-class PipeReader:
-    """
-        PipeReader read data by stream from a command, take it's
-        stdout into a pipe buffer and redirect it to the parser to
-        parse, then yield data as your desired format.
-
-        You can using standard linux command or call another program
-        to read data, from HDFS, Ceph, URL, AWS S3 etc:
-
-        .. code-block:: python
-           cmd = "hadoop fs -cat /path/to/some/file"
-           cmd = "cat sample_file.tar.gz"
-           cmd = "curl http://someurl"
-           cmd = "python print_s3_bucket.py"
-
-        An example:
-
-        .. code-block:: python
-
-           def example_reader():
-               for f in myfiles:
-                   pr = PipeReader("cat %s"%f)
-                   for l in pr.get_line():
-                       sample = l.split(" ")
-                       yield sample
-    """
-
-    def __init__(self, command, bufsize=8192, file_type="plain"):
-        if not isinstance(command, str):
-            raise TypeError("left_cmd must be a string")
-        if file_type == "gzip":
-            self.dec = zlib.decompressobj(
-                32 + zlib.MAX_WBITS)  # offset 32 to skip the header
-        self.file_type = file_type
-        self.bufsize = bufsize
-        self.process = subprocess.Popen(
-            command.split(" "), bufsize=bufsize, stdout=subprocess.PIPE)
-
-    def get_line(self, cut_lines=True, line_break="\n"):
-        """
-        :param cut_lines: cut buffer to lines
-        :type cut_lines: bool
-        :param line_break: line break of the file, like '\\\\n' or '\\\\r'
-        :type line_break: string
-
-        :return: one line or a buffer of bytes
-        :rtype: string
-        """
-        remained = ""
-        while True:
-            buff = self.process.stdout.read(self.bufsize)
-            if buff:
-                if self.file_type == "gzip":
-                    decomp_buff = cpt.to_text(self.dec.decompress(buff))
-                elif self.file_type == "plain":
-                    decomp_buff = cpt.to_text(buff)
-                else:
-                    raise TypeError("file_type %s is not allowed" %
-                                    self.file_type)
-
-                if cut_lines:
-                    lines, remained = _buf2lines(''.join(
-                        [remained, decomp_buff]), line_break)
-                    for line in lines:
-                        yield line
-                else:
-                    yield decomp_buff
-            else:
-                break
-
-
-class Fake(object):
-    """
-    fake reader will cache the first data it read and yield it out for data_num times.
-    It is used to cache a data from real reader and use it for speed testing.
-
-    :param reader: the origin reader
-    :param data_num: times that this reader will yield data.
-
-    :return: a fake reader.
-
-    Examples:
-        .. code-block:: python
-
-            def reader():
-                for i in range(10):
-                    yield i
-
-            fake_reader = Fake()(reader, 100)
-    """
-
-    def __init__(self):
-        self.data = None
-        self.yield_num = 0
-
-    def __call__(self, reader, data_num):
-        def fake_reader():
-            if self.data is None:
-                self.data = next(reader())
-            while self.yield_num < data_num:
-                yield self.data
-                self.yield_num += 1
-            self.yield_num = 0
-
-        return fake_reader
