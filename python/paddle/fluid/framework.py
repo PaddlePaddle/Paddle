@@ -4426,27 +4426,29 @@ def default_startup_program():
 
 def default_main_program():
     """
-    Get default/global main program. The main program is used for training or
-    testing.
+    This API can be used to get ``default main program`` which store the 
+    descriptions of ``op`` and ``variable``.
+    
+    ``Op`` and ``variable`` appened to the model by the APIs in ``fluid.layers`` 
+    will be saved in ``default main program`` 
 
-    All layer function in :code:`fluid.layers` will append operators and
-    variables to the :code:`default_main_program`.
-
-    The :code:`default_main_program` is the default program in a lot of APIs.
-    For example, the :code:`Executor.run()` will execute the
+    The ``default_main_program`` is the default value for ``Program`` parameter in 
+    a lot of ``fluid`` APIs. For example, the :code:`Executor.run()` will execute the
     :code:`default_main_program` when the program is not specified.
 
+    If you want to replace the ``default main program``, you can use :ref:`api_fluid_program_guard`
+    
     Returns:
-        Program: main program
+        :ref:`api_fluid_Program`: a ``Program`` which saves the descriptions of ops and variables in the network.
 
     Examples:
         ..  code-block:: python
 
             import paddle.fluid as fluid
-            
+
             # Sample Network:
-            data = fluid.layers.data(name='image', shape=[3, 224, 224], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            data = fluid.data(name='image', shape=[-1, 3, 224, 224], dtype='float32')
+            label = fluid.data(name='label', shape=[1], dtype='int64')
             
             conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None)
             bn1 = fluid.layers.batch_norm(conv1, act='relu')
@@ -4466,8 +4468,12 @@ def default_main_program():
                 regularization=fluid.regularizer.L2Decay(1e-4))
             opt.minimize(loss)
             
+            #print the number of blocks in the program, 1 in this case
             print(fluid.default_main_program().num_blocks)
+
+            #print the description of variable 'image'
             print(fluid.default_main_program().blocks[0].var('image'))
+
     """
     return _main_program_
 
