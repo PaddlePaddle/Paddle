@@ -258,6 +258,9 @@ def save_vars(executor,
 
 def save_params(executor, dirname, main_program=None, filename=None):
     """
+    This operator saves all parameters from the :code:`main_program` to
+    the folder :code:`dirname` or file :code:`filename`. You can refer to 
+    :ref:`api_guide_model_save_reader_en` for more details.
 
     Use the :code:`dirname` to specify the saving folder. If you would like to
     save parameters in separate files, set :code:`filename` None; if you would
@@ -505,8 +508,9 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
 def save_persistables(executor, dirname, main_program=None, filename=None):
     """
-    This operator save all persistables variables from the give :code:`main_program`,
-    You can refer to :ref:`api_guide_model_save_reader_en` for more details. And then
+    This operator saves all persistable variables from :code:`main_program` to 
+    the folder :code:`dirname` or file :code:`filename`. You can refer to 
+    :ref:`api_guide_model_save_reader_en` for more details. And then
     saves these persistables variables to the folder :code:`dirname` or file 
     :code:`filename`. 
 
