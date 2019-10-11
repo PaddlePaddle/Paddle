@@ -261,6 +261,9 @@ def generate_activation_fn(op_type):
             "name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` ."
         ])
     func.__doc__ = func.__doc__ + """
+
+Return type
+  Variable
 Examples:
     .. code-block:: python
 
@@ -273,7 +276,7 @@ Examples:
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
 
-        img = np.array([1.0, 1.0, 1.0, 1.0]).astype(np.float32)
+        img = np.array([1.0, 2.0, 3.0, 4.0]).astype(np.float32)
         res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
         print(res)
 """ % op_type

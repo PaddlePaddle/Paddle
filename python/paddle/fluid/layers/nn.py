@@ -11174,7 +11174,7 @@ def elu(x, alpha=1.0, name=None):
         name(str|None): The default value is None. Normally there is no need for user to set this property. 
                         For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        output(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
 
@@ -11479,7 +11479,7 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
         name(str|None): The default value is None. Normally there is no need for user to set this property. 
                         For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        output(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
 
