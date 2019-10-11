@@ -376,6 +376,7 @@ class DownpourWorker(Worker):
 
         table = self._worker.dense_table.add()
         table.table_id = table_id
+
         #def cmp_fc(x, y):
         #    if x.startswith("fc_") and y.startswith("fc_"):
         #        index_x = x.find('.')
