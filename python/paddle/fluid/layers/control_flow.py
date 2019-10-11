@@ -1181,20 +1181,27 @@ def equal(x, y, cond=None):
     This layer returns the truth value of :math:`x == y` elementwise.
 
     Args:
-        x(Variable): First operand of *equal*
-        y(Variable): Second operand of *equal*
-        cond(Variable|None): Optional output variable to store the result of *equal*
+        x(Variable): Tensor, data type is float32, float64, int32, int64.
+        y(Variable): Tensor, data type is float32, float64, int32, int64.
+        cond(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of *equal*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable: The tensor variable storing the output of *equal*.
+        Variable: output Tensor, it's shape is the same as the input's Tensor,
+        and the data type is bool.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          label = fluid.layers.data(name="label", shape=[3,10,32,32], dtype="float32")
-          limit = fluid.layers.data(name="limit", shape=[3,10,32,32], dtype="float32")
-          less = fluid.layers.equal(x=label, y=limit)
+          import numpy as np
+          out_cond =fluid.data(name="input1", shape=[2], dtype='bool')
+          label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
+          limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
+          label_cond = fluid.layers.assign(np.array([1, 2], dtype="int32"))
+          out1 = fluid.layers.equal(x=label,y=limit) #out1=[True, False]
+          out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
     helper = LayerHelper("equal", **locals())
     if cond is None:
