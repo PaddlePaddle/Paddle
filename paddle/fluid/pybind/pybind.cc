@@ -1367,7 +1367,7 @@ All parameter, weight, gradient are variables in Paddle.
             self.num_iteration_per_run_ = num_iteration_per_run;
           },
           R"DOC(This config that how many iteration the executor will run when
-                user call pe.run() in python
+                user call exe.run() in python
               )DOC")
       .def_property("_dry_run",
                     [](const ExecutionStrategy &self) { return self.dry_run_; },
