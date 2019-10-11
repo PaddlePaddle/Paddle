@@ -34,23 +34,23 @@ You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quanti
 
 ## 2. Accuracy benchmark
 
->**I. QAT1 Accuracy on Intel(R) Xeon(R) Gold 6271**
+>**I. QAT1.0 MKL_DNN Accuracy on Intel(R) Xeon(R) Gold 6271**
 
 | Model        | Fake QAT Top1 Accuracy | Fake QAT Top5 Accuracy |MKL-DNN INT8 Top1 Accuracy |  Top1 Diff   | MKL-DNN INT8 Top5 Accuracy | Top5 Diff  |
 | :----------: | :--------------------: | :--------------------: |:-----------------------:  | :----------: | :------------------------: | :--------: |
-| GoogleNet    |         70.40%         |          89.46%        |           70.39%          |     0.01%    |           89.46%           |   0.00%    |
-| MobileNet-V1 |         70.83%         |          89.56%        |           70.84%          |    -0.01%    |           89.56%           |   0.00%    |
-| MobileNet-V2 |         72.17%         |          90.67%        |           72.13%          |     0.04%    |           90.67%           |   0.00%    |
-| ResNet-101   |         77.49%         |          93.65%        |           77.51%          |    -0.02%    |           93.67%           |  -0.02%    |
-| ResNet-50    |         76.62%         |          93.08%        |           76.61%          |     0.01%    |           93.09%           |  -0.01%    |
-| VGG16        |         72.71%         |          91.11%        |           72.69%          |     0.02%    |           91.09%           |   0.02%    |
-| VGG19        |         73.37%         |          91.40%        |           73.37%          |     0.00%    |           91.41%           |  -0.01%    |
+| GoogleNet    |         70.40%         |          89.46%        |           70.39%          |    -0.01%    |           89.46%           |   0.00%    |
+| MobileNet-V1 |         70.84%         |          89.59%        |           70.85%          |    +0.01%    |           89.58%           |  -0.01%    |
+| MobileNet-V2 |         72.07%         |          90.71%        |           72.06%          |    -0.01%    |           90.69%           |  -0.02%    |
+| ResNet-101   |         77.49%         |          93.68%        |           77.52%          |    +0.03%    |           93.67%           |  -0.01%    |
+| ResNet-50    |         76.61%         |          93.08%        |           76.62%          |    +0.01%    |           93.10%           |  +0.02%    |
+| VGG16        |         72.71%         |          91.11%        |           72.69%          |    -0.02%    |           91.09%           |  -0.02%    |
+| VGG19        |         73.37%         |          91.40%        |           73.37%          |     0.00%    |           91.41%           |  +0.01%    |
 
 Notes:
 
 * MKL-DNN and MKL are required. AVX512 CPU server is required.
 
->**II. QAT2 Accuracy on Intel(R) Xeon(R) Gold 6248**
+>**II. QAT2.0 MKL-DNN Accuracy on Intel(R) Xeon(R) Gold 6271**
 
 | Model        | Fake QAT Top1 Accuracy | Fake QAT Top5 Accuracy |MKL-DNN INT8 Top1 Accuracy |  Top1 Diff  | MKL-DNN INT8 Top5 Accuracy | Top5 Diff |
 | :----------: | :--------------------: | :--------------------: |:-----------------------:  | :----------:| :------------------------: | :--------:|
@@ -61,16 +61,16 @@ Notes:
 | VGG16        |         71.74%         |          89.96%        |           71.75%          |    +0.01%   |           89.73%           |   -0.23%   |
 | VGG19        |         72.30%         |          90.19%        |           72.09%          |    -0.21%   |           90.13%           |   -0.06%  |
 
->**III. QAT2 Python Performance on Intel(R) Xeon(R) Gold 6248**
+>**III. QAT2.0 MKL-DNN Python Performance on Intel(R) Xeon(R) Gold 6271**
 
-| Model        | FP32 Throughput(images/s)  | INT8 Throughput(images/s) | Ratio(INT8/FP32)|
-| :-----------:| :------------:             | :------------:            | :------------:  |
-| MobileNet-V1 |    17.16                   |   131.37                  |   7.66          |
-| MobileNet-V2 |    12.04                   |   87.92                   |   7.30          |
-| ResNet101    |    3.39                    |   24.15                   |   7.12          |
-| ResNet50     |    5.62                    |   42.29                   |   7.52          |
-| VGG16        |    3.05                    |   13.17                   |   4.32          |
-| VGG19        |    2.67                    |   11.48                   |   4.30          |
+| Model        | Fake QAT Original Throughput(images/s) | INT8 Throughput(images/s) | Ratio(INT8/FP32)|
+| :-----------:| :-------------------------:            | :------------:            | :------------:  |
+| MobileNet-V1 |    13.66                               | 114.98                    |   8.42          |
+| MobileNet-V2 |    10.22                               |  79.78                    |   7.81          |
+| ResNet101    |    2.65                                |  18.97                    |   7.16          |
+| ResNet50     |    4.58                                |  35.09                    |   7.66          |
+| VGG16        |    2.38                                |  9.93                     |   4.17          |
+| VGG19        |    2.03                                |  8.53                     |   4.20          |
 
 ## 3. How to reproduce the results
 Three steps to reproduce the above-mentioned accuracy results, and we take ResNet50 benchmark as an example:
@@ -86,10 +86,10 @@ You can run the following commands to download ResNet50 model. The exemplary cod
 ```bash
 mkdir -p /PATH/TO/DOWNLOAD/MODEL/
 cd /PATH/TO/DOWNLOAD/MODEL/
-# uncomment for QAT 1.0
+# uncomment for QAT 1.0 MKL-DNN
 # export MODEL_NAME=ResNet50
 # export MODEL_FILE_NAME= QAT_models/${MODEL_NAME}_qat_model.tar.gz
-# uncomment for QAT 2.0
+# uncomment for QAT 2.0 MKL-DNN
 # export MODEL_NAME=resnet50
 # export MODEL_FILE_NAME= QAT2_models/${MODEL_NAME}_quant.tar.gz
 wget http://paddle-inference-dist.bj.bcebos.com/int8/${MODEL_FILE_NAME}
