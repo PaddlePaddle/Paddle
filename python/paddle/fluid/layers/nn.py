@@ -4653,17 +4653,15 @@ def group_norm(input,
             + data_layout + " but only NCHW or NHWC supported.")
     channel_num = input_shape[1] if data_layout == 'NCHW' else input_shape[-1]
     param_shape = [channel_num]
-    if param_attr:
-        scale = helper.create_parameter(
-            attr=helper.param_attr,
-            shape=param_shape,
-            dtype=dtype,
-            default_initializer=Constant(1.0))
-        inputs['Scale'] = scale
-    if bias_attr:
-        bias = helper.create_parameter(
-            attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
-        inputs['Bias'] = bias
+    scale = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=param_shape,
+        dtype=dtype,
+        default_initializer=Constant(1.0))
+    inputs['Scale'] = scale
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+    inputs['Bias'] = bias
 
     # create output
     mean_out = helper.create_variable(dtype=dtype, stop_gradient=True)
