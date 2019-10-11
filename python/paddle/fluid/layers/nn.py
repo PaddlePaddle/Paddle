@@ -6329,25 +6329,24 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
 
 def split(input, num_or_sections, dim=-1, name=None):
     """
-    Split the input tensor into multiple sub-tensors.
+    Split the input tensor into multiple sub-Tensors.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
-        num_or_sections (int|list): If :attr:`num_or_sections` is an integer,
-            then the integer indicates the number of equal sized sub-tensors
-            that the tensor will be divided into. If :attr:`num_or_sections`
+        input (Variable): The input variable which is an N-D Tensor or LoDTensor, data type being float32, float64, int32 or int64.
+        num_or_sections (int|list): Integer or list of Integers. If :attr:`num_or_sections` is an integer,
+            then the integer indicates the number of equal sized sub-Tensors
+            that the Tensor will be divided into. If :attr:`num_or_sections`
             is a list of integers, the length of list indicates the number of
-            sub-tensors and the integers indicate the sizes of sub-tensors'
-            :attr:`dim` dimension orderly.
+            sub-Tensors and the integers indicate the sizes of sub-Tensors'
+            :attr:`dim` dimension orderly. The the length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
         dim (int): The dimension along which to split. If :math:`dim < 0`, the
             dimension to split along is :math:`rank(input) + dim`.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        list(Variable): The list of segmented tensor variables.
+        list(Variable): The list of segmented Tensor variables.
 
-    Examples:
+    Example:
         .. code-block:: python
 
             import paddle.fluid as fluid
@@ -6361,7 +6360,7 @@ def split(input, num_or_sections, dim=-1, name=None):
             # x1.shape [-1, 3, 3, 5]
             # x2.shape [-1, 3, 3, 5]
 
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=2)
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=[2, 3, 4], dim=2)
             # x0.shape [-1, 3, 2, 5]
             # x1.shape [-1, 3, 3, 5]
             # x2.shape [-1, 3, 4, 5]
@@ -10142,39 +10141,71 @@ def scatter(input, index, updates, name=None, overwrite=True):
     """
     **Scatter Layer**
 
-    Output is obtained by updating the input on selected indices on the first
-    axis.
+    Output is obtained by updating the input on selected indices based on updates.
 
-    .. math::
+    .. code-block:: python
+        import numpy as np
+                
+        #input:
+        input = np.array([[1, 1], [2, 2], [3, 3]])
+        index = np.array([2, 1, 0, 1])
+        # shape of updates should be the same as input
+        # shape of updates with dim > 1 should be the same as input
+        updates = np.array([[1, 1], [2, 2], [3, 3], [4, 4]])
+        overwrite = False
 
-        Out = X
-        Out[Ids] = Updates
+        # calculation:
+        if not overwrite:
+            for i in range(len(index)):
+                input[index[i]] = np.zeros((2))
+
+        for i in range(len(index)):
+            if (overwrite):
+                input[index[i]] = updates[i]
+            else:
+                input[index[i]] += updates[i]
+        # output:
+        out = np.array([[3, 3], [6, 6], [1, 1]])
+        out.shape # [3, 2]
 
     Args:
-        input (Variable): The source input with rank>=1.
-        index (Variable): The index input with rank=1. Its dtype should be
-                          int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter op.
-        name (str|None): The output variable name. Default None.
-        overwrite (bool): The mode that updating the output when has same index.
+        input (Variable): The input N-D Tensor with rank>=1. Data type can be float32.
+        index (Variable): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
+        updates (Variable): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 shoule be the same as input.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+        overwrite (bool): The mode that updating the output when there are same indices.
             If True, use the overwrite mode to update the output of the same index,
 	    if False, use the accumulate mode to update the output of the same index. 
-	    Default value is True.You can set overwrite=False to implement scatter_add.
+	    Default value is True.
 
     Returns:
-        output (Variable): The output is a tensor with the same shape as input.
+        Variable(Tensor|LoDTensor): The output is a Tensor with the same shape as input.
 
     Examples:
 
         .. code-block:: python
 
+            import numpy as np
             import paddle.fluid as fluid
 
-            input = fluid.layers.data(name='data', shape=[3, 5, 9], dtype='float32', append_batch_size=False)
-            index = fluid.layers.data(name='index', shape=[3], dtype='int64', append_batch_size=False)
-            updates = fluid.layers.data(name='update', shape=[3, 5, 9], dtype='float32', append_batch_size=False)
+            input = fluid.layers.data(name='data', shape=[3, 2], dtype='float32', append_batch_size=False)
+            index = fluid.layers.data(name='index', shape=[4], dtype='int64', append_batch_size=False)
+            updates = fluid.layers.data(name='update', shape=[4, 2], dtype='float32', append_batch_size=False)
 
-            output = fluid.layers.scatter(input, index, updates)
+            output = fluid.layers.scatter(input, index, updates, overwrite=False)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            in_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float32)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            update_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'data':in_data, "index":index_data, "update":update_data}, fetch_list=[output])
+            print(res)
+            # [array([[3., 3.],
+            #   [6., 6.],
+            #   [1., 1.]], dtype=float32)]
     """
     helper = LayerHelper('scatter', **locals())
     dtype = helper.input_dtype()
@@ -10494,36 +10525,56 @@ def relu(x, name=None):
     return out
 
 
-@templatedoc()
 def selu(x, scale=None, alpha=None, name=None):
     """
-    ${comment}
+    Selu Operator.
+
+    The equation is:
+    
+    .. math::
+        selu= \\lambda*
+        \\begin{cases}
+            x                      &\\quad \\text{ if } x>0 \n
+            \\alpha * e^x - \\alpha  &\\quad \\text{ if } x<=0
+        \\end{cases}
+    
+
+    The input `X` can carry the LoD (Level of Details) information,
+    or not. And the output shares the LoD information with input `X`.
 
     Args:
-        x (Variable): The input tensor.
-        scale(float, None): If the scale is not set,
+        x (Variable): The input N-D Tensor.
+        scale(float, optional): lambda in selu activation function,
             the default value is 1.0507009873554804934193349852946.
             For more information about this value, please refer
             to: https://arxiv.org/abs/1706.02515.
-        alpha(float, None): If the alpha is not set,
+        alpha(float, optional): alpha in selu activation function,
             the default value is 1.6732632423543772848170429916717.
             For more information about this value, please refer
             to: https://arxiv.org/abs/1706.02515.
-        name (str|None, default None): A name for this layer If set None,
-            the layer will be named automatically.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+
 
     Returns:
-        Variable: The output tensor with the same shape as input.
+        Variable(Tensor|LoDTensor): The output Tensor or LoDTensor with the same shape and LoD information as input.
 
     Examples:
 
         .. code-block:: python
              
             import paddle.fluid as fluid
-          
-            input = fluid.layers.data(
-                 name="input", shape=[3, 9, 5], dtype="float32")
-            output = fluid.layers.selu(input)
+            import numpy as np
+
+            inputs = fluid.layers.data(name="x", shape=[2, 2], dtype="float32")
+            output = fluid.layers.selu(inputs)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            img = np.array([[0, 1],[2, 3]]).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+            print(res) # [array([[0.      , 1.050701],[2.101402, 3.152103]], dtype=float32)]
     """
     helper = LayerHelper('selu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -11533,26 +11584,37 @@ def leaky_relu(x, alpha=0.02, name=None):
     return out
 
 
-@templatedoc()
 def soft_relu(x, threshold=40.0, name=None):
     """
-    ${comment}
+    SoftRelu Activation Operator.
+
+    $out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$
+
     Args:
-        x(${x_type}): ${x_comment}
-        threshold(${threshold_type}|40.0): ${threshold_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        x(Variable): Input of soft_relu operator. Data type can be float32, float64.
+        threshold(float, optional): The threshold value of soft_relu, default value being 40.0.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+
     Returns:
-        output(${out_type}): ${out_comment}
+        Variable(Tensor|LoDTensor)): Output of soft_relu operator, shape and LoD same as input.
 
     Examples:
 
         .. code-block:: python 
  
             import paddle.fluid as fluid
-   
-            x = fluid.layers.data(name="x", shape=[3,16,16], dtype="float32")
-            y = fluid.layers.soft_relu(x, threshold=20.0)
+            import numpy as np
+
+            inputs = fluid.layers.data(name="x", shape=[2, 2], dtype="float32")
+            output = fluid.layers.soft_relu(inputs, threshold=20.0)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            img = np.array([[0, 1],[2, 3]]).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+            print(res) # [array([[0.6931472, 1.3132616], [2.126928 , 3.0485873]], dtype=float32)]
     """
     helper = LayerHelper('soft_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -12642,19 +12704,27 @@ def shape(input):
     Get the shape of the input.
 
     Args:
-        input (Variable): The input variable.
+        input (Variable): The input N-D Tensor. Datatype can be float32, float64, int32, int64.
 
     Returns:
-        Variable: The shape of the input variable.
+        Variable (Tensor): The shape of the input variable.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import numpy as np
 
-            input = fluid.layers.data(
-                name="input", shape=[3, 100, 100], dtype="float32")
-            out = fluid.layers.shape(input)
+            inputs = fluid.layers.data(name="x", shape=[3, 100, 100], dtype="float32")
+            output = fluid.layers.shape(inputs)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            img = np.ones((3, 100, 100)).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+            print(res) # [array([  3, 100, 100], dtype=int32)]
     """
 
     helper = LayerHelper('shape', **locals())
@@ -12748,29 +12818,49 @@ def _elementwise_op(helper):
     return helper.append_activation(out)
 
 
-@templatedoc()
 def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
-    ${comment}
+    Scale operator.
+
+    Putting scale and bias to the input Tensor as following:
+
+    ``bias_after_scale`` is True:
+
+    .. math::
+                            Out=scale*X+bias
+
+    ``bias_after_scale`` is False:
+
+    .. math::
+                            Out=scale*(X+bias)
 
     Args:
-        x(${x_type}): ${x_comment}
-        scale(${scale_type}): ${scale_comment}
-        bias(${bias_type}): ${bias_comment}
-        bias_after_scale(${bias_after_scale_type}): ${bias_after_scale_comment}
-        act(basestring|None): Activation applied to the output.
-        name(basestring|None): Name of the output.
+        x(Variable): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
+        scale(float): The scale factor of the input.
+        bias(float): The bias to be put on the input.
+        bias_after_scale(bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
+        act(str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` 
 
     Returns:
-        out(${out_type}): ${out_comment}
+        Variable(Tensor|LoDTensor): Output tensor of scale operator, with shape and data type same as input.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import numpy as np
 
-            x = fluid.layers.data(name="X", shape=[1, 2, 5, 5], dtype='float32')
-            y = fluid.layers.scale(x, scale = 2.0, bias = 1.0)
+            inputs = fluid.layers.data(name="x", shape=[2, 3], dtype='float32')
+            output = fluid.layers.scale(inputs, scale = 2.0, bias = 1.0)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+            print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
     """
 
     helper = LayerHelper('scale', **locals())
