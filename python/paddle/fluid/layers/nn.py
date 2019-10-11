@@ -11505,19 +11505,25 @@ def elu(x, alpha=1.0, name=None):
     Args:
         x(${x_type}): ${x_comment}
         alpha(${alpha_type}|1.0): ${alpha_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
-
+        name(str|None): The default value is None. Normally there is no need for user to set this property. 
+                        For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        output(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-            y = fluid.layers.elu(x, alpha=0.2)
+            import numpy as np
+         
+            input_elu = np.array([[-1,6],[1,15.6]])
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(input_elu)
+                y = fluid.layers.elu(x, alpha=0.2)
+                print(y.numpy())
+                # [[-0.12642411  6.        ]
+                # [ 1.          15.6       ]]
     """
     helper = LayerHelper('elu', **locals())
     if not isinstance(x, Variable):
@@ -11852,18 +11858,25 @@ def brelu(x, t_min=0.0, t_max=24.0, name=None):
         x(${x_type}): ${x_comment}
         t_min(${t_min_type}|0.0): ${t_min_comment}
         t_max(${t_max_type}|24.0): ${t_max_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        name(str|None): The default value is None. Normally there is no need for user to set this property. 
+                        For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        output(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
 
     .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
-            y = fluid.layers.brelu(x, t_min=1.0, t_max=20.0)
+            import numpy as np
+            
+            input_brelu = np.array([[-1,6],[1,15.6]])
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(input_brelu)
+                y = fluid.layers.brelu(x, t_min=1.0, t_max=10.0)
+                print(y.numpy())
+                #[[ 1.  6.]
+                #[ 1. 10.]] 
     """
     helper = LayerHelper('brelu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)

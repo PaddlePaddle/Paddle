@@ -176,7 +176,7 @@ $$out = \\log \\frac{1}{1 + e^{-x}}$$
 )DOC";
 
 UNUSED constexpr char ExpDoc[] = R"DOC(
-Exp Activation Operator.
+Exp Operator. Computes exp of x element-wise with a natural number :math:`e` as the base.
 
 $out = e^x$
 
@@ -237,7 +237,7 @@ $out = |x|$
 )DOC";
 
 UNUSED constexpr char CeilDoc[] = R"DOC(
-Ceil Activation Operator.
+Ceil Operator. Computes ceil of x element-wise.
 
 $out = \left \lceil x \right \rceil$
 
@@ -251,7 +251,7 @@ $out = \left \lfloor x \right \rfloor$
 )DOC";
 
 UNUSED constexpr char CosDoc[] = R"DOC(
-Cosine Activation Operator.
+Cosine Operator. Computes cosine of x element-wise.
 
 $out = cos(x)$
 
@@ -430,8 +430,12 @@ class HardShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
 class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of BRelu operator");
-    AddOutput("Out", "Output of BRelu operator");
+    AddInput("X",
+             "The input is a multi-dimensional Tensor. The data type is "
+             "float32, float64.");
+    AddOutput("Out",
+              "The output is a multi-dimensional Tensor which has same "
+              "dimension and data type as the ``X``.");
     AddAttr<float>("t_min", "The min marginal value of BRelu")
         .SetDefault(static_cast<float>(0));
     AddAttr<float>("t_max", "The max marginal value of BRelu")
@@ -439,7 +443,7 @@ class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 BRelu Activation Operator.
 
-$out = \max(\min(x, t_{min}), t_{max})$
+$out = \min(\max(x, t_{min}), t_{max})$
 
 )DOC");
   }
@@ -464,8 +468,12 @@ $out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$
 class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of ELU operator");
-    AddOutput("Out", "Output of ELU operator");
+    AddInput("X",
+             "The input is a multi-dimensional Tensor. The data type is "
+             "float32 or float64.");
+    AddOutput("Out",
+              "The output is a multi-dimensional Tensor which has same "
+              "dimension and data type as the ``x``.");
     AddAttr<float>("alpha", "The alpha value of ELU").SetDefault(1.0f);
     AddComment(R"DOC(
 ELU Activation Operator.
