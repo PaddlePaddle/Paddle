@@ -122,8 +122,11 @@ class TestMatmulOpError(OpTest):
             self.assertRaises(TypeError, fluid.layers.matmul, input1, input1)
             # The inputs dtype of matmul_op must be float32, float64.
             input2 = fluid.layers.data(
-                name='input2', shape=[12, 10], dtype="int32")
+                name='input2', shape=[10, 10], dtype="int32")
             self.assertRaises(TypeError, fluid.layers.matmul, input2, input2)
+            input3 = fluid.layers.data(
+                name='input3', shape=[2, 2], dtype="float16")
+            fluid.layers.matmul(input3, input3)
 
 
 # Generate test cases for all possibilities

@@ -488,15 +488,11 @@ REGISTER_OPERATOR(matmul, ops::MatMulOp, ops::MatMulOpMaker,
 REGISTER_OPERATOR(matmul_grad, ops::MatMulOpGrad);
 REGISTER_OP_CPU_KERNEL(
     matmul, ops::MatMulKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::float16>);
+    ops::MatMulKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     matmul_grad,
     ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::float16>);
+    ops::MatMulGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL(
