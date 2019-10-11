@@ -525,12 +525,11 @@ def detection_output(loc,
                      nms_eta=1.0,
                      return_index=False):
     """
-    **Detection Output Layer for Single Shot Multibox Detector (SSD).**
+    Given the regression locations, classification confidences and prior boxes,
+    calculate the detection outputs by performing following steps:
 
-    This operation is to get the detection results by performing following
-    two steps:
-
-    1. Decode input bounding box predictions according to the prior boxes.
+    1. Decode input bounding box predictions according to the prior boxes and
+       regression locations.
     2. Get the final detection results by applying multi-class non maximum
        suppression (NMS).
 
@@ -539,33 +538,33 @@ def detection_output(loc,
 
     Args:
         loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
-            predicted locations of M bounding bboxes. N is the batch size,
+            predicted locations of M bounding bboxes. Data type should be
+            float32 or float64. N is the batch size,
             and each bounding box has four coordinate values and the layout
             is [xmin, ymin, xmax, ymax].
         scores(Variable): A 3-D Tensor with shape [N, M, C] represents the
-            predicted confidence predictions. N is the batch size, C is the
-            class number, M is number of bounding boxes. For each category
-            there are total M scores which corresponding M bounding boxes.
+            predicted confidence predictions. Data type should be float32
+            or float64. N is the batch size, C is the
+            class number, M is number of bounding boxes.
         prior_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
-            each box is represented as [xmin, ymin, xmax, ymax],
-            [xmin, ymin] is the left top coordinate of the anchor box,
-            if the input is image feature map, they are close to the origin
-            of the coordinate system. [xmax, ymax] is the right bottom
-            coordinate of the anchor box.
+            each box is represented as [xmin, ymin, xmax, ymax]. Data type
+            should be float32 or float64.
         prior_box_var(Variable): A 2-D Tensor with shape [M, 4] holds M group
-            of variance.
-        background_label(float): The index of background label,
+            of variance. Data type should be float32 or float64.
+        background_label(int): The index of background label,
             the background label will be ignored. If set to -1, then all
-            categories will be considered.
-        nms_threshold(float): The threshold to be used in NMS.
+            categories will be considered. Default: 0.
+        nms_threshold(float): The threshold to be used in NMS. Default: 0.3.
         nms_top_k(int): Maximum number of detections to be kept according
-            to the confidences aftern the filtering detections based on
-            score_threshold.
+            to the confidences aftern filtering detections based on
+            score_threshold and before NMS. Default: 400.
         keep_top_k(int): Number of total bboxes to be kept per image after
-            NMS step. -1 means keeping all bboxes after NMS step.
+            NMS step. -1 means keeping all bboxes after NMS step. Default: 200.
         score_threshold(float): Threshold to filter out bounding boxes with
             low confidence score. If not provided, consider all boxes.
-        nms_eta(float): The parameter for adaptive NMS.
+            Default: 0.01.
+        nms_eta(float): The parameter for adaptive NMS. It works only when the
+            value is less than 1.0. Default: 1.0.
         return_index(bool): Whether return selected index. Default: False
 
     Returns:
@@ -573,22 +572,18 @@ def detection_output(loc,
         A tuple with two Variables: (Out, Index) if return_index is True,
         otherwise, a tuple with one Variable(Out) is returned. 
 
-        Out: The detection outputs is a LoDTensor with shape [No, 6]. Each row 
-        has six values: [label, confidence, xmin, ymin, xmax, ymax]. `No` is 
-        the total number of detections in this mini-batch. For each instance, 
-        the offsets in first dimension are called LoD, the offset number is 
-        N + 1, N is the batch size. The i-th image has `LoD[i + 1] - LoD[i]` 
-        detected results, if it is 0, the i-th image has no detected results. 
+        Out (Variable): The detection outputs is a LoDTensor with shape [No, 6].
+        Data type is the same as input (loc). Each row has six values:
+        [label, confidence, xmin, ymin, xmax, ymax]. `No` is
+        the total number of detections in this mini-batch. For each instance,
+        the offsets in first dimension are called LoD, the offset number is
+        N + 1, N is the batch size. The i-th image has `LoD[i + 1] - LoD[i]`
+        detected results, if it is 0, the i-th image has no detected results.
 
-        If all images have not detected results, LoD will be set to {1}, and 
-        output tensor only contains one value, which is -1.
-        (After version 1.3, when no boxes detected, the lod is changed
-        from {0} to {1}.)       
- 
-        Index: Only return when return_index is True. A 2-D LoDTensor with 
-        shape [No, 1] represents the selected index which type is Integer. 
-        The index is the absolute value cross batches. No is the same number 
-        as Out. If the index is used to gather other attribute such as age, 
+        Index (Variable): Only return when return_index is True. A 2-D LoDTensor
+        with shape [No, 1] represents the selected index which type is Integer.
+        The index is the absolute value cross batches. No is the same number
+        as Out. If the index is used to gather other attribute such as age,
         one needs to reshape the input(N, M, 1) to (N * M, 1) as first, where
         N is the batch size and M is the number of boxes.
 
@@ -598,14 +593,10 @@ def detection_output(loc,
 
             import paddle.fluid as fluid
 
-            pb = fluid.layers.data(name='prior_box', shape=[10, 4],
-                         append_batch_size=False, dtype='float32')
-            pbv = fluid.layers.data(name='prior_box_var', shape=[10, 4],
-                          append_batch_size=False, dtype='float32')
-            loc = fluid.layers.data(name='target_box', shape=[2, 21, 4],
-                          append_batch_size=False, dtype='float32')
-            scores = fluid.layers.data(name='scores', shape=[2, 21, 10],
-                          append_batch_size=False, dtype='float32')
+            pb = fluid.data(name='prior_box', shape=[10, 4], dtype='float32')
+            pbv = fluid.data(name='prior_box_var', shape=[10, 4], dtype='float32')
+            loc = fluid.data(name='target_box', shape=[2, 21, 4], dtype='float32')
+            scores = fluid.data(name='scores', shape=[2, 21, 10], dtype='float32')
             nmsed_outs, index = fluid.layers.detection_output(scores=scores,
                                        loc=loc,
                                        prior_box=pb,
@@ -1318,51 +1309,57 @@ def target_assign(input,
             out[j][j][0 : K] = {mismatch_value, mismatch_value, ...}
             out_weight[i][j] = 0.
 
-    2. Assigning out_weight based on `neg_indices` if `neg_indices` is provided:
+    2. Assigning outputs based on `neg_indices` if `neg_indices` is provided:
 
-    Assumed that the row offset for each instance in `neg_indices` is called neg_lod,
-    for i-th instance and each `id` of neg_indices in this instance:
+    Assumed that i-th instance in `neg_indices` is called `neg_indice`,
+    for i-th instance:
 
     .. code-block:: text
 
-        out[i][id][0 : K] = {mismatch_value, mismatch_value, ...}
-        out_weight[i][id] = 1.0
+        for id in neg_indice:
+            out[i][id][0 : K] = {mismatch_value, mismatch_value, ...}
+            out_weight[i][id] = 1.0
 
     Args:
-       inputs (Variable): This input is a 3D LoDTensor with shape [M, P, K].
-       matched_indices (Variable): Tensor<int>), The input matched indices
+       input (Variable): This input is a 3D LoDTensor with shape [M, P, K].
+           Data type should be int32 or float32.
+       matched_indices (Variable): The input matched indices
            is 2D Tenosr<int32> with shape [N, P], If MatchIndices[i][j] is -1,
            the j-th entity of column is not matched to any entity of row in
            i-th instance.
-       negative_indices (Variable): The input negative example indices are
-           an optional input with shape [Neg, 1] and int32 type, where Neg is
+       negative_indices (Variable, optional): The input negative example indices
+           are an optional input with shape [Neg, 1] and int32 type, where Neg is
            the total number of negative example indices.
-       mismatch_value (float32): Fill this value to the mismatched location.
+       mismatch_value (float32, optional): Fill this value to the mismatched
+           location.
+       name (string): The default value is None.  Normally there is no need for
+           user to set this property.  For more information, please refer
+           to :ref:`api_guide_Name`.
 
     Returns:
-        tuple:
-               A tuple(out, out_weight) is returned. out is a 3D Tensor with
-               shape [N, P, K], N and P is the same as they are in
-               `neg_indices`, K is the same as it in input of X. If
-               `match_indices[i][j]`. out_weight is the weight for output with
-               the shape of [N, P, 1].
+        tuple: A tuple(out, out_weight) is returned.
+
+        out (Variable): a 3D Tensor with shape [N, P, K] and same data type
+        with `input`, N and P is the same as they are in `matched_indices`,
+        K is the same as it in input of X.
+
+        out_weight (Variable): the weight for output with the shape of [N, P, 1].
+        Data type is float32.
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(
+            x = fluid.data(
                 name='x',
                 shape=[4, 20, 4],
                 dtype='float',
-                lod_level=1,
-                append_batch_size=False)
-            matched_id = fluid.layers.data(
+                lod_level=1)
+            matched_id = fluid.data(
                 name='indices',
                 shape=[8, 20],
-                dtype='int32',
-                append_batch_size=False)
+                dtype='int32')
             trg, trg_weight = fluid.layers.target_assign(
                 x,
                 matched_id,
@@ -1987,21 +1984,37 @@ def multi_box_head(inputs,
                    name=None,
                    min_max_aspect_ratios_order=False):
     """
-    Generate prior boxes for SSD(Single Shot MultiBox Detector)
-    algorithm. The details of this algorithm, please refer the
-    section 2.2 of SSD paper `SSD: Single Shot MultiBox Detector
+    Base on SSD ((Single Shot MultiBox Detector) algorithm, generate prior boxes,
+    regression location and classification confidence on multiple input feature
+    maps, then output the concatenate results. The details of this algorithm,
+    please refer the section 2.2 of SSD paper `SSD: Single Shot MultiBox Detector
     <https://arxiv.org/abs/1512.02325>`_ .
 
     Args:
-       inputs(list|tuple): The list of input Variables, the format
-            of all Variables is NCHW.
-       image(Variable): The input image data of PriorBoxOp,
-            the layout is NCHW.
-       base_size(int): the base_size is used to get min_size
-            and max_size according to min_ratio and max_ratio.
+       inputs (list(Variable)|tuple(Variable)): The list of input variables,
+           the format of all Variables are 4-D Tensor, layout is NCHW.
+           Data type should be float32 or float64.
+       image (Variable): The input image, layout is NCHW. Data type should be
+           the same as inputs.
+       base_size(int): the base_size is input image size. When len(inputs) > 2
+           and `min_size` and `max_size` are None, the `min_size` and `max_size`
+           are calculated by `baze_size`, 'min_ratio' and `max_ratio`. The
+           formula is as follows:
+
+              ..  code-block:: text
+
+                  min_sizes = []
+                  max_sizes = []
+                  step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
+                  for ratio in six.moves.range(min_ratio, max_ratio + 1, step):
+                      min_sizes.append(base_size * ratio / 100.)
+                      max_sizes.append(base_size * (ratio + step) / 100.)
+                      min_sizes = [base_size * .10] + min_sizes
+                      max_sizes = [base_size * .20] + max_sizes
+
        num_classes(int): The number of classes.
-       aspect_ratios(list|tuple): the aspect ratios of generated prior
-            boxes. The length of input and aspect_ratios must be equal.
+       aspect_ratios(list(float) | tuple(float)): the aspect ratios of generated
+           prior boxes. The length of input and aspect_ratios must be equal.
        min_ratio(int): the min ratio of generated prior boxes.
        max_ratio(int): the max ratio of generated prior boxes.
        min_sizes(list|tuple|None): If `len(inputs) <=2`,
@@ -2027,7 +2040,9 @@ def multi_box_head(inputs,
        kernel_size(int): The kernel size of conv2d. Default: 1.
        pad(int|list|tuple): The padding of conv2d. Default:0.
        stride(int|list|tuple): The stride of conv2d. Default:1,
-       name(str): Name of the prior box layer. Default: None.
+       name(str): The default value is None.  Normally there is no need
+           for user to set this property.  For more information, please
+           refer to :ref:`api_guide_Name`.
        min_max_aspect_ratios_order(bool): If set True, the output prior box is
             in order of [min, max, aspect_ratios], which is consistent with
             Caffe. Please note, this order affects the weights order of
@@ -2037,33 +2052,34 @@ def multi_box_head(inputs,
     Returns:
         tuple: A tuple with four Variables. (mbox_loc, mbox_conf, boxes, variances)
 
-        mbox_loc: The predicted boxes' location of the inputs. The layout
-        is [N, H*W*Priors, 4]. where Priors is the number of predicted
-        boxes each position of each input.
+        mbox_loc (Variable): The predicted boxes' location of the inputs. The
+        layout is [N, num_priors, 4], where N is batch size, ``num_priors``
+        is the number of prior boxes. Data type is the same as input.
 
-        mbox_conf: The predicted boxes' confidence of the inputs. The layout
-        is [N, H*W*Priors, C]. where Priors is the number of predicted boxes
-        each position of each input and C is the number of Classes.
+        mbox_conf (Variable): The predicted boxes' confidence of the inputs.
+        The layout is [N, num_priors, C], where ``N`` and ``num_priors`` 
+        has the same meaning as above. C is the number of Classes.
+        Data type is the same as input.
 
-        boxes: the output prior boxes of PriorBox. The layout is [num_priors, 4].
-        num_priors is the total box count of each position of inputs.
+        boxes (Variable): the output prior boxes. The layout is [num_priors, 4].
+        The meaning of num_priors is the same as above.
+        Data type is the same as input.
 
-        variances: the expanded variances of PriorBox. The layout is
-        [num_priors, 4]. num_priors is the total box count of each position of inputs
+        variances (Variable): the expanded variances for prior boxes.
+        The layout is [num_priors, 4]. Data type is the same as input.
 
-
-    Examples:
+    Examples 1: set min_ratio and max_ratio:
         .. code-block:: python
 
           import paddle.fluid as fluid
 
-          images = fluid.layers.data(name='data', shape=[3, 300, 300], dtype='float32')
-          conv1 = fluid.layers.data(name='conv1', shape=[512, 19, 19], dtype='float32')
-          conv2 = fluid.layers.data(name='conv2', shape=[1024, 10, 10], dtype='float32')
-          conv3 = fluid.layers.data(name='conv3', shape=[512, 5, 5], dtype='float32')
-          conv4 = fluid.layers.data(name='conv4', shape=[256, 3, 3], dtype='float32')
-          conv5 = fluid.layers.data(name='conv5', shape=[256, 2, 2], dtype='float32')
-          conv6 = fluid.layers.data(name='conv6', shape=[128, 1, 1], dtype='float32')
+          images = fluid.data(name='data', shape=[None, 3, 300, 300], dtype='float32')
+          conv1 = fluid.data(name='conv1', shape=[None, 512, 19, 19], dtype='float32')
+          conv2 = fluid.data(name='conv2', shape=[None, 1024, 10, 10], dtype='float32')
+          conv3 = fluid.data(name='conv3', shape=[None, 512, 5, 5], dtype='float32')
+          conv4 = fluid.data(name='conv4', shape=[None, 256, 3, 3], dtype='float32')
+          conv5 = fluid.data(name='conv5', shape=[None, 256, 2, 2], dtype='float32')
+          conv6 = fluid.data(name='conv6', shape=[None, 128, 1, 1], dtype='float32')
 
           mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv6],
@@ -2076,6 +2092,32 @@ def multi_box_head(inputs,
             offset=0.5,
             flip=True,
             clip=True)
+
+    Examples 2: set min_sizes and max_sizes:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          images = fluid.data(name='data', shape=[None, 3, 300, 300], dtype='float32')
+          conv1 = fluid.data(name='conv1', shape=[None, 512, 19, 19], dtype='float32')
+          conv2 = fluid.data(name='conv2', shape=[None, 1024, 10, 10], dtype='float32')
+          conv3 = fluid.data(name='conv3', shape=[None, 512, 5, 5], dtype='float32')
+          conv4 = fluid.data(name='conv4', shape=[None, 256, 3, 3], dtype='float32')
+          conv5 = fluid.data(name='conv5', shape=[None, 256, 2, 2], dtype='float32')
+          conv6 = fluid.data(name='conv6', shape=[None, 128, 1, 1], dtype='float32')
+
+          mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
+            inputs=[conv1, conv2, conv3, conv4, conv5, conv6],
+            image=images,
+            num_classes=21,
+            min_sizes=[60.0, 105.0, 150.0, 195.0, 240.0, 285.0],
+            max_sizes=[[], 150.0, 195.0, 240.0, 285.0, 300.0],
+            aspect_ratios=[[2.], [2., 3.], [2., 3.], [2., 3.], [2.], [2.]],
+            base_size=300,
+            offset=0.5,
+            flip=True,
+            clip=True)
+
     """
 
     def _reshape_with_axis_(input, axis=1):
@@ -2521,7 +2563,7 @@ def generate_proposal_labels(rpn_rois,
 def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
                          labels_int32, num_classes, resolution):
     """
-    ** Generate Mask Labels for Mask-RCNN **
+    **Generate Mask Labels for Mask-RCNN**
 
     This operator can be, for given the RoIs and corresponding labels,
     to sample foreground RoIs. This mask branch also has
@@ -2557,62 +2599,67 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
             feeder.feed(batch_masks)
 
     Args:
-        im_info(Variable): A 2-D Tensor with shape [N, 3]. N is the batch size,
-            each element is [height, width, scale] of image. Image scale is
-            target_size) / original_size.
-        gt_classes(Variable): A 2-D LoDTensor with shape [M, 1]. M is the total
-            number of ground-truth, each element is a class label.
-        is_crowd(Variable): A 2-D LoDTensor with shape as gt_classes,
-            each element is a flag indicating whether a groundtruth is crowd.
-        gt_segms(Variable): This input is a 2D LoDTensor with shape [S, 2],
-            it's LoD level is 3. Usually users do not needs to understand LoD,
+        im_info (Variable): A 2-D Tensor with shape [N, 3] and float32
+            data type. N is the batch size, each element is
+            [height, width, scale] of image. Image scale is
+            target_size / original_size, target_size is the size after resize,
+            original_size is the original image size.
+        gt_classes (Variable): A 2-D LoDTensor with shape [M, 1]. Data type
+            shoule be int. M is the total number of ground-truth, each
+            element is a class label.
+        is_crowd (Variable): A 2-D LoDTensor with same shape and same data type
+            as gt_classes, each element is a flag indicating whether a
+            groundtruth is crowd.
+        gt_segms (Variable): This input is a 2D LoDTensor with shape [S, 2] and
+            float32 data type, it's LoD level is 3.
+            Usually users do not needs to understand LoD,
             The users should return correct data format in reader.
-
-
-
-            The LoD[0] represents the gt objects number of
+            The LoD[0] represents the ground-truth objects number of
             each instance. LoD[1] represents the segmentation counts of each
             objects. LoD[2] represents the polygons number of each segmentation.
             S the total number of polygons coordinate points. Each element is
             (x, y) coordinate points.
-        rois(Variable): A 2-D LoDTensor with shape [R, 4]. R is the total
-            number of RoIs, each element is a bounding box with
-            (xmin, ymin, xmax, ymax) format in the range of original image.
-        labels_int32(Variable): A 2-D LoDTensor in shape of [R, 1] with type
+        rois (Variable): A 2-D LoDTensor with shape [R, 4] and float32 data type
+            float32. R is the total number of RoIs, each element is a bounding
+            box with (xmin, ymin, xmax, ymax) format in the range of original image.
+        labels_int32 (Variable): A 2-D LoDTensor in shape of [R, 1] with type
             of int32. R is the same as it in `rois`. Each element repersents
             a class label of a RoI.
-        num_classes(int): Class number.
-        resolution(int): Resolution of mask predictions.
+        num_classes (int): Class number.
+        resolution (int): Resolution of mask predictions.
 
     Returns:
-        mask_rois (Variable):  A 2D LoDTensor with shape [P, 4]. P is the total
-            number of sampled RoIs. Each element is a bounding box with
-            [xmin, ymin, xmax, ymax] format in range of orignal image size.
-        mask_rois_has_mask_int32 (Variable): A 2D LoDTensor with shape [P, 1],
-            each element repersents the output mask RoI index with regard to
-            to input RoIs.
-        mask_int32 (Variable): A 2D LoDTensor with shape [P, K * M * M],
-            K is the classes number and M is the resolution of mask predictions.
-            Each element repersents the binary mask targets.
+        mask_rois (Variable):  A 2D LoDTensor with shape [P, 4] and same data
+        type as `rois`. P is the total number of sampled RoIs. Each element
+        is a bounding box with [xmin, ymin, xmax, ymax] format in range of
+        orignal image size.
+
+        mask_rois_has_mask_int32 (Variable): A 2D LoDTensor with shape [P, 1]
+        and int data type, each element repersents the output mask RoI
+        index with regard to input RoIs.
+
+        mask_int32 (Variable): A 2D LoDTensor with shape [P, K * M * M] and int
+        data type, K is the classes number and M is the resolution of mask
+        predictions. Each element repersents the binary mask targets.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
 
-          im_info = fluid.layers.data(name="im_info", shape=[3],
+          im_info = fluid.data(name="im_info", shape=[None, 3],
               dtype="float32")
-          gt_classes = fluid.layers.data(name="gt_classes", shape=[1],
+          gt_classes = fluid.data(name="gt_classes", shape=[None, 1],
               dtype="float32", lod_level=1)
-          is_crowd = fluid.layers.data(name="is_crowd", shape=[1],
+          is_crowd = fluid.data(name="is_crowd", shape=[None, 1],
               dtype="float32", lod_level=1)
-          gt_masks = fluid.layers.data(name="gt_masks", shape=[2],
+          gt_masks = fluid.data(name="gt_masks", shape=[None, 2],
               dtype="float32", lod_level=3)
           # rois, roi_labels can be the output of
           # fluid.layers.generate_proposal_labels.
-          rois = fluid.layers.data(name="rois", shape=[4],
+          rois = fluid.data(name="rois", shape=[None, 4],
               dtype="float32", lod_level=1)
-          roi_labels = fluid.layers.data(name="roi_labels", shape=[1],
+          roi_labels = fluid.data(name="roi_labels", shape=[None, 1],
               dtype="int32", lod_level=1)
           mask_rois, mask_index, mask_int32 = fluid.layers.generate_mask_labels(
               im_info=im_info,
