@@ -198,6 +198,14 @@ class TestLayerNormAPI(unittest.TestCase):
             epsilon=1e-05,
             param_attr=None,
             bias_attr=None)
+        x = fluid.layers.layer_norm(
+            x,
+            scale=False,
+            shift=False,
+            begin_norm_axis=1,
+            epsilon=1e-05,
+            param_attr="scale",
+            bias_attr="shift")
 
 
 if __name__ == '__main__':
