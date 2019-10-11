@@ -25,14 +25,14 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor), "
+             "Tensor, "
              "the input of PSROIPoolOp. "
              "The format of input tensor is NCHW. Where N is the batch size, "
              "C is the number of input channels, "
              "H is the height of the input feature map, and "
-             "W is the width.");
+             "W is the width. The data type can be float32 or float64");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "LoDTensor, "
              "ROIs (Regions of Interest) to pool over. "
              "should be a 2-D LoDTensor of shape (num_rois, 4) "
              "given as [(x1, y1, x2, y2), ...]. "
@@ -40,9 +40,10 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "(x2, y2) is the bottom right coordinates. "
              "The roi batch index can be calculated from LoD.");
     AddOutput("Out",
-              "(Tensor), "
+              "Tensor, "
               "the output of PSROIPoolOp is a 4-D Tensor with shape "
-              "(num_rois, output_channels, pooled_h, pooled_w).");
+              "(num_rois, output_channels, pooled_h, pooled_w). "
+              "The data type is the same as `x` ");
     AddAttr<int>(
         "output_channels",
         "(int), "
@@ -64,7 +65,7 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
                  "the pooled output width.")
         .SetDefault(1);
     AddComment(R"Doc(
-**PSROIPool Operator**
+**PSROIPool Operator,** `rois` **of this op should be a LoDTensor**
 
 Position sensitive region of interest pooling (also known as PSROIPooling) is to perform
 position-sensitive average pooling on regions of interest specified by input, takes as 
