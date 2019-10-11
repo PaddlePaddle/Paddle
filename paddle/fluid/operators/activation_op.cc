@@ -554,12 +554,8 @@ class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
 class HardSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "Input of hard_sigmoid operator. An N-D Tensor with data type "
-             "float32, float64. ");
-    AddOutput("Out",
-              "Output of hard_sigmoid operator. A Tensor with the same shape "
-              "as input. ");
+    AddInput("X", "An N-D Tensor with data type float32, float64. ");
+    AddOutput("Out", "A Tensor with the same shape as input. ");
     AddAttr<float>("slope",
                    "The slope of the linear approximation of sigmoid. Its "
                    "value MUST BE positive. Default is 0.2. ")
