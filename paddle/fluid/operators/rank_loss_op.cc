@@ -181,8 +181,8 @@ class RankLossGradMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(rank_loss, ops::RankLossOp, ops::RankLossOpMaker,
-                  ops::RankLossGradDescMaker<paddle::framework::OpDesc, true>,
-                  ops::RankLossGradDescMaker<paddle::imperative::OpBase, true>);
+                  ops::RankLossGradMaker<paddle::framework::OpDesc>,
+                  ops::RankLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(rank_loss_grad, ops::RankLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     rank_loss, ops::RankLossKernel<paddle::platform::CPUDeviceContext, float>);

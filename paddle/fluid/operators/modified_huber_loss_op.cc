@@ -136,8 +136,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     modified_huber_loss, ops::ModifiedHuberLossOp,
     ops::ModifiedHuberLossOpMaker,
-    ops::ModifiedHuberLossGradOpMaker<paddle::framework::OpDesc, true>,
-    ops::ModifiedHuberLossGradOpMaker<paddle::imperative::OpBase, true>);
+    ops::ModifiedHuberLossGradOpMaker<paddle::framework::OpDesc>,
+    ops::ModifiedHuberLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(modified_huber_loss_grad, ops::ModifiedHuberLossGradOp);
 
 REGISTER_OP_CPU_KERNEL(

@@ -177,9 +177,9 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
     fused_embedding_seq_pool, ops::FusedEmbeddingSeqPoolOp,
-    ops::FusedEmbeddingSeqPoolGradOpDescMaker,
-    ops::FusedEmbeddingSeqPoolOpMaker<paddle::framework::OpDesc, true>,
-    ops::FusedEmbeddingSeqPoolOpMaker<paddle::imperative::OpBase, true>);
+    ops::FusedEmbeddingSeqPoolGradOpMaker<paddle::framework::OpDesc>,
+    ops::FusedEmbeddingSeqPoolGradOpMaker<paddle::imperative::OpBase>,
+    ops::FusedEmbeddingSeqPoolOpMaker);
 REGISTER_OPERATOR(fused_embedding_seq_pool_grad,
                   ops::FusedEmbeddingSeqPoolOpGrad,
                   ops::FusedEmbeddingSeqPoolOpGradVarTypeInference);
