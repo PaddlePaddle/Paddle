@@ -16362,8 +16362,8 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     Args:
         shape (list|tuple|Variable): The shape of the output Tensor,  if the shape is a list or tuple, 
                                      its elements can be an integer
-                                     or a Tensor with the shape [1], the type of the Tensor is int64. 
-                                     If the shape is a Variable, it ia a 1-D Tensor, the type of the Tensor is int64.
+                                     or a Tensor with the shape [1], and the type of the Tensor is int64. 
+                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor is int64.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the output Tensor. Supported data types: float32, float64.
                                                   Default: float32.
         min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
