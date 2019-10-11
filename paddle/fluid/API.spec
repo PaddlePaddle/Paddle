@@ -672,7 +672,7 @@ paddle.fluid.dygraph.BatchNorm.set_dict (ArgSpec(args=['self', 'stat_dict', 'inc
 paddle.fluid.dygraph.BatchNorm.state_dict (ArgSpec(args=['self', 'destination', 'include_sublayers'], varargs=None, keywords=None, defaults=(None, True)), ('document', '9d689f44592cd22812c7ec06a9654eac'))
 paddle.fluid.dygraph.BatchNorm.sublayers (ArgSpec(args=['self', 'include_sublayers'], varargs=None, keywords=None, defaults=(True,)), ('document', '00a881005ecbc96578faf94513bf0d62'))
 paddle.fluid.dygraph.BatchNorm.train (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.dygraph.Embedding ('paddle.fluid.dygraph.nn.Embedding', ('document', 'b1b1ed9dc2125c3e16ee08113605fcb4'))
+paddle.fluid.dygraph.Embedding ('paddle.fluid.dygraph.nn.Embedding', ('document', 'dec90fba70f93ff5dac2f4ed0704dbdd'))
 paddle.fluid.dygraph.Embedding.__init__ (ArgSpec(args=['self', 'name_scope', 'size', 'is_sparse', 'is_distributed', 'padding_idx', 'param_attr', 'dtype'], varargs=None, keywords=None, defaults=(False, False, None, None, 'float32')), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.Embedding.add_parameter (ArgSpec(args=['self', 'name', 'parameter'], varargs=None, keywords=None, defaults=None), ('document', 'f35ab374c7d5165c3daf3bd64a5a2ec1'))
 paddle.fluid.dygraph.Embedding.add_sublayer (ArgSpec(args=['self', 'name', 'sublayer'], varargs=None, keywords=None, defaults=None), ('document', '839ff3c0534677ba6ad8735c3fd4e995'))
