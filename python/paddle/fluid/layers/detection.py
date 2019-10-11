@@ -73,100 +73,166 @@ def retinanet_target_assign(bbox_pred,
                             positive_overlap=0.5,
                             negative_overlap=0.4):
     """
-    **Target Assign Layer for Retinanet .**
+    **Target Assign Layer for the detector RetinaNet.**
 
-    This layer can be, for given the Intersection-over-Union (IoU) overlap
-    between anchors and ground truth boxes, to assign classification and
-    regression targets to each anchor, these target labels are used for training
-    retinanet. Every anchor is assigned with a length :attr:`num_classes`
-    one-hot vector of classification targets, and a 4-vector of box regression
-    targets. The assignment rules are as followed:
-    
-    1. Anchors are assigned to ground-truth boxes when: (i) it has the highest
-    IoU overlap with a ground-truth box, or (ii) it has an IoU overlap higher
-    than positive_overlap(0.5) with any ground-truth box.
-    
-    2. Anchors are assigned to background when its IoU ratio is lower than
-    negative_overlap (0.4) for all ground-truth boxes.
-    
-    When an anchor is assigned with a ground-truth box which is the i-th category,
-    the i-th entry in its C vector of targets is set to 1 and all other entries
-    are set to 0. When an anchor is assigned with background, all entries are set
-    to 0. Anchors that are not assigned do not contribute to the training
-    objective. The regression targets are the encoded ground-truth boxes
-    associated with the assigned anchors.
- 
+    This OP finds out positive and negative samples from all anchors
+    for training the detector `RetinaNet <https://arxiv.org/abs/1708.02002>`_ ,
+    and assigns target labels for classification along with target locations for
+    regression to each sample, then takes out the part belonging to positive and
+    negative samples from category prediction( :attr:`cls_logits`) and location
+    prediction( :attr:`bbox_pred`) which belong to all anchors.
+
+    The searching principles for positive and negative samples are as followed:
+
+    1. Anchors are assigned to ground-truth boxes when it has the highest IoU
+    overlap with a ground-truth box.
+
+    2. Anchors are assigned to ground-truth boxes when it has an IoU overlap
+    higher than :attr:`positive_overlap` with any ground-truth box.
+
+    3. Anchors are assigned to background when its IoU overlap is lower than
+    :attr:`negative_overlap` for all ground-truth boxes.
+
+    4. Anchors which do not meet the above conditions do not participate in
+    the training process.
+
+    Retinanet predicts a :math:`C`-vector for classification and a 4-vector for box
+    regresion for each anchor, hence the target label for each positive(or negative)
+    sample is a :math:`C`-vector and the target locations for each positive sample
+    is a 4-vector. As for a positive sample, if the category of its assigned
+    ground-truth box is class :math:`i`, the corresponding entry in its length
+    :math:`C` label vector is set to 1 and all other entries is set to 0, its box
+    regression targets are computed as the offset between itself and its assigned
+    ground-truth box. As for a negative sample, all entries in its length :math:`C`
+    label vector are set to 0 and box regression targets are omitted because
+    negative samples do not participate in the training process of location
+    regression.
+
+    After the assignment, the part belonging to positive and negative samples is
+    taken out from category prediction( :attr:`cls_logits` ), and the part
+    belonging to positive samples is taken out from location
+    prediction( :attr:`bbox_pred` ).
+
     Args:
-        bbox_pred(Variable): A 3-D Tensor with shape [N, M, 4] represents the
-            predicted locations of M bounding bboxes. N is the batch size,
-            and each bounding box has four coordinate values and the layout
-            is [xmin, ymin, xmax, ymax].
-        cls_logits(Variable): A 3-D Tensor with shape [N, M, C] represents the
-            predicted confidence predictions. N is the batch size, C is the
-            number of classes (excluding background), M is number of bounding boxes.
-        anchor_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
-            each box is represented as [xmin, ymin, xmax, ymax],
-            [xmin, ymin] is the left top coordinate of the anchor box,
-            if the input is image feature map, they are close to the origin
-            of the coordinate system. [xmax, ymax] is the right bottom
-            coordinate of the anchor box.
-        anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
-            variances of anchors.
-        gt_boxes(Variable): The ground-truth bounding boxes (bboxes) are a 2D
-            LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
-            bboxes of mini-batch input.
-        gt_labels(variable): The ground-truth labels are a 2D LoDTensor with
-            shape [Ng, 1], Ng is the total number of ground-truth labels of
-            mini-batch input.
-        is_crowd(Variable): A 1-D LoDTensor which indicates ground-truth is crowd.
-        im_info(Variable): A 2-D LoDTensor with shape [N, 3]. N is the batch size,
-            3 is the height, width and scale.
-        num_classes(int32): The number of classes.
-        positive_overlap(float): Minimum overlap required between an anchor
-            and ground-truth box for the (anchor, gt box) pair to be a positive
-            example.
-        negative_overlap(float): Maximum overlap allowed between an anchor
-            and ground-truth box for the (anchor, gt box) pair to be a negative
-            examples.
+        bbox_pred(Variable): A 3-D Tensor with shape :math:`[N, M, 4]` represents
+            the predicted locations of all anchors. :math:`N` is the batch size( the
+            number of images in a mini-batch), :math:`M` is the number of all anchors
+            of one image, and each anchor has 4 coordinate values. The data type of
+            :attr:`bbox_pred` is float32 or float64.
+        cls_logits(Variable): A 3-D Tensor with shape :math:`[N, M, C]` represents
+            the predicted categories of all anchors. :math:`N` is the batch size,
+            :math:`M` is the number of all anchors of one image, and :math:`C` is
+            the number of categories (**Notice: excluding background**). The data type
+            of :attr:`cls_logits` is float32 or float64.
+        anchor_box(Variable): A 2-D Tensor with shape :math:`[M, 4]` represents
+            the locations of all anchors. :math:`M` is the number of all anchors of
+            one image, each anchor is represented as :math:`[xmin, ymin, xmax, ymax]`,
+            :math:`[xmin, ymin]` is the left top coordinate of the anchor box,
+            :math:`[xmax, ymax]` is the right bottom coordinate of the anchor box.
+            The data type of :attr:`anchor_box` is float32 or float64. Please refer
+            to the OP :ref:`api_fluid_layers_anchor_generator` 
+            for the generation of :attr:`anchor_box`.
+        anchor_var(Variable): A 2-D Tensor with shape :math:`[M,4]` represents the expanded 
+            factors of anchor locations used in loss function. :math:`M` is number of
+            all anchors of one image, each anchor possesses a 4-vector expanded factor.
+            The data type of :attr:`anchor_var` is float32 or float64. Please refer
+            to the OP :ref:`api_fluid_layers_anchor_generator`
+            for the generation of :attr:`anchor_var`.
+        gt_boxes(Variable): A 1-level 2-D LoDTensor with shape :math:`[G, 4]` represents
+            locations of all ground-truth boxes. :math:`G` is the total number of
+            all ground-truth boxes in a mini-batch, and each ground-truth box has 4
+            coordinate values. The data type of :attr:`gt_boxes` is float32 or
+            float64.
+        gt_labels(variable): A 1-level 2-D LoDTensor with shape :math:`[G, 1]` represents
+            categories of all ground-truth boxes, and the values are in the range of
+            :math:`[1, C]`. :math:`G` is the total number of all ground-truth boxes
+            in a mini-batch, and each ground-truth box has one category. The data type
+            of :attr:`gt_labels` is int32.
+        is_crowd(Variable): A 1-level 1-D LoDTensor with shape :math:`[G]` which
+            indicates whether a ground-truth box is a crowd. If the value is 1, the
+            corresponding box is a crowd, it is ignored during training. :math:`G` is
+            the total number of all ground-truth boxes in a mini-batch. The data type
+            of :attr:`is_crowd` is int32.
+        im_info(Variable): A 2-D Tensor with shape [N, 3] represents the size
+            information of input images. :math:`N` is the batch size, the size
+            informarion of each image is a 3-vector which are the height and width
+            of the network input along with the factor scaling the origin image to
+            the network input. The data type of :attr:`im_info` is float32.
+        num_classes(int32): The number of categories for classification, the default
+            value is 1.
+        positive_overlap(float32): Minimum overlap required between an anchor
+            and ground-truth box for the anchor to be a positive sample, the default
+            value is 0.5.
+        negative_overlap(float32): Maximum overlap allowed between an anchor
+            and ground-truth box for the anchor to be a negative sample, the default
+            value is 0.4. :attr:`negative_overlap` should be less than or equal to
+            :attr:`positive_overlap`, if not, the actual value of
+            :attr:`positive_overlap` is :attr:`negative_overlap`.
 
     Returns:
-        tuple:
-               A tuple(predicted_scores, predicted_location, target_label,
-               target_bbox, bbox_inside_weight, fg_num) is returned. The
-               predicted_scores and predicted_location are the predicted result
-               of the retinanet.The target_label and target_bbox are the ground
-               truth, respectively. The predicted_location is a 2D Tensor with
-               shape [F, 4], and the shape of target_bbox is same as the shape of
-               the predicted_location, F is the number of the foreground
-               anchors. The predicted_scores is a 2D Tensor with shape
-               [F + B, C], and the shape of target_label is [F + B, 1], B is the
-               number of the background anchors, the F and B is depends on the
-               input of this operator. Bbox_inside_weight represents whether the
-               predicted location is fake foreground or not and the shape is [F, 4].
-               Fg_num is the foreground number (including fake foreground) which
-               is needed by focal loss.
+        A tuple with 6 Variables:
+        
+        **predict_scores** (Variable): A 2-D Tensor with shape :math:`[F+B, C]` represents
+        category prediction belonging to positive and negative samples. :math:`F`
+        is the number of positive samples in a mini-batch, :math:`B` is the number
+        of negative samples, and :math:`C` is the number of categories
+        (**Notice: excluding background**). The data type of :attr:`predict_scores`
+        is float32 or float64.
+
+        **predict_location** (Variable): A 2-D Tensor with shape :math:`[F, 4]` represents
+        location prediction belonging to positive samples. :math:`F` is the number
+        of positive samples. :math:`F` is the number of positive samples, and each
+        sample has 4 coordinate values. The data type of :attr:`predict_location`
+        is float32 or float64.
+
+        **target_label** (Variable): A 2-D Tensor with shape :math:`[F+B, 1]` represents
+        target labels for classification belonging to positive and negative
+        samples. :math:`F` is the number of positive samples, :math:`B` is the
+        number of negative, and each sample has one target category. The data type
+        of :attr:`target_label` is int32.
+
+        **target_bbox** (Variable): A 2-D Tensor with shape :math:`[F, 4]` represents
+        target locations for box regression belonging to positive samples.
+        :math:`F` is the number of positive samples, and each sample has 4
+        coordinate values. The data type of :attr:`target_bbox` is float32 or
+        float64.
+
+        **bbox_inside_weight** (Variable): A 2-D Tensor with shape :math:`[F, 4]`
+        represents whether a positive sample is fake positive, if a positive
+        sample is false positive, the corresponding entries in
+        :attr:`bbox_inside_weight` are set 0, otherwise 1. :math:`F` is the number
+        of total positive samples in a mini-batch, and each sample has 4
+        coordinate values. The data type of :attr:`bbox_inside_weight` is float32
+        or float64.
+
+        **fg_num** (Variable): A 2-D Tensor with shape :math:`[N, 1]` represents the number
+        of positive samples. :math:`N` is the batch size. **Notice: The number
+        of positive samples is used as the denominator of later loss function,
+        to avoid the condition that the denominator is zero, this OP has added 1
+        to the actual number of positive samples of each image.** The data type of
+        :attr:`fg_num` is int32.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          bbox_pred = layers.data(name='bbox_pred', shape=[1, 100, 4],
-                            append_batch_size=False, dtype='float32')
-          cls_logits = layers.data(name='cls_logits', shape=[1, 100, 10],
-                            append_batch_size=False, dtype='float32')
-          anchor_box = layers.data(name='anchor_box', shape=[100, 4],
-                            append_batch_size=False, dtype='float32')
-          anchor_var = layers.data(name='anchor_var', shape=[100, 4],
-                            append_batch_size=False, dtype='float32')
-          gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
-                            append_batch_size=False, dtype='float32')
-          gt_labels = layers.data(name='gt_labels', shape=[10, 1],
-                            append_batch_size=False, dtype='float32')
-          is_crowd = fluid.layers.data(name='is_crowd', shape=[1],
-                            append_batch_size=False, dtype='float32')
-          im_info = fluid.layers.data(name='im_infoss', shape=[1, 3],
-                            append_batch_size=False, dtype='float32')
-          loc_pred, score_pred, loc_target, score_target, bbox_inside_weight, fg_num =
+          bbox_pred = fluid.data(name='bbox_pred', shape=[1, 100, 4],
+                            dtype='float32')
+          cls_logits = fluid.data(name='cls_logits', shape=[1, 100, 10],
+                            dtype='float32')
+          anchor_box = fluid.data(name='anchor_box', shape=[100, 4],
+                            dtype='float32')
+          anchor_var = fluid.data(name='anchor_var', shape=[100, 4],
+                            dtype='float32')
+          gt_boxes = fluid.data(name='gt_boxes', shape=[10, 4],
+                            dtype='float32')
+          gt_labels = fluid.data(name='gt_labels', shape=[10, 1],
+                            dtype='float32')
+          is_crowd = fluid.data(name='is_crowd', shape=[1],
+                            dtype='float32')
+          im_info = fluid.data(name='im_infoss', shape=[1, 3],
+                            dtype='float32')
+          score_pred, loc_pred, score_target, loc_target, bbox_inside_weight, fg_num =
                 fluid.layers.retinanet_target_assign(bbox_pred, cls_logits, anchor_box,
                 anchor_var, gt_boxes, gt_labels, is_crowd, im_info, 10)
 
@@ -370,48 +436,61 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
     """
     **Sigmoid Focal Loss Operator.**
 
-    Focal loss is used to address the foreground-background class imbalance existed
-    on the training phase of one-stage detectors. This operator computes the sigmoid
-    value for each element in the input tensor, after which focal loss is measured.
-    
+    `Focal Loss <https://arxiv.org/abs/1708.02002>`_ is used to address the foreground-background
+    class imbalance existed on the training phase of many computer vision tasks. This OP computes
+    the sigmoid value for each element in the input tensor :attr:`x`, after which focal loss is
+    measured between the sigmoid value and target label. 
+
     The focal loss is given as followed:
 
     .. math::
-        loss_j = (-label_j * alpha * {(1 - \\sigma(x_j))}^{gamma} * \\log(\\sigma(x_j)) -
-        (1 - labels_j) * (1 - alpha) * {(\sigma(x_j)}^{ gamma} * \\log(1 - \\sigma(x_j)))
-        / fg\_num, j = 1,...,K
+  
+        \\mathop{loss_{i,\\,j}}\\limits_{i\\in\\mathbb{[0,\\,N-1]},\\,j\\in\\mathbb{[0,\\,C-1]}}=\\left\\{
+        \\begin{array}{rcl}
+        - \\frac{1}{fg\_num} * \\alpha * {(1 - \\sigma(x_{i,\\,j}))}^{\\gamma} * \\log(\\sigma(x_{i,\\,j})) & & {(j +1) = label_{i,\\,0}} \\\\
+        - \\frac{1}{fg\_num} * (1 - \\alpha) * {\sigma(x_{i,\\,j})}^{ \\gamma} * \\log(1 - \\sigma(x_{i,\\,j})) & & {(j +1)!= label_{i,\\,0}}
+        \\end{array} \\right.
+
 
     We know that
     
     .. math::
         \\sigma(x_j) = \\frac{1}{1 + \\exp(-x_j)}
 
-    Args:
-        x(Variable): A 2-D tensor with shape [N, D], where N is the batch size and D is the number
-            of classes (excluding background). This input is a tensor of logits computed by the
-            previous operator.
-        label(Variable): A 2-D tensor with shape [N, 1], which is the probabilistic labels.
-        fg_num(Variable): A 1-D tensor with shape [1], which is the number of foreground.
 
+    Args:
+        x(Variable): A 2-D tensor with shape :math:`[N, C]` represents the predicted categories of
+            all samples. :math:`N` is the number of all samples responsible for optimization in
+            a mini-batch, for example, samples are anchor boxes for object detection and :math:`N`
+            is the total number of positive and negative samples in a mini-batch; Samples are images
+            for image classification and :math:`N` is the number of images in a mini-batch. :math:`C`
+            is the number of classes (**Notice: excluding background**). The data type of :attr:`x` is
+            float32 or float64.
+        label(Variable): A 2-D tensor with shape :math:`[N, 1]` represents the target labels for
+            classification. :math:`N` is the number of all samples responsible for optimization in a
+            mini-batch, each sample has one target category. The values for positive samples are in the
+            range of :math:`[1, C]`, and the values for negative samples are 0. The data type of :attr:`label`
+            is int32.
+        fg_num(Variable): A 1-D tensor with shape [1] represents the number of positive samples in a
+            mini-batch, which should be obtained before this OP. The data type of :attr:`fg_num` is int32.
         gamma(float): Hyper-parameter to balance the easy and hard examples. Default value is
             set to 2.0.
         alpha(float): Hyper-parameter to balance the positive and negative example. Default value
             is set to 0.25.
 
     Returns:
-        out(Variable): A 2-D tensor with shape [N, D], which is the focal loss.
+        Variable(the data type is float32 or float64): 
+            A 2-D tensor with shape :math:`[N, C]`, which is the focal loss of each element in the input
+            tensor :attr:`x`.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            input = fluid.layers.data(
-                name='data', shape=[10,80], append_batch_size=False, dtype='float32')
-            label = fluid.layers.data(
-                name='label', shape=[10,1], append_batch_size=False, dtype='int32')
-            fg_num = fluid.layers.data(
-                name='fg_num', shape=[1], append_batch_size=False, dtype='int32')
+            input = fluid.data(name='data', shape=[10,80], dtype='float32')
+            label = fluid.data(name='label', shape=[10,1], dtype='int32')
+            fg_num = fluid.data(name='fg_num', shape=[1], dtype='int32')
             loss = fluid.layers.sigmoid_focal_loss(x=input,
                                                    label=label,
                                                    fg_num=fg_num,
@@ -446,12 +525,11 @@ def detection_output(loc,
                      nms_eta=1.0,
                      return_index=False):
     """
-    **Detection Output Layer for Single Shot Multibox Detector (SSD).**
+    Given the regression locations, classification confidences and prior boxes,
+    calculate the detection outputs by performing following steps:
 
-    This operation is to get the detection results by performing following
-    two steps:
-
-    1. Decode input bounding box predictions according to the prior boxes.
+    1. Decode input bounding box predictions according to the prior boxes and
+       regression locations.
     2. Get the final detection results by applying multi-class non maximum
        suppression (NMS).
 
@@ -460,33 +538,33 @@ def detection_output(loc,
 
     Args:
         loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
-            predicted locations of M bounding bboxes. N is the batch size,
+            predicted locations of M bounding bboxes. Data type should be
+            float32 or float64. N is the batch size,
             and each bounding box has four coordinate values and the layout
             is [xmin, ymin, xmax, ymax].
         scores(Variable): A 3-D Tensor with shape [N, M, C] represents the
-            predicted confidence predictions. N is the batch size, C is the
-            class number, M is number of bounding boxes. For each category
-            there are total M scores which corresponding M bounding boxes.
+            predicted confidence predictions. Data type should be float32
+            or float64. N is the batch size, C is the
+            class number, M is number of bounding boxes.
         prior_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
-            each box is represented as [xmin, ymin, xmax, ymax],
-            [xmin, ymin] is the left top coordinate of the anchor box,
-            if the input is image feature map, they are close to the origin
-            of the coordinate system. [xmax, ymax] is the right bottom
-            coordinate of the anchor box.
+            each box is represented as [xmin, ymin, xmax, ymax]. Data type
+            should be float32 or float64.
         prior_box_var(Variable): A 2-D Tensor with shape [M, 4] holds M group
-            of variance.
-        background_label(float): The index of background label,
+            of variance. Data type should be float32 or float64.
+        background_label(int): The index of background label,
             the background label will be ignored. If set to -1, then all
-            categories will be considered.
-        nms_threshold(float): The threshold to be used in NMS.
+            categories will be considered. Default: 0.
+        nms_threshold(float): The threshold to be used in NMS. Default: 0.3.
         nms_top_k(int): Maximum number of detections to be kept according
-            to the confidences aftern the filtering detections based on
-            score_threshold.
+            to the confidences aftern filtering detections based on
+            score_threshold and before NMS. Default: 400.
         keep_top_k(int): Number of total bboxes to be kept per image after
-            NMS step. -1 means keeping all bboxes after NMS step.
+            NMS step. -1 means keeping all bboxes after NMS step. Default: 200.
         score_threshold(float): Threshold to filter out bounding boxes with
             low confidence score. If not provided, consider all boxes.
-        nms_eta(float): The parameter for adaptive NMS.
+            Default: 0.01.
+        nms_eta(float): The parameter for adaptive NMS. It works only when the
+            value is less than 1.0. Default: 1.0.
         return_index(bool): Whether return selected index. Default: False
 
     Returns:
@@ -494,22 +572,18 @@ def detection_output(loc,
         A tuple with two Variables: (Out, Index) if return_index is True,
         otherwise, a tuple with one Variable(Out) is returned. 
 
-        Out: The detection outputs is a LoDTensor with shape [No, 6]. Each row 
-        has six values: [label, confidence, xmin, ymin, xmax, ymax]. `No` is 
-        the total number of detections in this mini-batch. For each instance, 
-        the offsets in first dimension are called LoD, the offset number is 
-        N + 1, N is the batch size. The i-th image has `LoD[i + 1] - LoD[i]` 
-        detected results, if it is 0, the i-th image has no detected results. 
+        Out (Variable): The detection outputs is a LoDTensor with shape [No, 6].
+        Data type is the same as input (loc). Each row has six values:
+        [label, confidence, xmin, ymin, xmax, ymax]. `No` is
+        the total number of detections in this mini-batch. For each instance,
+        the offsets in first dimension are called LoD, the offset number is
+        N + 1, N is the batch size. The i-th image has `LoD[i + 1] - LoD[i]`
+        detected results, if it is 0, the i-th image has no detected results.
 
-        If all images have not detected results, LoD will be set to {1}, and 
-        output tensor only contains one value, which is -1.
-        (After version 1.3, when no boxes detected, the lod is changed
-        from {0} to {1}.)       
- 
-        Index: Only return when return_index is True. A 2-D LoDTensor with 
-        shape [No, 1] represents the selected index which type is Integer. 
-        The index is the absolute value cross batches. No is the same number 
-        as Out. If the index is used to gather other attribute such as age, 
+        Index (Variable): Only return when return_index is True. A 2-D LoDTensor
+        with shape [No, 1] represents the selected index which type is Integer.
+        The index is the absolute value cross batches. No is the same number
+        as Out. If the index is used to gather other attribute such as age,
         one needs to reshape the input(N, M, 1) to (N * M, 1) as first, where
         N is the batch size and M is the number of boxes.
 
@@ -519,14 +593,10 @@ def detection_output(loc,
 
             import paddle.fluid as fluid
 
-            pb = fluid.layers.data(name='prior_box', shape=[10, 4],
-                         append_batch_size=False, dtype='float32')
-            pbv = fluid.layers.data(name='prior_box_var', shape=[10, 4],
-                          append_batch_size=False, dtype='float32')
-            loc = fluid.layers.data(name='target_box', shape=[2, 21, 4],
-                          append_batch_size=False, dtype='float32')
-            scores = fluid.layers.data(name='scores', shape=[2, 21, 10],
-                          append_batch_size=False, dtype='float32')
+            pb = fluid.data(name='prior_box', shape=[10, 4], dtype='float32')
+            pbv = fluid.data(name='prior_box_var', shape=[10, 4], dtype='float32')
+            loc = fluid.data(name='target_box', shape=[2, 21, 4], dtype='float32')
+            scores = fluid.data(name='scores', shape=[2, 21, 10], dtype='float32')
             nmsed_outs, index = fluid.layers.detection_output(scores=scores,
                                        loc=loc,
                                        prior_box=pb,
@@ -587,20 +657,36 @@ def iou_similarity(x, y, name=None):
     ${comment}
 
     Args:
-        x(${x_type}): ${x_comment}
-        y(${y_type}): ${y_comment}
+        x (Variable): ${x_comment}.The data type is float32 or float64.
+        y (Variable): ${y_comment}.The data type is float32 or float64.
 
     Returns:
-        out(${out_type}): ${out_comment}
+        Variable: ${out_comment}.The data type is same with x.
 
     Examples:
         .. code-block:: python
 
+            import numpy as np
             import paddle.fluid as fluid
 
-            x = fluid.layers.data(name='x', shape=[4], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+            use_gpu = False
+            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+
+            x = fluid.data(name='x', shape=[None, 4], dtype='float32')
+            y = fluid.data(name='y', shape=[None, 4], dtype='float32')
             iou = fluid.layers.iou_similarity(x=x, y=y)
+
+            exe.run(fluid.default_startup_program())
+            test_program = fluid.default_main_program().clone(for_test=True)
+
+            [out_iou] = exe.run(test_program,
+                    fetch_list=iou,
+                    feed={'x': np.array([[0.5, 0.5, 2.0, 2.0],
+                                         [0., 0., 1.0, 1.0]]).astype('float32'),
+                          'y': np.array([[1.0, 1.0, 2.5, 2.5]]).astype('float32')})
+            # out_iou is [[0.2857143],
+            #             [0.       ]] with shape: [2, 1]
     """
     helper = LayerHelper("iou_similarity", **locals())
     if name is None:
@@ -818,22 +904,24 @@ def yolov3_loss(x,
     ${comment}
 
     Args:
-        x (Variable): ${x_comment}
+        x (Variable): ${x_comment}The data type is float32 or float64. 
         gt_box (Variable): groud truth boxes, should be in shape of [N, B, 4],
                           in the third dimenstion, x, y, w, h should be stored. 
                           x,y is the center cordinate of boxes, w, h are the
                           width and height, x, y, w, h should be divided by 
                           input image height to scale to [0, 1].
                           N is the batch number and B is the max box number in 
-                          an image.
+                          an image.The data type is float32 or float64. 
         gt_label (Variable): class id of ground truth boxes, shoud be in shape
-                            of [N, B].
+                            of [N, B].The data type is int32. 
         anchors (list|tuple): ${anchors_comment}
         anchor_mask (list|tuple): ${anchor_mask_comment}
         class_num (int): ${class_num_comment}
         ignore_thresh (float): ${ignore_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
-        name (string): the name of yolov3 loss. Default None.
+        name (string): The default value is None.  Normally there is no need 
+                       for user to set this property.  For more information, 
+                       please refer to :ref:`api_guide_Name`
         gt_score (Variable): mixup score of ground truth boxes, shoud be in shape
                             of [N, B]. Default None.
         use_label_smooth (bool): ${use_label_smooth_comment}
@@ -855,10 +943,10 @@ def yolov3_loss(x,
       .. code-block:: python
 
           import paddle.fluid as fluid
-          x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
-          gt_box = fluid.layers.data(name='gt_box', shape=[6, 4], dtype='float32')
-          gt_label = fluid.layers.data(name='gt_label', shape=[6], dtype='int32')
-          gt_score = fluid.layers.data(name='gt_score', shape=[6], dtype='float32')
+          x = fluid.data(name='x', shape=[None, 255, 13, 13], dtype='float32')
+          gt_box = fluid.data(name='gt_box', shape=[None, 6, 4], dtype='float32')
+          gt_label = fluid.data(name='gt_label', shape=[None, 6], dtype='int32')
+          gt_score = fluid.data(name='gt_score', shape=[None, 6], dtype='float32')
           anchors = [10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156, 198, 373, 326]
           anchor_mask = [0, 1, 2]
           loss = fluid.layers.yolov3_loss(x=x, gt_box=gt_box, gt_label=gt_label,
@@ -939,13 +1027,15 @@ def yolo_box(x,
     ${comment}
 
     Args:
-        x (Variable): ${x_comment}
-        img_size (Variable): ${img_size_comment}
+        x (Variable): ${x_comment} The data type is float32 or float64. 
+        img_size (Variable): ${img_size_comment} The data type is int32. 
         anchors (list|tuple): ${anchors_comment}
         class_num (int): ${class_num_comment}
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
-        name (string): the name of yolo box layer. Default None.
+        name (string): The default value is None.  Normally there is no need 
+                       for user to set this property.  For more information, 
+                       please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
@@ -963,8 +1053,8 @@ def yolo_box(x,
     .. code-block:: python
 
         import paddle.fluid as fluid
-        x = fluid.layers.data(name='x', shape=[255, 13, 13], dtype='float32')
-        img_size = fluid.layers.data(name='img_size',shape=[2],dtype='int64')
+        x = fluid.data(name='x', shape=[None, 255, 13, 13], dtype='float32')
+        img_size = fluid.data(name='img_size',shape=[None, 2],dtype='int64')
         anchors = [10, 13, 16, 30, 33, 23]
         boxes,scores = fluid.layers.yolo_box(x=x, img_size=img_size, class_num=80, anchors=anchors, 
                                         conf_thresh=0.01, downsample_ratio=32)
@@ -1028,14 +1118,14 @@ def detection_map(detect_res,
         overlap_threshold: ${overlap_threshold_comment}
         evaluate_difficult: ${evaluate_difficult_comment}
         has_state: ${has_state_comment}
-        input_states: If not None, It contains 3 elements:
-            1. pos_count ${pos_count_comment}.
-            2. true_pos ${true_pos_comment}.
-            3. false_pos ${false_pos_comment}.
-        out_states: If not None, it contains 3 elements.
-            1. accum_pos_count ${accum_pos_count_comment}.
-            2. accum_true_pos ${accum_true_pos_comment}.
-            3. accum_false_pos ${accum_false_pos_comment}.
+        input_states: (tuple|None) If not None, It contains 3 elements:
+            (1) pos_count ${pos_count_comment}.
+            (2) true_pos ${true_pos_comment}.
+            (3) false_pos ${false_pos_comment}.
+        out_states: (tuple|None) If not None, it contains 3 elements.
+            (1) accum_pos_count ${accum_pos_count_comment}.
+            (2) accum_true_pos ${accum_true_pos_comment}.
+            (3) accum_false_pos ${accum_false_pos_comment}.
         ap_version: ${ap_type_comment}
 
     Returns:
@@ -1047,15 +1137,13 @@ def detection_map(detect_res,
 
             import paddle.fluid as fluid
             from fluid.layers import detection
-            detect_res = fluid.layers.data(
+            detect_res = fluid.data(
                 name='detect_res',
                 shape=[10, 6],
-                append_batch_size=False,
                 dtype='float32')
-            label = fluid.layers.data(
+            label = fluid.data(
                 name='label',
                 shape=[10, 6],
-                append_batch_size=False,
                 dtype='float32')
 
             map_out = detection.detection_map(detect_res, label, 21)
@@ -1221,51 +1309,57 @@ def target_assign(input,
             out[j][j][0 : K] = {mismatch_value, mismatch_value, ...}
             out_weight[i][j] = 0.
 
-    2. Assigning out_weight based on `neg_indices` if `neg_indices` is provided:
+    2. Assigning outputs based on `neg_indices` if `neg_indices` is provided:
 
-    Assumed that the row offset for each instance in `neg_indices` is called neg_lod,
-    for i-th instance and each `id` of neg_indices in this instance:
+    Assumed that i-th instance in `neg_indices` is called `neg_indice`,
+    for i-th instance:
 
     .. code-block:: text
 
-        out[i][id][0 : K] = {mismatch_value, mismatch_value, ...}
-        out_weight[i][id] = 1.0
+        for id in neg_indice:
+            out[i][id][0 : K] = {mismatch_value, mismatch_value, ...}
+            out_weight[i][id] = 1.0
 
     Args:
-       inputs (Variable): This input is a 3D LoDTensor with shape [M, P, K].
-       matched_indices (Variable): Tensor<int>), The input matched indices
+       input (Variable): This input is a 3D LoDTensor with shape [M, P, K].
+           Data type should be int32 or float32.
+       matched_indices (Variable): The input matched indices
            is 2D Tenosr<int32> with shape [N, P], If MatchIndices[i][j] is -1,
            the j-th entity of column is not matched to any entity of row in
            i-th instance.
-       negative_indices (Variable): The input negative example indices are
-           an optional input with shape [Neg, 1] and int32 type, where Neg is
+       negative_indices (Variable, optional): The input negative example indices
+           are an optional input with shape [Neg, 1] and int32 type, where Neg is
            the total number of negative example indices.
-       mismatch_value (float32): Fill this value to the mismatched location.
+       mismatch_value (float32, optional): Fill this value to the mismatched
+           location.
+       name (string): The default value is None.  Normally there is no need for
+           user to set this property.  For more information, please refer
+           to :ref:`api_guide_Name`.
 
     Returns:
-        tuple:
-               A tuple(out, out_weight) is returned. out is a 3D Tensor with
-               shape [N, P, K], N and P is the same as they are in
-               `neg_indices`, K is the same as it in input of X. If
-               `match_indices[i][j]`. out_weight is the weight for output with
-               the shape of [N, P, 1].
+        tuple: A tuple(out, out_weight) is returned.
+
+        out (Variable): a 3D Tensor with shape [N, P, K] and same data type
+        with `input`, N and P is the same as they are in `matched_indices`,
+        K is the same as it in input of X.
+
+        out_weight (Variable): the weight for output with the shape of [N, P, 1].
+        Data type is float32.
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(
+            x = fluid.data(
                 name='x',
                 shape=[4, 20, 4],
                 dtype='float',
-                lod_level=1,
-                append_batch_size=False)
-            matched_id = fluid.layers.data(
+                lod_level=1)
+            matched_id = fluid.data(
                 name='indices',
                 shape=[8, 20],
-                dtype='int32',
-                append_batch_size=False)
+                dtype='int32')
             trg, trg_weight = fluid.layers.target_assign(
                 x,
                 matched_id,
@@ -1347,22 +1441,28 @@ def ssd_loss(location,
         location (Variable): The location predictions are a 3D Tensor with
             shape [N, Np, 4], N is the batch size, Np is total number of
             predictions for each instance. 4 is the number of coordinate values,
-            the layout is [xmin, ymin, xmax, ymax].
+            the layout is [xmin, ymin, xmax, ymax].The data type is float32 or
+            float64.
         confidence (Variable): The confidence predictions are a 3D Tensor
             with shape [N, Np, C], N and Np are the same as they are in
-            `location`, C is the class number.
+            `location`, C is the class number.The data type is float32 or
+            float64.
         gt_box (Variable): The ground-truth bounding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
-            bboxes of mini-batch input.
+            bboxes of mini-batch input.The data type is float32 or float64.
         gt_label (Variable): The ground-truth labels are a 2D LoDTensor
-            with shape [Ng, 1].
+            with shape [Ng, 1].Ng is the total number of ground-truth bboxes of
+            mini-batch input, 1 is the number of class. The data type is float32
+            or float64.
         prior_box (Variable): The prior boxes are a 2D Tensor with shape [Np, 4].
+            Np and 4 are the same as they are in `location`. The data type is
+            float32 or float64.
         prior_box_var (Variable): The variance of prior boxes are a 2D Tensor
-            with shape [Np, 4].
+            with shape [Np, 4]. Np and 4 are the same as they are in `prior_box`
         background_label (int): The index of background label, 0 by default.
         overlap_threshold (float): If match_type is 'per_prediction', use
-            `overlap_threshold` to determine the extra matching bboxes when
-             finding matched boxes. 0.5 by default.
+            'overlap_threshold' to determine the extra matching bboxes when finding \
+            matched boxes. 0.5 by default.
         neg_pos_ratio (float): The ratio of the negative boxes to the positive
             boxes, used only when mining_type is 'max_negative', 3.0 by default.
         neg_overlap (float): The negative overlap upper bound for the unmatched
@@ -1380,32 +1480,34 @@ def ssd_loss(location,
             mining_type is 'hard_example'.
 
     Returns:
-        The weighted sum of the localization loss and confidence loss, with \
-        shape [N * Np, 1], N and Np are the same as they are in `location`.
+        Variable(Tensor):  The weighted sum of the localization loss and confidence loss, \
+        with shape [N * Np, 1], N and Np are the same as they are in
+        `location`.The data type is float32 or float64.
 
     Raises:
         ValueError: If mining_type is 'hard_example', now only support mining \
         type of `max_negative`.
 
     Examples:
-        >>> import paddle.fluid as fluid
-        >>> pb = fluid.layers.data(
-        >>>                   name='prior_box',
-        >>>                   shape=[10, 4],
-        >>>                   append_batch_size=False,
-        >>>                   dtype='float32')
-        >>> pbv = fluid.layers.data(
-        >>>                   name='prior_box_var',
-        >>>                   shape=[10, 4],
-        >>>                   append_batch_size=False,
-        >>>                   dtype='float32')
-        >>> loc = fluid.layers.data(name='target_box', shape=[10, 4], dtype='float32')
-        >>> scores = fluid.layers.data(name='scores', shape=[10, 21], dtype='float32')
-        >>> gt_box = fluid.layers.data(
-        >>>         name='gt_box', shape=[4], lod_level=1, dtype='float32')
-        >>> gt_label = fluid.layers.data(
-        >>>         name='gt_label', shape=[1], lod_level=1, dtype='float32')
-        >>> loss = fluid.layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            pb = fluid.data(
+                           name='prior_box',
+                           shape=[10, 4],
+                           dtype='float32')
+            pbv = fluid.data(
+                           name='prior_box_var',
+                           shape=[10, 4],
+                           dtype='float32')
+            loc = fluid.data(name='target_box', shape=[10, 4], dtype='float32')
+            scores = fluid.data(name='scores', shape=[10, 21], dtype='float32')
+            gt_box = fluid.data(
+                 name='gt_box', shape=[4], lod_level=1, dtype='float32')
+            gt_label = fluid.data(
+                 name='gt_label', shape=[1], lod_level=1, dtype='float32')
+            loss = fluid.layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
     """
 
     helper = LayerHelper('ssd_loss', **locals())
@@ -1800,21 +1902,37 @@ def multi_box_head(inputs,
                    name=None,
                    min_max_aspect_ratios_order=False):
     """
-    Generate prior boxes for SSD(Single Shot MultiBox Detector)
-    algorithm. The details of this algorithm, please refer the
-    section 2.2 of SSD paper `SSD: Single Shot MultiBox Detector
+    Base on SSD ((Single Shot MultiBox Detector) algorithm, generate prior boxes,
+    regression location and classification confidence on multiple input feature
+    maps, then output the concatenate results. The details of this algorithm,
+    please refer the section 2.2 of SSD paper `SSD: Single Shot MultiBox Detector
     <https://arxiv.org/abs/1512.02325>`_ .
 
     Args:
-       inputs(list|tuple): The list of input Variables, the format
-            of all Variables is NCHW.
-       image(Variable): The input image data of PriorBoxOp,
-            the layout is NCHW.
-       base_size(int): the base_size is used to get min_size
-            and max_size according to min_ratio and max_ratio.
+       inputs (list(Variable)|tuple(Variable)): The list of input variables,
+           the format of all Variables are 4-D Tensor, layout is NCHW.
+           Data type should be float32 or float64.
+       image (Variable): The input image, layout is NCHW. Data type should be
+           the same as inputs.
+       base_size(int): the base_size is input image size. When len(inputs) > 2
+           and `min_size` and `max_size` are None, the `min_size` and `max_size`
+           are calculated by `baze_size`, 'min_ratio' and `max_ratio`. The
+           formula is as follows:
+
+              ..  code-block:: text
+
+                  min_sizes = []
+                  max_sizes = []
+                  step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
+                  for ratio in six.moves.range(min_ratio, max_ratio + 1, step):
+                      min_sizes.append(base_size * ratio / 100.)
+                      max_sizes.append(base_size * (ratio + step) / 100.)
+                      min_sizes = [base_size * .10] + min_sizes
+                      max_sizes = [base_size * .20] + max_sizes
+
        num_classes(int): The number of classes.
-       aspect_ratios(list|tuple): the aspect ratios of generated prior
-            boxes. The length of input and aspect_ratios must be equal.
+       aspect_ratios(list(float) | tuple(float)): the aspect ratios of generated
+           prior boxes. The length of input and aspect_ratios must be equal.
        min_ratio(int): the min ratio of generated prior boxes.
        max_ratio(int): the max ratio of generated prior boxes.
        min_sizes(list|tuple|None): If `len(inputs) <=2`,
@@ -1840,7 +1958,9 @@ def multi_box_head(inputs,
        kernel_size(int): The kernel size of conv2d. Default: 1.
        pad(int|list|tuple): The padding of conv2d. Default:0.
        stride(int|list|tuple): The stride of conv2d. Default:1,
-       name(str): Name of the prior box layer. Default: None.
+       name(str): The default value is None.  Normally there is no need
+           for user to set this property.  For more information, please
+           refer to :ref:`api_guide_Name`.
        min_max_aspect_ratios_order(bool): If set True, the output prior box is
             in order of [min, max, aspect_ratios], which is consistent with
             Caffe. Please note, this order affects the weights order of
@@ -1850,33 +1970,34 @@ def multi_box_head(inputs,
     Returns:
         tuple: A tuple with four Variables. (mbox_loc, mbox_conf, boxes, variances)
 
-        mbox_loc: The predicted boxes' location of the inputs. The layout
-        is [N, H*W*Priors, 4]. where Priors is the number of predicted
-        boxes each position of each input.
+        mbox_loc (Variable): The predicted boxes' location of the inputs. The
+        layout is [N, num_priors, 4], where N is batch size, ``num_priors``
+        is the number of prior boxes. Data type is the same as input.
 
-        mbox_conf: The predicted boxes' confidence of the inputs. The layout
-        is [N, H*W*Priors, C]. where Priors is the number of predicted boxes
-        each position of each input and C is the number of Classes.
+        mbox_conf (Variable): The predicted boxes' confidence of the inputs.
+        The layout is [N, num_priors, C], where ``N`` and ``num_priors`` 
+        has the same meaning as above. C is the number of Classes.
+        Data type is the same as input.
 
-        boxes: the output prior boxes of PriorBox. The layout is [num_priors, 4].
-        num_priors is the total box count of each position of inputs.
+        boxes (Variable): the output prior boxes. The layout is [num_priors, 4].
+        The meaning of num_priors is the same as above.
+        Data type is the same as input.
 
-        variances: the expanded variances of PriorBox. The layout is
-        [num_priors, 4]. num_priors is the total box count of each position of inputs
+        variances (Variable): the expanded variances for prior boxes.
+        The layout is [num_priors, 4]. Data type is the same as input.
 
-
-    Examples:
+    Examples 1: set min_ratio and max_ratio:
         .. code-block:: python
 
           import paddle.fluid as fluid
 
-          images = fluid.layers.data(name='data', shape=[3, 300, 300], dtype='float32')
-          conv1 = fluid.layers.data(name='conv1', shape=[512, 19, 19], dtype='float32')
-          conv2 = fluid.layers.data(name='conv2', shape=[1024, 10, 10], dtype='float32')
-          conv3 = fluid.layers.data(name='conv3', shape=[512, 5, 5], dtype='float32')
-          conv4 = fluid.layers.data(name='conv4', shape=[256, 3, 3], dtype='float32')
-          conv5 = fluid.layers.data(name='conv5', shape=[256, 2, 2], dtype='float32')
-          conv6 = fluid.layers.data(name='conv6', shape=[128, 1, 1], dtype='float32')
+          images = fluid.data(name='data', shape=[None, 3, 300, 300], dtype='float32')
+          conv1 = fluid.data(name='conv1', shape=[None, 512, 19, 19], dtype='float32')
+          conv2 = fluid.data(name='conv2', shape=[None, 1024, 10, 10], dtype='float32')
+          conv3 = fluid.data(name='conv3', shape=[None, 512, 5, 5], dtype='float32')
+          conv4 = fluid.data(name='conv4', shape=[None, 256, 3, 3], dtype='float32')
+          conv5 = fluid.data(name='conv5', shape=[None, 256, 2, 2], dtype='float32')
+          conv6 = fluid.data(name='conv6', shape=[None, 128, 1, 1], dtype='float32')
 
           mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv6],
@@ -1889,6 +2010,32 @@ def multi_box_head(inputs,
             offset=0.5,
             flip=True,
             clip=True)
+
+    Examples 2: set min_sizes and max_sizes:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          images = fluid.data(name='data', shape=[None, 3, 300, 300], dtype='float32')
+          conv1 = fluid.data(name='conv1', shape=[None, 512, 19, 19], dtype='float32')
+          conv2 = fluid.data(name='conv2', shape=[None, 1024, 10, 10], dtype='float32')
+          conv3 = fluid.data(name='conv3', shape=[None, 512, 5, 5], dtype='float32')
+          conv4 = fluid.data(name='conv4', shape=[None, 256, 3, 3], dtype='float32')
+          conv5 = fluid.data(name='conv5', shape=[None, 256, 2, 2], dtype='float32')
+          conv6 = fluid.data(name='conv6', shape=[None, 128, 1, 1], dtype='float32')
+
+          mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
+            inputs=[conv1, conv2, conv3, conv4, conv5, conv6],
+            image=images,
+            num_classes=21,
+            min_sizes=[60.0, 105.0, 150.0, 195.0, 240.0, 285.0],
+            max_sizes=[[], 150.0, 195.0, 240.0, 285.0, 300.0],
+            aspect_ratios=[[2.], [2., 3.], [2., 3.], [2., 3.], [2.], [2.]],
+            base_size=300,
+            offset=0.5,
+            flip=True,
+            clip=True)
+
     """
 
     def _reshape_with_axis_(input, axis=1):
@@ -2127,44 +2274,55 @@ def roi_perspective_transform(input,
                               rois,
                               transformed_height,
                               transformed_width,
-                              spatial_scale=1.0):
+                              spatial_scale=1.0,
+                              name=None):
     """
-    ROI perspective transform op.
+    **The** `rois` **of this op should be a LoDTensor.**
 
-    Args:
-        input (Variable): The input of ROIPerspectiveTransformOp. The format of 
+    ROI perspective transform op applies perspective transform to map each roi into an 
+    rectangular region. Perspective transform is a type of transformation in linear algebra.
+
+    Parameters:
+        input (Variable): 4-D Tensor, input of ROIPerspectiveTransformOp. The format of 
                           input tensor is NCHW. Where N is batch size, C is the
                           number of input channels, H is the height of the feature,
-                          and W is the width of the feature.
-        rois (Variable):  ROIs (Regions of Interest) to be transformed. It should be
-                          a 2-D LoDTensor of shape (num_rois, 8). Given as 
+                          and W is the width of the feature. The data type is float32.
+        rois (Variable):  2-D LoDTensor, ROIs (Regions of Interest) to be transformed. 
+                          It should be a 2-D LoDTensor of shape (num_rois, 8). Given as 
                           [[x1, y1, x2, y2, x3, y3, x4, y4], ...], (x1, y1) is the 
                           top left coordinates, and (x2, y2) is the top right 
                           coordinates, and (x3, y3) is the bottom right coordinates, 
-                          and (x4, y4) is the bottom left coordinates.
-        transformed_height (integer): The height of transformed output.
-        transformed_width (integer): The width of transformed output.
+                          and (x4, y4) is the bottom left coordinates. The data type is the
+                          same as `input` 
+        transformed_height (int): The height of transformed output.
+        transformed_width (int): The width of transformed output.
         spatial_scale (float): Spatial scale factor to scale ROI coords. Default: 1.0
+        name(str, optional): The default value is None.  
+                             Normally there is no need for user to set this property.  
+                             For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-            tuple: A tuple with three Variables. (out, mask, transform_matrix)
+            A tuple with three Variables. (out, mask, transform_matrix)
 
             out: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape
-            (num_rois, channels, transformed_h, transformed_w).
+            (num_rois, channels, transformed_h, transformed_w). The data type is the same as `input`
 
             mask: The mask of ROIPerspectiveTransformOp which is a 4-D tensor with shape
-            (num_rois, 1, transformed_h, transformed_w).
+            (num_rois, 1, transformed_h, transformed_w). The data type is int32
 
             transform_matrix: The transform matrix of ROIPerspectiveTransformOp which is
-            a 2-D tensor with shape (num_rois, 9).
+            a 2-D tensor with shape (num_rois, 9). The data type is the same as `input`
+
+    Return Type:
+        tuple
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            x = fluid.layers.data(name='x', shape=[256, 28, 28], dtype='float32')
-            rois = fluid.layers.data(name='rois', shape=[8], lod_level=1, dtype='float32')
+            x = fluid.data(name='x', shape=[100, 256, 28, 28], dtype='float32')
+            rois = fluid.data(name='rois', shape=[None, 8], lod_level=1, dtype='float32')
             out, mask, transform_matrix = fluid.layers.roi_perspective_transform(x, rois, 7, 7, 1.0)
     """
     helper = LayerHelper('roi_perspective_transform', **locals())
@@ -2323,7 +2481,7 @@ def generate_proposal_labels(rpn_rois,
 def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
                          labels_int32, num_classes, resolution):
     """
-    ** Generate Mask Labels for Mask-RCNN **
+    **Generate Mask Labels for Mask-RCNN**
 
     This operator can be, for given the RoIs and corresponding labels,
     to sample foreground RoIs. This mask branch also has
@@ -2359,62 +2517,67 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
             feeder.feed(batch_masks)
 
     Args:
-        im_info(Variable): A 2-D Tensor with shape [N, 3]. N is the batch size,
-            each element is [height, width, scale] of image. Image scale is
-            target_size) / original_size.
-        gt_classes(Variable): A 2-D LoDTensor with shape [M, 1]. M is the total
-            number of ground-truth, each element is a class label.
-        is_crowd(Variable): A 2-D LoDTensor with shape as gt_classes,
-            each element is a flag indicating whether a groundtruth is crowd.
-        gt_segms(Variable): This input is a 2D LoDTensor with shape [S, 2],
-            it's LoD level is 3. Usually users do not needs to understand LoD,
+        im_info (Variable): A 2-D Tensor with shape [N, 3] and float32
+            data type. N is the batch size, each element is
+            [height, width, scale] of image. Image scale is
+            target_size / original_size, target_size is the size after resize,
+            original_size is the original image size.
+        gt_classes (Variable): A 2-D LoDTensor with shape [M, 1]. Data type
+            shoule be int. M is the total number of ground-truth, each
+            element is a class label.
+        is_crowd (Variable): A 2-D LoDTensor with same shape and same data type
+            as gt_classes, each element is a flag indicating whether a
+            groundtruth is crowd.
+        gt_segms (Variable): This input is a 2D LoDTensor with shape [S, 2] and
+            float32 data type, it's LoD level is 3.
+            Usually users do not needs to understand LoD,
             The users should return correct data format in reader.
-
-
-
-            The LoD[0] represents the gt objects number of
+            The LoD[0] represents the ground-truth objects number of
             each instance. LoD[1] represents the segmentation counts of each
             objects. LoD[2] represents the polygons number of each segmentation.
             S the total number of polygons coordinate points. Each element is
             (x, y) coordinate points.
-        rois(Variable): A 2-D LoDTensor with shape [R, 4]. R is the total
-            number of RoIs, each element is a bounding box with
-            (xmin, ymin, xmax, ymax) format in the range of original image.
-        labels_int32(Variable): A 2-D LoDTensor in shape of [R, 1] with type
+        rois (Variable): A 2-D LoDTensor with shape [R, 4] and float32 data type
+            float32. R is the total number of RoIs, each element is a bounding
+            box with (xmin, ymin, xmax, ymax) format in the range of original image.
+        labels_int32 (Variable): A 2-D LoDTensor in shape of [R, 1] with type
             of int32. R is the same as it in `rois`. Each element repersents
             a class label of a RoI.
-        num_classes(int): Class number.
-        resolution(int): Resolution of mask predictions.
+        num_classes (int): Class number.
+        resolution (int): Resolution of mask predictions.
 
     Returns:
-        mask_rois (Variable):  A 2D LoDTensor with shape [P, 4]. P is the total
-            number of sampled RoIs. Each element is a bounding box with
-            [xmin, ymin, xmax, ymax] format in range of orignal image size.
-        mask_rois_has_mask_int32 (Variable): A 2D LoDTensor with shape [P, 1],
-            each element repersents the output mask RoI index with regard to
-            to input RoIs.
-        mask_int32 (Variable): A 2D LoDTensor with shape [P, K * M * M],
-            K is the classes number and M is the resolution of mask predictions.
-            Each element repersents the binary mask targets.
+        mask_rois (Variable):  A 2D LoDTensor with shape [P, 4] and same data
+        type as `rois`. P is the total number of sampled RoIs. Each element
+        is a bounding box with [xmin, ymin, xmax, ymax] format in range of
+        orignal image size.
+
+        mask_rois_has_mask_int32 (Variable): A 2D LoDTensor with shape [P, 1]
+        and int data type, each element repersents the output mask RoI
+        index with regard to input RoIs.
+
+        mask_int32 (Variable): A 2D LoDTensor with shape [P, K * M * M] and int
+        data type, K is the classes number and M is the resolution of mask
+        predictions. Each element repersents the binary mask targets.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
 
-          im_info = fluid.layers.data(name="im_info", shape=[3],
+          im_info = fluid.data(name="im_info", shape=[None, 3],
               dtype="float32")
-          gt_classes = fluid.layers.data(name="gt_classes", shape=[1],
+          gt_classes = fluid.data(name="gt_classes", shape=[None, 1],
               dtype="float32", lod_level=1)
-          is_crowd = fluid.layers.data(name="is_crowd", shape=[1],
+          is_crowd = fluid.data(name="is_crowd", shape=[None, 1],
               dtype="float32", lod_level=1)
-          gt_masks = fluid.layers.data(name="gt_masks", shape=[2],
+          gt_masks = fluid.data(name="gt_masks", shape=[None, 2],
               dtype="float32", lod_level=3)
           # rois, roi_labels can be the output of
           # fluid.layers.generate_proposal_labels.
-          rois = fluid.layers.data(name="rois", shape=[4],
+          rois = fluid.data(name="rois", shape=[None, 4],
               dtype="float32", lod_level=1)
-          roi_labels = fluid.layers.data(name="roi_labels", shape=[1],
+          roi_labels = fluid.data(name="roi_labels", shape=[None, 1],
               dtype="int32", lod_level=1)
           mask_rois, mask_index, mask_int32 = fluid.layers.generate_mask_labels(
               im_info=im_info,
@@ -2634,78 +2797,109 @@ def retinanet_detection_output(bboxes,
                                nms_threshold=0.3,
                                nms_eta=1.):
     """
-    **Detection Output Layer for Retinanet.**
+    **Detection Output Layer for the detector RetinaNet.**
 
-    This operation is to get the detection results by performing following
-    steps:
+    In the detector `RetinaNet <https://arxiv.org/abs/1708.02002>`_ , many 
+    `FPN <https://arxiv.org/abs/1612.03144>`_ levels output the category
+    and location predictions, this OP is to get the detection results by
+    performing following steps:
 
-    1. Decode top-scoring bounding box predictions per FPN level according 
-       to the anchor boxes.
+    1. For each FPN level, decode box predictions according to the anchor
+       boxes from at most :attr:`nms_top_k` top-scoring predictions after
+       thresholding detector confidence at :attr:`score_threshold`.
     2. Merge top predictions from all levels and apply multi-class non 
        maximum suppression (NMS) on them to get the final detections.
 
     Args:
-        bboxes(List): A list of tensors from multiple FPN levels. Each
-            element is a 3-D Tensor with shape [N, Mi, 4] representing the
-            predicted locations of Mi bounding boxes. N is the batch size,
-            Mi is the number of bounding boxes from i-th FPN level and each 
-            bounding box has four coordinate values and the layout is
-            [xmin, ymin, xmax, ymax].
-        scores(List): A list of tensors from multiple FPN levels. Each
-            element is a 3-D Tensor with shape [N, Mi, C] representing the
-            predicted confidence predictions. N is the batch size, C is the
-            class number (excluding background), Mi is the number of bounding
-            boxes from i-th FPN level. For each bounding box, there are total
-            C scores.
-        anchors(List): A 2-D Tensor with shape [Mi, 4] represents the locations
-            of Mi anchor boxes from all FPN level. Each bounding box has four
+        bboxes(List): A list of Tensors from multiple FPN levels represents
+            the location prediction for all anchor boxes. Each element is
+            a 3-D Tensor with shape :math:`[N, Mi, 4]`, :math:`N` is the
+            batch size, :math:`Mi` is the number of bounding boxes from
+            :math:`i`-th FPN level and each bounding box has four coordinate
+            values and the layout is [xmin, ymin, xmax, ymax]. The data type
+            of each element is float32 or float64.
+        scores(List): A list of Tensors from multiple FPN levels represents
+            the category prediction for all anchor boxes. Each element is a
+            3-D Tensor with shape :math:`[N, Mi, C]`,  :math:`N` is the batch
+            size, :math:`C` is the class number (**excluding background**),
+            :math:`Mi` is the number of bounding boxes from :math:`i`-th FPN
+            level. The data type of each element is float32 or float64.
+        anchors(List): A list of Tensors from multiple FPN levels represents
+            the locations of all anchor boxes. Each element is a 2-D Tensor
+            with shape :math:`[Mi, 4]`, :math:`Mi` is the number of bounding
+            boxes from :math:`i`-th FPN level, and each bounding box has four
             coordinate values and the layout is [xmin, ymin, xmax, ymax].
-        im_info(Variable): A 2-D LoDTensor with shape [N, 3] represents the
-            image information. N is the batch size, each image information
-            includes height, width and scale.
+            The data type of each element is float32 or float64.
+        im_info(Variable): A 2-D Tensor with shape :math:`[N, 3]` represents the size
+            information of input images. :math:`N` is the batch size, the size
+            informarion of each image is a 3-vector which are the height and width
+            of the network input along with the factor scaling the origin image to
+            the network input. The data type of :attr:`im_info` is float32.
         score_threshold(float): Threshold to filter out bounding boxes
-            with a confidence score.
+            with a confidence score before NMS, default value is set to 0.05.
         nms_top_k(int): Maximum number of detections per FPN layer to be
-            kept according to the confidences before NMS.
+            kept according to the confidences before NMS, default value is set to
+            1000.
         keep_top_k(int): Number of total bounding boxes to be kept per image after
-            NMS step. -1 means keeping all bounding boxes after NMS step.
-        nms_threshold(float): The threshold to be used in NMS.
-        nms_eta(float): The parameter for adaptive NMS.
+            NMS step. Default value is set to 100, -1 means keeping all bounding
+            boxes after NMS step.
+        nms_threshold(float): The Intersection-over-Union(IoU) threshold used to 
+            filter out boxes in NMS.
+        nms_eta(float): The parameter for adjusting :attr:`nms_threshold` in NMS.
+            Default value is set to 1., which represents the value of
+            :attr:`nms_threshold` keep the same in NMS. If :attr:`nms_eta` is set
+            to be lower than 1. and the value of :attr:`nms_threshold` is set to
+            be higher than 0.5, everytime a bounding box is filtered out,
+            the adjustment for :attr:`nms_threshold` like :attr:`nms_threshold`
+            = :attr:`nms_threshold` * :attr:`nms_eta`  will not be stopped until
+            the actual value of :attr:`nms_threshold` is lower than or equal to
+            0.5.
+
+    **Notice**: In some cases where the image sizes are very small, it's possible
+    that there is no detection if :attr:`score_threshold` are used at all
+    levels. Hence, this OP do not filter out anchors from the highest FPN level
+    before NMS. And the last element in :attr:`bboxes`:, :attr:`scores` and
+    :attr:`anchors` is required to be from the hightest FPN level.
 
     Returns:
-        Variable:
-            The detection output is a LoDTensor with shape [No, 6].
+        Variable(The data type is float32 or float64):
+            The detection output is a 1-level LoDTensor with shape :math:`[No, 6]`.
             Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
-            `No` is the total number of detections in this mini-batch. For each
-            instance, the offsets in first dimension are called LoD, the offset
-            number is N + 1, N is the batch size. The i-th image has
-            `LoD[i + 1] - LoD[i]` detected results, if it is 0, the i-th image
+            :math:`No` is the total number of detections in this mini-batch.
+            The :math:`i`-th image has `LoD[i + 1] - LoD[i]` detected
+            results, if `LoD[i + 1] - LoD[i]` is 0, the :math:`i`-th image
             has no detected results. If all images have no detected results,
             LoD will be set to 0, and the output tensor is empty (None).
 
     Examples:
         .. code-block:: python
-        
-            import paddle.fluid as fluid
 
-            bboxes = layers.data(name='bboxes', shape=[1, 21, 4],
-                append_batch_size=False, dtype='float32')
-            scores = layers.data(name='scores', shape=[1, 21, 10],
-                append_batch_size=False, dtype='float32')
-            anchors = layers.data(name='anchors', shape=[21, 4],
-                append_batch_size=False, dtype='float32')
-            im_info = layers.data(name="im_info", shape=[1, 3],
-                append_batch_size=False, dtype='float32')
-            nmsed_outs = fluid.layers.retinanet_detection_output(
-                                                    bboxes=[bboxes, bboxes],
-                                                    scores=[scores, scores],
-                                                    anchors=[anchors, anchors],
-                                                    im_info=im_info,
-                                                    score_threshold=0.05,
-                                                    nms_top_k=1000,
-                                                    keep_top_k=100,
-                                                    nms_threshold=0.3,
-                                                    nms_eta=1.)
+           import paddle.fluid as fluid
+
+           bboxes_low = fluid.data(
+               name='bboxes_low', shape=[1, 44, 4], dtype='float32')
+           bboxes_high = fluid.data(
+               name='bboxes_high', shape=[1, 11, 4], dtype='float32')
+           scores_low = fluid.data(
+               name='scores_low', shape=[1, 44, 10], dtype='float32')
+           scores_high = fluid.data(
+               name='scores_high', shape=[1, 11, 10], dtype='float32')
+           anchors_low = fluid.data(
+               name='anchors_low', shape=[44, 4], dtype='float32')
+           anchors_high = fluid.data(
+               name='anchors_high', shape=[11, 4], dtype='float32')
+           im_info = fluid.data(
+               name="im_info", shape=[1, 3], dtype='float32')
+           nmsed_outs = fluid.layers.retinanet_detection_output(
+                                          bboxes=[bboxes_low, bboxes_high],
+                                          scores=[scores_low, scores_high],
+                                          anchors=[anchors_low, anchors_high],
+                                          im_info=im_info,
+                                          score_threshold=0.05,
+                                          nms_top_k=1000,
+                                          keep_top_k=100,
+                                          nms_threshold=0.45,
+                                          nms_eta=1.)
     """
 
     helper = LayerHelper('retinanet_detection_output', **locals())
@@ -2786,9 +2980,10 @@ def multiclass_nms(bboxes,
                            N is the batch size. Each bounding box has four
                            coordinate values and the layout is 
                            [xmin, ymin, xmax, ymax], when box size equals to 4.
+                           The data type is float32 or float64.
                            2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]
                            M is the number of bounding boxes, C is the 
-                           class number   
+                           class number. The data type is float32 or float64.   
         scores (Variable): Two types of scores are supported:
                            1. (Tensor) A 3-D Tensor with shape [N, C, M]
                            represents the predicted confidence predictions.
@@ -2796,11 +2991,11 @@ def multiclass_nms(bboxes,
                            number of bounding boxes. For each category there 
                            are total M scores which corresponding M bounding
                            boxes. Please note, M is equal to the 2nd dimension
-                           of BBoxes.
+                           of BBoxes.The data type is float32 or float64. 
                            2. (LoDTensor) A 2-D LoDTensor with shape [M, C].
                            M is the number of bbox, C is the class number.
                            In this case, input BBoxes should be the second
-                           case with shape [M, C, 4].
+                           case with shape [M, C, 4].The data type is float32 or float64. 
         background_label (int): The index of background label, the background 
                                 label will be ignored. If set to -1, then all
                                 categories will be considered. Default: 0
@@ -2818,7 +3013,7 @@ def multiclass_nms(bboxes,
         name(str): Name of the multiclass nms op. Default: None.
 
     Returns:
-        Out(Variable): A 2-D LoDTensor with shape [No, 6] represents the detections.
+        Variable: A 2-D LoDTensor with shape [No, 6] represents the detections.
              Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
              or A 2-D LoDTensor with shape [No, 10] represents the detections.
              Each row has 10 values: 
@@ -2835,9 +3030,9 @@ def multiclass_nms(bboxes,
 
 
             import paddle.fluid as fluid
-            boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
+            boxes = fluid.data(name='bboxes', shape=[None,81, 4],
                                       dtype='float32', lod_level=1)
-            scores = fluid.layers.data(name='scores', shape=[81],
+            scores = fluid.data(name='scores', shape=[None,81],
                                       dtype='float32', lod_level=1)
             out = fluid.layers.multiclass_nms(bboxes=boxes,
                                               scores=scores,

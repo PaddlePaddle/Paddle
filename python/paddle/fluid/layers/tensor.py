@@ -35,17 +35,18 @@ __all__ = [
 
 def create_tensor(dtype, name=None, persistable=False):
     """
-    Create an variable, which will hold a LoDTensor with data type dtype.
+    Create a variable, which will hold a Tensor with data type dtype.
 
     Args:
-        dtype(string): 'float32'|'int32'|..., the data type of the
-            created tensor.
-        name(string): The name of the created tensor, if not set,
-            the name will be a random unique one.
+        dtype(string|numpy.dtype): the data type of Tensor to be created, the
+            data type is bool, float16, float32, float64, int8, int16, int32 and int64.
+        name(string, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
         persistable(bool): Set the persistable flag of the create tensor.
+            default value is False.
 
     Returns:
-        Variable: The tensor variable storing the created tensor.
+        Variable: The tensor to be created according to dtype.
 
     Examples:
         .. code-block:: python
@@ -65,24 +66,26 @@ def create_parameter(shape,
                      is_bias=False,
                      default_initializer=None):
     """
-    Create a parameter. The parameter is a learnable variable, which can have
+    This function creates a parameter. The parameter is a learnable variable, which can have
     gradient, and can be optimized.
 
     NOTE: this is a very low-level API. This API is useful when you create
     operator by your self. instead of using layers.
 
-    Args:
-        shape(list[int]): shape of the parameter
-        dtype(string): element type of the parameter
-        attr(ParamAttr): attributes of the parameter
-        is_bias(bool): This can affect which default initializer is chosen
+    Parameters:
+        shape (list of int): Shape of the parameter
+        dtype (str): Data type of the parameter
+        name (str, optional): For detailed information, please refer to
+           :ref:`api_guide_Name` . Usually name is no need to set and None by default.
+        attr (ParamAttr, optional): Attributes of the parameter
+        is_bias (bool, optional): This can affect which default initializer is chosen
                        when default_initializer is None. If is_bias,
                        initializer.Constant(0.0) will be used. Otherwise,
                        Xavier() will be used.
-        default_initializer(Initializer): initializer for the parameter
+        default_initializer (Initializer, optional): Initializer for the parameter
 
     Returns:
-        the created parameter.
+        The created parameter.
 
     Examples:
         .. code-block:: python
@@ -105,23 +108,22 @@ def create_global_var(shape,
                       force_cpu=False,
                       name=None):
     """
-    Create a new tensor variable with value in the global block(block 0).
+    This function creates a new tensor variable with value in the global block(block 0).
 
-    Args:
-        shape(list[int]): shape of the variable
-        value(float): the value of the variable. The new created
+    Parameters:
+        shape (list of int): Shape of the variable
+        value (float): The value of the variable. The new created
                       variable will be filled with it.
-        dtype(string): data type of the variable
-        persistable(bool): if this variable is persistable.
+        dtype (str): Data type of the variable
+        persistable (bool, optional): If this variable is persistable.
                            Default: False
-        force_cpu(bool): force this variable to be on CPU.
+        force_cpu (bool, optional): Force this variable to be on CPU.
                          Default: False
-        name(str|None): The name of the variable. If set to None the variable
-                        name will be generated automatically.
-                        Default: None
+        name (str, optional): For detailed information, please refer to
+           :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
-        Variable: the created Variable
+        Variable: The created Variable
 
     Examples:
         .. code-block:: python
@@ -416,28 +418,35 @@ def assign(input, output=None):
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     """
-    **fill_constant**
-
-    This function creates a tensor with specified `shape` and `dtype`, and
+    This OP creates a Tensor with specified `shape` and `dtype`, and
     initializes it with a constant specifed by `value`.
 
-    The attribute `stop_gradient` of the created tensor is set to True.
+    The attribute `stop_gradient` of the created Tensor is setted to True.
 
     Args:
-        shape(tuple|list|None): Shape of the output tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor.
-        value(float): The constant value used to initialize the output tensor.
-        out(Variable): The output tensor.
-        force_cpu(True|False): data should be on CPU if set true.
+        shape(tuple|list): Shape of the Tensor to be created.
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
+            be float16, float32, float64, int32, int64.
+        value(float): The constant value used to initialize the Tensor to be created.
+        force_cpu(True): data should be on CPU if it's true, defalut value is False.
+        out(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of operation.
+            if out is None, a new Varibale will be create to store the result.
 
     Returns:
-        Variable: The tensor variable storing the output.
+        Variable: Tensor which is created according to shape and dtype.
+
+    Raise:
+        TypeError: The dtype must be one of bool, float16, float32, float64, int32 and int64
+        and the data type of out Tensor must be the same as the dtype. 
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.fill_constant(shape=[1], value=0, dtype='int64')
+          data1 = fluid.layers.fill_constant(shape=[2,1], value=0, dtype='int64') #data1=[[0],[0]]
+          data2 = fluid.layers.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1) 
+          #data1=[[5], [5]] data2=[[5], [5]]
     """
 
     helper = LayerHelper("fill_constant", **locals())
@@ -479,34 +488,36 @@ def fill_constant_batch_size_like(input,
                                   input_dim_idx=0,
                                   output_dim_idx=0):
     """
-    ${comment}
-
-    It also sets *stop_gradient* to True.
+    This OP creates a Tesnor accroding the shape and dtype, and initializes the
+    Tensor with the constants provided in ``value``. When the input is LoDTensor
+    and the input_dim_idx is 0, the output_dim_idx dimension is set to the value
+    of the batch_size input by the input, the Stop_gradient attribute of the created
+    Tensor is False by default.
 
     Args:
-        input(${input_type}): ${input_comment}.
-
-        shape(${shape_type}): ${shape_comment}.
-
-        dtype(${dtype_type}): ${dtype_comment}.
-
-        value(${value_type}): ${value_comment}.
-
-        input_dim_idx(${input_dim_idx_type}): ${input_dim_idx_comment}.
-
-        output_dim_idx(${output_dim_idx_type}): ${output_dim_idx_comment}.
+        input(Variable): Tensor which data type is float32, float64, int32 and int64.
+        shape(list): The shape of Tensor to be created, Tensor's shape may be changed
+            according the input.
+        dtype(np.dtype|core.VarDesc.VarType|str): The data type of created Tensor which
+            can be float32, float64, int32, int64.
+        value(float|int): The constant value used to initialize the Tensor to be created. 
+        input_dim_idx(int): When the value is 0 and the input is LoDTensor, the output_dim_idx
+            dimension of the created Tensor is set to the batch_size value of input.
+            The default value is 0.
+        output_dim_idx(int): Used to specify which dimension of Tensor is created to be set
+            the value of batch_size of input Tensor. The default value is 0.
 
     Returns:
-        ${out_comment}.
+        Variable: Tensor which will be created according to dtype.
 
     Examples:
 
         .. code-block:: python
 
              import paddle.fluid as fluid
-             like = fluid.layers.data(name='like', shape=[1], dtype='float32')
+             like = fluid.layers.fill_constant(shape=[1,2], value=10, dtype='int64') #like=[[10, 10]]
              data = fluid.layers.fill_constant_batch_size_like(
-                         input=like, shape=[1], value=0, dtype='int64')
+                    input=like, shape=[1], value=0, dtype='int64') #like=[[10, 10]] data=[0]
 
     """
     helper = LayerHelper("fill_constant_batch_size_like", **locals())
@@ -894,10 +905,10 @@ def has_inf(x):
     Test if any of x contains an infinity number
 
     Args:
-       x(variable): The Tensor/LoDTensor to be checked.
+       x (Variable): The Tensor/LoDTensor to be checked.
 
     Returns:
-        Variable: The tensor variable storing the output, only a bool value.
+       Variable: The tensor variable storing the output, only a bool value, indicating that whether there is infinity number in x or not.
     
     Examples:
         .. code-block:: python
@@ -918,10 +929,10 @@ def has_nan(x):
     Test if any of x contains a NAN
 
     Args:
-       x(variable): The Tensor/LoDTensor to be checked.
+       x (Variable): The Tensor/LoDTensor to be checked.
 
     Returns:
-        Variable: The tensor variable storing the output, only a bool value.
+       Variable: The tensor variable storing the output, only a bool value, indicating that whether there is NAN in x or not.
     
     Examples:
         .. code-block:: python
@@ -1017,18 +1028,21 @@ def range(start, end, step, dtype):
 
 def linspace(start, stop, num, dtype):
     """
-    Return fixed number of evenly spaced values within a given interval.
-
-    First entry is start, and last entry is stop. In the case when Num is 1, only Start is returned. Like linspace function of numpy.
+    This OP return fixed number of evenly spaced values within a given interval.
 
     Args:
-        start(float|Variable): First entry in the sequence. It is a float scalar, or a tensor of shape [1] with type 'float32'|'float64'.
-        stop(float|Variable): Last entry in the sequence. It is a float scalar, or a tensor of shape [1] with type 'float32'|'float64'.
-        num(int|Variable): Number of entry in the sequence. It is an int scalar, or a tensor of shape [1] with type int32.
-        dtype(string): 'float32'|'float64', the data type of the output tensor.
+        start(float|Variable): The input :attr:`start` is start variable of range. It is a float scalar, \
+            or a tensor of shape [1] with input data type float32, float64.
+        stop(float|Variable): The input :attr:`stop` is start variable of range. It is a float scalar, \
+            or a tensor of shape [1] with input data type float32, float64.
+        num(int|Variable): The input :attr:`num` is given num of the sequence. It is an int scalar, \
+            or a tensor of shape [1] with type int32.
+        dtype(string): The data type of output tensor, it could be 'float32' and 'float64'.
 
     Returns:
-        Variable: The tensor variable storing a 1-D tensor. 
+        Variable, the output data type will be float32, float64.: The 1-D tensor with fixed number of evenly spaced values, \
+        the data shape of this tensor is :math:`[num]` . If the :attr:`num` is set 1, the output tensor just has \
+        the value with input :attr:`start`. 
 
     Examples:
         .. code-block:: python
@@ -1060,23 +1074,24 @@ def linspace(start, stop, num, dtype):
 
 def zeros_like(x, out=None):
     """
-    **zeros_like**
-
-    This function creates a zeros tensor which has identical shape and dtype 
+    This OP creates a zeros tensor which has identical shape and dtype 
     with `x`.
 
     Args:
-        x(Variable): The input tensor which specifies shape and dtype.
-        out(Variable): The output tensor.
+        x(Variable): The input tensor which specifies shape and dtype, the input data dtype could be bool, float32, float64, int32, int64.
+        out(Variable, optional): If is :attr:`None` , the op will create the variable as output, the data type and shape of \
+            this variable will be same as input :attr:`x`. If is a tensor, the data type and shape need to be same as input :attr:`x`. 
+            The defalut value is :attr:`None` .
 
     Returns:
-        Variable: The tensor variable storing the output.
+        Variable: The N-D tensor, the element in tensor is related to input data type, if the input data type is bool, \
+            the output value is False, otherwise is zero. The output shape is the same as the input.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          x = fluid.layers.data(name='x', dtype='float32', shape=[3], append_batch_size=False)
+          x = fluid.data(name='x', dtype='float32', shape=[3])
           data = fluid.layers.zeros_like(x) # [0.0, 0.0, 0.0]
 
     """
@@ -1092,15 +1107,15 @@ def zeros_like(x, out=None):
 
 def diag(diagonal):
     """
-    **diag**
-
-    This function creates a square matrix which has diagonal values specified by `diagonal`.
+    This OP creates a square matrix which has diagonal values specified by input :attr:`diagonal`.
 
     Args:
-        diagonal(Variable|numpy.ndarray): The input tensor specifying diagonal values, should be of rank 1.
+        diagonal(Variable|numpy.ndarray): The input tensor should be 1D tensor, the input shape is :math:`[ N]` , \
+            specifying diagonal values by this input tensor. The input data type should be float32, float64, int32, int64.
 
     Returns:
-        Variable: The tensor variable storing the square matrix.
+        Variable, the output data type is the same as input data type.: The tensor variable storing the square matrix, \
+            the diagonal values specified by input :attr:`diagonal`. the output shape is :math:`[N, N]` with two dims.
 
     Examples:
         .. code-block:: python
@@ -1111,7 +1126,9 @@ def diag(diagonal):
 
           import paddle.fluid as fluid
           import numpy as np
-          data = fluid.layers.diag(np.arange(3, 6, dtype='int32')) 
+          diagonal = np.arange(3, 6, dtype='int32')
+          data = fluid.layers.diag(diagonal)
+          # diagonal.shape=(3,) data.shape=(3, 3)
 
     """
 
