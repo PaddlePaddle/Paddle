@@ -68,6 +68,10 @@ class TestAccuracyOpError(OpTest):
             # The input dtype of accuracy_op must be float32 or float64.
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
             self.assertRaises(TypeError, fluid.layers.accuracy, x2)
+            x3 = fluid.layers.data(name='input', shape=[-1, 2], dtype="float16")
+            label = fluid.layers.data(
+                name='label', shape=[-1, 1], dtype="int32")
+            fluid.layers.accuracy(input=x3, label=label)
 
 
 if __name__ == '__main__':
