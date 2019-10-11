@@ -273,7 +273,8 @@ class Conv3D(layers.Layer):
 
     The convolution3D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input(Input) and
-    Output(Output) are in NCDHW format. Where N is batch size C is the number of
+    Output(Output) are multidimensional tensors with a shape of 
+    :math:`[N, C, D, H, W]` . Where N is batch size, C is the number of
     channels, D is the depth of the feature, H is the height of the feature,
     and W is the width of the feature. Convlution3D is similar with Convlution2D
     but adds one dimension(depth). If bias attribution and activation type are
@@ -288,7 +289,7 @@ class Conv3D(layers.Layer):
 
     In the above equation:
 
-    * :math:`X`: Input value, a tensor with NCDHW format.
+    * :math:`X`: Input value, a tensor with NCDHW or NDHWC format.
     * :math:`W`: Filter value, a tensor with MCDHW format.
     * :math:`\\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D tensor with shape [M, 1].
@@ -317,45 +318,46 @@ class Conv3D(layers.Layer):
     Parameters:
         name_scope(str) : The name for this class.
         num_filters(int): The number of filter. It is as same as the output image channel.
-        filter_size (int|tuple|None): The filter size. If filter_size is a tuple,
+        filter_size (int|tuple, optional): The filter size. If filter_size is a tuple,
             it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square.
-        stride (int|tuple): The stride size. If stride is a tuple, it must
+            Otherwise, the filter will be a square, filter_size_depth = filter_size_height
+            = filter_size_width = filter_size.
+        stride (int|tuple, optional): The stride size. If stride is a tuple, it must
             contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
-            stride_D = stride_H = stride_W = stride. Default: stride = 1.
-        padding (int|tuple): The padding size. If padding is a tuple, it must
+            stride_D = stride_H = stride_W = stride. The default value is 1.
+        padding (int|tuple, optional): The padding size. If padding is a tuple, it must
             contain three integers, (padding_D, padding_H, padding_W). Otherwise, the
-            padding_D = padding_H = padding_W = padding. Default: padding = 0.
-        dilation (int|tuple): The dilation size. If dilation is a tuple, it must
+            padding_D = padding_H = padding_W = padding. The default value is 0.
+        dilation (int|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
-            dilation_D = dilation_H = dilation_W = dilation. Default: dilation = 1.
-        groups (int): The groups number of the Conv3d Layer. According to grouped
+            dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
+        groups (int, optional): The groups number of the Conv3d Layer. According to grouped
             convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
             the first half of the filters is only connected to the first half
             of the input channels, while the second half of the filters is only
-            connected to the second half of the input channels. Default: groups=1
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            connected to the second half of the input channels. The default value is 1.
+        param_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv3d. If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as param_attr. If it is set to None, the parameter
             is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
-            :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv3d.
+            :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
+        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv3d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv3d
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-            is not set, the bias is initialized zero. Default: None.
-        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
-            library is installed. Default: True
-        act (str): Activation type, if it is set to None, activation is not appended.
-            Default: None.
+            is not set, the bias is initialized zero. The default value is None.
+        use_cudnn (bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. The default value is True.
+        act (str, optional): Activation type, if it is set to None, activation is not appended.
+            The default value is None.
 
-    Attributes:
-        weight (Parameter): the learnable weights of filters of this layer.
-        bias (Parameter|None): the learnable bias of this layer.
+    Attribute:
+        **weight** (Parameter): the learnable weights of filters of this layer.
+
+        **bias** (Parameter): the learnable bias of this layer.
 
     Returns:
-        Variable: The tensor variable storing the convolution and \
-                  non-linearity activation result.
+        None.
 
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
@@ -533,58 +535,85 @@ class Conv3DTranspose(layers.Layer):
 
         .. math::
 
-           D_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\\\
-           H_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\\\
-           W_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1
+           D^\prime_{out} &= (D_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (D_f - 1) + 1 \\\\
+           H^\prime_{out} &= (H_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (H_f - 1) + 1 \\\\
+           W^\prime_{out} &= (W_{in} - 1) * strides[2] - 2 * paddings[2] + dilations[2] * (W_f - 1) + 1 \\\\
+           D_{out} &\in [ D^\prime_{out}, D^\prime_{out} + strides[0] ] \\\\
+           H_{out} &\in [ H^\prime_{out}, H^\prime_{out} + strides[1] ] \\\\
+
+    **Note**:
+
+          The conv3d_transpose can be seen as the backward of the conv3d. For conv3d, 
+          when stride > 1, conv3d maps multiple input shape to the same output shape, 
+          so for conv3d_transpose, when stride > 1, input shape maps multiple output shape.
+          If output_size is None, :math:`H_{out} = H^\prime_{out}, :math:`H_{out} = \
+          H^\prime_{out}, W_{out} = W^\prime_{out}`; else, the :math:`D_{out}` of the output 
+          size must between :math:`D^\prime_{out}` and :math:`D^\prime_{out} + strides[0]`, 
+          the :math:`H_{out}` of the output size must between :math:`H^\prime_{out}` 
+          and :math:`H^\prime_{out} + strides[1]`, and the :math:`W_{out}` of the output size must 
+          between :math:`W^\prime_{out}` and :math:`W^\prime_{out} + strides[2]`, 
+          conv3d_transpose can compute the kernel size automatically.
+
 
     Parameters:
         name_scope(str) : The name for this class.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
-        output_size(int|tuple|None): The output image size. If output size is a
-            tuple, it must contain three integers, (image_D, image_H, image_W). This
-            parameter only works when filter_size is None.
-        filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
+        output_size(int|tuple, optional): The output image size. If output size is a
+            tuple, it must contain three integers, (image_depth, image_height, image_width). This
+            parameter only works when filter_size is None. If output_size and filter_size are 
+            specified at the same time, They should follow the formula above. The default value is None.
+            Output_size and filter_size should not be None at the same time.
+        filter_size(int|tuple, optional): The filter size. If filter_size is a tuple,
             it must contain three integers, (filter_size_D, filter_size_H, filter_size_W).
             Otherwise, the filter will be a square. None if use output size to
-            calculate filter_size.
-        padding(int|tuple): The padding size. If padding is a tuple, it must
-            contain three integers, (padding_D, padding_H, padding_W). Otherwise, the
-            padding_D = padding_H = padding_W = padding. Default: padding = 0.
-        stride(int|tuple): The stride size. If stride is a tuple, it must
-            contain three integers, (stride_D, stride_H, stride_W). Otherwise, the
-            stride_D = stride_H = stride_W = stride. Default: stride = 1.
-        dilation(int|tuple): The dilation size. If dilation is a tuple, it must
+            calculate filter_size. The default value is None.
+        padding(int|tuple, optional): The padding size. The padding argument effectively
+             adds `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a string,
+             either 'VALID' or 'SAME' supported, which is the padding algorithm. If `padding`
+             is a tuple or list, it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+            `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            and when `data_format` is `'NCDHW'`, `padding` can be in the form
+            `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
+            when `data_format` is `'NDHWC'`, `padding` can be in the form
+            `[[0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+            The default value is 0.
+        stride(int|tuple, optional): The stride size. It means the stride in transposed convolution. 
+            If stride is a tuple, it must contain three integers, (stride_depth, stride_height, 
+            stride_width). Otherwise, stride_depth = stride_height = stride_width = stride. 
+            The default value is 1.
+        dilation(int|tuple, optional): The dilation size. If dilation is a tuple, it must
             contain three integers, (dilation_D, dilation_H, dilation_W). Otherwise, the
-            dilation_D = dilation_H = dilation_W = dilation. Default: dilation = 1.
-        groups(int): The groups number of the Conv3d transpose layer. Inspired by
+            dilation_D = dilation_H = dilation_W = dilation. The default value is 1.
+        groups(int, optional): The groups number of the Conv3d transpose layer. Inspired by
             grouped convolution in Alex Krizhevsky's Deep CNN paper, in which
             when group=2, the first half of the filters is only connected to the
             first half of the input channels, while the second half of the
             filters is only connected to the second half of the input channels.
-            Default: groups=1
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
+            The default value is 1.
+        param_attr (ParamAttr, optional): The parameter attribute for learnable parameters/weights
             of conv3d_transpose. If it is set to None or one attribute of ParamAttr, conv3d_transpose
             will create ParamAttr as param_attr. If the Initializer of the param_attr
-            is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of conv3d_transpose.
+            is not set, the parameter is initialized with Xavier. The default value is None.
+        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of conv3d_transpose.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv3d_transpose
             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-            is not set, the bias is initialized zero. Default: None.
-        use_cudnn(bool): Use cudnn kernel or not, it is valid only when the cudnn
-            library is installed. Default: True
-        act (str): Activation type, if it is set to None, activation is not appended.
-            Default: None.
-        name(str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
+            is not set, the bias is initialized zero. The default value is None.
+        use_cudnn(bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
+            library is installed. The default value is True.
+        act (str, optional): Activation type, if it is set to None, activation is not appended.
+            The default value is None.
+        name(str, optional): The default value is None. Normally there is no need for user 
+            to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
-    Attributes:
-        weight (Parameter): the learnable weights of filters of this layer.
-        bias (Parameter|None): the learnable bias of this layer.
+    Attribute:
+        **weight** (Parameter): the learnable weights of filters of this layer.
+
+        **bias** (Parameter): the learnable bias of this layer.
 
     Returns:
-        Variable: The tensor variable storing the convolution transpose result.
+        None.
 
     Raises:
         ValueError: If the shapes of input, filter_size, stride, padding and
@@ -1328,29 +1357,72 @@ class Embedding(layers.Layer):
     """
     **Embedding Layer**
 
-    This layer is used to lookup embeddings of IDs, provided by :attr:`input`, in
-    a lookup table. The result of this lookup is the embedding of each ID in the
-    :attr:`input`.
-    All the input variables are passed in as local variables to the LayerHelper constructor
+    This interface is used to construct a callable object of the ``Embedding`` class.
+    For specific usage, refer to code examples. It implements the function of the Embedding Layer.
+    This layer is used to lookup embeddings vector of ids provided by :attr:`input` .
+    It automatically constructs a 2D embedding matrix based on the
+    input :attr:`size` (vocab_size, emb_size) and :attr:`dtype` .
+
+    This layer requires the last dimension of Tensor shape must be equal to 1. The shape
+    of output Tensor is generated by replacing the last dimension of the input Tensor shape
+    with emb_size.
+
+    The id in :attr:`input` must satisfy :math:`0 =< id < size[0]` , 
+    otherwise the program will throw an exception and exit.
+
+    .. code-block:: text
+
+        Case 1:
+
+        input is a Tensor. padding_idx = -1
+            input.data = [[[1], [3]], [[2], [4]], [[4], [127]]]
+            input.shape = [3, 2, 1]
+        Given size = [128, 16]
+        output is a Tensor:
+            out.shape = [3, 2, 16]
+            out.data = [[[0.129435295, 0.244512452, ..., 0.436322452],
+                        [0.345421456, 0.524563927, ..., 0.144534654]],
+
+                        [[0.345249859, 0.124939536, ..., 0.194353745],
+                        [0.945345345, 0.435394634, ..., 0.435345365]],
+                        
+                        [[0.945345345, 0.435394634, ..., 0.435345365],
+                        [0.0,         0.0,         ..., 0.0        ]]]  # padding data
+        The input padding_idx is less than 0, it is automatically converted to padding_idx = -1 + 128 = 127
+        It will pad all-zero data when ids is 127.
 
     Parameters:
         name_scope(str): The name of this class.
         size(tuple|list): The shape of the look up table parameter. It should have two elements which indicate the size
             of the dictionary of embeddings and the size of each embedding vector respectively.
-        is_sparse(bool): The flag indicating whether to use sparse update. Default: False
-        is_distributed(bool): Whether to run lookup table from remote parameter server. Default: False.
-        padding_idx(int|long|None): If :attr:`None`, it makes no effect to lookup.
-            Otherwise the given :attr:`padding_idx` indicates padding the output with zeros whenever lookup encounters
-            it in :attr:`input`. If :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is :math:`size[0] + dim`. Default: None.
-        param_attr(ParamAttr): Parameters for this layer. Default: None.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc. Default: 'float32'.
+        is_sparse(bool): The flag indicating whether to use sparse update. This parameter only
+            affects the performance of the backwards gradient update. It is recommended to set 
+            True because sparse update is faster. But some optimizer does not support sparse update,
+            such as :ref:`api_fluid_optimizer_AdadeltaOptimizer` , :ref:`api_fluid_optimizer_AdamaxOptimizer` , 
+            :ref:`api_fluid_optimizer_DecayedAdagradOptimizer` , :ref:`api_fluid_optimizer_FtrlOptimizer` ,
+            :ref:`api_fluid_optimizer_LambOptimizer` and :ref:`api_fluid_optimizer_LarsMomentumOptimizer` .
+            In these case, is_sparse must be False. Default: False.
+        is_distributed(bool): Whether to store the embedding matrix in a distributed manner. Only used
+            in multi-machine distributed CPU training. Default: False.
+        padding_idx(int|long|None): padding_idx needs to be in the interval [-vocab_size, vocab_size). 
+            If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
+            to :math:`vocab\_size + padding\_idx` . It will output all-zero padding data whenever lookup
+            encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
+            If set None, it makes no effect to output. Default: None.
+        param_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` . In addition,
+            user-defined or pre-trained word vectors can be loaded with the :attr:`param_attr` parameter. 
+            The local word vector needs to be transformed into numpy format, and the shape of local word
+            vector shoud be consistent with :attr:`size` . Then :ref:`api_fluid_initializer_NumpyArrayInitializer`
+            is used to load custom or pre-trained word vectors. See code example 2 for details.
+        dtype(np.dtype|core.VarDesc.VarType|str): It refers to the data type of output Tensor.
+            It must be "float32" or "float64". Default: "float32".
 
-    Attributes:
-        weight (Parameter): the learnable weights of this layer.
+    Attribute:
+        **weight** (Parameter): the learnable weights of this layer.
 
     Returns:
-        Variable: The tensor variable storing the embeddings of the \
-                  supplied inputs.
+        Variable: Embedding Tensor or LoDTensor mapped by input. The data type is the same as :attr:`dtype` .
 
     Examples:
 
@@ -1360,6 +1432,7 @@ class Embedding(layers.Layer):
           import paddle.fluid.dygraph.base as base
           import numpy as np
 
+          # example 1
           inp_word = np.array([[[1]]]).astype('int64')
           dict_size = 20
           with fluid.dygraph.guard():
@@ -1369,6 +1442,21 @@ class Embedding(layers.Layer):
                   param_attr='emb.w',
                   is_sparse=False)
               static_rlt3 = emb(base.to_variable(inp_word))
+
+          # example 2: load custom or pre-trained word vectors
+          weight_data = np.random.random(size=(128, 100))  # word vectors with numpy format
+          w_param_attrs = fluid.ParamAttr(
+              name="emb_weight",
+              learning_rate=0.5,
+              initializer=fluid.initializer.NumpyArrayInitializer(weight_data),
+              trainable=True)
+          with fluid.dygraph.guard():
+              emb = fluid.dygraph.Embedding(
+                  name_scope='embedding',
+                  size=[128, 100],
+                  param_attr= w_param_attrs,
+                  is_sparse=False)
+              static_rlt3 = emb(base.to_variable(inp_word))          
     """
 
     def __init__(self,
@@ -1567,10 +1655,11 @@ class LayerNorm(layers.Layer):
 class GRUUnit(layers.Layer):
     """
     **GRU unit layer**
-
-    if origin_mode is True, then the equation of a gru step is from paper
-    `Learning Phrase Representations using RNN Encoder-Decoder for Statistical
-    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`
+    
+    It creates a callable object from GRUUnit class.
+    If origin_mode is True, then the equation of a gru step is from paper
+    `Learning Phrase Representations using RNN Encoder-Decoder for Statistical 
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
 
         .. math::
             u_t & = actGate(xu_{t} + W_u h_{t-1} + b_u)
@@ -1581,7 +1670,7 @@ class GRUUnit(layers.Layer):
 
             h_t & = dot(u_t, h_{t-1}) + dot((1-u_t), m_t)
 
-    if origin_mode is False, then the equation of a gru step is from paper
+    If origin_mode is False, then the equation of a gru step is from paper
     `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
     Modeling <https://arxiv.org/pdf/1412.3555.pdf>`_
 
@@ -1610,39 +1699,46 @@ class GRUUnit(layers.Layer):
     Parameters:
         name_scope(str): The name of this class.
         size (int): The input dimension value.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
-            hidden-hidden weight matrix. Note:
+        param_attr(ParamAttr, optional): The parameter attribute for the learnable
+            hidden-hidden weight matrix. 
+            
+            **Note**:
+    
+                1. The shape of the weight matrix is :math:`[T, 3*D]`, where D is the hidden size.
+                2. All elements in the weight matrix can be divided into two parts. The first 
+                   part are weights of the update gate and reset gate with shape :math:`[D, 2*D]`, 
+                   and the second part are weights for candidate hidden state with shape :math:`[D, D]`.
 
-            - The shape of the weight matrix is :math:`(T \\times 3D)`, where
-              :math:`D` is the hidden size.
-            - All elements in the weight matrix can be divided into two parts.
-              The first part are weights of the update gate and reset gate with
-              shape :math:`(D \\times 2D)`, and the second part are weights for
-              candidate hidden state with shape :math:`(D \\times D)`.
 
             If it is set to None or one attribute of ParamAttr, gru_unit will
             create ParamAttr as param_attr. If the Initializer of the param_attr
-            is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias
-            of GRU.Note that the bias with :math:`(1 \\times 3D)` concatenates
+            is not set, the parameter is initialized with Xavier. The default 
+            value is None.
+        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias
+            of GRU.Note that the bias with :math:`[1, 3*D]` concatenates
             the bias in the update gate, reset gate and candidate calculations.
             If it is set to False, no bias will be applied to the update gate,
             reset gate and candidate calculations. If it is set to None or one
             attribute of ParamAttr, gru_unit will create ParamAttr as
             bias_attr. If the Initializer of the bias_attr is not set, the bias
-            is initialized zero. Default: None.
+            is initialized zero. The default value is None.
         activation (str): The activation type for cell (actNode).
-                             Default: 'tanh'
+                             The default value is 'tanh'.
         gate_activation (str): The activation type for gates (actGate).
-                                  Default: 'sigmoid'
-        dtype(str): The dtype of the layers. Default: 'float32'
+                                  The default value is 'sigmoid'.
+        dtype(str): The dtype of the layers. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
 
-    Attributes:
-        weight (Parameter): the learnable weights of this layer.
-        bias (Parameter): the learnable bias of this layer.
+    Attribute:
+        **weight** (Parameter): the learnable weights of this layer.
+
+        **bias** (Parameter): the learnable bias of this layer.
 
     Returns:
-        tuple: The hidden value, reset-hidden value and gate values.
+        tuple: The hidden value, reset-hidden value and gate values. The hidden value
+        is a 2-D tensor with shape  :math:`[T, D]` . The reset-hidden value is a
+        2-D tensor with shape  :math:`[T, D]` . The gate value is a 2-D tensor with 
+        shape  :math:`[T, 3*D]`.
 
     Examples:
 
@@ -1656,6 +1752,7 @@ class GRUUnit(layers.Layer):
           D = 5
           T = sum(lod[0])
 
+          input = numpy.random.rand(T, 3 * D).astype('float32')
           hidden_input = numpy.random.rand(T, D).astype('float32')
           with fluid.dygraph.guard():
               x = numpy.random.random((3, 32, 32)).astype('float32')
@@ -2085,22 +2182,24 @@ class BilinearTensorProduct(layers.Layer):
      - :math:`y`: the second input contains N elements, shape is [batch_size, N].
      - :math:`W_{i}`: the i-th learned weight, shape is [M, N]
      - :math:`out_{i}`: the i-th element of out, shape is [batch_size, size].
-     - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
+     - :math:`y^\mathrm{T}`: the transpose of :math:`y`.
 
     Parameters:
        name_scope(str): The name of this class.
        size (int): The dimension of this layer.
-       act (str): Activation to be applied to the output of this layer. Default: None.
-       name (str): The name of this layer. Default: None.
-       param_attr (ParamAttr): The parameter attribute for the learnable w.
-           parameters/weights of this layer. Default: None.
-       bias_attr (ParamAttr): The parameter attribute for the bias
+       name (str): The default value is None. Normally there is no need for user 
+           to set this property. For more information, please refer to :ref:`api_guide_Name`.
+       act (str, optional): Activation to be applied to the output of this layer. The default value is None.
+       param_attr (ParamAttr, optional): The parameter attribute for the learnable w, parameters/weights of 
+           this layer. The default value is None.
+       bias_attr (ParamAttr, optional): The parameter attribute for the bias
            of this layer. If it is set to False, no bias will be added to the output units.
-           If it is set to None, the bias is initialized zero. Default: None.
+           If it is set to None, the bias is initialized zero. The default value is None.
 
-    Attributes:
-        weight (Parameter): the learnable weights of this layer.
-        bias (Parameter|None): the learnable bias of this layer.
+    Attribute:
+        **weight** (Parameter): the learnable weights of this layer.
+
+        **bias** (Parameter): the learnable bias of this layer.
 
     Returns:
        Variable: A 2-D Tensor of shape [batch_size, size].

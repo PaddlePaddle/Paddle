@@ -2297,11 +2297,11 @@ class LambOptimizer(AdamOptimizer):
 
     ..  math::
 
-        m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t \\
+        m_t &= \\beta_1 m_{t - 1}+ (1 - \\beta_1)g_t 
 
-        v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2 \\
+        v_t &= \\beta_2 v_{t - 1}  + (1 - \\beta_2)g_t^2
 
-        r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon} \\
+        r_t &= \\frac{m_t}{\\sqrt{v_t}+\\epsilon}
 
         w_t &= w_{t-1} -\\eta_t \\frac{\\left \| w_{t-1}\\right \|}{\\left \| r_t + \\lambda w_{t-1}\\right \|} (r_t + \\lambda w_{t-1})
 
@@ -2310,25 +2310,28 @@ class LambOptimizer(AdamOptimizer):
     learning rate, :math:`\\lambda` the LAMB weight decay rate.
 
     Args:
-        learning_rate (float|Variable): the learning rate used to update parameters. \
-                                        Can be a float value or a Variable with one \
-                                        float value as data element.
-        lamb_weight_decay (float): The LAMB weight decay rate.
-        beta1 (float): The exponential decay rate for the 1st moment estimates.
-        beta2 (float): The exponential decay rate for the 2nd moment estimates.
-        epsilon (float): A small float value for numerical stability.
-        regularization (Regularizer): A Regularizer, such as
-                        fluid.regularizer.L1DecayRegularizer.
-        exclude_from_weight_decay_fn (function): Exclude a parameter from weight 
-            decay when **exclude_from_weight_decay_fn(parameter)** returns true.
-        name (str|None): An optional name prefix.
+        learning_rate (float|Variable, optional): the learning rate used to update parameters. \
+            Can be a float value or a Variable with data type float32. Default 0.001.
+        lamb_weight_decay (float, optional): The LAMB weight decay rate. Default 0.01.
+        beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
+            Default 0.9.
+        beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
+            Default 0.999.
+        epsilon (float, optional): A small float value for numerical stability. Default 1e-6.
+        regularization (Regularizer|None): A Regularizer, such as
+           fluid.regularizer.L1DecayRegularizer. Default None.
+        exclude_from_weight_decay_fn (function|None): Exclude a parameter from weight 
+            decay when **exclude_from_weight_decay_fn(parameter)** returns true. 
+            Default None.
+        name(str|None): For detailed information, please refer to 
+            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Examples:
         .. code-block:: python
             
             import paddle.fluid as fluid 
 
-            data = fluid.layers.data(name='x', shape=[5], dtype='float32')
+            data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
             hidden = fluid.layers.fc(input=data, size=10)
             cost = fluid.layers.mean(hidden)
 
@@ -2781,10 +2784,13 @@ class ExponentialMovingAverage(object):
 
 
     Args:
-	decay (float): The exponential decay rate, usually close to 1, such as 
-                       0.999, 0.9999, ... .
-        thres_steps (Variable|None): If not `None`, schedule the decay rate.
-	name (str|None): An optional name prefix.
+	decay (float, optional): The exponential decay rate, usually close to 1, such as 
+            0.999, 0.9999, ... . Default 0.999.
+        thres_steps (Variable|None): If not `None`, schedule the decay rate. 
+            Default None.
+        name (str|None): For detailed information, please refer to 
+            :ref:`api_guide_Name`. Usually name is no need to set and None by 
+            default.
 
 
     Examples:
@@ -2795,7 +2801,7 @@ class ExponentialMovingAverage(object):
 	    import paddle
 	    import paddle.fluid as fluid
 
-	    data = fluid.layers.data(name='x', shape=[5], dtype='float32')
+	    data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
 	    hidden = fluid.layers.fc(input=data, size=10)
 	    cost = fluid.layers.mean(hidden)
 
@@ -2953,7 +2959,8 @@ class ExponentialMovingAverage(object):
         
         Args:
             executor (Executor): The Executor to execute applying.
-            need_restore (bool): Whether to restore parameters after applying.
+            need_restore (bool, optional): Whether to restore parameters after 
+                applying. Default True.
         """
         executor.run(self.apply_program)
         try:
