@@ -586,7 +586,7 @@ paddle.fluid.dygraph.Layer.sublayers (ArgSpec(args=['self', 'include_sublayers']
 paddle.fluid.dygraph.Layer.train (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.__impl__ (ArgSpec(args=['func'], varargs=None, keywords=None, defaults=()), ('document', '75d1d3afccc8b39cdebf05cb1f5969f9'))
 paddle.fluid.dygraph.guard (ArgSpec(args=['place'], varargs=None, keywords=None, defaults=(None,)), ('document', '7071320ffe2eec9aacdae574951278c6'))
-paddle.fluid.dygraph.to_variable (ArgSpec(args=['value', 'block', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '0e69fa3666f15dd01b6e3e270b9371cd'))
+paddle.fluid.dygraph.to_variable (ArgSpec(args=['value', 'block', 'name'], varargs=None, keywords=None, defaults=(None, None)), ('document', '7df6297d66295bdc933e3982caa6f1a8'))
 paddle.fluid.dygraph.Conv2D ('paddle.fluid.dygraph.nn.Conv2D', ('document', '10915f3c643e232d9c6789ce20a96869'))
 paddle.fluid.dygraph.Conv2D.__init__ (ArgSpec(args=['self', 'name_scope', 'num_filters', 'filter_size', 'stride', 'padding', 'dilation', 'groups', 'param_attr', 'bias_attr', 'use_cudnn', 'act', 'dtype'], varargs=None, keywords=None, defaults=(1, 0, 1, None, None, None, True, None, 'float32')), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.Conv2D.add_parameter (ArgSpec(args=['self', 'name', 'parameter'], varargs=None, keywords=None, defaults=None), ('document', 'f35ab374c7d5165c3daf3bd64a5a2ec1'))
