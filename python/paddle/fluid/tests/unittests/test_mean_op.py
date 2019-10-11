@@ -43,17 +43,13 @@ class TestMeanOp(OpTest):
 class TestMeanOpError(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # The input type of sign_op must be Variable or numpy.ndarray.
+            # The input type of mean_op must be Variable.
             input1 = 12
             self.assertRaises(TypeError, fluid.layers.mean, input1)
-            # The input dtype of sign_op must be float32, float64, float16.
+            # The input dtype of mean_op must be float16, float32, float64.
             input2 = fluid.layers.data(
                 name='input2', shape=[12, 10], dtype="int32")
             self.assertRaises(TypeError, fluid.layers.mean, input2)
-            # The name of sign_op must be str.
-            input3 = fluid.layers.data(
-                name='input3', shape=[2, 1], dtype="float32")
-            self.assertRaises(TypeError, fluid.layers.mean, input3, name=1)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

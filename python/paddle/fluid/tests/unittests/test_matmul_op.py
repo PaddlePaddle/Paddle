@@ -117,10 +117,10 @@ class Generator(object):
 class TestMatmulOpError(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # The inputs type of sign_op must be Variable or numpy.ndarray.
+            # The inputs type of matmul_op must be Variable.
             input1 = 12
             self.assertRaises(TypeError, fluid.layers.matmul, input1, input1)
-            # The inputs dtype of sign_op must be float32, float64.
+            # The inputs dtype of matmul_op must be float32, float64.
             input2 = fluid.layers.data(
                 name='input2', shape=[12, 10], dtype="int32")
             self.assertRaises(TypeError, fluid.layers.matmul, input2, input2)

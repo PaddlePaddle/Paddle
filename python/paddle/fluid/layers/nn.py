@@ -6386,15 +6386,12 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         var_names = {'x': x, 'y': y}
         for name, val in var_names.items():
             if not isinstance(val, Variable):
-                if isinstance(val, np.ndarray):
-                    val = assign(val)
-                else:
-                    raise TypeError(
-                        "The type of %s in sign_op must be Variable or numpy.ndarray, but received %s."
-                        % (name, (type(val))))
+                raise TypeError(
+                    "The type of %s in matmul_op must be Variable, but received %s.\n"
+                    % (name, (type(val))))
             if convert_dtype(val.dtype) not in ['float32', 'float64']:
                 raise TypeError(
-                    "The data type of %s in sign_op must be float32 or float64, but received %s."
+                    "The data type of %s in matmul_op must be float32 or float64, but received %s.\n"
                     % (name, (convert_dtype(val.dtype))))
 
         x_shape = list(x.shape)
@@ -6411,8 +6408,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
             raise ValueError(
-                "The shape of the matrix does not satisfy "
-                "the multiplication prerequisites. x_shape: %s, y_shape: %s\n" %
+                "x_shape[-1] should be equal to y_shape[-2] for multiplication "
+                "prerequisites. But received x_shape: %s, y_shape: %s\n" %
                 (x_shape, y_shape))
 
         if len(y_shape) > 2 and len(x_shape) > 2:
@@ -6422,9 +6419,10 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
                     continue
                 if dim_x != y_shape[i]:
                     raise ValueError(
-                        "The shape of the matrix does not satisfy "
-                        "the multiplication prerequisites. x_shape: %s, y_shape: %s\n"
-                        % (x_shape, y_shape))
+                        "When the matrix is larger than 2 dimensions, the higher "
+                        "dimensional values of the two matrices need to be equal. "
+                        "But received x_shape[%d] != y_shape[%d]. x_shape: %s, "
+                        "y_shape: %s.\n" % (i, i, x_shape, y_shape))
 
     __check_input(x, y)
 
@@ -13389,22 +13387,14 @@ def mean(x, name=None):
     helper = LayerHelper("mean", **locals())
 
     if not isinstance(x, Variable):
-        if isinstance(x, np.ndarray):
-            x = assign(x)
-        else:
-            raise TypeError(
-                "The type of 'x' in sign_op must be Variable or numpy.ndarray, but received %s."
-                % (type(x)))
-
-    if convert_dtype(x.dtype) not in ['float32', 'float64', 'float16']:
         raise TypeError(
-            "The data type of 'x' in sign_op must be float32 or float64 or float16, but received %s."
+            "The type of 'x' in mean_op must be Variable, but received %s.\n" %
+            (type(x)))
+
+    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
+        raise TypeError(
+            "The data type of 'x' in mean_op must be float16 or float32 or float64, but received %s.\n"
             % (convert_dtype(x.dtype)))
-    if name is not None:
-        if not isinstance(name, str):
-            raise TypeError(
-                "The type of 'name' in matmul layer must be str, but received %s"
-                % (type(x)))
 
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
