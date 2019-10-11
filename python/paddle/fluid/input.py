@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import warnings
 from .framework import Variable, in_dygraph_mode
 from .layer_helper import LayerHelper
 from .data_feeder import convert_dtype

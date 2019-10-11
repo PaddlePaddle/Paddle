@@ -227,7 +227,7 @@ class TestEmbedOpError(OpTest):
 
             def test_input_dtype():
                 # the input dtype must be int64
-                input = fluid.data(name='x', shape=[4, 6], dtype='float32')
+                input = fluid.data(name='x1', shape=[4, 6], dtype='float32')
                 fluid.embedding(input=input, size=(10, 64))
 
             self.assertRaises(TypeError, test_input_dtype)
