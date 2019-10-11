@@ -15872,15 +15872,6 @@ def pixel_shuffle(x, upscale_factor):
  	    # print(output.shape)
 	    # (2L, 1L, 12L, 12L)
 
-	    # imperative mode
-     	    import paddle.fluid.dygraph as dg
-
-	    with dg.guard(place) as g:
-    		input = dg.to_variable(input_data)
-    		output = fluid.layers.pixel_shuffle(x=input, upscale_factor=3)
-		# print(output.shape)
-		# [2L, 1L, 12L, 12L]
-
     """
 
     helper = LayerHelper("pixel_shuffle", **locals())
