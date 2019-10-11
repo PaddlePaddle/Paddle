@@ -27,7 +27,7 @@ TEST(MultiHeadMatmulFusePass, basic) {
   Layers layers;
   auto* x = layers.data("x", {128, 768});
   auto out = layers.layer_norm(x);
-  auto* layer_out = out[2];
+  auto* layer_out = out[0];
 
   auto* weights_0 = layers.data("weights0", {768, 768}, true);
   auto* weights_1 = layers.data("weights1", {768, 768}, true);
