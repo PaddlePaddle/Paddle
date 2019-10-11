@@ -2326,7 +2326,7 @@ def sequence_softmax(input, use_cudnn=False, name=None):
     Args:
         input (Variable):A LoDTensor with shape of  :math:`[N, 1]` or  :math:`[N]`, Recommended usage: :math:`[N]`. Supported data types: float32, float64. 
         use_cudnn (bool, optional): Use cudnn kernel or not. Effective only when the cudnn version of the paddle library is installed and GPU is used for training or reasoning. Default: False.
-        name (str, optional): See  :ref:`api_guide_Name`  for specific usage. Normally no settings are required. Default: None.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: A LoD-Tensor which has the same shape and data type with input.
@@ -5549,7 +5549,7 @@ def sequence_unpad(x, length, name=None):
     Args:
         x(Variable): A Tensor which contains padding data, and its shape size can not be less than 2. Supported data types: float32, float64, int32, int64.
         length(Variable): A 1D Tensor that stores the actual length of each sample, and the Tensor has the same shape with the 0th dimension of the X . Supported data types: int64.
-        name(str|None):  See  :ref:`api_guide_Name`  for specific usage. Normally no settings are required. Default: None.
+        name(str|None):  The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: A LoDTensor whose recursive sequence length is consistent with the information of the length parameter and it has the same data type with input.
@@ -10389,7 +10389,7 @@ def sequence_scatter(input, index, updates, name=None):
         input (Variable): A Tensor with shape of  :math:`[N, k_1... k_n]`. Supported data types: float32, float64, int32, int64.
         index (Variable):  A LoDTensor contains index information. Its LoD level must be 1 and its data type must be int64.
         updates (Variable): A LodTensor contains updates information. It has the same  LoD level with the index and has the same data type  with the input. Supported data types: float32, float64, int32, int64.
-        name (str, optional): See  :ref:`api_guide_Name`  for specific usage. Normally no settings are required. Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: A Tensor which contains information after updates. It has the same shape and data type with input.
