@@ -4315,15 +4315,20 @@ class Parameter(Variable):
     """
 
     def __init__(self, block, shape, dtype, **kwargs):
-        if shape is None or dtype is None:
-            raise ValueError("Parameter must set shape and dtype")
+        if shape is None:
+            raise ValueError("The shape of Parameter should not be None")
+        if dtype is None:
+            raise ValueError("The dtype of Parameter should not be None")
+
         if len(shape) == 0:
-            raise ValueError("Parameter shape cannot be empty")
+            raise ValueError(
+                "The dimensions of shape for Parameter must be greater than 0")
 
         for each in shape:
             if each < 0:
-                raise ValueError("Parameter shape should not be related with "
-                                 "batch-size")
+                raise ValueError(
+                    "Each dimension of shape for Parameter must be greater than 0, but received %s"
+                    % list(shape))
 
         Variable.__init__(
             self, block, persistable=True, shape=shape, dtype=dtype, **kwargs)
