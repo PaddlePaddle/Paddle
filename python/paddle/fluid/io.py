@@ -652,6 +652,12 @@ def load_vars(executor,
             if each_var.type == core.VarDesc.VarType.RAW:
                 continue
 
+<<<<<<< HEAD
+=======
+            if isinstance(each_var, Parameter):
+                orig_para_shape[each_var.name] = tuple(each_var.desc.get_shape(
+                ))
+>>>>>>> a1f54a8935... get shape from var desc to avoid run startup program; test=develop (#20499)
             new_var = _clone_var_in_block_(load_block, each_var)
             if filename is None:
                 load_block.append_op(
