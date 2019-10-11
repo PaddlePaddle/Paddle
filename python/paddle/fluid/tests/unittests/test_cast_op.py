@@ -79,8 +79,10 @@ class TestCastOpError(op_test.OpTest):
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.cast, x1)
             # The input dtype of cast_op must be bool, float16, float32, float64, int32, int64, uint8.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int8")
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype='int8')
             self.assertRaises(TypeError, fluid.layers.cast, x2)
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype='int16')
+            self.assertRaises(TypeError, fluid.layers.cast, x3)
 
 
 if __name__ == '__main__':
