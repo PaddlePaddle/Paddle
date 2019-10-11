@@ -171,11 +171,15 @@ class GRUCell(RNNCell):
     The formula used is as follow:
 
     .. math::
-        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)\\
-        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)\\
-        \tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)\\
-        h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \tilde{h_t}
-    
+
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
+
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
+
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
+
+        h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \\tilde{h_t}
+
     For more details, please refer to  `Learning Phrase Representations using
     RNN Encoder Decoder for Statistical Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_
 
@@ -256,11 +260,16 @@ class LSTMCell(RNNCell):
     The formula used is as follow:
 
     .. math::
-        i_{t} &= act_g \left ( W_{x_{i}}x_{t}+W_{h_{i}}h_{t-1}+b_{i} \right ) \\
-        f_{t} &= act_g \left ( W_{x_{f}}x_{t}+W_{h_{f}}h_{t-1}+b_{f}+forget\_bias \right ) \\
-        c_{t} &= f_{t}c_{t-1}+i_{t}act_h\left ( W_{x_{c}}x_{t} +W_{h_{c}}h_{t-1}+b_{c}\right ) \\
-        o_{t} &= act_g\left ( W_{x_{o}}x_{t}+W_{h_{o}}h_{t-1}+b_{o} \right ) \\
-        h_{t} &= o_{t}act_h \left ( c_{t} \right )
+
+        i_{t} & = act_g(W_{x_{i}}x_{t} + W_{h_{i}}h_{t-1} + b_{i})
+
+        f_{t} & = act_g(W_{x_{f}}x_{t} + W_{h_{f}}h_{t-1} + b_{f} + forget\\_bias)
+
+        c_{t} & = f_{t}c_{t-1} + i_{t} act_c (W_{x_{c}}x_{t} + W_{h_{c}}h_{t-1} + b_{c})
+
+        o_{t} & = act_g(W_{x_{o}}x_{t} + W_{h_{o}}h_{t-1} + b_{o})
+
+        h_{t} & = o_{t} act_c (c_{t})
     
     For more details, please refer to `RECURRENT NEURAL NETWORK REGULARIZATION <http://arxiv.org/abs/1409.2329>`_
 
@@ -475,14 +484,17 @@ class Decoder(object):
     used to generate sequences. 
 
     The key abstraction provided by Decoder is:
+
     1. :code:`(initial_input, initial_state, finished) = initialize(inits)` ,
     which generates the input and state for the first decoding step, and gives the
     inintial status telling whether each sequence in the batch is finished.
     It would be called once before the decoding iterations.
-    2. code:`(output, next_state, next_input, finished) = step(time, input, state)` ,
+
+    2. :code:`(output, next_state, next_input, finished) = step(time, input, state)` ,
     which transforms the input and state to the output and new state, generates 
     input for the next decoding step, and emits the flag indicating finished status.
     It is the main part for each decoding iteration.
+
     3. :code:`(final_outputs, final_state) = finalize(outputs, final_state, sequence_lengths)` ,
     which revises the outputs(stack of all time steps' output) and final state(state from the
     last decoding step) to get the counterpart for special usage.
@@ -599,7 +611,6 @@ class BeamSearchDecoder(Decoder):
                                         start_token=0,
                                         end_token=1,
                                         beam_size=4,
-                                        vocab_size=10000,
                                         embedding_fn=trg_embeder,
                                         output_fn=output_layer)
     """

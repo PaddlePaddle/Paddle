@@ -323,7 +323,7 @@ paddle.fluid.layers.tensor_array_to_tensor (ArgSpec(args=['input', 'axis', 'name
 paddle.fluid.layers.concat (ArgSpec(args=['input', 'axis', 'name'], varargs=None, keywords=None, defaults=(0, None)), ('document', 'b3f30feb5dec8f110d7393ffeb30dbd9'))
 paddle.fluid.layers.sums (ArgSpec(args=['input', 'out'], varargs=None, keywords=None, defaults=(None,)), ('document', '5df743d578638cd2bbb9369499b44af4'))
 paddle.fluid.layers.assign (ArgSpec(args=['input', 'output'], varargs=None, keywords=None, defaults=(None,)), ('document', '8bd94aef4e123986d9a8c29f67b5532b'))
-paddle.fluid.layers.fill_constant_batch_size_like (ArgSpec(args=['input', 'shape', 'dtype', 'value', 'input_dim_idx', 'output_dim_idx'], varargs=None, keywords=None, defaults=(0, 0)), ('document', '37a288e4400f6d5510e982827461c11b'))
+paddle.fluid.layers.fill_constant_batch_size_like (ArgSpec(args=['input', 'shape', 'dtype', 'value', 'input_dim_idx', 'output_dim_idx', 'force_cpu'], varargs=None, keywords=None, defaults=(0, 0, False)), ('document', '2bb57637664173fee5f654e55896aec6'))
 paddle.fluid.layers.fill_constant (ArgSpec(args=['shape', 'dtype', 'value', 'force_cpu', 'out'], varargs=None, keywords=None, defaults=(False, None)), ('document', '66e1e468666dd47e5b2715226cebeac0'))
 paddle.fluid.layers.argmin (ArgSpec(args=['x', 'axis'], varargs=None, keywords=None, defaults=(0,)), ('document', '3dd54487232d05df4d70fba94b7d0b79'))
 paddle.fluid.layers.argmax (ArgSpec(args=['x', 'axis'], varargs=None, keywords=None, defaults=(0,)), ('document', '7f47cc9aa7531b6bd37c5c96bc7f0469'))
@@ -472,20 +472,20 @@ paddle.fluid.layers.RNNCell ('paddle.fluid.layers.rnn.RNNCell', ('document', '2c
 paddle.fluid.layers.RNNCell.__init__ 
 paddle.fluid.layers.RNNCell.call (ArgSpec(args=['self', 'inputs', 'states'], varargs=None, keywords='kwargs', defaults=None), ('document', '3ac714b638258c520d66f682be67b658'))
 paddle.fluid.layers.RNNCell.get_initial_states (ArgSpec(args=['self', 'batch_ref', 'shape', 'dtype', 'init_value'], varargs=None, keywords=None, defaults=(None, None, 0)), ('document', '003d1b4c99128f798ac0b0eecc81c489'))
-paddle.fluid.layers.GRUCell ('paddle.fluid.layers.rnn.GRUCell', ('document', 'df1c3651c8b373396a8c2a0e2eb677a7'))
+paddle.fluid.layers.GRUCell ('paddle.fluid.layers.rnn.GRUCell', ('document', '7b2902a91258c4688a879805290adc00'))
 paddle.fluid.layers.GRUCell.__init__ (ArgSpec(args=['self', 'hidden_size', 'param_attr', 'bias_attr', 'gate_activation', 'activation', 'dtype', 'name'], varargs=None, keywords=None, defaults=(None, None, None, None, 'float32', 'GRUCell')), ('document', '3624a6c93b4a999d0d809eb1a66d272e'))
 paddle.fluid.layers.GRUCell.call (ArgSpec(args=['self', 'inputs', 'states'], varargs=None, keywords=None, defaults=None), ('document', '6094ab09a56c732c76abb5105327ea54'))
 paddle.fluid.layers.GRUCell.get_initial_states (ArgSpec(args=['self', 'batch_ref', 'shape', 'dtype', 'init_value'], varargs=None, keywords=None, defaults=(None, None, 0)), ('document', '003d1b4c99128f798ac0b0eecc81c489'))
-paddle.fluid.layers.LSTMCell ('paddle.fluid.layers.rnn.LSTMCell', ('document', 'a5f395a034bcc4ae426c50f24c873ae0'))
+paddle.fluid.layers.LSTMCell ('paddle.fluid.layers.rnn.LSTMCell', ('document', '5cbd87bce446ba0f50398ce2772d43e9'))
 paddle.fluid.layers.LSTMCell.__init__ (ArgSpec(args=['self', 'hidden_size', 'param_attr', 'bias_attr', 'gate_activation', 'activation', 'forget_bias', 'dtype', 'name'], varargs=None, keywords=None, defaults=(None, None, None, None, 1.0, 'float32', 'LSTMCell')), ('document', '9015961869b436d2739a0347618028e3'))
 paddle.fluid.layers.LSTMCell.call (ArgSpec(args=['self', 'inputs', 'states'], varargs=None, keywords=None, defaults=None), ('document', '9c84a477021e4a7d0a497c1e6a31be2d'))
 paddle.fluid.layers.LSTMCell.get_initial_states (ArgSpec(args=['self', 'batch_ref', 'shape', 'dtype', 'init_value'], varargs=None, keywords=None, defaults=(None, None, 0)), ('document', '003d1b4c99128f798ac0b0eecc81c489'))
-paddle.fluid.layers.Decoder ('paddle.fluid.layers.rnn.Decoder', ('document', 'd617988a38a4ff1bab36eed7334fb187'))
+paddle.fluid.layers.Decoder ('paddle.fluid.layers.rnn.Decoder', ('document', '23838bd065fddca1557a6a3368d9e365'))
 paddle.fluid.layers.Decoder.__init__ 
 paddle.fluid.layers.Decoder.finalize (ArgSpec(args=['self', 'outputs', 'final_states', 'sequence_lengths'], varargs=None, keywords=None, defaults=None), ('document', 'cab7fc752a05db18e99258473f50359d'))
 paddle.fluid.layers.Decoder.initialize (ArgSpec(args=['self', 'inits'], varargs=None, keywords=None, defaults=None), ('document', '68cf1846fb58056dbe5a524f1ca9dff5'))
 paddle.fluid.layers.Decoder.step (ArgSpec(args=['self', 'time', 'inputs', 'states'], varargs=None, keywords=None, defaults=None), ('document', '151d0229930b9654689f86c85f7c4c3f'))
-paddle.fluid.layers.BeamSearchDecoder ('paddle.fluid.layers.rnn.BeamSearchDecoder', ('document', '5aa0e2e734cef1c0899bcff4c615f8dd'))
+paddle.fluid.layers.BeamSearchDecoder ('paddle.fluid.layers.rnn.BeamSearchDecoder', ('document', '40e2fdbc0815c78b651cd07261ab4d79'))
 paddle.fluid.layers.BeamSearchDecoder.OutputWrapper ('paddle.fluid.layers.rnn.OutputWrapper', ('document', 'a7141ebf1fb097fa71006cdd35bdc219'))
 paddle.fluid.layers.BeamSearchDecoder.OutputWrapper.__init__ 
 paddle.fluid.layers.BeamSearchDecoder.OutputWrapper.count T.count(value) -> integer -- return number of occurrences of value

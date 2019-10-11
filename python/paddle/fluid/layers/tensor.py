@@ -500,8 +500,7 @@ def fill_constant_batch_size_like(input,
             The default value is 0.
         output_dim_idx(int): Used to specify which dimension of Tensor is created to be set
             the value of batch_size of input Tensor. The default value is 0.
-
-        force_cpu(${force_cpu_type}): ${force_cpu_comment}.
+        force_cpu(bool): data should be on CPU if it's true, defalut value is False.
 
     Returns:
         Variable: Tensor which will be created according to dtype.
