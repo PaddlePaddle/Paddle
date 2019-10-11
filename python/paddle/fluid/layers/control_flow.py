@@ -1057,31 +1057,53 @@ def increment(x, value=1.0, in_place=True):
 
 def array_write(x, i, array=None):
     """
-    This function writes the given input variable to the specified position
-    indicating by the arrary index to an output LOD_TENSOR_ARRAY. If the
-    output LOD_TENSOR_ARRAY is not given(None), a new one will be created and
-    returned.
+    This OP writes the input ``x`` into the i-th position of the ``array``
+    :ref:`api_fluid_LoDTensorArray` and returns the modified array.
+    If ``array`` is none, a new LoDTensorArray will be created and returned.
+    This OP is often used together with :ref:`api_fluid_layers_array_read` OP.
 
     Args:
-        x (Variable|list): The input tensor from which the data will be read.
-        i (Variable|list): The index of the output LOD_TENSOR_ARRAY, pointing to
-                           the position to which the input tensor will be
-                           written.
-        array (Variable|list): The output LOD_TENSOR_ARRAY to which the input
-                               tensor will be written. If this parameter is
-                               NONE, a new LOD_TENSOR_ARRAY will be created and
-                               returned.
+        x (Variable): The input data to be written into array. It's multi-dimensional
+            Tensor or LoDTensor. Data type: float32, float64, int32, int64.
+        i (Variable): 1-D Tensor with shape [1], which represents the position into which
+            ``x`` is written. Data type: int64.
+        array (LoDTensorArray, optional): The LoDTensorArray into which ``x`` is written. 
+            The default value is None, when a new LoDTensorArray will be created and returned 
+            as a result.
 
     Returns:
-        Variable: The output LOD_TENSOR_ARRAY where the input tensor is written.
+        Variable: The input ``array`` after ``x`` is written into.
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
-          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          arr = fluid.layers.array_write(tmp, i=i)
+            import paddle.fluid as fluid
+            tmp = fluid.layers.fill_constant(shape=[3, 2], dtype='int64', value=5)
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+            # Write tmp into the position of arr with subscript 10 and return arr.
+            arr = fluid.layers.array_write(tmp, i=i)
+
+            # Now, arr is a LoDTensorArray with length 11. We can use array_read OP to read
+            # the data at subscript 10 and print it out.
+            item = fluid.layers.array_read(arr, i=i)
+            input = fluid.layers.Print(item, message="The content of i-th LoDTensor:")
+            main_program = fluid.default_main_program()
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(main_program)
+
+            # The printed result is:
+            # 1570533133    The content of i-th LoDTensor:  The place is:CPUPlace
+            # Tensor[array_read_0.tmp_0]
+            #    shape: [3,2,]
+            #    dtype: l
+            #    data: 5,5,5,5,5,5,
+
+            # the output is 2-D Tensor with shape [3,2], which is tmp above.
+            # dtype is the corresponding C++ data type, which may vary in different environments.
+            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t, 
+            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
+            #       and '__int64' on Windows. They both represent 64-bit integer variables.
+
     """
     helper = LayerHelper('array_write', **locals())
     if array is None:
@@ -1142,9 +1164,24 @@ def less_than(x, y, force_cpu=None, cond=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          label = fluid.layers.data(name='y', shape=[1], dtype='int64')
-          limit = fluid.layers.fill_constant(shape=[1], dtype='int64', value=5)
-          cond = fluid.layers.less_than(x=label, y=limit)
+          import numpy as np
+  
+          # Graph Organizing
+          x = fluid.layers.data(name='x', shape=[2], dtype='float64')
+          y = fluid.layers.data(name='y', shape=[2], dtype='float64')
+          result = fluid.layers.less_than(x=x, y=y)
+          # The comment lists another available method.
+          # result = fluid.layers.fill_constant(shape=[2], dtype='float64', value=0)
+          # fluid.layers.less_than(x=x, y=y, cond=result)
+  
+          # Create an executor using CPU as example
+          exe = fluid.Executor(fluid.CPUPlace())
+  
+          # Execute
+          x_i = np.array([[1, 2], [3, 4]]).astype(np.float64)
+          y_i = np.array([[2, 2], [1, 3]]).astype(np.float64)
+          result_value, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[result])
+          print(result_value) # [[True, False], [False, False]]
     """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
@@ -1303,20 +1340,27 @@ def equal(x, y, cond=None):
     This layer returns the truth value of :math:`x == y` elementwise.
 
     Args:
-        x(Variable): First operand of *equal*
-        y(Variable): Second operand of *equal*
-        cond(Variable|None): Optional output variable to store the result of *equal*
+        x(Variable): Tensor, data type is float32, float64, int32, int64.
+        y(Variable): Tensor, data type is float32, float64, int32, int64.
+        cond(Variable, optional): Optional output which can be any created 
+            Variable that meets the requirements to store the result of *equal*.
+            if cond is None, a new Varibale will be created to store the result.
 
     Returns:
-        Variable: The tensor variable storing the output of *equal*.
+        Variable: output Tensor, it's shape is the same as the input's Tensor,
+        and the data type is bool.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          label = fluid.layers.data(name="label", shape=[3,10,32,32], dtype="float32")
-          limit = fluid.layers.data(name="limit", shape=[3,10,32,32], dtype="float32")
-          less = fluid.layers.equal(x=label, y=limit)
+          import numpy as np
+          out_cond =fluid.data(name="input1", shape=[2], dtype='bool')
+          label = fluid.layers.assign(np.array([3, 3], dtype="int32"))
+          limit = fluid.layers.assign(np.array([3, 2], dtype="int32"))
+          label_cond = fluid.layers.assign(np.array([1, 2], dtype="int32"))
+          out1 = fluid.layers.equal(x=label,y=limit) #out1=[True, False]
+          out2 = fluid.layers.equal(x=label_cond,y=limit, cond=out_cond) #out2=[False, True] out_cond=[False, True]
     """
     helper = LayerHelper("equal", **locals())
     if cond is None:
@@ -1365,37 +1409,64 @@ def not_equal(x, y, cond=None):
 
 def array_read(array, i):
     """
-    This function performs the operation to read the data in as an
-    LOD_TENSOR_ARRAY.
+    This OP is used to read data at the specified position from the input array 
+    :ref:`api_fluid_LoDTensorArray` . ``array`` is the input array and ``i``
+    is the specified read position. This OP is often used together with 
+    :ref:`api_fluid_layers_array_write` OP.
 
-    .. code-block:: text
+    Case 1:
+    ::
+        Input:
+            The shape of first three tensors are [1], and that of the last one is [1,2]:
+                array = ([0.6], [0.1], [0.3], [0.4, 0.2])
+            And:
+                i = [3]
 
-        Given:
-
-        array = [0.6, 0.1, 0.3, 0.1]
-
-        And:
-
-        i = 2
-
-        Then:
-
-        output = 0.3
+        Output:
+            output = [0.4, 0.2]
 
     Args:
-        array (Variable|list): The input tensor that store data to be read.
-        i (Variable|list): The index of the data to be read from input array.
+        array (LoDTensorArray): The input LoDTensorArray.
+        i (Variable): 1-D Tensor, whose shape is [1] and dtype is int64. It represents the
+            specified read position of ``array``.
 
     Returns:
-        Variable: The tensor type variable that has the data written to it.
+        Variable: The LoDTensor or Tensor that is read at the specified position of ``array``.
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          array = fluid.layers.create_array(dtype='float32')
-          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          item = fluid.layers.array_read(array, i)
+            # First we're going to create a LoDTensorArray, then we're going to write the Tensor into
+            # the specified position, and finally we're going to read the Tensor at that position.
+            import paddle.fluid as fluid
+            arr = fluid.layers.create_array(dtype='float32')
+            tmp = fluid.layers.fill_constant(shape=[3, 2], dtype='int64', value=5)
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+            # tmp is the Tensor with shape [3,2], and if we write it into the position with subscript 10
+            # of the empty-array: arr, then the length of arr becomes 11.
+            arr = fluid.layers.array_write(tmp, i, array=arr)
+            # Read the data of the position with subscript 10.
+            item = fluid.layers.array_read(arr, i)
+
+            # You can print out the data via executor.
+            input = fluid.layers.Print(item, message="The LoDTensor of the i-th position:")
+            main_program = fluid.default_main_program()
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(main_program)
+
+            # The printed result is:
+
+            # 1569588169  The LoDTensor of the i-th position: The place is:CPUPlace
+            # Tensor[array_read_0.tmp_0]
+            #    shape: [3,2,]
+            #    dtype: l
+            #    data: 5,5,5,5,5,5,
+
+            # the output is 2-D Tensor with shape [3,2].
+            # dtype is the corresponding C++ data type, which may vary in different environments.
+            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t, 
+            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
+            #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
     helper = LayerHelper('array_read', **locals())
     if not isinstance(
@@ -1450,29 +1521,48 @@ def shrink_memory(x, i, table):
 
 def array_length(array):
     """
-    **Get the Length of Input LoDTensorArray**
-
-    This function performs the operation to find the length of the input
-    LOD_TENSOR_ARRAY.
-
-    Related API: array_read, array_write, While.
+    This OP is used to get the length of the input array :ref:`api_fluid_LoDTensorArray` .
+    It can be used together with :ref:`api_fluid_layers_array_read` , :ref:`api_fluid_layers_array_write` , 
+    :ref:`api_fluid_layers_While` OP to traverse, read and wirte LoDTensorArray.
 
     Args:
-        array (LOD_TENSOR_ARRAY): The input array that will be used
-                                  to compute the length.
+        array (LoDTensorArray): The input array that will be used to compute the length.
 
     Returns:
-        Variable: The length of the input LoDTensorArray.
+        Variable: 1-D Tensor with shape [1], which is the length of array. Datatype: int64.
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          tmp = fluid.layers.zeros(shape=[10], dtype='int32')
-          i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-          arr = fluid.layers.array_write(tmp, i=i)
-          arr_len = fluid.layers.array_length(arr)
+            import paddle.fluid as fluid
+            tmp = fluid.layers.zeros(shape=[10], dtype='int32')
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
+            # tmp is 1-D Tensor with shape [10]. We write tmp into arr on subscript 10,
+            # then the length of arr becomes 11.
+            arr = fluid.layers.array_write(tmp, i=i)
+            # return the length of arr
+            arr_len = fluid.layers.array_length(arr)
 
+            # You can use executor to print out the length of LoDTensorArray.
+            input = fluid.layers.Print(arr_len, message="The length of LoDTensorArray:")
+            main_program = fluid.default_main_program()
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(main_program)
+
+            # The printed result is:
+
+            # 1569576542  The length of LoDTensorArray:   The place is:CPUPlace
+            # Tensor[array_length_0.tmp_0]
+            #    shape: [1,]
+            #    dtype: l
+            #    data: 11,
+            
+            # 1-D Tensor with shape [1], whose value is 11. It means that the length of LoDTensorArray
+            # is 11.
+            # dtype is the corresponding C++ data type, which may vary in different environments.
+            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t, 
+            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
+            #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
     helper = LayerHelper('array_length', **locals())
     tmp = helper.create_variable_for_type_inference(dtype='int64')
