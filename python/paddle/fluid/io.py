@@ -258,9 +258,6 @@ def save_vars(executor,
 
 def save_params(executor, dirname, main_program=None, filename=None):
     """
-    This operator save all parameters from the give :code:`main_program`
-    and then save them to the folder :code:`dirname` or the file 
-    :code:`filename`.
 
     Use the :code:`dirname` to specify the saving folder. If you would like to
     save parameters in separate files, set :code:`filename` None; if you would
@@ -286,10 +283,10 @@ def save_params(executor, dirname, main_program=None, filename=None):
                                          saved. You can refer to 
                                          :ref:`api_guide_Program_en` for more 
                                          details. If it is None, the default main
-                                         program will be used automatically.
+                                         program will be used.
                                          Default: None
         filename(str, optional): The file to save all parameters. If you prefer
-                                 to save parameters in differnet files, set it
+                                 to save parameters in different files, set it
                                  to None.
                                  Default: None
 
@@ -1011,7 +1008,7 @@ def save_inference_model(dirname,
     :ref:`api_fluid_io_save_params` . You can refer to :ref:`api_guide_model_save_reader_en`
     for more details.
 
-    Notice:
+    Note:
         The :code:`dirname` is used to specify the folder where inference model 
         structure and parameters are going to be saved. If you would like to save params of
         Program in separate files, set `params_filename` None; if you would like to save all 
