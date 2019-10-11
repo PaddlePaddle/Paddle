@@ -63,7 +63,7 @@ paddle.fluid.CompiledProgram.__init__ (ArgSpec(args=['self', 'program_or_graph',
 paddle.fluid.CompiledProgram.with_data_parallel (ArgSpec(args=['self', 'loss_name', 'build_strategy', 'exec_strategy', 'share_vars_from', 'places'], varargs=None, keywords=None, defaults=(None, None, None, None, None)), ('document', '3b61147fc4f54e1724aa9ead8a1d5f26'))
 paddle.fluid.ExecutionStrategy ('paddle.fluid.core_avx.ExecutionStrategy', ('document', '535ce28c4671176386e3cd283a764084'))
 paddle.fluid.ExecutionStrategy.__init__ __init__(self: paddle.fluid.core_avx.ParallelExecutor.ExecutionStrategy) -> None
-paddle.fluid.BuildStrategy ('paddle.fluid.core_avx.BuildStrategy', ('document', 'eec64b9b7cba58b0a63687b4c34ffe56'))
+paddle.fluid.BuildStrategy ('paddle.fluid.core_avx.BuildStrategy', ('document', '9c7ee090a0ab6896f5de996d59a2f645'))
 paddle.fluid.BuildStrategy.GradientScaleStrategy ('paddle.fluid.core_avx.GradientScaleStrategy', ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.BuildStrategy.GradientScaleStrategy.__init__ __init__(self: paddle.fluid.core_avx.ParallelExecutor.BuildStrategy.GradientScaleStrategy, arg0: int) -> None
 paddle.fluid.BuildStrategy.ReduceStrategy ('paddle.fluid.core_avx.ReduceStrategy', ('document', '6adf97f83acf6453d4a6a4b1070f3754'))

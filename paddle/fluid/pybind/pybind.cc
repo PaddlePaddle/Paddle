@@ -1510,9 +1510,26 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
+            import os
+            import numpy as np
             import paddle.fluid as fluid
+
+            os.environ["CPU_NUM"] = '2'
+            places = fluid.cpu_places()
+
+            data = fluid.layers.data(name="x", shape=[1], dtype="float32")
+            hidden = fluid.layers.fc(input=data, size=10)
+            loss = fluid.layers.mean(hidden)
+            fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
             build_strategy = fluid.BuildStrategy()
+            build_strategy.enable_inplace = True
+            build_strategy.memory_optimize = True
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+            program = fluid.compiler.CompiledProgram(fluid.default_main_program())
+            program = program.with_data_parallel(loss_name=loss.name,
+                                                 build_strategy=build_strategy,
+                                                 places=places)
 )DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
@@ -1534,13 +1551,13 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.reduce_ = strategy;
           },
-          R"DOC(The type is fluid.BuildStrategy.ReduceStrategy, there are two reduce
+          R"DOC((fluid.BuildStrategy.ReduceStrategy, optional): there are two reduce
                 strategies in ParallelExecutor, AllReduce and Reduce. If you want
                 that all the parameters' optimization are done on all devices independently,
-                you should choose AllReduce; if you choose Reduce, all the parameters'
+                you should choose AllReduce; otherwise, if you choose Reduce, all the parameters'
                 optimization will be evenly distributed to different devices, and then
                 broadcast the optimized parameter to other devices.
-                Default 'AllReduce'.
+                Default is 'AllReduce'.
 
                 Examples:
                     .. code-block:: python
@@ -1558,11 +1575,11 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finalized.");
             self.gradient_scale_ = strategy;
           },
-          R"DOC(The type is fluid.BuildStrategy.GradientScaleStrategy, there are three
-                ways of defining :math:`loss@grad` in ParallelExecutor, CoeffNumDevice,
+          R"DOC((fluid.BuildStrategy.GradientScaleStrategy, optional): there are three
+                ways of defining :math:`loss@grad` in ParallelExecutor, that is, CoeffNumDevice,
                 One and Customized. By default, ParallelExecutor sets the :math:`loss@grad`
                 according to the number of devices. If you want to customize :math:`loss@grad`,
-                you can choose Customized. Default 'CoeffNumDevice'.
+                you can choose Customized. Default is 'CoeffNumDevice'.
 
                 Examples:
                     .. code-block:: python
@@ -1620,9 +1637,9 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.debug_graphviz_path_ = path;
           },
-          R"DOC(The type is STR, debug_graphviz_path indicates the path that
+          R"DOC((str, optional): debug_graphviz_path indicates the path that
                 writing the SSA Graph to file in the form of graphviz.
-                It is useful for debugging. Default ""
+                It is useful for debugging. Default is empty string, that is, ""
 
                 Examples:
                     .. code-block:: python
@@ -1642,8 +1659,8 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.enable_sequential_execution_ = b;
           },
-          R"DOC(The type is BOOL. If set True, the execution order of ops would
-                be the same as what is in the program. Default False.
+          R"DOC((bool, optional): If set True, the execution order of ops would
+                be the same as what is in the program. Default is False.
 
                 Examples:
                     .. code-block:: python
@@ -1662,8 +1679,8 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.remove_unnecessary_lock_ = b;
           },
-          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be
-                released and ParallelExecutor would run faster. Default True.
+          R"DOC((bool, optional): If set True, some locks in GPU ops would be
+                released and ParallelExecutor would run faster. Default is True.
 
                 Examples:
                     .. code-block:: python
@@ -1724,9 +1741,9 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.fuse_elewise_add_act_ops_ = b;
           },
-          R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
+          R"DOC((bool, optional): fuse_elewise_add_act_ops indicate whether
                 to fuse elementwise_add_op and activation_op,
-                it may make the execution faster. Default False
+                it may make the execution faster. Default is False.
 
                 Examples:
                     .. code-block:: python
@@ -1745,11 +1762,11 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.fuse_relu_depthwise_conv_ = b;
           },
-          R"DOC(The type is BOOL, fuse_relu_depthwise_conv indicate whether
+          R"DOC((bool, optional): fuse_relu_depthwise_conv indicate whether
                 to fuse relu and depthwise_conv2d,
                 it will save GPU memory and may make the execution faster.
                 This options is only available in GPU devices.
-                Default False.
+                Default is False.
 
                 Examples:
                     .. code-block:: python
@@ -1768,12 +1785,20 @@ All parameter, weight, gradient are variables in Paddle.
                                         "BuildStrategy is finlaized.");
                       self.fuse_broadcast_ops_ = b;
                     },
-                    R"DOC(The type is BOOL, fuse_broadcast_op indicates whether
+                    R"DOC((bool, optional): fuse_broadcast_op indicates whether
                       to fuse the broadcast ops. Note that, in Reduce mode,
                       fusing broadcast ops may make the program faster. Because
                       fusing broadcast OP equals delaying the execution of all
                       broadcast Ops, in this case, all nccl streams are used only
-                      for NCCLReduce operations for a period of time. Default False.)DOC")
+                      for NCCLReduce operations for a period of time. Default False.
+
+                      Examples:
+                          .. code-block:: python
+
+                              import paddle.fluid as fluid
+                              build_strategy = fluid.BuildStrategy()
+                              build_strategy.fuse_broadcast_ops = True
+                    )DOC")
       .def_property("fuse_all_optimizer_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_all_optimizer_ops_ == true ||
@@ -1792,14 +1817,12 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.sync_batch_norm_ = b;
           },
-          R"DOC(The type is BOOL, sync_batch_norm indicates whether to use
+          R"DOC((bool, optional): sync_batch_norm indicates whether to use
                 synchronous batch normalization which synchronizes the mean
                 and variance through multi-devices in training phase.
-
                 Current implementation doesn't support FP16 training and CPU.
-                And only synchronous on one machine, not all machines.
-
-                Default False
+                And only synchronous on one machine, not all machines. 
+                Default is False.
 
                 Examples:
                     .. code-block:: python
@@ -1829,13 +1852,13 @@ All parameter, weight, gradient are variables in Paddle.
                   "True");
             }
           },
-          R"DOC(The type is BOOL or None, memory opitimize aims to save total memory
+          R"DOC((bool, optional): memory opitimize aims to save total memory
                 consumption, set to True to enable it.
 
                 Default None. None means framework would choose to use or not use 
                 this strategy automatically. Currently, None means that it is 
                 enabled when GC is disabled, and disabled when GC is enabled. 
-                True means enabling and False means disabling. Default None.)DOC")
+                True means enabling and False means disabling. Default is None.)DOC")
       .def_property(
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
