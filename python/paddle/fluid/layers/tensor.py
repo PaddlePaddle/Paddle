@@ -660,8 +660,8 @@ def zeros(shape, dtype, force_cpu=False):
             'bool', 'float16', 'float32', 'float64', 'int32', 'int64'
     ]:
         raise TypeError(
-            "The create data type in zeros must be one of 'bool', float16, float32,"
-            "float64, int32 or int64, but received %s." % convert_dtype(
+            "The create data type in zeros must be one of bool, float16, float32,"
+            " float64, int32 or int64, but received %s." % convert_dtype(
                 (dtype)))
     return fill_constant(value=0.0, **locals())
 
