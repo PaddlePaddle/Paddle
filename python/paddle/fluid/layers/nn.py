@@ -6534,9 +6534,10 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
                 raise TypeError(
                     "The type of %s in matmul_op must be Variable, but received %s.\n"
                     % (name, (type(val))))
-            if convert_dtype(val.dtype) not in ['float32', 'float64']:
+            if convert_dtype(
+                    val.dtype) not in ['float16', 'float32', 'float64']:
                 raise TypeError(
-                    "The data type of %s in matmul_op must be float32 or float64, but received %s.\n"
+                    "The data type of %s in matmul_op must be float16, float32 or float64, but received %s.\n"
                     % (name, (convert_dtype(val.dtype))))
 
         x_shape = list(x.shape)
@@ -6553,8 +6554,9 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
             raise ValueError(
-                "x_shape[-1] should be equal to y_shape[-2] for multiplication "
-                "prerequisites. But received x_shape: %s, y_shape: %s\n" %
+                "After performing an optional transpose, Input X's width should be "
+                "equal to Y's width for multiplication "
+                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %
                 (x_shape, y_shape))
 
         if len(y_shape) > 2 and len(x_shape) > 2:
@@ -6566,8 +6568,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
                     raise ValueError(
                         "When the matrix is larger than 2 dimensions, the higher "
                         "dimensional values of the two matrices need to be equal. "
-                        "But received x_shape[%d] != y_shape[%d]. x_shape: %s, "
-                        "y_shape: %s.\n" % (i, i, x_shape, y_shape))
+                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
+                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape))
 
     __check_input(x, y)
 
@@ -13844,6 +13846,10 @@ def mean(x, name=None):
         raise TypeError(
             "The type of 'x' in mean_op must be Variable, but received %s.\n" %
             (type(x)))
+
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'x' in softmax only support float16 in GPU now.")
 
     if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
         raise TypeError(
