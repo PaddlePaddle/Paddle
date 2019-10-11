@@ -152,7 +152,7 @@ def cast(x, dtype):
     equals the input dtype, but it's fine if you do so.
 
     Args:
-        x (Variable): An input N-D Tensor  with data type bool, float16,
+        x(Variable): An input N-D Tensor with data type bool, float16,
             float32, float64, int32, int64, uint8.
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output:
             bool, float15, float32, float64, int8, int32, int64, uint8.
