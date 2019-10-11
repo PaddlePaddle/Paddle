@@ -137,12 +137,24 @@ def cumsum(x, axis=None, exclusive=None, reverse=None):
     return _cum_sum_(**kwargs)
 
 
-cumsum.__doc__ = _cum_sum_.__doc__ + """
-Examples:
+cumsum.__doc__ = """
+The cumulative sum of the elements along a given axis. By default, the first element of the result is the same of the first element of the input. If exlusive is true, the first element of the result is 0.
 
-    >>> import paddle.fluid as fluid
-    >>> data = fluid.layers.data(name="input", shape=[32, 784])
-    >>> result = fluid.layers.cumsum(data, axis=0)
+Args:
+    x (Variable): Input of cumsum operator, the Tensor/LoDTensor needed to be cumsumed. 
+    axis (int, optional): The dimenstion to accumulate along. -1 means the last dimenstion. Default is -1.
+    exclusive (bool, optional): Whether to perform exclusive cumsum. Default is False.
+    reverse (bool, optional): If true, the cumsum is performed in the reversed direction. Default is False.
+
+Returns:
+    Variable(Tensor/LoDTensor): The result of cumsum operator, output of cumsum operator. 
+
+Examples:
+    .. code-block:: python
+        
+        import paddle.fluid as fluid
+        data = fluid.layers.data(name="input", shape=[32, 784])
+        result = fluid.layers.cumsum(data, axis=0)
 """
 
 __all__ += ['thresholded_relu']
