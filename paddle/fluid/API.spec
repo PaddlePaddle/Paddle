@@ -379,7 +379,7 @@ paddle.fluid.layers.StaticRNN.step (ArgSpec(args=['self'], varargs=None, keyword
 paddle.fluid.layers.StaticRNN.step_input (ArgSpec(args=['self', 'x'], varargs=None, keywords=None, defaults=None), ('document', '5b71df1f6beee225ccfa9566f537059d'))
 paddle.fluid.layers.StaticRNN.step_output (ArgSpec(args=['self', 'o'], varargs=None, keywords=None, defaults=None), ('document', '10a543d40e14408765c5294636646a6c'))
 paddle.fluid.layers.StaticRNN.update_memory (ArgSpec(args=['self', 'mem', 'var'], varargs=None, keywords=None, defaults=None), ('document', '2021b2399d9a2265e2c254973ed151cd'))
-paddle.fluid.layers.reorder_lod_tensor_by_rank (ArgSpec(args=['x', 'rank_table'], varargs=None, keywords=None, defaults=None), ('document', '5b552a1f0f7eb4dacb768a975ba15d08'))
+paddle.fluid.layers.reorder_lod_tensor_by_rank (ArgSpec(args=['x', 'rank_table'], varargs=None, keywords=None, defaults=None), ('document', 'db67cfcdd20ff6380d125a7553d62121'))
 paddle.fluid.layers.Print (ArgSpec(args=['input', 'first_n', 'message', 'summarize', 'print_tensor_name', 'print_tensor_type', 'print_tensor_shape', 'print_tensor_lod', 'print_phase'], varargs=None, keywords=None, defaults=(-1, None, 20, True, True, True, True, 'both')), ('document', '3130bed32922b9fd84ce2dea6250f635'))
 paddle.fluid.layers.is_empty (ArgSpec(args=['x', 'cond'], varargs=None, keywords=None, defaults=(None,)), ('document', '3011dc695f490afdf504dc24f628319a'))
 paddle.fluid.layers.sigmoid (ArgSpec(args=['x', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', '7bd26680989f33301a4a68000d5af4b0'))
