@@ -667,7 +667,6 @@ def _pull_box_sparse(input, size, dtype='float32'):
     return outs
 
 
-@templatedoc(op_type="lstm")
 def dynamic_lstm(input,
                  size,
                  h_0=None,
@@ -682,58 +681,82 @@ def dynamic_lstm(input,
                  dtype='float32',
                  name=None):
     """
-    ${comment}
+    **Note**:
+        1. This OP only supports LoDTensor as inputs. If you need to deal with Tensor, please use :ref:`api_fluid_layers_lstm` .
+        2. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
 
-    Args:
-        input (Variable): ${input_comment}
-        size (int): 4 * hidden size.
-        h_0(Variable): The initial hidden state is an optional input, default is zero.
-                       This is a tensor with shape (N x D), where N is the
-                       batch size and D is the hidden size.
-        c_0(Variable): The initial cell state is an optional input, default is zero.
-                       This is a tensor with shape (N x D), where N is the
-                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
-                               hidden-hidden weights.
+    The implementation of this OP include diagonal/peephole connections.
+    Please refer to `Gers, F. A., & Schmidhuber, J. (2000) <ftp://ftp.idsia.ch/pub/juergen/TimeCount-IJCNN2000.pdf>`_ .
+    If you do not need peephole connections, please set use_peepholes to False .
 
-                               - Weights = {:math:`W_{ch}, W_{ih}, \
-                                                W_{fh}, W_{oh}`}
-                               - The shape is (D x 4D), where D is the hidden
-                                 size.
+    This OP computes each timestep as follows:
 
-                               If it is set to None or one attribute of ParamAttr,
-                               dynamic_lstm will create ParamAttr as param_attr.
-                               If the Initializer of the param_attr is not set, the
-                               parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|None): The bias attribute for the learnable bias
+    .. math::
+      i_t = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + b_{x_i} + b_{h_i})
+    .. math::
+      f_t = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + b_{x_f} + b_{h_f})
+    .. math::
+      o_t = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + b_{x_o} + b_{h_o})
+    .. math::
+      \widetilde{c_t} = tanh(W_{cx}x_t + W_{ch}h_{t-1} + b{x_c} + b_{h_c})
+    .. math::
+      c_t = f_t \odot c_{t-1} + i_t \odot \widetilde{c_t}
+    .. math::
+      h_t = o_t \odot tanh(c_t)
+
+    The symbolic meanings in the formula are as follows:
+
+    - :math:`x_{t}` represents the input at timestep :math:`t`
+    - :math:`h_{t}` represents the hidden state at timestep :math:`t`
+    - :math:`h_{t-1}, c_{t-1}` represent the hidden state and cell state at timestep :math:`t-1` , respectively
+    - :math:`\widetilde{c_t}` represents the candidate cell state
+    - :math:`i_t` , :math:`f_t` and :math:`o_t` represent input gate, forget gate, output gate, respectively
+    - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
+    - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
+    - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
+    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
+
+    Parameters:
+        input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, multi-dimensional LODTensor of shape :math:`[T, 4*hidden\_size]` . Data type is float32 or float64.
+        size (int): must be 4 * hidden_size.
+        h_0( :ref:`api_guide_Variable_en` , optional): The initial hidden state of the LSTM, multi-dimensional Tensor of shape :math:`[batch\_size, hidden\_size]` .
+                       Data type is float32 or float64. If set to None, it will be a vector of all 0. Default: None.
+        c_0( :ref:`api_guide_Variable_en` , optional): The initial hidden state of the LSTM, multi-dimensional Tensor of shape :math:`[batch\_size, hidden\_size]` .
+                       Data type is float32 or float64. If set to None, it will be a vector of all 0. `h_0` and `c_0` can be None but only at the same time. Default: None.
+        param_attr(ParamAttr, optional): Parameter attribute of weight. If it is None, the default weight parameter attribute is used. Please refer to ref:`api_fluid_ParamAttr' .
+                              If the user needs to set this parameter, the dimension must be :math:`[hidden\_size, 4*hidden\_size]` . Default: None.
+
+                              - Weights = :math:`\{ W_{cr},W_{ir},W_{fr},W_{or} \}` , the shape is [hidden_size, 4*hidden_size].
+
+        bias_attr (ParamAttr, optional): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
                               setting `use_peepholes` to `True`.
+                              Please refer to ref:`api_fluid_ParamAttr' . Default: None.
 
                               1. `use_peepholes = False`
                                  - Biases = {:math:`b_c, b_i, b_f, b_o`}.
-                                 - The shape is (1 x 4D).
+                                 - The shape is [1, 4*hidden_size].
                               2. `use_peepholes = True`
                                  - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
-                                 - The shape is (1 x 7D).
-
-                              If it is set to None or one attribute of ParamAttr,
-                              dynamic_lstm will create ParamAttr as bias_attr.
-                              If the Initializer of the bias_attr is not set,
-                              the bias is initialized zero. Default: None.
-        use_peepholes (bool): ${use_peepholes_comment}
-        is_reverse (bool): ${is_reverse_comment}
-        gate_activation (str): ${gate_activation_comment}
-        cell_activation (str): ${cell_activation_comment}
-        candidate_activation (str): ${candidate_activation_comment}
-        dtype (str): Data type. Choices = ["float32", "float64"], default "float32".
-        name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
+                                 - The shape is [1, 7*hidden_size].
+                                 
+        use_peepholes (bool, optional): Whether to use peephole connection or not. Default: True.
+        is_reverse (bool, optional): Whether to calculate reverse LSTM. Default: False.
+        gate_activation (str, optional): The activation for input gate, forget gate and output gate. Default: "sigmoid".
+        cell_activation (str, optional): The activation for cell output. Default: "tanh".
+        candidate_activation (str, optional): The activation for candidate hidden state. Default: "tanh".
+        dtype (str, optional): Data type, can be "float32" or "float64". Default: "float32".
+        name (str, optional): A name for this layer. Please refer to :ref:`api_guide_Name` . Default: None.
 
     Returns:
-        tuple: The hidden state, and cell state of LSTM. The shape of both \
-        is (T x D), and lod is the same with the `input`.
+        tuple ( :ref:`api_guide_Variable` , :ref:`api_guide_Variable` ) :
+
+            The hidden state and cell state of LSTM
+
+                - hidden: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
+                - cell: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
 
     Examples:
         .. code-block:: python
@@ -743,15 +766,16 @@ def dynamic_lstm(input,
             vocab_size = 10000
             hidden_dim = 512
             
-            data = fluid.layers.data(name='x', shape=[1],
-                         dtype='int32', lod_level=1)
-            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+            data = fluid.data(name='x', shape=[None], dtype='int64', lod_level=1)
+            emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
 
             forward_proj = fluid.layers.fc(input=emb, size=hidden_dim * 4,
                                            bias_attr=False)
 
-            forward, _ = fluid.layers.dynamic_lstm(
+            forward, cell = fluid.layers.dynamic_lstm(
                 input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
+            forward.shape  # (-1, 512)
+            cell.shape  # (-1, 512)
     """
     assert in_dygraph_mode(
     ) is not True, "please use lstm instead of dynamic_lstm in dygraph mode!"
@@ -813,77 +837,76 @@ def lstm(input,
          default_initializer=None,
          seed=-1):
     """
-    If Device is GPU, This op will use cudnn LSTM implementation
+    **Note**:
+        This OP only supports running on GPU devices.
 
-    A four-gate Long Short-Term Memory network with no peephole connections.
-    In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1,
-    the cell input ct-1 and the previous layer input xt given matrices W, R and biases bW, bR from the following equations:
+    This OP implements LSTM operation - `Hochreiter, S., & Schmidhuber, J. (1997) <http://deeplearning.cs.cmu.edu/pdfs/Hochreiter97_lstm.pdf>`_ .
+
+    The implementation of this OP does not include diagonal/peephole connections.
+    Please refer to `Gers, F. A., & Schmidhuber, J. (2000) <ftp://ftp.idsia.ch/pub/juergen/TimeCount-IJCNN2000.pdf>`_ .
+    If you need peephole connections, please use :ref:`api_fluid_layers_dynamic_lstm` .
+
+    This OP computes each timestep as follows:
 
     .. math::
+      i_t = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + b_{x_i} + b_{h_i})
+    .. math::
+      f_t = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + b_{x_f} + b_{h_f})
+    .. math::
+      o_t = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + b_{x_o} + b_{h_o})
+    .. math::
+      \widetilde{c_t} = tanh(W_{cx}x_t + W_{ch}h_{t-1} + b{x_c} + b_{h_c})
+    .. math::
+      c_t = f_t \odot c_{t-1} + i_t \odot \widetilde{c_t}
+    .. math::
+      h_t = o_t \odot tanh(c_t)
 
-       i_t &= \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + bx_i + bh_i)
+    The symbolic meanings in the formula are as follows:
 
-       f_t &= \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + bx_f + bh_f)
+    - :math:`x_{t}` represents the input at timestep :math:`t`
+    - :math:`h_{t}` represents the hidden state at timestep :math:`t`
+    - :math:`h_{t-1}, c_{t-1}` represent the hidden state and cell state at timestep :math:`t-1` , respectively
+    - :math:`\widetilde{c_t}` represents the candidate cell state
+    - :math:`i_t` , :math:`f_t` and :math:`o_t` represent input gate, forget gate, output gate, respectively
+    - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
+    - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
+    - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
+    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
 
-       o_t &= \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + bx_o + bh_o)
-
-       \\tilde{c_t} &= tanh(W_{cx}x_t + W_{ch}h_{t-1} + bx_c + bh_c)
-
-       c_t &= f_t \odot c_{t-1} + i_t \odot \\tilde{c_t}
-
-       h_t &= o_t \odot tanh(c_t)
-
-    - $W$ terms denote weight matrices (e.g. $W_{ix}$ is the matrix
-      of weights from the input gate to the input)
-    - The b terms denote bias vectors ($bx_i$ and $bh_i$ are the input gate bias vector).
-    - sigmoid is the logistic sigmoid function.
-    - $i, f, o$ and $c$ are the input gate, forget gate, output gate,
-      and cell activation vectors, respectively, all of which have the same size as
-      the cell output activation vector $h$.
-    - The :math:`\odot` is the element-wise product of the vectors.
-    - :math:`tanh` is the activation functions.
-    - :math:`\\tilde{c_t}` is also called candidate hidden state,
-      which is computed based on the current input and the previous hidden state.
-
-    Where sigmoid is the sigmoid operator: :math:`sigmoid(x) = 1 / (1 + e^{-x})` , * represents a point-wise multiplication,
-    X represensts a matrix multiplication
-
-
-    Args:
-        input (Variable): LSTM input tensor, shape MUST be ( seq_len x batch_size x input_size )
-        init_h(Variable): The initial hidden state of the LSTM
-                       This is a tensor with shape ( num_layers x batch_size x hidden_size)
-                       if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
-        init_c(Variable): The initial cell state of the LSTM.
-                       This is a tensor with shape ( num_layers x batch_size x hidden_size )
-                       if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
-        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len
-        hidden_size (int): hidden size of the LSTM
-        num_layers (int): total layers number of the LSTM
-        dropout_prob(float|0.0): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
-                             There is NO dropout work on rnn output of the last RNN layers
-        is_bidirec (bool): If it is bidirectional
-        is_test (bool): If it is in test phrase
-        name (str|None): A name for this layer(optional). If set None, the layer
-                         will be named automatically.
-        default_initializer(Initialize|None): Where use initializer to initialize the Weight
-                         If set None, defaule initializer will be used
-        seed(int): Seed for dropout in LSTM, If it's -1, dropout will use random seed
+    Parameters:
+        input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, 3-D Tensor of shape :math:`[batch\_size, seq\_len, input\_dim]` . Data type is float32 or float64
+        init_h( :ref:`api_guide_Variable_en` ): The initial hidden state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
+                       If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
+        init_c( :ref:`api_guide_Variable_en` ): The initial cell state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
+                       If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
+        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len.
+        hidden_size (int): hidden size of the LSTM.
+        num_layers (int): total layers number of the LSTM.
+        dropout_prob(float, optional): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
+                             There is NO dropout work on rnn output of the last RNN layers.
+                             Default: 0.0.
+        is_bidirec (bool, optional): If it is bidirectional. Default: False.
+        is_test (bool, optional): If it is in test phrase. Default: False.
+        name (str, optional): A name for this layer. If set None, the layer
+                         will be named automatically. Default: None.
+        default_initializer(Initializer, optional): Where use initializer to initialize the Weight
+                         If set None, defaule initializer will be used. Default: None.
+        seed(int, optional): Seed for dropout in LSTM, If it's -1, dropout will use random seed. Default: 1.
 
 
     Returns:
-        rnn_out(Tensor),last_h(Tensor),last_c(Tensor):
+        tuple ( :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` ) :
 
                         Three tensors, rnn_out, last_h, last_c:
 
-                        - rnn_out is result of LSTM hidden, shape is (seq_len x batch_size x hidden_size) \
-                          if is_bidirec set to True, shape will be ( seq_len x batch_sze x hidden_size*2)
+                        - rnn_out is result of LSTM hidden, shape is :math:`[seq\_len, batch\_size, hidden\_size]` \
+                          if is_bidirec set to True, shape will be :math:`[seq\_len, batch\_size, hidden\_size*2]`
                         - last_h is the hidden state of the last step of LSTM \
-                          shape is ( num_layers x batch_size x hidden_size ) \
-                          if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
+                          shape is :math:`[num\_layers, batch\_size, hidden\_size]` \
+                          if is_bidirec set to True, shape will be :math:`[num\_layers*2, batch\_size, hidden\_size]`
                         - last_c(Tensor): the cell state of the last step of LSTM \
-                          shape is ( num_layers x batch_size x hidden_size ) \
-                          if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
+                          shape is :math:`[num\_layers, batch\_size, hidden\_size]` \
+                          if is_bidirec set to True, shape will be :math:`[num\_layers*2, batch\_size, hidden\_size]`
 
 
     Examples:
@@ -894,9 +917,8 @@ def lstm(input,
 
             emb_dim = 256
             vocab_size = 10000
-            data = fluid.layers.data(name='x', shape=[-1, 100, 1],
-                         dtype='int32')
-            emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+            data = fluid.data(name='x', shape=[None, 100], dtype='int64')
+            emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
             batch_size = 20
             max_len = 100
             dropout_prob = 0.2
@@ -908,6 +930,9 @@ def lstm(input,
             rnn_out, last_h, last_c = layers.lstm( emb, init_h, init_c, \
                     max_len, hidden_size, num_layers, \
                     dropout_prob=dropout_prob)
+            rnn_out.shape  # (-1, 100, 150)
+            last_h.shape  # (1, 20, 150)
+            last_c.shape  # (1, 20, 150)
     """
 
     helper = LayerHelper('cudnn_lstm', **locals())
@@ -992,138 +1017,102 @@ def dynamic_lstmp(input,
                   cell_clip=None,
                   proj_clip=None):
     """
-    **Dynamic LSTMP Layer**
+    **Note**:
+        1. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
 
-    LSTMP (LSTM with recurrent projection) layer has a separate projection
-    layer after the LSTM layer, projecting the original hidden state to a
-    lower-dimensional one, which is proposed to reduce the number of total
-    parameters and furthermore computational complexity for the LSTM,
-    espeacially for the case that the size of output units is relative
-    large (https://research.google.com/pubs/archive/43905.pdf).
+    This OP implements the LSTMP (LSTM Projected) layer.
+    The LSTMP layer has a separate linear mapping layer behind the LSTM layer. -- `Sak, H., Senior, A., & Beaufays, F. (2014) <https://ai.google/research/pubs/pub43905.pdf>`_ .
 
-    The formula is as follows:
+    Compared with the standard LSTM layer, LSTMP has an additional linear mapping layer,
+    which is used to map from the original hidden state :math:`h_t` to the lower dimensional state :math:`r_t` .
+    This reduces the total number of parameters and computational complexity, especially when the output unit is relatively large.
+
+    The default implementation of the OP contains diagonal/peephole connections,
+    please refer to `Gers, F. A., & Schmidhuber, J. (2000) <ftp://ftp.idsia.ch/pub/juergen/TimeCount-IJCNN2000.pdf>`_ .
+    If you need to disable the peephole connections, set use_peepholes to False.
+
+    This OP computes each timestep as follows:
 
     .. math::
+      i_t = \sigma(W_{ix}x_{t} + W_{ir}r_{t-1} + W_{ic}c_{t-1} + b_i)
+    .. math::
+          f_t = \sigma(W_{fx}x_{t} + W_{fr}r_{t-1} + W_{fc}c_{t-1} + b_f)
+    .. math::
+          o_t = \sigma(W_{ox}x_{t} + W_{or}r_{t-1} + W_{oc}c_{t-1} + b_o)
+    .. math::
+          \widetilde{c_t} = act_g(W_{cx}x_t + W_{cr}r_{t-1} + b_c)
+    .. math::
+          c_t = f_t \odot c_{t-1} + i_t \odot \widetilde{c_t}
+    .. math::
+          h_t = o_t \odot act_h(c_t)
+    .. math::
+          r_t = \overline{act_h}(W_{rh}h_t)
 
-        i_t & = \sigma(W_{ix}x_{t} + W_{ir}r_{t-1} + W_{ic}c_{t-1} + b_i)
+    The symbolic meanings in the formula are as follows:
 
-        f_t & = \sigma(W_{fx}x_{t} + W_{fr}r_{t-1} + W_{fc}c_{t-1} + b_f)
+    - :math:`x_{t}` represents the input at timestep :math:`t`
+    - :math:`h_{t}` represents the hidden state at timestep :math:`t`
+    - :math:`r_{t}` : represents the state of the projected output of the hidden state :math:`h_{t}`
+    - :math:`h_{t-1}, c_{t-1}, r_{t-1}` represent the hidden state, cell state and projected output at timestep :math:`t-1` , respectively
+    - :math:`\widetilde{c_t}` represents the candidate cell state
+    - :math:`i_t` , :math:`f_t` and :math:`o_t` represent input gate, forget gate, output gate, respectively
+    - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
+    - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
+    - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
+    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
 
-        \\tilde{c_t} & = act_g(W_{cx}x_t + W_{cr}r_{t-1} + b_c)
-
-        o_t & = \sigma(W_{ox}x_{t} + W_{or}r_{t-1} + W_{oc}c_t + b_o)
-
-        c_t & = f_t \odot c_{t-1} + i_t \odot \\tilde{c_t}
-
-        h_t & = o_t \odot act_h(c_t)
-
-        r_t & = \overline{act_h}(W_{rh}h_t)
-
-    In the above formula:
-
-    * :math:`W`: Denotes weight matrices (e.g. :math:`W_{xi}` is \
-          the matrix of weights from the input gate to the input).
-    * :math:`W_{ic}`, :math:`W_{fc}`, :math:`W_{oc}`: Diagonal weight \
-          matrices for peephole connections. In our implementation, \
-          we use vectors to represent these diagonal weight matrices.
-    * :math:`b`: Denotes bias vectors (e.g. :math:`b_i` is the input gate \
-          bias vector).
-    * :math:`\sigma`: The activation, such as logistic sigmoid function.
-    * :math:`i, f, o` and :math:`c`: The input gate, forget gate, output \
-          gate, and cell activation vectors, respectively, all of which have \
-          the same size as the cell output activation vector :math:`h`.
-    * :math:`h`: The hidden state.
-    * :math:`r`: The recurrent projection of the hidden state.
-    * :math:`\\tilde{c_t}`: The candidate hidden state, whose \
-          computation is based on the current input and previous hidden state.
-    * :math:`\odot`: The element-wise product of the vectors.
-    * :math:`act_g` and :math:`act_h`: The cell input and cell output \
-          activation functions and `tanh` is usually used for them.
-    * :math:`\overline{act_h}`: The activation function for the projection \
-          output, usually using `identity` or same as :math:`act_h`.
-
-    Set `use_peepholes` to `False` to disable peephole connection. The formula
-    is omitted here, please refer to the paper
-    http://www.bioinf.jku.at/publications/older/2604.pdf for details.
-
-    Note that these :math:`W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}`
-    operations on the input :math:`x_{t}` are NOT included in this operator.
-    Users can choose to use fully-connected layer before LSTMP layer.
-
-    Args:
-        input(Variable): The input of dynamic_lstmp layer, which supports
-                         variable-time length input sequence. The underlying
-                         tensor in this Variable is a matrix with shape
-                         (T X 4D), where T is the total time steps in this
-                         mini-batch, D is the hidden size.
-        size(int): 4 * hidden size.
+    Parameters:
+        input( :ref:`api_guide_Variable_en` ): The input of dynamic_lstmp layer, which supports
+                         variable-time length input sequence.
+                         It is a multi-dimensional LODTensor of shape :math:`[T, 4*hidden\_size]` . Data type is float32 or float64.
+        size(int): must be 4 * hidden_size.
         proj_size(int): The size of projection output.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
-                               hidden-hidden weight and projection weight.
+        param_attr(ParamAttr, optional): Parameter attribute of weight. If it is None, the default weight parameter attribute is used. Please refer to ref:`api_fluid_ParamAttr' .
+                              If the user needs to set this parameter, the dimension must be :math:`[hidden\_size, 4*hidden\_size]` . Default: None.
 
-                               - Hidden-hidden weight = {:math:`W_{ch}, W_{ih}, \
-                                                W_{fh}, W_{oh}`}.
-                               - The shape of hidden-hidden weight is (P x 4D),
-                                 where P is the projection size and D the hidden
-                                 size.
-                               - Projection weight = {:math:`W_{rh}`}.
-                               - The shape of projection weight is (D x P).
+                              - Weights = :math:`\{ W_{cr},W_{ir},W_{fr},W_{or} \}` , the shape is [P, 4*hidden_size] , where P is the projection size.
+                              - Projection weight  = :math:`\{ W_{rh} \}` , the shape is [hidden_size, P].
 
-                               If it is set to None or one attribute of ParamAttr,
-                               dynamic_lstm will create ParamAttr as param_attr.
-                               If the Initializer of the param_attr is not set, the
-                               parameter is initialized with Xavier. Default: None.
-        bias_attr(ParamAttr|None): The bias attribute for the learnable bias
+        bias_attr (ParamAttr, optional): The bias attribute for the learnable bias
                               weights, which contains two parts, input-hidden
                               bias weights and peephole connections weights if
                               setting `use_peepholes` to `True`.
+                              Please refer to ref:`api_fluid_ParamAttr' . Default: None.
 
                               1. `use_peepholes = False`
-                                - Biases = {:math:`b_c, b_i, b_f, b_o`}.
-                                - The shape is (1 x 4D).
+                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                 - The shape is [1, 4*hidden_size].
                               2. `use_peepholes = True`
-                                - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
+                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
                                                  W_{fc}, W_{oc}`}.
-                                - The shape is (1 x 7D).
+                                 - The shape is [1, 7*hidden_size].
 
-                              If it is set to None or one attribute of ParamAttr,
-                              dynamic_lstm will create ParamAttr as bias_attr.
-                              If the Initializer of the bias_attr is not set,
-                              the bias is initialized zero. Default: None.
-        use_peepholes(bool): Whether to enable diagonal/peephole connections,
-                             default `True`.
-        is_reverse(bool): Whether to compute reversed LSTM, default `False`.
-        gate_activation(str): The activation for input gate, forget gate and
-                              output gate. Choices = ["sigmoid", "tanh", "relu",
-                              "identity"], default "sigmoid".
-        cell_activation(str): The activation for cell output. Choices = ["sigmoid",
-                              "tanh", "relu", "identity"], default "tanh".
-        candidate_activation(str): The activation for candidate hidden state.
-                              Choices = ["sigmoid", "tanh", "relu", "identity"],
-                              default "tanh".
-        proj_activation(str): The activation for projection output.
-                              Choices = ["sigmoid", "tanh", "relu", "identity"],
-                              default "tanh".
-        dtype(str): Data type. Choices = ["float32", "float64"], default "float32".
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
-        h_0(Variable): The initial hidden state is an optional input, default is zero.
-                       This is a tensor with shape (N x D), where N is the
-                       batch size and D is the projection size.
-        c_0(Variable): The initial cell state is an optional input, default is zero.
-                       This is a tensor with shape (N x D), where N is the
-                       batch size. `h_0` and `c_0` can be NULL but only at the same time.
-        cell_clip(float): If provided the cell state is clipped
-                             by this value prior to the cell output activation.
-        proj_clip(float): If `num_proj > 0` and `proj_clip` is
+        use_peepholes (bool, optional): Whether to use peephole connection or not. Default True.
+        is_reverse (bool, optional): Whether to calculate reverse LSTM. Default False.
+        gate_activation (str, optional): The activation for input gate, forget gate and output gate. Default "sigmoid".
+        cell_activation (str, optional): The activation for cell output. Default "tanh".
+        candidate_activation (str, optional): The activation for candidate hidden state. Default "tanh".
+        proj_activation(str, optional): The activation for projection output. Default "tanh".
+        dtype (str, optional): Data type, can be "float32" or "float64". Default "float32".
+        name (str, optional): A name for this layer. Please refer to :ref:`api_guide_Name` . Default: None.
+        h_0( :ref:`api_guide_Variable` , optional): The initial hidden state is an optional input, default is zero.
+                       This is a tensor with shape :math:`[batch\_size, P]` , where P is the projection size. Default: None.
+        c_0( :ref:`api_guide_Variable` , optional): The initial cell state is an optional input, default is zero.
+                       This is a tensor with shape :math:`[batch\_size, P]` , where P is the projection size.
+                       `h_0` and `c_0` can be None but only at the same time. Default: None.
+        cell_clip(float, optional): If not None, the cell state is clipped
+                             by this value prior to the cell output activation. Default: None.
+        proj_clip(float, optional): If `num_proj > 0` and `proj_clip` is
                             provided, then the projected values are clipped elementwise to within
-                            `[-proj_clip, proj_clip]`.
+                            `[-proj_clip, proj_clip]`. Default: None.
 
     Returns:
-        tuple: A tuple of two output variable: the projection of hidden state, \
-               and cell state of LSTMP. The shape of projection is (T x P), \
-               for the cell state which is (T x D), and both LoD is the same \
-               with the `input`.
+        tuple ( :ref:`api_guide_Variable` , :ref:`api_guide_Variable` ) :
+
+                The hidden state and cell state of LSTMP
+
+                - hidden: LoDTensor with shape of :math:`[T, P]` , and its lod and dtype is the same as the input.
+                - cell: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
 
     Examples:
 
@@ -1131,19 +1120,20 @@ def dynamic_lstmp(input,
 
             import paddle.fluid as fluid
             dict_dim, emb_dim = 128, 64
-            data = fluid.layers.data(name='sequence', shape=[1],
-                                     dtype='int32', lod_level=1)
-            emb = fluid.layers.embedding(input=data, size=[dict_dim, emb_dim])
+            data = fluid.data(name='sequence', shape=[None], dtype='int64', lod_level=1)
+            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
             hidden_dim, proj_dim = 512, 256
             fc_out = fluid.layers.fc(input=emb, size=hidden_dim * 4,
-                                     act=None, bias_attr=None)
-            proj_out, _ = fluid.layers.dynamic_lstmp(input=fc_out,
-                                                     size=hidden_dim * 4,
-                                                     proj_size=proj_dim,
-                                                     use_peepholes=False,
-                                                     is_reverse=True,
-                                                     cell_activation="tanh",
-                                                     proj_activation="tanh")
+                                    act=None, bias_attr=None)
+            proj_out, last_c = fluid.layers.dynamic_lstmp(input=fc_out,
+                                                    size=hidden_dim * 4,
+                                                    proj_size=proj_dim,
+                                                    use_peepholes=False,
+                                                    is_reverse=True,
+                                                    cell_activation="tanh",
+                                                    proj_activation="tanh")
+            proj_out.shape  # (-1, 256)
+            last_c.shape  # (-1, 512)
     """
 
     assert in_dygraph_mode(
@@ -1634,11 +1624,13 @@ def crf_decoding(input, param_attr, label=None, length=None):
     Args:
         input(${emission_type}): ${emission_comment}
 
-        param_attr(ParamAttr): The parameter attribute for training.
+        param_attr (ParamAttr|None): To specify the weight parameter attribute. 
+            Default: None, which means the default weight parameter property is 
+            used. See usage for details in :ref:`api_fluid_ParamAttr` .
 
-        label(${label_type}): ${label_comment}
+        label(${label_type}, optional): ${label_comment}
         
-        label(${length_type}): ${length_comment}
+        length(${length_type}, optional): ${length_comment}
 
     Returns:
         Variable: ${viterbi_path_comment}
@@ -1650,8 +1642,8 @@ def crf_decoding(input, param_attr, label=None, length=None):
 
            # LoDTensor-based example
            num_labels = 10
-           feature = fluid.layers.data(name='word_emb', shape=[784], dtype='float32', lod_level=1)
-           label = fluid.layers.data(name='label', shape=[1], dtype='int64', lod_level=1)
+           feature = fluid.data(name='word_emb', shape=[-1, 784], dtype='float32', lod_level=1)
+           label = fluid.data(name='label', shape=[-1, 1], dtype='int64', lod_level=1)
            emission = fluid.layers.fc(input=feature, size=num_labels)
            
            crf_cost = fluid.layers.linear_chain_crf(input=emission, label=label, 
@@ -1661,9 +1653,9 @@ def crf_decoding(input, param_attr, label=None, length=None):
 
            # Common tensor example
            num_labels, max_len = 10, 20
-           feature = fluid.layers.data(name='word_emb_pad', shape=[max_len, 784], dtype='float32')
-           label = fluid.layers.data(name='label_pad', shape=[max_len, 1], dtype='int64')
-           length = fluid.layers.data(name='length', shape=[1], dtype='int64')
+           feature = fluid.data(name='word_emb_pad', shape=[-1, max_len, 784], dtype='float32')
+           label = fluid.data(name='label_pad', shape=[-1, max_len, 1], dtype='int64')
+           length = fluid.data(name='length', shape=[-1, 1], dtype='int64')
            emission = fluid.layers.fc(input=feature, size=num_labels,
                                       num_flatten_dims=2)
            
@@ -5947,21 +5939,27 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
     Computes the sum of tensor elements over the given dimension.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (list|int|None): The dimensions along which the sum is performed. If
+        input (Variable): The input variable which is a Tensor, the data type is float32,
+            float64, int32, int64.
+        dim (list|int, optional): The dimensions along which the sum is performed. If
             :attr:`None`, sum all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
             range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
             the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool|False): Whether to reserve the reduced dimension in the
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+            than the :attr:`input` unless :attr:`keep_dim` is true, default
+            value is False.
+        name(str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The reduced Tensor variable.
+        Variable: Tensor, results of summation operation on the specified dim of input tensor,
+        it's data type is the same as input's Tensor.
 
+    Raises:
+        TypeError, if out data type is different with the input data type.
+    
     Examples:
         .. code-block:: python
 
@@ -5970,7 +5968,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the corresponding output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_sum(x)  # [3.5]
             fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
             fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
@@ -5980,7 +5978,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
             fluid.layers.reduce_sum(y, dim=[1, 2]) # [10, 26]
             fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
@@ -6015,22 +6013,28 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     Computes the mean of the input tensor's elements along the given dimension.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (list|int|None): The dimension along which the mean is computed. If
+        input (Variable): The input variable which is a Tensor, the data type is float32,
+            float64, int32, int64.
+        dim (list|int, optional): The dimension along which the mean is computed. If
             `None`, compute the mean over all elements of :attr:`input`
             and return a variable with a single element, otherwise it
             must be in the range :math:`[-rank(input), rank(input))`. If
             :math:`dim[i] < 0`, the dimension to reduce is
             :math:`rank(input) + dim[i]`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set `None`, the layer
-                       will be named automatically.
-
+            than the :attr:`input` unless :attr:`keep_dim` is true, default 
+            value is False.
+        name(str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    
     Returns:
-        Variable: The reduced mean Variable.
-
+        Variable: Tensor, results of average on the specified dim of input tensor,
+        it's data type is the same as input's Tensor.
+    
+    Raises:
+        TypeError, if out data type is different with the input data type.
+    
     Examples:
         .. code-block:: python
 
@@ -6039,7 +6043,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_mean(x)  # [0.4375]
             fluid.layers.reduce_mean(x, dim=0)  # [0.15, 0.25, 0.55, 0.8]
             fluid.layers.reduce_mean(x, dim=-1)  # [0.475, 0.4]
@@ -6049,7 +6053,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
             fluid.layers.reduce_mean(y, dim=[1, 2]) # [2.5, 6.5]
             fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
     """
@@ -6083,20 +6087,23 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
     Computes the maximum of tensor elements over the given dimension.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (list|int|None): The dimension along which the maximum is computed.
+        input (Variable): The input variable which is a Tensor, the data type is float32,
+            float64, int32, int64.
+        dim (list|int, optional): The dimension along which the maximum is computed.
             If :attr:`None`, compute the maximum over all elements of
             :attr:`input` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-rank(input), rank(input))`.
             If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+            than the :attr:`input` unless :attr:`keep_dim` is true, default
+            value is False.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The reduced Tensor variable.
+        Variable: Tensor, results of maximum on the specified dim of input tensor,
+        it's data type is the same as input's Tensor.
 
     Examples:
         .. code-block:: python
@@ -6106,7 +6113,7 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_max(x)  # [0.9]
             fluid.layers.reduce_max(x, dim=0)  # [0.2, 0.3, 0.6, 0.9]
             fluid.layers.reduce_max(x, dim=-1)  # [0.9, 0.7]
@@ -6116,7 +6123,7 @@ def reduce_max(input, dim=None, keep_dim=False, name=None):
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
             fluid.layers.reduce_max(y, dim=[1, 2]) # [4.0, 8.0]
             fluid.layers.reduce_max(y, dim=[0, 1]) # [7.0, 8.0]
     """
@@ -6141,20 +6148,23 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
     Computes the minimum of tensor elements over the given dimension.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (list|int|None): The dimensions along which the minimum is computed.
+        input (Variable): The input variable which is a Tensor, the data type is float32,
+            float64, int32, int64.
+        dim (list|int, optional): The dimensions along which the minimum is computed.
             If :attr:`None`, compute the minimum over all elements of
             :attr:`input` and return a Tensor variable with a single element,
             otherwise must be in the range :math:`[-rank(input), rank(input))`.
             If :math:`dim[i] < 0`, the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool): Whether to reserve the reduced dimension in the
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+            than the :attr:`input` unless :attr:`keep_dim` is true, default
+            value is False.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The reduced Tensor variable.
+        Variable: Tensor, result of minimum on the specified dim of input tensor,
+        it's data type is the same as input's Tensor.
 
     Examples:
         .. code-block:: python
@@ -6164,7 +6174,7 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_min(x)  # [0.1]
             fluid.layers.reduce_min(x, dim=0)  # [0.1, 0.2, 0.5, 0.7]
             fluid.layers.reduce_min(x, dim=-1)  # [0.2, 0.1]
@@ -6174,7 +6184,7 @@ def reduce_min(input, dim=None, keep_dim=False, name=None):
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
             fluid.layers.reduce_min(y, dim=[1, 2]) # [1.0, 5.0]
             fluid.layers.reduce_min(y, dim=[0, 1]) # [1.0, 2.0]
     """
@@ -6199,21 +6209,24 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
     Computes the product of tensor elements over the given dimension.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
-        dim (list|int|None): The dimensions along which the product is performed. If
+        input (Variable): The input variable which is a Tensor, the data type is float32,
+            float64, int32, int64.
+        dim (list|int, optional): The dimensions along which the product is performed. If
             :attr:`None`, multipy all elements of :attr:`input` and return a
             Tensor variable with a single element, otherwise must be in the
             range :math:`[-rank(input), rank(input))`. If :math:`dim[i] < 0`,
             the dimension to reduce is :math:`rank + dim[i]`.
-        keep_dim (bool|False): Whether to reserve the reduced dimension in the
+        keep_dim (bool, optional): Whether to reserve the reduced dimension in the
             output Tensor. The result tensor will have one fewer dimension
-            than the :attr:`input` unless :attr:`keep_dim` is true.
-        name(str|None): A name for this layer(optional). If set None, the
-            layer will be named automatically.
+            than the :attr:`input` unless :attr:`keep_dim` is true, default
+            value is False.
+        name(str, optional): The default value is None.  Normally there is no need for 
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The reduced Tensor variable.
-
+        Variable: Tensor, result of product on the specified dim of input tensor,
+        it's data type is the same as input's Tensor.
+    
     Examples:
         .. code-block:: python
 
@@ -6222,7 +6235,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
             # Each example is followed by the correspending output tensor.
-            x = fluid.layers.data(name='x', shape=[4, 2], dtype='float32')
+            x = fluid.data(name='x', shape=[2, 4], dtype='float32')
             fluid.layers.reduce_prod(x)  # [0.0002268]
             fluid.layers.reduce_prod(x, dim=0)  # [0.02, 0.06, 0.3, 0.63]
             fluid.layers.reduce_prod(x, dim=-1)  # [0.027, 0.0084]
@@ -6233,7 +6246,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
             #      [[[1.0, 2.0], [3.0, 4.0]],
             #      [[5.0, 6.0], [7.0, 8.0]]]
             # Each example is followed by the correspending output tensor.
-            y = fluid.layers.data(name='y', shape=[2, 2, 2], dtype='float32')
+            y = fluid.data(name='y', shape=[2, 2, 2], dtype='float32')
             fluid.layers.reduce_prod(y, dim=[1, 2]) # [24.0, 1680.0]
             fluid.layers.reduce_prod(y, dim=[0, 1]) # [105.0, 384.0]
     """
@@ -6371,25 +6384,24 @@ def reduce_any(input, dim=None, keep_dim=False, name=None):
 
 def split(input, num_or_sections, dim=-1, name=None):
     """
-    Split the input tensor into multiple sub-tensors.
+    Split the input tensor into multiple sub-Tensors.
 
     Args:
-        input (Variable): The input variable which is a Tensor or LoDTensor.
-        num_or_sections (int|list): If :attr:`num_or_sections` is an integer,
-            then the integer indicates the number of equal sized sub-tensors
-            that the tensor will be divided into. If :attr:`num_or_sections`
+        input (Variable): The input variable which is an N-D Tensor or LoDTensor, data type being float32, float64, int32 or int64.
+        num_or_sections (int|list): Integer or list of Integers. If :attr:`num_or_sections` is an integer,
+            then the integer indicates the number of equal sized sub-Tensors
+            that the Tensor will be divided into. If :attr:`num_or_sections`
             is a list of integers, the length of list indicates the number of
-            sub-tensors and the integers indicate the sizes of sub-tensors'
-            :attr:`dim` dimension orderly.
+            sub-Tensors and the integers indicate the sizes of sub-Tensors'
+            :attr:`dim` dimension orderly. The the length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
         dim (int): The dimension along which to split. If :math:`dim < 0`, the
             dimension to split along is :math:`rank(input) + dim`.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        list(Variable): The list of segmented tensor variables.
+        list(Variable): The list of segmented Tensor variables.
 
-    Examples:
+    Example:
         .. code-block:: python
 
             import paddle.fluid as fluid
@@ -6403,7 +6415,7 @@ def split(input, num_or_sections, dim=-1, name=None):
             # x1.shape [-1, 3, 3, 5]
             # x2.shape [-1, 3, 3, 5]
 
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=2)
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=[2, 3, 4], dim=2)
             # x0.shape [-1, 3, 2, 5]
             # x1.shape [-1, 3, 3, 5]
             # x2.shape [-1, 3, 4, 5]
@@ -7157,33 +7169,33 @@ def nce(input,
     ${comment}
 
     Args:
-        input (Variable): input variable.
-        label (Variable): label.
-        num_total_classes (int):${num_total_classes_comment}
+        input (Variable): Input variable, 2-D tensor with shape [batch_size, dim], 
+            and data type is float32 or float64.
+        label (Variable): Input label, 2-D tensor with shape [batch_size, num_true_class],
+            and data type is int64.
+        num_total_classes (int):${num_total_classes_comment}.
         sample_weight (Variable|None): A Variable of shape [batch_size, 1]
             storing a weight for each sample. The default weight for each
             sample is 1.0.
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
-             of nce. If it is set to None or one attribute of ParamAttr, nce
-             will create ParamAttr as param_attr. If the Initializer of the param_attr
-             is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of nce.
-             If it is set to False, no bias will be added to the output units.
-             If it is set to None or one attribute of ParamAttr, nce
-             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-             is not set, the bias is initialized zero. Default: None.
-        num_neg_samples (int): ${num_neg_samples_comment}
-        name (str|None): A name for this layer(optional). If set None, the layer
-             will be named automatically. Default: None.
-        sampler (str): The sampler used to sample class from negtive classes.
+        param_attr (ParamAttr|None): To specify the weight parameter attribute. 
+            Default: None, which means the default weight parameter property is 
+            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        bias_attr (ParamAttr|None): To specify the bias parameter attribute. 
+            Default: None, which means the default bias parameter property is 
+            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        num_neg_samples (int): ${num_neg_samples_comment}.
+        name(str|None): For detailed information, please refer to 
+            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
+        sampler (str, optional): The sampler used to sample class from negtive classes.
                        It can be 'uniform', 'log_uniform' or 'custom_dist'.
                        default: 'uniform'.
-        custom_dist (float[]): A float[] with size=num_total_classes.
+        custom_dist (nd.array|None): A numpy ndarray with size=num_total_classes.
                        It is used when sampler is set to 'custom_dist'.
                        custom_dist[i] is the probsbility of i-th class to be sampled.
                        default: None.
-        seed (int): The seed used in sampler. default: 0.
-        is_sparse(bool): The flag indicating whether to use sparse update, the weight@GRAD and bias@GRAD will be changed to SelectedRows.
+        seed (int, optional): The seed used in sampler. Default 0, means no random seed.
+        is_sparse(bool, optional): The flag indicating whether to use sparse update, 
+            the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default False.
 
     Returns:
         Variable: The output nce loss.
@@ -7198,8 +7210,8 @@ def nce(input,
             window_size = 5
             words = []
             for i in xrange(window_size):
-                words.append(fluid.layers.data(
-                    name='word_{0}'.format(i), shape=[1], dtype='int64'))
+                words.append(fluid.data(
+                    name='word_{0}'.format(i), shape=[-1, 1], dtype='int64'))
 
             dict_size = 10000
             label_word = int(window_size / 2) + 1
@@ -8257,17 +8269,17 @@ def one_hot(input, depth, allow_out_of_range=False):
 
 def autoincreased_step_counter(counter_name=None, begin=1, step=1):
     """
-    Create an auto-increase variable
-    which will be automatically increased by 1 every mini-batch
-    Return the run counter of the main program, default is started from 1.
+    Create an auto-increase variable. which will be automatically increased 
+    by 1 in every iteration. By default, the first return of this counter is 1, 
+    and the step size is 1.
 
     Args:
-        counter_name(str): The counter name, default is '@STEP_COUNTER@'.
-        begin(int): The first value of this counter.
-        step(int): The increment step between each execution.
+        counter_name(str, optional): The counter name. Default '@STEP_COUNTER@'.
+        begin(int, optional): The first return value of this counter. Default 1.
+        step(int, optional): The step size. Default 1.
 
     Returns:
-        Variable: The global run counter.
+        Variable: The auto-increased Variable with data type int64.
 
     Examples:
         .. code-block:: python
@@ -8991,8 +9003,8 @@ def label_smooth(label,
                  dtype="float32",
                  name=None):
     """
-    Label smoothing is a mechanism to regularize the classifier layer and is
-    called label-smoothing regularization (LSR).
+    Label smoothing is a mechanism to regularize the classifier layer and is called 
+    label-smoothing regularization (LSR). 
 
     Label smoothing is proposed to encourage the model to be less confident,
     since optimizing the log-likelihood of the correct label directly may
@@ -9011,19 +9023,23 @@ def label_smooth(label,
 
     See more details about label smoothing in https://arxiv.org/abs/1512.00567.
 
-    Args:
+    Parameters:
         label(Variable): The input variable containing the label data. The
-                          label data should use one-hot representation.
-        prior_dist(Variable): The prior distribution to be used to smooth
-                              labels. If not provided, an uniform distribution
-                              is used. The shape of :attr:`prior_dist` should
-                              be :math:`(1, class\_num)`.
-        epsilon(float): The weight used to mix up the original ground-truth
-                        distribution and the fixed distribution.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32,
-                                                  float_64, int etc.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+                        label data should use one-hot representation. It's 
+                        a multidimensional tensor with a shape of 
+                        :math:`[N_1, ..., Depth]`, where Depth is class number.
+        prior_dist(Variable, optional): The prior distribution to be used to smooth
+                        labels. If not provided, an uniform distribution
+                        is used. It's a multidimensional tensor with a shape of
+                        :math:`[1, class\_num]` . The default value is None.
+        epsilon(float, optional): The weight used to mix up the original ground-truth
+                        distribution and the fixed distribution. The default value is 
+                        0.1.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set
+                        as 'float32', 'float64'. The default value is 'float32'.
+        name(str, optional): The default value is None. Normally there is no need for user 
+                        to set this property. For more information, please refer to 
+                        :ref:`api_guide_Name`.
 
     Returns:
         Variable: The tensor variable containing the smoothed labels.
@@ -10075,9 +10091,11 @@ def gather(input, index, overwrite=True):
                        [5, 6]]
 
     Args:
-        input (Variable): The source input with rank>=1.
-        index (Variable): The index input with rank=1.
-        overwrite (bool): The mode that updating the grad when has same index.
+        input (Variable): The source input tensor with rank>=1. Supported data type is 
+            int32, int64, float32, float64 and uint8 (only for CPU), 
+            float16 (only for GPU).
+        index (Variable): The index input tensor with rank=1. Data type is int32 or int64.
+        overwrite (bool, optional): The mode that updating the grad when has same index.
             If True, use the overwrite mode to update the grad of the same index,
 	    if False, use the accumulate mode to update the grad of the same index. 
 	    Default value is True.
@@ -10092,8 +10110,8 @@ def gather(input, index, overwrite=True):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[-1, 5], dtype='float32')
-            index = fluid.layers.data(name='index', shape=[-1, 1], dtype='int32')
+            x = fluid.data(name='x', shape=[-1, 5], dtype='float32')
+            index = fluid.data(name='index', shape=[-1, 1], dtype='int32')
             output = fluid.layers.gather(x, index)
     """
     helper = LayerHelper('gather', **locals())
@@ -10198,39 +10216,71 @@ def scatter(input, index, updates, name=None, overwrite=True):
     """
     **Scatter Layer**
 
-    Output is obtained by updating the input on selected indices on the first
-    axis.
+    Output is obtained by updating the input on selected indices based on updates.
 
-    .. math::
+    .. code-block:: python
+        import numpy as np
+                
+        #input:
+        input = np.array([[1, 1], [2, 2], [3, 3]])
+        index = np.array([2, 1, 0, 1])
+        # shape of updates should be the same as input
+        # shape of updates with dim > 1 should be the same as input
+        updates = np.array([[1, 1], [2, 2], [3, 3], [4, 4]])
+        overwrite = False
 
-        Out = X
-        Out[Ids] = Updates
+        # calculation:
+        if not overwrite:
+            for i in range(len(index)):
+                input[index[i]] = np.zeros((2))
+
+        for i in range(len(index)):
+            if (overwrite):
+                input[index[i]] = updates[i]
+            else:
+                input[index[i]] += updates[i]
+        # output:
+        out = np.array([[3, 3], [6, 6], [1, 1]])
+        out.shape # [3, 2]
 
     Args:
-        input (Variable): The source input with rank>=1.
-        index (Variable): The index input with rank=1. Its dtype should be
-                          int32 or int64 as it is used as indexes.
-        updates (Variable): The updated value of scatter op.
-        name (str|None): The output variable name. Default None.
-        overwrite (bool): The mode that updating the output when has same index.
+        input (Variable): The input N-D Tensor with rank>=1. Data type can be float32.
+        index (Variable): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
+        updates (Variable): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 shoule be the same as input.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+        overwrite (bool): The mode that updating the output when there are same indices.
             If True, use the overwrite mode to update the output of the same index,
 	    if False, use the accumulate mode to update the output of the same index. 
-	    Default value is True.You can set overwrite=False to implement scatter_add.
+	    Default value is True.
 
     Returns:
-        output (Variable): The output is a tensor with the same shape as input.
+        Variable(Tensor|LoDTensor): The output is a Tensor with the same shape as input.
 
     Examples:
 
         .. code-block:: python
 
+            import numpy as np
             import paddle.fluid as fluid
 
-            input = fluid.layers.data(name='data', shape=[3, 5, 9], dtype='float32', append_batch_size=False)
-            index = fluid.layers.data(name='index', shape=[3], dtype='int64', append_batch_size=False)
-            updates = fluid.layers.data(name='update', shape=[3, 5, 9], dtype='float32', append_batch_size=False)
+            input = fluid.layers.data(name='data', shape=[3, 2], dtype='float32', append_batch_size=False)
+            index = fluid.layers.data(name='index', shape=[4], dtype='int64', append_batch_size=False)
+            updates = fluid.layers.data(name='update', shape=[4, 2], dtype='float32', append_batch_size=False)
 
-            output = fluid.layers.scatter(input, index, updates)
+            output = fluid.layers.scatter(input, index, updates, overwrite=False)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            in_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float32)
+            index_data = np.array([2, 1, 0, 1]).astype(np.int64)
+            update_data = np.array([[1, 1], [2, 2], [3, 3], [4, 4]]).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'data':in_data, "index":index_data, "update":update_data}, fetch_list=[output])
+            print(res)
+            # [array([[3., 3.],
+            #   [6., 6.],
+            #   [1., 1.]], dtype=float32)]
     """
     helper = LayerHelper('scatter', **locals())
     dtype = helper.input_dtype()
@@ -10550,36 +10600,56 @@ def relu(x, name=None):
     return out
 
 
-@templatedoc()
 def selu(x, scale=None, alpha=None, name=None):
     """
-    ${comment}
+    Selu Operator.
+
+    The equation is:
+    
+    .. math::
+        selu= \\lambda*
+        \\begin{cases}
+            x                      &\\quad \\text{ if } x>0 \n
+            \\alpha * e^x - \\alpha  &\\quad \\text{ if } x<=0
+        \\end{cases}
+    
+
+    The input `X` can carry the LoD (Level of Details) information,
+    or not. And the output shares the LoD information with input `X`.
 
     Args:
-        x (Variable): The input tensor.
-        scale(float, None): If the scale is not set,
+        x (Variable): The input N-D Tensor.
+        scale(float, optional): lambda in selu activation function,
             the default value is 1.0507009873554804934193349852946.
             For more information about this value, please refer
             to: https://arxiv.org/abs/1706.02515.
-        alpha(float, None): If the alpha is not set,
+        alpha(float, optional): alpha in selu activation function,
             the default value is 1.6732632423543772848170429916717.
             For more information about this value, please refer
             to: https://arxiv.org/abs/1706.02515.
-        name (str|None, default None): A name for this layer If set None,
-            the layer will be named automatically.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+
 
     Returns:
-        Variable: The output tensor with the same shape as input.
+        Variable(Tensor|LoDTensor): The output Tensor or LoDTensor with the same shape and LoD information as input.
 
     Examples:
 
         .. code-block:: python
              
             import paddle.fluid as fluid
-          
-            input = fluid.layers.data(
-                 name="input", shape=[3, 9, 5], dtype="float32")
-            output = fluid.layers.selu(input)
+            import numpy as np
+
+            inputs = fluid.layers.data(name="x", shape=[2, 2], dtype="float32")
+            output = fluid.layers.selu(inputs)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            img = np.array([[0, 1],[2, 3]]).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+            print(res) # [array([[0.      , 1.050701],[2.101402, 3.152103]], dtype=float32)]
     """
     helper = LayerHelper('selu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -11086,11 +11156,12 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
 
     Args:
        label (Variable): Indicates whether the left is ranked higher than the right or not.
-       left (Variable): Ranking score for left.
-       right (Variable): Ranking score for right.
+           Data type is float32.
+       left (Variable): Ranking score for left. Data type float32.
+       right (Variable): Ranking score for right. Data type float32.
        margin (float): Indicates the given margin.
-       name (str|None): A name for this layer (optional). If set None, the layer
-                       will be named automatically.
+       name(str|None): For detailed information, please refer to 
+           :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
        Variable: The ranking loss.
@@ -11103,9 +11174,9 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
         .. code-block:: python
 
            import paddle.fluid as fluid
-           label = fluid.layers.data(name="label", shape=[-1, 1], dtype="float32")
-           left = fluid.layers.data(name="left", shape=[-1, 1], dtype="float32")
-           right = fluid.layers.data(name="right", shape=[-1, 1], dtype="float32")
+           label = fluid.data(name="label", shape=[-1, 1], dtype="float32")
+           left = fluid.data(name="left", shape=[-1, 1], dtype="float32")
+           right = fluid.data(name="right", shape=[-1, 1], dtype="float32")
            out = fluid.layers.margin_rank_loss(label, left, right)
     """
     helper = LayerHelper('margin_rank_loss', **locals())
@@ -11432,23 +11503,71 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
 @templatedoc()
 def swish(x, beta=1.0, name=None):
     """
-    ${comment}
+    Elementwise swish activation function. See `Searching for Activation Functions <https://arxiv.org/abs/1710.05941>`_ for more details.
+    
+    Equation:
+
+    .. math::
+        out = \\frac{x}{1 + e^{- beta * x}}
+    
     Args:
-        x(${x_type}): ${x_comment}
-        beta(${beta_type}|1.0): ${beta_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        x(Variable): Tensor or LoDTensor, dtype: float32 or float64, the input of swish activation.
+        
+        beta(float): Constant beta of swish operator, default 1.0.
+        
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        output(${out_type}): ${out_comment}
+
+        Variable: Output of the swish activation, Tensor or LoDTensor, with the same dtype and shape with the input x.
 
     Examples:
 
         .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            
+            # declarative mode
+            import numpy as np
+            from paddle import fluid
+            
+            x = fluid.data(name="x", shape=(-1, 3), dtype="float32")
             y = fluid.layers.swish(x, beta=2.0)
+            
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            start = fluid.default_startup_program()
+            main = fluid.default_main_program()
+            
+            data = np.random.randn(2, 3).astype("float32")
+            exe.run(start)
+            y_np, = exe.run(main, feed={"x": data}, fetch_list=[y])
+            
+            data
+            # array([[-1.1239197 ,  1.3391294 ,  0.03921051],
+            #        [ 1.1970421 ,  0.02440812,  1.2055548 ]], dtype=float32)
+            y_np
+            # array([[-0.2756806 ,  1.0610548 ,  0.01998957],
+            #        [ 0.9193261 ,  0.01235299,  0.9276883 ]], dtype=float32)
+
+
+        .. code-block:: python
+
+            # imperative mode
+            import numpy as np
+            from paddle import fluid
+            import paddle.fluid.dygraph as dg
+            
+            data = np.random.randn(2, 3).astype("float32")
+            place = fluid.CPUPlace()
+            with dg.guard(place) as g:
+                x = dg.to_variable(data)
+                y = fluid.layers.swish(x)
+                y_np = y.numpy()
+            data
+            # array([[-0.0816701 ,  1.1603649 , -0.88325626],
+            #        [ 0.7522361 ,  1.0978601 ,  0.12987892]], dtype=float32)
+            y_np
+            # array([[-0.03916847,  0.8835007 , -0.25835553],
+            #        [ 0.51126915,  0.82324016,  0.06915068]], dtype=float32)
     """
     helper = LayerHelper('swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -11590,26 +11709,37 @@ def leaky_relu(x, alpha=0.02, name=None):
     return out
 
 
-@templatedoc()
 def soft_relu(x, threshold=40.0, name=None):
     """
-    ${comment}
+    SoftRelu Activation Operator.
+
+    $out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$
+
     Args:
-        x(${x_type}): ${x_comment}
-        threshold(${threshold_type}|40.0): ${threshold_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        x(Variable): Input of soft_relu operator. Data type can be float32, float64.
+        threshold(float, optional): The threshold value of soft_relu, default value being 40.0.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+
     Returns:
-        output(${out_type}): ${out_comment}
+        Variable(Tensor|LoDTensor)): Output of soft_relu operator, shape and LoD same as input.
 
     Examples:
 
         .. code-block:: python 
  
             import paddle.fluid as fluid
-   
-            x = fluid.layers.data(name="x", shape=[3,16,16], dtype="float32")
-            y = fluid.layers.soft_relu(x, threshold=20.0)
+            import numpy as np
+
+            inputs = fluid.layers.data(name="x", shape=[2, 2], dtype="float32")
+            output = fluid.layers.soft_relu(inputs, threshold=20.0)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            img = np.array([[0, 1],[2, 3]]).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+            print(res) # [array([[0.6931472, 1.3132616], [2.126928 , 3.0485873]], dtype=float32)]
     """
     helper = LayerHelper('soft_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -12074,10 +12204,21 @@ def expand(x, expand_times, name=None):
             expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
             # the shape of expanded_2 is [48, 56].
     """
-
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'input' in reduce_sum must be Variable, but received %s"
+            % (type(x)))
     if not isinstance(expand_times, (list, tuple, Variable)):
         raise ValueError(
             "Input expand_times must be an Variable, python list or tuple.")
+    if convert_dtype(
+            x.dtype) not in ['bool', 'float32', 'float64', 'int32', 'int64']:
+        raise TypeError(
+            "The data type of input  in expand  must be one of bool float32, float64, int32 or int64, but received %s."
+            % (convert_dtype(x.dtype)))
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
+        raise ValueError(
+            "expand op bool date type must set the stop_gradient to be False")
 
     helper = LayerHelper('expand', input=x, **locals())
     inputs = {"X": x}
@@ -12193,24 +12334,57 @@ def uniform_random_batch_size_like(input,
 @templatedoc()
 def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     """
-    ${comment}
+    Generate a random tensor whose data is drawn from a Gaussian distribution.
 
     Args:
-        shape (tuple|list): ${shape_comment}
-        mean (Float): ${mean_comment}
-        std (Float): ${std_comment}
-        seed (Int): ${seed_comment}
-        dtype(np.dtype|core.VarDesc.VarType|str): Output data type.
+        shape (Tuple[int] | List[int]): Shape of the generated random tensor.
+        
+        mean (float): Mean of the random tensor, defaults to 0.0.
+            
+        std (float): Standard deviation of the random tensor, defaults to 1.0.
+        
+        seed (int): ${seed_comment}
+        
+        dtype(np.dtype | core.VarDesc.VarType | str): Output data type, float32 or float64.
 
     Returns:
-        out (Variable): ${out_comment}
+        Variable: Random tensor whose data is drawn from a Gaussian distribution, dtype: flaot32 or float64 as specified.
 
     Examples:
-        .. code-block:: python
+       .. code-block:: python
+       
+           # declarative mode 
+           import numpy as np
+           from paddle import fluid
+   
+           x = fluid.layers.gaussian_random((2, 3), std=2., seed=10)
+   
+           place = fluid.CPUPlace()
+           exe = fluid.Executor(place)
+           start = fluid.default_startup_program()
+           main = fluid.default_main_program()
+   
+           exe.run(start)
+           x_np, = exe.run(main, feed={}, fetch_list=[x])
 
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            out = layers.gaussian_random(shape=[20, 30])
+           x_np
+           # array([[2.3060477, 2.676496 , 3.9911983],
+           #        [0.9990833, 2.8675377, 2.2279181]], dtype=float32)
+
+       .. code-block:: python
+
+           # imperative mode
+           import numpy as np
+           from paddle import fluid
+           import paddle.fluid.dygraph as dg
+    
+           place = fluid.CPUPlace()
+           with dg.guard(place) as g:
+               x = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
+               x_np = x.numpy()       
+           x_np
+           # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
+           #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
     """
 
     helper = LayerHelper('gaussian_random', **locals())
@@ -12287,12 +12461,12 @@ def gaussian_random_batch_size_like(input,
     Args:
         input (Variable): ${input_comment}
         shape (tuple|list): ${shape_comment}
-        input_dim_idx (Int): ${input_dim_idx_comment}
-        output_dim_idx (Int): ${output_dim_idx_comment}
-        mean (Float): ${mean_comment}
-        std (Float): ${std_comment}
-        seed (Int): ${seed_comment}
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data : float32, float_16, int etc
+        input_dim_idx (int): ${input_dim_idx_comment}
+        output_dim_idx (int): ${output_dim_idx_comment}
+        mean (float): ${mean_comment}
+        std (float): ${std_comment}
+        seed (int): ${seed_comment}
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data, float32 or float_64.
 
     Returns:
         out (Variable): ${out_comment}
@@ -12301,7 +12475,7 @@ def gaussian_random_batch_size_like(input,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(name="input", shape=[13, 11], dtype='float32')
+            input = fluid.data(name="input", shape=[13, 11], dtype='float32')
 
             out = fluid.layers.gaussian_random_batch_size_like(
                 input, shape=[-1, 11], mean=1.0, std=2.0)
@@ -12699,19 +12873,27 @@ def shape(input):
     Get the shape of the input.
 
     Args:
-        input (Variable): The input variable.
+        input (Variable): The input N-D Tensor. Datatype can be float32, float64, int32, int64.
 
     Returns:
-        Variable: The shape of the input variable.
+        Variable (Tensor): The shape of the input variable.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import numpy as np
 
-            input = fluid.layers.data(
-                name="input", shape=[3, 100, 100], dtype="float32")
-            out = fluid.layers.shape(input)
+            inputs = fluid.layers.data(name="x", shape=[3, 100, 100], dtype="float32")
+            output = fluid.layers.shape(inputs)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            img = np.ones((3, 100, 100)).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+            print(res) # [array([  3, 100, 100], dtype=int32)]
     """
 
     helper = LayerHelper('shape', **locals())
@@ -12834,29 +13016,49 @@ def _elementwise_op(helper):
     return helper.append_activation(out)
 
 
-@templatedoc()
 def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
-    ${comment}
+    Scale operator.
+
+    Putting scale and bias to the input Tensor as following:
+
+    ``bias_after_scale`` is True:
+
+    .. math::
+                            Out=scale*X+bias
+
+    ``bias_after_scale`` is False:
+
+    .. math::
+                            Out=scale*(X+bias)
 
     Args:
-        x(${x_type}): ${x_comment}
-        scale(${scale_type}): ${scale_comment}
-        bias(${bias_type}): ${bias_comment}
-        bias_after_scale(${bias_after_scale_type}): ${bias_after_scale_comment}
-        act(basestring|None): Activation applied to the output.
-        name(basestring|None): Name of the output.
+        x(Variable): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
+        scale(float): The scale factor of the input.
+        bias(float): The bias to be put on the input.
+        bias_after_scale(bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
+        act(str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` 
 
     Returns:
-        out(${out_type}): ${out_comment}
+        Variable(Tensor|LoDTensor): Output tensor of scale operator, with shape and data type same as input.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import numpy as np
 
-            x = fluid.layers.data(name="X", shape=[1, 2, 5, 5], dtype='float32')
-            y = fluid.layers.scale(x, scale = 2.0, bias = 1.0)
+            inputs = fluid.layers.data(name="x", shape=[2, 3], dtype='float32')
+            output = fluid.layers.scale(inputs, scale = 2.0, bias = 1.0)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+            print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
     """
 
     helper = LayerHelper('scale', **locals())
@@ -13702,23 +13904,29 @@ def merge_selected_rows(x, name=None):
     return out
 
 
-@templatedoc()
 def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
     """
-    ${comment}
+    Mul Operator.
+    This operator is used to perform matrix multiplication for input $x$ and $y$.
+    The equation is:
+
+    ..  math::
+        Out = x * y
+
+    Both the input $x$ and $y$ can carry the LoD (Level of Details) information, or not. But the output only shares the LoD information with input $x$.
 
     Args:
-        x(${x_type}): ${x_comment}
-        y(${y_type}): ${y_comment}
-        x_num_col_dims(${x_num_col_dims_type}): ${x_num_col_dims_comment}
-        y_num_col_dims(${y_num_col_dims_type}): ${y_num_col_dims_comment}
-        name(basestring|None): Name of the output.
+        x (Variable): The first input Tensor/LoDTensor of mul_op.
+        y (Variable): The second input Tensor/LoDTensor of mul_op.
+        x_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the input $x$ is a tensor with more than two dimensions, $x$ will be flattened into a two-dimensional matrix first. The flattening rule is: the first `num_col_dims` will be flattened to form the first dimension of the final matrix (the height of the matrix), and the rest `rank(x) - num_col_dims` dimensions are flattened to form the second dimension of the final matrix (the width of the matrix). As a result, height of the flattened matrix is equal to the product of $x$'s first `x_num_col_dims` dimensions' sizes, and width of the flattened matrix is equal to the product of $x$'s last `rank(x) - num_col_dims` dimensions' size. For example, suppose $x$ is a 6-dimensional tensor with the shape [2, 3, 4, 5, 6], and `x_num_col_dims` = 3. Thus, the flattened matrix will have a shape [2 x 3 x 4, 5 x 6] = [24, 30]. Default is 1. 
+        y_num_col_dims (int, optional): The mul_op can take tensors with more than two dimensions as its inputs. If the input $y$ is a tensor with more than two dimensions, $y$ will be flattened into a two-dimensional matrix first. The attribute `y_num_col_dims` determines how $y$ is flattened. See comments of `x_num_col_dims` for more details. Default is 1. 
+        name (str, optional): Name of the output. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None. 
 
     Returns:
-        out(${out_type}): ${out_comment}
+        Variable(Tensor/LoDTensor): The output Tensor/LoDTensor of mul op.
 
     Examples:
-        .. code-block:: python
+        ..  code-block:: python
             
             import paddle.fluid as fluid
             dataX = fluid.layers.data(name="dataX", append_batch_size = False, shape=[2, 5], dtype="float32")
@@ -14130,7 +14338,8 @@ def similarity_focus(input, axis, indexes, name=None):
 
     Args:
         input(Variable): The input tensor variable(default float). It should
-            be a 4-D tensor with shape [BatchSize, A, B, C].
+            be a 4-D tensor with shape [BatchSize, A, B, C]. Data type is 
+            float32 or float64.
         axis(int): Indicating the dimension to be selected. It can only be
             1, 2 or 3.
         indexes(list): Indicating the indexes of the selected dimension.
@@ -14143,7 +14352,7 @@ def similarity_focus(input, axis, indexes, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(
+            data = fluid.data(
                 name='data', shape=[-1, 3, 2, 2], dtype='float32')
             fluid.layers.similarity_focus(input=data, axis=1, indexes=[0])
     """
@@ -14356,13 +14565,15 @@ def log_loss(input, label, epsilon=1e-4, name=None):
               - (1 - label) * \\log{(1 - input + \\epsilon)}
 
     Args:
-        input (Variable|list):  a 2-D tensor with shape [N x 1], where N is the
+        input (Variable|list):  A 2-D tensor with shape [N x 1], where N is the
                                 batch size. This input is a probability computed
-                                by the previous operator.
-        label (Variable|list):  the ground truth which is a 2-D tensor with
-                                shape [N x 1], where N is the batch size.
-        epsilon (float): epsilon
-        name (string): the name of log_loss
+                                by the previous operator. Data type float32.
+        label (Variable|list):  The ground truth which is a 2-D tensor with
+                                shape [N x 1], where N is the batch size. 
+                                Data type float32.
+        epsilon (float, optional): A small number for numerical stability. Default 1e-4.
+        name(str|None): For detailed information, please refer to 
+            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
         Variable: A 2-D tensor with shape [N x 1], the negative log loss.
@@ -14371,8 +14582,8 @@ def log_loss(input, label, epsilon=1e-4, name=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-          prob = fluid.layers.data(name='prob', shape=[10], dtype='float32')
+          label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
+          prob = fluid.data(name='prob', shape=[-1, 10], dtype='float32')
           cost = fluid.layers.log_loss(input=prob, label=label)
     """
     helper = LayerHelper('log_loss', **locals())
@@ -14510,7 +14721,7 @@ def bilinear_tensor_product(x,
                             param_attr=None,
                             bias_attr=None):
     """
-    **Add Bilinear Tensor Product Layer**
+    **Bilinear Tensor Product Layer**
 
     This layer performs bilinear tensor product on two inputs.
     For example:
@@ -14521,31 +14732,34 @@ def bilinear_tensor_product(x,
     In this formula:
       - :math:`x`: the first input contains M elements, shape is [batch_size, M].
       - :math:`y`: the second input contains N elements, shape is [batch_size, N].
-      - :math:`W_{i}`: the i-th learned weight, shape is [M, N]
+      - :math:`W_{i}`: the i-th learned weight, shape is [M, N].
       - :math:`out_{i}`: the i-th element of out, shape is [batch_size, size].
       - :math:`y^\mathrm{T}`: the transpose of :math:`y_{2}`.
 
     Args:
-        x (Variable): 2-D input tensor with shape [batch_size, M]
-        y (Variable): 2-D input tensor with shape [batch_size, N]
+        x (Variable): 2-D input tensor with shape [batch_size, M]. Data type 
+            is float32 or float64.
+        y (Variable): 2-D input tensor with shape [batch_size, N]. Data type 
+            should be same as **x**.
         size (int): The dimension of this layer.
-        act (str, default None): Activation to be applied to the output of this layer.
-        name (str, default None): The name of this layer.
-        param_attr (ParamAttr, default None): The parameter attribute for the learnable w.
-            parameters/weights of this layer.
-        bias_attr (ParamAttr, default None): The parameter attribute for the bias
-            of this layer. If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
-
+        act (str|None): Activation to be applied to the output of this layer. Default None.
+        name(str|None): For detailed information, please refer to 
+            :ref:`api_guide_Name` . Usually name is no need to set and None by default.
+        param_attr (ParamAttr|None): To specify the weight parameter attribute. 
+            Default: None, which means the default weight parameter property is 
+            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        bias_attr (ParamAttr|None): To specify the bias parameter attribute. 
+            Default: None, which means the default bias parameter property is 
+            used. See usage for details in :ref:`api_fluid_ParamAttr` .
     Returns:
-        Variable: A 2-D Tensor of shape [batch_size, size].
+        Variable: A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          layer1 = fluid.layers.data("t1", shape=[-1, 5], dtype="float32")
-          layer2 = fluid.layers.data("t2", shape=[-1, 4], dtype="float32")
+          layer1 = fluid.data("t1", shape=[-1, 5], dtype="float32")
+          layer2 = fluid.data("t2", shape=[-1, 4], dtype="float32")
           tensor = fluid.layers.bilinear_tensor_product(x=layer1, y=layer2, size=1000)
     """
     helper = LayerHelper('bilinear_tensor_product', **locals())
