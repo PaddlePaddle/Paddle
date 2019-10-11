@@ -2324,17 +2324,20 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
 def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
-    The input of the softmax operator is a tensor of any rank. The output tensor
-    has the same shape as the input.
+    This operator implements the softmax layer. The calculation process is as follows:
 
-    The dimension :attr:`axis` of the input tensor will be permuted to the last.
-    Then the input tensor will be logically flattened to a 2-D matrix. The matrix's
+    1. The dimension :attr:`axis` of the ``input`` will be permuted to the last.
+    
+    2. Then the input tensor will be logically flattened to a 2-D matrix. The matrix's
     second dimension(row length) is the same as the dimension :attr:`axis` of the input
     tensor, and the first dimension(column length) is the product of all other
     dimensions of the input tensor. For each row of the matrix, the softmax operator
     squashes the K-dimensional(K is the width of the matrix, which is also the size
     of the input tensor's dimension :attr:`axis`) vector of arbitrary real values to a
     K-dimensional vector of real values in the range [0, 1] that add up to 1.
+
+    3. After the softmax operation is completed, the inverse operations of steps 1 and 2 
+    are performed to restore the two-dimensional matrix to the same dimension as the ``input``.
 
     It computes the exponential of the given dimension and the sum of exponential
     values of all the other dimensions in the K-dimensional vector input.
@@ -2348,20 +2351,66 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
 
         Out[i, j] = \\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}
 
+    Example:
+
+    .. code-block:: text
+
+        Case 1:
+          Input:
+            X.shape = [2, 3, 4]
+            X.data = [[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]]
+
+          Attrs:
+            axis = -1
+
+          Output:
+            Out.shape = [2, 3, 4]
+            Out.data = [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+                        [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+
+        Case 2:
+          Input:
+            X.shape = [2, 3, 4]
+            X.data = [[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]]
+          Attrs:
+            axis = 1
+
+          Output:
+            Out.shape = [2, 3, 4]
+            Out.data = [[[0.00657326, 0.00657326, 0.01714783, 0.01714783],
+                         [0.01786798, 0.01786798, 0.04661262, 0.04661262],
+                         [0.97555875, 0.97555875, 0.93623955, 0.93623955]],
+                        [[0.00490169, 0.00490169, 0.00490169, 0.00490169],
+                         [0.26762315, 0.26762315, 0.26762315, 0.26762315],
+                         [0.72747516, 0.72747516, 0.72747516, 0.72747516]]] 
+
     Args:
-        input (Variable): The input variable. A LoDTensor or Tensor with type 
-        float32, float64.
-        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
+        input (Variable): The input variable. A multi-dimension ``Tensor`` with type float32 or float64.
+        use_cudnn (bool, optional): Use cudnn kernel or not, it is valid only when the cudnn \
             library is installed. To improve numerical stablity, set use_cudnn to \
-            False by default. Default: False
-        name (str|None): A name for this layer(optional). If set None, the layer
+            False by default.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` . Default: None.
             will be named automatically. Default: None.
-        axis (int): The index of dimension to perform softmax calculations, it should
+        axis (int, optional): The index of dimension to perform softmax calculations, it should
             be in range :math:`[-1, rank - 1]`, while :math:`rank` is the rank of
             input variable. Default: -1. -1 means the last dimension.
 
     Returns:
-        Variable: output of softmax. A Tensor with type float32, float64.
+        Variable: ``Tensor`` indicates the output of softmax. The data type and shape are the same as ``input`` .
 
     Examples:
 
@@ -2379,7 +2428,6 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
             output= exe.run(feed={"input": x},
                              fetch_list=[result[0]])
             print(output)
-            #array([0.22595254, 0.39276356, 0.38128382], dtype=float32)]
     """
     helper = LayerHelper('softmax', **locals())
     if not isinstance(input, Variable):
@@ -3220,12 +3268,15 @@ def sequence_slice(input, offset, length, name=None):
           should be equal. The **offset** should start from 0.
 
     Args:
-        input(Variable): The input Variable which consists of the complete
-                         sequences.
-        offset(Variable): The offset to slice each sequence.
-        length(Variable): The length of each subsequence.
-        name(str|None): A name for this layer(optional). If set None, the
-                        layer will be named automatically.
+        input(Variable): LoDTensor, The input Variable which consists of the complete
+                         sequences.The data type is float32 or float64.
+        offset(Variable): LoDTensor, The offset to slice each sequence.The data
+                         type is int32 or int64.
+        length(Variable): LoDTensor, The length of each subsequence.The data
+                         type is int32 or int64.
+        name(str|None): The default value is None.  Normally there is no need
+                        for user to set this property.  For more information,
+                        please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: The output subsequences.
@@ -3236,7 +3287,7 @@ def sequence_slice(input, offset, length, name=None):
 
              import paddle.fluid as fluid
              import numpy as np
-             seqs = fluid.layers.data(name='x', shape=[10, 5],
+             seqs = fluid.data(name='x', shape=[10, 5],
                               dtype='float32', lod_level=1)
              offset = fluid.layers.assign(input=np.array([[0, 1]]).astype("int32"))
              length = fluid.layers.assign(input=np.array([[2, 1]]).astype("int32"))
@@ -7801,12 +7852,9 @@ def softmax_with_cross_entropy(logits,
                                return_softmax=False,
                                axis=-1):
     """
-    **Softmax With Cross Entropy Operator.**
-
-    Cross entropy loss with softmax is used as the output layer extensively. This
-    operator computes the softmax normalized values for dimension :attr:`axis` of 
-    the input tensor, after which cross-entropy loss is computed. This provides 
-    a more numerically stable gradient.
+    This operator implements the cross entropy loss function with softmax. This function 
+    combines the calculation of the softmax operation and the cross entropy loss function 
+    to provide a more numerically stable gradient.
 
     Because this operator performs a softmax on logits internally, it expects
     unscaled logits. This operator should not be used with the output of
@@ -7823,72 +7871,71 @@ def softmax_with_cross_entropy(logits,
 
     .. math::
 
-        loss_j =  -\\text{logit}_{label_j} +
-        \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{logit}_i)\\right), j = 1,..., K
+        loss_j =  -\\text{logits}_{label_j} +
+        \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{logits}_i)\\right), j = 1,..., K
 
     2) Soft label (each sample can have a distribution over all classes)
 
     .. math::
 
         loss_j =  -\\sum_{i=0}^{K}\\text{label}_i
-        \\left(\\text{logit}_i - \\log\\left(\\sum_{i=0}^{K}
-        \\exp(\\text{logit}_i)\\right)\\right), j = 1,...,K
+        \\left(\\text{logits}_i - \\log\\left(\\sum_{i=0}^{K}
+        \\exp(\\text{logits}_i)\\right)\\right), j = 1,...,K
 
-    3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated 
-    first by:
+    3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated first by:
 
     .. math::
 
-        max_j &= \\max_{i=0}^{K}{\\text{logit}_i}
+        max_j &= \\max_{i=0}^{K}{\\text{logits}_i}
 
-        log\\_max\\_sum_j &= \\log\\sum_{i=0}^{K}\\exp(logit_i - max_j)
+        log\\_max\\_sum_j &= \\log\\sum_{i=0}^{K}\\exp(logits_i - max_j)
 
-        softmax_j &= \\exp(logit_j - max_j - {log\\_max\\_sum}_j)
+        softmax_j &= \\exp(logits_j - max_j - {log\\_max\\_sum}_j)
 
     and then cross entropy loss is calculated by softmax and label.
 
     Args:
-        logits (Variable): The input tensor of unscaled log probabilities.
-        label (Variable): The ground truth  tensor. If :attr:`soft_label`
-            is set to :attr:`True`, Label is a Tensor<float/double> in the 
-            same shape with :attr:`logits`. If :attr:`soft_label` is set to 
-            :attr:`True`, Label is a Tensor<int64> in the same shape with 
-            :attr:`logits` expect shape in dimension :attr:`axis` as 1.
-        soft_label (bool): A flag to indicate whether to interpretate the given
+        logits (Variable): A multi-dimension ``Tensor`` , and the data type is float32 or float64. The input tensor of unscaled log probabilities.
+        label (Variable): The ground truth  ``Tensor`` , data type is the same
+            as the ``logits`` . If :attr:`soft_label` is set to :attr:`True`, 
+            Label is a ``Tensor``  in the same shape with :attr:`logits`. 
+            If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor`` 
+            in the same shape with :attr:`logits` expect shape in dimension :attr:`axis` as 1.
+        soft_label (bool, optional): A flag to indicate whether to interpretate the given
             labels as soft labels. Default False.
-        ignore_index (int): Specifies a target value that is ignored and does
-                            not contribute to the input gradient. Only valid
-                            if :attr:`soft_label` is set to :attr:`False`. 
-                            Default: kIgnoreIndex
-        numeric_stable_mode (bool): A flag to indicate whether to use a more
-                                    numerically stable algorithm. Only valid
-                                    when :attr:`soft_label` is :attr:`False` 
-                                    and GPU is used. When :attr:`soft_label` 
-                                    is :attr:`True` or CPU is used, the 
-                                    algorithm is always numerically stable.
-                                    Note that the speed may be slower when use
-                                    stable algorithm. Default: True
-        return_softmax (bool): A flag indicating whether to return the softmax
-                               along with the cross entropy loss. Default: False
-        axis (int): The index of dimension to perform softmax calculations. It 
-                    should be in range :math:`[-1, rank - 1]`, while :math:`rank`
-                    is the rank of input :attr:`logits`. Default: -1.
+        ignore_index (int, optional): Specifies a target value that is ignored and does
+                                      not contribute to the input gradient. Only valid
+                                      if :attr:`soft_label` is set to :attr:`False`. 
+                                      Default: kIgnoreIndex(-100).
+        numeric_stable_mode (bool, optional): A flag to indicate whether to use a more
+                                              numerically stable algorithm. Only valid
+                                              when :attr:`soft_label` is :attr:`False` 
+                                              and GPU is used. When :attr:`soft_label` 
+                                              is :attr:`True` or CPU is used, the 
+                                              algorithm is always numerically stable.
+                                              Note that the speed may be slower when use
+                                              stable algorithm. Default: True.
+        return_softmax (bool, optional): A flag indicating whether to return the softmax
+                                         along with the cross entropy loss. Default: False.
+        axis (int, optional): The index of dimension to perform softmax calculations. It 
+                              should be in range :math:`[-1, rank - 1]`, while :math:`rank`
+                              is the rank of input :attr:`logits`. Default: -1.
 
     Returns:
-        Variable or Tuple of two Variables: Return the cross entropy loss if \
-                                            `return_softmax` is False, otherwise the tuple \
-                                            (loss, softmax), softmax is in the same shape \
-                                            with input logits and cross entropy loss is in \
-                                            the same shape with input logits except shape \
-                                            in dimension :attr:`axis` as 1.
+        ``Variable`` or Tuple of two ``Variable`` : Return the cross entropy loss if \
+                                                    `return_softmax` is False, otherwise the tuple \
+                                                    (loss, softmax), softmax is in the same shape \
+                                                    with input logits and cross entropy loss is in \
+                                                    the same shape with input logits except shape \
+                                                    in dimension :attr:`axis` as 1.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            data = fluid.layers.data(name='data', shape=[128], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            data = fluid.data(name='data', shape=[-1, 128], dtype='float32')
+            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
             fc = fluid.layers.fc(input=data, size=100)
             out = fluid.layers.softmax_with_cross_entropy(
                 logits=fc, label=label)
@@ -11036,54 +11083,45 @@ def affine_grid(theta, out_shape, name=None):
 
 def rank_loss(label, left, right, name=None):
     """
-
-    **Rank loss layer for RankNet**
-
+    This operator implements the sort loss layer in the RankNet model. RankNet is a pairwise ranking model 
+    with a training sample consisting of a pair of documents (A and B), The label (P) 
+    indicates whether A is ranked higher than B or not. Please refer to more details: 
     `RankNet <http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf>`_
-    is a pairwise ranking model with a training sample consisting of a pair
-    of documents, A and B. Label P indicates whether A is ranked higher than B
-    or not:
-
-    P = {0, 1} or {0, 0.5, 1}, where 0.5 means that there is no information
-    about the rank of the input pair.
 
     Rank loss layer takes three inputs: left ( :math:`o_i` ), right ( :math:`o_j` ) and
     label ( :math:`P_{i,j}` ). The inputs respectively represent RankNet's output scores
-    for documents A and B and the value of label P. The following equation
-    computes rank loss C_{i,j} from the inputs:
+    for documents A and B and the value of label P. Rank loss layer takes batch inputs 
+    with size batch_size (batch_size >= 1), P = {0, 1} or {0, 0.5, 1}, 
+    where 0.5 means that there is no information about the rank of the input pair.
+    The following equation computes rank loss C_{i,j} from the inputs:
 
     .. math::
-
       C_{i,j} &= -\\tilde{P_{ij}} * o_{i,j} + \log(1 + e^{o_{i,j}}) \\\\
-
+    .. math::
       o_{i,j} &=  o_i - o_j  \\\\
-
+    .. math::
       \\tilde{P_{i,j}} &= \\left \{0, 0.5, 1 \\right \} \ or \ \\left \{0, 1 \\right \}
 
-
-    Rank loss layer takes batch inputs with size batch_size (batch_size >= 1).
-
-    Args:
-        label (Variable): Indicats whether A ranked higher than B or not.
-        left (Variable): RankNet's output score for doc A.
-        right (Variable): RankNet's output score for doc B.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+    Parameters:
+        label (Variable): 2-D ``Tensor`` with the shape of :math:`[batch,1]`, the data type is float32, batch indicates the size of the data. Indicats whether A ranked higher than B or not.
+        left (Variable): 2-D ``Tensor`` with the shape of :math:`[batch,1]`, the data type is float32. RankNet's output score for doc A.
+        right (Variable): 2-D ``Tensor`` with the shape of :math:`[batch,1]`, the data type is float32. RankNet's output score for doc B.
+        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        list: The value of rank loss.
+        Variable: ``Tensor`` indicating the output value of the sort loss layer, the data type is float32, and the return value's shape is :math:`[batch,1]` .
 
     Raises:
-        ValueError: Any of label, left, and right is not a variable.
+        ValueError: Any of label, left, and right is not a ``Variable`` .
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            label = fluid.layers.data(name="label", shape=[-1, 1], dtype="float32")
-            left = fluid.layers.data(name="left", shape=[-1, 1], dtype="float32")
-            right = fluid.layers.data(name="right", shape=[-1, 1], dtype="float32")
+            label = fluid.data(name="label", shape=[-1, 1], dtype="float32")
+            left = fluid.data(name="left", shape=[-1, 1], dtype="float32")
+            right = fluid.data(name="right", shape=[-1, 1], dtype="float32")
             out = fluid.layers.rank_loss(label, left, right)
 
     """
@@ -12470,21 +12508,69 @@ def gaussian_random_batch_size_like(input,
 def sum(x):
     """
     ${comment}
+    
+    Case 1:
+    ::
+        Input:
+            Input. Shape = [2, 3]
+            Input = [[1, 2, 3],
+                     [4, 5, 6]]
+
+        Output:
+            The output. Shape = [2, 3]
+            Output = [[1, 2, 3],
+                      [4, 5, 6]]
+
+    Case 2:
+    ::
+        Input:
+            First input:
+            Input1. Shape = [2, 3]
+            Input1 = [[1, 2, 3],
+                      [4, 5, 6]]
+
+        The second input:
+            Input2. Shape = [2, 3]
+            Input2 = [[7, 8, 9],
+                      [10, 11, 12]]
+
+        Output:
+            The output. Shape = [2, 3]
+            Output = [[8, 10, 12],
+                      [14, 16, 18]]
 
     Args:
-        x (Variable): ${x_comment}
+        x (Variable|list(Variable)): ${x_comment}
 
     Returns:
-        out (Variable): ${out_comment}
+        Variable: ${out_comment}
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            input0 = layers.data(name="input0", shape=[13, 11], dtype='float32')
-            input1 = layers.data(name="input1", shape=[13, 11], dtype='float32')
-            out = layers.sum([input0,input1])
+
+            input0 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=5)
+            input1 = fluid.layers.fill_constant(shape=[2, 3], dtype='int64', value=3)
+            sum = fluid.layers.sum([input0, input1])
+
+            # You can print out 'sum' via executor.
+            out = fluid.layers.Print(sum, message="the sum of input0 and input1: ")
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_main_program())
+
+            # The printed result is:
+            # 1570701754	the sum of input0 and input1: 	The place is:CPUPlace
+            # Tensor[sum_0.tmp_0]
+            #    shape: [2,3,]
+            #    dtype: l
+            #    data: 8,8,8,8,8,8,
+
+            # the sum of input0 and input1 is 2-D Tensor with shape [2,3].
+            # dtype is the corresponding C++ data type, which may vary in different environments.
+            # Eg: if the data type of tensor is int64, then the corresponding C++ data type is int64_t, 
+            #       so the dtype value is typeid(int64_t).Name(), which is 'x' on MacOS, 'l' on Linux, 
+            #       and '__int64' on Windows. They both represent 64-bit integer variables.
     """
 
     helper = LayerHelper('sum', **locals())
@@ -12664,18 +12750,19 @@ def slice(input, axes, starts, ends):
 @templatedoc()
 def strided_slice(input, axes, starts, ends, strides):
     """
-    Strided Slice OP
-
-    The conceptualization that really helped me understand this was 
-    that this function emulates the indexing behavior of numpy arrays.
-    If you're familiar with numpy arrays, you'll know that you can make 
-    slices via input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN]. 
-    Basically, a very succinct way of writing for loops to get certain elements of the array.
-    strided_slice just allows you to do this fancy indexing without the syntactic sugar. 
-    The numpy (#input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN])
-    example from above just becomes fluid.strided_slice(input,[0, 1, ..., N], 
-    [start1, start2, ..., startN], [end1, end2, ..., endN], [strides1, strides2, ..., stridesN]),
-    the axes which controls the dimension you want to slice makes it more flexible.
+    This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
+    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
+    end dimension for each axis in the list of axes and Slice uses this information
+    to slice the input data tensor. If a negative value is passed to
+    ``starts`` or ``ends`` such as :math:`-i`,  it represents the reverse position of the
+    axis :math:`i-1` th(here 0 is the initial position). The ``strides`` represents steps of
+    slicing and if the ``strides`` is negative, slice operation is in the opposite direction.
+    If the value passed to ``starts`` or ``ends`` is greater than n
+    (the number of elements in this dimension), it represents n.
+    For slicing to the end of a dimension with unknown size, it is recommended
+    to pass in INT_MAX. The size of ``axes`` must be equal to ``starts`` , ``ends`` and ``strides``.
+    Following examples will explain how strided_slice works:
 
     .. code-block:: text
 
@@ -12685,7 +12772,7 @@ def strided_slice(input, axes, starts, ends, strides):
                 axes = [0, 1]
                 starts = [1, 0]
                 ends = [2, 3]
-                strides=[1, 1]
+                strides = [1, 1]
             Then:
                 result = [ [5, 6, 7], ]
         
@@ -12694,25 +12781,48 @@ def strided_slice(input, axes, starts, ends, strides):
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 axes = [0, 1]
                 starts = [0, 1]
+                ends = [2, 0]
+                strides = [1, -1]
+            Then:
+                result = [ [8, 7, 6], ]
+        
+        Case3:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [-1, 1000]
                 ends = [-1, 1000]
                 strides = [1, 3]
             Then:
                 result = [ [2], ]
     Args:
-        input (Variable): ${input_comment}.
-        axes (List): ${axes_comment}
-        starts (List|Variable): ${starts_comment}
-        ends (List|Variable): ${ends_comment}
+        input (Variable): An N-D ``Tensor`` or ``LoDTensor`` . The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
+                            It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
+        starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``starts`` is an Variable, it should be an 1-D Tensor.
+                It represents starting indices of corresponding axis in ``axes``.
+        ends (list|tuple|Variable): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``ends`` is an Variable, it should be an 1-D Tensor .
+                It represents ending indices of corresponding axis in ``axes``.
+        strides (list|tuple|Variable): The data type is ``int32`` . If ``strides`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``strides`` is an Variable, it should be an 1-D Tensor .
+                It represents slice step of corresponding axis in ``axes``.
 
     Returns:
-        out (Variable): ${out_comment}
+        Variable:  A ``Tensor`` or ``LoDTensor`` with the same dimension as ``input``. The data type is same as ``input``.
+
+    Raises:
+        TypeError: The type of ``starts`` must be list, tuple or Variable.
+        TypeError: The type of ``ends`` must be list, tuple or Variable.
+        TypeError: The type of ``strides`` must be list, tuple or Variable.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            input = fluid.layers.data(
+            input = fluid.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
             # example 1:
@@ -12720,13 +12830,17 @@ def strided_slice(input, axes, starts, ends, strides):
             axes = [0, 1, 2]
             starts = [-3, 0, 2]
             ends = [3, 2, 4]
-            strides=[1, 1, 1]
-            sliced_1 = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides)
+            strides_1 = [1, 1, 1]
+            strides_2 = [1, 1, 2]
+            sliced_1 = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides_1)
+            # sliced_1 is input[:, 0:3:1, 0:2:1, 2:4:1].
+
 
             # example 2:
             # attr starts is a list which contain tensor Variable.
             minus_3 = fluid.layers.fill_constant([1], "int32", -3)
-            sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides)
+            sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
+            # sliced_2 is input[:, 0:3:1, 0:2:1, 2:4:2].
     """
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
@@ -13935,8 +14049,10 @@ def sigmoid_cross_entropy_with_logits(x,
     Args:
         x(${x_type}): ${x_comment}
         label(${label_type}): ${label_comment}
-        ignore_index(&{ignore_index}): ${ignore_index_comment}
-        name(basestring|None): Name of the output.
+        ignore_index(int): ${ignore_index_comment}
+        name(str|None): The default value is None.  Normally there is
+            no need for user to set this property.  For more information,
+            please refer to :ref:`api_guide_Name`
         normalize(bool): If true, divide the output by the number of
             targets != ignore_index.
 
@@ -13947,9 +14063,9 @@ def sigmoid_cross_entropy_with_logits(x,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(
+            input = fluid.data(
                 name='data', shape=[10], dtype='float32')
-            label = fluid.layers.data(
+            label = fluid.data(
                 name='data', shape=[10], dtype='float32')
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
                 x=input,
@@ -14996,85 +15112,90 @@ class PyFuncRegistry(object):
 @templatedoc()
 def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     """
-    PyFunc Operator.
+    This API is used to register customized OP to Fluid. The forward  function 
+    of the registered OP is ``func`` and the backward function of that is 
+    ``backward_func``. Paddle will call ``func`` at forward runtime  and call 
+    ``backward_func`` at backward runtime(if ``backward_func`` is not  None). 
+    ``x`` is the input of ``func``, whose type must be LoDTensor; ``out`` is 
+    the output of ``func``, whose type can be either LoDTensor or NumPy array.
 
-    User can use :code:`py_func` to register operators in Python side.
-    The inputs of :code:`func` is :code:`LoDTensor` and outputs can be
-    numpy array or :code:`LoDTensor`. Paddle would call the registered
-    :code:`func` in forward part, and call :code:`backward_func` in
-    backward part (if :code:`backward_func` is not None).
+    The input of the backward function ``backward_func`` is ``x``, ``out`` and 
+    the gradient of ``out``. If some variables of ``out`` have no gradient, the 
+    relevant input variable of ``backward_func`` is None. If some variables of 
+    ``x`` do not have a gradient, the user should return None in ``backward_func``.
 
-    User should set the right data type and shape of :code:`out` before
-    calling this function. However, data types and shapes of gradients of
-    :code:`out` and :code:`x` would be inferred automatically.
+    The data type and shape of ``out`` should also be set correctly before this 
+    API is called, and the data type and shape of the gradient of ``out`` and 
+    ``x`` will be inferred automatically.
 
-    Input orders of :code:`backward_func` would be: forward inputs
-    :code:`x`, forward outputs :code:`out` and backward input gradients of
-    :code:`out`. If some variables of :code:`out` have no gradient, the input
-    tensor would be None in Python side. If some variables of :code:`in` have
-    no gradient, users should return None.
-
-    This function can also be used to debug the running network. User can
-    add a :code:`py_func` operator without output, and print input
-    :code:`x` inside :code:`func`.
+    This API can also be used to debug the neural network by setting the ``func``
+    as a function that only print variables.
 
     Args:
-        func (callable): forward Python function.
-        x (Variable|list(Variable)|tuple(Variable)): inputs of :code:`func`.
-        out (Variable|list(Variable)|tuple(Variable)): outputs of :code:`func`.
-            Paddle cannot infer shapes and data types of :code:`out`. Users
-            should create :code:`out` beforehand.
-        backward_func (callable|None): backward Python function.
-                                       None means no backward. Default None.
-        skip_vars_in_backward_input (Variable|list(Variable)|tuple(Variable)):
-            Variables that are not needed in :code:`backward_func` inputs.
-            These variables must be any of :code:`x` and :code:`out`.
-            If set, these vars would not be inputs of :code:`backward_func`,
-            Only useful when :code:`backward_func` is not None. Default None.
-
-    Returns:
-        out (Variable|list(Variable)|tuple(Variable)): input :code:`out`
+        func (callable): The forward function of the registered OP. When the network
+            is running, the forward output ``out`` will be calculated according to this 
+            function and the forward input ``x``.
+        x (Variable): The input of the forward function ``func``, its type can be 
+            Variable | tuple[Variable] | list[Variale], in which Variable is LoDTensor.
+        out (Variable): The output of the forward function ``func``, its type can be
+            Variable | tuple[Variable] | list[Variale], in which Variable can be either 
+            LoDTensor or NumPy array. Since Paddle cannot automatically infer the shape
+            and data type of ``out``, ``out`` must be created in advance.
+        backward_func (callable, optional): The backward function of the registered OP. 
+            Its default value is None, which means there is no reverse calculation. If 
+            it is not None, ``backward_func`` is called to calculate the gradient of 
+            ``x`` when the network is at backward runtime.
+        skip_vars_in_backward_input (Variable, optional): It's used to limit the input 
+            variable list of ``backward_func``, and it can be single Variable, tuple[Variable]
+            or list[Variable]. It must belong to either ``x`` or ``out``. The default 
+            value is None, which means that no variables need to be removed from ``x`` 
+            and ``out``. If it is not None, these variables will not be the input of 
+            ``backward_func``. This parameter is only useful when ``backward_func`` is 
+            not None.
+    
+    Returns: 
+        Variable: The output ``out`` of the forward function ``func``.
 
     Examples:
+        .. code-block:: python
 
-        >>> import paddle.fluid as fluid
-        >>> import six
-        >>>
-        >>> def create_tmp_var(name, dtype, shape):
-        >>>     return fluid.default_main_program().current_block().create_var(
-        >>>         name=name, dtype=dtype, shape=shape)
-        >>>
-        >>> # tanh activation has been provided by Paddle C++ op
-        >>> # Here, we only use tanh to be an example to show the usage
-        >>> # of py_func
-        >>> def tanh(x):
-        >>>     return np.tanh(x)
-        >>>
-        >>> # forward input x is skipped
-        >>> def tanh_grad(y, dy):
-        >>>     return np.array(dy) * (1 - np.square(np.array(y)))
-        >>>
-        >>> def debug_func(x):
-        >>>     print(x)
-        >>>
-        >>> def simple_net(img, label):
-        >>>     hidden = img
-        >>>     for idx in six.moves.range(4):
-        >>>         hidden = fluid.layers.fc(hidden, size=200)
-        >>>         new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
-        >>>             dtype=hidden.dtype, shape=hidden.shape)
-        >>>
-        >>>         # user-defined layers with forward and backward
-        >>>         hidden = fluid.layers.py_func(func=tanh, x=hidden,
-        >>>             out=new_hidden, backward_func=tanh_grad,
-        >>>             skip_vars_in_backward_input=hidden)
-        >>>
-        >>>         # user-defined debug layers to print variables
-        >>>         fluid.layers.py_func(func=debug_func, x=hidden, out=None)
-        >>>
-        >>>     prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-        >>>     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-        >>>     return fluid.layers.mean(loss)
+            import paddle.fluid as fluid
+            import six
+
+            def create_tmp_var(name, dtype, shape):
+            return fluid.default_main_program().current_block().create_var(
+            name=name, dtype=dtype, shape=shape)
+
+            # Tanh activation function provided by Paddle C++ op
+            # Here, tanh is used as an example to show how to use py_func
+            def tanh(x):
+                return np.tanh(x)
+
+            # Skip forward input x
+            def tanh_grad(y, dy):
+                return np.array(dy) * (1 - np.square(np.array(y)))
+
+            def debug_func(x):
+                print(x)
+
+            def simple_net(img, label):
+                hidden = img
+                for idx in six.moves.range(4):
+                    hidden = fluid.layers.fc(hidden, size=200)
+                    new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
+                        dtype=hidden.dtype, shape=hidden.shape)
+
+                    # User-defined forward and backward 
+                    hidden = fluid.layers.py_func(func=tanh, x=hidden,
+                        out=new_hidden, backward_func=tanh_grad,
+                        skip_vars_in_backward_input=hidden)
+
+                    # User-defined debugging layer, which can print out variable details
+                    fluid.layers.py_func(func=debug_func, x=hidden, out=None)
+
+                prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+                loss = fluid.layers.cross_entropy(input=prediction, label=label)
+                return fluid.layers.mean(loss)
     """
     helper = LayerHelper('py_func', **locals())
     if x is None:
@@ -16539,7 +16660,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
     helper = LayerHelper("uniform_random", **locals())
     inputs = dict()
-    attrs = dict()
+    attrs = {'seed': seed, 'min': min, 'max': max}
     if in_dygraph_mode():
         attrs = {'shape': shape}
     else:
