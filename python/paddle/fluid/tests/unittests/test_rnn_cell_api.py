@@ -40,21 +40,12 @@ class TestLSTMCell(unittest.TestCase):
         self.hidden_size = 16
 
     def test_run(self):
-        inputs = layers.data(
-            name='inputs',
-            shape=[self.batch_size, self.input_size],
-            append_batch_size=False,
-            dtype='float32')
-        pre_hidden = layers.data(
-            name='pre_hidden',
-            shape=[self.batch_size, self.hidden_size],
-            append_batch_size=False,
-            dtype='float32')
-        pre_cell = layers.data(
-            name='pre_cell',
-            shape=[self.batch_size, self.hidden_size],
-            append_batch_size=False,
-            dtype='float32')
+        inputs = fluid.data(
+            name='inputs', shape=[None, self.input_size], dtype='float32')
+        pre_hidden = fluid.data(
+            name='pre_hidden', shape=[None, self.hidden_size], dtype='float32')
+        pre_cell = fluid.data(
+            name='pre_cell', shape=[None, self.hidden_size], dtype='float32')
 
         cell = LSTMCell(self.hidden_size)
         lstm_hidden_new, lstm_states_new = cell(inputs, [pre_hidden, pre_cell])
@@ -109,14 +100,11 @@ class TestGRUCell(unittest.TestCase):
         self.hidden_size = 16
 
     def test_run(self):
-        inputs = layers.data(
-            name='inputs',
-            shape=[self.batch_size, self.input_size],
-            append_batch_size=False,
-            dtype='float32')
+        inputs = fluid.data(
+            name='inputs', shape=[None, self.input_size], dtype='float32')
         pre_hidden = layers.data(
             name='pre_hidden',
-            shape=[self.batch_size, self.hidden_size],
+            shape=[None, self.hidden_size],
             append_batch_size=False,
             dtype='float32')
 
@@ -171,13 +159,12 @@ class TestRnn(unittest.TestCase):
         self.seq_len = 4
 
     def test_run(self):
-        inputs_basic_lstm = layers.data(
+        inputs_basic_lstm = fluid.data(
             name='inputs_basic_lstm',
-            shape=[self.seq_len, self.batch_size, self.input_size],
-            append_batch_size=False,
+            shape=[None, None, self.input_size],
             dtype='float32')
-        sequence_length = layers.data(
-            name="sequence_length", shape=[-1], dtype='int64')
+        sequence_length = fluid.data(
+            name="sequence_length", shape=[None], dtype='int64')
 
         inputs_dynamic_rnn = layers.transpose(inputs_basic_lstm, perm=[1, 0, 2])
         cell = LSTMCell(self.hidden_size, name="LSTMCell_for_rnn")

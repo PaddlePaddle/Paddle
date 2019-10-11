@@ -598,7 +598,7 @@ class BeamSearchDecoder(Decoder):
             import paddle.fluid as fluid
             from paddle.fluid.layers import GRUCell, BeamSearchDecoder
 
-            trg_embeder = lambda x: layers.embedding(
+            trg_embeder = lambda x: fluid.embedding(
                 x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
             output_layer = lambda x: layers.fc(x,
                                             size=10000,
@@ -633,6 +633,9 @@ class BeamSearchDecoder(Decoder):
             embedding_fn(optional): A callable to apply to selected candidate ids. 
                 Mostly it is an embedding layer to transform ids to embeddings,
                 and the returned value acts as the `input` argument for `cell.call`.
+                **Note that fluid.embedding should be used here rather than
+                fluid.layers.embedding, since shape of ids is [batch_size, beam_size].
+                when using fluid.layers.embedding, must unsqueeze in embedding_fn.**
                 If not provided, the id to embedding transfomation must be built into
                 `cell.call`. Default None.
             output_fn(optional): A callable to apply to the cell's output prior to
@@ -858,7 +861,6 @@ class BeamSearchDecoder(Decoder):
             value=False,
             force_cpu=True)
         init_lengths = tensor.zeros_like(init_inputs)
-        init_inputs = nn.unsqueeze(init_inputs, [2])
         init_inputs = self.embedding_fn(
             init_inputs) if self.embedding_fn else init_inputs
         return init_inputs, self.StateWrapper(init_cell_states, log_probs,
@@ -979,9 +981,8 @@ class BeamSearchDecoder(Decoder):
             beam_state=states)
         finished = beam_search_state.finished
         sample_ids = beam_search_output.predicted_ids
-        next_inputs = self.embedding_fn(nn.unsqueeze(
-            sample_ids, [2])) if self.embedding_fn else nn.unsqueeze(sample_ids,
-                                                                     [2])
+        next_inputs = self.embedding_fn(
+            sample_ids) if self.embedding_fn else sample_ids
 
         return (beam_search_output, beam_search_state, next_inputs, finished)
 
@@ -1076,7 +1077,7 @@ def dynamic_decode(decoder,
             encoder_output = fluid.data(name="encoder_output",
                                     shape=[-1, 32, 128],
                                     dtype="float32")
-            trg_embeder = lambda x: layers.embedding(
+            trg_embeder = lambda x: fluid.embedding(
                 x, size=[10000, 128], param_attr=fluid.ParamAttr(name="trg_embedding"))
             output_layer = lambda x: layers.fc(x,
                                             size=10000,

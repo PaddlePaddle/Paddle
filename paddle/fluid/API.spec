@@ -485,7 +485,7 @@ paddle.fluid.layers.Decoder.__init__
 paddle.fluid.layers.Decoder.finalize (ArgSpec(args=['self', 'outputs', 'final_states', 'sequence_lengths'], varargs=None, keywords=None, defaults=None), ('document', 'cab7fc752a05db18e99258473f50359d'))
 paddle.fluid.layers.Decoder.initialize (ArgSpec(args=['self', 'inits'], varargs=None, keywords=None, defaults=None), ('document', '68cf1846fb58056dbe5a524f1ca9dff5'))
 paddle.fluid.layers.Decoder.step (ArgSpec(args=['self', 'time', 'inputs', 'states'], varargs=None, keywords=None, defaults=None), ('document', '151d0229930b9654689f86c85f7c4c3f'))
-paddle.fluid.layers.BeamSearchDecoder ('paddle.fluid.layers.rnn.BeamSearchDecoder', ('document', '40e2fdbc0815c78b651cd07261ab4d79'))
+paddle.fluid.layers.BeamSearchDecoder ('paddle.fluid.layers.rnn.BeamSearchDecoder', ('document', 'd7ef0c9229bfe73e0daefcfda24a2635'))
 paddle.fluid.layers.BeamSearchDecoder.OutputWrapper ('paddle.fluid.layers.rnn.OutputWrapper', ('document', 'a7141ebf1fb097fa71006cdd35bdc219'))
 paddle.fluid.layers.BeamSearchDecoder.OutputWrapper.__init__ 
 paddle.fluid.layers.BeamSearchDecoder.OutputWrapper.count T.count(value) -> integer -- return number of occurrences of value
@@ -494,13 +494,13 @@ paddle.fluid.layers.BeamSearchDecoder.StateWrapper ('paddle.fluid.layers.rnn.Sta
 paddle.fluid.layers.BeamSearchDecoder.StateWrapper.__init__ 
 paddle.fluid.layers.BeamSearchDecoder.StateWrapper.count T.count(value) -> integer -- return number of occurrences of value
 paddle.fluid.layers.BeamSearchDecoder.StateWrapper.index T.index(value, [start, [stop]]) -> integer -- return first index of value.
-paddle.fluid.layers.BeamSearchDecoder.__init__ (ArgSpec(args=['self', 'cell', 'start_token', 'end_token', 'beam_size', 'embedding_fn', 'output_fn'], varargs=None, keywords=None, defaults=(None, None)), ('document', 'd977009cd1b4c693b98436f93391bf4e'))
+paddle.fluid.layers.BeamSearchDecoder.__init__ (ArgSpec(args=['self', 'cell', 'start_token', 'end_token', 'beam_size', 'embedding_fn', 'output_fn'], varargs=None, keywords=None, defaults=(None, None)), ('document', '68951eaed573ec47c17a43155514b2f1'))
 paddle.fluid.layers.BeamSearchDecoder.finalize (ArgSpec(args=['self', 'outputs', 'final_states', 'sequence_lengths'], varargs=None, keywords=None, defaults=None), ('document', '9a7f0a8fc5802bf860f2ac960466fb45'))
 paddle.fluid.layers.BeamSearchDecoder.initialize (ArgSpec(args=['self', 'initial_cell_states'], varargs=None, keywords=None, defaults=None), ('document', '01ee508a9615e2483fe6ddcf14d5fa25'))
 paddle.fluid.layers.BeamSearchDecoder.step (ArgSpec(args=['self', 'time', 'inputs', 'states'], varargs=None, keywords='kwargs', defaults=None), ('document', '35ee583c3c0fe7cceeafa289ed3374bd'))
 paddle.fluid.layers.BeamSearchDecoder.tile_beam_merge_with_batch (ArgSpec(args=['x', 'beam_size'], varargs=None, keywords=None, defaults=None), ('document', 'ce7ffacba6f56f57acbf5d4dd82fe04d'))
 paddle.fluid.layers.rnn (ArgSpec(args=['cell', 'inputs', 'initial_states', 'sequence_length', 'time_major', 'is_reverse'], varargs=None, keywords='kwargs', defaults=(None, None, False, False)), ('document', 'c36ade777ff43d2ba5542079b66a012b'))
-paddle.fluid.layers.dynamic_decode (ArgSpec(args=['decoder', 'inits', 'max_step_num', 'output_time_major'], varargs=None, keywords='kwargs', defaults=(None, None, False)), ('document', '4a37b92171e8e45a26c9f99caccf9c79'))
+paddle.fluid.layers.dynamic_decode (ArgSpec(args=['decoder', 'inits', 'max_step_num', 'output_time_major'], varargs=None, keywords='kwargs', defaults=(None, None, False)), ('document', '55b44de9d290c0c2ad8fdd635e6ab575'))
 paddle.fluid.contrib.InitState ('paddle.fluid.contrib.decoder.beam_search_decoder.InitState', ('document', '3afd1f84232718e628e9e566941c5f05'))
 paddle.fluid.contrib.InitState.__init__ (ArgSpec(args=['self', 'init', 'shape', 'value', 'init_boot', 'need_reorder', 'dtype'], varargs=None, keywords=None, defaults=(None, None, 0.0, None, False, 'float32')), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.contrib.StateCell ('paddle.fluid.contrib.decoder.beam_search_decoder.StateCell', ('document', 'ecd0066c02867d445d7b461e28220c50'))

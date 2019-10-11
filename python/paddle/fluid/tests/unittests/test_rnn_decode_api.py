@@ -114,18 +114,18 @@ class TestDynamicDecode(unittest.TestCase):
         beam_size = 8
         max_length = self.seq_len
 
-        src = layers.data(name="src", shape=[-1, 1, 1], dtype='int64')
-        src_len = layers.data(name="src_len", shape=[-1], dtype='int32')
+        src = fluid.data(name="src", shape=[None, None], dtype='int64')
+        src_len = fluid.data(name="src_len", shape=[None], dtype='int64')
 
-        trg = layers.data(name="trg", shape=[-1, 1, 1], dtype='int64')
-        trg_len = layers.data(name="trg_len", shape=[-1], dtype='int32')
+        trg = fluid.data(name="trg", shape=[None, None], dtype='int64')
+        trg_len = fluid.data(name="trg_len", shape=[None], dtype='int64')
 
-        src_embeder = lambda x: layers.embedding(
+        src_embeder = lambda x: fluid.embedding(
             x,
             size=[src_vocab_size, hidden_size],
             param_attr=fluid.ParamAttr(name="src_embedding"))
 
-        trg_embeder = lambda x: layers.embedding(
+        trg_embeder = lambda x: fluid.embedding(
             x,
             size=[trg_vocab_size, hidden_size],
             param_attr=fluid.ParamAttr(name="trg_embedding"))
@@ -191,10 +191,10 @@ class TestDynamicDecode(unittest.TestCase):
         exe.run(framework.default_startup_program())
 
         src_np = np.random.randint(
-            0, src_vocab_size, (self.batch_size, max_length, 1)).astype('int64')
+            0, src_vocab_size, (self.batch_size, max_length)).astype('int64')
         src_len_np = np.ones(self.batch_size, dtype='int64') * max_length
         trg_np = np.random.randint(
-            0, trg_vocab_size, (self.batch_size, max_length, 1)).astype('int64')
+            0, trg_vocab_size, (self.batch_size, max_length)).astype('int64')
         trg_len_np = np.ones(self.batch_size, dtype='int64') * max_length
 
         out = exe.run(feed={
