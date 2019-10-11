@@ -39,10 +39,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
@@ -153,6 +155,88 @@ static inline int PlaceIndex(const PlaceType &p) {
   return static_cast<int>(paddle::platform::Place(p).which());
 }
 
+static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
+  // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
+  // is not inside obj, but it would also set the error flag of Python.
+  // If the error flag is set in C++, C++ code would not raise Exception,
+  // but Python would raise Exception once C++ call ends.
+  // To avoid unexpected Exception raised in Python, we check whether
+  // attribute exists before calling PyObject_GetAttrString.
+  //
+  // Caution: PyObject_GetAttrString would increase reference count of PyObject.
+  // Developer should call Py_DECREF manually after the attribute is not used.
+  if (PyObject_HasAttrString(obj, attr_name)) {
+    return PyObject_GetAttrString(obj, attr_name);
+  } else {
+    return nullptr;
+  }
+}
+
+template <typename T>
+static T PyObjectCast(PyObject *obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error &) {
+    PADDLE_THROW("Python object is not type of %s", typeid(T).name());
+  }
+}
+
+using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
+
+static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
+    const PyNameVarBaseMap &state_dict) {
+  std::vector<std::shared_ptr<imperative::VarBase>> vec_res;
+  vec_res.reserve(state_dict.size());
+
+  for (auto &para : state_dict) {
+    PyObject *py_obj = para.second.ptr();
+    if (!py_obj || py_obj == Py_None) {
+      PADDLE_THROW("Save parameter [%s] is None", para.first);
+    }
+
+    const char *kIVarField = "_ivar";
+    PyObject *py_ivar = GetPythonAttribute(py_obj, kIVarField);
+    PADDLE_ENFORCE_NOT_NULL(py_ivar, "Can not find  ivar in Variable");
+
+    vec_res.emplace_back(
+        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
+    Py_DECREF(py_ivar);
+  }
+
+  return vec_res;
+}
+
+static std::vector<std::string> inline GetNameList(
+    const py::handle &py_handle) {
+  std::vector<std::string> vec_res;
+
+  PyObject *py_obj = py_handle.ptr();  // get underlying PyObject
+  // Python None is not nullptr in C++!
+  if (!py_obj || py_obj == Py_None) {
+    PADDLE_THROW("Save parameter list is None");
+  }
+
+  if (PyList_Check(py_obj)) {
+    size_t len = PyList_GET_SIZE(py_obj);
+
+    vec_res.reserve(len);
+
+    const char *kNameField = "name";
+
+    for (size_t i = 0; i < len; ++i) {
+      PyObject *py_name =
+          PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kNameField);
+      PADDLE_ENFORCE_NOT_NULL(py_name);
+      vec_res.emplace_back(PyObjectCast<std::string>(py_name));
+      Py_DECREF(py_name);
+    }
+  } else {
+    PADDLE_THROW("Set parameter should be a list");
+  }
+
+  return vec_res;
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -174,6 +258,39 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
+  m.def("_save_static_dict",
+        [](const std::string &str_file_name, const py::handle &vec_var_list,
+           const Scope &scope) {
+          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
+          SaveStaticNameListToDisk(str_file_name, vec_name_list, scope);
+        });
+
+  m.def("_load_static_dict",
+        [](const std::string &str_file_name, const py::handle &vec_var_list,
+           const Scope &scope) {
+          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
+          LoadStaticNameListFromDisk(str_file_name, vec_name_list, scope);
+        });
+
+  m.def("_save_dygraph_dict", [](const std::string &str_file_name,
+                                 const PyNameVarBaseMap &state_dict) {
+    auto vec_var_base_list = GetVarBaseList(state_dict);
+
+    SaveDygraphVarBaseListToDisk(str_file_name, vec_var_base_list);
+  });
+
+  m.def("_load_dygraph_dict", [](const std::string &str_file_name) {
+    auto load_tensor = LoadDygraphVarBaseListFromDisk(str_file_name);
+
+    std::unordered_map<std::string, std::shared_ptr<imperative::VarBase>>
+        map_output;
+
+    for (size_t i = 0; i < load_tensor.size(); ++i) {
+      map_output.emplace(load_tensor[i]->Name(), load_tensor[i]);
+    }
+
+    return map_output;
+  });
   m.def("save_op_compatible_info", [](framework::ProgramDesc &desc) {
     framework::OpCompatibleMap op_compatible_map;
     op_compatible_map.InitOpCompatibleMap();
@@ -373,7 +490,8 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       // We implement offset based LOD in C++ while we use length based with
-      // Python API. So we changed set_lod to set_recursive_sequence_lengths to
+      // Python API. So we changed set_lod to set_recursive_sequence_lengths
+      // to
       // avoid misuse.
       // The discussion is here:
       // https://github.com/PaddlePaddle/Paddle/issues/10855
@@ -1707,7 +1825,8 @@ All parameter, weight, gradient are variables in Paddle.
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
               PADDLE_THROW(
-                  "BuildStrategy.memory_optimize must be None, False or True");
+                  "BuildStrategy.memory_optimize must be None, False or "
+                  "True");
             }
           },
           R"DOC(The type is BOOL or None, memory opitimize aims to save total memory
