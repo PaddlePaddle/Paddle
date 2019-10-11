@@ -1917,15 +1917,14 @@ class DynamicRNN(object):
     please use StaticRNN (fluid.layers.** :ref:`api_fluid_layers_StaticRNN` **).**
 
     DynamicRNN can process a minibatch of variable-length sequences.
-    The length of each sample sequence can be different and is recorded in LoD.
+    The length of each sample can be different and is recorded in LoD.
     In DynamicRNN, a input sequence will be unfold into time steps and users
     can define how to process each time step in :code:`block()` .
     The total number of time steps is determined by the longest sequence.
     DynamicRNN will not pad all sequences to the same length, instead it will
     sort the sequences internally by the sequence length in descending order.
-    As time steps increase, the input sequences is shrinked because only
-    sequences of which the sequence is larger than the time step will
-    participate the remaining calculation.
+    The input sequences will be shrinked because only sequences of which the
+    length is larger than the time step will participate the remaining calculation.
 
     Warning:
         Currently it is not supported to set :code:`is_sparse = True` of any
@@ -1965,13 +1964,13 @@ class DynamicRNN(object):
         same LoD. When :code:`x.lod_level >= 2` , the input sequence will be
         unfold along specified level, and the slice of each time step is a
         LoDTensor of which the lod_level is :code:`x.lod_level - level - 1` .
-        In this case, the specied LoD level of multiple inputs should be the same.
+        In this case, the specified LoD level of multiple inputs should be the same.
 
         - Case 1:
 
         .. code-block:: text
 
-            # input，where Si is slice data of shape [1, N]
+            # input, where Si is slice data of shape [1, N]
             level = 0
             x.lod = [[2, 1, 3]]
             x.shape = [6, N]
