@@ -480,9 +480,12 @@ class Compressor(object):
         executor = SlimGraphExecutor(self.place)
 
         if context.optimize_graph.compiled_graph is None:
+            build_strategy = compiler.BuildStrategy()
+            build_strategy.fuse_all_reduce_ops = False
             context.optimize_graph.compiled_graph = compiler.CompiledProgram(
                 context.optimize_graph.program).with_data_parallel(
-                    loss_name=context.optimize_graph.out_nodes['loss'])
+                    loss_name=context.optimize_graph.out_nodes['loss'],
+                    build_strategy=build_strategy)
 
         if isinstance(context.train_reader, Variable) or (
                 isinstance(context.train_reader,

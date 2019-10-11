@@ -130,7 +130,7 @@ def slice_variable(var_list, slice_count, min_block_size):
 
 class DistributeTranspilerConfig(object):
     """
-    A configuration class that provide support for distributed jobs.
+    A configuration class that provide support for transpiler distributed jobs.
     Some important parameters are explained as follows:
 
 
@@ -232,7 +232,7 @@ class DistributeTranspiler(object):
     **DistributeTranspiler**
 
     Convert the fluid program to distributed data-parallelism programs.
-    Supports two modes: pserver mode and nccl2 mode.
+    Supports two modes: parameter server(pserver) mode and nccl2 mode.
 
     In pserver mode, the main_program will be transformed to use a remote
     parameter server to do parameter optimization. And the optimization
@@ -247,8 +247,8 @@ class DistributeTranspiler(object):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            x = fluid.data(name='x', shape=[13], dtype='float32')
+            y = fluid.data(name='y', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
 
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
@@ -500,7 +500,7 @@ class DistributeTranspiler(object):
                   startup_program=None,
                   current_endpoint="127.0.0.1:6174"):
         """
-        Run the transpiler. Transpile the input program.
+        Transpile the input program to distributed programs with config and arguments.
 
         Args:
             trainer_id (int): id for current trainer worker, if you have
