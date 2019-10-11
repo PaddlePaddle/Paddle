@@ -478,7 +478,7 @@ class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "Input of Relu6 operator. Input of relu6 operator, an N-D Tensor, "
+             "Input of relu6 operator, an N-D Tensor, "
              "with data type float32, float64.");
     AddOutput(
         "Out",
