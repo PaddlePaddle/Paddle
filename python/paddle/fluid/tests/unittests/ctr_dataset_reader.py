@@ -67,7 +67,7 @@ class DatasetCtrReader(data_generator.MultiSlotDataGenerator):
             return random.random()
 
         def iter():
-            if get_rand() < 0.1:
+            if get_rand() < 0.05:
                 fs = line.strip().split('\t')
                 dnn_input = load_dnn_input_record(fs[0])
                 lr_input = load_lr_input_record(fs[1])
