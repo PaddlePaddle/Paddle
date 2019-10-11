@@ -655,7 +655,7 @@ paddle.fluid.dygraph.FC.set_dict (ArgSpec(args=['self', 'stat_dict', 'include_su
 paddle.fluid.dygraph.FC.state_dict (ArgSpec(args=['self', 'destination', 'include_sublayers'], varargs=None, keywords=None, defaults=(None, True)), ('document', '9d689f44592cd22812c7ec06a9654eac'))
 paddle.fluid.dygraph.FC.sublayers (ArgSpec(args=['self', 'include_sublayers'], varargs=None, keywords=None, defaults=(True,)), ('document', '00a881005ecbc96578faf94513bf0d62'))
 paddle.fluid.dygraph.FC.train (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.dygraph.BatchNorm ('paddle.fluid.dygraph.nn.BatchNorm', ('document', '64129ec96a7e7f10f665e611d5eee343'))
+paddle.fluid.dygraph.BatchNorm ('paddle.fluid.dygraph.nn.BatchNorm', ('document', 'fb93cdf32f21a1c26e784d61a80051a7'))
 paddle.fluid.dygraph.BatchNorm.__init__ (ArgSpec(args=['self', 'name_scope', 'num_channels', 'act', 'is_test', 'momentum', 'epsilon', 'param_attr', 'bias_attr', 'dtype', 'data_layout', 'in_place', 'moving_mean_name', 'moving_variance_name', 'do_model_average_for_mean_and_var', 'fuse_with_relu', 'use_global_stats', 'trainable_statistics'], varargs=None, keywords=None, defaults=(None, False, 0.9, 1e-05, None, None, 'float32', 'NCHW', False, None, None, True, False, False, False)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.BatchNorm.add_parameter (ArgSpec(args=['self', 'name', 'parameter'], varargs=None, keywords=None, defaults=None), ('document', 'f35ab374c7d5165c3daf3bd64a5a2ec1'))
 paddle.fluid.dygraph.BatchNorm.add_sublayer (ArgSpec(args=['self', 'name', 'sublayer'], varargs=None, keywords=None, defaults=None), ('document', '839ff3c0534677ba6ad8735c3fd4e995'))

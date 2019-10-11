@@ -1198,9 +1198,8 @@ class BatchNorm(layers.Layer):
         in_place(bool, optional): Make the input and output of batch norm reuse memory. Default: False.
         moving_mean_name(str, optional): The name of moving_mean which store the global Mean. Default: None.
         moving_variance_name(str, optional): The name of the moving_variance which store the global Variance. Default: None.
-        moving_variance_name(str, optional): The name of the moving_variance which store the global Variance. Default: None.
-        do_model_average_for_mean_and_var(bool, optional): Whether parameter mean and variance should do model average when
-        model average is enabled. Default: True.
+        do_model_average_for_mean_and_var(bool, optional): Whether parameter mean and variance should do model
+            average when model average is enabled. Default: True.
         fuse_with_relu (bool, optional): When setting fuse_with_relu True, this OP performs relu after batch norm. 
             Default: False.
         use_global_stats(bool, optional): Whether to use global mean and
