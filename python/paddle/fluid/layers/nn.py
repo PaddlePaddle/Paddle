@@ -8674,20 +8674,18 @@ def squeeze(input, axes, name=None):
 
 def unsqueeze(input, axes, name=None):
     """
-    Insert single-dimensional entries to the shape of a tensor. Takes one
-    required argument axes, a list of dimensions that will be inserted.
-    Dimension indices in axes are as seen in the output tensor.
+    This op insert one or more axes to the shape of input. 
 
     For example:
 
     .. code-block:: text
 
-      Given a tensor such that tensor with shape [3, 4, 5],
-      then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
+      Given a tensor with shape [2, 3]
+      then Unsqueezed tensor with axes=[0, 2] has shape [1, 2, 1, 3]
 
     Args:
-        input (Variable): The input variable to be unsqueezed.
-        axes (list): List of integers, indicating the dimensions to be inserted.
+        input (Variable): The input tensor could be N-D tensor
+        axes (list): List of integers, each element indicates the dimensions to be inserted.
         name (str|None): Name for this layer.
 
     Returns:
