@@ -6710,62 +6710,70 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
 def topk(input, k, name=None):
     """
-    This operator is used to find values and indices of the k largest entries
+    This OP is used to find values and indices of the k largest entries
     for the last dimension.
 
-    If the input is a vector (1-D Tensor), finds the k largest entries in the vector
-    and outputs their values and indices as vectors. Thus values[j] is the j-th
-    largest entry in input, and its index is indices[j].
+    If the input is a 1-D Tensor, finds the k largest entries and outputs
+    their values and indices.
 
     If the input is a Tensor with higher rank, this operator computes the top k
     entries along the last dimension.
 
-    For example:
-
     .. code-block:: text
 
-        If:
-            input = [[5, 4, 2, 3],
+        Case 1:
+
+          Input:
+            input.shape = [3, 4]
+            input.data = [[5, 4, 2, 3],
                      [9, 7, 10, 25],
                      [6, 2, 10, 1]]
             k = 2
 
-        Then:
+          Output:
             The first output:
-            values = [[5, 4],
+            values.shape = [3, 2]
+            values.data = [[5, 4],
                       [10, 25],
                       [6, 10]]
 
             The second output:
-            indices = [[0, 1],
+            indices.shape = [3, 2]
+            indices.data = [[0, 1],
                        [2, 3],
                        [0, 2]]
 
     Args:
-        input(Variable): The input variable which can be a vector or Tensor with
-            higher rank.
-        k(int | Variable):  The number of top elements to look for along the last dimension
-                 of input.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
-                       Default: None
+        input(Variable): The input tensor. Support data types: float32, float64.
+        k(int | Variable): The number of top elements to look for along the last dimension
+                           of input tensor.
+        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Tuple[Variable]: A tuple with two elements. Each element is a Variable.
-        The first one is k largest elements along each last
-        dimensional slice. The second one is indices of values
-        within the last dimension of input.
+        Values (Variable): Input tensor's k largest elements along each last dimensional slice. The dimension is: :math:`input.shape[:-1]+[k]`.
+        Indices (Variable): Indices of k largest elements alone the last dimension of input. The dimension is same as values.
 
     Raises:
-        ValueError: If k < 1 or k is not less than the last dimension of input
+        ValueError: If :math:`k < 1` or :math:`k > last dimension of input`.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
-            input = layers.data(name="input", shape=[13, 11], dtype='float32')
-            top5_values, top5_indices = layers.topk(input, k=5)
+            # set batch size=None
+            input = fluid.data(name="input", shape=[None, 13, 11], dtype='float32')
+            top5_values, top5_indices = layers.topk(input, k=5) # top5_values.shape[None, 13, 5], top5_indices.shape=[None, 13, 5]
+
+            # 1D Tensor
+            input1 = fluid.data(name="input1", shape=[None, 13], dtype='float32')
+            top5_values, top5_indices = layers.topk(input1, k=5) #top5_values.shape=[None, 5], top5_indices.shape=[None, 5]
+
+            # k=Variable
+            input2 = fluid.data(name="input2", shape=[None, 13, 11], dtype='float32')
+            vk = fluid.data(name="vk", shape=[None, 1], dtype='int32') # save k in vk.data[0]
+            vk_values, vk_indices = layers.topk(input2, k=vk) #vk_values.shape=[None, 13, k], vk_indices.shape=[None, 13, k]
+
     """
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -8597,48 +8605,56 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
 def squeeze(input, axes, name=None):
     """
-    Remove single-dimensional entries from the shape of a tensor. Takes a
-    parameter axes with a list of axes to squeeze. If axes is not provided, all
-    the single dimensions will be removed from the shape. If an axis is
-    selected with shape entry not equal to one, an error is raised.
+    This OP will squeeze single-dimensional entries of input tensor's shape. If axes is provided, will
+    remove the dims by axes, the dims selected by axes should be one. If not provide axes, all dims equal
+    to one will be deleted.
 
-    For example:
 
-    .. code-block:: text
+    .. code-block:: text 
 
-        Case 1:
+        Case1:
 
-          Given
+          Input:
             X.shape = (1, 3, 1, 5)
-          and
             axes = [0]
-          we get:
+          Output:
             Out.shape = (3, 1, 5)
 
-        Case 2:
+        Case2:
 
-          Given
+          Input:
             X.shape = (1, 3, 1, 5)
-          and
             axes = []
-          we get:
+          Output:
             Out.shape = (3, 5)
 
+        Case3:
+
+          Input:
+            X.shape = [1,3,1,5]
+            axes = [-2]
+          Output:
+            Out.shape = [1,3,5]
+
     Args:
-        input (Variable): The input variable to be squeezed.
-        axes (list): List of integers, indicating the dimensions to be squeezed.
-        name (str|None): Name for this layer.
+        input (Variable): The input Tensor. Support data type: float32, float64, int8, int32, int64.
+                          axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
+                          Axes range is :math:`[-rank(input), rank(input))`.
+                          If axes is negative, :math:`axes=axes+rank(input)`.
+        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Variable: Output squeezed variable.
+        Variable: Output squeezed Tensor. Data type is same as input Tensor.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
-            x = layers.data(name='x', shape=[5, 1, 10])
-            y = layers.squeeze(input=x, axes=[1])
+            # set batch size=None
+            x = fluid.data(name='x', shape=[None, 5, 1, 10])
+            y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
+
     """
     assert not in_dygraph_mode(), (
         "squeeze layer is not supported in dygraph mode yet.")
@@ -12203,74 +12219,82 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
 def stack(x, axis=0):
     """
-    **Stack Layer**
 
-    This layer stacks all of the input :code:`x` along axis.
-
-    Input :code:`x` can be a single variable, a :code:`list` of variables,
-    or a :code:`tuple` of variables. If :code:`x` is a :code:`list` or
-    :code:`tuple`, the shapes of all these variables must be the same.
-    Supposing the shape of each input is :math:`[d_0, d_1, ..., d_{n-1}]`,
-    the shape of the output variable would be
-    :math:`[d_0, d_1, ..., d_{axis}=len(x), ..., d_{n-1}]`.
-    If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x[0])+1`.
-    If :code:`axis` is None, it would be replaced with 0.
-
-    For Example:
+    This OP stacks all the inputs :code:`x` along axis.
 
     .. code-block:: text
 
         Case 1:
+
           Input:
+            x[0].shape = [1, 2]
             x[0].data = [ [1.0 , 2.0 ] ]
-            x[0].dims = [1, 2]
+            x[1].shape = [1, 2]
             x[1].data = [ [3.0 , 4.0 ] ]
-            x[1].dims = [1, 2]
+            x[2].shape = [1, 2]
             x[2].data = [ [5.0 , 6.0 ] ]
-            x[2].dims = [1, 2]
 
           Attrs:
             axis = 0
 
           Output:
+            Out.dims = [3, 1, 2]
             Out.data =[ [ [1.0, 2.0] ],
                         [ [3.0, 4.0] ],
                         [ [5.0, 6.0] ] ]
-            Out.dims = [3, 1, 2]
+
 
         Case 2:
-          Given
+
+
+          Input:
+            x[0].shape = [1, 2]
             x[0].data = [ [1.0 , 2.0 ] ]
-            x[0].dims = [1, 2]
+            x[1].shape = [1, 2]
             x[1].data = [ [3.0 , 4.0 ] ]
-            x[1].dims = [1, 2]
+            x[2].shape = [1, 2]
             x[2].data = [ [5.0 , 6.0 ] ]
-            x[2].dims = [1, 2]
+
 
           Attrs:
             axis = 1 or axis = -2
 
           Output:
+            Out.shape = [1, 3, 2]
             Out.data =[ [ [1.0, 2.0]
                           [3.0, 4.0]
                           [5.0, 6.0] ] ]
-            Out.dims = [1, 3, 2]
+
 
     Args:
-        x (Variable|list(Variable)|tuple(Variable)): Input variables.
-        axis (int|None): The axis along which all inputs are stacked.
+        x (Variable|list(Variable)): Input :code:`x` can be a single Tensor, a :code:`list` of Tensors.
+                                     If :code:`x` is a :code:`list`, the shapes of all these Tensors
+                                     must be the same. Supposing input is N dims
+                                     Tensors :math:`[d_0, d_1, ..., d_{n-1}]`, the output is N+1 dims
+                                     Tensor :math:`[d_0, d_1, d_{axis-1}, len(x), d_{axis}, ..., d_{n-1}]`.
+                                     Support data types: float32, float64, int32, int64.
+        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is :math:`[-(R+1), R+1)`.
+                              R is the first tensor of inputs. If ``axis`` < 0, :math:`axis=axis+rank(x[0])+1`.
+                              The default value of axis is 0.
 
     Returns:
-        Variable: The stacked variable.
+        Variable: The stacked Tensor, has same data type with input Tensors. Output dim is :math:`rank(x[0])+1`.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
-            x1 = layers.data(name='x1', shape=[1, 2], dtype='int32')
-            x2 = layers.data(name='x2', shape=[1, 2], dtype='int32')
-            data = layers.stack([x1,x2])
+            # set batch size=None
+            x1 = fluid.data(name='x1', shape=[None, 1, 2], dtype='int32')
+            x2 = fluid.data(name='x2', shape=[None, 1, 2], dtype='int32')
+            # stack Tensor list
+            data = layers.stack([x1,x2]) # stack according to axis 0, data.shape=[2, None, 1, 2]
+
+            data = layers.stack([x1,x2], axis=1) # stack according to axis 1, data.shape=[None, 2, 1, 2]
+
+            # stack single Tensor
+            data = layers.stack(x1)  # stack according to axis 0, data.shape=[1, None, 1, 2]
 
     """
 
