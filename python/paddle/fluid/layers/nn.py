@@ -2324,17 +2324,20 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
 def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
-    The input of the softmax operator is a tensor of any rank. The output tensor
-    has the same shape as the input.
+    This operator implements the softmax layer. The calculation process is as follows:
 
-    The dimension :attr:`axis` of the input tensor will be permuted to the last.
-    Then the input tensor will be logically flattened to a 2-D matrix. The matrix's
+    1. The dimension :attr:`axis` of the ``input`` will be permuted to the last.
+    
+    2. Then the input tensor will be logically flattened to a 2-D matrix. The matrix's
     second dimension(row length) is the same as the dimension :attr:`axis` of the input
     tensor, and the first dimension(column length) is the product of all other
     dimensions of the input tensor. For each row of the matrix, the softmax operator
     squashes the K-dimensional(K is the width of the matrix, which is also the size
     of the input tensor's dimension :attr:`axis`) vector of arbitrary real values to a
     K-dimensional vector of real values in the range [0, 1] that add up to 1.
+
+    3. After the softmax operation is completed, the inverse operations of steps 1 and 2 
+    are performed to restore the two-dimensional matrix to the same dimension as the ``input``.
 
     It computes the exponential of the given dimension and the sum of exponential
     values of all the other dimensions in the K-dimensional vector input.
@@ -2348,20 +2351,66 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
 
         Out[i, j] = \\frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}
 
+    Example:
+
+    .. code-block:: text
+
+        Case 1:
+          Input:
+            X.shape = [2, 3, 4]
+            X.data = [[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]]
+
+          Attrs:
+            axis = -1
+
+          Output:
+            Out.shape = [2, 3, 4]
+            Out.data = [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
+                        [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
+                         [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+
+        Case 2:
+          Input:
+            X.shape = [2, 3, 4]
+            X.data = [[[2.0, 3.0, 4.0, 5.0],
+                       [3.0, 4.0, 5.0, 6.0],
+                       [7.0, 8.0, 8.0, 9.0]],
+                      [[1.0, 2.0, 3.0, 4.0],
+                       [5.0, 6.0, 7.0, 8.0],
+                       [6.0, 7.0, 8.0, 9.0]]]
+          Attrs:
+            axis = 1
+
+          Output:
+            Out.shape = [2, 3, 4]
+            Out.data = [[[0.00657326, 0.00657326, 0.01714783, 0.01714783],
+                         [0.01786798, 0.01786798, 0.04661262, 0.04661262],
+                         [0.97555875, 0.97555875, 0.93623955, 0.93623955]],
+                        [[0.00490169, 0.00490169, 0.00490169, 0.00490169],
+                         [0.26762315, 0.26762315, 0.26762315, 0.26762315],
+                         [0.72747516, 0.72747516, 0.72747516, 0.72747516]]] 
+
     Args:
-        input (Variable): The input variable. A LoDTensor or Tensor with type 
-        float32, float64.
-        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
+        input (Variable): The input variable. A multi-dimension ``Tensor`` with type float32 or float64.
+        use_cudnn (bool, optional): Use cudnn kernel or not, it is valid only when the cudnn \
             library is installed. To improve numerical stablity, set use_cudnn to \
-            False by default. Default: False
-        name (str|None): A name for this layer(optional). If set None, the layer
+            False by default.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` . Default: None.
             will be named automatically. Default: None.
-        axis (int): The index of dimension to perform softmax calculations, it should
+        axis (int, optional): The index of dimension to perform softmax calculations, it should
             be in range :math:`[-1, rank - 1]`, while :math:`rank` is the rank of
             input variable. Default: -1. -1 means the last dimension.
 
     Returns:
-        Variable: output of softmax. A Tensor with type float32, float64.
+        Variable: ``Tensor`` indicates the output of softmax. The data type and shape are the same as ``input`` .
 
     Examples:
 
@@ -2379,7 +2428,6 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
             output= exe.run(feed={"input": x},
                              fetch_list=[result[0]])
             print(output)
-            #array([0.22595254, 0.39276356, 0.38128382], dtype=float32)]
     """
     helper = LayerHelper('softmax', **locals())
     if not isinstance(input, Variable):
@@ -3220,12 +3268,15 @@ def sequence_slice(input, offset, length, name=None):
           should be equal. The **offset** should start from 0.
 
     Args:
-        input(Variable): The input Variable which consists of the complete
-                         sequences.
-        offset(Variable): The offset to slice each sequence.
-        length(Variable): The length of each subsequence.
-        name(str|None): A name for this layer(optional). If set None, the
-                        layer will be named automatically.
+        input(Variable): LoDTensor, The input Variable which consists of the complete
+                         sequences.The data type is float32 or float64.
+        offset(Variable): LoDTensor, The offset to slice each sequence.The data
+                         type is int32 or int64.
+        length(Variable): LoDTensor, The length of each subsequence.The data
+                         type is int32 or int64.
+        name(str|None): The default value is None.  Normally there is no need
+                        for user to set this property.  For more information,
+                        please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: The output subsequences.
@@ -3236,7 +3287,7 @@ def sequence_slice(input, offset, length, name=None):
 
              import paddle.fluid as fluid
              import numpy as np
-             seqs = fluid.layers.data(name='x', shape=[10, 5],
+             seqs = fluid.data(name='x', shape=[10, 5],
                               dtype='float32', lod_level=1)
              offset = fluid.layers.assign(input=np.array([[0, 1]]).astype("int32"))
              length = fluid.layers.assign(input=np.array([[2, 1]]).astype("int32"))
@@ -4435,62 +4486,69 @@ def layer_norm(input,
                act=None,
                name=None):
     """
-    ${comment}
+    **Layer Normalization Layer**
+
+    The API implements the function of the Layer Normalization Layer and can be applied to mini-batch input data.
+    Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
 
     The formula is as follows:
 
     ..  math::
 
-        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} a_i
+        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} x_i
 
-        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}(a_i - \\mu)^2}
+        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}{(x_i - \\mu)^2} + \\epsilon}
 
-        h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
+        y & = f(\\frac{g}{\\sigma}(x - \\mu) + b)
 
-    * :math:`a`: the vector representation of the summed inputs to the neurons
-    in that layer.
-
-    * :math:`H`: the number of hidden units in a layers
-
-    * :math:`g`: the trainable scale parameter.
-
-    * :math:`b`: the trainable bias parameter.
+    - :math:`x`: the vector representation of the summed inputs to the neurons in that layer.
+    - :math:`H`: the number of hidden units in a layers
+    - :math:`\\epsilon`: the small value added to the variance to prevent division by zero.
+    - :math:`g`: the trainable scale parameter.
+    - :math:`b`: the trainable bias parameter.
 
     Args:
-        input(Variable): The input tensor variable.
-        scale(bool): Whether to learn the adaptive gain :math:`g` after
-            normalization. Default True.
-        shift(bool): Whether to learn the adaptive bias :math:`b` after
-            normalization. Default True.
-        begin_norm_axis(int): The normalization will be performed along
+        input(Variable): A multi-dimension ``Tensor`` , and the data type is float32 or float64.
+        scale(bool, optional): Whether to learn the adaptive gain :math:`g` after
+            normalization. Default: True.
+        shift(bool, optional): Whether to learn the adaptive bias :math:`b` after
+            normalization. Default: True.
+        begin_norm_axis(int, optional): The normalization will be performed along
             dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
-            Default 1.
-        epsilon(float): The small value added to the variance to prevent
-            division by zero. Default 1e-05.
-        param_attr(ParamAttr|None): The parameter attribute for the learnable
+            Default: 1.
+        epsilon(float, optional): The small value added to the variance to prevent
+            division by zero. Default: 1e-05.
+        param_attr(ParamAttr, optional): The parameter attribute for the learnable
             gain :math:`g`. If :attr:`scale` is False, :attr:`param_attr` is
             omitted. If :attr:`scale` is True and :attr:`param_attr` is None,
             a default :code:`ParamAttr` would be added as scale. The
-            :attr:`param_attr` is initialized as 1 if it is added. Default None.
-        bias_attr(ParamAttr|None): The parameter attribute for the learnable
+            :attr:`param_attr` is initialized as 1 if it is added. Default: None.
+        bias_attr(ParamAttr, optional): The parameter attribute for the learnable
             bias :math:`b`. If :attr:`shift` is False, :attr:`bias_attr` is
             omitted. If :attr:`shift` is True and :attr:`param_attr` is None,
             a default :code:`ParamAttr` would be added as bias. The
-            :attr:`bias_attr` is initialized as 0 if it is added. Default None.
-        act(str): Activation to be applied to the output of layer normalizaiton.
-                  Default None.
-        name(str): The name of this layer. It is optional. Default None, and a
-                   unique name would be generated automatically.
+            :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
+        act(str, optional): Activation to be applied to the output of layer normalizaiton.
+                  Default: None.
+        name(str): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        ${y_comment}
+        Variable: ``Tensor``  indicating the normalized result, the data type is the same as  ``input`` , and the return dimension is the same as  ``input`` .
 
     Examples:
 
-        >>> import paddle.fluid as fluid
-        >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
-        >>>                          dtype='float32')
-        >>> x = fluid.layers.layer_norm(input=data, begin_norm_axis=1)
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            x = fluid.data(name='x', shape=[-1, 32, 32], dtype='float32')
+            hidden1 = fluid.layers.layer_norm(input=x, begin_norm_axis=1)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            np_x = np.random.random(size=(8, 3, 32, 32)).astype('float32')
+            output = exe.run(feed={"x": np_x}, fetch_list = [hidden1])
+            print(output)
     """
     assert in_dygraph_mode(
     ) is not True, "please use FC instead of fc in dygraph mode!"
@@ -7794,12 +7852,9 @@ def softmax_with_cross_entropy(logits,
                                return_softmax=False,
                                axis=-1):
     """
-    **Softmax With Cross Entropy Operator.**
-
-    Cross entropy loss with softmax is used as the output layer extensively. This
-    operator computes the softmax normalized values for dimension :attr:`axis` of 
-    the input tensor, after which cross-entropy loss is computed. This provides 
-    a more numerically stable gradient.
+    This operator implements the cross entropy loss function with softmax. This function 
+    combines the calculation of the softmax operation and the cross entropy loss function 
+    to provide a more numerically stable gradient.
 
     Because this operator performs a softmax on logits internally, it expects
     unscaled logits. This operator should not be used with the output of
@@ -7816,72 +7871,71 @@ def softmax_with_cross_entropy(logits,
 
     .. math::
 
-        loss_j =  -\\text{logit}_{label_j} +
-        \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{logit}_i)\\right), j = 1,..., K
+        loss_j =  -\\text{logits}_{label_j} +
+        \\log\\left(\\sum_{i=0}^{K}\\exp(\\text{logits}_i)\\right), j = 1,..., K
 
     2) Soft label (each sample can have a distribution over all classes)
 
     .. math::
 
         loss_j =  -\\sum_{i=0}^{K}\\text{label}_i
-        \\left(\\text{logit}_i - \\log\\left(\\sum_{i=0}^{K}
-        \\exp(\\text{logit}_i)\\right)\\right), j = 1,...,K
+        \\left(\\text{logits}_i - \\log\\left(\\sum_{i=0}^{K}
+        \\exp(\\text{logits}_i)\\right)\\right), j = 1,...,K
 
-    3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated 
-    first by:
+    3) If :attr:`numeric_stable_mode` is :attr:`True`, softmax is calculated first by:
 
     .. math::
 
-        max_j &= \\max_{i=0}^{K}{\\text{logit}_i}
+        max_j &= \\max_{i=0}^{K}{\\text{logits}_i}
 
-        log\\_max\\_sum_j &= \\log\\sum_{i=0}^{K}\\exp(logit_i - max_j)
+        log\\_max\\_sum_j &= \\log\\sum_{i=0}^{K}\\exp(logits_i - max_j)
 
-        softmax_j &= \\exp(logit_j - max_j - {log\\_max\\_sum}_j)
+        softmax_j &= \\exp(logits_j - max_j - {log\\_max\\_sum}_j)
 
     and then cross entropy loss is calculated by softmax and label.
 
     Args:
-        logits (Variable): The input tensor of unscaled log probabilities.
-        label (Variable): The ground truth  tensor. If :attr:`soft_label`
-            is set to :attr:`True`, Label is a Tensor<float/double> in the 
-            same shape with :attr:`logits`. If :attr:`soft_label` is set to 
-            :attr:`True`, Label is a Tensor<int64> in the same shape with 
-            :attr:`logits` expect shape in dimension :attr:`axis` as 1.
-        soft_label (bool): A flag to indicate whether to interpretate the given
+        logits (Variable): A multi-dimension ``Tensor`` , and the data type is float32 or float64. The input tensor of unscaled log probabilities.
+        label (Variable): The ground truth  ``Tensor`` , data type is the same
+            as the ``logits`` . If :attr:`soft_label` is set to :attr:`True`, 
+            Label is a ``Tensor``  in the same shape with :attr:`logits`. 
+            If :attr:`soft_label` is set to :attr:`True`, Label is a ``Tensor`` 
+            in the same shape with :attr:`logits` expect shape in dimension :attr:`axis` as 1.
+        soft_label (bool, optional): A flag to indicate whether to interpretate the given
             labels as soft labels. Default False.
-        ignore_index (int): Specifies a target value that is ignored and does
-                            not contribute to the input gradient. Only valid
-                            if :attr:`soft_label` is set to :attr:`False`. 
-                            Default: kIgnoreIndex
-        numeric_stable_mode (bool): A flag to indicate whether to use a more
-                                    numerically stable algorithm. Only valid
-                                    when :attr:`soft_label` is :attr:`False` 
-                                    and GPU is used. When :attr:`soft_label` 
-                                    is :attr:`True` or CPU is used, the 
-                                    algorithm is always numerically stable.
-                                    Note that the speed may be slower when use
-                                    stable algorithm. Default: True
-        return_softmax (bool): A flag indicating whether to return the softmax
-                               along with the cross entropy loss. Default: False
-        axis (int): The index of dimension to perform softmax calculations. It 
-                    should be in range :math:`[-1, rank - 1]`, while :math:`rank`
-                    is the rank of input :attr:`logits`. Default: -1.
+        ignore_index (int, optional): Specifies a target value that is ignored and does
+                                      not contribute to the input gradient. Only valid
+                                      if :attr:`soft_label` is set to :attr:`False`. 
+                                      Default: kIgnoreIndex(-100).
+        numeric_stable_mode (bool, optional): A flag to indicate whether to use a more
+                                              numerically stable algorithm. Only valid
+                                              when :attr:`soft_label` is :attr:`False` 
+                                              and GPU is used. When :attr:`soft_label` 
+                                              is :attr:`True` or CPU is used, the 
+                                              algorithm is always numerically stable.
+                                              Note that the speed may be slower when use
+                                              stable algorithm. Default: True.
+        return_softmax (bool, optional): A flag indicating whether to return the softmax
+                                         along with the cross entropy loss. Default: False.
+        axis (int, optional): The index of dimension to perform softmax calculations. It 
+                              should be in range :math:`[-1, rank - 1]`, while :math:`rank`
+                              is the rank of input :attr:`logits`. Default: -1.
 
     Returns:
-        Variable or Tuple of two Variables: Return the cross entropy loss if \
-                                            `return_softmax` is False, otherwise the tuple \
-                                            (loss, softmax), softmax is in the same shape \
-                                            with input logits and cross entropy loss is in \
-                                            the same shape with input logits except shape \
-                                            in dimension :attr:`axis` as 1.
+        ``Variable`` or Tuple of two ``Variable`` : Return the cross entropy loss if \
+                                                    `return_softmax` is False, otherwise the tuple \
+                                                    (loss, softmax), softmax is in the same shape \
+                                                    with input logits and cross entropy loss is in \
+                                                    the same shape with input logits except shape \
+                                                    in dimension :attr:`axis` as 1.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            data = fluid.layers.data(name='data', shape=[128], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            data = fluid.data(name='data', shape=[-1, 128], dtype='float32')
+            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
             fc = fluid.layers.fc(input=data, size=100)
             out = fluid.layers.softmax_with_cross_entropy(
                 logits=fc, label=label)
@@ -8935,8 +8989,8 @@ def label_smooth(label,
                  dtype="float32",
                  name=None):
     """
-    Label smoothing is a mechanism to regularize the classifier layer and is
-    called label-smoothing regularization (LSR).
+    Label smoothing is a mechanism to regularize the classifier layer and is called 
+    label-smoothing regularization (LSR). 
 
     Label smoothing is proposed to encourage the model to be less confident,
     since optimizing the log-likelihood of the correct label directly may
@@ -8955,19 +9009,23 @@ def label_smooth(label,
 
     See more details about label smoothing in https://arxiv.org/abs/1512.00567.
 
-    Args:
+    Parameters:
         label(Variable): The input variable containing the label data. The
-                          label data should use one-hot representation.
-        prior_dist(Variable): The prior distribution to be used to smooth
-                              labels. If not provided, an uniform distribution
-                              is used. The shape of :attr:`prior_dist` should
-                              be :math:`(1, class\_num)`.
-        epsilon(float): The weight used to mix up the original ground-truth
-                        distribution and the fixed distribution.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32,
-                                                  float_64, int etc.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+                        label data should use one-hot representation. It's 
+                        a multidimensional tensor with a shape of 
+                        :math:`[N_1, ..., Depth]`, where Depth is class number.
+        prior_dist(Variable, optional): The prior distribution to be used to smooth
+                        labels. If not provided, an uniform distribution
+                        is used. It's a multidimensional tensor with a shape of
+                        :math:`[1, class\_num]` . The default value is None.
+        epsilon(float, optional): The weight used to mix up the original ground-truth
+                        distribution and the fixed distribution. The default value is 
+                        0.1.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set
+                        as 'float32', 'float64'. The default value is 'float32'.
+        name(str, optional): The default value is None. Normally there is no need for user 
+                        to set this property. For more information, please refer to 
+                        :ref:`api_guide_Name`.
 
     Returns:
         Variable: The tensor variable containing the smoothed labels.
@@ -10469,20 +10527,31 @@ def log(x, name=None):
         Out = \\ln(x)
 
     Args:
-        x (Variable): Input tensor.
-        name (str|None, default None): A name for this layer If set None,
-            the layer will be named automatically.
+        x (Variable): Input LoDTensor or Tensor. Must be one of the following types: float32, float64.
+        name (str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+    
 
     Returns:
-        Variable: The natural log of the input tensor computed element-wise.
+        Variable: The natural log of the input LoDTensor or Tensor computed element-wise.
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
-            output = fluid.layers.log(x)
+            import numpy as np
+
+            # Graph Organizing
+            x = fluid.layers.data(name="x", shape=[1], dtype="float32")
+            res = fluid.layers.log(x)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+
+            # Execute
+            x_i = np.array([[1], [2]]).astype(np.float32)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
+            print(res_val) # [[0.], [0.6931472]]
     """
     helper = LayerHelper('log', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -11005,54 +11074,45 @@ def affine_grid(theta, out_shape, name=None):
 
 def rank_loss(label, left, right, name=None):
     """
-
-    **Rank loss layer for RankNet**
-
+    This operator implements the sort loss layer in the RankNet model. RankNet is a pairwise ranking model 
+    with a training sample consisting of a pair of documents (A and B), The label (P) 
+    indicates whether A is ranked higher than B or not. Please refer to more details: 
     `RankNet <http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf>`_
-    is a pairwise ranking model with a training sample consisting of a pair
-    of documents, A and B. Label P indicates whether A is ranked higher than B
-    or not:
-
-    P = {0, 1} or {0, 0.5, 1}, where 0.5 means that there is no information
-    about the rank of the input pair.
 
     Rank loss layer takes three inputs: left ( :math:`o_i` ), right ( :math:`o_j` ) and
     label ( :math:`P_{i,j}` ). The inputs respectively represent RankNet's output scores
-    for documents A and B and the value of label P. The following equation
-    computes rank loss C_{i,j} from the inputs:
+    for documents A and B and the value of label P. Rank loss layer takes batch inputs 
+    with size batch_size (batch_size >= 1), P = {0, 1} or {0, 0.5, 1}, 
+    where 0.5 means that there is no information about the rank of the input pair.
+    The following equation computes rank loss C_{i,j} from the inputs:
 
     .. math::
-
       C_{i,j} &= -\\tilde{P_{ij}} * o_{i,j} + \log(1 + e^{o_{i,j}}) \\\\
-
+    .. math::
       o_{i,j} &=  o_i - o_j  \\\\
-
+    .. math::
       \\tilde{P_{i,j}} &= \\left \{0, 0.5, 1 \\right \} \ or \ \\left \{0, 1 \\right \}
 
-
-    Rank loss layer takes batch inputs with size batch_size (batch_size >= 1).
-
-    Args:
-        label (Variable): Indicats whether A ranked higher than B or not.
-        left (Variable): RankNet's output score for doc A.
-        right (Variable): RankNet's output score for doc B.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+    Parameters:
+        label (Variable): 2-D ``Tensor`` with the shape of :math:`[batch,1]`, the data type is float32, batch indicates the size of the data. Indicats whether A ranked higher than B or not.
+        left (Variable): 2-D ``Tensor`` with the shape of :math:`[batch,1]`, the data type is float32. RankNet's output score for doc A.
+        right (Variable): 2-D ``Tensor`` with the shape of :math:`[batch,1]`, the data type is float32. RankNet's output score for doc B.
+        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        list: The value of rank loss.
+        Variable: ``Tensor`` indicating the output value of the sort loss layer, the data type is float32, and the return value's shape is :math:`[batch,1]` .
 
     Raises:
-        ValueError: Any of label, left, and right is not a variable.
+        ValueError: Any of label, left, and right is not a ``Variable`` .
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            label = fluid.layers.data(name="label", shape=[-1, 1], dtype="float32")
-            left = fluid.layers.data(name="left", shape=[-1, 1], dtype="float32")
-            right = fluid.layers.data(name="right", shape=[-1, 1], dtype="float32")
+            label = fluid.data(name="label", shape=[-1, 1], dtype="float32")
+            left = fluid.data(name="left", shape=[-1, 1], dtype="float32")
+            right = fluid.data(name="right", shape=[-1, 1], dtype="float32")
             out = fluid.layers.rank_loss(label, left, right)
 
     """
@@ -11426,23 +11486,71 @@ def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
 @templatedoc()
 def swish(x, beta=1.0, name=None):
     """
-    ${comment}
+    Elementwise swish activation function. See `Searching for Activation Functions <https://arxiv.org/abs/1710.05941>`_ for more details.
+    
+    Equation:
+
+    .. math::
+        out = \\frac{x}{1 + e^{- beta * x}}
+    
     Args:
-        x(${x_type}): ${x_comment}
-        beta(${beta_type}|1.0): ${beta_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        x(Variable): Tensor or LoDTensor, dtype: float32 or float64, the input of swish activation.
+        
+        beta(float): Constant beta of swish operator, default 1.0.
+        
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        output(${out_type}): ${out_comment}
+
+        Variable: Output of the swish activation, Tensor or LoDTensor, with the same dtype and shape with the input x.
 
     Examples:
 
         .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
+            
+            # declarative mode
+            import numpy as np
+            from paddle import fluid
+            
+            x = fluid.data(name="x", shape=(-1, 3), dtype="float32")
             y = fluid.layers.swish(x, beta=2.0)
+            
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            start = fluid.default_startup_program()
+            main = fluid.default_main_program()
+            
+            data = np.random.randn(2, 3).astype("float32")
+            exe.run(start)
+            y_np, = exe.run(main, feed={"x": data}, fetch_list=[y])
+            
+            data
+            # array([[-1.1239197 ,  1.3391294 ,  0.03921051],
+            #        [ 1.1970421 ,  0.02440812,  1.2055548 ]], dtype=float32)
+            y_np
+            # array([[-0.2756806 ,  1.0610548 ,  0.01998957],
+            #        [ 0.9193261 ,  0.01235299,  0.9276883 ]], dtype=float32)
+
+
+        .. code-block:: python
+
+            # imperative mode
+            import numpy as np
+            from paddle import fluid
+            import paddle.fluid.dygraph as dg
+            
+            data = np.random.randn(2, 3).astype("float32")
+            place = fluid.CPUPlace()
+            with dg.guard(place) as g:
+                x = dg.to_variable(data)
+                y = fluid.layers.swish(x)
+                y_np = y.numpy()
+            data
+            # array([[-0.0816701 ,  1.1603649 , -0.88325626],
+            #        [ 0.7522361 ,  1.0978601 ,  0.12987892]], dtype=float32)
+            y_np
+            # array([[-0.03916847,  0.8835007 , -0.25835553],
+            #        [ 0.51126915,  0.82324016,  0.06915068]], dtype=float32)
     """
     helper = LayerHelper('swish', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -11561,8 +11669,8 @@ def leaky_relu(x, alpha=0.02, name=None):
     Args:
         x(${x_type}): ${x_comment}
         alpha(${alpha_type}|0.02): ${alpha_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+
     Returns:
         output(${out_type}): ${out_comment}
 
@@ -11571,8 +11679,19 @@ def leaky_relu(x, alpha=0.02, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[2,3,16,16], dtype="float32")
-            y = fluid.layers.leaky_relu(x, alpha=0.01)
+            import numpy as np
+
+            # Graph Organizing
+            x = fluid.layers.data(name="x", shape=[2], dtype="float32")
+            res = fluid.layers.leaky_relu(x, alpha=0.1)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+
+            # Execute
+            x_i = np.array([[-1, 2], [3, -4]]).astype(np.float32)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
+            print(res_val) # [[-0.1, 2], [3, -0.4]]
     """
     helper = LayerHelper('leaky_relu', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -12198,24 +12317,57 @@ def uniform_random_batch_size_like(input,
 @templatedoc()
 def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     """
-    ${comment}
+    Generate a random tensor whose data is drawn from a Gaussian distribution.
 
     Args:
-        shape (tuple|list): ${shape_comment}
-        mean (Float): ${mean_comment}
-        std (Float): ${std_comment}
-        seed (Int): ${seed_comment}
-        dtype(np.dtype|core.VarDesc.VarType|str): Output data type.
+        shape (Tuple[int] | List[int]): Shape of the generated random tensor.
+        
+        mean (float): Mean of the random tensor, defaults to 0.0.
+            
+        std (float): Standard deviation of the random tensor, defaults to 1.0.
+        
+        seed (int): ${seed_comment}
+        
+        dtype(np.dtype | core.VarDesc.VarType | str): Output data type, float32 or float64.
 
     Returns:
-        out (Variable): ${out_comment}
+        Variable: Random tensor whose data is drawn from a Gaussian distribution, dtype: flaot32 or float64 as specified.
 
     Examples:
-        .. code-block:: python
+       .. code-block:: python
+       
+           # declarative mode 
+           import numpy as np
+           from paddle import fluid
+   
+           x = fluid.layers.gaussian_random((2, 3), std=2., seed=10)
+   
+           place = fluid.CPUPlace()
+           exe = fluid.Executor(place)
+           start = fluid.default_startup_program()
+           main = fluid.default_main_program()
+   
+           exe.run(start)
+           x_np, = exe.run(main, feed={}, fetch_list=[x])
 
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            out = layers.gaussian_random(shape=[20, 30])
+           x_np
+           # array([[2.3060477, 2.676496 , 3.9911983],
+           #        [0.9990833, 2.8675377, 2.2279181]], dtype=float32)
+
+       .. code-block:: python
+
+           # imperative mode
+           import numpy as np
+           from paddle import fluid
+           import paddle.fluid.dygraph as dg
+    
+           place = fluid.CPUPlace()
+           with dg.guard(place) as g:
+               x = fluid.layers.gaussian_random((2, 4), mean=2., dtype="float32", seed=10)
+               x_np = x.numpy()       
+           x_np
+           # array([[2.3060477 , 2.676496  , 3.9911983 , 0.9990833 ],
+           #        [2.8675377 , 2.2279181 , 0.79029655, 2.8447366 ]], dtype=float32)
     """
 
     helper = LayerHelper('gaussian_random', **locals())
@@ -12530,18 +12682,19 @@ def slice(input, axes, starts, ends):
 @templatedoc()
 def strided_slice(input, axes, starts, ends, strides):
     """
-    Strided Slice OP
-
-    The conceptualization that really helped me understand this was 
-    that this function emulates the indexing behavior of numpy arrays.
-    If you're familiar with numpy arrays, you'll know that you can make 
-    slices via input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN]. 
-    Basically, a very succinct way of writing for loops to get certain elements of the array.
-    strided_slice just allows you to do this fancy indexing without the syntactic sugar. 
-    The numpy (#input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN])
-    example from above just becomes fluid.strided_slice(input,[0, 1, ..., N], 
-    [start1, start2, ..., startN], [end1, end2, ..., endN], [strides1, strides2, ..., stridesN]),
-    the axes which controls the dimension you want to slice makes it more flexible.
+    This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
+    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
+    end dimension for each axis in the list of axes and Slice uses this information
+    to slice the input data tensor. If a negative value is passed to
+    ``starts`` or ``ends`` such as :math:`-i`,  it represents the reverse position of the
+    axis :math:`i-1` th(here 0 is the initial position). The ``strides`` represents steps of
+    slicing and if the ``strides`` is negative, slice operation is in the opposite direction.
+    If the value passed to ``starts`` or ``ends`` is greater than n
+    (the number of elements in this dimension), it represents n.
+    For slicing to the end of a dimension with unknown size, it is recommended
+    to pass in INT_MAX. The size of ``axes`` must be equal to ``starts`` , ``ends`` and ``strides``.
+    Following examples will explain how strided_slice works:
 
     .. code-block:: text
 
@@ -12551,7 +12704,7 @@ def strided_slice(input, axes, starts, ends, strides):
                 axes = [0, 1]
                 starts = [1, 0]
                 ends = [2, 3]
-                strides=[1, 1]
+                strides = [1, 1]
             Then:
                 result = [ [5, 6, 7], ]
         
@@ -12560,25 +12713,48 @@ def strided_slice(input, axes, starts, ends, strides):
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 axes = [0, 1]
                 starts = [0, 1]
+                ends = [2, 0]
+                strides = [1, -1]
+            Then:
+                result = [ [8, 7, 6], ]
+        
+        Case3:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [-1, 1000]
                 ends = [-1, 1000]
                 strides = [1, 3]
             Then:
                 result = [ [2], ]
     Args:
-        input (Variable): ${input_comment}.
-        axes (List): ${axes_comment}
-        starts (List|Variable): ${starts_comment}
-        ends (List|Variable): ${ends_comment}
+        input (Variable): An N-D ``Tensor`` or ``LoDTensor`` . The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
+                            It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
+        starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``starts`` is an Variable, it should be an 1-D Tensor.
+                It represents starting indices of corresponding axis in ``axes``.
+        ends (list|tuple|Variable): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``ends`` is an Variable, it should be an 1-D Tensor .
+                It represents ending indices of corresponding axis in ``axes``.
+        strides (list|tuple|Variable): The data type is ``int32`` . If ``strides`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``strides`` is an Variable, it should be an 1-D Tensor .
+                It represents slice step of corresponding axis in ``axes``.
 
     Returns:
-        out (Variable): ${out_comment}
+        Variable:  A ``Tensor`` or ``LoDTensor`` with the same dimension as ``input``. The data type is same as ``input``.
+
+    Raises:
+        TypeError: The type of ``starts`` must be list, tuple or Variable.
+        TypeError: The type of ``ends`` must be list, tuple or Variable.
+        TypeError: The type of ``strides`` must be list, tuple or Variable.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            input = fluid.layers.data(
+            input = fluid.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
             # example 1:
@@ -12586,13 +12762,17 @@ def strided_slice(input, axes, starts, ends, strides):
             axes = [0, 1, 2]
             starts = [-3, 0, 2]
             ends = [3, 2, 4]
-            strides=[1, 1, 1]
-            sliced_1 = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides)
+            strides_1 = [1, 1, 1]
+            strides_2 = [1, 1, 2]
+            sliced_1 = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides_1)
+            # sliced_1 is input[:, 0:3:1, 0:2:1, 2:4:1].
+
 
             # example 2:
             # attr starts is a list which contain tensor Variable.
             minus_3 = fluid.layers.fill_constant([1], "int32", -3)
-            sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides)
+            sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
+            # sliced_2 is input[:, 0:3:1, 0:2:1, 2:4:2].
     """
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
@@ -13436,26 +13616,46 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
 @templatedoc()
 def logical_and(x, y, out=None, name=None):
     """
-    ${comment}
+    logical_and Operator
+
+    It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
+    Each element of Out is calculated by
+    
+    .. math::
+
+        Out = X \land Y
 
     Args:
         x(${x_type}): ${x_comment}
         y(${y_type}): ${y_comment}
-        out(Tensor): Output tensor of logical operation.
-        name(basestring|None): Name of the output.
+        out(LoDTensor or Tensor): The LoDTensor or Tensor that specifies the output of the operator, which can be any Variable that has been created in the program. The default value is None, and a new Variable will be created to save the output.
+        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        out(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            left = fluid.layers.data(
-                name='left', shape=[1], dtype='bool')
-            right = fluid.layers.data(
-                name='right', shape=[1], dtype='bool')
-            result = fluid.layers.logical_and(x=left, y=right)
+            import numpy as np
+
+            # Graph organizing
+            x = fluid.layers.data(name='x', shape=[2], dtype='bool')
+            y = fluid.layers.data(name='y', shape=[2], dtype='bool')
+            res = fluid.layers.logical_and(x=x, y=y)
+            # The comment lists another available method.
+            # res = fluid.layers.fill_constant(shape=[2], dtype='bool', value=0)
+            # fluid.layers.logical_and(x=x, y=y, out=res)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+
+            # Execute
+            x_i = np.array([[1, 0], [0, 1]]).astype(np.bool)
+            y_i = np.array([[1, 1], [0, 0]]).astype(np.bool)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[res])
+            print(res_val) # [[True, False], [False, False]]
     """
 
     return _logical_op(
@@ -13465,26 +13665,46 @@ def logical_and(x, y, out=None, name=None):
 @templatedoc()
 def logical_or(x, y, out=None, name=None):
     """
-    ${comment}
+    logical_or Operator
+
+    It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
+    Each element of Out is calculated by
+    
+    .. math::
+
+        Out = X \lor Y
 
     Args:
         x(${x_type}): ${x_comment}
         y(${y_type}): ${y_comment}
-        out(Tensor): Output tensor of logical operation.
-        name(basestring|None): Name of the output.
+        out(LoDTensor or Tensor): The LoDTensor or Tensor that specifies the output of the operator, which can be any Variable that has been created in the program. The default value is None, and a new Variable will be created to save the output.
+        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        out(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            left = fluid.layers.data(
-                name='left', shape=[1], dtype='bool')
-            right = fluid.layers.data(
-                name='right', shape=[1], dtype='bool')
-            result = fluid.layers.logical_or(x=left, y=right)
+            import numpy as np
+
+            # Graph organizing
+            x = fluid.layers.data(name='x', shape=[2], dtype='bool')
+            y = fluid.layers.data(name='y', shape=[2], dtype='bool')
+            res = fluid.layers.logical_or(x=x, y=y)
+            # The comment lists another available method.
+            # res = fluid.layers.fill_constant(shape=[2], dtype='bool', value=0)
+            # fluid.layers.logical_or(x=x, y=y, out=res)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+
+            # Execute
+            x_i = np.array([[1, 0], [0, 1]]).astype(np.bool)
+            y_i = np.array([[1, 1], [0, 0]]).astype(np.bool)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[res])
+            print(res_val) # [[True, True], [False, True]]
     """
 
     return _logical_op(
@@ -13494,26 +13714,46 @@ def logical_or(x, y, out=None, name=None):
 @templatedoc()
 def logical_xor(x, y, out=None, name=None):
     """
-    ${comment}
+    logical_xor Operator
+
+    It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
+    Each element of Out is calculated by
+    
+    .. math::
+
+        Out = (X \lor Y) \land \lnot (X \land Y)
 
     Args:
         x(${x_type}): ${x_comment}
         y(${y_type}): ${y_comment}
-        out(Tensor): Output tensor of logical operation.
-        name(basestring|None): Name of the output.
+        out(LoDTensor or Tensor): The LoDTensor or Tensor that specifies the output of the operator, which can be any Variable that has been created in the program. The default value is None, and a new Variable will be created to save the output.
+        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        out(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            left = fluid.layers.data(
-                name='left', shape=[1], dtype='bool')
-            right = fluid.layers.data(
-                name='right', shape=[1], dtype='bool')
-            result = fluid.layers.logical_xor(x=left, y=right)
+            import numpy as np
+
+            # Graph organizing
+            x = fluid.layers.data(name='x', shape=[2], dtype='bool')
+            y = fluid.layers.data(name='y', shape=[2], dtype='bool')
+            res = fluid.layers.logical_xor(x=x, y=y)
+            # The comment lists another available method.
+            # res = fluid.layers.fill_constant(shape=[2], dtype='bool', value=0)
+            # fluid.layers.logical_xor(x=x, y=y, out=res)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+
+            # Execute
+            x_i = np.array([[1, 0], [0, 1]]).astype(np.bool)
+            y_i = np.array([[1, 1], [0, 0]]).astype(np.bool)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[res])
+            print(res_val) # [[False, True], [False, True]]
     """
 
     return _logical_op(
@@ -13523,23 +13763,43 @@ def logical_xor(x, y, out=None, name=None):
 @templatedoc()
 def logical_not(x, out=None, name=None):
     """
-    ${comment}
+    logical_not Operator
+
+    It operates element-wise on X, and returns the Out. X and Out are N-dim boolean LoDTensor or Tensor.
+    Each element of Out is calculated by
+    
+    .. math::
+
+        Out = \lnot X
 
     Args:
         x(${x_type}): ${x_comment}
-        out(Tensor): Output tensor of logical operation.
-        name(basestring|None): Name of the output.
+        out(LoDTensor/Tensor): The LoDTensor/Tensor that specifies the output of the operator, which can be any Variable that has been created in the program. The default value is None, and a new Variable will be created to save the output.
+        name(str|None): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        out(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            left = fluid.layers.data(
-                name='left', shape=[1], dtype='bool')
-            result = fluid.layers.logical_not(x=left)
+            import numpy as np
+
+            # Graph organizing
+            x = fluid.layers.data(name='x', shape=[2], dtype='bool')
+            res = fluid.layers.logical_not(x)
+            # The comment lists another availble method.
+            # res = fluid.layers.fill_constant(shape=[2], dtype='bool', value=0)
+            # fluid.layers.logical_not(x, out=res)
+
+            # Create an executor using CPU as an example
+            exe = fluid.Executor(fluid.CPUPlace())
+
+            # Execute
+            x_i = np.array([[1, 0]]).astype(np.bool)
+            res_val, = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res])
+            print(res_val) # [[False, True]]
     """
 
     return _logical_op(
@@ -13772,8 +14032,10 @@ def sigmoid_cross_entropy_with_logits(x,
     Args:
         x(${x_type}): ${x_comment}
         label(${label_type}): ${label_comment}
-        ignore_index(&{ignore_index}): ${ignore_index_comment}
-        name(basestring|None): Name of the output.
+        ignore_index(int): ${ignore_index_comment}
+        name(str|None): The default value is None.  Normally there is
+            no need for user to set this property.  For more information,
+            please refer to :ref:`api_guide_Name`
         normalize(bool): If true, divide the output by the number of
             targets != ignore_index.
 
@@ -13784,9 +14046,9 @@ def sigmoid_cross_entropy_with_logits(x,
         .. code-block:: python
 
             import paddle.fluid as fluid
-            input = fluid.layers.data(
+            input = fluid.data(
                 name='data', shape=[10], dtype='float32')
-            label = fluid.layers.data(
+            label = fluid.data(
                 name='data', shape=[10], dtype='float32')
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(
                 x=input,
@@ -16335,9 +16597,17 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
     """
     if not (isinstance(shape, (list, tuple, Variable))):
-        raise TypeError("Input shape must be a python list,Variable or tuple.")
+        raise TypeError(
+            "Input shape must be a python list,Variable or tuple. But received %s"
+            % (type(shape)))
+
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if convert_dtype(dtype) not in ['float32', 'float64']:
+        raise TypeError(
+            "The attribute dtype in uniform_random op must be float32 or float64, but received %s."
+            % (convert_dtype(dtype)))
 
     def contain_var(one_list):
         for ele in one_list:
