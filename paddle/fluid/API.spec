@@ -256,7 +256,7 @@ paddle.fluid.layers.elementwise_floordiv (ArgSpec(args=['x', 'y', 'axis', 'act',
 paddle.fluid.layers.uniform_random_batch_size_like (ArgSpec(args=['input', 'shape', 'dtype', 'input_dim_idx', 'output_dim_idx', 'min', 'max', 'seed'], varargs=None, keywords=None, defaults=('float32', 0, 0, -1.0, 1.0, 0)), ('document', 'cfa120e583cd4a5bfa120c8a26f98a28'))
 paddle.fluid.layers.gaussian_random (ArgSpec(args=['shape', 'mean', 'std', 'seed', 'dtype'], varargs=None, keywords=None, defaults=(0.0, 1.0, 0, 'float32')), ('document', 'dd4ddb66c78a2564e5d1e0e345d8286f'))
 paddle.fluid.layers.sampling_id (ArgSpec(args=['x', 'min', 'max', 'seed', 'dtype'], varargs=None, keywords=None, defaults=(0.0, 1.0, 0, 'float32')), ('document', '2490492db3b41af9144bb1539e4e9116'))
-paddle.fluid.layers.gaussian_random_batch_size_like (ArgSpec(args=['input', 'shape', 'input_dim_idx', 'output_dim_idx', 'mean', 'std', 'seed', 'dtype'], varargs=None, keywords=None, defaults=(0, 0, 0.0, 1.0, 0, 'float32')), ('document', 'b24d0b21361c4bb8ef2cec8c26fb12b2'))
+paddle.fluid.layers.gaussian_random_batch_size_like (ArgSpec(args=['input', 'shape', 'input_dim_idx', 'output_dim_idx', 'mean', 'std', 'seed', 'dtype'], varargs=None, keywords=None, defaults=(0, 0, 0.0, 1.0, 0, 'float32')), ('document', '2aed0f546f220364fb1da724a3176f74'))
 paddle.fluid.layers.sum (ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None), ('document', 'f4b60847cb0f1ae00823ba6fb1b11310'))
 paddle.fluid.layers.slice (ArgSpec(args=['input', 'axes', 'starts', 'ends'], varargs=None, keywords=None, defaults=None), ('document', '8c622791994a0d657d8c6c9cefa5bf34'))
 paddle.fluid.layers.strided_slice (ArgSpec(args=['input', 'axes', 'starts', 'ends', 'strides'], varargs=None, keywords=None, defaults=None), ('document', '340d8d656272ea396b441aab848429a2'))
@@ -901,7 +901,7 @@ paddle.fluid.dygraph.CosineDecay.step (ArgSpec(args=['self'], varargs=None, keyw
 paddle.fluid.dygraph.BackwardStrategy ('paddle.fluid.core_avx.BackwardStrategy', ('document', '4fcdc2c2d0c162f3840737abda39eb27'))
 paddle.fluid.dygraph.BackwardStrategy.__init__ __init__(self: paddle.fluid.core_avx.BackwardStrategy) -> None
 paddle.fluid.transpiler.DistributeTranspiler ('paddle.fluid.transpiler.distribute_transpiler.DistributeTranspiler', ('document', '5152a3ed0544d4d9600fb53a73f15c38'))
-paddle.fluid.transpiler.MDistributeTranspiler.__init__ (ArgSpec(args=['self', 'config'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
+paddle.fluid.transpiler.DistributeTranspiler.__init__ (ArgSpec(args=['self', 'config'], varargs=None, keywords=None, defaults=(None,)), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.transpiler.DistributeTranspiler.get_pserver_program (ArgSpec(args=['self', 'endpoint'], varargs=None, keywords=None, defaults=None), ('document', '03ad12ad1c36dea4f3595a4e8c592f95'))
 paddle.fluid.transpiler.DistributeTranspiler.get_pserver_programs (ArgSpec(args=['self', 'endpoint'], varargs=None, keywords=None, defaults=None), ('document', 'a02723c79325ec4cac352b6d2eea7b52'))
 paddle.fluid.transpiler.DistributeTranspiler.get_startup_program (ArgSpec(args=['self', 'endpoint', 'pserver_program', 'startup_program'], varargs=None, keywords=None, defaults=(None, None)), ('document', '90a40b80e0106f69262cc08b861c3e39'))
