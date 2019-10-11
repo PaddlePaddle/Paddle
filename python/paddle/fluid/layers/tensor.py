@@ -362,7 +362,6 @@ def sums(input, out=None):
 
 def assign(input, output=None):
     """
-    **Assign**
     The OP copies the :attr:`input` to the :attr:`output`.
 
     Parameters:
@@ -741,8 +740,6 @@ def argsort(input, axis=-1, name=None):
 
 def ones(shape, dtype, force_cpu=False):
     """
-    **ones**
-
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
     Its :attr:`stop_gradient` will be set to True to stop gradient computation.
 
@@ -772,8 +769,6 @@ def ones(shape, dtype, force_cpu=False):
 
 def zeros(shape, dtype, force_cpu=False):
     """
-    **zeros**
-
     The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
     Its :attr:`stop_gradient` will be set to True to stop gradient computation.
 
@@ -799,8 +794,6 @@ def zeros(shape, dtype, force_cpu=False):
 
 def reverse(x, axis):
     """
-    **reverse**
-
     The OP reverses the tensor :attr:`x` along the given :attr:`axis`.
 
     Parameters:
