@@ -681,10 +681,8 @@ def load_vars(executor,
                 continue
 
             if isinstance(each_var, Parameter):
-                var_temp = paddle.fluid.global_scope().find_var(each_var.name)
-                assert var_temp != None, "can't not find var: " + each_var.name
-                orig_para_shape[each_var.name] = (
-                    np.array(var_temp.get_tensor())).shape
+                orig_para_shape[each_var.name] = tuple(each_var.desc.get_shape(
+                ))
             new_var = _clone_var_in_block_(load_block, each_var)
             if filename is None:
                 load_block.append_op(
