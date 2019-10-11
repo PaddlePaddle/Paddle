@@ -512,6 +512,7 @@ class TestDistBase(unittest.TestCase):
         self._use_hallreduce = False
         self._setup_config()
         self._after_setup_config()
+        self._use_none_strategy = False
 
     def _find_free_port(self):
         def __free_port():
