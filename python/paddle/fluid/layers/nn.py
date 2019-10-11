@@ -13938,7 +13938,7 @@ def sigmoid_cross_entropy_with_logits(x,
     Args:
         x(${x_type}): ${x_comment}
         label(${label_type}): ${label_comment}
-        ignore_index(${ignore_index}): ${ignore_index_comment}
+        ignore_index(int): ${ignore_index_comment}
         name(str|None): The default value is None.  Normally there is
             no need for user to set this property.  For more information,
             please refer to :ref:`api_guide_Name`
