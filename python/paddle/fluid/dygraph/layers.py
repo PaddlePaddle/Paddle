@@ -77,7 +77,7 @@ class Layer(core.Layer):
         """Create parameters for this layer.
         
         Parameters:
-            attr(ParamAttr): Parameter attribute of weight. Please refer to :ref:`api_fluid_ParamAttr'
+            attr(ParamAttr): Parameter attribute of weight. Please refer to :ref:`api_fluid_ParamAttr`
             shape(list): shape of the parameter
             dtype(float or int or core.VarDesc.VarType): data type of this parameter
             is_bias(bool, optional): if this is a bias parameter. Default: False

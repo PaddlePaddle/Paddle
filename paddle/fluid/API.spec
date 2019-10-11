@@ -608,7 +608,7 @@ paddle.fluid.dygraph.Layer.add_parameter (ArgSpec(args=['self', 'name', 'paramet
 paddle.fluid.dygraph.Layer.add_sublayer (ArgSpec(args=['self', 'name', 'sublayer'], varargs=None, keywords=None, defaults=None), ('document', '5b9da7201b014cf6c1eb1f156e444706'))
 paddle.fluid.dygraph.Layer.backward (ArgSpec(args=['self'], varargs='inputs', keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.Layer.clear_gradients (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
-paddle.fluid.dygraph.Layer.create_parameter (ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer'], varargs=None, keywords=None, defaults=(False, None)), ('document', 'ca0b778828e143bd28a69f26d6a0f0c9'))
+paddle.fluid.dygraph.Layer.create_parameter (ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer'], varargs=None, keywords=None, defaults=(False, None)), ('document', '9efe72b1a5595e3d59de25d3a8dd4180'))
 paddle.fluid.dygraph.Layer.create_variable (ArgSpec(args=['self', 'name', 'persistable', 'dtype', 'type'], varargs=None, keywords=None, defaults=(None, None, None, VarType.LOD_TENSOR)), ('document', '1dccb028d2b4cb8df076b69475a22a7a'))
 paddle.fluid.dygraph.Layer.eval (ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
 paddle.fluid.dygraph.Layer.forward (ArgSpec(args=['self'], varargs='inputs', keywords='kwargs', defaults=None), ('document', '6adf97f83acf6453d4a6a4b1070f3754'))
