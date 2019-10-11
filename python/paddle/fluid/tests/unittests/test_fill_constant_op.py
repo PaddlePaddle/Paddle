@@ -118,7 +118,7 @@ class TestFillConstantOpError(OpTest):
                 value=5,
                 dtype='uint4')
             self.assertRaises(
-                ValueError,
+                TypeError,
                 fluid.layers.fill_constant,
                 shape=[1],
                 value=5,
