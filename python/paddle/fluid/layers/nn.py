@@ -13871,10 +13871,7 @@ for func in [
         skip_attrs_set={"x_data_format", "y_data_format", "axis"
                         }) + """\n""" + str(func.__doc__)
 
-for func in [
-        elementwise_mod,
-        elementwise_floordiv,
-]:
+for func in []:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
         op_proto,
