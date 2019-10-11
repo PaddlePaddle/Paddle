@@ -267,15 +267,16 @@ def save_vars(executor,
 
 def save_params(executor, dirname, main_program=None, filename=None):
     """
-    This operator filters out all parameters from the give `main_program`
-    and then save them to the folder `dirname` or the file `filename`.
+    This operator save all parameters from the give :code:`main_program`
+    and then save them to the folder :code:`dirname` or the file 
+    :code:`filename`.
 
-    Use the `dirname` to specify the saving folder. If you would like to
-    save parameters in separate files, set `filename` None; if you would
-    like to save all parameters in a single file, use `filename` to specify
+    Use the :code:`dirname` to specify the saving folder. If you would like to
+    save parameters in separate files, set :code:`filename` None; if you would
+    like to save all parameters in a single file, use :code:`filename` to specify
     the file name.
 
-    NOTICE: 
+    Note: 
         Some variables are not Parameter while they are necessary for
         training, such as learning rate, global step, etc. So you can NOT save 
         and continue your training just by :ref:`api_fluid_io_save_params`
@@ -516,14 +517,15 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
 def save_persistables(executor, dirname, main_program=None, filename=None):
     """
-    This operator filters out all persistables variables from the give `main_program`,
+    This operator save all persistables variables from the give :code:`main_program`,
     You can refer to :ref:`api_guide_model_save_reader_en` for more details. And then
-    saves these persistables variables to the folder `dirname` or file `filename`. 
+    saves these persistables variables to the folder :code:`dirname` or file 
+    :code:`filename`. 
 
-    The `dirname` is used to specify the folder where persistable variables
+    The :code:`dirname` is used to specify the folder where persistable variables
     are going to be saved. If you would like to save variables in separate
-    files, set `filename` None; if you would like to save all variables in a
-    single file, use `filename` to specify the file name.
+    files, set :code:`filename` None; if you would like to save all variables in a
+    single file, use :code:`filename` to specify the file name.
 
     Args:
         executor(Executor): The executor to run for saving persistable variables.
@@ -531,14 +533,14 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
                             more details.
         dirname(str): The saving directory path.
         main_program(Program, optional): The program whose persistbale variables will
-                                         be saved.You can refer to 
+                                         be saved. You can refer to 
                                          :ref:`api_guide_Program_en` for more details.
                                          If it is None, the default main program will 
-                                         be used automatically.
-                                         Default: None
-        filename(str, optional): The file to saved all variables. If you prefer to
-                                 save variables in differnet files, set it to None.
-                                 Default: None
+                                         be used.
+                                         Default: None.
+        filename(str, optional): The file to save all variables. If you prefer to
+                                 save variables in different files, set it to None.
+                                 Default: None.
 
     Returns:
         None

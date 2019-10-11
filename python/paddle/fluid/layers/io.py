@@ -47,10 +47,10 @@ def data(name,
     """
     **Data Layer**
 
-    This operator creates the global variable The global variables can be
+    This operator creates the global variable. The global variables can be
     accessed by all the following operators in the graph.
 
-    Notice: 
+    Note: 
         :code:`paddle.fluid.layers.data` is deprecated as it will be removed in 
         a later version. Please use :code:`paddle.fluid.data` .
 
@@ -77,7 +77,7 @@ def data(name,
        dtype(np.dtype|VarType|str): The type of the data. Supported dtype: bool,
             float16, float32, float64, int8, int16, int32, int64, uint8.
        type(VarType): The output type. Supported dtype: VarType.LOD_TENSOR,
-            VarType.SELECTED_ROWS, VarType.NCCL_IDBy. Default: VarType.LOD_TENSOR. 
+            VarType.SELECTED_ROWS, VarType.NCCL_ID. Default: VarType.LOD_TENSOR. 
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
             Default: 0.
        stop_gradient(bool): A boolean that mentions whether gradient should flow.
@@ -560,15 +560,15 @@ def py_reader(capacity,
        capacity(int): The buffer capacity maintained by :code:`py_reader`.
        shapes(list|tuple): List of tuples which declaring data shapes. shapes[i] 
             represents the i-th data shape.
-       dtypes(list|tuple): List of strs which declaring data type. supported dtype:
+       dtypes(list|tuple): List of strings which declaring data type. Supported dtype:
             bool, float16, float32, float64, int8, int16, int32, int64, uint8.
        lod_levels(list|tuple): List of ints which declaring data lod_level.
        name(basestring): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
        use_double_buffer(bool): Whether use double buffer or not. The double buffer is 
-            for pre-reading the data of the next batchand copy the data asynchronously 
-            from the CPU to the GPU. Default is True.
+            for pre-reading the data of the next batch and copy the data asynchronously 
+            from CPU to GPU. Default is True.
 
     Returns:
        A Reader from which we can get feeding data.
