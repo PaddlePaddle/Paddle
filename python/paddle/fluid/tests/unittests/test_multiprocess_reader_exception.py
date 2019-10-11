@@ -35,7 +35,7 @@ class TestMultiprocessReaderException(unittest.TestCase):
         else:
             return [fluid.CPUPlace()]
 
-    def main_impl(self, place, iterable):
+    def main_impl(self, place, iterable, use_legacy_py_reader):
         sample_num = 40
         batch_size = 4
 
@@ -52,26 +52,37 @@ class TestMultiprocessReaderException(unittest.TestCase):
             return __impl__
 
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            image = fluid.layers.data(name='image', dtype='float32', shape=[10])
+            if not use_legacy_py_reader:
+                image = fluid.data(
+                    name='image', dtype='float32', shape=[None, 10])
 
-            reader = fluid.io.PyReader(
-                feed_list=[image], capacity=2, iterable=iterable)
+                reader = fluid.io.PyReader(
+                    feed_list=[image], capacity=2, iterable=iterable)
+            else:
+                reader = fluid.layers.py_reader(
+                    capacity=2, shapes=[[-1, 10], ], dtypes=['float32', ])
+                image = fluid.layers.read_file(reader)
 
             image_p_1 = image + 1
 
             decorated_reader = multiprocess_reader(
                 [fake_reader(), fake_reader()], use_pipe=self.use_pipe)
 
-            if isinstance(place, fluid.CUDAPlace):
-                reader.decorate_sample_generator(
-                    decorated_reader,
-                    batch_size=batch_size,
-                    places=fluid.cuda_places())
+            if use_legacy_py_reader:
+                reader.decorate_paddle_reader(
+                    fluid.io.batch(
+                        decorated_reader, batch_size=batch_size))
             else:
-                reader.decorate_sample_generator(
-                    decorated_reader,
-                    batch_size=batch_size,
-                    places=fluid.cpu_places())
+                if isinstance(place, fluid.CUDAPlace):
+                    reader.decorate_sample_generator(
+                        decorated_reader,
+                        batch_size=batch_size,
+                        places=fluid.cuda_places())
+                else:
+                    reader.decorate_sample_generator(
+                        decorated_reader,
+                        batch_size=batch_size,
+                        places=fluid.cpu_places())
 
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
@@ -109,13 +120,16 @@ class TestMultiprocessReaderException(unittest.TestCase):
     def test_main(self):
         for p in self.places():
             for iterable in [False, True]:
-                try:
-                    with fluid.scope_guard(fluid.Scope()):
-                        self.main_impl(p, iterable)
+                use_legacy_py_reader_range = [False
+                                              ] if iterable else [False, True]
+                for use_legacy_py_reader in use_legacy_py_reader_range:
+                    try:
+                        with fluid.scope_guard(fluid.Scope()):
+                            self.main_impl(p, iterable, use_legacy_py_reader)
 
-                    self.assertTrue(not self.raise_exception)
-                except ReaderException:
-                    self.assertTrue(self.raise_exception)
+                        self.assertTrue(not self.raise_exception)
+                    except ReaderException:
+                        self.assertTrue(self.raise_exception)
 
 
 class TestCase1(TestMultiprocessReaderException):
