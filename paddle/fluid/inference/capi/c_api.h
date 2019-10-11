@@ -37,7 +37,7 @@ typedef struct PD_PaddleBuf PD_PaddleBuf;
 typedef struct PD_AnalysisConfig PD_AnalysisConfig;
 
 typedef struct PD_ZeroCopyData {
-  char* name;
+  char* name = new char[50];
   void* data;
   PD_DataType dtype;
   int* shape;

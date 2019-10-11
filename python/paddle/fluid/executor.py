@@ -1136,11 +1136,10 @@ class Executor(object):
             thread(int): number of thread a user wants to run in this function. Default is 0, which
                 means using thread num of dataset
             debug(bool): whether a user wants to run train_from_dataset 
-            fetch_list(Variable List): fetch variable list, each variable will be printed
-                during training
-            fetch_info(String List): print information for each variable, its length should be equal
-                to fetch_list
-            print_period(int): the number of mini-batches for each print, default is 100
+            fetch_list(Variable List): fetch variable list, each variable
+                                       will be printed during training
+            fetch_info(String List): print information for each variable
+            print_period(int): the number of mini-batches for each print
             fetch_handler(FetchHandler): a user define class for fetch output.
 
         Returns:
