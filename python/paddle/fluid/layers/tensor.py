@@ -295,7 +295,7 @@ def sums(input, out=None):
                     [444., 555., 666.]]
 
     Args:
-        input (list): A list of multiple input Tensors which has the same
+        input (list): A list of Variables which hold input Tensors with the same
             data type and shape. Optional data types are: float32, float64, int32, int64.
         out (Variable, optional): Output Tensor. It can be any existing Variable.
             The default value is None, then a new Variable will be created and returned.
