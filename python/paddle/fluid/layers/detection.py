@@ -459,16 +459,19 @@ def detection_output(loc,
 
     Args:
         loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
-            predicted locations of M bounding bboxes. N is the batch size,
+            predicted locations of M bounding bboxes. Data type should be
+            float32 or float64. N is the batch size,
             and each bounding box has four coordinate values and the layout
             is [xmin, ymin, xmax, ymax].
         scores(Variable): A 3-D Tensor with shape [N, M, C] represents the
-            predicted confidence predictions. N is the batch size, C is the
+            predicted confidence predictions. Data type should be float32
+            or float64. N is the batch size, C is the
             class number, M is number of bounding boxes.
         prior_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
-            each box is represented as [xmin, ymin, xmax, ymax],
+            each box is represented as [xmin, ymin, xmax, ymax]. Data type
+            should be float32 or float64.
         prior_box_var(Variable): A 2-D Tensor with shape [M, 4] holds M group
-            of variance.
+            of variance. Data type should be float32 or float64.
         background_label(int): The index of background label,
             the background label will be ignored. If set to -1, then all
             categories will be considered. Default: 0.
@@ -490,17 +493,18 @@ def detection_output(loc,
         A tuple with two Variables: (Out, Index) if return_index is True,
         otherwise, a tuple with one Variable(Out) is returned. 
 
-        Out: The detection outputs is a LoDTensor with shape [No, 6]. Each row 
-        has six values: [label, confidence, xmin, ymin, xmax, ymax]. `No` is 
-        the total number of detections in this mini-batch. For each instance, 
-        the offsets in first dimension are called LoD, the offset number is 
-        N + 1, N is the batch size. The i-th image has `LoD[i + 1] - LoD[i]` 
-        detected results, if it is 0, the i-th image has no detected results. 
+        Out (Variable): The detection outputs is a LoDTensor with shape [No, 6].
+        Data type is the same as input (loc). Each row has six values:
+        [label, confidence, xmin, ymin, xmax, ymax]. `No` is
+        the total number of detections in this mini-batch. For each instance,
+        the offsets in first dimension are called LoD, the offset number is
+        N + 1, N is the batch size. The i-th image has `LoD[i + 1] - LoD[i]`
+        detected results, if it is 0, the i-th image has no detected results.
 
-        Index: Only return when return_index is True. A 2-D LoDTensor with 
-        shape [No, 1] represents the selected index which type is Integer. 
-        The index is the absolute value cross batches. No is the same number 
-        as Out. If the index is used to gather other attribute such as age, 
+        Index (Variable): Only return when return_index is True. A 2-D LoDTensor
+        with shape [No, 1] represents the selected index which type is Integer.
+        The index is the absolute value cross batches. No is the same number
+        as Out. If the index is used to gather other attribute such as age,
         one needs to reshape the input(N, M, 1) to (N * M, 1) as first, where
         N is the batch size and M is the number of boxes.
 
@@ -1240,7 +1244,8 @@ def target_assign(input,
             out_weight[i][id] = 1.0
 
     Args:
-       inputs (Variable): This input is a 3D LoDTensor with shape [M, P, K].
+       input (Variable): This input is a 3D LoDTensor with shape [M, P, K].
+           Data type should be int32 or float32.
        matched_indices (Variable): The input matched indices
            is 2D Tenosr<int32> with shape [N, P], If MatchIndices[i][j] is -1,
            the j-th entity of column is not matched to any entity of row in
@@ -1250,13 +1255,19 @@ def target_assign(input,
            the total number of negative example indices.
        mismatch_value (float32, optional): Fill this value to the mismatched
            location.
+       name (string): The default value is None.  Normally there is no need for
+           user to set this property.  For more information, please refer
+           to :ref:`api_guide_Name`.
 
     Returns:
-        tuple:
-               A tuple(out, out_weight) is returned. out is a 3D Tensor with
-               shape [N, P, K], N and P is the same as they are in
-               `matched_indices`, K is the same as it in input of X. 
-               out_weight is the weight for output with the shape of [N, P, 1].
+        tuple: A tuple(out, out_weight) is returned.
+
+        out (Variable): a 3D Tensor with shape [N, P, K] and same data type
+        with `input`, N and P is the same as they are in `matched_indices`,
+        K is the same as it in input of X.
+
+        out_weight (Variable): the weight for output with the shape of [N, P, 1].
+        Data type is float32.
 
     Examples:
 
@@ -1813,10 +1824,11 @@ def multi_box_head(inputs,
     <https://arxiv.org/abs/1512.02325>`_ .
 
     Args:
-       inputs(list(Variable)|tuple(Variable)): The list of input Variables,
-           the format of all Variables is NCHW.
-       image(Variable): The input image data of PriorBoxOp,
-           the layout is NCHW.
+       inputs (list(Variable)|tuple(Variable)): The list of input variables,
+           the format of all Variables are 4-D Tensor, layout is NCHW.
+           Data type should be float32 or float64.
+       image (Variable): The input image, layout is NCHW. Data type should be
+           the same as inputs.
        base_size(int): the base_size is input image size. When len(inputs) > 2
            and `min_size` and `max_size` are None, the `min_size` and `max_size`
            are calculated by `baze_size`, 'min_ratio' and `max_ratio`. The
@@ -1861,7 +1873,9 @@ def multi_box_head(inputs,
        kernel_size(int): The kernel size of conv2d. Default: 1.
        pad(int|list|tuple): The padding of conv2d. Default:0.
        stride(int|list|tuple): The stride of conv2d. Default:1,
-       name(str): Name of the prior box layer. Default: None.
+       name(str): The default value is None.  Normally there is no need
+           for user to set this property.  For more information, please
+           refer to :ref:`api_guide_Name`.
        min_max_aspect_ratios_order(bool): If set True, the output prior box is
             in order of [min, max, aspect_ratios], which is consistent with
             Caffe. Please note, this order affects the weights order of
@@ -1871,19 +1885,21 @@ def multi_box_head(inputs,
     Returns:
         tuple: A tuple with four Variables. (mbox_loc, mbox_conf, boxes, variances)
 
-        mbox_loc (Variables): The predicted boxes' location of the inputs. The
-          layout is [N, num_priors, 4], where N is batch size, ``num_priors``
-          is the number of prior boxes.
+        mbox_loc (Variable): The predicted boxes' location of the inputs. The
+        layout is [N, num_priors, 4], where N is batch size, ``num_priors``
+        is the number of prior boxes. Data type is the same as input.
 
-        mbox_conf (Variables): The predicted boxes' confidence of the inputs.
-          The layout is [N, num_priors, C], where ``N`` and ``num_priors`` 
-          has the same meaning as above. C is the number of Classes.
+        mbox_conf (Variable): The predicted boxes' confidence of the inputs.
+        The layout is [N, num_priors, C], where ``N`` and ``num_priors`` 
+        has the same meaning as above. C is the number of Classes.
+        Data type is the same as input.
 
-        boxes (Variables): the output prior boxes. The layout is [num_priors, 4].
-          The meaning of num_priors is the same as above.
+        boxes (Variable): the output prior boxes. The layout is [num_priors, 4].
+        The meaning of num_priors is the same as above.
+        Data type is the same as input.
 
-        variances (Variables): the expanded variances for prior boxes.
-          The layout is [num_priors, 4].
+        variances (Variable): the expanded variances for prior boxes.
+        The layout is [num_priors, 4]. Data type is the same as input.
 
     Examples 1: set min_ratio and max_ratio:
         .. code-block:: python
@@ -2369,7 +2385,7 @@ def generate_proposal_labels(rpn_rois,
 def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
                          labels_int32, num_classes, resolution):
     """
-    ** Generate Mask Labels for Mask-RCNN **
+    **Generate Mask Labels for Mask-RCNN**
 
     This operator can be, for given the RoIs and corresponding labels,
     to sample foreground RoIs. This mask branch also has
@@ -2405,41 +2421,48 @@ def generate_mask_labels(im_info, gt_classes, is_crowd, gt_segms, rois,
             feeder.feed(batch_masks)
 
     Args:
-        im_info(Variable): A 2-D Tensor with shape [N, 3]. N is the batch size,
-            each element is [height, width, scale] of image. Image scale is 
-            target_size) / original_size, target_size is the size after resize,
+        im_info (Variable): A 2-D Tensor with shape [N, 3] and float32
+            data type. N is the batch size, each element is
+            [height, width, scale] of image. Image scale is
+            target_size / original_size, target_size is the size after resize,
             original_size is the original image size.
-        gt_classes(Variable): A 2-D LoDTensor with shape [M, 1]. M is the total
-            number of ground-truth, each element is a class label.
-        is_crowd(Variable): A 2-D LoDTensor with shape as gt_classes,
-            each element is a flag indicating whether a groundtruth is crowd.
-        gt_segms(Variable): This input is a 2D LoDTensor with shape [S, 2],
-            it's LoD level is 3. Usually users do not needs to understand LoD,
+        gt_classes (Variable): A 2-D LoDTensor with shape [M, 1]. Data type
+            shoule be int. M is the total number of ground-truth, each
+            element is a class label.
+        is_crowd (Variable): A 2-D LoDTensor with same shape and same data type
+            as gt_classes, each element is a flag indicating whether a
+            groundtruth is crowd.
+        gt_segms (Variable): This input is a 2D LoDTensor with shape [S, 2] and
+            float32 data type, it's LoD level is 3.
+            Usually users do not needs to understand LoD,
             The users should return correct data format in reader.
             The LoD[0] represents the ground-truth objects number of
             each instance. LoD[1] represents the segmentation counts of each
             objects. LoD[2] represents the polygons number of each segmentation.
             S the total number of polygons coordinate points. Each element is
             (x, y) coordinate points.
-        rois(Variable): A 2-D LoDTensor with shape [R, 4]. R is the total
-            number of RoIs, each element is a bounding box with
-            (xmin, ymin, xmax, ymax) format in the range of original image.
-        labels_int32(Variable): A 2-D LoDTensor in shape of [R, 1] with type
+        rois (Variable): A 2-D LoDTensor with shape [R, 4] and float32 data type
+            float32. R is the total number of RoIs, each element is a bounding
+            box with (xmin, ymin, xmax, ymax) format in the range of original image.
+        labels_int32 (Variable): A 2-D LoDTensor in shape of [R, 1] with type
             of int32. R is the same as it in `rois`. Each element repersents
             a class label of a RoI.
-        num_classes(int): Class number.
-        resolution(int): Resolution of mask predictions.
+        num_classes (int): Class number.
+        resolution (int): Resolution of mask predictions.
 
     Returns:
-        mask_rois (Variable):  A 2D LoDTensor with shape [P, 4]. P is the total
-            number of sampled RoIs. Each element is a bounding box with
-            [xmin, ymin, xmax, ymax] format in range of orignal image size.
-        mask_rois_has_mask_int32 (Variable): A 2D LoDTensor with shape [P, 1],
-            each element repersents the output mask RoI index with regard to
-            to input RoIs.
-        mask_int32 (Variable): A 2D LoDTensor with shape [P, K * M * M],
-            K is the classes number and M is the resolution of mask predictions.
-            Each element repersents the binary mask targets.
+        mask_rois (Variable):  A 2D LoDTensor with shape [P, 4] and same data
+        type as `rois`. P is the total number of sampled RoIs. Each element
+        is a bounding box with [xmin, ymin, xmax, ymax] format in range of
+        orignal image size.
+
+        mask_rois_has_mask_int32 (Variable): A 2D LoDTensor with shape [P, 1]
+        and int data type, each element repersents the output mask RoI
+        index with regard to input RoIs.
+
+        mask_int32 (Variable): A 2D LoDTensor with shape [P, K * M * M] and int
+        data type, K is the classes number and M is the resolution of mask
+        predictions. Each element repersents the binary mask targets.
 
     Examples:
         .. code-block:: python
