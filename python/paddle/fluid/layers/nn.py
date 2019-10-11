@@ -509,9 +509,12 @@ def embedding(input,
         raise TypeError(
             "The data type of 'input' in layers.embedding must be int64, but received %s."
             % (convert_dtype(input.dtype)))
-    if convert_dtype(dtype) not in ['float32', 'float64']:
+    if convert_dtype(dtype) in ['float16']:
+        warnings.warn(
+            "The 'dtype' of layers.embedding only support float16 in GPU now.")
+    if convert_dtype(dtype) not in ['float16', 'float32', 'float64']:
         raise TypeError(
-            "The 'dtype' of embedding must be float32 or float64, but received %s."
+            "The 'dtype' of layers.embedding must be float16, float32 or float64, but received %s."
             % (convert_dtype(dtype)))
     remote_prefetch = is_sparse and (not is_distributed)
     if remote_prefetch:

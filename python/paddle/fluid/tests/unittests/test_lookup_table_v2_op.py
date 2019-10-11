@@ -238,6 +238,8 @@ class TestEmbedOpError(OpTest):
                 fluid.embedding(input=input2, size=(10, 64), dtype='int64')
 
             self.assertRaises(TypeError, test_param_dtype)
+            input3 = fluid.data(name='x3', shape=[4, 6], dtype='int64')
+            fluid.embedding(input=input3, size=(10, 64), dtype='float16')
 
 
 if __name__ == "__main__":

@@ -178,6 +178,9 @@ class TestEmbedOpError(OpTest):
 
             self.assertRaises(TypeError, test_param_dtype)
 
+            input3 = fluid.data(name='x3', shape=[4, 1], dtype='int64')
+            fluid.layers.embedding(input=input3, size=(10, 64), dtype='float16')
+
 
 if __name__ == "__main__":
     unittest.main()
