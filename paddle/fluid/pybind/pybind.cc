@@ -381,33 +381,92 @@ PYBIND11_MODULE(core_noavx, m) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_clear", &Tensor::clear)
-      .def("set", PyCPUTensorSetFromArray<float>)
-      .def("set", PyCPUTensorSetFromArray<int>)
-      .def("set", PyCPUTensorSetFromArray<double>)
-      .def("set", PyCPUTensorSetFromArray<int64_t>)
-      .def("set", PyCPUTensorSetFromArray<bool>)
-      .def("set", PyCPUTensorSetFromArray<uint16_t>)
-      .def("set", PyCPUTensorSetFromArray<uint8_t>)
-      .def("set", PyCPUTensorSetFromArray<int8_t>)
+      .def("set", PyCPUTensorSetFromArray<float>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<int>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<double>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<int64_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<bool>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<uint16_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<uint8_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<int8_t>, py::arg("array"),
+           py::arg("place"))
 #ifdef PADDLE_WITH_CUDA
-      .def("set", PyCUDATensorSetFromArray<float>)
-      .def("set", PyCUDATensorSetFromArray<int>)
-      .def("set", PyCUDATensorSetFromArray<double>)
-      .def("set", PyCUDATensorSetFromArray<int64_t>)
-      .def("set", PyCUDATensorSetFromArray<bool>)
-      .def("set", PyCUDATensorSetFromArray<uint16_t>)
-      .def("set", PyCUDATensorSetFromArray<uint8_t>)
-      .def("set", PyCUDATensorSetFromArray<int8_t>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<float>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<int>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<double>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<int64_t>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<bool>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>)
+      .def("set", PyCUDATensorSetFromArray<float>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<int>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<double>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<int64_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<bool>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<uint16_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<uint8_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<int8_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<float>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<int>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<double>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<int64_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<bool>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>, py::arg("array"),
+           py::arg("place"), R"DOC(
+        Set the data of LoDTensor on place with given numpy array.
+        
+        Args:
+          lod (numpy.ndarray): The data to set.
+          place (CPUPlace|CUDAPlace|CUDAPinnedPlace): The place where the 
+          LoDTensor is to be set.
+
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                t = fluid.LoDTensor()
+                t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+          )DOC")
 #endif
-      .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
+      .def("shape", [](Tensor &self) { return vectorize(self.dims()); }, R"DOC(
+           Return the shape of LoDTensor.
+
+           Returns:
+               list[int]: The shape of LoDTensor.
+
+
+           Examples:
+               .. code-block:: python
+
+                  import paddle.fluid as fluid
+                  import numpy as np
+
+                  t = fluid.LoDTensor()
+                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                  print(t.shape())  # [5, 30]
+           )DOC")
       .def("_set_float_element", TensorSetElement<float>)
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
@@ -421,39 +480,82 @@ PYBIND11_MODULE(core_noavx, m) {
         return ostr.str();
       });
 
+  // TODO(cql): add reference: en_user_guide_lod_tensor
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
-    LoDTensor is a Tensor with optional LoD information.
+    LoDTensor is a Tensor with optional LoD (Level of Details) information, 
+    it can be used for variable-length sequences, 
+    see :ref:`user_guide_lod_tensor` for details.
 
-    np.array(lod_tensor) can convert LoDTensor to numpy array.
-    lod_tensor.lod() can retrieve the LoD information.
+    LoDTensor can be converted to numpy array using :code:`numpy.array(lod_tensor)`.
 
-    LoD is short for Level of Details and is usually used for varied sequence
-    length. You can skip the following comment if you don't need optional LoD.
+    You can skip the following explanation if you don't need to know details 
+    of LoDTensor.
 
-    For example, a LoDTensor X can look like the example below. It contains
-    2 sequences. The first has length 2 and the second has length 3, as
-    described by x.lod.
+    The following two examples show how to use LODtensor to represent 
+    variable-length sequences.
+    
+    Example 1:
+    
+    Suppose x is a LoDTensor representing a variable-length sequence. 
+    It contains two logical subsequences, the length of first logical sequence 
+    is 2 (e.g., number of samples is 2), the length of second logical sequence 
+    is 3, and the total length is 5. The data of the first logical sequence is 
+    [1, 2], [3, 4], and the data of the second logical sequence is [5, 6], 
+    [7, 8], [9, 10]. The data dimension of each sample is 2. So, the final 
+    shape of the LoDTensor is [5, 2], of which 5 is the total length and 2 is 
+    the dimension of each sample.
+    
+    Logically, we can represent the variable-length sequence in two ways: one 
+    is in the form of recursive sequence lengths, that is, 
+    x.recursive_sequence_lengths=[[2, 3]]; the other is in the form of offsets, 
+    that is, x.lod=[[0, 2, 2+3]]. These two representations are equivalent, and 
+    you can set and retrieve recursive_sequence_lengths or LoD through the 
+    corresponding interfaces of LoDTensor introduced later.
 
-    The first tensor dimension 5=2+3 is calculated from LoD if it's available.
-    It means the total number of sequence element. In X, each element has 2
-    columns, hence [5, 2].
+    Actually, in order to access sequence faster, Paddle uses offset to store 
+    different lengths of sequences. 
+    Therefore, the operations on recursive_sequence_lengths will be converted 
+    to the operations on LoD eventually.
+    
+    .. code-block:: python
 
-    x.lod  = [[2, 3]]
+      y.data = [[1, 2], [3, 4],
+                [5, 6], [7, 8],
+                [9, 10], [11, 12], [13, 14]]
 
-    x.data = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]]
+      y.shape = [2+2+3, 2]
 
-    x.shape = [5, 2]
+      y.recursive_sequence_lengths = [[2, 1], [2, 2, 3]]
 
-    LoD can have multiple levels (for example, a paragraph can have multiple
-    sentences and a sentence can have multiple words). In the following
-    LodTensor Y, the lod_level is 2. It means there are 2 sequence, the
-    first sequence length is 2 (has 2 sub-sequences), the second one's
-    length is 1. The first sequence's 2 sub-sequences have length 2 and 2,
-    respectively. And the second sequence's 1 sub-sequence has length 3.
+      y.lod = [[0, 2, 3], [0, 2, 4, 7]]
 
-    y.lod = [[2 1], [2 2 3]]
+    Example 2:
 
-    y.shape = [2+2+3, ...]
+    LoD may have more than one level (for example, a paragraph may have more 
+    than one sentence and a sentence may have more than one word). Suppose y 
+    is a LoDTensor and its lod_level is 2. 
+    From level = 0, there are two logical sequences, the length of which is 
+    2 and 1, respectively, indicating that the first logical sequence contains 
+    two sub-sequences and the second logical sequence contains one sub-sequence. 
+    From level = 1, the lengths of two sub-sequences contained by the first 
+    logical sequence is 2 and 2, and the length of sub-sequence contained by 
+    the second logical sequence is 3.
+      
+    Therefore, the LoDTensor is represented in the form of recursive sequence 
+    lengths as y.recursive_sequence_lengths=[[2,1], [2,2,3]]; and equally, in 
+    the form of offset, it is represented as y.lod=[[0,2,3], [0,2,4,7]].
+
+    .. code-block:: python
+
+      y.data = [[1, 2], [3, 4],
+                [5, 6], [7, 8],
+                [9, 10], [11, 12], [13, 14]]
+
+      y.shape = [2+2+3, 2]
+
+      y.recursive_sequence_lengths = [[2, 1], [2, 2, 3]]
+
+      y.lod = [[0, 2, 3], [0, 2, 4, 7]]
 
     Examples:
         .. code-block:: python
@@ -462,16 +564,6 @@ PYBIND11_MODULE(core_noavx, m) {
 
           t = fluid.LoDTensor()
 
-  Note:
-      In above description, LoD is length-based. In Paddle internal
-      implementation, lod is offset-based. Hence, internally,
-      y.lod is represented as [[0, 2, 3], [0, 2, 4, 7]] (length-based
-      equivlent would be [[2-0, 3-2], [2-0, 4-2, 7-4]]).
-
-      Sometimes LoD is called recursive_sequence_length to be more
-      self-explanatory. In this case, it must be length-based. Due to history
-      reasons. when LoD is called lod in public API, it might be offset-based.
-      Users should be careful about it.
         )DOC")
       .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
       .def("__init__",
@@ -510,7 +602,10 @@ PYBIND11_MODULE(core_noavx, m) {
            Set LoD of the LoDTensor.
 
            Args:
-               lod (List[List[int]]): the lod to be set.
+               lod (list[list[int]]): The lod to set.
+
+           Returns:
+                None.
 
            Examples:
                .. code-block:: python
@@ -521,6 +616,7 @@ PYBIND11_MODULE(core_noavx, m) {
                  t = fluid.LoDTensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_lod([[0, 2, 5]])
+                 print(t.lod()) # [[0, 2, 5]]
            )DOC")
       .def("set_recursive_sequence_lengths",
            [](LoDTensor &self, const std::vector<std::vector<size_t>>
@@ -539,14 +635,17 @@ PYBIND11_MODULE(core_noavx, m) {
              self.set_lod(new_offset_lod);
            },
            py::arg("recursive_sequence_lengths"), R"DOC(
-           Set LoD of the LoDTensor according to recursive sequence length.
+           Set LoD of the LoDTensor according to recursive sequence lengths.
 
-           For example, if recursive_sequence_lengths=[[2, 3]], meaning that
+           For example, if recursive_sequence_lengths=[[2, 3]], which means
            there are two sequences with length 2 and 3 respectively, the
-           corresponding lod would be [[0, 2, 2+3]], i.e, [[0, 2, 5]].
+           corresponding lod would be [[0, 2, 2+3]], i.e., [[0, 2, 5]].
 
            Args:
-                recursive_sequence_lengths (List[List[int]]): sequence lengths.
+                recursive_sequence_lengths (list[list[int]]): The recursive sequence lengths.
+           
+           Returns:
+                None.
 
            Examples:
                .. code-block:: python
@@ -557,6 +656,8 @@ PYBIND11_MODULE(core_noavx, m) {
                  t = fluid.LoDTensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_recursive_sequence_lengths([[2, 3]])
+                 print(t.recursive_sequence_length())  # [[2, 3]]
+                 print(t.lod())  # [[0, 2, 5]]
            )DOC")
       .def("lod",
            [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
@@ -571,8 +672,8 @@ PYBIND11_MODULE(core_noavx, m) {
            Return the LoD of the LoDTensor.
 
            Returns:
-               out (List[List[int]]): the lod of the LoDTensor.
-
+               list[list[int]]: The lod of the LoDTensor.
+           
            Examples:
                .. code-block:: python
 
@@ -595,10 +696,11 @@ PYBIND11_MODULE(core_noavx, m) {
              return new_lod;
            },
            R"DOC(
-           Return the sequence length of the LoDTensor corresponding to LoD.
+           Return the recursive sequence lengths corresponding to of the LodD 
+           of the LoDTensor.
 
            Returns:
-               out (List[List[int]): the sequence lengths.
+                list[list[int]]: The recursive sequence lengths.
 
            Examples:
                .. code-block:: python
@@ -618,10 +720,10 @@ PYBIND11_MODULE(core_noavx, m) {
              return CheckLoD(self.lod(), vectorize(self.dims()).front());
            },
            R"DOC(
-           Check whether the lod of the LoDTensor is valid.
+           Check whether the LoD of the LoDTensor is valid.
 
            Returns:
-               out (bool): whether the lod is valid.
+               bool: Whether the LoD is valid.
 
            Examples:
                .. code-block:: python
@@ -1491,7 +1593,7 @@ All parameter, weight, gradient are variables in Paddle.
             self.num_iteration_per_run_ = num_iteration_per_run;
           },
           R"DOC(This config that how many iteration the executor will run when
-                user call pe.run() in python
+                user call exe.run() in python
               )DOC")
       .def_property("_dry_run",
                     [](const ExecutionStrategy &self) { return self.dry_run_; },
@@ -1516,9 +1618,26 @@ All parameter, weight, gradient are variables in Paddle.
     Examples:
         .. code-block:: python
 
+            import os
+            import numpy as np
             import paddle.fluid as fluid
+
+            os.environ["CPU_NUM"] = '2'
+            places = fluid.cpu_places()
+
+            data = fluid.layers.data(name="x", shape=[1], dtype="float32")
+            hidden = fluid.layers.fc(input=data, size=10)
+            loss = fluid.layers.mean(hidden)
+            fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+
             build_strategy = fluid.BuildStrategy()
+            build_strategy.enable_inplace = True
+            build_strategy.memory_optimize = True
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+            program = fluid.compiler.CompiledProgram(fluid.default_main_program())
+            program = program.with_data_parallel(loss_name=loss.name,
+                                                 build_strategy=build_strategy,
+                                                 places=places)
 )DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
@@ -1540,13 +1659,13 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.reduce_ = strategy;
           },
-          R"DOC(The type is fluid.BuildStrategy.ReduceStrategy, there are two reduce
+          R"DOC((fluid.BuildStrategy.ReduceStrategy, optional): there are two reduce
                 strategies in ParallelExecutor, AllReduce and Reduce. If you want
                 that all the parameters' optimization are done on all devices independently,
-                you should choose AllReduce; if you choose Reduce, all the parameters'
+                you should choose AllReduce; otherwise, if you choose Reduce, all the parameters'
                 optimization will be evenly distributed to different devices, and then
                 broadcast the optimized parameter to other devices.
-                Default 'AllReduce'.
+                Default is 'AllReduce'.
 
                 Examples:
                     .. code-block:: python
@@ -1564,11 +1683,11 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finalized.");
             self.gradient_scale_ = strategy;
           },
-          R"DOC(The type is fluid.BuildStrategy.GradientScaleStrategy, there are three
-                ways of defining :math:`loss@grad` in ParallelExecutor, CoeffNumDevice,
+          R"DOC((fluid.BuildStrategy.GradientScaleStrategy, optional): there are three
+                ways of defining :math:`loss@grad` in ParallelExecutor, that is, CoeffNumDevice,
                 One and Customized. By default, ParallelExecutor sets the :math:`loss@grad`
                 according to the number of devices. If you want to customize :math:`loss@grad`,
-                you can choose Customized. Default 'CoeffNumDevice'.
+                you can choose Customized. Default is 'CoeffNumDevice'.
 
                 Examples:
                     .. code-block:: python
@@ -1626,9 +1745,9 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.debug_graphviz_path_ = path;
           },
-          R"DOC(The type is STR, debug_graphviz_path indicates the path that
+          R"DOC((str, optional): debug_graphviz_path indicates the path that
                 writing the SSA Graph to file in the form of graphviz.
-                It is useful for debugging. Default ""
+                It is useful for debugging. Default is empty string, that is, ""
 
                 Examples:
                     .. code-block:: python
@@ -1648,8 +1767,8 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.enable_sequential_execution_ = b;
           },
-          R"DOC(The type is BOOL. If set True, the execution order of ops would
-                be the same as what is in the program. Default False.
+          R"DOC((bool, optional): If set True, the execution order of ops would
+                be the same as what is in the program. Default is False.
 
                 Examples:
                     .. code-block:: python
@@ -1668,8 +1787,8 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.remove_unnecessary_lock_ = b;
           },
-          R"DOC(The type is BOOL. If set True, some locks in GPU ops would be
-                released and ParallelExecutor would run faster. Default True.
+          R"DOC((bool, optional): If set True, some locks in GPU ops would be
+                released and ParallelExecutor would run faster. Default is True.
 
                 Examples:
                     .. code-block:: python
@@ -1730,9 +1849,9 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.fuse_elewise_add_act_ops_ = b;
           },
-          R"DOC(The type is BOOL, fuse_elewise_add_act_ops indicate whether
+          R"DOC((bool, optional): fuse_elewise_add_act_ops indicate whether
                 to fuse elementwise_add_op and activation_op,
-                it may make the execution faster. Default False
+                it may make the execution faster. Default is False.
 
                 Examples:
                     .. code-block:: python
@@ -1751,11 +1870,11 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.fuse_relu_depthwise_conv_ = b;
           },
-          R"DOC(The type is BOOL, fuse_relu_depthwise_conv indicate whether
+          R"DOC((bool, optional): fuse_relu_depthwise_conv indicate whether
                 to fuse relu and depthwise_conv2d,
                 it will save GPU memory and may make the execution faster.
                 This options is only available in GPU devices.
-                Default False.
+                Default is False.
 
                 Examples:
                     .. code-block:: python
@@ -1774,12 +1893,20 @@ All parameter, weight, gradient are variables in Paddle.
                                         "BuildStrategy is finlaized.");
                       self.fuse_broadcast_ops_ = b;
                     },
-                    R"DOC(The type is BOOL, fuse_broadcast_op indicates whether
+                    R"DOC((bool, optional): fuse_broadcast_op indicates whether
                       to fuse the broadcast ops. Note that, in Reduce mode,
                       fusing broadcast ops may make the program faster. Because
                       fusing broadcast OP equals delaying the execution of all
                       broadcast Ops, in this case, all nccl streams are used only
-                      for NCCLReduce operations for a period of time. Default False.)DOC")
+                      for NCCLReduce operations for a period of time. Default False.
+
+                      Examples:
+                          .. code-block:: python
+
+                              import paddle.fluid as fluid
+                              build_strategy = fluid.BuildStrategy()
+                              build_strategy.fuse_broadcast_ops = True
+                    )DOC")
       .def_property("fuse_all_optimizer_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_all_optimizer_ops_ == true ||
@@ -1798,14 +1925,12 @@ All parameter, weight, gradient are variables in Paddle.
                               "BuildStrategy is finlaized.");
             self.sync_batch_norm_ = b;
           },
-          R"DOC(The type is BOOL, sync_batch_norm indicates whether to use
+          R"DOC((bool, optional): sync_batch_norm indicates whether to use
                 synchronous batch normalization which synchronizes the mean
                 and variance through multi-devices in training phase.
-
                 Current implementation doesn't support FP16 training and CPU.
-                And only synchronous on one machine, not all machines.
-
-                Default False
+                And only synchronous on one machine, not all machines. 
+                Default is False.
 
                 Examples:
                     .. code-block:: python
@@ -1835,13 +1960,13 @@ All parameter, weight, gradient are variables in Paddle.
                   "True");
             }
           },
-          R"DOC(The type is BOOL or None, memory opitimize aims to save total memory
+          R"DOC((bool, optional): memory opitimize aims to save total memory
                 consumption, set to True to enable it.
 
                 Default None. None means framework would choose to use or not use 
                 this strategy automatically. Currently, None means that it is 
                 enabled when GC is disabled, and disabled when GC is enabled. 
-                True means enabling and False means disabling. Default None.)DOC")
+                True means enabling and False means disabling. Default is None.)DOC")
       .def_property(
           "is_distribution",
           [](const BuildStrategy &self) { return self.is_distribution_; },
