@@ -8986,8 +8986,8 @@ def label_smooth(label,
                  dtype="float32",
                  name=None):
     """
-    Label smoothing is a mechanism to regularize the classifier layer and is
-    called label-smoothing regularization (LSR).
+    Label smoothing is a mechanism to regularize the classifier layer and is called 
+    label-smoothing regularization (LSR). 
 
     Label smoothing is proposed to encourage the model to be less confident,
     since optimizing the log-likelihood of the correct label directly may
@@ -9006,19 +9006,23 @@ def label_smooth(label,
 
     See more details about label smoothing in https://arxiv.org/abs/1512.00567.
 
-    Args:
+    Parameters:
         label(Variable): The input variable containing the label data. The
-                          label data should use one-hot representation.
-        prior_dist(Variable): The prior distribution to be used to smooth
-                              labels. If not provided, an uniform distribution
-                              is used. The shape of :attr:`prior_dist` should
-                              be :math:`(1, class\_num)`.
-        epsilon(float): The weight used to mix up the original ground-truth
-                        distribution and the fixed distribution.
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32,
-                                                  float_64, int etc.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+                        label data should use one-hot representation. It's 
+                        a multidimensional tensor with a shape of 
+                        :math:`[N_1, ..., Depth]`, where Depth is class number.
+        prior_dist(Variable, optional): The prior distribution to be used to smooth
+                        labels. If not provided, an uniform distribution
+                        is used. It's a multidimensional tensor with a shape of
+                        :math:`[1, class\_num]` . The default value is None.
+        epsilon(float, optional): The weight used to mix up the original ground-truth
+                        distribution and the fixed distribution. The default value is 
+                        0.1.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type can be set
+                        as 'float32', 'float64'. The default value is 'float32'.
+        name(str, optional): The default value is None. Normally there is no need for user 
+                        to set this property. For more information, please refer to 
+                        :ref:`api_guide_Name`.
 
     Returns:
         Variable: The tensor variable containing the smoothed labels.
