@@ -14114,6 +14114,8 @@ def similarity_focus(input, axis, indexes, name=None):
 def hash(input, hash_size, num_hash=1, name=None):
     """
     This OP hash the input to an integer less than the hash_size.
+    The hash algorithm we used was xxHash - Extremely fast hash algorithm
+    (https://github.com/Cyan4973/xxHash/tree/v0.6.5)
 
     Args:
         input(Variable): A **Two-Dimensional** LoDTensor with type int32, int64.
@@ -14124,7 +14126,7 @@ def hash(input, hash_size, num_hash=1, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-       Variable: LoDTensor
+       Variable: A LoDTensor with the same data type as input.
 
     Examples:
         .. code-block:: python
