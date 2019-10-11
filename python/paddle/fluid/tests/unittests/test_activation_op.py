@@ -23,6 +23,22 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
 
+class TestSqrtOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of sqrt op must be Variable or numpy.ndarray.
+            in1 = 1
+            self.assertRaises(TypeError, fluid.layers.sqrt, in1)
+            # The input dtype of sqrt op must be float16, float32, float64.
+            in2 = fluid.layers.data(
+                name='input2', shape=[12, 10], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.sqrt, in2)
+
+            in3 = fluid.layers.data(
+                name='input3', shape=[12, 10], dtype="float16")
+            fluid.layers.sqrt(x=in3)
+
+
 class TestActivation(OpTest):
     def setUp(self):
         self.op_type = "exp"
