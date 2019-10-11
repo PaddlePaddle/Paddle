@@ -42,6 +42,7 @@ class TestDistCTR2x2(TestDistBase):
         self.check_with_place(
             "dist_ctr.py", delta=1e-2, check_error_log=True, log_name=flag_name)
 
+
 @skip_ci
 class TestDistCTRWithL2Decay2x2(TestDistBase):
     def _setup_config(self):
