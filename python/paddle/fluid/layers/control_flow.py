@@ -295,11 +295,13 @@ class StaticRNN(object):
     """
     StaticRNN class.
 
-    The StaticRNN can process a batch of sequence data. The length of each
-    sample sequence must be equal. The StaticRNN will have its own parameters
-    like inputs, outputs, memories. **Note that the first dimension of inputs
-    represents sequence length, and all the sequence length of inputs must be
-    the same. And the meaning of each axis of input and output are the same.**
+    The StaticRNN can process a batch of sequence data. The first dimension of inputs
+    represents sequence length, the length of each input sequence must be equal.
+    StaticRNN will unfold sequence into time steps, user needs to define how to process
+    each time step during the :code:`with` step.
+
+    Args:
+        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Examples:
         .. code-block:: python
@@ -308,34 +310,30 @@ class StaticRNN(object):
             import paddle.fluid.layers as layers
 
             vocab_size, hidden_size=10000, 200
-            x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
+            x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            # create word sequence
             x_emb = layers.embedding(
                 input=x,
                 size=[vocab_size, hidden_size],
                 dtype='float32',
                 is_sparse=False)
+            # transform batch size to dim 1
             x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
 
             rnn = fluid.layers.StaticRNN()
             with rnn.step():
+                # mark created x_emb as input, each step process a word
                 word = rnn.step_input(x_emb)
+                # create prev memory parameter, batch size comes from word
                 prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
                 hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
-                rnn.update_memory(prev, hidden)  # set prev to hidden
+                # use hidden to update prev
+                rnn.update_memory(prev, hidden)
+                # mark hidden as output 
                 rnn.step_output(hidden)
-                rnn.output(word)
-
+            # get StaticrNN final output
             result = rnn()
 
-    The StaticRNN will unfold sequence into time steps. Users need to define
-    how to process each time step during the :code:`with` step.
-
-    The :code:`memory` is used as a staging data cross time step. The initial
-    value of memory can be a variable that is filled with a constant value or
-    a specified variable.
-
-    The StaticRNN can mark multiple variables as its output. Use `rnn()` to
-    get the output sequence.
     """
     BEFORE_RNN_BLOCK = 0
     IN_RNN_BLOCK = 1
@@ -352,7 +350,8 @@ class StaticRNN(object):
 
     def step(self):
         """
-        The block for user to define operators in RNN.
+        Define operators in each step. step is used in :code:`with` block, OP in :code:`with` block
+        will be executed sequence_len times (sequence_len is the length of input)
         """
         return BlockGuardWithCompletion(self)
 
@@ -369,48 +368,80 @@ class StaticRNN(object):
                ref_batch_dim_idx=1):
         """
         Create a memory variable for static rnn.
-
         If the :code:`init` is not None, :code:`memory` will be initialized by
         this Variable. If the :code:`init` is None, :code:`shape` and :code:`batch_ref`
-        must be set, and this function will initialize a :code:`init` Variable.
+        must be set, and this function will create a new variable with shape and batch_ref
+        to initialize :code:`init` Variable.
 
         Args:
-            init(Variable|None): The initialized variable. If it is not set,
+            init(Variable, optional): Tensor used to init memory. If it is not set,
                 :code:`shape` and :code:`batch_ref` must be provided.
                 Default: None.
-            shape(list|tuple): The shape of the boot memory. NOTE the shape
-                does not contain batch_size. Default: None.
-            batch_ref(Variable|None): The batch size reference Variable.
-                Default: None.
-            init_value(float): the init value of boot memory. Default: 0.0.
-            init_batch_dim_idx(int): the batch_size axis of the
-                :code:`init` Variable. Default: 0.
-            ref_batch_dim_idx(int): the batch_size axis of the
-                :code:`batch_ref` Variable. Default: 1.
+            shape(list|tuple): When :code:`init` is None use this arg to initialize memory shape.
+            NOTE the shape does not contain batch_size. Default: None.
+            batch_ref(Variable, optional): When :code:`init` is None, memory's batch size will
+            be set as batch_ref's ref_batch_dim_idx value. Default: None.
+            init_value(float, optional): When :code:`init` is None, used to init memory's value. Default: 0.0.
+            init_batch_dim_idx(int, optional): the batch_size axis of the :code:`init` Variable. Default: 0.
+            ref_batch_dim_idx(int, optional): the batch_size axis of the :code:`batch_ref` Variable. Default: 1.
 
         Returns:
-            The memory variable.
-        Examples:
+            Variable: The memory variable.
+
+        Examples 1:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                import paddle.fluid.layers as layers
+            	import paddle.fluid as fluid
+            	import paddle.fluid.layers as layers
 
-                vocab_size, hidden_size=10000, 200
-                x = layers.data(name="x", shape=[-1, 1, 1], dtype='int64')
-                x_emb = layers.embedding(
-                    input=x,
-                    size=[vocab_size, hidden_size],
-                    dtype='float32',
-                    is_sparse=False)
-                x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+            	vocab_size, hidden_size=10000, 200
+            	x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            	# create word sequence
+            	x_emb = layers.embedding(
+                	input=x,
+                	size=[vocab_size, hidden_size],
+                	dtype='float32',
+                	is_sparse=False)
+            	# transform batch size to dim 1
+            	x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
 
-                rnn = fluid.layers.StaticRNN()
-                with rnn.step():
-                    word = rnn.step_input(x_emb)
-                    prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
-                    hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
-                    rnn.update_memory(prev, hidden)
+            	rnn = fluid.layers.StaticRNN()
+            	with rnn.step():
+                	# mark created x_emb as input, each step process a word
+                	word = rnn.step_input(x_emb)
+                	# create prev memory parameter, batch size comes from word
+                	prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
+                	hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                	# use hidden to update prev
+                	rnn.update_memory(prev, hidden)
+
+
+        Examples 2:
+            .. code-block:: python
+
+            	import paddle.fluid as fluid
+            	import paddle.fluid.layers as layers
+            	vocab_size, hidden_size=10000, 200
+            	x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            	# create word sequence
+            	x_emb = layers.embedding(
+                	input=x,
+                	size=[vocab_size, hidden_size],
+                	dtype='float32',
+                	is_sparse=False)
+            	# transform batch size to dim 1
+            	x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+            	boot_memory = fluid.layers.data(name='boot', shape=[hidden_size], dtype='float32', lod_level=1)
+            	rnn = fluid.layers.StaticRNN()
+            	with rnn.step():
+            		# mark created x_emb as input, each step process a word
+            		word = rnn.step_input(x_emb)
+            		# init memory
+            		prev = rnn.memory(init=boot_memory)
+            		hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+            		# update hidden with prev
+            		rnn.update_memory(prev, hidden)
+
         """
         self._assert_in_rnn_block_('memory')
         if init is None:
@@ -458,7 +489,35 @@ class StaticRNN(object):
                 should be [seq_len, ...].
 
         Returns:
-            The current time step in the input sequence.
+            Variable: The current time step data in the input sequence.
+
+        Examples:
+            .. code-block:: python
+
+            	import paddle.fluid as fluid
+            	import paddle.fluid.layers as layers
+
+            	vocab_size, hidden_size=10000, 200
+            	x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            	# create word sequence
+            	x_emb = layers.embedding(
+                	input=x,
+                	size=[vocab_size, hidden_size],
+                	dtype='float32',
+                	is_sparse=False)
+            	# transform batch size to dim 1
+            	x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+
+            	rnn = fluid.layers.StaticRNN()
+            	with rnn.step():
+                	# mark created x_emb as input, each step process a word
+                	word = rnn.step_input(x_emb)
+                	# create prev memory parameter, batch size comes from word
+                	prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
+                	hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                	# use hidden to update prev
+                	rnn.update_memory(prev, hidden)
+
         """
         self._assert_in_rnn_block_('step_input')
         if not isinstance(x, Variable):
@@ -482,6 +541,37 @@ class StaticRNN(object):
 
         Returns:
             None.
+
+        Examples:
+            .. code-block:: python
+
+            	import paddle.fluid as fluid
+            	import paddle.fluid.layers as layers
+
+            	vocab_size, hidden_size=10000, 200
+            	x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            	# create word sequence
+            	x_emb = layers.embedding(
+                	input=x,
+                	size=[vocab_size, hidden_size],
+               		dtype='float32',
+                	is_sparse=False)
+            	# transform batch size to dim 1
+            	x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+
+            	rnn = fluid.layers.StaticRNN()
+            	with rnn.step():
+                	# mark created x_emb as input, each step process a word
+               		word = rnn.step_input(x_emb)
+                	# create prev memory parameter, batch size comes from word
+                	prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
+                	hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                	# use hidden to update prev
+                	rnn.update_memory(prev, hidden)
+                	rnn.step_output(hidden)
+
+            	result = rnn()
+
         """
         self._assert_in_rnn_block_('step_output')
         if not isinstance(o, Variable):
@@ -506,25 +596,57 @@ class StaticRNN(object):
         Mark the StaticRNN output variables.
 
         Args:
-            outputs: The output Variables.
+            outputs: The output Tensor, can mark multiple variables as output
 
         Returns:
             None
+
+        Examples:
+            .. code-block:: python
+
+            	import paddle.fluid as fluid
+            	import paddle.fluid.layers as layers
+
+            	vocab_size, hidden_size=10000, 200
+            	x = fluid.data(name="x", shape=[None, 1, 1], dtype='int64')
+            	# create word sequence
+            	x_emb = layers.embedding(
+                	input=x,
+                	size=[vocab_size, hidden_size],
+                	dtype='float32',
+                	is_sparse=False)
+            	# transform batch size to dim 1
+            	x_emb = layers.transpose(x_emb, perm=[1, 0, 2])
+
+            	rnn = fluid.layers.StaticRNN()
+            	with rnn.step():
+                	# mark created x_emb as input, each step process a word
+                	word = rnn.step_input(x_emb)
+                	# create prev memory parameter, batch size comes from word
+                	prev = rnn.memory(shape=[-1, hidden_size], batch_ref = word)
+                	hidden = fluid.layers.fc(input=[word, prev], size=hidden_size, act='relu')
+                	# use hidden to update prev
+                	rnn.update_memory(prev, hidden)
+                	# mark each step's hidden and word as output
+                	rnn.output(hidden, word)
+
+            	result = rnn()
         """
         for each in outputs:
             self.step_output(each)
 
     def update_memory(self, mem, var):
         """
-        Update the memory from ex_mem to new_mem. NOTE that the shape and data
-        type of :code:`ex_mem` and :code:`new_mem` must be same.
+        Update the memory from :code:`mem` to :code:`var`.
 
         Args:
             mem(Variable): the memory variable.
-            var(Variable): the plain variable generated in RNN block.
+            var(Variable): the plain variable generated in RNN block, used to update memory.
+                           var and mem should hava same dims and data type.
 
         Returns:
             None
+
         """
         if not isinstance(mem, Variable) or not isinstance(var, Variable):
             raise TypeError("update memory should take variables")
@@ -643,29 +765,34 @@ class WhileGuard(BlockGuard):
 
 class While(object):
     """
-    while loop control flow.
+    while loop control flow. Repeat while body until cond is False.
 
     Args:
-        cond(Variable): condition used to compare.
-        is_test(bool): A flag indicating whether execution is in test phase.
-        name(str): The name of this layer.
+        cond(Variable): A Tensor whose data type is bool controlling whether to continue looping.
+        is_test(bool, optional): A flag indicating whether execution is in test phase. Default value is None.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Examples:
           .. code-block:: python
             
             import paddle.fluid as fluid
-            
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-            d0 = fluid.layers.data("d0", shape=[10], dtype='float32')
-            data_array = fluid.layers.array_write(x=d0, i=i)
-            array_len = fluid.layers.fill_constant(shape=[1],dtype='int64', value=3)
+            import numpy as np
 
-            cond = fluid.layers.less_than(x=i, y=array_len)
+            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)           # loop counter
+
+            loop_len = fluid.layers.fill_constant(shape=[1],dtype='int64', value=10)    # loop length
+
+            cond = fluid.layers.less_than(x=i, y=loop_len)              
             while_op = fluid.layers.While(cond=cond)
-            with while_op.block():
-                d = fluid.layers.array_read(array=data_array, i=i)
+            with while_op.block():  
                 i = fluid.layers.increment(x=i, value=1, in_place=True)
-                fluid.layers.less_than(x=i, y=array_len, cond=cond)            
+                fluid.layers.less_than(x=i, y=loop_len, cond=cond)      
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            res = exe.run(fluid.default_main_program(), feed={}, fetch_list=[i])
+            print(res) # [array([10])]           
     """
 
     BEFORE_WHILE_BLOCK = 0
@@ -1042,24 +1169,28 @@ def less_than(x, y, force_cpu=None, cond=None):
 @templatedoc()
 def less_equal(x, y, cond=None):
     """
-    This layer returns the truth value of :math:`x <= y` elementwise, which is equivalent to the overloaded operator `<=`.
+    This OP returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
 
     Args:
-        x(Variable): First operand of *less_equal*
-        y(Variable): Second operand of *less_equal*
-        cond(Variable|None): Optional output variable to store the result of *less_equal*
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the input shape and data type of \
+            this tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the input shape \
+            and data type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
 
     Returns:
-        Variable: The tensor variable storing the output of *less_equal*.
+        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          
-          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
-          out = fluid.layers.less_equal(x=label, y=limit)
+          import numpy as np
+          label = fluid.layers.assign(np.array([1, 3], dtype='int32'))
+          limit = fluid.layers.assign(np.array([1, 2], dtype='int32'))
+          out = fluid.layers.less_equal(x=label, y=limit) #out=[True, False]
+          out1 = label<= limit #out1=[True, False]
+
     """
     helper = LayerHelper("less_equal", **locals())
     if cond is None:
@@ -1082,24 +1213,27 @@ def less_equal(x, y, cond=None):
 @templatedoc()
 def greater_than(x, y, cond=None):
     """
-    This layer returns the truth value of :math:`x > y` elementwise, which is equivalent to the overloaded operator `>`.
+    This OP returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
 
     Args:
-        x(Variable): First operand of *greater_than*
-        y(Variable): Second operand of *greater_than*
-        cond(Variable|None): Optional output variable to store the result of *greater_than*
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
+            tensor is the same as input :attr:`x` . If is not :attr:`None`, the op will set the variable as output tensor, the shape and data type \
+            of this tensor should be the same as input :attr:`x` . Default value is :attr:`None`.
 
     Returns:
-        Variable: The tensor variable storing the output of *greater_than*.
+        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x` .
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          
-          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
-          out = fluid.layers.greater_than(x=label, y=limit)
+          import numpy as np
+          label = fluid.layers.assign(np.array([2, 3], dtype='int32'))
+          limit = fluid.layers.assign(np.array([3, 2], dtype='int32'))
+          out = fluid.layers.greater_than(x=label, y=limit) #out=[False, True]
+          out1 = label > limit #out1=[False, True]
     """
     helper = LayerHelper("greater_than", **locals())
     if cond is None:
@@ -1122,24 +1256,28 @@ def greater_than(x, y, cond=None):
 @templatedoc()
 def greater_equal(x, y, cond=None):
     """
-    This layer returns the truth value of :math:`x >= y` elementwise, which is equivalent to the overloaded operator `>=`.
+    This OP returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
 
     Args:
-        x(Variable): First operand of *greater_equal*
-        y(Variable): Second operand of *greater_equal*
-        cond(Variable|None): Optional output variable to store the result of *greater_equal*
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        cond(Variable, optional): If is :attr:`None` , the op will create a variable as output tensor, the shape and data type of this \
+            tensor is the same as input :attr:`x`. If is not :attr:`None` , the op will set the variable as output tensor, the shape and data \
+            type of this tensor is the same as input :attr:`x`. Default value is :attr:`None`.
 
     Returns:
-        Variable: The tensor variable storing the output of *greater_equal*.
+        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          
-          label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-          limit = fluid.layers.fill_constant(shape=[1], value=1, dtype='int64')
-          out = fluid.layers.greater_equal(x=label, y=limit)
+          import numpy as np
+
+          label = fluid.layers.assign(np.array([2, 2], dtype='int32'))
+          limit = fluid.layers.assign(np.array([2, 3], dtype='int32'))
+          out = fluid.layers.greater_equal(x=label, y=limit) #out=[True, False]
+          out_1 = label >= limit #out1=[True, False]
 
     """
     helper = LayerHelper("greater_equal", **locals())
@@ -1193,15 +1331,17 @@ def equal(x, y, cond=None):
 
 def not_equal(x, y, cond=None):
     """
-    This layer returns the truth value of :math:`x != y` elementwise, which is equivalent to the overloader operator `!=`.
+    This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
 
     Args:
-        x(Variable): First operand of *not_equal*
-        y(Variable): Second operand of *not_equal*
-        cond(Variable|None): Optional output variable to store the result of *not_equal*
+        x(Variable): First input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64. 
+        y(Variable): Second input to compare which is N-D tensor. The input data type should be float32, float64, int32, int64.
+        cond(Variable, optional): If is :attr:`None`, the op will create a variable as output tensor, the shape and data type of this \
+             tensor is the same as input :attr:`x`. If is not :attr:`None`, the op will set the variable as output tensor, the shape and data \
+             type of this tensor should be the same as input :attr:`x`. Default value is :attr:`None`.
 
     Returns:
-        Variable: The tensor variable storing the output of *not_equal*.
+        Variable, the output data type is bool.: The tensor variable storing the output, the output shape is the same as input :attr:`x`.
 
     Examples:
         .. code-block:: python
@@ -1451,18 +1591,35 @@ class ConditionalBlock(object):
 
 class Switch(object):
     """
-    Switch class works just like a `if-elif-else`. Can be used in learning rate scheduler
-    to modify learning rate
 
-    The Semantics:
+    This class is used to implement Switch branch control function. 
+    Switch branch contains several case branches and one default branch. 
+    Switch control flow checks whether the case branch conditions are satisfied in turn, 
+    and only executes the statement after the first case branch that satisfies the conditions. 
+    If there is no case branch that satisfies the condition, 
+    only the statement following the default branch is executed.
 
-    1. A `switch` control-flow checks cases one-by-one.
+    Member Functions:
+        case(cond): The case branch of Switch whose parameter cond is a scalar Variable of bool type. Only if the cond of the current case branch is True and the cond of the previous case branch is False, the statement after the case branch will be executed, and the statement after the case branch will not be executed.
+        
+        default(): The default branch of Switch. When cond of all case branches is False, the statement after default branch is executed.
 
-    2. The condition of each case is a boolean value, which is a scalar Variable.
+    Case and default functions can only be used inside the scope of Switch, as shown below:
 
-    3. It runs the first matched case, or the default case if there is one.
+    .. code-block:: python
+        
+        '''
+        with fluid.layers.Switch() as switch:
+            with switch.case(cond1):
+                i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
+            with switch.case(cond2):
+                i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
+            with switch.default():
+                i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+        '''
 
-    4. Once it matches a case, it runs the corresponding branch and only that branch.
+    Args:
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Examples:
         .. code-block:: python
@@ -1476,14 +1633,13 @@ class Switch(object):
                 persistable=True,
                 name="learning_rate")
             zero_var = fluid.layers.fill_constant(
-                 shape=[1], dtype='float32', value=0.0)
+                shape=[1], dtype='float32', value=0.0)
             one_var = fluid.layers.fill_constant(
                 shape=[1], dtype='float32', value=1.0)
             two_var = fluid.layers.fill_constant(
-                shape=[1], dtype='float32', value=2.0) 
+                shape=[1], dtype='float32', value=2.0)
 
-            global_step = fluid.layers.autoincreased_step_counter(
-                   counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
+            global_step = fluid.layers.autoincreased_step_counter(counter_name='@LR_DECAY_COUNTER@', begin=0, step=1)
 
             with fluid.layers.control_flow.Switch() as switch:
                 with switch.case(global_step == zero_var):
@@ -1491,6 +1647,11 @@ class Switch(object):
                 with switch.default():
                     fluid.layers.assign(input=two_var, output=lr)
 
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            res = exe.run(fluid.default_main_program(), feed={}, fetch_list=[lr])
+            print(res) # [array([1.], dtype=float32)]
     """
 
     def __init__(self, name=None):
@@ -1579,36 +1740,72 @@ class IfElseBlockGuard(object):
 
 class IfElse(object):
     """
-    if-else control flow.
+    This class is used to implement IfElse branch control function. IfElse contains two blocks, true_block and false_block. IfElse will put data satisfying True or False conditions into different blocks to run.
+
+    Cond is a 2-D Tensor with shape [N, 1] and data type bool, representing the execution conditions of the corresponding part of the input data.
+
+    IfElse OP is different from other OPs in usage, which may cause some users confusion. Here is a simple example to illustrate this OP.
+
+    .. code-block:: python
+        
+        # The following code completes the function: subtract 10 from the data greater than 0 in x, add 10 to the data less than 0 in x, and sum all the data.
+        import numpy as np
+        import paddle.fluid as fluid
+
+        x = fluid.layers.data(name='x', shape=[4, 1], dtype='float32', append_batch_size=False)
+        y = fluid.layers.data(name='y', shape=[4, 1], dtype='float32', append_batch_size=False)
+
+        x_d = np.array([[3], [1], [-2], [-3]]).astype(np.float32)
+        y_d = np.zeros((4, 1)).astype(np.float32)
+        
+        # Compare the size of x, y pairs of elements, output cond, cond is shape [4, 1], data type bool 2-D tensor.
+        # Based on the input data x_d, y_d, it can be inferred that the data in cond are [[true], [true], [false], [false]].
+        cond = fluid.layers.greater_than(x, y)
+        # Unlike other common OPs, ie below returned by the OP is an IfElse OP object
+        ie = fluid.layers.IfElse(cond)
+
+        with ie.true_block():
+            # In this block, according to cond condition, the data corresponding to true dimension in X is obtained and subtracted by 10.
+            out_1 = ie.input(x)
+            out_1 = out_1 - 10
+            ie.output(out_1)
+        with ie.false_block():
+            # In this block, according to cond condition, get the data of the corresponding condition in X as false dimension, and add 10
+            out_1 = ie.input(x)
+            out_1 = out_1 + 10
+            ie.output(out_1)
+
+        # According to cond condition, the data processed in the two blocks are merged. The output here is output, the type is List, and the element type in List is Variable.
+        output = ie() #  [array([[-7.], [-9.], [ 8.], [ 7.]], dtype=float32)] 
+
+        # Get the first Variable in the output List and add all elements.
+        out = fluid.layers.reduce_sum(output[0])
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(fluid.default_startup_program())
+
+        res = exe.run(fluid.default_main_program(), feed={"x":x_d, "y":y_d}, fetch_list=[out])
+        print res
+        # [array([-1.], dtype=float32)] 
 
     Args:
-        cond (Variable): condition used to compare.
-        name (str, default None): The name of this layer.
+        cond (Variable): cond is a 2-D Tensor with shape [N, 1] and data type bool, representing the corresponding execution conditions of N input data. The data type is bool.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
-    Examples:
-          .. code-block:: python
+    Returns:
+        Unlike other common OPs, the OP call returns an IfElse OP object (e.g. ie in the example), which branches the input data by calling the internal functions of the object ``true_block ()``, ``false_block ()``, ``input ()``, ``output ()``, and integrates the data processed by different branches as the overall output by calling the internal ``call ()`` function. The output type is a list, and the type of each element in the list is Variable.
 
-            import paddle.fluid as fluid
+    Internal Functions:
+        The block is constructed by calling the ``with ie. true_block()`` function in the object, and the computational logic under condition true is put into the block. If no corresponding block is constructed, the input data in the corresponding conditional dimension is unchanged.
+ 
+        The block is constructed by calling the ``with ie. false_block()`` function in the object, and the computational logic under condition false is put into the block. If no corresponding block is constructed, the input data in the corresponding conditional dimension is unchanged.
 
-            image = fluid.layers.data(name="X", shape=[2, 5, 5], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-            limit = fluid.layers.fill_constant_batch_size_like(
-                 input=label, dtype='int64', shape=[1], value=5.0)
-            cond = fluid.layers.less_than(x=label, y=limit)
-            ie = fluid.layers.IfElse(cond)
-            with ie.true_block():
-                true_image = ie.input(image)
-                hidden = fluid.layers.fc(input=true_image, size=100, act='tanh')
-                prob = fluid.layers.fc(input=hidden, size=10, act='softmax')
-                ie.output(prob)
+        ``Out = ie. input (x)`` will take out the data of the corresponding conditional dimension in X and put it into out, supporting the internal processing of multiple inputs in block.
 
-            with ie.false_block():
-                false_image = ie.input(image)
-                hidden = fluid.layers.fc(
-                    input=false_image, size=200, act='tanh')
-                prob = fluid.layers.fc(input=hidden, size=10, act='softmax')
-                ie.output(prob)
-            prob = ie()
+        ``ie. output (out)`` writes the result to the output of the corresponding condition.
+
+        There is a ``call ()`` function inside the object, that is, by calling ``output = ie ()``, all the outputs inside the block of False are fused as the whole output, the output type is a list, and the type of each element in the list is Variable.
+
     """
     OUT_IF_ELSE_BLOCKS = 0
     IN_IF_ELSE_TRUE_BLOCKS = 1

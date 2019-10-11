@@ -39,9 +39,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/framework/save_load_util.h"
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/py_func_op.h"
@@ -152,6 +155,88 @@ static inline int PlaceIndex(const PlaceType &p) {
   return static_cast<int>(paddle::platform::Place(p).which());
 }
 
+static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
+  // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
+  // is not inside obj, but it would also set the error flag of Python.
+  // If the error flag is set in C++, C++ code would not raise Exception,
+  // but Python would raise Exception once C++ call ends.
+  // To avoid unexpected Exception raised in Python, we check whether
+  // attribute exists before calling PyObject_GetAttrString.
+  //
+  // Caution: PyObject_GetAttrString would increase reference count of PyObject.
+  // Developer should call Py_DECREF manually after the attribute is not used.
+  if (PyObject_HasAttrString(obj, attr_name)) {
+    return PyObject_GetAttrString(obj, attr_name);
+  } else {
+    return nullptr;
+  }
+}
+
+template <typename T>
+static T PyObjectCast(PyObject *obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error &) {
+    PADDLE_THROW("Python object is not type of %s", typeid(T).name());
+  }
+}
+
+using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
+
+static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
+    const PyNameVarBaseMap &state_dict) {
+  std::vector<std::shared_ptr<imperative::VarBase>> vec_res;
+  vec_res.reserve(state_dict.size());
+
+  for (auto &para : state_dict) {
+    PyObject *py_obj = para.second.ptr();
+    if (!py_obj || py_obj == Py_None) {
+      PADDLE_THROW("Save parameter [%s] is None", para.first);
+    }
+
+    const char *kIVarField = "_ivar";
+    PyObject *py_ivar = GetPythonAttribute(py_obj, kIVarField);
+    PADDLE_ENFORCE_NOT_NULL(py_ivar, "Can not find  ivar in Variable");
+
+    vec_res.emplace_back(
+        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
+    Py_DECREF(py_ivar);
+  }
+
+  return vec_res;
+}
+
+static std::vector<std::string> inline GetNameList(
+    const py::handle &py_handle) {
+  std::vector<std::string> vec_res;
+
+  PyObject *py_obj = py_handle.ptr();  // get underlying PyObject
+  // Python None is not nullptr in C++!
+  if (!py_obj || py_obj == Py_None) {
+    PADDLE_THROW("Save parameter list is None");
+  }
+
+  if (PyList_Check(py_obj)) {
+    size_t len = PyList_GET_SIZE(py_obj);
+
+    vec_res.reserve(len);
+
+    const char *kNameField = "name";
+
+    for (size_t i = 0; i < len; ++i) {
+      PyObject *py_name =
+          PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kNameField);
+      PADDLE_ENFORCE_NOT_NULL(py_name);
+      vec_res.emplace_back(PyObjectCast<std::string>(py_name));
+      Py_DECREF(py_name);
+    }
+  } else {
+    PADDLE_THROW("Set parameter should be a list");
+  }
+
+  return vec_res;
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -173,6 +258,39 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
+  m.def("_save_static_dict",
+        [](const std::string &str_file_name, const py::handle &vec_var_list,
+           const Scope &scope) {
+          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
+          SaveStaticNameListToDisk(str_file_name, vec_name_list, scope);
+        });
+
+  m.def("_load_static_dict",
+        [](const std::string &str_file_name, const py::handle &vec_var_list,
+           const Scope &scope) {
+          std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
+          LoadStaticNameListFromDisk(str_file_name, vec_name_list, scope);
+        });
+
+  m.def("_save_dygraph_dict", [](const std::string &str_file_name,
+                                 const PyNameVarBaseMap &state_dict) {
+    auto vec_var_base_list = GetVarBaseList(state_dict);
+
+    SaveDygraphVarBaseListToDisk(str_file_name, vec_var_base_list);
+  });
+
+  m.def("_load_dygraph_dict", [](const std::string &str_file_name) {
+    auto load_tensor = LoadDygraphVarBaseListFromDisk(str_file_name);
+
+    std::unordered_map<std::string, std::shared_ptr<imperative::VarBase>>
+        map_output;
+
+    for (size_t i = 0; i < load_tensor.size(); ++i) {
+      map_output.emplace(load_tensor[i]->Name(), load_tensor[i]);
+    }
+
+    return map_output;
+  });
   m.def("save_op_compatible_info", [](framework::ProgramDesc &desc) {
     framework::OpCompatibleMap op_compatible_map;
     op_compatible_map.InitOpCompatibleMap();
@@ -263,33 +381,92 @@ PYBIND11_MODULE(core_noavx, m) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_clear", &Tensor::clear)
-      .def("set", PyCPUTensorSetFromArray<float>)
-      .def("set", PyCPUTensorSetFromArray<int>)
-      .def("set", PyCPUTensorSetFromArray<double>)
-      .def("set", PyCPUTensorSetFromArray<int64_t>)
-      .def("set", PyCPUTensorSetFromArray<bool>)
-      .def("set", PyCPUTensorSetFromArray<uint16_t>)
-      .def("set", PyCPUTensorSetFromArray<uint8_t>)
-      .def("set", PyCPUTensorSetFromArray<int8_t>)
+      .def("set", PyCPUTensorSetFromArray<float>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<int>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<double>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<int64_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<bool>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<uint16_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<uint8_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCPUTensorSetFromArray<int8_t>, py::arg("array"),
+           py::arg("place"))
 #ifdef PADDLE_WITH_CUDA
-      .def("set", PyCUDATensorSetFromArray<float>)
-      .def("set", PyCUDATensorSetFromArray<int>)
-      .def("set", PyCUDATensorSetFromArray<double>)
-      .def("set", PyCUDATensorSetFromArray<int64_t>)
-      .def("set", PyCUDATensorSetFromArray<bool>)
-      .def("set", PyCUDATensorSetFromArray<uint16_t>)
-      .def("set", PyCUDATensorSetFromArray<uint8_t>)
-      .def("set", PyCUDATensorSetFromArray<int8_t>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<float>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<int>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<double>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<int64_t>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<bool>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>)
-      .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>)
+      .def("set", PyCUDATensorSetFromArray<float>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<int>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<double>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<int64_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<bool>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<uint16_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<uint8_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDATensorSetFromArray<int8_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<float>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<int>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<double>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<int64_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<bool>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>, py::arg("array"),
+           py::arg("place"))
+      .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>, py::arg("array"),
+           py::arg("place"), R"DOC(
+        Set the data of LoDTensor on place with given numpy array.
+        
+        Args:
+          lod (numpy.ndarray): The data to set.
+          place (CPUPlace|CUDAPlace|CUDAPinnedPlace): The place where the 
+          LoDTensor is to be set.
+
+        Returns:
+            None.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                t = fluid.LoDTensor()
+                t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+          )DOC")
 #endif
-      .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
+      .def("shape", [](Tensor &self) { return vectorize(self.dims()); }, R"DOC(
+           Return the shape of LoDTensor.
+
+           Returns:
+               list[int]: The shape of LoDTensor.
+
+
+           Examples:
+               .. code-block:: python
+
+                  import paddle.fluid as fluid
+                  import numpy as np
+
+                  t = fluid.LoDTensor()
+                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
+                  print(t.shape())  # [5, 30]
+           )DOC")
       .def("_set_float_element", TensorSetElement<float>)
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
@@ -303,39 +480,82 @@ PYBIND11_MODULE(core_noavx, m) {
         return ostr.str();
       });
 
+  // TODO(cql): add reference: en_user_guide_lod_tensor
   py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
-    LoDTensor is a Tensor with optional LoD information.
+    LoDTensor is a Tensor with optional LoD (Level of Details) information, 
+    it can be used for variable-length sequences, 
+    see :ref:`user_guide_lod_tensor` for details.
 
-    np.array(lod_tensor) can convert LoDTensor to numpy array.
-    lod_tensor.lod() can retrieve the LoD information.
+    LoDTensor can be converted to numpy array using :code:`numpy.array(lod_tensor)`.
 
-    LoD is short for Level of Details and is usually used for varied sequence
-    length. You can skip the following comment if you don't need optional LoD.
+    You can skip the following explanation if you don't need to know details 
+    of LoDTensor.
 
-    For example, a LoDTensor X can look like the example below. It contains
-    2 sequences. The first has length 2 and the second has length 3, as
-    described by x.lod.
+    The following two examples show how to use LODtensor to represent 
+    variable-length sequences.
+    
+    Example 1:
+    
+    Suppose x is a LoDTensor representing a variable-length sequence. 
+    It contains two logical subsequences, the length of first logical sequence 
+    is 2 (e.g., number of samples is 2), the length of second logical sequence 
+    is 3, and the total length is 5. The data of the first logical sequence is 
+    [1, 2], [3, 4], and the data of the second logical sequence is [5, 6], 
+    [7, 8], [9, 10]. The data dimension of each sample is 2. So, the final 
+    shape of the LoDTensor is [5, 2], of which 5 is the total length and 2 is 
+    the dimension of each sample.
+    
+    Logically, we can represent the variable-length sequence in two ways: one 
+    is in the form of recursive sequence lengths, that is, 
+    x.recursive_sequence_lengths=[[2, 3]]; the other is in the form of offsets, 
+    that is, x.lod=[[0, 2, 2+3]]. These two representations are equivalent, and 
+    you can set and retrieve recursive_sequence_lengths or LoD through the 
+    corresponding interfaces of LoDTensor introduced later.
 
-    The first tensor dimension 5=2+3 is calculated from LoD if it's available.
-    It means the total number of sequence element. In X, each element has 2
-    columns, hence [5, 2].
+    Actually, in order to access sequence faster, Paddle uses offset to store 
+    different lengths of sequences. 
+    Therefore, the operations on recursive_sequence_lengths will be converted 
+    to the operations on LoD eventually.
+    
+    .. code-block:: python
 
-    x.lod  = [[2, 3]]
+      y.data = [[1, 2], [3, 4],
+                [5, 6], [7, 8],
+                [9, 10], [11, 12], [13, 14]]
 
-    x.data = [[1, 2], [3, 4], [5, 6], [7, 8], [9, 10]]
+      y.shape = [2+2+3, 2]
 
-    x.shape = [5, 2]
+      y.recursive_sequence_lengths = [[2, 1], [2, 2, 3]]
 
-    LoD can have multiple levels (for example, a paragraph can have multiple
-    sentences and a sentence can have multiple words). In the following
-    LodTensor Y, the lod_level is 2. It means there are 2 sequence, the
-    first sequence length is 2 (has 2 sub-sequences), the second one's
-    length is 1. The first sequence's 2 sub-sequences have length 2 and 2,
-    respectively. And the second sequence's 1 sub-sequence has length 3.
+      y.lod = [[0, 2, 3], [0, 2, 4, 7]]
 
-    y.lod = [[2 1], [2 2 3]]
+    Example 2:
 
-    y.shape = [2+2+3, ...]
+    LoD may have more than one level (for example, a paragraph may have more 
+    than one sentence and a sentence may have more than one word). Suppose y 
+    is a LoDTensor and its lod_level is 2. 
+    From level = 0, there are two logical sequences, the length of which is 
+    2 and 1, respectively, indicating that the first logical sequence contains 
+    two sub-sequences and the second logical sequence contains one sub-sequence. 
+    From level = 1, the lengths of two sub-sequences contained by the first 
+    logical sequence is 2 and 2, and the length of sub-sequence contained by 
+    the second logical sequence is 3.
+      
+    Therefore, the LoDTensor is represented in the form of recursive sequence 
+    lengths as y.recursive_sequence_lengths=[[2,1], [2,2,3]]; and equally, in 
+    the form of offset, it is represented as y.lod=[[0,2,3], [0,2,4,7]].
+
+    .. code-block:: python
+
+      y.data = [[1, 2], [3, 4],
+                [5, 6], [7, 8],
+                [9, 10], [11, 12], [13, 14]]
+
+      y.shape = [2+2+3, 2]
+
+      y.recursive_sequence_lengths = [[2, 1], [2, 2, 3]]
+
+      y.lod = [[0, 2, 3], [0, 2, 4, 7]]
 
     Examples:
         .. code-block:: python
@@ -344,16 +564,6 @@ PYBIND11_MODULE(core_noavx, m) {
 
           t = fluid.LoDTensor()
 
-  Note:
-      In above description, LoD is length-based. In Paddle internal
-      implementation, lod is offset-based. Hence, internally,
-      y.lod is represented as [[0, 2, 3], [0, 2, 4, 7]] (length-based
-      equivlent would be [[2-0, 3-2], [2-0, 4-2, 7-4]]).
-
-      Sometimes LoD is called recursive_sequence_length to be more
-      self-explanatory. In this case, it must be length-based. Due to history
-      reasons. when LoD is called lod in public API, it might be offset-based.
-      Users should be careful about it.
         )DOC")
       .def("__array__", [](Tensor &self) { return TensorToPyArray(self); })
       .def("__init__",
@@ -372,7 +582,8 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("__init__", [](LoDTensor &instance) { new (&instance) LoDTensor(); })
       // We implement offset based LOD in C++ while we use length based with
-      // Python API. So we changed set_lod to set_recursive_sequence_lengths to
+      // Python API. So we changed set_lod to set_recursive_sequence_lengths
+      // to
       // avoid misuse.
       // The discussion is here:
       // https://github.com/PaddlePaddle/Paddle/issues/10855
@@ -391,7 +602,10 @@ PYBIND11_MODULE(core_noavx, m) {
            Set LoD of the LoDTensor.
 
            Args:
-               lod (List[List[int]]): the lod to be set.
+               lod (list[list[int]]): The lod to set.
+
+           Returns:
+                None.
 
            Examples:
                .. code-block:: python
@@ -402,6 +616,7 @@ PYBIND11_MODULE(core_noavx, m) {
                  t = fluid.LoDTensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_lod([[0, 2, 5]])
+                 print(t.lod()) # [[0, 2, 5]]
            )DOC")
       .def("set_recursive_sequence_lengths",
            [](LoDTensor &self, const std::vector<std::vector<size_t>>
@@ -420,14 +635,17 @@ PYBIND11_MODULE(core_noavx, m) {
              self.set_lod(new_offset_lod);
            },
            py::arg("recursive_sequence_lengths"), R"DOC(
-           Set LoD of the LoDTensor according to recursive sequence length.
+           Set LoD of the LoDTensor according to recursive sequence lengths.
 
-           For example, if recursive_sequence_lengths=[[2, 3]], meaning that
+           For example, if recursive_sequence_lengths=[[2, 3]], which means
            there are two sequences with length 2 and 3 respectively, the
-           corresponding lod would be [[0, 2, 2+3]], i.e, [[0, 2, 5]].
+           corresponding lod would be [[0, 2, 2+3]], i.e., [[0, 2, 5]].
 
            Args:
-                recursive_sequence_lengths (List[List[int]]): sequence lengths.
+                recursive_sequence_lengths (list[list[int]]): The recursive sequence lengths.
+           
+           Returns:
+                None.
 
            Examples:
                .. code-block:: python
@@ -438,6 +656,8 @@ PYBIND11_MODULE(core_noavx, m) {
                  t = fluid.LoDTensor()
                  t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                  t.set_recursive_sequence_lengths([[2, 3]])
+                 print(t.recursive_sequence_length())  # [[2, 3]]
+                 print(t.lod())  # [[0, 2, 5]]
            )DOC")
       .def("lod",
            [](LoDTensor &self) -> std::vector<std::vector<size_t>> {
@@ -452,8 +672,8 @@ PYBIND11_MODULE(core_noavx, m) {
            Return the LoD of the LoDTensor.
 
            Returns:
-               out (List[List[int]]): the lod of the LoDTensor.
-
+               list[list[int]]: The lod of the LoDTensor.
+           
            Examples:
                .. code-block:: python
 
@@ -476,10 +696,11 @@ PYBIND11_MODULE(core_noavx, m) {
              return new_lod;
            },
            R"DOC(
-           Return the sequence length of the LoDTensor corresponding to LoD.
+           Return the recursive sequence lengths corresponding to of the LodD 
+           of the LoDTensor.
 
            Returns:
-               out (List[List[int]): the sequence lengths.
+                list[list[int]]: The recursive sequence lengths.
 
            Examples:
                .. code-block:: python
@@ -499,10 +720,10 @@ PYBIND11_MODULE(core_noavx, m) {
              return CheckLoD(self.lod(), vectorize(self.dims()).front());
            },
            R"DOC(
-           Check whether the lod of the LoDTensor is valid.
+           Check whether the LoD of the LoDTensor is valid.
 
            Returns:
-               out (bool): whether the lod is valid.
+               bool: Whether the LoD is valid.
 
            Examples:
                .. code-block:: python
@@ -831,9 +1052,23 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
 #endif
   py::class_<platform::CUDAPlace>(m, "CUDAPlace", R"DOC(
-    CUDAPlace is a descriptor of a device. It represents a GPU, and each CUDAPlace
-    has a dev_id to indicate the number of cards represented by the current CUDAPlace.
+    **Note**:
+        For multi-card tasks, please use `FLAGS_selected_gpus` environment variable to set the visible GPU device.
+        The next version will fix the problem with `CUDA_VISIBLE_DEVICES` environment variable.
+
+    CUDAPlace is a descriptor of a device.
+    It represents a GPU device allocated or to be allocated with Tensor or LoDTensor.
+    Each CUDAPlace has a dev_id to indicate the graphics card ID represented by the current CUDAPlace,
+    staring from 0.
     The memory of CUDAPlace with different dev_id is not accessible.
+    Numbering here refers to the logical ID of the visible graphics card, not the actual ID of the graphics card.
+    You can set visible GPU devices by setting the `CUDA_VISIBLE_DEVICES` environment variable.
+    When the program starts, visible GPU devices will be numbered from 0.
+    If `CUDA_VISIBLE_DEVICES` is not set, all devices are visible by default,
+    and the logical ID is the same as the actual ID.
+
+    Parameters:
+        id (int): GPU device ID.
 
     Examples:
         .. code-block:: python
@@ -891,14 +1126,14 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::CUDAPlace &>);
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
-    CPUPlace is a descriptor of a device. It represents a CPU, and the memory
-    CPUPlace can be accessed by CPU.
+    CPUPlace is a descriptor of a device.
+    It represents a CPU device allocated or to be allocated with Tensor or LoDTensor.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          cpu_place = fluid.CPUPlace()
+          cpu_place = fluid.CPUPlace()to be allocated
 
         )DOC")
       .def(py::init<>())
@@ -911,8 +1146,12 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__str__", string::to_string<const platform::CPUPlace &>);
 
   py::class_<paddle::platform::CUDAPinnedPlace>(m, "CUDAPinnedPlace", R"DOC(
-    CUDAPinnedPlace is a descriptor of a device. The memory of CUDAPinnedPlace
-    can be accessed by GPU and CPU.
+    CUDAPinnedPlace is a descriptor of a device.
+    It refers to the page locked memory allocated by the CUDA function `cudaHostAlloc()` in the host memory.
+    The host operating system will not paging and exchanging the memory.
+    It can be accessed through direct memory access technology to speed up the copy of data between the host and GPU.
+    For more information on CUDA data transfer and `pinned memory`,
+    please refer to `official document <https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html#pinned-memory>`_ .
 
     Examples:
         .. code-block:: python
@@ -1014,11 +1253,31 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::ExecutorPrepareContext>(m, "ExecutorPrepareContext")
       .def(py::init<const ProgramDesc &, size_t>());
 
+  py::class_<framework::TrainerBase, std::shared_ptr<framework::TrainerBase>>(
+      m, "TrainerBase")
+      .def("get_worker_scope",
+           [](TrainerBase &self, int thread_id) -> Scope * {
+             return self.GetWorkerScope(thread_id);
+           },
+           py::return_value_policy::reference)
+      .def("finalize", &TrainerBase::Finalize);
+
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
       .def("run_from_dataset", &Executor::RunFromDataset,
            py::call_guard<py::gil_scoped_release>())
+      .def("init_for_dataset",
+           [](Executor &self, const ProgramDesc &prog,
+              const std::string &trainer_desc, Scope *scope,
+              Dataset *dataset) -> std::shared_ptr<TrainerBase> {
+             return self.InitForDataset(prog, trainer_desc, scope, dataset);
+           })
+      .def("run_from_dataset",
+           [](Executor &self, std::shared_ptr<TrainerBase> trainer) {
+             pybind11::gil_scoped_release release;
+             self.RunFromDataset(trainer);
+           })
       .def("run_prepared_ctx",
            [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
               std::map<std::string, const LoDTensor *> *feed_targets,
@@ -1092,7 +1351,7 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<LoDTensorArray>(m, "LoDTensorArray", R"DOC(
-    Array of LoDTensor.
+    LoDTensorArray is array of LoDTensor, it supports operator[], len() and for-loop iteration.
 
     Examples:
         .. code-block:: python
@@ -1121,6 +1380,12 @@ All parameter, weight, gradient are variables in Paddle.
            },
            py::arg("tensor"), R"DOC(
              Append a LoDensor to LoDTensorArray.
+              
+             Args:
+                   tensor (LoDTensor): The LoDTensor to be appended.
+
+             Returns:
+                   None.
 
              Examples:
                  .. code-block:: python
@@ -1668,7 +1933,8 @@ All parameter, weight, gradient are variables in Paddle.
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
               PADDLE_THROW(
-                  "BuildStrategy.memory_optimize must be None, False or True");
+                  "BuildStrategy.memory_optimize must be None, False or "
+                  "True");
             }
           },
           R"DOC(The type is BOOL or None, memory opitimize aims to save total memory
