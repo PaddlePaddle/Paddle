@@ -12667,18 +12667,19 @@ def slice(input, axes, starts, ends):
 @templatedoc()
 def strided_slice(input, axes, starts, ends, strides):
     """
-    Strided Slice OP
-
-    The conceptualization that really helped me understand this was 
-    that this function emulates the indexing behavior of numpy arrays.
-    If you're familiar with numpy arrays, you'll know that you can make 
-    slices via input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN]. 
-    Basically, a very succinct way of writing for loops to get certain elements of the array.
-    strided_slice just allows you to do this fancy indexing without the syntactic sugar. 
-    The numpy (#input[start1:end1:step1, start2:end2:step2, ... startN:endN:stepN])
-    example from above just becomes fluid.strided_slice(input,[0, 1, ..., N], 
-    [start1, start2, ..., startN], [end1, end2, ..., endN], [strides1, strides2, ..., stridesN]),
-    the axes which controls the dimension you want to slice makes it more flexible.
+    This operator produces a slice of ``input`` along multiple axes. Similar to numpy:
+    https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    Slice uses ``axes``, ``starts`` and ``ends`` attributes to specify the start and
+    end dimension for each axis in the list of axes and Slice uses this information
+    to slice the input data tensor. If a negative value is passed to
+    ``starts`` or ``ends`` such as :math:`-i`,  it represents the reverse position of the
+    axis :math:`i-1` th(here 0 is the initial position). The ``strides`` represents steps of
+    slicing and if the ``strides`` is negative, slice operation is in the opposite direction.
+    If the value passed to ``starts`` or ``ends`` is greater than n
+    (the number of elements in this dimension), it represents n.
+    For slicing to the end of a dimension with unknown size, it is recommended
+    to pass in INT_MAX. The size of ``axes`` must be equal to ``starts`` , ``ends`` and ``strides``.
+    Following examples will explain how strided_slice works:
 
     .. code-block:: text
 
@@ -12688,7 +12689,7 @@ def strided_slice(input, axes, starts, ends, strides):
                 axes = [0, 1]
                 starts = [1, 0]
                 ends = [2, 3]
-                strides=[1, 1]
+                strides = [1, 1]
             Then:
                 result = [ [5, 6, 7], ]
         
@@ -12697,25 +12698,48 @@ def strided_slice(input, axes, starts, ends, strides):
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 axes = [0, 1]
                 starts = [0, 1]
+                ends = [2, 0]
+                strides = [1, -1]
+            Then:
+                result = [ [8, 7, 6], ]
+        
+        Case3:
+            Given:
+                data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
+                axes = [0, 1]
+                starts = [-1, 1000]
                 ends = [-1, 1000]
                 strides = [1, 3]
             Then:
                 result = [ [2], ]
     Args:
-        input (Variable): ${input_comment}.
-        axes (List): ${axes_comment}
-        starts (List|Variable): ${starts_comment}
-        ends (List|Variable): ${ends_comment}
+        input (Variable): An N-D ``Tensor`` or ``LoDTensor`` . The data type is ``float32``, ``float64``, ``int32`` or ``int64``.
+        axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
+                            It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
+        starts (list|tuple|Variable): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``starts`` is an Variable, it should be an 1-D Tensor.
+                It represents starting indices of corresponding axis in ``axes``.
+        ends (list|tuple|Variable): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``ends`` is an Variable, it should be an 1-D Tensor .
+                It represents ending indices of corresponding axis in ``axes``.
+        strides (list|tuple|Variable): The data type is ``int32`` . If ``strides`` is a list or tuple, the elements of
+                it should be integers or Tensors with shape [1]. If ``strides`` is an Variable, it should be an 1-D Tensor .
+                It represents slice step of corresponding axis in ``axes``.
 
     Returns:
-        out (Variable): ${out_comment}
+        Variable:  A ``Tensor`` or ``LoDTensor`` with the same dimension as ``input``. The data type is same as ``input``.
+
+    Raises:
+        TypeError: The type of ``starts`` must be list, tuple or Variable.
+        TypeError: The type of ``ends`` must be list, tuple or Variable.
+        TypeError: The type of ``strides`` must be list, tuple or Variable.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            input = fluid.layers.data(
+            input = fluid.data(
                 name="input", shape=[3, 4, 5, 6], dtype='float32')
 
             # example 1:
@@ -12723,13 +12747,17 @@ def strided_slice(input, axes, starts, ends, strides):
             axes = [0, 1, 2]
             starts = [-3, 0, 2]
             ends = [3, 2, 4]
-            strides=[1, 1, 1]
-            sliced_1 = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides)
+            strides_1 = [1, 1, 1]
+            strides_2 = [1, 1, 2]
+            sliced_1 = fluid.layers.strided_slice(input, axes=axes, starts=starts, ends=ends, strides=strides_1)
+            # sliced_1 is input[:, 0:3:1, 0:2:1, 2:4:1].
+
 
             # example 2:
             # attr starts is a list which contain tensor Variable.
             minus_3 = fluid.layers.fill_constant([1], "int32", -3)
-            sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides)
+            sliced_2 = fluid.layers.strided_slice(input, axes=axes, starts=[minus_3, 0, 2], ends=ends, strides=strides_2)
+            # sliced_2 is input[:, 0:3:1, 0:2:1, 2:4:2].
     """
     if not isinstance(starts, (list, tuple, Variable)):
         raise ValueError(
