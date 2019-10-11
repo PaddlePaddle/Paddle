@@ -238,7 +238,7 @@ class DataFeeder(object):
             iterable (generator): user defined python generator to read the raw input data
 
         Returns: 
-            a :code:`dict` that contains (variable name - converted tensor) pairs
+            :code:`dict`: a :code:`dict` that contains (variable name - converted tensor) pairs
 
         Example:
             ..  code-block:: python
@@ -304,7 +304,7 @@ class DataFeeder(object):
                 all available devices on the machine will be used. Default None.
 
         Returns: 
-            a :code:`generator` that generate dict which contains (variable name - converted tensor) pairs, 
+            :code:`generator`: a :code:`generator` that generate dict which contains (variable name - converted tensor) pairs, 
             the total number of dicts will be generated matches with the :code:`num_places`
 
         .. note::        
@@ -401,7 +401,7 @@ class DataFeeder(object):
                 feed all devices. Default True.
 
         Returns: 
-            a decorated :code:`generator` which return converted dicts that can be fed into Executor
+            :code:`generator`: a new :code:`generator` which return converted dicts that can be fed into Executor
             
         Raises:
             :code:`ValueError`: If drop_last is False and the data cannot fit devices perfectly.
@@ -413,27 +413,37 @@ class DataFeeder(object):
                 import paddle
                 import paddle.fluid as fluid
                 import paddle.fluid.compiler as compiler
+                
                 def reader():
                     def _mini_batch(batch_size):
                         for i in range(batch_size):
                             yield np.random.random([16]).astype('float32'), np.random.randint(10, size=[1])
+                    
                     for _ in range(10):
                         yield _mini_batch(np.random.randint(1, 10))
+                
                 place_num = 3
                 places = [fluid.CPUPlace() for _ in range(place_num)]
+                
+                # a simple network sample
                 data = fluid.layers.data(name='data', shape=[-1, 4, 4], dtype='float32')
                 label = fluid.layers.data(name='label', shape=[-1, 1], dtype='int64')
                 hidden = fluid.layers.fc(input=data, size=10)
+                
                 feeder = fluid.DataFeeder(place=places[0], feed_list=[data, label])
                 reader = feeder.decorate_reader(reader, multi_devices=True, num_places=3, drop_last=True)
+                
                 exe = fluid.Executor(places[0])
                 exe.run(fluid.default_startup_program())
                 compiled_prog = compiler.CompiledProgram(
                          fluid.default_main_program()).with_data_parallel(places=places)
+                
                 for i,data in enumerate(reader()):
+                    # print data if you like
+                    # print(i, data)
                     ret = exe.run(compiled_prog, feed=data, fetch_list=[hidden])
                     print(ret)
-                
+
         """
 
         def __reader_creator__():
