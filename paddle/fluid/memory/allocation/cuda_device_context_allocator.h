@@ -78,6 +78,9 @@ class CUDADeviceContextAllocator : public Allocator {
   explicit CUDADeviceContextAllocator(platform::CUDAPlace place,
                                       cudaStream_t default_stream)
       : place_(place), default_stream_(default_stream) {
+    PADDLE_ENFORCE_NOT_NULL(
+        default_stream_,
+        "Didn't set default stream for CUDADeviceContextAllocator");
     platform::CUDADeviceGuard guard(place_.device);
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaEventCreate(&event_, cudaEventDisableTiming),
@@ -93,22 +96,24 @@ class CUDADeviceContextAllocator : public Allocator {
     }
   }
 
+  void RecordEventAndWait(cudaStream_t stream) {
+    if (default_stream_ != stream) {
+      // Wait for the event on stream
+      platform::CUDADeviceGuard guard(place_.device);
+
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaEventRecord(event_, default_stream_),
+          "Failed to record event in CUDADeviceContextAllocator");
+
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaStreamWaitEvent(stream, event_, 0),
+          "Failed to wait event in CUDADeviceContextAllocator");
+    }
+  }
+
  protected:
   Allocation *AllocateImpl(size_t size) override {
-    PADDLE_ENFORCE_NOT_NULL(
-        default_stream_,
-        "Didn't set default stream for CUDADeviceContextAllocator");
-    platform::CUDADeviceGuard guard(place_.device);
-    auto allocation =
-        new CUDADeviceContextAllocation(memory::Alloc(place_, size));
-    // Wait for the event on stream
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaEventRecord(event_, default_stream_),
-        "Failed to record event in CUDADeviceContextAllocator");
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaStreamWaitEvent(default_stream_, event_, 0),
-        "Failed to wait event in CUDADeviceContextAllocator");
-    return allocation;
+    return memory::Alloc(place_, size).release();
   }
 
   void FreeImpl(Allocation *allocation) override { delete allocation; }
@@ -142,6 +147,7 @@ class CUDADeviceContextAllocatorPool {
     AllocationPtr allocation = allocator->Allocate(size);
     static_cast<CUDADeviceContextAllocation *>(allocation.get())
         ->SetCUDADeviceContext(&dev_ctx);
+    allocator->RecordEventAndWait(dev_ctx.stream());
     return allocation;
   }
 
