@@ -22,18 +22,19 @@ namespace operators {
 
 template <typename T>
 inline HOSTDEVICE T PrRoIPoolingGetData(const T* data, const int h, const int w,
-                                 const int height, const int width) {
+                                        const int height, const int width) {
   bool overflow = (h < 0) || (w < 0) || (h >= height) || (w >= width);
   T retVal = overflow ? 0.0f : data[h * width + w];
   return retVal;
 }
 
 template <typename T>
-inline HOSTDEVICE T PrRoIPoolingMatCalculation(const T* this_data, const int s_h,
-                                        const int s_w, const int e_h,
-                                        const int e_w, const T y0, const T x0,
-                                        const T y1, const T x1, const int h0,
-                                        const int w0) {
+inline HOSTDEVICE T PrRoIPoolingMatCalculation(const T* this_data,
+                                               const int s_h, const int s_w,
+                                               const int e_h, const int e_w,
+                                               const T y0, const T x0,
+                                               const T y1, const T x1,
+                                               const int h0, const int w0) {
   T alpha, beta, lim_alpha, lim_beta, tmp;
   T sum_out = 0;
 
@@ -74,9 +75,10 @@ inline HOSTDEVICE T PrRoIPoolingMatCalculation(const T* this_data, const int s_h
 
 template <typename T>
 inline HOSTDEVICE void PrRoIPoolingDistributeDiff(T* diff, const T top_diff,
-                                           const int h, const int w,
-                                           const int height, const int width,
-                                           const T coeff) {
+                                                  const int h, const int w,
+                                                  const int height,
+                                                  const int width,
+                                                  const T coeff) {
   bool overflow = (h < 0) || (w < 0) || (h >= height) || (w >= width);
   if (!overflow) {
     *(diff + h * width + w) = top_diff * coeff;
@@ -137,8 +139,9 @@ inline HOSTDEVICE static T PrRoIPoolingGetCoeff(T dh, T dw) {
 
 template <typename T, typename H, typename W>
 inline HOSTDEVICE static T PrRoIPoolingInterpolation(const T* data, const H h,
-                                              const W w, const int height,
-                                              const int width) {
+                                                     const W w,
+                                                     const int height,
+                                                     const int width) {
   T retVal = 0.0f;
   int h1 = floorf(h);
   int w1 = floorf(w);
