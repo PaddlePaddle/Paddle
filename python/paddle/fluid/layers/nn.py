@@ -4110,7 +4110,7 @@ def batch_norm(input,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
-               do_model_average_for_mean_and_var=False,
+               do_model_average_for_mean_and_var=True,
                fuse_with_relu=False,
                use_global_stats=False):
     """
@@ -4194,7 +4194,8 @@ def batch_norm(input,
         moving_variance_name(str, Default None): The name of the moving_variance which store the global Variance.
             If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm 
             will save global variance with the string.
-        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance should do model
+            average when model average is enabled.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
         use_global_stats(bool, Default False): Whether to use global mean and
             variance. In inference or test mode, set use_global_stats to true
@@ -4441,7 +4442,7 @@ def data_norm(input,
               name=None,
               moving_mean_name=None,
               moving_variance_name=None,
-              do_model_average_for_mean_and_var=False):
+              do_model_average_for_mean_and_var=True):
     """
     **Data Normalization Layer**
 
@@ -4475,7 +4476,8 @@ def data_norm(input,
             will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance
+            should do model average when model average is enabled.
 
     Returns:
         Variable: A tensor variable which is the result after applying data normalization on the input.
@@ -13456,6 +13458,35 @@ def _elementwise_op(helper):
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'x' in %s must be Variable, but received %s" %
+            (op_type, type(x)))
+    if not isinstance(y, Variable):
+        raise TypeError(
+            "The type of 'y' in %s must be Variable, but received %s" %
+            (op_type, type(y)))
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'x' in %s only support float16 on GPU now." %
+            (op_type))
+    if convert_dtype(y.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'y' in %s only support float16 on GPU now." %
+            (op_type))
+    if convert_dtype(x.dtype) not in [
+            'float16', 'float32', 'float64', 'int32', 'int64'
+    ]:
+        raise TypeError(
+            "The data type of 'x' in %s must be float16 or float32 or float64 or int32 or int64, "
+            "but received %s." % (op_type, convert_dtype(x.dtype)))
+    if convert_dtype(y.dtype) not in [
+            'float16', 'float32', 'float64', 'int32', 'int64'
+    ]:
+        raise TypeError(
+            "The data type of 'y' in %s must be float16 or float32 or float64 or int32 or int64, "
+            "but received %s." % (op_type, convert_dtype(y.dtype)))
+
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
