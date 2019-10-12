@@ -20,6 +20,10 @@
 
 set -ex
 
+if [ -z ${BRANCH} ]; then
+    BRANCH="develop"
+fi
+
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
     ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
@@ -36,7 +40,6 @@ function print_usage() {
     ${BLUE}fluid_inference_lib${NONE}: deploy fluid inference library
     ${BLUE}check_style${NONE}: run code style check
     ${BLUE}cicheck${NONE}: run CI tasks
-    ${BLUE}assert_api_not_changed${NONE}: check api compability
     "
 }
 
@@ -50,6 +53,8 @@ function init() {
     if [ -z "${SCRIPT_NAME}" ]; then
         SCRIPT_NAME=$0
     fi
+
+    ENABLE_MAKE_CLEAN=${ENABLE_MAKE_CLEAN:-ON}
 }
 
 function cmake_base() {
@@ -291,7 +296,11 @@ function build_base() {
     if [ "$1" != "" ]; then
       parallel_number=$1
     fi
-    make clean
+
+    if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
+        make clean
+    fi
+
     make -j ${parallel_number}
     make install -j ${parallel_number}
 }
@@ -304,7 +313,7 @@ function build() {
     Building in /paddle/build ...
     ============================================
 EOF
-    build_base $1
+    build_base $@
 }
 
 function build_mac() {
@@ -315,7 +324,9 @@ function build_mac() {
     Building in /paddle/build ...
     ============================================
 EOF
-    make clean
+    if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
+        make clean
+    fi
     make -j 8
     make install -j 8
 }
@@ -442,32 +453,68 @@ EOF
     fi
 }
 
-function assert_api_not_changed() {
+function fetch_upstream_develop_if_not_exist() {
+    UPSTREAM_URL='https://github.com/PaddlePaddle/Paddle'
+    origin_upstream_url=`git remote -v | awk '{print $1, $2}' | uniq | grep upstream | awk '{print $2}'` 
+    if [ "$origin_upstream_url" == "" ]; then
+        git remote add upstream $UPSTREAM_URL.git
+    elif [ "$origin_upstream_url" != "$UPSTREAM_URL" ] \
+            && [ "$origin_upstream_url" != "$UPSTREAM_URL.git" ]; then
+        git remote remove upstream
+        git remote add upstream $UPSTREAM_URL.git
+    fi
+    
+    if [ ! -e "$PADDLE_ROOT/.git/refs/remotes/upstream/$BRANCH" ]; then 
+        git fetch upstream # develop is not fetched
+    fi
+}  
+
+function generate_upstream_develop_api_spec() {
+    fetch_upstream_develop_if_not_exist
+    cur_branch=`git branch | grep \* | cut -d ' ' -f2` 
+    git checkout -b develop_base_pr upstream/$BRANCH
+    cmake_gen $1
+    build $2
+    generate_api_spec $1 "DEV"
+    git checkout $cur_branch
+    git branch -D develop_base_pr 
+    ENABLE_MAKE_CLEAN="OFF"
+}
+
+function generate_api_spec() {
+    spec_kind=$2
+    if [ "$spec_kind" != "PR" ] && [ "$spec_kind" != "DEV" ]; then
+        echo "Not supported $2"
+        exit 1
+    fi
+
     mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
     cd ${PADDLE_ROOT}/build/.check_api_workspace
-    virtualenv .env
-    source .env/bin/activate
+    virtualenv .${spec_kind}_env
+    source .${spec_kind}_env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
 
-    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then
+    spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec 
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > $spec_path
+    if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then 
         # Use sed to make python2 and python3 sepc keeps the same
         sed -i 's/arg0: str/arg0: unicode/g' new.spec
         sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
-    fi
-    # ComposeNotAligned has significant difference between py2 and py3
-    sed -i '/.*ComposeNotAligned.*/d' new.spec
+    fi   
 
-    python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
-
+    # TODO(paddle-dev): remove op_use_default_grad_op_maker.spec 
     # Currently, we only check in PR_CI python 2.7
-    if [ "$SYSTEM" != "Darwin" ]; then
-      if [ "$1" == "" ] || [ "$1" == "cp27-cp27m" ] || [ "$1" == "cp27-cp27mu" ]; then
-        python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
-      fi
+    if [ "spec_kind" == "PR" ]; then
+        if [ "$SYSTEM" != "Darwin" ]; then
+            if [ "$1" == "" ] || [ "$1" == "cp27-cp27m" ] || [ "$1" == "cp27-cp27mu" ]; then
+                python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
+                    ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
+            fi
+        fi
     fi
     deactivate
 }
+
 
 function assert_api_spec_approvals() {
     /bin/bash ${PADDLE_ROOT}/tools/check_api_approvals.sh
@@ -968,7 +1015,7 @@ function build_document_preview() {
 
 
 function example() {
-    pip install /paddle/build/python/dist/*.whl
+    pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     paddle version
     cd ${PADDLE_ROOT}/python/paddle/fluid
     python sampcd_processor.py cpu 
@@ -989,10 +1036,11 @@ function main() {
         build ${parallel_number}
         ;;
       build_and_check)
+        generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         cmake_gen ${PYTHON_ABI:-""}
-        build ${parallel_number}
-        assert_api_not_changed ${PYTHON_ABI:-""}
+        build ${parallel_number} 
         example
+        generate_api_spec ${PYTHON_ABI:-""} "PR" 
         assert_api_spec_approvals
         ;;
       build)
@@ -1048,7 +1096,7 @@ function main() {
         run_brpc_test
         ;;
       assert_api)
-        assert_api_not_changed ${PYTHON_ABI:-""}
+        generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
         assert_api_spec_approvals
         ;;
       test_inference)
