@@ -546,7 +546,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   }
 #endif
 
-//  graph = member_->ApplyMemoryOptimizePass(graph);
+  graph = member_->ApplyMemoryOptimizePass(graph);
 
   async_graphs[0] = graph;
 
