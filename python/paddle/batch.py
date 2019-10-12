@@ -17,21 +17,21 @@ __all__ = ['batch']
 
 def batch(reader, batch_size, drop_last=False):
     """
-    This operator is a reader decorator. When reading with the result decorated
+    This operator creates a batched reader. When reading with the result decorated
     reader, output data will be automatically organized to batched data at a 
     specified :code:`batch_size` size.
     
     Args:
         reader(generator): the data reader to read from.
         batch_size(int): size of each mini-batch.
-        drop_last(bool): If set to True, the last batch is dropped when the size 
-                         of last batch is not equal to batch_size, if set to False,
-                         it will not. Default: False.
+        drop_last(bool, optional): If set to True, the last batch is dropped when 
+            the size of last batch is not equal to batch_size, if set to False,
+            it will not. Default: False.
     Returns:
         The batched reader. 
     
     Return Type:
-        list   
+        generator   
 
     Examples:
         .. code-block:: python
