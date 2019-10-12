@@ -75,7 +75,8 @@ class DownpourServer(Server):
                     'sparse_accessor_class', 'sparse_learning_rate', 'sparse_initial_g2sum', 'sparse_initial_range', \
                     'sparse_weight_bounds', 'sparse_embedx_dim', 'sparse_embedx_threshold', 'sparse_nonclk_coeff', \
                     'sparse_click_coeff', 'sparse_base_threshold', 'sparse_delta_threshold', 'sparse_delta_keep_days', \
-                    'sparse_delete_after_unseen_days', 'sparse_show_click_decay_rate', 'sparse_delete_threshold']
+                    'sparse_delete_after_unseen_days', 'sparse_show_click_decay_rate', 'sparse_delete_threshold', \
+                    'sparse_converter', 'sparse_deconverter']
 
         for key in strategy:
             if key not in support_sparse_key_list:
@@ -145,14 +146,23 @@ class DownpourServer(Server):
                     'sparse_show_click_decay_rate', 0.98)
                 table.accessor.downpour_accessor_param.delete_threshold = strategy.get(
                     'sparse_delete_threshold', 0.8)
+                converter = strategy.get(
+                    'sparse_converter',
+                    "(scripts/xbox_compressor_mf.py | bin/xbox_pb_converter)")
+                deconverter = strategy.get(
+                    'sparse_deconverter',
+                    "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)"
+                )
+
                 table1 = table.accessor.table_accessor_save_param.add()
                 table1.param = 1
-                table1.converter = "(scripts/xbox_compressor_mf.py | bin/xbox_pb_converter)"
-                table1.deconverter = "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)"
+                table1.converter = converter
+                table1.deconverter = deconverter
+
                 table2 = table.accessor.table_accessor_save_param.add()
                 table2.param = 2
-                table2.converter = "(scripts/xbox_compressor_mf.py | bin/xbox_pb_converter)"
-                table2.deconverter = "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)"
+                table2.converter = converter
+                table2.deconverter = deconverter
 
     def add_dense_table(self, table_id, param_var, grad_var, strategy,
                         sparse_table_names):
