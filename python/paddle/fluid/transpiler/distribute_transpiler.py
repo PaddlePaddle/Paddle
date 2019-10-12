@@ -1855,6 +1855,7 @@ class DistributeTranspiler(object):
             varname, offset, size = block_str.split(":")
             if varname not in block_map:
                 block_map[varname] = []
+            block_map[varname].append((int(offset), int(size)))
 
         for varname, splited in six.iteritems(block_map):
             orig_var = program.global_block().var(varname)
