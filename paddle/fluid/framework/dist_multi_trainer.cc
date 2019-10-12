@@ -109,9 +109,9 @@ void DistMultiTrainer::InitDumpEnv() {
       dump_thread_num_ += 1;
     }
   }
-  std::cout << "wxx file num:" << dump_file_num_ << " mpi_size:" << mpi_size_ << " mpi_rank:" << mpi_rank_ << " dump_thread_num" << dump_thread_num_ << std::endl;
   for (int i = 0; i < dump_thread_num_; i++) {
-    dump_thread_.push_back(std::thread(std::bind(&DistMultiTrainer::DumpWork, this, i)));
+    dump_thread_.push_back(
+        std::thread(std::bind(&DistMultiTrainer::DumpWork, this, i)));
   }
 }
 
