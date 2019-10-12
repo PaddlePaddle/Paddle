@@ -601,6 +601,21 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in layers.embedding must be Variable, but received %s"
+            % (type(input)))
+    if convert_dtype(input.dtype) not in ['int64']:
+        raise TypeError(
+            "The data type of 'input' in layers.embedding must be int64, but received %s."
+            % (convert_dtype(input.dtype)))
+    if convert_dtype(dtype) in ['float16']:
+        warnings.warn(
+            "The 'dtype' of layers.embedding only support float16 in GPU now.")
+    if convert_dtype(dtype) not in ['float16', 'float32', 'float64']:
+        raise TypeError(
+            "The 'dtype' of layers.embedding must be float16, float32 or float64, but received %s."
+            % (convert_dtype(dtype)))
     remote_prefetch = is_sparse and (not is_distributed)
     if remote_prefetch:
         assert is_sparse is True and is_distributed is False
@@ -4065,7 +4080,7 @@ def batch_norm(input,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
-               do_model_average_for_mean_and_var=False,
+               do_model_average_for_mean_and_var=True,
                fuse_with_relu=False,
                use_global_stats=False):
     """
@@ -4149,7 +4164,8 @@ def batch_norm(input,
         moving_variance_name(str, Default None): The name of the moving_variance which store the global Variance.
             If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm 
             will save global variance with the string.
-        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance should do model
+            average when model average is enabled.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
         use_global_stats(bool, Default False): Whether to use global mean and
             variance. In inference or test mode, set use_global_stats to true
@@ -4396,7 +4412,7 @@ def data_norm(input,
               name=None,
               moving_mean_name=None,
               moving_variance_name=None,
-              do_model_average_for_mean_and_var=False):
+              do_model_average_for_mean_and_var=True):
     """
     **Data Normalization Layer**
 
@@ -4430,7 +4446,8 @@ def data_norm(input,
             will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance
+            should do model average when model average is enabled.
 
     Returns:
         Variable: A tensor variable which is the result after applying data normalization on the input.
@@ -8507,9 +8524,15 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             "The type of 'x' in reshape must be Variable, but received %s." %
             (type(x)))
 
-    if convert_dtype(x.dtype) not in ['float32', 'float64', 'int32', 'int64']:
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'x' in reshape only support float16 in GPU now.")
+
+    if convert_dtype(x.dtype) not in [
+            'float16', 'float32', 'float64', 'int32', 'int64'
+    ]:
         raise TypeError(
-            "The data type of 'x' in reshape must be float32, float64, int32 or int64, "
+            "The data type of 'x' in reshape must be float16, float32, float64, int32 or int64, "
             "but received %s." % (convert_dtype(x.dtype)))
 
     if not isinstance(shape, (list, tuple, Variable)):
@@ -11736,23 +11759,24 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
 def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
     """
     ${comment}
-    Args:
-        x(${x_type}): ${x_comment}
-        slope(${slope_type}|0.2): ${slope_comment}
-        offset(${offset_type}|0.5): ${offset_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+    Parameters:
+        x (${x_type}): ${x_comment}
+        slope (float, optional): ${slope_comment}
+        offset (float, optional): ${offset_comment}
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`
 
     Returns:
-        output(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-            y = fluid.layers.hard_sigmoid(x, slope=0.3, offset=0.8)
+            data = fluid.layers.fill_constant(shape=[3, 2], value=0.5, dtype='float32') # [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
+            result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
     """
     helper = LayerHelper('hard_sigmoid', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -12578,28 +12602,64 @@ def uniform_random_batch_size_like(input,
                                    max=1.0,
                                    seed=0):
     """
-    ${comment}
+    This OP initializes a variable with random values sampled from a
+    uniform distribution in the range [min, max). The input_dim_idx used to get the input dimension value which will be used to resize the output dimension.
 
+    .. code-block:: text
+
+        *Case 1:
+
+            Given:
+                input =[[0.946741  , 0.1357001 , 0.38086128]]    # input.shape=[1,3]
+                shape=[2,4]
+
+            result.shape[output_dim_idx] = input.shape[input_dim_idx],
+            output_dim_idx = 0, 
+            input_dim_idx = 0,
+            result.shape[0] = input.shape[0], 
+            then:
+                result=[[ 0.3443427 , -0.23056602,  0.3477049 ,  0.06139076]]    # result.shape=[1,4]
+            
+       *Case 2:
+           
+           Given:
+               input =[[0.946741  , 0.1357001 , 0.38086128]]     # input.shape=[1,3]
+               shape=[2,4]
+               input_dim_idx=1
+               output_dim_idx=1
+         
+           result.shape[output_dim_idx] = input.shape[input_dim_idx],
+           output_dim_idx = 1, 
+           input_dim_idx = 1,
+           result.shape[1] = input.shape[1], 
+           then:
+               result=[[-0.23133647, -0.84195036,  0.21441269],
+                       [-0.08774924,  0.25605237, -0.09403259]]    # result.shape=[2,3]
     Args:
-        input (Variable): ${input_comment}
-        shape (tuple|list): ${shape_comment}
-        input_dim_idx (Int): ${input_dim_idx_comment}
-        output_dim_idx (Int): ${output_dim_idx_comment}
-        min (Float): ${min_comment}
-        max (Float): ${max_comment}
-        seed (Int): ${seed_comment}
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+        input (Variable): A Tensor. Supported data types: float32, float64.
+        shape (tuple|list): A python list or python tuple. The shape of the output Tensor, the data type is int.
+        input_dim_idx (int, optional): An index used to get the input dimension value which will be used to resize the output dimension. Default  0. 
+        output_dim_idx (int, optional): An index used to indicate the specific dimension that will be replaced by corresponding input dimension value. Default 0.
+        min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
+        max (float, optional): The upper bound on the range of random values to generate, the max is excluded in the range. Default 1.0.
+        seed (int, optional):  Random seed used for generating samples. 0 means use a seed generated by the system.Note that if seed is not 0, this operator will always generate the same random numbers every time.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output Tensor. Supported data types: float32, float64. Default float32.
     Returns:
-        out (Variable): ${out_comment}
+        Variable: A Tensor of the specified shape filled with uniform_random values. The shape of the Tensor is determined by the shape parameter and the specified dimension of the input Tensor.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers 
+            
+            # example 1: 
+            input = fluid.data(name="input", shape=[1, 3], dtype='float32')
+            out_1 = fluid.layers.uniform_random_batch_size_like(input, [2, 4]) # out_1.shape=[1, 4]
 
-            input = layers.data(name="input", shape=[13, 11], dtype='float32')
-            out = layers.uniform_random_batch_size_like(input, [-1, 11])
+            # example 2: 
+            out_2 = fluid.layers.uniform_random_batch_size_like(input, [2, 4], input_dim_idx=1, output_dim_idx=1) # out_2.shape=[2, 3]
+
+            
     """
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
@@ -17007,8 +17067,8 @@ def mse_loss(input, label):
 @templatedoc()
 def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     """
-    This operator initializes a variable with random values sampled from a
-    uniform distribution. The random result is in set [min, max).
+    This OP initializes a variable with random values sampled from a
+    uniform distribution in the range [min, max).
 
     Examples:
     ::
@@ -17020,24 +17080,23 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
           result=[[0.8505902, 0.8397286]]
 
     Args:
-        shape (list|tuple|Variable): The shape of the output tensor, the data type of the integer is int,
-                                     and if the shape type is list or tuple, its elements can be an integer
-                                     or a tensor with the shape [1], the data type of the tensor is int64. 
-                                     If the shape type is Variable,it ia a 1D tensor, the data type of the tensor is int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the output tensor, such as float32, float64.
+        shape (list|tuple|Variable): The shape of the output Tensor,  if the shape is a list or tuple, 
+                                     its elements can be an integer
+                                     or a Tensor with the shape [1], and the type of the Tensor is int64. 
+                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor is int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the output Tensor. Supported data types: float32, float64.
                                                   Default: float32.
-        min (float, optional): Minimum value of uniform random, It's a closed interval. Default -1.0.
-        max (float, optional): Maximun value of uniform random, It's an open interval. Default 1.0.
+        min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
+        max (float, optional): The upper bound on the range of random values to generate, the max is excluded in the range. Default 1.0.
         seed (int, optional): Random seed used for generating samples. 0 means use a
             seed generated by the system. Note that if seed is not 0, this
             operator will always generate the same random numbers every time.
             Default 0.
 
-    Returns: a Tensor with randomly initialized results whose data type is determined by the dtype parameter 
-                and whose dimension is determined by the shape parameter.
-    Return type: Variable
+    Returns: 
+        Variable: A Tensor of the specified shape filled with uniform_random values.
 
-    Throw exception:
+    Raises:
         TypeError: The shape type should be list or tupple or variable.
     
     Examples:
@@ -17056,7 +17115,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
             # example 3:
             # attr shape is a Variable, the data type must be int64
-            var_shape = fluid.layers.data(name='var_shape',shape=[2],append_batch_size=False)
+            var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
             result_3 = fluid.layers.uniform_random(var_shape)
 
     """
