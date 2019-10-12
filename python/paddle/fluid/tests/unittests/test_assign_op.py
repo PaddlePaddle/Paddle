@@ -44,9 +44,7 @@ class TestAssignOpError(op_test.OpTest):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.assign, x1)
-            # When the type of input is Variable, the dtype of input must be float32, float64, int32, int64.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="bool")
-            self.assertRaises(TypeError, fluid.layers.assign, x2)
+            # When the type of input is Variable, the dtype of input must be float32, float64, int32, int64, bool.
             x3 = fluid.layers.data(name='x3', shape=[4], dtype="float16")
             self.assertRaises(TypeError, fluid.layers.assign, x3)
             x4 = fluid.layers.data(name='x4', shape=[4], dtype="uint8")
