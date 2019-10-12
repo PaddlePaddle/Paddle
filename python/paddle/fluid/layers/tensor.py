@@ -23,6 +23,8 @@ from ..core import VarDesc
 from .layer_function_generator import templatedoc
 from ..data_feeder import convert_dtype
 import numpy
+import warnings
+from ..data_feeder import convert_dtype
 
 __all__ = [
     'create_tensor', 'create_parameter', 'create_global_var', 'cast',
@@ -66,24 +68,26 @@ def create_parameter(shape,
                      is_bias=False,
                      default_initializer=None):
     """
-    Create a parameter. The parameter is a learnable variable, which can have
+    This function creates a parameter. The parameter is a learnable variable, which can have
     gradient, and can be optimized.
 
     NOTE: this is a very low-level API. This API is useful when you create
     operator by your self. instead of using layers.
 
-    Args:
-        shape(list[int]): shape of the parameter
-        dtype(string): element type of the parameter
-        attr(ParamAttr): attributes of the parameter
-        is_bias(bool): This can affect which default initializer is chosen
+    Parameters:
+        shape (list of int): Shape of the parameter
+        dtype (str): Data type of the parameter
+        name (str, optional): For detailed information, please refer to
+           :ref:`api_guide_Name` . Usually name is no need to set and None by default.
+        attr (ParamAttr, optional): Attributes of the parameter
+        is_bias (bool, optional): This can affect which default initializer is chosen
                        when default_initializer is None. If is_bias,
                        initializer.Constant(0.0) will be used. Otherwise,
                        Xavier() will be used.
-        default_initializer(Initializer): initializer for the parameter
+        default_initializer (Initializer, optional): Initializer for the parameter
 
     Returns:
-        the created parameter.
+        The created parameter.
 
     Examples:
         .. code-block:: python
@@ -106,23 +110,22 @@ def create_global_var(shape,
                       force_cpu=False,
                       name=None):
     """
-    Create a new tensor variable with value in the global block(block 0).
+    This function creates a new tensor variable with value in the global block(block 0).
 
-    Args:
-        shape(list[int]): shape of the variable
-        value(float): the value of the variable. The new created
+    Parameters:
+        shape (list of int): Shape of the variable
+        value (float): The value of the variable. The new created
                       variable will be filled with it.
-        dtype(string): data type of the variable
-        persistable(bool): if this variable is persistable.
+        dtype (str): Data type of the variable
+        persistable (bool, optional): If this variable is persistable.
                            Default: False
-        force_cpu(bool): force this variable to be on CPU.
+        force_cpu (bool, optional): Force this variable to be on CPU.
                          Default: False
-        name(str|None): The name of the variable. If set to None the variable
-                        name will be generated automatically.
-                        Default: None
+        name (str, optional): For detailed information, please refer to
+           :ref:`api_guide_Name` . Usually name is no need to set and None by default.
 
     Returns:
-        Variable: the created Variable
+        Variable: The created Variable
 
     Examples:
         .. code-block:: python
@@ -148,23 +151,45 @@ def create_global_var(shape,
 
 def cast(x, dtype):
     """
-    This layer takes in the Variable :attr:`x` with :attr:`x.dtype` and casts
-    it to the output with :attr:`dtype`. It's meaningless if the output
-    dtype equals the input dtype, but it's fine if you do so.
+    This OP takes in the Variable :attr:`x` with :attr:`x.dtype` and casts it
+    to the output with :attr:`dtype`. It's meaningless if the output dtype
+    equals the input dtype, but it's fine if you do so.
 
     Args:
-        x (Variable): The input Variable for casting.
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output Variable.
+        x(Variable): An input N-D Tensor with data type bool, float16,
+            float32, float64, int32, int64, uint8.
+        dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output:
+            bool, float15, float32, float64, int8, int32, int64, uint8.
 
     Returns:
-        Variable: The output Variable after casting.
+        Variable: A Tensor with the same shape as input's.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            data = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            result = fluid.layers.cast(x=data, dtype='float64')
+            import numpy as np
+
+            place = fluid.core.CPUPlace()
+
+            x_lod = fluid.data(name="x", shape=[2,2], lod_level=0)
+            cast_res1 = fluid.layers.cast(x=x_lod, dtype="uint8")
+            cast_res2 = fluid.layers.cast(x=x_lod, dtype=np.int32)
+
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+
+            x_i_lod = fluid.core.LoDTensor()
+            x_i_lod.set(np.array([[1.3,-2.4],[0,4]]).astype("float32"), place)
+            x_i_lod.set_recursive_sequence_lengths([[0,2]])
+            res1 = exe.run(fluid.default_main_program(), feed={'x':x_i_lod}, fetch_list=[cast_res1], return_numpy=False)
+            res2 = exe.run(fluid.default_main_program(), feed={'x':x_i_lod}, fetch_list=[cast_res2], return_numpy=False)
+            print(np.array(res1[0]), np.array(res1[0]).dtype)
+            # [[  1 254]
+            #  [  0   4]] uint8
+            print(np.array(res2[0]), np.array(res2[0]).dtype)
+            # [[ 1 -2]
+            #  [ 0  4]] int32
     """
     helper = LayerHelper('cast', **locals())
     out = helper.create_variable_for_type_inference(dtype=dtype)
@@ -181,29 +206,64 @@ def concat(input, axis=0, name=None):
     """
     **Concat**
 
-    This function concatenates the input along the axis mentioned
-    and returns that as the output.
+    This OP concatenates the input along the axis.
 
     Args:
-        input(list): List of tensors to be concatenated
-        axis(int): Integer axis along which the tensors will be concatenated
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
+        input(list): List of input Tensors with data type float32, float64, int32,
+            int64.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is Rank(x). when axis<0, it works the same way
+            as axis+R. Default is 0.
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: Output variable of the concatenation
+        Variable: A Tensor with the same data type as input's.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            a = fluid.layers.data(name='a', shape=[2, 13], dtype='float32')
-            b = fluid.layers.data(name='b', shape=[2, 3], dtype='float32')
-            c = fluid.layers.data(name='c', shape=[2, 2], dtype='float32')
-            d = fluid.layers.data(name='d', shape=[2, 5], dtype='float32')
-            out = fluid.layers.concat(input=[a, b, c, d], axis=2)
+            import numpy as np
+
+            in1 = np.array([[1,2,3],
+                            [4,5,6]])
+            in2 = np.array([[11,12,13],
+                            [14,15,16]])
+            in3 = np.array([[21,22],
+                            [23,24]])
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(in1)
+                x2 = fluid.dygraph.to_variable(in2)
+                x3 = fluid.dygraph.to_variable(in3)
+                out1 = fluid.layers.concat(input=[x1,x2,x3], axis=-1)
+                out2 = fluid.layers.concat(input=[x1,x2], axis=0)
+                print(out1.numpy())
+                # [[ 1  2  3 11 12 13 21 22]
+                #  [ 4  5  6 14 15 16 23 24]]
+                print(out2.numpy())
+                # [[ 1  2  3]
+                #  [ 4  5  6]
+                #  [11 12 13]
+                #  [14 15 16]]
     """
     helper = LayerHelper('concat', **locals())
+    for x in input:
+        if not isinstance(x, Variable):
+            raise TypeError(
+                "The type of x in 'input' in concat must be Variable, but received %s"
+                % (type(x)))
+        if convert_dtype(x.dtype) in ['float16']:
+            warnings.warn(
+                "The data type of x in 'input' in concat only support float16 on GPU now."
+            )
+        if convert_dtype(x.dtype) not in [
+                'float16', 'float32', 'float64', 'int32', 'int64'
+        ]:
+            raise TypeError(
+                "The data type of x in 'input' in concat must be float16(only support on GPU), float32, float64, int32, int64, but received %s."
+                % (convert_dtype(x.dtype)))
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
         type='concat',
@@ -213,49 +273,85 @@ def concat(input, axis=0, name=None):
     return out
 
 
-def tensor_array_to_tensor(input, axis=1, name=None):
+def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
     """
-    This function concatenates the input LodTensorArray along the axis mentioned
-    and returns that as the output.
+    This function concatenates or stacks all tensors in the input LoDTensorArray
+    along the axis mentioned and returns that as the output.
 
-    A simple example as below:
+    For Example:
 
     .. code-block:: text
 
-        Given:
+        Case 1:
 
-        input.data = {[[0.6, 0.1, 0.3],
-                       [0.5, 0.3, 0.2]],
-                      [[1.3],
-                       [1.8]],
-                      [[2.3, 2.1],
-                       [2.5, 2.4]]}
+            Given:
 
-        axis = 1
+                input.data = {[[0.6, 0.1, 0.3],
+                               [0.5, 0.3, 0.2]],
+                              [[1.3],
+                               [1.8]],
+                              [[2.3, 2.1],
+                               [2.5, 2.4]]}
 
-        Then:
+                axis = 1, use_stack = False
 
-        output.data = [[0.6, 0.1, 0.3, 1.3, 2.3, 2.1],
-                       [0.5, 0.3, 0.2, 1.8, 2.5, 2.4]]
+            Then:
 
-        output_index.data = [3, 1, 2]
+                output.data = [[0.6, 0.1, 0.3, 1.3, 2.3, 2.1],
+                               [0.5, 0.3, 0.2, 1.8, 2.5, 2.4]]
+
+                output_index.data = [3, 1, 2]
+
+        Case 2:
+
+            Given:
+
+                input.data = {[[0.6, 0.1],
+                               [0.5, 0.3]],
+                              [[0.3, 1.3],
+                               [0.2, 1.8]],
+                              [[2.3, 2.1],
+                               [2.5, 2.4]]}
+
+                axis = 1, use_stack = True
+
+            Then:
+
+                output.data = [[[0.6, 0.1]
+                                [0.3, 1.3]
+                                [2.3, 2.1],
+                               [[0.5, 0.3]
+                                [0.2, 1.8]
+                                [2.5, 2.4]]]
+
+                output_index.data = [2, 2, 2]
 
     Args:
-        input(list): Input LodTensorArray
-        axis(int): Integer axis along which the tensors will be concatenated
+        input(Variable): A LodTensorArray variable.
+        axis(int): The axis along which the tensors in attr::`input` will be
+            concatenated or stacked.
         name(str|None): A name for this layer(optional). If set None, the layer
                        will be named automatically.
+        use_stack(bool): Act as concat_op or stack_op. For stack mode, all
+            tensors in the tensor array must have the same shape.
 
     Returns:
-        Variable: Output variable of the concatenation
-        Variable: The input LodTensorArray items' dims along the axis
+        Variable: The concatenated or stacked tensor variable.
+        Variable: A 1-D tensor variable with int32 data type. The data in this \
+            tensor contains all input including tensors' sizes along the axis.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            tensor_array = fluid.layers.create_parameter(shape=[784, 200], dtype='float32')
-            output, output_index = fluid.layers.tensor_array_to_tensor(input=tensor_array)
+            import numpy as np
+            x0 = fluid.layers.assign(np.random.rand(2, 2).astype("float32"))
+            x1 = fluid.layers.assign(np.random.rand(2, 2).astype("float32"))
+            i = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
+            array = fluid.layers.create_array(dtype='float32')
+            fluid.layers.array_write(x0, i, array)
+            fluid.layers.array_write(x1, i + 1, array)
+            output, output_index = fluid.layers.tensor_array_to_tensor(input=array)
     """
     helper = LayerHelper('tensor_array_to_tensor', **locals())
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
@@ -265,44 +361,60 @@ def tensor_array_to_tensor(input, axis=1, name=None):
         inputs={'X': input},
         outputs={'Out': [out],
                  'OutIndex': [out_index]},
-        attrs={'axis': axis})
+        attrs={'axis': axis,
+               'use_stack': use_stack})
     return out, out_index
 
 
 def sums(input, out=None):
     """
-    This function performs the sum operation on the input and returns the
-    result as the output.
+    This function computes the sum of multiple input Tensors elementwisely.
+
+    - Case 1, sum of 3 Tensors
+
+    .. code-block:: text
+
+        # Input Tensors
+        x0.shape = [2, 3]
+        x0.data = [[1., 2., 3.],
+                   [4., 5., 6.]]
+        x1.shape = [2, 3]
+        x1.data = [[10., 20., 30.],
+                   [40., 50., 60.]]
+        x2.shape = [2, 3]
+        x2.data = [[100., 200., 300.],
+                   [400., 500., 600.]]
+
+        # Output Tensor
+        out.shape = [2, 3]
+        out.data = [[111., 222., 333.],
+                    [444., 555., 666.]]
 
     Args:
-        input (Variable|list): The input tensor that has the elements
-                               that need to be summed up.
-        out (Variable|None): Output parameter. The sum result.
-                             Default: None
+        input (list): A list of Variables which hold input Tensors with the same
+            data type and shape. Optional data types are: float32, float64, int32, int64.
+        out (Variable, optional): Output Tensor. It can be any existing Variable.
+            The default value is None, then a new Variable will be created and returned.
 
     Returns:
-        Variable: the sum of input. The same as the argument 'out'
+        Variable: The sum of inputs. The shape and data type is the same with input. \
+            If :code:`out` is not None, the returned value is :code:`out` .
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+            import paddle.fluid as fluid
 
-          # sum of several tensors
-          a0 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
-          a1 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
-          a2 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=3)
-          sums = fluid.layers.sums(input=[a0, a1, a2])
+            x0 = fluid.layers.fill_constant(shape=[16, 32], dtype='int64', value=1)
+            x1 = fluid.layers.fill_constant(shape=[16, 32], dtype='int64', value=2)
+            x2 = fluid.layers.fill_constant(shape=[16, 32], dtype='int64', value=3)
+            x3 = fluid.layers.fill_constant(shape=[16, 32], dtype='int64', value=0)
 
-          # sum of a tensor array
-          array = fluid.layers.create_array('int64')
-          i = fluid.layers.zeros(shape=[1], dtype='int64', force_cpu=True)
-          fluid.layers.array_write(a0, array=array, i=i)
-          i = fluid.layers.increment(x=i)
-          fluid.layers.array_write(a1, array=array, i=i)
-          i = fluid.layers.increment(x=i)
-          fluid.layers.array_write(a2, array=array, i=i)
-          sums = fluid.layers.sums(input=array)
+            # Sum of multiple Tensors, the result is stored to a new Variable sum0 (sum0=x0+x1+x2, the value is [[6, ..., 6], ..., [6, ..., 6]])
+            sum0 = fluid.layers.sums(input=[x0, x1, x2])
+
+            # Sum of multiple Tensors, sum1 and x3 represents the same Variable (x3=x0+x1+x2, the value is [[6, ..., 6], ..., [6, ..., 6]])
+            sum1 = fluid.layers.sums(input=[x0, x1, x2], out=x3)
     """
     helper = LayerHelper('sum', **locals())
     if out is None:
@@ -318,30 +430,40 @@ def sums(input, out=None):
 
 def assign(input, output=None):
     """
-    **Assign**
+    The OP copies the :attr:`input` to the :attr:`output`.
 
-    This function copies the *input* Variable to the *output* Variable.
-
-    Args:
-        input(Variable|numpy.ndarray): The source variable
-        output(Variable|None): The destination variable
+    Parameters:
+        input (Variable|numpy.ndarray): A tensor or numpy ndarray, its data type supports
+            float32, float64, int32 and int64.
+        output (Variable, optional): A tensor. If :attr:`output` is None, a new tensor will
+            be created as :attr:`output`. Default: None.
 
     Returns:
-        Variable: The destination variable that was supplied as the *output*.
+        Variable: A tensor with the same shape, data type and value as :attr:`input`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
-          out = fluid.layers.create_tensor(dtype='float32')
-          hidden = fluid.layers.fc(input=data, size=10)
-          fluid.layers.assign(hidden, out)
+          import numpy as np
+          data = fluid.layers.fill_constant(shape=[3, 2], value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result1 = fluid.layers.create_tensor(dtype='float64')
+          fluid.layers.assign(data, result1) # result1 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result2 = fluid.layers.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result3 = fluid.layers.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
-    if output is None:
-        output = helper.create_variable_for_type_inference(dtype=input.dtype)
     if isinstance(input, Variable):
+        if convert_dtype(input.dtype) not in [
+                'float32', 'float64', 'int32', 'int64'
+        ]:
+            raise TypeError(
+                "When the type of 'input' in assign is Variable, the data "
+                "type of 'input' must be float32, float64, int32 or int64, "
+                "but received %s." % convert_dtype(input.dtype))
+        if output is None:
+            output = helper.create_variable_for_type_inference(
+                dtype=input.dtype)
         helper.append_op(
             type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
     elif isinstance(input, numpy.ndarray):
@@ -353,11 +475,16 @@ def assign(input, output=None):
             value_name = "int32_values"
             values = [int(v) for v in input.flat]
         else:
-            raise ValueError("Unsupported dtype %s", input.dtype)
+            raise TypeError(
+                "When the type of 'input' in assign is numpy.ndarray, "
+                "the data type of 'input' must be float32 or int32, but "
+                "received %s." % convert_dtype(dtype))
         if input.size > 1024 * 1024:
             raise ValueError("The size of input is too big. Please consider "
                              "saving it to file and 'load_op' to load it")
-
+        if output is None:
+            output = helper.create_variable_for_type_inference(
+                dtype=input.dtype)
         helper.append_op(
             type='assign_value',
             outputs={'Out': [output]},
@@ -367,7 +494,8 @@ def assign(input, output=None):
                 value_name: values
             })
     else:
-        raise ValueError("Wrong type for assign input: %s" % type(input))
+        raise TypeError("The type of 'input' in assign must be Variable or "
+                        "numpy.ndarray, but received %s" % type(input))
 
     return output
 
@@ -442,7 +570,8 @@ def fill_constant_batch_size_like(input,
                                   dtype,
                                   value,
                                   input_dim_idx=0,
-                                  output_dim_idx=0):
+                                  output_dim_idx=0,
+                                  force_cpu=False):
     """
     This OP creates a Tesnor accroding the shape and dtype, and initializes the
     Tensor with the constants provided in ``value``. When the input is LoDTensor
@@ -462,6 +591,7 @@ def fill_constant_batch_size_like(input,
             The default value is 0.
         output_dim_idx(int): Used to specify which dimension of Tensor is created to be set
             the value of batch_size of input Tensor. The default value is 0.
+        force_cpu(bool): data should be on CPU if it's true, defalut value is False.
 
     Returns:
         Variable: Tensor which will be created according to dtype.
@@ -487,7 +617,8 @@ def fill_constant_batch_size_like(input,
             'dtype': out.dtype,
             'value': float(value),
             'input_dim_idx': input_dim_idx,
-            'output_dim_idx': output_dim_idx
+            'output_dim_idx': output_dim_idx,
+            'force_cpu': force_cpu or force_init_on_cpu()
         })
     out.stop_gradient = True
     return out
@@ -497,24 +628,50 @@ def argmin(x, axis=0):
     """
     **argmin**
 
-    This function computes the indices of the min elements
-    of the input tensor's element along the provided axis.
+    This OP computes the indices of the min elements of the input tensor's
+    element along the provided axis.
 
     Args:
-        x(Variable): The input to compute the indices of
-                     the min elements.
-        axis(int): Axis to compute indices along.
+        x(Variable): An input N-D Tensor with type float32, float64, int16,
+            int32, int64, uint8.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is Rank(x). when axis<0, it works the same way
+            as axis+R. Default is 0.
 
     Returns:
-        Variable: The tensor variable storing the output
+        Variable: A Tensor with data type int64.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
-            out = fluid.layers.argmin(x, axis=0)
-            out = fluid.layers.argmin(x, axis=-1)
+            import numpy as np
+
+            in1 = np.array([[[5,8,9,5],
+                            [0,0,1,7],
+                            [6,9,2,4]],
+                            [[5,2,4,2],
+                            [4,7,7,9],
+                            [1,7,0,6]]])
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(in1)
+                out1 = fluid.layers.argmin(x=x, axis=-1)
+                out2 = fluid.layers.argmin(x=x, axis=0)
+                out3 = fluid.layers.argmin(x=x, axis=1)
+                out4 = fluid.layers.argmin(x=x, axis=2)
+                print(out1.numpy())
+                # [[0 0 2]
+                #  [1 0 2]]
+                print(out2.numpy())
+                # [[0 1 1 1]
+                #  [0 0 0 0]
+                #  [1 1 1 0]]
+                print(out3.numpy())
+                # [[1 1 1 2]
+                #  [2 0 2 0]]
+                print(out4.numpy())
+                # [[0 0 2]
+                #  [1 0 2]]
     """
     helper = LayerHelper("arg_min", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
@@ -530,24 +687,50 @@ def argmax(x, axis=0):
     """
     **argmax**
 
-    This function computes the indices of the max elements
-    of the input tensor's element along the provided axis.
+    This OP computes the indices of the max elements of the input tensor's
+    element along the provided axis.
 
     Args:
-        x(Variable): The input to compute the indices of
-                     the max elements.
-        axis(int): Axis to compute indices along.
+        x(Variable): An input N-D Tensor with type float32, float64, int16,
+            int32, int64, uint8.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is Rank(x). when axis<0, it works the same way
+            as axis+R. Default is 0.
 
     Returns:
-        Variable: The tensor variable storing the output
+        Variable: A Tensor with data type int64.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
-            out = fluid.layers.argmax(x, axis=0)
-            out = fluid.layers.argmax(x, axis=-1)
+            import numpy as np
+
+            in1 = np.array([[[5,8,9,5],
+                            [0,0,1,7],
+                            [6,9,2,4]],
+                            [[5,2,4,2],
+                            [4,7,7,9],
+                            [1,7,0,6]]])
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(in1)
+                out1 = fluid.layers.argmax(x=x, axis=-1)
+                out2 = fluid.layers.argmax(x=x, axis=0)
+                out3 = fluid.layers.argmax(x=x, axis=1)
+                out4 = fluid.layers.argmax(x=x, axis=2)
+                print(out1.numpy())
+                # [[2 3 1]
+                #  [0 3 1]]
+                print(out2.numpy())
+                # [[0 0 0 0]
+                #  [1 1 1 1]
+                #  [0 0 0 1]]
+                print(out3.numpy())
+                # [[2 2 0 1]
+                #  [0 1 1 1]]
+                print(out4.numpy())
+                # [[2 3 1]
+                #  [0 3 1]]
     """
     helper = LayerHelper("arg_max", **locals())
     out = helper.create_variable_for_type_inference(VarDesc.VarType.INT64)
@@ -561,44 +744,70 @@ def argmax(x, axis=0):
 
 def argsort(input, axis=-1, name=None):
     """
-    Performs sorting on the input Variable along the given axis, and outputs
-    sorted data Varibale and its corresponding index Variable with the same
-    shape as :attr:`input`.
-
-    .. code-block:: text
-
-        For example, the given axis is -1 and the input Variable
-
-            input = [[0.15849551, 0.45865775, 0.8563702 ],
-                     [0.12070083, 0.28766365, 0.18776911]],
-
-        after argsort, the sorted Vairable becomes
-
-            out = [[0.15849551, 0.45865775, 0.8563702 ],
-                   [0.12070083, 0.18776911, 0.28766365]],
-
-        and the sorted indices along the given axis turn outs to be
-
-            indices = [[0, 1, 2],
-                       [0, 2, 1]]
+    This OP sorts the input along the given axis, and returns sorted output
+    data Varibale and its corresponding index Variable with the same shape as
+    :attr:`input`.
 
     Args:
-        input(Variable): The input Variable for sorting.
-        axis(int): The axis along which to sort the input Variable. When
-                   :attr:`axis` < 0, the actual axis will be :attr:`axis` +
-                   rank(:attr:`input`). Default -1, the last dimension.
-        name(str|None): (optional) A name for this layer. If set None, the
-                   layer will be named automatically.
+        input(Variable): An input N-D Tensor with type float32, float64, int16,
+            int32, int64, uint8.
+        axis(int, optional): Axis to compute indices along. The effective range
+            is [-R, R), where R is Rank(x). when axis<0, it works the same way
+            as axis+R. Default is 0.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-        tuple: A tuple of sorted data Variable and the sorted indices.
+        tuple: A tuple of sorted data Variable(with the same shape and data
+        type as input) and the sorted indices(with the same shape as input's
+        and with data type int64).
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
-            out, indices = fluid.layers.argsort(input=x, axis=0)
+            import numpy as np
+
+            in1 = np.array([[[5,8,9,5],
+                            [0,0,1,7],
+                            [6,9,2,4]],
+                            [[5,2,4,2],
+                            [4,7,7,9],
+                            [1,7,0,6]]]).astype(np.float32)
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(in1)
+                out1 = fluid.layers.argsort(input=x, axis=-1)
+                out2 = fluid.layers.argsort(input=x, axis=0)
+                out3 = fluid.layers.argsort(input=x, axis=1)
+                print(out1[0].numpy())
+                # [[[5. 5. 8. 9.]
+                #   [0. 0. 1. 7.]
+                #   [2. 4. 6. 9.]]
+                #  [[2. 2. 4. 5.]
+                #   [4. 7. 7. 9.]
+                #   [0. 1. 6. 7.]]]
+                print(out1[1].numpy())
+                # [[[0 3 1 2]
+                #   [0 1 2 3]
+                #   [2 3 0 1]]
+                #  [[1 3 2 0]
+                #   [0 1 2 3]
+                #   [2 0 3 1]]]
+                print(out2[0].numpy())
+                # [[[5. 2. 4. 2.]
+                #   [0. 0. 1. 7.]
+                #   [1. 7. 0. 4.]]
+                #  [[5. 8. 9. 5.]
+                #   [4. 7. 7. 9.]
+                #   [6. 9. 2. 6.]]]
+                print(out3[0].numpy())
+                # [[[0. 0. 1. 4.]
+                #   [5. 8. 2. 5.]
+                #   [6. 9. 9. 7.]]
+                #  [[1. 2. 0. 2.]
+                #   [4. 7. 4. 6.]
+                #   [5. 7. 7. 9.]]]
     """
     helper = LayerHelper("argsort", **locals())
     out = helper.create_variable_for_type_inference(
@@ -616,25 +825,25 @@ def argsort(input, axis=-1, name=None):
 
 def ones(shape, dtype, force_cpu=False):
     """
-    **ones**
+    The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
+    Its :attr:`stop_gradient` will be set to True to stop gradient computation.
 
-    This function creates a tensor of specified *shape* and
-    *dtype*, and initializes this with 1.
-
-    It also sets *stop_gradient* to True.
-
-    Args:
-        shape(tuple|list): Shape of output tensor
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
+    Parameters:
+        shape (tuple|list): Shape of output tensor.
+        dtype (np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
+            bool, float16, float32, float64, int32 and int64.
+        force_cpu (bool, optional): Whether force to store the output tensor in CPU memory.
+            If :attr:`force_cpu` is False, the output tensor will be stored in running device memory.
+            Default: False.
 
     Returns:
-        Variable: The tensor variable storing the output
+        Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.ones(shape=[1], dtype='int64')
+          data = fluid.layers.ones(shape=[2, 4], dtype='float32') # [[1., 1., 1., 1.], [1., 1., 1., 1.]]
     """
     assert isinstance(shape, list) or isinstance(
         shape, tuple), "The shape's type should be list or tuple."
@@ -645,53 +854,50 @@ def ones(shape, dtype, force_cpu=False):
 
 def zeros(shape, dtype, force_cpu=False):
     """
-    **zeros**
+    The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
+    Its :attr:`stop_gradient` will be set to True to stop gradient computation.
 
-    This function creates a tensor of specified *shape* and
-    *dtype*, and initializes this with 0.
-
-    It also sets *stop_gradient* to True.
-
-    Args:
-        shape(tuple|list|None): Shape of output tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor.
-        force_cpu(bool, default False): Whether to make output stay on CPU.
+    Parameters:
+        shape (tuple|list): Shape of output tensor.
+        dtype (np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
+            bool, float16, float32, float64, int32 and int64.
+        force_cpu (bool, optional): Whether force to store the output tensor in CPU memory.
+            If :attr:`force_cpu` is False, the output tensor will be stored in running device memory.
+            Default: False.
 
     Returns:
-        Variable: The tensor variable storing the output.
+        Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.zeros(shape=[1], dtype='int64')
+          data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
     """
     return fill_constant(value=0.0, **locals())
 
 
 def reverse(x, axis):
     """
-    **reverse**
+    The OP reverses the tensor :attr:`x` along the given :attr:`axis`.
 
-    This function reverse the input 'x' along given axises.
-
-    Args:
-        x(Vairbale): the input to be reversed.
-        axis(int|tuple|list): Axis that along which order of elements
-                    is reversed. If it is a tuple or a list, reversing
-                    will be apply on each axis in the tuple or list.
+    Parameters:
+        x (Variable): A tensor to be reversed, its data type supports bool, float32, float64, int32, int64 and uint8.
+        axis (int|tuple|list): A dimension or a set of dimensions of :attr:`x` to reverse. Must be
+            in the range [-rank( :attr:`x` ), rank( :attr:`x` )). If it is a tuple or a list, reversing
+            will be apply on each axis in the tuple or list.
 
     Returns:
-        Variable: The reversed tensor.
+        Variable: The reversed tensor with the same shape and data type as :attr:`x`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name="data", shape=[4, 8], dtype="float32")
-          out = fluid.layers.reverse(x=data, axis=0)
-          # or:
-          out = fluid.layers.reverse(x=data, axis=[0,1])
+          import numpy as np
+          data = fluid.layers.assign(np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]], dtype='float32')) # [[0., 1., 2.], [3., 4., 5.], [6., 7., 8.]]
+          result1 = fluid.layers.reverse(data, 0) # [[6., 7., 8.], [3., 4., 5.], [0., 1., 2.]]
+          result2 = fluid.layers.reverse(data, [0, 1]) # [[8., 7., 6.], [5., 4., 3.], [2., 1., 0.]]
     """
     if isinstance(axis, int):
         axis = [axis]

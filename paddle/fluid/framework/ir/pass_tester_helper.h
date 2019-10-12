@@ -48,6 +48,19 @@ struct Layers {
     return out;
   }
 
+  VarDesc* conv2d_transpose(VarDesc* input, VarDesc* filter, VarDesc* bias) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("conv2d_transpose");
+    op->SetInput("Input", {input->Name()});
+    op->SetInput("Filter", {filter->Name()});
+    op->SetInput("Bias", {bias->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    return out;
+  }
+
   VarDesc* depthwise_conv2d(VarDesc* input, VarDesc* filter, VarDesc* bias,
                             bool use_cudnn) {
     VarDesc* out = lod_tensor(unique_name());
@@ -212,6 +225,33 @@ struct Layers {
     op->SetAttr("bias_after_scale", bias_after);
     op->SetOutput("Out", {out->Name()});
     return out;
+  }
+
+  std::vector<VarDesc*> batch_norm(VarDesc* x, VarDesc* scale, VarDesc* bias,
+                                   VarDesc* mean, VarDesc* variance) {
+    VarDesc* y = lod_tensor(unique_name());
+    VarDesc* mean_out = lod_tensor(unique_name());
+    VarDesc* variance_out = lod_tensor(unique_name());
+    VarDesc* saved_mean = lod_tensor(unique_name());
+    VarDesc* saved_variance = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("batch_norm");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Scale", {scale->Name()});
+    op->SetInput("Bias", {bias->Name()});
+    op->SetInput("Mean", {mean->Name()});
+    op->SetInput("Variance", {variance->Name()});
+    op->SetOutput("Y", {y->Name()});
+    op->SetOutput("MeanOut", {mean_out->Name()});
+    op->SetOutput("VarianceOut", {variance_out->Name()});
+    op->SetOutput("SavedMean", {saved_mean->Name()});
+    op->SetOutput("SavedVariance", {saved_variance->Name()});
+    op->SetAttr("epsilon", static_cast<float>(1e-5));
+    op->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                static_cast<int>(OpRole::kForward));
+    std::vector<VarDesc*> outs = {y, mean_out, variance_out, saved_mean,
+                                  saved_variance};
+    return outs;
   }
 
  private:
