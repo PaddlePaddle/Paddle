@@ -1116,22 +1116,23 @@ def array_write(x, i, array=None):
 
 def create_array(dtype):
     """
-    **Create LoDTensorArray**
-
-    This function creates an array of LOD_TENSOR_ARRAY . It is mainly used to
-    implement RNN with array_write, array_read and While.
+    This OP creates an LOD_TENSOR_ARRAY. It is used as
+    the input of :ref:`api_fluid_layers_array_read` and 
+    :ref:`api_fluid_layers_array_write`. Also it can be used
+    with  :ref:`api_fluid_layers_While` to create RNN network.
 
     Args:
-        dtype (int|float): The data type of the elements in the lod_tensor_array.
+        dtype (str): The data type of the elements in the lod_tensor_array.
+                     Support data type: float32, float64, int32, int64.
 
     Returns:
-        Variable: The lod_tensor_array variable storing the elements of data type.
+        Variable: The empty lod_tensor_array. The data type of elements in Tensor is ``dtype``.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.create_array(dtype='float32')
+          data = fluid.layers.create_array(dtype='float32') # Create a float32 LoDTensorArray.
 
     """
     helper = LayerHelper("array", **locals())

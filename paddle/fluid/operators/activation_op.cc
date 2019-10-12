@@ -296,7 +296,7 @@ Natural logarithm of x.
 )DOC";
 
 UNUSED constexpr char SquareDoc[] = R"DOC(
-Square Activation Operator.
+The OP square each elements of the inputs.
 
 $out = x^2$
 
