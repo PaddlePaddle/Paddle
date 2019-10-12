@@ -939,7 +939,7 @@ class DistributeTranspiler(object):
             name=framework.generate_control_dev_var_name())
         startup_program.global_block().append_op(
             type="fetch_barrier",
-            inputs={"X": []},
+            inputs={},
             outputs={"Out": fetch_barrier_out},
             attrs={
                 "endpoints": self.pserver_endpoints,
