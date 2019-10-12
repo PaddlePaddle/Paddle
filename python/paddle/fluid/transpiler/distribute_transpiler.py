@@ -789,7 +789,7 @@ class DistributeTranspiler(object):
             # form a WAW dependency
             program.global_block().append_op(
                 type="fetch_barrier",
-                inputs={},
+                inputs={"X": [send_barrier_out]},
                 outputs={"Out": all_recv_outputs},
                 attrs={
                     "endpoints": pserver_endpoints,
@@ -927,7 +927,7 @@ class DistributeTranspiler(object):
             name=framework.generate_control_dev_var_name())
         startup_program.global_block().append_op(
             type="fetch_barrier",
-            inputs={},
+            inputs={"X": []},
             outputs={"Out": fetch_barrier_out},
             attrs={
                 "endpoints": self.pserver_endpoints,
