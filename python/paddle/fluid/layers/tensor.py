@@ -377,25 +377,27 @@ def sums(input, out=None):
 
 def assign(input, output=None):
     """
-    **Assign**
+    The OP copies the :attr:`input` to the :attr:`output`.
 
-    This function copies the *input* Variable to the *output* Variable.
-
-    Args:
-        input(Variable|numpy.ndarray): The source variable
-        output(Variable|None): The destination variable
+    Parameters:
+        input (Variable|numpy.ndarray): A tensor or numpy ndarray, its data type supports
+            float32, float64, int32 and int64.
+        output (Variable, optional): A tensor. If :attr:`output` is None, a new tensor will
+            be created as :attr:`output`. Default: None.
 
     Returns:
-        Variable: The destination variable that was supplied as the *output*.
+        Variable: A tensor with the same shape, data type and value as :attr:`input`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
-          out = fluid.layers.create_tensor(dtype='float32')
-          hidden = fluid.layers.fc(input=data, size=10)
-          fluid.layers.assign(hidden, out)
+          import numpy as np
+          data = fluid.layers.fill_constant(shape=[3, 2], value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result1 = fluid.layers.create_tensor(dtype='float64')
+          fluid.layers.assign(data, result1) # result1 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result2 = fluid.layers.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result3 = fluid.layers.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
     if output is None:
@@ -753,25 +755,25 @@ def argsort(input, axis=-1, name=None):
 
 def ones(shape, dtype, force_cpu=False):
     """
-    **ones**
+    The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
+    Its :attr:`stop_gradient` will be set to True to stop gradient computation.
 
-    This function creates a tensor of specified *shape* and
-    *dtype*, and initializes this with 1.
-
-    It also sets *stop_gradient* to True.
-
-    Args:
-        shape(tuple|list): Shape of output tensor
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
+    Parameters:
+        shape (tuple|list): Shape of output tensor.
+        dtype (np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
+            bool, float16, float32, float64, int32 and int64.
+        force_cpu (bool, optional): Whether force to store the output tensor in CPU memory.
+            If :attr:`force_cpu` is False, the output tensor will be stored in running device memory.
+            Default: False.
 
     Returns:
-        Variable: The tensor variable storing the output
+        Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.ones(shape=[1], dtype='int64')
+          data = fluid.layers.ones(shape=[2, 4], dtype='float32') # [[1., 1., 1., 1.], [1., 1., 1., 1.]]
     """
     assert isinstance(shape, list) or isinstance(
         shape, tuple), "The shape's type should be list or tuple."
@@ -782,53 +784,50 @@ def ones(shape, dtype, force_cpu=False):
 
 def zeros(shape, dtype, force_cpu=False):
     """
-    **zeros**
+    The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
+    Its :attr:`stop_gradient` will be set to True to stop gradient computation.
 
-    This function creates a tensor of specified *shape* and
-    *dtype*, and initializes this with 0.
-
-    It also sets *stop_gradient* to True.
-
-    Args:
-        shape(tuple|list|None): Shape of output tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor.
-        force_cpu(bool, default False): Whether to make output stay on CPU.
+    Parameters:
+        shape (tuple|list): Shape of output tensor.
+        dtype (np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
+            bool, float16, float32, float64, int32 and int64.
+        force_cpu (bool, optional): Whether force to store the output tensor in CPU memory.
+            If :attr:`force_cpu` is False, the output tensor will be stored in running device memory.
+            Default: False.
 
     Returns:
-        Variable: The tensor variable storing the output.
+        Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.zeros(shape=[1], dtype='int64')
+          data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
     """
     return fill_constant(value=0.0, **locals())
 
 
 def reverse(x, axis):
     """
-    **reverse**
+    The OP reverses the tensor :attr:`x` along the given :attr:`axis`.
 
-    This function reverse the input 'x' along given axises.
-
-    Args:
-        x(Vairbale): the input to be reversed.
-        axis(int|tuple|list): Axis that along which order of elements
-                    is reversed. If it is a tuple or a list, reversing
-                    will be apply on each axis in the tuple or list.
+    Parameters:
+        x (Variable): A tensor to be reversed, its data type supports bool, float32, float64, int32, int64 and uint8.
+        axis (int|tuple|list): A dimension or a set of dimensions of :attr:`x` to reverse. Must be
+            in the range [-rank( :attr:`x` ), rank( :attr:`x` )). If it is a tuple or a list, reversing
+            will be apply on each axis in the tuple or list.
 
     Returns:
-        Variable: The reversed tensor.
+        Variable: The reversed tensor with the same shape and data type as :attr:`x`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name="data", shape=[4, 8], dtype="float32")
-          out = fluid.layers.reverse(x=data, axis=0)
-          # or:
-          out = fluid.layers.reverse(x=data, axis=[0,1])
+          import numpy as np
+          data = fluid.layers.assign(np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]], dtype='float32')) # [[0., 1., 2.], [3., 4., 5.], [6., 7., 8.]]
+          result1 = fluid.layers.reverse(data, 0) # [[6., 7., 8.], [3., 4., 5.], [0., 1., 2.]]
+          result2 = fluid.layers.reverse(data, [0, 1]) # [[8., 7., 6.], [5., 4., 3.], [2., 1., 0.]]
     """
     if isinstance(axis, int):
         axis = [axis]

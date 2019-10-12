@@ -2327,10 +2327,13 @@ def sequence_conv(input,
 
 def sequence_softmax(input, use_cudnn=False, name=None):
     """
-    This function computes the softmax activation among all time-steps for each
-    sequence. The dimension of each time-step should be 1. Thus, the shape of
-    input Tensor can be either :math:`[N, 1]` or :math:`[N]`, where :math:`N`
-    is the sum of the length of all sequences.
+    **Note**:
+    
+    **The input type of the OP must be LoDTensor. For Tensor, use:** :ref:`api_fluid_layers_softmax` 
+
+    A LoD-tensor can be regarded as several sequences, and this op apply softmax algo on each sequence.
+    The shape of input Tensor can be :math:`[N, 1]` or :math:`[N]`, where :math:`N`
+    is the sum of the length of all sequences. Recommended usage: :math:`[N]`.
 
     For i-th sequence in a mini-batch:
 
@@ -2338,29 +2341,56 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
         Out(X[lod[i]:lod[i+1]], :) = \\frac{\exp(X[lod[i]:lod[i+1], :])}{\sum(\exp(X[lod[i]:lod[i+1], :]))}
 
-    For example, for a mini-batch of 3 sequences with variable-length,
-    each containing 2, 3, 2 time-steps, the lod of which is [0, 2, 5, 7],
-    then softmax will be computed among :math:`X[0:2, :]`, :math:`X[2:5, :]`,
-    :math:`X[5:7, :]`, and :math:`N` turns out to be 7.
+    For example, for a LoD-Tensor with 6 sequences ([3, 2, 4, 1, 2, 3] - sequence length list in order), 
+    the lod in the runtime is [[0, 3, 5, 9, 10, 12, 15]],
+    then softmax will be computed among :math:`X[0:3,:],X[3:5,:],X[5:9,:],X[9:10,:],X[10:12,:],X[12:15,:]`,
+    and :math:`N` turns out to be 15.
+
+    .. code-block:: text
+
+        *Case 1:
+
+            Given:
+                input.data = [0.7, 1, 0.6,
+                              1.5, 1.1,
+                              1.2, 0.2, 0.6, 1.9,
+                              3.1,
+                              2.5, 0.8,
+                              0.1, 2.4, 1.3]
+                input.lod = [[0, 3, 5, 9, 10, 12, 15]]
+            then:
+                 output.data = [0.30724832, 0.41474187, 0.2780098,
+                                0.59868765, 0.40131235,
+                                0.2544242, 0.09359743, 0.13963096, 0.5123474, 
+                                1.,
+                                0.84553474, 0.15446526,
+                                0.06995796, 0.69777346, 0.23226859]
+                 output.lod = [[0, 3, 5, 9, 10, 12, 15]]    
+    
 
     Args:
-        input (Variable): The input variable which is a LoDTensor.
-        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
-            library is installed. Default: False.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None.
+        input (Variable):A LoDTensor with shape of  :math:`[N, 1]` or  :math:`[N]`, Recommended usage: :math:`[N]`. 
+                         Supported data types: float32, float64. 
+        use_cudnn (bool, optional): Use cudnn kernel or not. Effective only when the cudnn version of the paddle 
+                                    library is installed and GPU is used for training or reasoning. Default: False.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. 
+                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: output of sequence_softmax
+        Variable: A LoD-Tensor which has the same shape and data type with input.
 
     Examples:
 
         .. code-block:: python
 
              import paddle.fluid as fluid
-             x = fluid.layers.data(name='x', shape=[7, 1],
+             x = fluid.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
-             x_sequence_softmax = fluid.layers.sequence_softmax(input=x)
+             x_sequence_softmax_1 = fluid.layers.sequence_softmax(input=x)  
+
+             y = fluid.data(name='y', shape=[7],
+                 dtype='float32', lod_level=1)
+             x_sequence_softmax_2 = fluid.layers.sequence_softmax(input=y)  
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -5590,15 +5620,15 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
 def sequence_unpad(x, length, name=None):
     """
-    **Sequence Unpad Layer**
-
-    This layer removes the padding data in the input sequences and convert
-    them into sequences with actual length as output, identitied by lod
-    information.
+    **Note**:
+    
+    **The input of the OP is Tensor and the output is LoDTensor.  For padding operation, See:**  :ref:`api_fluid_layers_sequence_pad`  
+     
+    The OP removes the padding data from the input based on the length information and returns a LoDTensor.
 
     .. code-block:: text
 
-	Example:
+	Case 1:
 
 	Given input Variable **x**:
 	    x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
@@ -5613,18 +5643,18 @@ def sequence_unpad(x, length, name=None):
 	after unpadding, the output Variable will be:
 
 	    out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
-	    out.lod = [[2, 3, 4]]
+	    out.lod = [[0, 2, 5, 9]]
 
     Args:
-        x(Variable): Input Variable which contains the padded sequences with
-            equal length.
-        length(Variable): The Variable that specifies the actual ength of
-            sequences after unpadding.
-        name(str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
+        x(Variable): A Tensor which contains padding data, and its shape size can not be less than 2.
+                     Supported data types: float32, float64, int32, int64.
+        length(Variable): A 1D Tensor that stores the actual length of each sample, and the Tensor 
+                          has the same shape with the 0th dimension of the X . Supported data types: int64.
+        name(str|None):  The default value is None.  Normally there is no need for user to set this property.  
+                         For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The Variable contains the unpadded sequences.
+        Variable: A LoDTensor whose recursive sequence length is consistent with the information of the length parameter and it has the same data type with input.
 
     Examples:
         .. code-block:: python
@@ -5633,11 +5663,11 @@ def sequence_unpad(x, length, name=None):
             import numpy
 
             # pad data
-            x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            x = fluid.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
             pad_value = fluid.layers.assign(input=numpy.array([0.0], dtype=numpy.float32))
             pad_data, len = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
             
-            # upad data
+            # unpad data
             unpad_data = fluid.layers.sequence_unpad(x=pad_data, length=len)
     """
 
@@ -6752,62 +6782,70 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
 def topk(input, k, name=None):
     """
-    This operator is used to find values and indices of the k largest entries
+    This OP is used to find values and indices of the k largest entries
     for the last dimension.
 
-    If the input is a vector (1-D Tensor), finds the k largest entries in the vector
-    and outputs their values and indices as vectors. Thus values[j] is the j-th
-    largest entry in input, and its index is indices[j].
+    If the input is a 1-D Tensor, finds the k largest entries and outputs
+    their values and indices.
 
     If the input is a Tensor with higher rank, this operator computes the top k
     entries along the last dimension.
 
-    For example:
-
     .. code-block:: text
 
-        If:
-            input = [[5, 4, 2, 3],
+        Case 1:
+
+          Input:
+            input.shape = [3, 4]
+            input.data = [[5, 4, 2, 3],
                      [9, 7, 10, 25],
                      [6, 2, 10, 1]]
             k = 2
 
-        Then:
+          Output:
             The first output:
-            values = [[5, 4],
+            values.shape = [3, 2]
+            values.data = [[5, 4],
                       [10, 25],
                       [6, 10]]
 
             The second output:
-            indices = [[0, 1],
+            indices.shape = [3, 2]
+            indices.data = [[0, 1],
                        [2, 3],
                        [0, 2]]
 
     Args:
-        input(Variable): The input variable which can be a vector or Tensor with
-            higher rank.
-        k(int | Variable):  The number of top elements to look for along the last dimension
-                 of input.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
-                       Default: None
+        input(Variable): The input tensor. Support data types: float32, float64.
+        k(int | Variable): The number of top elements to look for along the last dimension
+                           of input tensor.
+        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Tuple[Variable]: A tuple with two elements. Each element is a Variable.
-        The first one is k largest elements along each last
-        dimensional slice. The second one is indices of values
-        within the last dimension of input.
+        Values (Variable): Input tensor's k largest elements along each last dimensional slice. The dimension is: :math:`input.shape[:-1]+[k]`.
+        Indices (Variable): Indices of k largest elements alone the last dimension of input. The dimension is same as values.
 
     Raises:
-        ValueError: If k < 1 or k is not less than the last dimension of input
+        ValueError: If :math:`k < 1` or :math:`k > last dimension of input`.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
-            input = layers.data(name="input", shape=[13, 11], dtype='float32')
-            top5_values, top5_indices = layers.topk(input, k=5)
+            # set batch size=None
+            input = fluid.data(name="input", shape=[None, 13, 11], dtype='float32')
+            top5_values, top5_indices = layers.topk(input, k=5) # top5_values.shape[None, 13, 5], top5_indices.shape=[None, 13, 5]
+
+            # 1D Tensor
+            input1 = fluid.data(name="input1", shape=[None, 13], dtype='float32')
+            top5_values, top5_indices = layers.topk(input1, k=5) #top5_values.shape=[None, 5], top5_indices.shape=[None, 5]
+
+            # k=Variable
+            input2 = fluid.data(name="input2", shape=[None, 13, 11], dtype='float32')
+            vk = fluid.data(name="vk", shape=[None, 1], dtype='int32') # save k in vk.data[0]
+            vk_values, vk_indices = layers.topk(input2, k=vk) #vk_values.shape=[None, 13, k], vk_indices.shape=[None, 13, k]
+
     """
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -7528,70 +7566,74 @@ def hsigmoid(input,
              is_custom=False,
              is_sparse=False):
     """
-    The hierarchical sigmoid operator is used to accelerate the training
-    process of language model. This operator organizes the classes into a
-    complete binary tree, or you can use is_custom to pass your own tree to
-    implement hierarchical. Each leaf node represents a class(a word) and each
-    internal node acts as a binary classifier. For each word there's a unique
-    path from root to it's leaf node, hsigmoid calculate the cost for each
-    internal node on the path, and sum them to get a total cost. hsigmoid can
-    achive a acceleration from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
-    represents the size of word dict.
+    The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
+    and speed up the model training, especially the training of language model.
+    Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
+    For each class(word), there's a unique path from root to itself, hsigmoid calculate the cost for each non-leaf node on
+    the path, and sum them to get a total cost.
+    Comparing to softmax, the OP can reduce the computational complexity from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
+    represents the number of classes or the size of word dict.
 
-    Using default tree you can Refer to `Hierarchical Probabilistic Neural Network Language Model
-    <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_
+    The OP supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
+    Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`. For the custom
+    tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
 
-    And if you want to use the costumed tree by set 'is_custom' as true you may need to do following things first:
+    1. Using a custom word dict to build a binary tree, each leaf node should be an word in the word dict.
+    2. Creating a dict map word_id -> path that from the word to the root node, we call it path_table.
+    3. Creating a dict map word_id -> code of path that from the word to the root node, we call it path_code.
+       Code means the label of each binary classifier, 1 indicate true, 0 indicate false.
+    4. Now, each word should has its path and code along the path, you can pass a batch of path and code related
+       to the same batch of inputs.
 
-    1. using your word dict to build a binary tree, each leaf node should be an word of your word dict
-    2. build a dict to store word_id -> word's leaf to root path, we call it path_table.
-    3. build a dict to store word_id -> code of word's leaf to root path, we call it path_code. Code
-       means label of each binary classification, using 1 indicate true, 0 indicate false.
-    4. now, each word should has its path and code along the path, you can pass a batch of path and code
-       related to the same batch of inputs.
-
-    Args:
-        input (Variable): The input tensor variable with shape
-            :math:`[N \\times D]`, where :math:`N` is the size of mini-batch,
-            and :math:`D` is the feature size.
-        label (Variable): The tensor variable contains labels of training data.
-            It's a tensor with shape is :math:`[N \\times 1]`.
-        num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set,
-            it should never be None under is_custom=False, but while is_custom is true, it should be non leaf num
-            which indicates the num of classes using by binary classify.
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
-             of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid
-             will create ParamAttr as param_attr. If the Initializer of the param_attr
-             is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of hsigmoid.
-             If it is set to False, no bias will be added to the output units.
-             If it is set to None or one attribute of ParamAttr, hsigmoid
-             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-             is not set, the bias is initialized zero. Default: None.
-        name (str|None): A name for this layer(optional). If set None, the layer
-             will be named automatically. Default: None.
-        path_table: (Variable|None) this variable can store each batch of samples' path to root,
-            it should be in leaf -> root order
-            path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like
-            structure and each element in this array is indexes in parent nodes' Weight Matrix.
-        path_code:  (Variable|None) this variable can store each batch of samples' code,
-            each code consist with every code of parent nodes. it should be in leaf -> root order
-        is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is
-             set you need to set path_table/path_code/num_classes, otherwise num_classes should be set
-        is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient
-             of W and input will be sparse.
+    Parameters:
+        input (Variable): A tensor with the shape [N, D], where N is the size of mini-batch,
+            and D is the feature size. Its data type supports float32 and float64.
+        label (Variable): A tensor contains the labels of training data. Its shape is [N, 1]
+            and data type is int64.
+        num_classes (int): The number of classes or the size of word dict, must be greater than 2.
+            If the default tree is used (:attr:`is_custom` is set to False), :attr:`num_classes`
+            should not be None. If the custom tree is used (:attr:`is_custom` is set to True),
+            :attr:`num_classes` should be the number of non-leaf nodes, which indicates the num of
+            classes using by the binary classifier.
+        param_attr (ParamAttr, optional): The parameter attribute for the learnable parameters/weights
+            of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid will create a
+            ParamAttr as param_attr. If the Initializer of the param_attr is not set, the parameter is
+            initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of hsigmoid. If it
+            is set to False, no bias will be added. If it is set to None or one attribute of ParamAttr,
+            hsigmoid will create a ParamAttr as bias_attr. If the Initializer of the bias_attr is not
+            set, the bias is initialized zero. Default: None.
+        name (str, optional): Normally there is no need for user to set this property. For more information,
+            please refer to :ref:`api_guide_Name`. Default: None.
+        path_table (Variable, optional): A tensor that stores each batch of samples' path from leaf to root
+            node, its shape is [N, L] and data type is int64, where L is the length of path. For each sample i,
+            path_table[i] is a np.array like structure and each element in this array is the indexes in parent
+            nodes' weight matrix. Default: None.
+        path_code (Variable, optional): A tensor that stores each batch of samples' code of path from leaf
+            to root node, its shape is [N, L] and data type is int64, which is the same as :attr:`path_table`.
+            Each code of path is consisted with the code of nodes from leaf to root node. Default: None.
+        is_custom (bool, optional): Whether use custom binary tree. If it's True, :attr:`path_table`,
+            :attr:`path_code` and :attr:`num_classes` should be set, otherwise :attr:`num_classes` should
+            be set. Default: False.
+        is_sparse (bool, optional): Whether use sparse updating instead of dense updating, if it's True, the
+            gradient of W and input will be sparse. Default: False.
 
     Returns:
-        Out: (LodTensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
+        Variable: A tensor with the cost of hierarchical sigmoid, its shape is [N, 1] and data type is the same as :attr:`input`.
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='int64')
-            out = fluid.layers.hsigmoid(input=x, label=y, num_classes=6)
+            x = fluid.layers.fill_constant(shape=[4, 3], value=0.9, dtype='float32')
+            # x = [[0.9, 0.9, 0.9], [0.9, 0.9, 0.9], [0.9, 0.9, 0.9], [0.9, 0.9, 0.9]]
+            y = fluid.layers.fill_constant(
+                shape=[4, 1], value=1, dtype='int64')
+            # y = [[1], [1], [1], [1]]
+            out = fluid.layers.hsigmoid(input=x, label=y, num_classes=2, param_attr=fluid.initializer.Constant(
+                value=0.05), bias_attr=fluid.initializer.Constant(value=.0))
+            # out = [[0.62792355], [0.62792355], [0.62792355], [0.62792355]]
     """
 
     helper = LayerHelper('hierarchical_sigmoid', **locals())
@@ -8639,48 +8681,56 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
 def squeeze(input, axes, name=None):
     """
-    Remove single-dimensional entries from the shape of a tensor. Takes a
-    parameter axes with a list of axes to squeeze. If axes is not provided, all
-    the single dimensions will be removed from the shape. If an axis is
-    selected with shape entry not equal to one, an error is raised.
+    This OP will squeeze single-dimensional entries of input tensor's shape. If axes is provided, will
+    remove the dims by axes, the dims selected by axes should be one. If not provide axes, all dims equal
+    to one will be deleted.
 
-    For example:
 
-    .. code-block:: text
+    .. code-block:: text 
 
-        Case 1:
+        Case1:
 
-          Given
+          Input:
             X.shape = (1, 3, 1, 5)
-          and
             axes = [0]
-          we get:
+          Output:
             Out.shape = (3, 1, 5)
 
-        Case 2:
+        Case2:
 
-          Given
+          Input:
             X.shape = (1, 3, 1, 5)
-          and
             axes = []
-          we get:
+          Output:
             Out.shape = (3, 5)
 
+        Case3:
+
+          Input:
+            X.shape = [1,3,1,5]
+            axes = [-2]
+          Output:
+            Out.shape = [1,3,5]
+
     Args:
-        input (Variable): The input variable to be squeezed.
-        axes (list): List of integers, indicating the dimensions to be squeezed.
-        name (str|None): Name for this layer.
+        input (Variable): The input Tensor. Support data type: float32, float64, int8, int32, int64.
+                          axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
+                          Axes range is :math:`[-rank(input), rank(input))`.
+                          If axes is negative, :math:`axes=axes+rank(input)`.
+        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Variable: Output squeezed variable.
+        Variable: Output squeezed Tensor. Data type is same as input Tensor.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
-            x = layers.data(name='x', shape=[5, 1, 10])
-            y = layers.squeeze(input=x, axes=[1])
+            # set batch size=None
+            x = fluid.data(name='x', shape=[None, 5, 1, 10])
+            y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
+
     """
     assert not in_dygraph_mode(), (
         "squeeze layer is not supported in dygraph mode yet.")
@@ -10690,60 +10740,65 @@ def scatter_nd(index, updates, shape, name=None):
 
 def sequence_scatter(input, index, updates, name=None):
     """
-    **Sequence Scatter Layer**
+    **Note**:
+    
+    **The index and updates parameters of the OP must be LoDTensor.**
+     
+    Plus the updates data to the correspoding input according to the index.
+ 
+    The updated algorithm is as follows: output[instance_index][index [pos]] = input[instance_index][index [pos]] +  updates[pos], 
+    where instance_idx is the K sample corresponding to pos in batch.
 
-    This operator scatters the Updates tensor to the input X. It uses the LoD
-    information of Ids to select the rows to update, and use the values in Ids as
-    the columns to update in each row of X.
+    The value of output[i][j] depends on whether j can be found in the i+1th interval of the index. If found, 
+    out[i][j] = input[i][j] + update[m] [n], otherwise, out[i][j] = input[i][j].
 
-    Here is an example:
-
-    Given the following input:
-
-    .. code-block:: text
-
-        input.data = [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-                      [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-                      [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
-        input.dims = [3, 6]
-
-        index.data = [[0], [1], [2], [5], [4], [3], [2], [1], [3], [2], [5], [4]]
-        index.lod =  [[0,        3,                       8,                 12]]
-
-        updates.data = [[0.3], [0.3], [0.4], [0.1], [0.2], [0.3], [0.4], [0.0], [0.2], [0.3], [0.1], [0.4]]
-        updates.lod =  [[  0,            3,                                 8,                         12]]
-
-    Then we have the output:
+    For example, in the following example, the lod information for index is divided into three sequences. Among 
+    them, because the element 0 can be found in the first interval of the index, it is updated with the value of 
+    the corresponding position of the updates, out[0][0] = input[0][0]+updates[0][0] . Because element 1 cannot 
+    be found in the third interval of index, out[2][1] = input[2][1].
 
     .. code-block:: text
+        
+        *Case 1:
 
-        out.data = [[1.3, 1.3, 1.4, 1.0, 1.0, 1.0],
-                    [1.0, 1.0, 1.4, 1.3, 1.2, 1.1],
-                    [1.0, 1.0, 1.3, 1.2, 1.4, 1.1]]
-        out.dims = X.dims = [3, 6]
+            Given:
+                input.data = [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                              [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                              [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
+                              input.dims = [3, 6]
+
+                index.data = [[0], [1], [2], [5], [4], [3], [2], [1], [3], [2], [5], [4]]
+                index.lod =  [[0,        3,                       8,                 12]]
+
+                updates.data = [[0.3], [0.3], [0.4], [0.1], [0.2], [0.3], [0.4], [0.0], [0.2], [0.3], [0.1], [0.4]]
+                updates.lod =  [[  0,            3,                                 8,                         12]]
+
+            Then:
+                out.data = [[1.3, 1.3, 1.4, 1.0, 1.0, 1.0],
+                            [1.0, 1.0, 1.4, 1.3, 1.2, 1.1],
+                            [1.0, 1.0, 1.3, 1.2, 1.4, 1.1]]
+                out.dims = X.dims = [3, 6]
 
     Args:
-        input (Variable): The source input with rank>=1.
-        index (Variable): A LoD Tensor. The index input of sequence scatter op
-            where input will be  updated. The index input with rank=1. Its dtype
-            should be int32 or int64 as it is used as indexes.
-        updates (Variable): A LoD Tensor. The values to scatter to the input
-            tensor X, must be a LoDTensor with the same LoD information as index.
-        name (str|None): The output variable name. Default None.
+        input (Variable): A Tensor with shape of  :math:`[N, k_1... k_n]`. Supported data types: float32, float64, int32, int64.
+        index (Variable):  A LoDTensor contains index information. Its LoD level must be 1 and its data type must be int64.
+        updates (Variable): A LodTensor contains updates information. It has the same  LoD level with the index and has the 
+                            same data type  with the input. Supported data types: float32, float64, int32, int64.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, 
+                              please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The output is a tensor with the same shape as input.
+        Variable: A Tensor which has been updated. It has the same shape and data type with input.
 
     Examples:
 
         .. code-block:: python
 	
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
 
-            input = layers.data( name="x", shape=[3, 6], append_batch_size=False, dtype='float32' )
-            index = layers.data( name='index', shape=[1], dtype='int32')
-            updates = layers.data( name='updates', shape=[1], dtype='float32')
+            input = fluid.data( name="x", shape=[None, 3, 6], dtype='float32' )
+            index = fluid.data( name='index', shape=[12, 1],  dtype='int64', lod_level=1)
+            updates = fluid.data( name='updates', shape=[12, 1], dtype='float32', lod_level=1)
             output = fluid.layers.sequence_scatter(input, index, updates)
 
     """
@@ -12271,74 +12326,82 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
 def stack(x, axis=0):
     """
-    **Stack Layer**
 
-    This layer stacks all of the input :code:`x` along axis.
-
-    Input :code:`x` can be a single variable, a :code:`list` of variables,
-    or a :code:`tuple` of variables. If :code:`x` is a :code:`list` or
-    :code:`tuple`, the shapes of all these variables must be the same.
-    Supposing the shape of each input is :math:`[d_0, d_1, ..., d_{n-1}]`,
-    the shape of the output variable would be
-    :math:`[d_0, d_1, ..., d_{axis}=len(x), ..., d_{n-1}]`.
-    If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x[0])+1`.
-    If :code:`axis` is None, it would be replaced with 0.
-
-    For Example:
+    This OP stacks all the inputs :code:`x` along axis.
 
     .. code-block:: text
 
         Case 1:
+
           Input:
+            x[0].shape = [1, 2]
             x[0].data = [ [1.0 , 2.0 ] ]
-            x[0].dims = [1, 2]
+            x[1].shape = [1, 2]
             x[1].data = [ [3.0 , 4.0 ] ]
-            x[1].dims = [1, 2]
+            x[2].shape = [1, 2]
             x[2].data = [ [5.0 , 6.0 ] ]
-            x[2].dims = [1, 2]
 
           Attrs:
             axis = 0
 
           Output:
+            Out.dims = [3, 1, 2]
             Out.data =[ [ [1.0, 2.0] ],
                         [ [3.0, 4.0] ],
                         [ [5.0, 6.0] ] ]
-            Out.dims = [3, 1, 2]
+
 
         Case 2:
-          Given
+
+
+          Input:
+            x[0].shape = [1, 2]
             x[0].data = [ [1.0 , 2.0 ] ]
-            x[0].dims = [1, 2]
+            x[1].shape = [1, 2]
             x[1].data = [ [3.0 , 4.0 ] ]
-            x[1].dims = [1, 2]
+            x[2].shape = [1, 2]
             x[2].data = [ [5.0 , 6.0 ] ]
-            x[2].dims = [1, 2]
+
 
           Attrs:
             axis = 1 or axis = -2
 
           Output:
+            Out.shape = [1, 3, 2]
             Out.data =[ [ [1.0, 2.0]
                           [3.0, 4.0]
                           [5.0, 6.0] ] ]
-            Out.dims = [1, 3, 2]
+
 
     Args:
-        x (Variable|list(Variable)|tuple(Variable)): Input variables.
-        axis (int|None): The axis along which all inputs are stacked.
+        x (Variable|list(Variable)): Input :code:`x` can be a single Tensor, a :code:`list` of Tensors.
+                                     If :code:`x` is a :code:`list`, the shapes of all these Tensors
+                                     must be the same. Supposing input is N dims
+                                     Tensors :math:`[d_0, d_1, ..., d_{n-1}]`, the output is N+1 dims
+                                     Tensor :math:`[d_0, d_1, d_{axis-1}, len(x), d_{axis}, ..., d_{n-1}]`.
+                                     Support data types: float32, float64, int32, int64.
+        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is :math:`[-(R+1), R+1)`.
+                              R is the first tensor of inputs. If ``axis`` < 0, :math:`axis=axis+rank(x[0])+1`.
+                              The default value of axis is 0.
 
     Returns:
-        Variable: The stacked variable.
+        Variable: The stacked Tensor, has same data type with input Tensors. Output dim is :math:`rank(x[0])+1`.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
-            x1 = layers.data(name='x1', shape=[1, 2], dtype='int32')
-            x2 = layers.data(name='x2', shape=[1, 2], dtype='int32')
-            data = layers.stack([x1,x2])
+            # set batch size=None
+            x1 = fluid.data(name='x1', shape=[None, 1, 2], dtype='int32')
+            x2 = fluid.data(name='x2', shape=[None, 1, 2], dtype='int32')
+            # stack Tensor list
+            data = layers.stack([x1,x2]) # stack according to axis 0, data.shape=[2, None, 1, 2]
+
+            data = layers.stack([x1,x2], axis=1) # stack according to axis 1, data.shape=[None, 2, 1, 2]
+
+            # stack single Tensor
+            data = layers.stack(x1)  # stack according to axis 0, data.shape=[1, None, 1, 2]
 
     """
 
@@ -12601,28 +12664,64 @@ def uniform_random_batch_size_like(input,
                                    max=1.0,
                                    seed=0):
     """
-    ${comment}
+    This OP initializes a variable with random values sampled from a
+    uniform distribution in the range [min, max). The input_dim_idx used to get the input dimension value which will be used to resize the output dimension.
 
+    .. code-block:: text
+
+        *Case 1:
+
+            Given:
+                input =[[0.946741  , 0.1357001 , 0.38086128]]    # input.shape=[1,3]
+                shape=[2,4]
+
+            result.shape[output_dim_idx] = input.shape[input_dim_idx],
+            output_dim_idx = 0, 
+            input_dim_idx = 0,
+            result.shape[0] = input.shape[0], 
+            then:
+                result=[[ 0.3443427 , -0.23056602,  0.3477049 ,  0.06139076]]    # result.shape=[1,4]
+            
+       *Case 2:
+           
+           Given:
+               input =[[0.946741  , 0.1357001 , 0.38086128]]     # input.shape=[1,3]
+               shape=[2,4]
+               input_dim_idx=1
+               output_dim_idx=1
+         
+           result.shape[output_dim_idx] = input.shape[input_dim_idx],
+           output_dim_idx = 1, 
+           input_dim_idx = 1,
+           result.shape[1] = input.shape[1], 
+           then:
+               result=[[-0.23133647, -0.84195036,  0.21441269],
+                       [-0.08774924,  0.25605237, -0.09403259]]    # result.shape=[2,3]
     Args:
-        input (Variable): ${input_comment}
-        shape (tuple|list): ${shape_comment}
-        input_dim_idx (Int): ${input_dim_idx_comment}
-        output_dim_idx (Int): ${output_dim_idx_comment}
-        min (Float): ${min_comment}
-        max (Float): ${max_comment}
-        seed (Int): ${seed_comment}
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+        input (Variable): A Tensor. Supported data types: float32, float64.
+        shape (tuple|list): A python list or python tuple. The shape of the output Tensor, the data type is int.
+        input_dim_idx (int, optional): An index used to get the input dimension value which will be used to resize the output dimension. Default  0. 
+        output_dim_idx (int, optional): An index used to indicate the specific dimension that will be replaced by corresponding input dimension value. Default 0.
+        min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
+        max (float, optional): The upper bound on the range of random values to generate, the max is excluded in the range. Default 1.0.
+        seed (int, optional):  Random seed used for generating samples. 0 means use a seed generated by the system.Note that if seed is not 0, this operator will always generate the same random numbers every time.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output Tensor. Supported data types: float32, float64. Default float32.
     Returns:
-        out (Variable): ${out_comment}
+        Variable: A Tensor of the specified shape filled with uniform_random values. The shape of the Tensor is determined by the shape parameter and the specified dimension of the input Tensor.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers 
+            
+            # example 1: 
+            input = fluid.data(name="input", shape=[1, 3], dtype='float32')
+            out_1 = fluid.layers.uniform_random_batch_size_like(input, [2, 4]) # out_1.shape=[1, 4]
 
-            input = layers.data(name="input", shape=[13, 11], dtype='float32')
-            out = layers.uniform_random_batch_size_like(input, [-1, 11])
+            # example 2: 
+            out_2 = fluid.layers.uniform_random_batch_size_like(input, [2, 4], input_dim_idx=1, output_dim_idx=1) # out_2.shape=[2, 3]
+
+            
     """
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
@@ -17035,8 +17134,8 @@ def mse_loss(input, label):
 @templatedoc()
 def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     """
-    This operator initializes a variable with random values sampled from a
-    uniform distribution. The random result is in set [min, max).
+    This OP initializes a variable with random values sampled from a
+    uniform distribution in the range [min, max).
 
     Examples:
     ::
@@ -17048,24 +17147,23 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
           result=[[0.8505902, 0.8397286]]
 
     Args:
-        shape (list|tuple|Variable): The shape of the output tensor, the data type of the integer is int,
-                                     and if the shape type is list or tuple, its elements can be an integer
-                                     or a tensor with the shape [1], the data type of the tensor is int64. 
-                                     If the shape type is Variable,it ia a 1D tensor, the data type of the tensor is int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the output tensor, such as float32, float64.
+        shape (list|tuple|Variable): The shape of the output Tensor,  if the shape is a list or tuple, 
+                                     its elements can be an integer
+                                     or a Tensor with the shape [1], and the type of the Tensor is int64. 
+                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor is int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the output Tensor. Supported data types: float32, float64.
                                                   Default: float32.
-        min (float, optional): Minimum value of uniform random, It's a closed interval. Default -1.0.
-        max (float, optional): Maximun value of uniform random, It's an open interval. Default 1.0.
+        min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
+        max (float, optional): The upper bound on the range of random values to generate, the max is excluded in the range. Default 1.0.
         seed (int, optional): Random seed used for generating samples. 0 means use a
             seed generated by the system. Note that if seed is not 0, this
             operator will always generate the same random numbers every time.
             Default 0.
 
-    Returns: a Tensor with randomly initialized results whose data type is determined by the dtype parameter 
-                and whose dimension is determined by the shape parameter.
-    Return type: Variable
+    Returns: 
+        Variable: A Tensor of the specified shape filled with uniform_random values.
 
-    Throw exception:
+    Raises:
         TypeError: The shape type should be list or tupple or variable.
     
     Examples:
@@ -17084,7 +17182,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
             # example 3:
             # attr shape is a Variable, the data type must be int64
-            var_shape = fluid.layers.data(name='var_shape',shape=[2],append_batch_size=False)
+            var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
             result_3 = fluid.layers.uniform_random(var_shape)
 
     """
