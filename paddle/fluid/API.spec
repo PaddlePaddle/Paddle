@@ -78,7 +78,7 @@ paddle.fluid.io.load_params (ArgSpec(args=['executor', 'dirname', 'main_program'
 paddle.fluid.io.load_persistables (ArgSpec(args=['executor', 'dirname', 'main_program', 'filename'], varargs=None, keywords=None, defaults=(None, None)), ('document', '1e039084ad3781eb43966581eed48688'))
 paddle.fluid.io.save_inference_model (ArgSpec(args=['dirname', 'feeded_var_names', 'target_vars', 'executor', 'main_program', 'model_filename', 'params_filename', 'export_for_deployment', 'program_only'], varargs=None, keywords=None, defaults=(None, None, None, True, False)), ('document', '827797614e194d31ceb5a3a68c46efab'))
 paddle.fluid.io.load_inference_model (ArgSpec(args=['dirname', 'executor', 'model_filename', 'params_filename', 'pserver_endpoints'], varargs=None, keywords=None, defaults=(None, None, None)), ('document', '7a863032bf7613dec1c8dd99efbd82e5'))
-paddle.fluid.io.batch (ArgSpec(args=['reader', 'batch_size', 'drop_last'], varargs=None, keywords=None, defaults=(False,)), ('document', 'bcf8d2c7ee4c0dc4147cf2236b12ad10'))
+paddle.fluid.io.batch (ArgSpec(args=['reader', 'batch_size', 'drop_last'], varargs=None, keywords=None, defaults=(False,)), ('document', '16acb4e1215d5fc4386add454e717440'))
 paddle.fluid.io.save (ArgSpec(args=['program', 'model_path'], varargs=None, keywords=None, defaults=None), ('document', 'cef7d50c36b93c02b6d12bcea7d025ce'))
 paddle.fluid.io.load (ArgSpec(args=['program', 'model_path'], varargs=None, keywords=None, defaults=None), ('document', '8d0f200c20f8a4581e1843967230ad45'))
 paddle.fluid.io.PyReader ('paddle.fluid.reader.PyReader', ('document', 'f5875acee86f9f4432933bab40873722'))
