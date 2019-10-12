@@ -442,7 +442,7 @@ def assign(input, output=None):
         ]:
             raise TypeError(
                 "When the type of 'input' in assign is Variable, the data "
-                "type of 'input' must be float32, float64, int32 or int64, "
+                "type of 'input' must be float32, float64, int32, int64 or "
                 "bool, but received %s." % convert_dtype(input.dtype))
         if output is None:
             output = helper.create_variable_for_type_inference(
