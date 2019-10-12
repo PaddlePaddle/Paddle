@@ -34,6 +34,8 @@ from .proto import framework_pb2
 
 from . import core
 from . import unique_name
+import paddle.version as fluid_version
+import warnings
 
 __all__ = [
     'Program',
@@ -48,6 +50,7 @@ __all__ = [
     'is_compiled_with_cuda',
     'Variable',
     'load_op_library',
+    'require_version',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -58,6 +61,113 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
+
+
+def require_version(min_version, max_version=None):
+    """
+        Check if the installed version of PaddlePaddle is in [min_version, max_version],
+        if the installed version is lower than ``min_version`` or higher than ``max_version``,
+        an exception will be thrown, NO returns if the installed version is satisfied.
+
+        Args:
+            min_version (str): the minimum version required (like '1.4.0').
+            max_version (str, optional): the max version required (like '1.6.0'), default is None,
+                meaning any version equal or higher than ``min_version`` is acceptable.
+
+        Returns:
+            None.
+
+        Raises:
+            TypeError: if the type of ``min_version`` is not str.
+            TypeError: if the type of ``max_version`` is not str or type(None).
+            ValueError: if the value of ``min_version`` is not in version format.
+            ValueError: if the value of ``max_version`` is not in version format or None.
+            Exception: if the installed version is lower than ``min_version`` or higher than ``max_version``.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                # any version >= 0.1.0 is acceptable.
+                fluid.require_version('0.1.0')
+
+                # if 0.1.0 <= version <= 10.0.0, it is acceptable.
+                fluid.require_version(min_version='0.1.0', max_version='10.0.0')
+        """
+    if not isinstance(min_version, str):
+        raise TypeError(
+            "The type of 'min_version' in require_version must be str, but received %s."
+            % (type(min_version)))
+
+    if not isinstance(max_version, (str, type(None))):
+        raise TypeError(
+            "The type of 'max_version' in require_version must be str or type(None), but received %s."
+            % (type(max_version)))
+
+    check_format = re.match(r'\d+(\.\d+){0,3}', min_version)
+    if check_format is None or check_format.group() != min_version:
+        raise ValueError(
+            "The value of 'min_version' in require_version must be in format '\\d+(\\.\\d+){0,3}', "
+            "like '1.5.2.0', but received %s" % min_version)
+
+    if max_version is not None:
+        check_format = re.match(r'\d+(\.\d+){0,3}', max_version)
+        if check_format is None or check_format.group() != max_version:
+            raise ValueError(
+                "The value of 'max_version' in require_version must be in format '\\d+(\\.\\d+){0,3}', "
+                "like '1.5.2.0', but received %s" % max_version)
+
+    version_installed = [
+        fluid_version.major, fluid_version.minor, fluid_version.patch,
+        fluid_version.rc
+    ]
+    zero_version = ['0', '0', '0', '0']
+
+    def version_cmp(ver_a, ver_b):
+        for i in six.moves.range(len(ver_a)):
+            if int(ver_a[i]) > int(ver_b[i]):
+                return 1
+            elif int(ver_a[i]) < int(ver_b[i]):
+                return -1
+        return 0
+
+    if version_cmp(version_installed, zero_version) == 0:
+        if max_version is not None:
+            warnings.warn(
+                "PaddlePaddle version in [%s, %s] required, but %s installed. "
+                "Maybe you are using a develop version, "
+                "please make sure the version is good with your code." %
+                (min_version, max_version, fluid_version.full_version))
+        else:
+            warnings.warn(
+                "PaddlePaddle version %s or higher is required, but %s installed, "
+                "Maybe you are using a develop version, "
+                "please make sure the version is good with your code." %
+                (min_version, fluid_version.full_version))
+        return
+
+    min_version_split = min_version.split('.')
+    min_version_to_check = min_version_split + zero_version[len(
+        min_version_split):]
+
+    if max_version is not None:
+        max_version_split = max_version.split('.')
+        max_version_to_check = max_version_split + zero_version[len(
+            max_version_split):]
+
+        if version_cmp(version_installed,
+                       max_version_to_check) > 0 or version_cmp(
+                           version_installed, min_version_to_check) < 0:
+            raise Exception(
+                "VersionError: PaddlePaddle version in [%s, %s] required, but %s installed."
+                % (min_version, max_version, fluid_version.full_version))
+    else:
+        if version_cmp(version_installed, min_version_to_check) < 0:
+            raise Exception(
+                "VersionError: PaddlePaddle version %s or higher is required, but %s installed, "
+                "please upgrade your PaddlePaddle to %s or other higher version."
+                % (min_version, fluid_version.full_version, min_version))
 
 
 def in_dygraph_mode():

@@ -221,6 +221,7 @@ __all__ = [
     'filter_by_instag',
     'shard_index',
     'hard_swish',
+    'gather_tree',
     'mse_loss',
     'uniform_random',
 ]
@@ -7541,70 +7542,74 @@ def hsigmoid(input,
              is_custom=False,
              is_sparse=False):
     """
-    The hierarchical sigmoid operator is used to accelerate the training
-    process of language model. This operator organizes the classes into a
-    complete binary tree, or you can use is_custom to pass your own tree to
-    implement hierarchical. Each leaf node represents a class(a word) and each
-    internal node acts as a binary classifier. For each word there's a unique
-    path from root to it's leaf node, hsigmoid calculate the cost for each
-    internal node on the path, and sum them to get a total cost. hsigmoid can
-    achive a acceleration from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
-    represents the size of word dict.
+    The hierarchical sigmoid organizes the classes into a complete binary tree to reduce the computational complexity
+    and speed up the model training, especially the training of language model.
+    Each leaf node of the complete binary tree represents a class(word) and each non-leaf node acts as a binary classifier.
+    For each class(word), there's a unique path from root to itself, hsigmoid calculate the cost for each non-leaf node on
+    the path, and sum them to get a total cost.
+    Comparing to softmax, the OP can reduce the computational complexity from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
+    represents the number of classes or the size of word dict.
 
-    Using default tree you can Refer to `Hierarchical Probabilistic Neural Network Language Model
-    <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_
+    The OP supports default tree and custom tree. For the default tree, you can refer to `Hierarchical Probabilistic Neural
+    Network Language Model <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`. For the custom
+    tree, you need to set :attr:`is_custom` to True, and do the following steps (take the language model as an example):
 
-    And if you want to use the costumed tree by set 'is_custom' as true you may need to do following things first:
+    1. Using a custom word dict to build a binary tree, each leaf node should be an word in the word dict.
+    2. Creating a dict map word_id -> path that from the word to the root node, we call it path_table.
+    3. Creating a dict map word_id -> code of path that from the word to the root node, we call it path_code.
+       Code means the label of each binary classifier, 1 indicate true, 0 indicate false.
+    4. Now, each word should has its path and code along the path, you can pass a batch of path and code related
+       to the same batch of inputs.
 
-    1. using your word dict to build a binary tree, each leaf node should be an word of your word dict
-    2. build a dict to store word_id -> word's leaf to root path, we call it path_table.
-    3. build a dict to store word_id -> code of word's leaf to root path, we call it path_code. Code
-       means label of each binary classification, using 1 indicate true, 0 indicate false.
-    4. now, each word should has its path and code along the path, you can pass a batch of path and code
-       related to the same batch of inputs.
-
-    Args:
-        input (Variable): The input tensor variable with shape
-            :math:`[N \\times D]`, where :math:`N` is the size of mini-batch,
-            and :math:`D` is the feature size.
-        label (Variable): The tensor variable contains labels of training data.
-            It's a tensor with shape is :math:`[N \\times 1]`.
-        num_classes: (int), The number of classes, must not be less than 2. with default tree this has to be set,
-            it should never be None under is_custom=False, but while is_custom is true, it should be non leaf num
-            which indicates the num of classes using by binary classify.
-        param_attr (ParamAttr|None): The parameter attribute for learnable parameters/weights
-             of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid
-             will create ParamAttr as param_attr. If the Initializer of the param_attr
-             is not set, the parameter is initialized with Xavier. Default: None.
-        bias_attr (ParamAttr|bool|None): The parameter attribute for the bias of hsigmoid.
-             If it is set to False, no bias will be added to the output units.
-             If it is set to None or one attribute of ParamAttr, hsigmoid
-             will create ParamAttr as bias_attr. If the Initializer of the bias_attr
-             is not set, the bias is initialized zero. Default: None.
-        name (str|None): A name for this layer(optional). If set None, the layer
-             will be named automatically. Default: None.
-        path_table: (Variable|None) this variable can store each batch of samples' path to root,
-            it should be in leaf -> root order
-            path_table should have the same shape with path_code, and for each sample i path_table[i] indicates a np.array like
-            structure and each element in this array is indexes in parent nodes' Weight Matrix.
-        path_code:  (Variable|None) this variable can store each batch of samples' code,
-            each code consist with every code of parent nodes. it should be in leaf -> root order
-        is_custom: (bool|False)using user defined binary tree instead of default complete binary tree, if costum is
-             set you need to set path_table/path_code/num_classes, otherwise num_classes should be set
-        is_sparse: (bool|False)using sparse update instead of dense update, if set, the gradient
-             of W and input will be sparse.
+    Parameters:
+        input (Variable): A tensor with the shape [N, D], where N is the size of mini-batch,
+            and D is the feature size. Its data type supports float32 and float64.
+        label (Variable): A tensor contains the labels of training data. Its shape is [N, 1]
+            and data type is int64.
+        num_classes (int): The number of classes or the size of word dict, must be greater than 2.
+            If the default tree is used (:attr:`is_custom` is set to False), :attr:`num_classes`
+            should not be None. If the custom tree is used (:attr:`is_custom` is set to True),
+            :attr:`num_classes` should be the number of non-leaf nodes, which indicates the num of
+            classes using by the binary classifier.
+        param_attr (ParamAttr, optional): The parameter attribute for the learnable parameters/weights
+            of hsigmoid. If it is set to None or one attribute of ParamAttr, hsigmoid will create a
+            ParamAttr as param_attr. If the Initializer of the param_attr is not set, the parameter is
+            initialized with Xavier. Default: None.
+        bias_attr (ParamAttr|bool, optional): The parameter attribute for the bias of hsigmoid. If it
+            is set to False, no bias will be added. If it is set to None or one attribute of ParamAttr,
+            hsigmoid will create a ParamAttr as bias_attr. If the Initializer of the bias_attr is not
+            set, the bias is initialized zero. Default: None.
+        name (str, optional): Normally there is no need for user to set this property. For more information,
+            please refer to :ref:`api_guide_Name`. Default: None.
+        path_table (Variable, optional): A tensor that stores each batch of samples' path from leaf to root
+            node, its shape is [N, L] and data type is int64, where L is the length of path. For each sample i,
+            path_table[i] is a np.array like structure and each element in this array is the indexes in parent
+            nodes' weight matrix. Default: None.
+        path_code (Variable, optional): A tensor that stores each batch of samples' code of path from leaf
+            to root node, its shape is [N, L] and data type is int64, which is the same as :attr:`path_table`.
+            Each code of path is consisted with the code of nodes from leaf to root node. Default: None.
+        is_custom (bool, optional): Whether use custom binary tree. If it's True, :attr:`path_table`,
+            :attr:`path_code` and :attr:`num_classes` should be set, otherwise :attr:`num_classes` should
+            be set. Default: False.
+        is_sparse (bool, optional): Whether use sparse updating instead of dense updating, if it's True, the
+            gradient of W and input will be sparse. Default: False.
 
     Returns:
-        Out: (LodTensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
+        Variable: A tensor with the cost of hierarchical sigmoid, its shape is [N, 1] and data type is the same as :attr:`input`.
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[2], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='int64')
-            out = fluid.layers.hsigmoid(input=x, label=y, num_classes=6)
+            x = fluid.layers.fill_constant(shape=[4, 3], value=0.9, dtype='float32')
+            # x = [[0.9, 0.9, 0.9], [0.9, 0.9, 0.9], [0.9, 0.9, 0.9], [0.9, 0.9, 0.9]]
+            y = fluid.layers.fill_constant(
+                shape=[4, 1], value=1, dtype='int64')
+            # y = [[1], [1], [1], [1]]
+            out = fluid.layers.hsigmoid(input=x, label=y, num_classes=2, param_attr=fluid.initializer.Constant(
+                value=0.05), bias_attr=fluid.initializer.Constant(value=.0))
+            # out = [[0.62792355], [0.62792355], [0.62792355], [0.62792355]]
     """
 
     helper = LayerHelper('hierarchical_sigmoid', **locals())
@@ -16991,6 +16996,81 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         attrs={'threshold': threshold,
                'scale': scale,
                'offset': offset})
+    return out
+
+
+def gather_tree(ids, parents):
+    """
+    To be used after beam search. After beam search, we get selected ids at
+    each time step and the corresponding parents in the search tree. Both ids
+    and parents have the layout :attr:`[max_time, batch_size, beam_size]`. Then
+    :attr:`gather_tree` is used to backtrace from the last time step and
+    generate the full sequences by collecting selected ids.
+
+    Here is an example:
+
+    .. code-block:: text
+
+            Given:
+                ids = [[[2 2]
+                        [6 1]]
+                       [[3 9]
+                        [6 1]]
+                       [[0 1]
+                        [9 0]]]
+                parents = [[[0 0]
+                            [1 1]]
+                           [[1 0]
+                            [1 0]]
+                           [[0 0]
+                            [0 1]]]
+
+            Then:                
+                gather_tree(ids, parents)  
+                         = [[[2 2]
+                             [1 6]]
+                            [[3 3]
+                             [6 1]]
+                            [[0 1]
+                             [9 0]]]
+
+    Args:
+        ids(Variable): A Tensor with shape :attr:`[length, batch_size, beam_size]`
+            and data type :attr:`int32` or :attr:`int64`. It contains the selected
+            ids of all time steps.
+        parents(Variable): A Tensor with the same shape and data type as :attr:`ids`,
+            It contains the parents corresponding to selected ids when searching
+            among beams.
+
+    Returns:
+        Variable: A Tensor with the same shape and data type as :attr:`ids`. \
+            It contains the full sequences. The sequences are collected from \
+            :attr:`ids` by backtracing according to :attr:`parents`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            ids = fluid.layers.data(name='ids',
+                                    shape=[5, 2, 2],
+                                    dtype='int64',
+                                    append_batch_size=False)
+            parents = fluid.layers.data(name='parents',
+                                        shape=[5, 2, 2],
+                                        dtype='int64',
+                                        append_batch_size=False)
+            final_sequences = fluid.layers.gather_tree(ids, parents)
+    """
+    helper = LayerHelper('gather_tree', **locals())
+    out = helper.create_variable_for_type_inference(dtype=ids.dtype)
+
+    helper.append_op(
+        type="gather_tree",
+        inputs={"Ids": ids,
+                "Parents": parents},
+        outputs={"Out": out})
+
     return out
 
 
