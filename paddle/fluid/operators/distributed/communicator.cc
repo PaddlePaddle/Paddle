@@ -936,6 +936,7 @@ void GeoSgdCommunicator::RpcRecv(const std::string &var_name,
   auto &cpu_ctx_recv = *pool.Get(platform::CPUPlace());
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(train_id);
+
   pserver_scope_->Var(splited_var_name);
   rpc_client->AsyncGetVar(endpoint, cpu_ctx_recv, *pserver_scope_.get(),
                           splited_var_name, splited_var_name, splited_var_name);
