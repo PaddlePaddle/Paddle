@@ -37,7 +37,10 @@ class Layer(core.Layer):
             If prefix is "my_model/layer_1", parameter name in MyLayer
             can be "my_model/layer_1/MyLayer/w_n", where w is the parameter
             base name and n is an unique suffix auto-generated.
-        dtype (core.VarDesc.VarType, optional): data type for the variables in the layer. Default: core.VarDesc.VarType.FP32.
+        dtype(str or core.VarDesc.VarType, optional): data type of this parameter.
+                If set str, it can be "bool",  "float16", "float32", "float64",
+                "int8", "int16", "int32", "int64", "uint8" or "uint16".
+                Default: ``core.VarDesc.VarType.FP32``
     
     Returns:
         None
@@ -79,9 +82,13 @@ class Layer(core.Layer):
         Parameters:
             attr(ParamAttr): Parameter attribute of weight. Please refer to :ref:`api_fluid_ParamAttr`
             shape(list): shape of the parameter
-            dtype(float or int or core.VarDesc.VarType): data type of this parameter
+            dtype(str or core.VarDesc.VarType): data type of this parameter.
+                If set str, it can be "bool",  "float16", "float32", "float64",
+                "int8", "int16", "int32", "int64", "uint8" or "uint16".
             is_bias(bool, optional): if this is a bias parameter. Default: False
-            default_initializer(Initializer, optional): the default initializer for this parameter. If set None, defaule initializer will be used. Default: None
+            default_initializer(Initializer, optional): the default initializer for this parameter.
+                If set None, default initializer will be set to :ref:`api_fluid_initializer_XavierInitializer` and :ref:`api_fluid_initializer_ConstantInitializer`
+                for non-bias and bias parameter, respectively. Default: None
 
         Returns:
             :ref:`api_guide_Variable_en` : created parameter.
@@ -102,10 +109,13 @@ class Layer(core.Layer):
         """Create Variable for this layer.
 
         Parameters:
-            name: name of the variable
-            persistable: if set this variable persistable
-            dtype: data type of data in the variable
-            type: type of the variable
+            name(str, optional): name of the variable. Please refer to :ref:`api_guide_Name` . Default: None
+            persistable(bool, optional): if set this variable persistable. Default: False
+            dtype(str or core.VarDesc.VarType, optional): data type of this parameter.
+                If set str, it can be "bool",  "float16", "float32", "float64",
+                "int8", "int16", "int32", "int64", "uint8" or "uint16".
+                If set None, it will be ``core.VarDesc.VarType.FP32``. Default: None
+            type(core.VarDesc.VarType, optional): type of the variable. Default: ``core.VarDesc.VarType.LOD_TENSOR``
 
         Returns:
             :ref:`api_guide_Variable_en` : created Variable.
@@ -197,8 +207,8 @@ class Layer(core.Layer):
         Added parameter can be access like self.name.
 
         Parameters:
-            name: name of this sublayer.
-            parameter: an instance of Parameter.
+            name(str): name of this sublayer.
+            parameter(Parameter): an instance of Parameter.
         Returns:
             Parameter: the parameter passed in.
         """
