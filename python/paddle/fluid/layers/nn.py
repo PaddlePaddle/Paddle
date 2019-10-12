@@ -7921,21 +7921,21 @@ def multiplex(inputs, index):
 
     For Example:
 
-    .. code-block:: text
+            .. code-block:: text
 
-        Given:
+                Given:
 
-        inputs = [[[0,0,3,4], [0,1,3,4], [0,2,4,4], [0,3,3,4]],
-                  [[1,0,3,4], [1,1,7,8], [1,2,4,2], [1,3,3,4]],
-                  [[2,0,3,4], [2,1,7,8], [2,2,4,2], [2,3,3,4]],
-                  [[3,0,3,4], [3,1,7,8], [3,2,4,2], [3,3,3,4]]]
+                inputs = [[[0,0,3,4], [0,1,3,4], [0,2,4,4], [0,3,3,4]],
+                          [[1,0,3,4], [1,1,7,8], [1,2,4,2], [1,3,3,4]],
+                          [[2,0,3,4], [2,1,7,8], [2,2,4,2], [2,3,3,4]],
+                          [[3,0,3,4], [3,1,7,8], [3,2,4,2], [3,3,3,4]]]
 
-        index = [[3],[0],[1],[2]]
+                index = [[3],[0],[1],[2]]
 
-        out = [[3,0,3,4],    # out[0] = inputs[index[0]][0] = inputs[3][0] = [3,0,3,4]
-               [0,1,3,4],    # out[1] = inputs[index[1]][1] = inputs[0][1] = [0,1,3,4]
-               [1,2,4,2],    # out[2] = inputs[index[2]][2] = inputs[1][2] = [1,2,4,2]
-               [2,3,3,4]]    # out[3] = inputs[index[3]][3] = inputs[2][3] = [2,3,3,4]
+                out = [[3,0,3,4],    # out[0] = inputs[index[0]][0] = inputs[3][0] = [3,0,3,4]
+                       [0,1,3,4],    # out[1] = inputs[index[1]][1] = inputs[0][1] = [0,1,3,4]
+                       [1,2,4,2],    # out[2] = inputs[index[2]][2] = inputs[1][2] = [1,2,4,2]
+                       [2,3,3,4]]    # out[3] = inputs[index[3]][3] = inputs[2][3] = [2,3,3,4]
 
 
     Args:
@@ -7947,25 +7947,25 @@ def multiplex(inputs, index):
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle.fluid as fluid
-        import numpy as np
+            import paddle.fluid as fluid
+            import numpy as np
 
-        x1 = fluid.data(name='x1', shape=[None, 2], dtype='float32')
-        x2 = fluid.data(name='x2', shape=[None, 2], dtype='float32')
-        index = fluid.data(name='index', shape=[None, 1], dtype='int32')
-        out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
+            x1 = fluid.data(name='x1', shape=[None, 2], dtype='float32')
+            x2 = fluid.data(name='x2', shape=[None, 2], dtype='float32')
+            index = fluid.data(name='index', shape=[None, 1], dtype='int32')
+            out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
 
-        img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
-        img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
-        index = np.array([[1], [0]]).astype(np.int32)
+            img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
+            img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
+            index = np.array([[1], [0]]).astype(np.int32)
 
-        res = exe.run(fluid.default_main_program(), feed={'x1':img1, 'x2':img2, 'index':index}, fetch_list=[out])
-        print(res) # [array([[5., 6.], [3., 4.]], dtype=float32)]
+            res = exe.run(fluid.default_main_program(), feed={'x1':img1, 'x2':img2, 'index':index}, fetch_list=[out])
+            print(res) # [array([[5., 6.], [3., 4.]], dtype=float32)]
 
     """
     helper = LayerHelper('multiplex', **locals())
@@ -8756,6 +8756,7 @@ def unsqueeze(input, axes, name=None):
             import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[5, 10])
             y = fluid.layers.unsqueeze(input=x, axes=[1])
+
     """
     helper = LayerHelper("unsqueeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
