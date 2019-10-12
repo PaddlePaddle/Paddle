@@ -601,6 +601,21 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in layers.embedding must be Variable, but received %s"
+            % (type(input)))
+    if convert_dtype(input.dtype) not in ['int64']:
+        raise TypeError(
+            "The data type of 'input' in layers.embedding must be int64, but received %s."
+            % (convert_dtype(input.dtype)))
+    if convert_dtype(dtype) in ['float16']:
+        warnings.warn(
+            "The 'dtype' of layers.embedding only support float16 in GPU now.")
+    if convert_dtype(dtype) not in ['float16', 'float32', 'float64']:
+        raise TypeError(
+            "The 'dtype' of layers.embedding must be float16, float32 or float64, but received %s."
+            % (convert_dtype(dtype)))
     remote_prefetch = is_sparse and (not is_distributed)
     if remote_prefetch:
         assert is_sparse is True and is_distributed is False
@@ -4065,7 +4080,7 @@ def batch_norm(input,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
-               do_model_average_for_mean_and_var=False,
+               do_model_average_for_mean_and_var=True,
                fuse_with_relu=False,
                use_global_stats=False):
     """
@@ -4149,7 +4164,8 @@ def batch_norm(input,
         moving_variance_name(str, Default None): The name of the moving_variance which store the global Variance.
             If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm 
             will save global variance with the string.
-        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance should do model
+            average when model average is enabled.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
         use_global_stats(bool, Default False): Whether to use global mean and
             variance. In inference or test mode, set use_global_stats to true
@@ -4396,7 +4412,7 @@ def data_norm(input,
               name=None,
               moving_mean_name=None,
               moving_variance_name=None,
-              do_model_average_for_mean_and_var=False):
+              do_model_average_for_mean_and_var=True):
     """
     **Data Normalization Layer**
 
@@ -4430,7 +4446,8 @@ def data_norm(input,
             will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance
+            should do model average when model average is enabled.
 
     Returns:
         Variable: A tensor variable which is the result after applying data normalization on the input.
@@ -6710,62 +6727,70 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
 
 def topk(input, k, name=None):
     """
-    This operator is used to find values and indices of the k largest entries
+    This OP is used to find values and indices of the k largest entries
     for the last dimension.
 
-    If the input is a vector (1-D Tensor), finds the k largest entries in the vector
-    and outputs their values and indices as vectors. Thus values[j] is the j-th
-    largest entry in input, and its index is indices[j].
+    If the input is a 1-D Tensor, finds the k largest entries and outputs
+    their values and indices.
 
     If the input is a Tensor with higher rank, this operator computes the top k
     entries along the last dimension.
 
-    For example:
-
     .. code-block:: text
 
-        If:
-            input = [[5, 4, 2, 3],
+        Case 1:
+
+          Input:
+            input.shape = [3, 4]
+            input.data = [[5, 4, 2, 3],
                      [9, 7, 10, 25],
                      [6, 2, 10, 1]]
             k = 2
 
-        Then:
+          Output:
             The first output:
-            values = [[5, 4],
+            values.shape = [3, 2]
+            values.data = [[5, 4],
                       [10, 25],
                       [6, 10]]
 
             The second output:
-            indices = [[0, 1],
+            indices.shape = [3, 2]
+            indices.data = [[0, 1],
                        [2, 3],
                        [0, 2]]
 
     Args:
-        input(Variable): The input variable which can be a vector or Tensor with
-            higher rank.
-        k(int | Variable):  The number of top elements to look for along the last dimension
-                 of input.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                       will be named automatically.
-                       Default: None
+        input(Variable): The input tensor. Support data types: float32, float64.
+        k(int | Variable): The number of top elements to look for along the last dimension
+                           of input tensor.
+        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Tuple[Variable]: A tuple with two elements. Each element is a Variable.
-        The first one is k largest elements along each last
-        dimensional slice. The second one is indices of values
-        within the last dimension of input.
+        Values (Variable): Input tensor's k largest elements along each last dimensional slice. The dimension is: :math:`input.shape[:-1]+[k]`.
+        Indices (Variable): Indices of k largest elements alone the last dimension of input. The dimension is same as values.
 
     Raises:
-        ValueError: If k < 1 or k is not less than the last dimension of input
+        ValueError: If :math:`k < 1` or :math:`k > last dimension of input`.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
-            input = layers.data(name="input", shape=[13, 11], dtype='float32')
-            top5_values, top5_indices = layers.topk(input, k=5)
+            # set batch size=None
+            input = fluid.data(name="input", shape=[None, 13, 11], dtype='float32')
+            top5_values, top5_indices = layers.topk(input, k=5) # top5_values.shape[None, 13, 5], top5_indices.shape=[None, 13, 5]
+
+            # 1D Tensor
+            input1 = fluid.data(name="input1", shape=[None, 13], dtype='float32')
+            top5_values, top5_indices = layers.topk(input1, k=5) #top5_values.shape=[None, 5], top5_indices.shape=[None, 5]
+
+            # k=Variable
+            input2 = fluid.data(name="input2", shape=[None, 13, 11], dtype='float32')
+            vk = fluid.data(name="vk", shape=[None, 1], dtype='int32') # save k in vk.data[0]
+            vk_values, vk_indices = layers.topk(input2, k=vk) #vk_values.shape=[None, 13, k], vk_indices.shape=[None, 13, k]
+
     """
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -8499,9 +8524,15 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             "The type of 'x' in reshape must be Variable, but received %s." %
             (type(x)))
 
-    if convert_dtype(x.dtype) not in ['float32', 'float64', 'int32', 'int64']:
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'x' in reshape only support float16 in GPU now.")
+
+    if convert_dtype(x.dtype) not in [
+            'float16', 'float32', 'float64', 'int32', 'int64'
+    ]:
         raise TypeError(
-            "The data type of 'x' in reshape must be float32, float64, int32 or int64, "
+            "The data type of 'x' in reshape must be float16, float32, float64, int32 or int64, "
             "but received %s." % (convert_dtype(x.dtype)))
 
     if not isinstance(shape, (list, tuple, Variable)):
@@ -8597,48 +8628,56 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
 def squeeze(input, axes, name=None):
     """
-    Remove single-dimensional entries from the shape of a tensor. Takes a
-    parameter axes with a list of axes to squeeze. If axes is not provided, all
-    the single dimensions will be removed from the shape. If an axis is
-    selected with shape entry not equal to one, an error is raised.
+    This OP will squeeze single-dimensional entries of input tensor's shape. If axes is provided, will
+    remove the dims by axes, the dims selected by axes should be one. If not provide axes, all dims equal
+    to one will be deleted.
 
-    For example:
 
-    .. code-block:: text
+    .. code-block:: text 
 
-        Case 1:
+        Case1:
 
-          Given
+          Input:
             X.shape = (1, 3, 1, 5)
-          and
             axes = [0]
-          we get:
+          Output:
             Out.shape = (3, 1, 5)
 
-        Case 2:
+        Case2:
 
-          Given
+          Input:
             X.shape = (1, 3, 1, 5)
-          and
             axes = []
-          we get:
+          Output:
             Out.shape = (3, 5)
 
+        Case3:
+
+          Input:
+            X.shape = [1,3,1,5]
+            axes = [-2]
+          Output:
+            Out.shape = [1,3,5]
+
     Args:
-        input (Variable): The input variable to be squeezed.
-        axes (list): List of integers, indicating the dimensions to be squeezed.
-        name (str|None): Name for this layer.
+        input (Variable): The input Tensor. Support data type: float32, float64, int8, int32, int64.
+                          axes (list): One integer or List of integers, indicating the dimensions to be squeezed.
+                          Axes range is :math:`[-rank(input), rank(input))`.
+                          If axes is negative, :math:`axes=axes+rank(input)`.
+        name (str, optional): Please refer to :ref:`api_guide_Name`, Default None.
 
     Returns:
-        Variable: Output squeezed variable.
+        Variable: Output squeezed Tensor. Data type is same as input Tensor.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
-            x = layers.data(name='x', shape=[5, 1, 10])
-            y = layers.squeeze(input=x, axes=[1])
+            # set batch size=None
+            x = fluid.data(name='x', shape=[None, 5, 1, 10])
+            y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
+
     """
     assert not in_dygraph_mode(), (
         "squeeze layer is not supported in dygraph mode yet.")
@@ -10799,32 +10838,34 @@ def log(x, name=None):
     return out
 
 
+@templatedoc()
 def relu(x, name=None):
     """
-    Relu takes one input data (Tensor) and produces one output data (Tensor)
-    where the rectified linear function, y = max(0, x), is applied to
-    the tensor elementwise.
-
-    .. math::
-
-        Out = \\max(0, x)
+    ${comment}
 
     Args:
-        x (Variable): The input tensor.
-        name (str|None, default None): A name for this layer If set None,
-            the layer will be named automatically.
+        x(Variable): ${x_comment}
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-        Variable: The output tensor with the same shape as input.
+        Variable: ${out_comment}
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3, 4], dtype="float32")
-            output = fluid.layers.relu(x)
-    """
+            import numpy as np
+            in1 = np.array([[-1,0],[1,2.6]])
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(in1)
+                out1 = fluid.layers.relu(x1)
+                print(out1.numpy())
+                # [[0.  0. ]
+                #  [1.  2.6]]
+"""
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -11586,11 +11627,13 @@ def elu(x, alpha=1.0, name=None):
 def relu6(x, threshold=6.0, name=None):
     """
     ${comment}
+
     Args:
         x(${x_type}): ${x_comment}
-        threshold(${threshold_type}|6.0): ${threshold_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+        threshold(float, optional): ${threshold_comment}
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
         output(${out_type}): ${out_comment}
@@ -11600,8 +11643,14 @@ def relu6(x, threshold=6.0, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-            y = fluid.layers.relu6(x, threshold=6.0)
+            import numpy as np
+            in1 = np.array([[-1,0],[2.5,7.8]])
+            with fluid.dygraph.guard():
+                x1 = fluid.dygraph.to_variable(in1)
+                out1 = fluid.layers.relu6(x=x1, threshold=6.0)
+                print(out1.numpy())
+                # [[0.  0. ]
+                #  [2.5 6. ]]
     """
     helper = LayerHelper('relu6', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -11710,23 +11759,24 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
 def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
     """
     ${comment}
-    Args:
-        x(${x_type}): ${x_comment}
-        slope(${slope_type}|0.2): ${slope_comment}
-        offset(${offset_type}|0.5): ${offset_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+    Parameters:
+        x (${x_type}): ${x_comment}
+        slope (float, optional): ${slope_comment}
+        offset (float, optional): ${offset_comment}
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`
 
     Returns:
-        output(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-            y = fluid.layers.hard_sigmoid(x, slope=0.3, offset=0.8)
+            data = fluid.layers.fill_constant(shape=[3, 2], value=0.5, dtype='float32') # [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
+            result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
     """
     helper = LayerHelper('hard_sigmoid', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -12203,74 +12253,82 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
 def stack(x, axis=0):
     """
-    **Stack Layer**
 
-    This layer stacks all of the input :code:`x` along axis.
-
-    Input :code:`x` can be a single variable, a :code:`list` of variables,
-    or a :code:`tuple` of variables. If :code:`x` is a :code:`list` or
-    :code:`tuple`, the shapes of all these variables must be the same.
-    Supposing the shape of each input is :math:`[d_0, d_1, ..., d_{n-1}]`,
-    the shape of the output variable would be
-    :math:`[d_0, d_1, ..., d_{axis}=len(x), ..., d_{n-1}]`.
-    If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x[0])+1`.
-    If :code:`axis` is None, it would be replaced with 0.
-
-    For Example:
+    This OP stacks all the inputs :code:`x` along axis.
 
     .. code-block:: text
 
         Case 1:
+
           Input:
+            x[0].shape = [1, 2]
             x[0].data = [ [1.0 , 2.0 ] ]
-            x[0].dims = [1, 2]
+            x[1].shape = [1, 2]
             x[1].data = [ [3.0 , 4.0 ] ]
-            x[1].dims = [1, 2]
+            x[2].shape = [1, 2]
             x[2].data = [ [5.0 , 6.0 ] ]
-            x[2].dims = [1, 2]
 
           Attrs:
             axis = 0
 
           Output:
+            Out.dims = [3, 1, 2]
             Out.data =[ [ [1.0, 2.0] ],
                         [ [3.0, 4.0] ],
                         [ [5.0, 6.0] ] ]
-            Out.dims = [3, 1, 2]
+
 
         Case 2:
-          Given
+
+
+          Input:
+            x[0].shape = [1, 2]
             x[0].data = [ [1.0 , 2.0 ] ]
-            x[0].dims = [1, 2]
+            x[1].shape = [1, 2]
             x[1].data = [ [3.0 , 4.0 ] ]
-            x[1].dims = [1, 2]
+            x[2].shape = [1, 2]
             x[2].data = [ [5.0 , 6.0 ] ]
-            x[2].dims = [1, 2]
+
 
           Attrs:
             axis = 1 or axis = -2
 
           Output:
+            Out.shape = [1, 3, 2]
             Out.data =[ [ [1.0, 2.0]
                           [3.0, 4.0]
                           [5.0, 6.0] ] ]
-            Out.dims = [1, 3, 2]
+
 
     Args:
-        x (Variable|list(Variable)|tuple(Variable)): Input variables.
-        axis (int|None): The axis along which all inputs are stacked.
+        x (Variable|list(Variable)): Input :code:`x` can be a single Tensor, a :code:`list` of Tensors.
+                                     If :code:`x` is a :code:`list`, the shapes of all these Tensors
+                                     must be the same. Supposing input is N dims
+                                     Tensors :math:`[d_0, d_1, ..., d_{n-1}]`, the output is N+1 dims
+                                     Tensor :math:`[d_0, d_1, d_{axis-1}, len(x), d_{axis}, ..., d_{n-1}]`.
+                                     Support data types: float32, float64, int32, int64.
+        axis (int, optional): The axis along which all inputs are stacked. ``axis`` range is :math:`[-(R+1), R+1)`.
+                              R is the first tensor of inputs. If ``axis`` < 0, :math:`axis=axis+rank(x[0])+1`.
+                              The default value of axis is 0.
 
     Returns:
-        Variable: The stacked variable.
+        Variable: The stacked Tensor, has same data type with input Tensors. Output dim is :math:`rank(x[0])+1`.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
-            x1 = layers.data(name='x1', shape=[1, 2], dtype='int32')
-            x2 = layers.data(name='x2', shape=[1, 2], dtype='int32')
-            data = layers.stack([x1,x2])
+            # set batch size=None
+            x1 = fluid.data(name='x1', shape=[None, 1, 2], dtype='int32')
+            x2 = fluid.data(name='x2', shape=[None, 1, 2], dtype='int32')
+            # stack Tensor list
+            data = layers.stack([x1,x2]) # stack according to axis 0, data.shape=[2, None, 1, 2]
+
+            data = layers.stack([x1,x2], axis=1) # stack according to axis 1, data.shape=[None, 2, 1, 2]
+
+            # stack single Tensor
+            data = layers.stack(x1)  # stack according to axis 0, data.shape=[1, None, 1, 2]
 
     """
 
@@ -12544,28 +12602,64 @@ def uniform_random_batch_size_like(input,
                                    max=1.0,
                                    seed=0):
     """
-    ${comment}
+    This OP initializes a variable with random values sampled from a
+    uniform distribution in the range [min, max). The input_dim_idx used to get the input dimension value which will be used to resize the output dimension.
 
+    .. code-block:: text
+
+        *Case 1:
+
+            Given:
+                input =[[0.946741  , 0.1357001 , 0.38086128]]    # input.shape=[1,3]
+                shape=[2,4]
+
+            result.shape[output_dim_idx] = input.shape[input_dim_idx],
+            output_dim_idx = 0, 
+            input_dim_idx = 0,
+            result.shape[0] = input.shape[0], 
+            then:
+                result=[[ 0.3443427 , -0.23056602,  0.3477049 ,  0.06139076]]    # result.shape=[1,4]
+            
+       *Case 2:
+           
+           Given:
+               input =[[0.946741  , 0.1357001 , 0.38086128]]     # input.shape=[1,3]
+               shape=[2,4]
+               input_dim_idx=1
+               output_dim_idx=1
+         
+           result.shape[output_dim_idx] = input.shape[input_dim_idx],
+           output_dim_idx = 1, 
+           input_dim_idx = 1,
+           result.shape[1] = input.shape[1], 
+           then:
+               result=[[-0.23133647, -0.84195036,  0.21441269],
+                       [-0.08774924,  0.25605237, -0.09403259]]    # result.shape=[2,3]
     Args:
-        input (Variable): ${input_comment}
-        shape (tuple|list): ${shape_comment}
-        input_dim_idx (Int): ${input_dim_idx_comment}
-        output_dim_idx (Int): ${output_dim_idx_comment}
-        min (Float): ${min_comment}
-        max (Float): ${max_comment}
-        seed (Int): ${seed_comment}
-        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+        input (Variable): A Tensor. Supported data types: float32, float64.
+        shape (tuple|list): A python list or python tuple. The shape of the output Tensor, the data type is int.
+        input_dim_idx (int, optional): An index used to get the input dimension value which will be used to resize the output dimension. Default  0. 
+        output_dim_idx (int, optional): An index used to indicate the specific dimension that will be replaced by corresponding input dimension value. Default 0.
+        min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
+        max (float, optional): The upper bound on the range of random values to generate, the max is excluded in the range. Default 1.0.
+        seed (int, optional):  Random seed used for generating samples. 0 means use a seed generated by the system.Note that if seed is not 0, this operator will always generate the same random numbers every time.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of output Tensor. Supported data types: float32, float64. Default float32.
     Returns:
-        out (Variable): ${out_comment}
+        Variable: A Tensor of the specified shape filled with uniform_random values. The shape of the Tensor is determined by the shape parameter and the specified dimension of the input Tensor.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers 
+            
+            # example 1: 
+            input = fluid.data(name="input", shape=[1, 3], dtype='float32')
+            out_1 = fluid.layers.uniform_random_batch_size_like(input, [2, 4]) # out_1.shape=[1, 4]
 
-            input = layers.data(name="input", shape=[13, 11], dtype='float32')
-            out = layers.uniform_random_batch_size_like(input, [-1, 11])
+            # example 2: 
+            out_2 = fluid.layers.uniform_random_batch_size_like(input, [2, 4], input_dim_idx=1, output_dim_idx=1) # out_2.shape=[2, 3]
+
+            
     """
 
     helper = LayerHelper('uniform_random_batch_size_like', **locals())
@@ -14814,64 +14908,49 @@ def similarity_focus(input, axis, indexes, name=None):
 
 def hash(input, hash_size, num_hash=1, name=None):
     """
-    Hash the input to an integer whose value is less than the given hash size.
-
+    This OP hash the input to an integer less than the hash_size.
     The hash algorithm we used was xxHash - Extremely fast hash algorithm
     (https://github.com/Cyan4973/xxHash/tree/v0.6.5)
 
-    A simple example as below:
-
-    .. code-block:: text
-
-        Given:
-
-        # shape [2, 2]
-        input.data = 
-            [[1, 2],
-             [3, 4]]
-
-        hash_size = 10000
-
-        num_hash = 4
-
-        Then:
-
-        Hash op will take all number in input's 2nd dimension as hash algorithm's
-        input for each time. Each input will be hashed for 4 times, and get an
-        array whose length is 4. Each value in the array ranges from 0 to 9999.
-
-        # shape [2, 4]
-        output.data = [
-            [[9662, 9217, 1129, 8487],
-             [8310, 1327, 1654, 4567]],
-        ]
-
     Args:
-        input (Variable): The input variable which is a one-hot word. The
-            dimensions of the input variable must be 2. Both Tensor and LoDTensor are supported.
-        hash_size (int): The space size for hash algorithm. The output value
-            will keep in the range:math:`[0, hash_size - 1]`.
-        num_hash (int): The times of hash, default 1.
-        name (str, default None): The name of this layer.
+        input(Variable): A **Two-Dimensional** LoDTensor with type int32, int64.
+             **Only support LoDTensor**.
+        num_hash(int, optional): The times of hash, default is 1.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
 
     Returns:
-       Variable: The hash result variable, which the same variable type as `input`.
+       Variable: A LoDTensor with the same data type as input.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
             import paddle.fluid as fluid
+            import numpy as np
 
-            # titles has shape [batch, 1]
-            titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=0)
-            # hash_r has shape [batch, 2]
-            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=2, hash_size=1000)
+            place = fluid.core.CPUPlace()
 
+            x = fluid.data(name="x", shape=[1], dtype="int32", lod_level=1)
+            res = fluid.layers.hash(name="res",input=x, hash_size=1000, num_hash=4)
 
-            # titles has shape [batch, 1] and lod information
-            titles = fluid.layers.data(name='titles', shape=[1], dtype='int32', lod_level=1)
-            # hash_r has shape [batch, 2] and inherits lod information from titles
-            hash_r = fluid.layers.hash(name='hash_x', input=titles, num_hash=2, hash_size=1000)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            in1 = np.array([[1,2],[3,4]]).astype("int32")
+            print(in1)
+            x_i = fluid.core.LoDTensor()
+            x_i.set(in1,place)
+            x_i.set_recursive_sequence_lengths([[0,2]])
+            res = exe.run(fluid.default_main_program(), feed={'x':x_i}, fetch_list=[res], return_numpy=False)
+            print(np.array(res[0]))
+            # [[[722]
+            #   [407]
+            #   [337]
+            #   [395]]
+            #  [[603]
+            #   [590]
+            #   [386]
+            #   [901]]]
     """
     helper = LayerHelper('hash', **locals())
     out = helper.create_variable_for_type_inference(
@@ -16939,8 +17018,8 @@ def mse_loss(input, label):
 @templatedoc()
 def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     """
-    This operator initializes a variable with random values sampled from a
-    uniform distribution. The random result is in set [min, max).
+    This OP initializes a variable with random values sampled from a
+    uniform distribution in the range [min, max).
 
     Examples:
     ::
@@ -16952,24 +17031,23 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
           result=[[0.8505902, 0.8397286]]
 
     Args:
-        shape (list|tuple|Variable): The shape of the output tensor, the data type of the integer is int,
-                                     and if the shape type is list or tuple, its elements can be an integer
-                                     or a tensor with the shape [1], the data type of the tensor is int64. 
-                                     If the shape type is Variable,it ia a 1D tensor, the data type of the tensor is int64.
-        dtype(np.dtype|core.VarDesc.VarType|str, optional): The data type of the output tensor, such as float32, float64.
+        shape (list|tuple|Variable): The shape of the output Tensor,  if the shape is a list or tuple, 
+                                     its elements can be an integer
+                                     or a Tensor with the shape [1], and the type of the Tensor is int64. 
+                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor is int64.
+        dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the output Tensor. Supported data types: float32, float64.
                                                   Default: float32.
-        min (float, optional): Minimum value of uniform random, It's a closed interval. Default -1.0.
-        max (float, optional): Maximun value of uniform random, It's an open interval. Default 1.0.
+        min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
+        max (float, optional): The upper bound on the range of random values to generate, the max is excluded in the range. Default 1.0.
         seed (int, optional): Random seed used for generating samples. 0 means use a
             seed generated by the system. Note that if seed is not 0, this
             operator will always generate the same random numbers every time.
             Default 0.
 
-    Returns: a Tensor with randomly initialized results whose data type is determined by the dtype parameter 
-                and whose dimension is determined by the shape parameter.
-    Return type: Variable
+    Returns: 
+        Variable: A Tensor of the specified shape filled with uniform_random values.
 
-    Throw exception:
+    Raises:
         TypeError: The shape type should be list or tupple or variable.
     
     Examples:
@@ -16988,7 +17066,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
             # example 3:
             # attr shape is a Variable, the data type must be int64
-            var_shape = fluid.layers.data(name='var_shape',shape=[2],append_batch_size=False)
+            var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
             result_3 = fluid.layers.uniform_random(var_shape)
 
     """
