@@ -94,7 +94,7 @@ class DistMultiTrainer : public MultiTrainer {
   virtual void FinalizeDumpEnv();
   virtual void InitDumpEnv();
   virtual void DumpWork();
-  virtual Scope* GetWorkerScope(int thread_id) { return root_scope_; }
+  virtual Scope* GetWorkerScope(int thread_id);
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
