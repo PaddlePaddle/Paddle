@@ -289,7 +289,7 @@ Examples:
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_startup_program())
 
-        #set input=1X4, batch_size=1
+        #input.shape=1X4, batch_size=1
         img = np.array([[1.0, 2.0, 3.0, 4.0]]).astype(np.float32)
         res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
         print(res)
