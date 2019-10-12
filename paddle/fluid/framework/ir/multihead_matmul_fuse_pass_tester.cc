@@ -20,10 +20,27 @@ namespace ir {
 TEST(MultiHeadMatmulFusePass, basic) {
   // inputs                           operator            output
   // --------------------------------------------------------------------
-  // (x)           layer_norm               -> fc_out_0
-  // (fc_out_0, weights_1, bias_1)    fc               -> fc_out_1
-  // (fc_out_1, y)                    elementwise_add  -> elementwise_out
-  // (elementwise_out, scale, bias_2) layer_norm       ->
+  // (x)                              layer_norm       -> layer_norm_out
+  // (layer_norm_out, weights_0)      mul              -> mul_out0
+  // (layer_norm_out, weights_1)      mul              -> mul_out1
+  // (layer_norm_out, weights_2)      mul              -> mul_out2
+  // (mul_out0, bias_0)               elementweise_add -> eltadd_0
+  // (mul_out1, bias_1)               elementweise_add -> eltadd_1
+  // (mul_out2, bias_2)               elementweise_add -> eltadd_2
+  // (eltadd_0)                       reshape2         -> reshape_0
+  // (eltadd_1)                       reshape2         -> reshape_1
+  // (eltadd_2)                       reshape2         -> reshape_2
+  // (reshape_0)                      transpose2       -> transpose_0
+  // (reshape_1)                      transpose2       -> transpose_1
+  // (reshape_2)                      transpose2       -> transpose_2
+  // (transpose_0)                    scale            -> scale_0
+  // (scale_0, transpose_1)           matmul           -> matmul_qk
+  // (matmul_qk, bias_qk)             elementwise_add  -> eltadd_qk
+  // (eltadd_qk)                      softmax          -> softmax_qk
+  // (softmax_qk, transpose_2)        matmul           -> matmul_qkv
+  // (matmul_qkv)                     transpose        -> transpose_qkv
+  // (transpose_qkv)                  reshape          -> reshape_qkv
+  // (reshape_qkv)                    mul              -> mul_qkv
   Layers layers;
   auto* x = layers.data("x", {128, 768});
   auto out = layers.layer_norm(x);
