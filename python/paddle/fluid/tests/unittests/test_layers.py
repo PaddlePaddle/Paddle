@@ -3061,14 +3061,11 @@ class TestBook(LayerTest):
             return evaluator.metrics
 
     def test_basic_gru(self):
-        batch_size = 20
         input_size = 128
         hidden_size = 256
         with self.static_graph():
             input = fluid.data(
-                name="input",
-                shape=[-1, batch_size, input_size],
-                dtype='float32')
+                name="input", shape=[None, None, input_size], dtype='float32')
             pre_hidden = fluid.data(
                 name="pre_hidden", shape=[None, hidden_size], dtype='float32')
             sequence_length = fluid.data(
