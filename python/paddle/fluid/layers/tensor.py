@@ -315,38 +315,53 @@ def tensor_array_to_tensor(input, axis=1, name=None):
 
 def sums(input, out=None):
     """
-    This function performs the sum operation on the input and returns the
-    result as the output.
+    This function computes the sum of multiple input Tensors elementwisely.
+
+    - Case 1, sum of 3 Tensors
+
+    .. code-block:: text
+
+        # Input Tensors
+        x0.shape = [2, 3]
+        x0.data = [[1., 2., 3.],
+                   [4., 5., 6.]]
+        x1.shape = [2, 3]
+        x1.data = [[10., 20., 30.],
+                   [40., 50., 60.]]
+        x2.shape = [2, 3]
+        x2.data = [[100., 200., 300.],
+                   [400., 500., 600.]]
+
+        # Output Tensor
+        out.shape = [2, 3]
+        out.data = [[111., 222., 333.],
+                    [444., 555., 666.]]
 
     Args:
-        input (Variable|list): The input tensor that has the elements
-                               that need to be summed up.
-        out (Variable|None): Output parameter. The sum result.
-                             Default: None
+        input (list): A list of Variables which hold input Tensors with the same
+            data type and shape. Optional data types are: float32, float64, int32, int64.
+        out (Variable, optional): Output Tensor. It can be any existing Variable.
+            The default value is None, then a new Variable will be created and returned.
 
     Returns:
-        Variable: the sum of input. The same as the argument 'out'
+        Variable: The sum of inputs. The shape and data type is the same with input. \
+            If :code:`out` is not None, the returned value is :code:`out` .
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+            import paddle.fluid as fluid
 
-          # sum of several tensors
-          a0 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
-          a1 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
-          a2 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=3)
-          sums = fluid.layers.sums(input=[a0, a1, a2])
+            x0 = fluid.layers.fill_constant(shape=[16, 32], dtype='int64', value=1)
+            x1 = fluid.layers.fill_constant(shape=[16, 32], dtype='int64', value=2)
+            x2 = fluid.layers.fill_constant(shape=[16, 32], dtype='int64', value=3)
+            x3 = fluid.layers.fill_constant(shape=[16, 32], dtype='int64', value=0)
 
-          # sum of a tensor array
-          array = fluid.layers.create_array('int64')
-          i = fluid.layers.zeros(shape=[1], dtype='int64', force_cpu=True)
-          fluid.layers.array_write(a0, array=array, i=i)
-          i = fluid.layers.increment(x=i)
-          fluid.layers.array_write(a1, array=array, i=i)
-          i = fluid.layers.increment(x=i)
-          fluid.layers.array_write(a2, array=array, i=i)
-          sums = fluid.layers.sums(input=array)
+            # Sum of multiple Tensors, the result is stored to a new Variable sum0 (sum0=x0+x1+x2, the value is [[6, ..., 6], ..., [6, ..., 6]])
+            sum0 = fluid.layers.sums(input=[x0, x1, x2])
+
+            # Sum of multiple Tensors, sum1 and x3 represents the same Variable (x3=x0+x1+x2, the value is [[6, ..., 6], ..., [6, ..., 6]])
+            sum1 = fluid.layers.sums(input=[x0, x1, x2], out=x3)
     """
     helper = LayerHelper('sum', **locals())
     if out is None:
