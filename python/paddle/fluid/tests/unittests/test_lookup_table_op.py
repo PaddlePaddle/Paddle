@@ -20,6 +20,8 @@ from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.compat as cpt
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestLookupTableOp(OpTest):
@@ -148,6 +150,36 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(
     def check_result(self, ids_array, result_array):
         for idx, row in np.ndenumerate(ids_array):
             assert (row == result_array[idx]).all()
+
+
+class TestEmbedOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input_data = np.random.randint(0, 10, (4, 1)).astype("int64")
+
+            def test_Variable():
+                # the input type must be Variable
+                fluid.layers.embedding(input=input_data, size=(10, 64))
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_input_dtype():
+                # the input dtype must be int64
+                input = fluid.data(name='x', shape=[4, 1], dtype='float32')
+                fluid.layers.embedding(input=input, size=(10, 64))
+
+            self.assertRaises(TypeError, test_input_dtype)
+
+            def test_param_dtype():
+                # dtype must be float32 or float64
+                input2 = fluid.data(name='x2', shape=[4, 1], dtype='int64')
+                fluid.layers.embedding(
+                    input=input2, size=(10, 64), dtype='int64')
+
+            self.assertRaises(TypeError, test_param_dtype)
+
+            input3 = fluid.data(name='x3', shape=[4, 1], dtype='int64')
+            fluid.layers.embedding(input=input3, size=(10, 64), dtype='float16')
 
 
 if __name__ == "__main__":
