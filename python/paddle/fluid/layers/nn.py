@@ -2327,10 +2327,13 @@ def sequence_conv(input,
 
 def sequence_softmax(input, use_cudnn=False, name=None):
     """
-    This function computes the softmax activation among all time-steps for each
-    sequence. The dimension of each time-step should be 1. Thus, the shape of
-    input Tensor can be either :math:`[N, 1]` or :math:`[N]`, where :math:`N`
-    is the sum of the length of all sequences.
+    **Note**:
+    
+    **The input type of the OP must be LoDTensor. For Tensor, use:** :ref:`api_fluid_layers_softmax` 
+
+    A LoD-tensor can be regarded as several sequences, and this op apply softmax algo on each sequence.
+    The shape of input Tensor can be :math:`[N, 1]` or :math:`[N]`, where :math:`N`
+    is the sum of the length of all sequences. Recommended usage: :math:`[N]`.
 
     For i-th sequence in a mini-batch:
 
@@ -2338,29 +2341,56 @@ def sequence_softmax(input, use_cudnn=False, name=None):
 
         Out(X[lod[i]:lod[i+1]], :) = \\frac{\exp(X[lod[i]:lod[i+1], :])}{\sum(\exp(X[lod[i]:lod[i+1], :]))}
 
-    For example, for a mini-batch of 3 sequences with variable-length,
-    each containing 2, 3, 2 time-steps, the lod of which is [0, 2, 5, 7],
-    then softmax will be computed among :math:`X[0:2, :]`, :math:`X[2:5, :]`,
-    :math:`X[5:7, :]`, and :math:`N` turns out to be 7.
+    For example, for a LoD-Tensor with 6 sequences ([3, 2, 4, 1, 2, 3] - sequence length list in order), 
+    the lod in the runtime is [[0, 3, 5, 9, 10, 12, 15]],
+    then softmax will be computed among :math:`X[0:3,:],X[3:5,:],X[5:9,:],X[9:10,:],X[10:12,:],X[12:15,:]`,
+    and :math:`N` turns out to be 15.
+
+    .. code-block:: text
+
+        *Case 1:
+
+            Given:
+                input.data = [0.7, 1, 0.6,
+                              1.5, 1.1,
+                              1.2, 0.2, 0.6, 1.9,
+                              3.1,
+                              2.5, 0.8,
+                              0.1, 2.4, 1.3]
+                input.lod = [[0, 3, 5, 9, 10, 12, 15]]
+            then:
+                 output.data = [0.30724832, 0.41474187, 0.2780098,
+                                0.59868765, 0.40131235,
+                                0.2544242, 0.09359743, 0.13963096, 0.5123474, 
+                                1.,
+                                0.84553474, 0.15446526,
+                                0.06995796, 0.69777346, 0.23226859]
+                 output.lod = [[0, 3, 5, 9, 10, 12, 15]]    
+    
 
     Args:
-        input (Variable): The input variable which is a LoDTensor.
-        use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
-            library is installed. Default: False.
-        name (str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically. Default: None.
+        input (Variable):A LoDTensor with shape of  :math:`[N, 1]` or  :math:`[N]`, Recommended usage: :math:`[N]`. 
+                         Supported data types: float32, float64. 
+        use_cudnn (bool, optional): Use cudnn kernel or not. Effective only when the cudnn version of the paddle 
+                                    library is installed and GPU is used for training or reasoning. Default: False.
+        name (str, optional): The default value is None. Normally there is no need for user to set this property. 
+                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: output of sequence_softmax
+        Variable: A LoD-Tensor which has the same shape and data type with input.
 
     Examples:
 
         .. code-block:: python
 
              import paddle.fluid as fluid
-             x = fluid.layers.data(name='x', shape=[7, 1],
+             x = fluid.data(name='x', shape=[7, 1],
                               dtype='float32', lod_level=1)
-             x_sequence_softmax = fluid.layers.sequence_softmax(input=x)
+             x_sequence_softmax_1 = fluid.layers.sequence_softmax(input=x)  
+
+             y = fluid.data(name='y', shape=[7],
+                 dtype='float32', lod_level=1)
+             x_sequence_softmax_2 = fluid.layers.sequence_softmax(input=y)  
     """
     assert not in_dygraph_mode(), (
         "sequence layer is not supported in dygraph mode yet.")
@@ -5590,15 +5620,15 @@ def sequence_pad(x, pad_value, maxlen=None, name=None):
 
 def sequence_unpad(x, length, name=None):
     """
-    **Sequence Unpad Layer**
-
-    This layer removes the padding data in the input sequences and convert
-    them into sequences with actual length as output, identitied by lod
-    information.
+    **Note**:
+    
+    **The input of the OP is Tensor and the output is LoDTensor.  For padding operation, See:**  :ref:`api_fluid_layers_sequence_pad`  
+     
+    The OP removes the padding data from the input based on the length information and returns a LoDTensor.
 
     .. code-block:: text
 
-	Example:
+	Case 1:
 
 	Given input Variable **x**:
 	    x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
@@ -5613,18 +5643,18 @@ def sequence_unpad(x, length, name=None):
 	after unpadding, the output Variable will be:
 
 	    out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
-	    out.lod = [[2, 3, 4]]
+	    out.lod = [[0, 2, 5, 9]]
 
     Args:
-        x(Variable): Input Variable which contains the padded sequences with
-            equal length.
-        length(Variable): The Variable that specifies the actual ength of
-            sequences after unpadding.
-        name(str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
+        x(Variable): A Tensor which contains padding data, and its shape size can not be less than 2.
+                     Supported data types: float32, float64, int32, int64.
+        length(Variable): A 1D Tensor that stores the actual length of each sample, and the Tensor 
+                          has the same shape with the 0th dimension of the X . Supported data types: int64.
+        name(str|None):  The default value is None.  Normally there is no need for user to set this property.  
+                         For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The Variable contains the unpadded sequences.
+        Variable: A LoDTensor whose recursive sequence length is consistent with the information of the length parameter and it has the same data type with input.
 
     Examples:
         .. code-block:: python
@@ -5633,11 +5663,11 @@ def sequence_unpad(x, length, name=None):
             import numpy
 
             # pad data
-            x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
+            x = fluid.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
             pad_value = fluid.layers.assign(input=numpy.array([0.0], dtype=numpy.float32))
             pad_data, len = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
             
-            # upad data
+            # unpad data
             unpad_data = fluid.layers.sequence_unpad(x=pad_data, length=len)
     """
 
@@ -10631,60 +10661,65 @@ def scatter_nd(index, updates, shape, name=None):
 
 def sequence_scatter(input, index, updates, name=None):
     """
-    **Sequence Scatter Layer**
+    **Note**:
+    
+    **The index and updates parameters of the OP must be LoDTensor.**
+     
+    Plus the updates data to the correspoding input according to the index.
+ 
+    The updated algorithm is as follows: output[instance_index][index [pos]] = input[instance_index][index [pos]] +  updates[pos], 
+    where instance_idx is the K sample corresponding to pos in batch.
 
-    This operator scatters the Updates tensor to the input X. It uses the LoD
-    information of Ids to select the rows to update, and use the values in Ids as
-    the columns to update in each row of X.
+    The value of output[i][j] depends on whether j can be found in the i+1th interval of the index. If found, 
+    out[i][j] = input[i][j] + update[m] [n], otherwise, out[i][j] = input[i][j].
 
-    Here is an example:
-
-    Given the following input:
-
-    .. code-block:: text
-
-        input.data = [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-                      [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-                      [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
-        input.dims = [3, 6]
-
-        index.data = [[0], [1], [2], [5], [4], [3], [2], [1], [3], [2], [5], [4]]
-        index.lod =  [[0,        3,                       8,                 12]]
-
-        updates.data = [[0.3], [0.3], [0.4], [0.1], [0.2], [0.3], [0.4], [0.0], [0.2], [0.3], [0.1], [0.4]]
-        updates.lod =  [[  0,            3,                                 8,                         12]]
-
-    Then we have the output:
+    For example, in the following example, the lod information for index is divided into three sequences. Among 
+    them, because the element 0 can be found in the first interval of the index, it is updated with the value of 
+    the corresponding position of the updates, out[0][0] = input[0][0]+updates[0][0] . Because element 1 cannot 
+    be found in the third interval of index, out[2][1] = input[2][1].
 
     .. code-block:: text
+        
+        *Case 1:
 
-        out.data = [[1.3, 1.3, 1.4, 1.0, 1.0, 1.0],
-                    [1.0, 1.0, 1.4, 1.3, 1.2, 1.1],
-                    [1.0, 1.0, 1.3, 1.2, 1.4, 1.1]]
-        out.dims = X.dims = [3, 6]
+            Given:
+                input.data = [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                              [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                              [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
+                              input.dims = [3, 6]
+
+                index.data = [[0], [1], [2], [5], [4], [3], [2], [1], [3], [2], [5], [4]]
+                index.lod =  [[0,        3,                       8,                 12]]
+
+                updates.data = [[0.3], [0.3], [0.4], [0.1], [0.2], [0.3], [0.4], [0.0], [0.2], [0.3], [0.1], [0.4]]
+                updates.lod =  [[  0,            3,                                 8,                         12]]
+
+            Then:
+                out.data = [[1.3, 1.3, 1.4, 1.0, 1.0, 1.0],
+                            [1.0, 1.0, 1.4, 1.3, 1.2, 1.1],
+                            [1.0, 1.0, 1.3, 1.2, 1.4, 1.1]]
+                out.dims = X.dims = [3, 6]
 
     Args:
-        input (Variable): The source input with rank>=1.
-        index (Variable): A LoD Tensor. The index input of sequence scatter op
-            where input will be  updated. The index input with rank=1. Its dtype
-            should be int32 or int64 as it is used as indexes.
-        updates (Variable): A LoD Tensor. The values to scatter to the input
-            tensor X, must be a LoDTensor with the same LoD information as index.
-        name (str|None): The output variable name. Default None.
+        input (Variable): A Tensor with shape of  :math:`[N, k_1... k_n]`. Supported data types: float32, float64, int32, int64.
+        index (Variable):  A LoDTensor contains index information. Its LoD level must be 1 and its data type must be int64.
+        updates (Variable): A LodTensor contains updates information. It has the same  LoD level with the index and has the 
+                            same data type  with the input. Supported data types: float32, float64, int32, int64.
+        name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, 
+                              please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: The output is a tensor with the same shape as input.
+        Variable: A Tensor which has been updated. It has the same shape and data type with input.
 
     Examples:
 
         .. code-block:: python
 	
             import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
 
-            input = layers.data( name="x", shape=[3, 6], append_batch_size=False, dtype='float32' )
-            index = layers.data( name='index', shape=[1], dtype='int32')
-            updates = layers.data( name='updates', shape=[1], dtype='float32')
+            input = fluid.data( name="x", shape=[None, 3, 6], dtype='float32' )
+            index = fluid.data( name='index', shape=[12, 1],  dtype='int64', lod_level=1)
+            updates = fluid.data( name='updates', shape=[12, 1], dtype='float32', lod_level=1)
             output = fluid.layers.sequence_scatter(input, index, updates)
 
     """
