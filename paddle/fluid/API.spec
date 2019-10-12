@@ -242,6 +242,7 @@ paddle.fluid.layers.sequence_enumerate (ArgSpec(args=['input', 'win_size', 'pad_
 paddle.fluid.layers.unique (ArgSpec(args=['x', 'dtype'], varargs=None, keywords=None, defaults=('int32',)), ('document', 'cab0b06e5683875f12f0efc62fa230a9'))
 paddle.fluid.layers.unique_with_counts (ArgSpec(args=['x', 'dtype'], varargs=None, keywords=None, defaults=('int32',)), ('document', '4496682f302007019e458a2f30d8a7c3'))
 paddle.fluid.layers.expand (ArgSpec(args=['x', 'expand_times', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'e93a1b102ab64b247c1b774e60d4c0d0'))
+paddle.fluid.layers.expand_as (ArgSpec(args=['x', 'target_tensor', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'ca6b29aa6987776628a0b33f6dcaaaa6'))
 paddle.fluid.layers.sequence_concat (ArgSpec(args=['input', 'name'], varargs=None, keywords=None, defaults=(None,)), ('document', 'f47f9d207ac60b6f294087bcb1b64ae8'))
 paddle.fluid.layers.scale (ArgSpec(args=['x', 'scale', 'bias', 'bias_after_scale', 'act', 'name'], varargs=None, keywords=None, defaults=(1.0, 0.0, True, None, None)), ('document', 'a33547d41970fa3c59e6b2f21fe5f76d'))
 paddle.fluid.layers.elementwise_add (ArgSpec(args=['x', 'y', 'axis', 'act', 'name'], varargs=None, keywords=None, defaults=(-1, None, None)), ('document', '0c9c260e7738165a099f6a76da0b7814'))
