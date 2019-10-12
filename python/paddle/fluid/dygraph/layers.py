@@ -280,7 +280,8 @@ class Layer(core.Layer):
             dict: a dict contains all the parameters
 
         Examples:
-            .. code-block:: python                                                                                              
+            .. code-block:: python
+
                 import paddle.fluid as fluid
                 with fluid.dygraph.guard():
                     emb = fluid.dygraph.Embedding( "emb", [10, 10])
@@ -317,7 +318,8 @@ class Layer(core.Layer):
             None
 
         Examples:
-            .. code-block:: python                                                                                              
+            .. code-block:: python
+
                 import paddle.fluid as fluid
                 with fluid.dygraph.guard():
                     emb = fluid.dygraph.Embedding( "emb", [10, 10])
@@ -345,7 +347,8 @@ class Layer(core.Layer):
             None
 
         Examples:
-            .. code-block:: python                                                                                              
+            .. code-block:: python
+
                 import paddle.fluid as fluid
                 with fluid.dygraph.guard():
                     emb = fluid.dygraph.Embedding( "emb", [10, 10])
