@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
@@ -80,8 +82,9 @@ class TestArrayReadWrite(unittest.TestCase):
 
         append_backward(total_sum_scaled)
 
-        g_vars = map(default_main_program().global_block().var,
-                     [each_x.name + "@GRAD" for each_x in x])
+        g_vars = list(
+            map(default_main_program().global_block().var,
+                [each_x.name + "@GRAD" for each_x in x]))
         g_out = [
             item.sum()
             for item in exe.run(

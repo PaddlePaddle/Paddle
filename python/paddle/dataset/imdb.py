@@ -20,15 +20,19 @@ of 25,000 highly polar movie reviews for training, and 25,000 for testing.
 Besides, this module also provides API for building dictionary.
 """
 
+from __future__ import print_function
+
 import paddle.dataset.common
 import collections
 import tarfile
 import re
 import string
+import six
 
-__all__ = ['build_dict', 'train', 'test', 'convert']
+__all__ = ['build_dict', 'train', 'test']
 
-URL = 'http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz'
+#URL = 'http://ai.stanford.edu/%7Eamaas/data/sentiment/aclImdb_v1.tar.gz'
+URL = 'https://dataset.bj.bcebos.com/imdb%2FaclImdb_v1.tar.gz'
 MD5 = '7c2ac02c03563afcf9b574c7e56c153a'
 
 
@@ -46,8 +50,9 @@ def tokenize(pattern):
         while tf != None:
             if bool(pattern.match(tf.name)):
                 # newline and punctuations removal and ad-hoc tokenization.
-                yield tarf.extractfile(tf).read().rstrip("\n\r").translate(
-                    None, string.punctuation).lower().split()
+                yield tarf.extractfile(tf).read().rstrip(six.b(
+                    "\n\r")).translate(
+                        None, six.b(string.punctuation)).lower().split()
             tf = tarf.next()
 
 
@@ -62,11 +67,11 @@ def build_dict(pattern, cutoff):
             word_freq[word] += 1
 
     # Not sure if we should prune less-frequent words here.
-    word_freq = filter(lambda x: x[1] > cutoff, word_freq.items())
+    word_freq = [x for x in six.iteritems(word_freq) if x[1] > cutoff]
 
     dictionary = sorted(word_freq, key=lambda x: (-x[1], x[0]))
     words, _ = list(zip(*dictionary))
-    word_idx = dict(zip(words, xrange(len(words))))
+    word_idx = dict(list(zip(words, six.moves.range(len(words)))))
     word_idx['<unk>'] = len(words)
     return word_idx
 
@@ -136,12 +141,3 @@ def word_dict():
 
 def fetch():
     paddle.dataset.common.download(URL, 'imdb', MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    w = word_dict()
-    paddle.dataset.common.convert(path, lambda: train(w), 1000, "imdb_train")
-    paddle.dataset.common.convert(path, lambda: test(w), 1000, "imdb_test")

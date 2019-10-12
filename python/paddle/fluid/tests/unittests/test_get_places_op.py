@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle.fluid as fluid
-import decorators
+from paddle.fluid.layers.device import get_places
+from decorator_helper import prog_scope
 import unittest
 
 
 class TestGetPlaces(unittest.TestCase):
-    @decorators.prog_scope()
+    @prog_scope()
     def test_get_places(self):
-        places = fluid.layers.get_places()
+        places = get_places()
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
         exe.run(fluid.default_main_program())

@@ -1,26 +1,26 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License. */
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
 #include <cublasXt.h>
 #include <cublas_v2.h>
 #include <cuda.h>
-#include <dlfcn.h>
 #include <mutex>  // NOLINT
 #include <type_traits>
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace platform {
@@ -45,7 +45,7 @@ extern void *cublas_dso_handle;
       std::call_once(cublas_dso_flag, []() {                                 \
         cublas_dso_handle = paddle::platform::dynload::GetCublasDsoHandle(); \
       });                                                                    \
-      void *p_##__name = dlsym(cublas_dso_handle, #__name);                  \
+      static void *p_##__name = dlsym(cublas_dso_handle, #__name);           \
       return reinterpret_cast<FUNC_TYPE>(p_##__name)(args...);               \
     }                                                                        \
   };                                                                         \
@@ -55,14 +55,11 @@ extern void *cublas_dso_handle;
   struct DynLoad__##__name {                         \
     template <typename... Args>                      \
     inline cublasStatus_t operator()(Args... args) { \
-      return __name(args...);                        \
+      return ::__name(args...);                      \
     }                                                \
   };                                                 \
   extern DynLoad__##__name __name
 #endif
-
-#define DECLARE_DYNAMIC_LOAD_CUBLAS_V2_WRAP(__name) \
-  DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP(__name)
 
 #define CUBLAS_BLAS_ROUTINE_EACH(__macro) \
   __macro(cublasSaxpy_v2);                \
@@ -106,9 +103,20 @@ CUBLAS_BLAS_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 
 // APIs available after CUDA 9.0
 #if CUDA_VERSION >= 9000
-#define CUBLAS_BLAS_ROUTINE_EACH_R3(__macro) __macro(cublasSetMathMode);
+#define CUBLAS_BLAS_ROUTINE_EACH_R3(__macro) \
+  __macro(cublasSetMathMode);                \
+  __macro(cublasGetMathMode);
 
 CUBLAS_BLAS_ROUTINE_EACH_R3(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
+#endif
+
+// APIs available after CUDA 9.1
+#if CUDA_VERSION >= 9010
+#define CUBLAS_BLAS_ROUTINE_EACH_R4(__macro) \
+  __macro(cublasGemmBatchedEx);              \
+  __macro(cublasGemmStridedBatchedEx);
+
+CUBLAS_BLAS_ROUTINE_EACH_R4(DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP)
 #endif
 
 #undef DECLARE_DYNAMIC_LOAD_CUBLAS_WRAP

@@ -15,6 +15,8 @@
 Show the content of proto buffer data file of PADDLE
 """
 
+from __future__ import print_function
+
 import os
 import sys
 from google.protobuf.internal.decoder import _DecodeVarint
@@ -39,7 +41,7 @@ def read_proto(file, message):
 
 
 def usage():
-    print >> sys.stderr, "Usage: python show_pb.py PROTO_DATA_FILE"
+    print("Usage: python show_pb.py PROTO_DATA_FILE", file=sys.stderr)
     exit(1)
 
 
@@ -50,8 +52,8 @@ if __name__ == '__main__':
     f = open(sys.argv[1])
     header = DataFormat.DataHeader()
     read_proto(f, header)
-    print header
+    print(header)
 
     sample = DataFormat.DataSample()
     while read_proto(f, sample):
-        print sample
+        print(sample)

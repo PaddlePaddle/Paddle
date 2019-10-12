@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <google/protobuf/util/message_differencer.h>
+
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -88,13 +90,7 @@ std::vector<std::vector<int64_t>> VarDesc::GetShapes() const {
 }
 
 void VarDesc::SetDataType(proto::VarType::Type data_type) {
-  switch (desc_.type().type()) {
-    case proto::VarType::CHANNEL:
-      mutable_channel_desc()->set_data_type(data_type);
-      break;
-    default:
-      mutable_tensor_desc()->set_data_type(data_type);
-  }
+  mutable_tensor_desc()->set_data_type(data_type);
 }
 
 void VarDesc::SetDataTypes(
@@ -115,13 +111,7 @@ void VarDesc::SetDataTypes(
 }
 
 proto::VarType::Type VarDesc::GetDataType() const {
-  switch (desc_.type().type()) {
-    case proto::VarType::CHANNEL:
-      return channel_desc().data_type();
-      break;
-    default:
-      return tensor_desc().data_type();
-  }
+  return tensor_desc().data_type();
 }
 
 std::vector<proto::VarType::Type> VarDesc::GetDataTypes() const {
@@ -132,17 +122,6 @@ std::vector<proto::VarType::Type> VarDesc::GetDataTypes() const {
     res.push_back(tensor_desc.data_type());
   }
   return res;
-}
-
-void VarDesc::SetCapacity(int64_t capacity) {
-  switch (desc_.type().type()) {
-    case proto::VarType::CHANNEL:
-      desc_.mutable_type()->mutable_channel()->set_capacity(capacity);
-      break;
-    default:
-      PADDLE_THROW("Setting 'capacity' is not supported by the type of var %s.",
-                   this->Name());
-  }
 }
 
 void VarDesc::SetLoDLevel(int32_t lod_level) {
@@ -214,19 +193,6 @@ std::vector<int32_t> VarDesc::GetLoDLevels() const {
   }
 }
 
-const proto::VarType::ChannelDesc &VarDesc::channel_desc() const {
-  PADDLE_ENFORCE(desc_.has_type(), "The var's type hasn't been set.");
-  PADDLE_ENFORCE(desc_.type().has_type(), "The var type hasn't been set.");
-  switch (desc_.type().type()) {
-    case proto::VarType::CHANNEL:
-      return desc_.type().channel();
-    default:
-      PADDLE_THROW(
-          "Getting 'channel_desc' is not supported by the type of var %s.",
-          this->Name());
-  }
-}
-
 const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
   PADDLE_ENFORCE(desc_.has_type(), "The var's type hasn't been set.");
   PADDLE_ENFORCE(desc_.type().has_type(), "The var type hasn't been set.");
@@ -257,20 +223,6 @@ std::vector<proto::VarType::TensorDesc> VarDesc::tensor_descs() const {
     default:
       PADDLE_THROW(
           "Getting 'tensor_descs' is not supported by the type of var "
-          "%s.",
-          this->Name());
-  }
-}
-
-proto::VarType::ChannelDesc *VarDesc::mutable_channel_desc() {
-  PADDLE_ENFORCE(desc_.has_type(), "The var type hasn't been set.");
-  PADDLE_ENFORCE(desc_.type().has_type(), "The var type hasn't been set.");
-  switch (desc_.type().type()) {
-    case proto::VarType::CHANNEL:
-      return desc_.mutable_type()->mutable_channel();
-    default:
-      PADDLE_THROW(
-          "Getting 'mutable_channel_desc' is not supported by the type of var "
           "%s.",
           this->Name());
   }
@@ -312,6 +264,11 @@ std::vector<proto::VarType::TensorDesc *> VarDesc::mutable_tensor_descs() {
           "%s.",
           this->Name());
   }
+}
+
+bool operator==(const VarDesc &left, const VarDesc &right) {
+  return left.Proto()->SerializeAsString() ==
+         right.Proto()->SerializeAsString();
 }
 
 }  // namespace framework

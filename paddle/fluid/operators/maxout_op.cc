@@ -25,21 +25,23 @@ class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "X",
-        "(Tensor) The input tensor of maxout operator. "
-        "The format of input tensor is NCHW. Where N is batch size, C is the "
-        "number of channels, H and W is the height and width of feature.");
+        "(Tensor) The input tensor of maxout operator with data type of "
+        "float32. The format of input tensor is NCHW. Where N is batch size,"
+        " C is the number of channels, H and W is the height and width of "
+        "feature.");
     AddOutput("Out",
               "(Tensor) The output tensor of maxout operator."
+              "The data type is float32."
               "The format of output tensor is also NCHW."
               "Where N is batch size, C is "
               "the number of channels, H and W is the height and "
               "width of feature.");
     AddAttr<int>(
         "groups",
-        R"DOC("Specifies how many groups the input tensor will be split"
+        "(int),"
+        "Specifies how many groups the input tensor will be split"
         "in the channel dimension. And the number of output channel is "
-        "the number of channels divided by groups.."
-        )DOC");
+        "the number of channels divided by groups.");
     AddComment(R"DOC(
 MaxOut Operator.
 
@@ -47,14 +49,12 @@ Assumed the input shape is (N, Ci, H, W).
 The output shape is (N, Co, H, W).
 Then $Co = Ci / groups$ and the operator formula is as follows:
 
-$$
-y_{si+j} = \max_k x_{gsi + sk + j} \\
-g = groups \\
-s = \frac{input.size}{num\_channels} \\
-0 \le i < \frac{num\_channels}{groups} \\
-0 \le j < s \\
-0 \le k < groups
-$$
+$$ y_{si+j} = \max_{k} x_{gsi + sk + j} $$
+$$ g = groups $$
+$$ s = \\frac{input.size}{num\\_channels} $$
+$$ 0 \\le i < \\frac{num\\_channels}{groups} $$
+$$ 0 \\le j < s $$
+$$ 0 \\le k < groups $$
 
 Please refer to Paper:
   - Maxout Networks: http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
@@ -71,8 +71,7 @@ class MaxOutOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of MaxoutOp"
-                   "should not be null.");
+                   "Input(X) of MaxoutOpshould not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of MaxoutOp should not be null.");
     auto in_x_dims = ctx->GetInputDim("X");
@@ -90,9 +89,10 @@ class MaxOutOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of MaxOutOpGrad must not be null.");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Input(X@GRAD) should not be null.");
+                   "Output(Grad@X) of MaxOutOpGrad should not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
 };

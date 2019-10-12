@@ -12,48 +12,38 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/operators/fill_constant_op.h"
 
 namespace paddle {
 namespace operators {
 
-class FillConstantInferShape : public framework::InferShapeBase {
+class FillConstantOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext *ctx) const override {
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of FillConstantOp should not be null.");
-    auto &shape = ctx->Attrs().Get<std::vector<int>>("shape");
+    auto& shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
     ctx->SetOutputDim("Out", framework::make_ddim(shape));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
+        ctx.GetPlace());
   }
 };
 
-class FillConstantOp : public framework::OperatorBase {
+class FillConstantOpVarTypeInference : public framework::VarTypeInference {
  public:
-  using framework::OperatorBase::OperatorBase;
-
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
-    auto data_type =
-        static_cast<framework::proto::VarType::Type>(Attr<int>("dtype"));
-    auto value = Attr<float>("value");
-    auto force_cpu = Attr<bool>("force_cpu");
-    auto &out =
-        *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
-    out.Resize(framework::make_ddim(Attr<std::vector<int>>("shape")));
-    if (force_cpu) {
-      auto cpu = platform::CPUPlace();
-      out.mutable_data(cpu, framework::ToTypeIndex(data_type));
-    } else {
-      out.mutable_data(dev_place, framework::ToTypeIndex(data_type));
-    }
-
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
-    math::set_constant(dev_ctx, &out, value);
+  void operator()(framework::InferVarTypeContext* ctx) const override {
+    auto data_type = static_cast<framework::proto::VarType::Type>(
+        boost::get<int>(ctx->GetAttr("dtype")));
+    auto& out_var_name = ctx->Output("Out").front();
+    ctx->SetDataType(out_var_name, data_type);
   }
 };
 
@@ -64,7 +54,8 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                  "(int, default 5 (FP32)) "
                  "Output data type")
         .SetDefault(framework::proto::VarType::FP32);
-    AddAttr<std::vector<int>>("shape", "(vector<int>) The shape of the output");
+    AddAttr<std::vector<int64_t>>("shape",
+                                  "(vector<int64_t>) The shape of the output");
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);
     AddAttr<bool>("force_cpu",
@@ -87,6 +78,14 @@ Fill up a variable with specified constant value.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fill_constant, ops::FillConstantOp,
-                  ops::FillConstantInferShape, ops::FillConstantOpMaker,
+
+REGISTER_OPERATOR(fill_constant, ops::FillConstantOp, ops::FillConstantOpMaker,
+                  ops::FillConstantOpVarTypeInference,
                   paddle::framework::EmptyGradOpMaker);
+
+REGISTER_OP_CPU_KERNEL(fill_constant, ops::FillConstantKernel<float>,
+                       ops::FillConstantKernel<double>,
+                       ops::FillConstantKernel<int64_t>,
+                       ops::FillConstantKernel<int>,
+                       ops::FillConstantKernel<bool>,
+                       ops::FillConstantKernel<paddle::platform::float16>);

@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import unittest
 import numpy as np
 
 from operator import mul
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+from functools import reduce
 
 np.random.random(123)
 
@@ -68,7 +71,10 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
     return grad_x, d_scale, d_bias
 
 
-class TestLayerNormdOp(unittest.TestCase):
+class TestLayerNormOp(unittest.TestCase):
+    def setUp(self):
+        self.use_cudnn = True
+
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
@@ -157,7 +163,8 @@ class TestLayerNormdOp(unittest.TestCase):
                 self.__assert_close(bias_grad, out[5], "bias_grad")
 
         places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
+        if core.is_compiled_with_cuda() and core.op_support_gpu(
+                "layer_norm") and self.use_cudnn:
             places.append(core.CUDAPlace(0))
 
         for place in places:

@@ -15,25 +15,39 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
+#include "paddle/fluid/framework/data_set.h"
+#include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/trainer.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace framework {
-extern void InitializeVariable(Variable* var, proto::VarType::Type var_type);
 
 struct ExecutorPrepareContext {
   ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
+
   ~ExecutorPrepareContext();
 
+  void PrepareUnusedVars(const std::vector<std::string>& keep_vars,
+                         bool force_disable_gc = false);
+
   const framework::ProgramDesc& prog_;
-  size_t block_id_;
+  const size_t block_id_;
+
   std::vector<std::unique_ptr<OperatorBase>> ops_;
+
+  std::unordered_map<const OperatorBase*, std::vector<std::string>>
+      unused_vars_;
+  bool force_disable_gc_{false};
 };
 
 class Executor {
@@ -44,6 +58,12 @@ class Executor {
 
   explicit Executor(const platform::Place& place);
 
+  /*
+   * Close this Executor.
+   * Calling this method will send complete messages to all pserver instances.
+   */
+  void Close();
+
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
    *
@@ -52,8 +72,12 @@ class Executor {
    *  Scope
    */
   void Run(const ProgramDesc& prog, Scope* scope, int block_id,
-           bool create_local_scope = true, bool create_vars = true);
+           bool create_local_scope = true, bool create_vars = true,
+           const std::vector<std::string>& skip_ref_cnt_vars =
+               std::vector<std::string>(),
+           bool force_disable_gc = false);
 
+  // This API is very slow.
   void Run(const ProgramDesc& program, Scope* scope,
            std::map<std::string, const LoDTensor*>* feed_targets,
            std::map<std::string, LoDTensor*>* fetch_targets,
@@ -61,18 +85,7 @@ class Executor {
            const std::string& feed_holder_name = "feed",
            const std::string& fetch_holder_name = "fetch");
 
-  static std::unique_ptr<ExecutorPrepareContext> Prepare(
-      const ProgramDesc& program, int block_id);
-
-  static std::vector<std::shared_ptr<ExecutorPrepareContext>> Prepare(
-      const ProgramDesc& program, const std::vector<int>& block_ids);
-
-  void CreateVariables(const ProgramDesc& pdesc, Scope* scope, int block_id);
-
-  void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                          bool create_local_scope = true,
-                          bool create_vars = true);
-
+  // This API is very slow.
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           std::map<std::string, const LoDTensor*>* feed_targets,
                           std::map<std::string, LoDTensor*>* fetch_targets,
@@ -80,6 +93,37 @@ class Executor {
                           bool create_vars = true,
                           const std::string& feed_holder_name = "feed",
                           const std::string& fetch_holder_name = "fetch");
+
+  std::unique_ptr<ExecutorPrepareContext> PrepareCtxCache(
+      const ProgramDesc& program, int block_id,
+      const std::vector<std::string>& skip_ref_cnt_vars =
+          std::vector<std::string>(),
+      bool force_disable_gc = false);
+
+  static std::unique_ptr<ExecutorPrepareContext> Prepare(
+      const ProgramDesc& program, int block_id,
+      const std::vector<std::string>& skip_ref_cnt_vars =
+          std::vector<std::string>(),
+      bool force_disable_gc = false);
+
+  static std::vector<std::shared_ptr<ExecutorPrepareContext>> Prepare(
+      const ProgramDesc& program, const std::vector<int>& block_ids,
+      const std::vector<std::vector<std::string>>& skip_ref_cnt_vars =
+          std::vector<std::vector<std::string>>(),
+      bool force_disable_gc = false);
+
+  void CreateVariables(const ProgramDesc& pdesc, Scope* scope, int block_id);
+
+  void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
+                          bool create_local_scope = true,
+                          bool create_vars = true, bool keep_kids = false);
+
+  void EnableMKLDNN(const ProgramDesc& program);
+
+  std::shared_ptr<TrainerBase> InitForDataset(
+      const ProgramDesc& main_program, const std::string& trainer_desc_str,
+      Scope* scope, Dataset* dataset);
+  void RunFromDataset(std::shared_ptr<TrainerBase> trainer);
 
  private:
   const platform::Place place_;

@@ -49,7 +49,7 @@ struct TensorCopyVisitor {
         size_(size) {}
 
   template <typename T>
-  void operator()() const {
+  void apply() const {
     // TODO(Yancey1989): support other place
     platform::CPUPlace cpu;
     memory::Copy(cpu, dst_->mutable_data<T>(cpu) + dst_offset_, cpu,
@@ -60,6 +60,26 @@ struct TensorCopyVisitor {
   int64_t dst_offset_;
   framework::Tensor src_;
   int64_t src_offset_;
+  int64_t size_;
+};
+
+struct TensorFillVisitor {
+  TensorFillVisitor(framework::Tensor* dst, int64_t dst_offset, int64_t size,
+                    float value)
+      : dst_(dst), dst_offset_(dst_offset), size_(size) {}
+
+  template <typename T>
+  void apply() const {
+    // TODO(qiao): support other place
+    platform::CPUPlace cpu;
+    auto* tensor_data = dst_->mutable_data<T>(cpu);
+    auto* start = tensor_data + dst_offset_;
+    auto* end = start + size_;
+    std::fill(start, end, static_cast<T>(0.0));
+  }
+
+  framework::Tensor* dst_;
+  int64_t dst_offset_;
   int64_t size_;
 };
 
@@ -120,66 +140,94 @@ bool SelectedRows::HasKey(int64_t key) const {
                                                                    : true;
 }
 
-std::vector<std::pair<int64_t, int64_t>> SelectedRows::Get(
-    const std::vector<int64_t>& keys, framework::Tensor* value) const {
+int64_t SelectedRows::AutoGrownIndex(int64_t key, bool auto_grown,
+                                     bool is_test) {
+  if (is_test) {
+    auto iter = id_to_index_.find(key);
+    if (iter == id_to_index_.end()) {
+      return -1;
+    } else {
+      return iter->second;
+    }
+  }
+
+  rwlock_->RDLock();
+  auto iter = id_to_index_.find(key);
+  if (iter == id_to_index_.end()) {
+    rwlock_->UNLock();
+    if (!auto_grown) {
+      PADDLE_THROW("key %d not found", key);
+    }
+    rwlock_->WRLock();
+    auto map_size = id_to_index_.size();
+    auto vector_size = rows_.size();
+    if (map_size != vector_size) {
+      rwlock_->UNLock();
+      PADDLE_THROW(
+          "id_to_index_ size %d should have the same size with rows_ %d",
+          map_size, vector_size);
+    }
+    auto write_iter = id_to_index_.find(key);
+    if (write_iter == id_to_index_.end()) {
+      int row_num = rows_.size();
+      if (row_num == value_->dims()[0]) {
+        rwlock_->UNLock();
+        PADDLE_THROW("selected rows is full, then length exceed %d", row_num);
+      }
+      // key logic to put a key into id_to_index_
+      rows_.push_back(key);
+      auto index = static_cast<int64_t>(rows_.size() - 1);
+      id_to_index_[key] = index;
+      rwlock_->UNLock();
+      return index;
+    } else {
+      auto index = write_iter->second;
+      rwlock_->UNLock();
+      return index;
+    }
+  } else {
+    auto index = iter->second;
+    rwlock_->UNLock();
+    return index;
+  }
+}
+
+void SelectedRows::SyncIndex() {
+  rwlock_->WRLock();
+  id_to_index_.clear();
+  for (size_t i = 0; i < rows_.size(); ++i) {
+    id_to_index_[rows_[i]] = i;
+  }
+  rwlock_->UNLock();
+}
+
+void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
+                       bool auto_grown, bool is_test) {
   PADDLE_ENFORCE(value->IsInitialized(),
                  "The value tensor should be initialized.");
-  std::vector<std::pair<int64_t, int64_t>> non_keys_pair;
-  if (keys.empty()) {
+  if (ids.numel() == 0) {
     VLOG(3) << "keys is empty, please check data!";
   } else {
     int64_t value_width = value_->numel() / value_->dims()[0];
     PADDLE_ENFORCE_EQ(value_width, value->numel() / value->dims()[0],
                       "output tensor should have the same shape with table "
                       "except the dims[0].");
-
-    for (size_t i = 0; i < keys.size(); ++i) {
-      int64_t index = Index(keys[i]);
-      if (index == -1) {
-        non_keys_pair.push_back(
-            std::make_pair(keys[i], static_cast<int64_t>(i)));
+    for (int i = 0; i < ids.numel(); ++i) {
+      auto id = ids.data<int64_t>()[i];
+      int64_t index = AutoGrownIndex(id, auto_grown, is_test);
+      if (index < 0) {
+        VLOG(5) << "id " << id << " not in the table, return 0";
+        framework::VisitDataType(
+            value_->type(),
+            TensorFillVisitor(value, i * value_width, value_width, 0.0));
       } else {
         framework::VisitDataType(
-            framework::ToDataType(value_->type()),
+            value_->type(),
             TensorCopyVisitor(value, i * value_width, *value_.get(),
                               index * value_width, value_width));
       }
     }
   }
-  return non_keys_pair;
-}
-
-bool SelectedRows::Set(int64_t key, const framework::Tensor& value) {
-  PADDLE_ENFORCE(value.IsInitialized(), "The value should be initialized.");
-  if (value_->IsInitialized()) {
-    PADDLE_ENFORCE_EQ(
-        value.type(), value_->type(),
-        "The type of the value should be same with the original value");
-  }
-  PADDLE_ENFORCE_EQ(value.dims()[0], static_cast<size_t>(1),
-                    "The first dim of value should be 1.");
-  std::lock_guard<std::mutex> lock(*auto_grown_mutex_.get());
-  auto index = Index(key);
-  bool is_new_key = false;
-  if (index == -1) {
-    rows_.push_back(key);
-    index = rows_.size() - 1;
-    is_new_key = true;
-    // whether need to resize the table
-    if (static_cast<int64_t>(rows_.size()) > value_->dims()[0]) {
-      auto dims = value_->dims();
-      dims[0] = (dims[0] + 1) << 1;
-      framework::VisitDataType(framework::ToDataType(value.type()),
-                               ReAllocateVisitor(dims, value_.get()));
-    }
-  }
-
-  framework::VisitDataType(
-      framework::ToDataType(value.type()),
-      TensorCopyVisitor(value_.get(),
-                        index * value_->numel() / value_->dims()[0], value,
-                        static_cast<int64_t>(0), value.numel()));
-  return is_new_key;
 }
 
 }  // namespace framework

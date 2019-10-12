@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <functional>
 #include <iostream>
 #include <vector>
 
@@ -30,6 +31,7 @@ struct CPUPlace {
   // needed for variant equality comparison
   inline bool operator==(const CPUPlace &) const { return true; }
   inline bool operator!=(const CPUPlace &) const { return false; }
+  inline bool operator<(const CPUPlace &) const { return false; }
 };
 
 struct CUDAPlace {
@@ -42,6 +44,7 @@ struct CUDAPlace {
     return device == o.device;
   }
   inline bool operator!=(const CUDAPlace &o) const { return !(*this == o); }
+  inline bool operator<(const CUDAPlace &o) const { return device < o.device; }
 
   int device;
 };
@@ -52,6 +55,7 @@ struct CUDAPinnedPlace {
   // needed for variant equality comparison
   inline bool operator==(const CUDAPinnedPlace &) const { return true; }
   inline bool operator!=(const CUDAPinnedPlace &) const { return false; }
+  inline bool operator<(const CUDAPinnedPlace &) const { return false; }
 };
 
 struct IsCUDAPlace : public boost::static_visitor<bool> {
@@ -76,30 +80,11 @@ typedef boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> Place;
 
 using PlaceList = std::vector<Place>;
 
-void set_place(const Place &);
-const Place &get_place();
-
-const CUDAPlace default_gpu();
-const CPUPlace default_cpu();
-const CUDAPinnedPlace default_cuda_pinned();
-
 bool is_gpu_place(const Place &);
 bool is_cpu_place(const Place &);
 bool is_cuda_pinned_place(const Place &);
 bool places_are_same_class(const Place &, const Place &);
 bool is_same_place(const Place &, const Place &);
-
-struct PlaceHash {
-  std::size_t operator()(const Place &p) const {
-    constexpr size_t num_dev_bits = 4;
-    std::hash<int> ihash;
-    size_t dev_id = 0;
-    if (is_gpu_place(p)) {
-      dev_id = boost::get<CUDAPlace>(p).device;
-    }
-    return ihash(dev_id << num_dev_bits | p.which());
-  }
-};
 
 std::ostream &operator<<(std::ostream &, const Place &);
 

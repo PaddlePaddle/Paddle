@@ -40,9 +40,12 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
                    "Cannot find out_var in scope, out_var_name is %s",
                    out_name);
 
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
+
     auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
     auto &mem_tensor = mem_var->Get<framework::LoDTensor>();
-    out_tensor->ShareDataWith(mem_tensor);
+    framework::TensorCopy(mem_tensor, dev_place, dev_ctx, out_tensor);
     out_tensor->set_lod(mem_tensor.lod());
   }
 };
@@ -50,9 +53,11 @@ class RNNMemoryHelperOp : public framework::OperatorBase {
 class RNNMemoryHelperOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "");
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of rnn_memory_helper op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output of rnn_memory_helper op should not be null.");
+    ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
@@ -86,9 +91,13 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
 
     auto in_grad_var_name = Output(framework::GradVarName("X"));
     auto *in_grad_var = scope.FindVar(in_grad_var_name);
+
     PADDLE_ENFORCE(in_grad_var != nullptr,
                    "Cannot find in_grad_var in scope, name is %s",
                    in_grad_var_name);
+
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
 
     if (out_grad_var == nullptr) {
       VLOG(5) << "Using fill constant 0 as starting gradient";
@@ -97,8 +106,8 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
       auto &in_var_tensor = in_var->Get<framework::LoDTensor>();
 
       framework::AttributeMap attrs;
-      attrs["dtype"] = framework::ToDataType(in_var_tensor.type());
-      attrs["shape"] = framework::vectorize2int(in_var_tensor.dims());
+      attrs["dtype"] = in_var_tensor.type();
+      attrs["shape"] = framework::vectorize<int>(in_var_tensor.dims());
       attrs["value"] = 0.0f;
 
       auto zero_op = framework::OpRegistry::CreateOp(
@@ -107,7 +116,8 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
     } else {
       auto &out_grad_tensor = out_grad_var->Get<framework::LoDTensor>();
       auto *in_grad_tensor = in_grad_var->GetMutable<framework::LoDTensor>();
-      in_grad_tensor->ShareDataWith(out_grad_tensor);
+      framework::TensorCopy(out_grad_tensor, dev_place, dev_ctx,
+                            in_grad_tensor);
       in_grad_tensor->set_lod(out_grad_tensor.lod());
     }
   }
@@ -133,8 +143,11 @@ class RNNMemoryHelperGradOpShapeInference : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     auto x_grad_name = framework::GradVarName("X");
-    PADDLE_ENFORCE(ctx->HasOutput(x_grad_name), "");
-    PADDLE_ENFORCE(ctx->HasInput("X"), "");
+    PADDLE_ENFORCE(ctx->HasOutput(x_grad_name),
+                   "Gradient of Input(X) in rnn_memory_helper_grad of should "
+                   "not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of rnn_memory_helper_grad of should not be null.");
     ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ x_grad_name);
   }

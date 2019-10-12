@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/crop_op.h"
-#include <boost/lexical_cast.hpp>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -48,6 +50,12 @@ class CropOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim("Out", y_dim);
     }
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.device_context());
+  }
 };
 
 class CropOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -60,13 +68,19 @@ class CropOpMaker : public framework::OpProtoAndCheckerMaker {
              "The input used as reference for cropping, "
              "which is of the same dimensions as X.")
         .AsDispensable();
+    AddInput("Offsets",
+             "The input used to describe offsets in runtime, which is a "
+             "1-D vector whose size equals to the rank of input 'X'. The "
+             "elements data type must be int.")
+        .AsDispensable();
     AddOutput("Out",
               "The output of crop op, "
               "which is of the same dimensions as X.");
     AddAttr<std::vector<int>>("offsets",
                               "A list<int> describing offsets to be cropped. "
                               "The size of offsets list should be the same as "
-                              "the dimension size of input X.");
+                              "the dimension size of input X.")
+        .SetDefault(std::vector<int>());
     AddAttr<std::vector<int>>("shape",
                               "A list<int> describing the shape of output. "
                               "The size of shape list should be the same as "
@@ -76,6 +90,17 @@ class CropOpMaker : public framework::OpProtoAndCheckerMaker {
 Crop Operator.
 
 Crop input into output, as specified by offsets and shape.
+
+There are two ways to set the offsets:
+1. In runtime: Using the input 'Offsets', which is a Vairbale and can be 
+               output of other operators. This way is suitable for 
+               dynamic offsets.
+2. In network configuration: Using the attribute 'offsets', which will be 
+                             set in Python configure script. This way is 
+                             suitable for fixed offsets.
+You CANNOT use these two ways at the same time. An exception will be raised 
+if input 'Offset' is configured and meanwhile the attribute 'offsets' is 
+not empty.
 
 There are two ways to set shape:
 1. reference input: crop input X into the same shape as reference input.
@@ -146,6 +171,32 @@ class CropOpGrad : public framework::OperatorWithKernel {
       ctx->SetOutputDim(x_grad_name, x_dims);
     }
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
+        ctx.device_context());
+  }
+};
+
+class CropGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("crop_grad");
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("X", Input("X"));
+    if (ForwardOp().Inputs().count("Offsets") > 0) {
+      op->SetInput("Offsets", Input("Offsets"));
+    }
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
+  }
 };
 
 }  // namespace operators
@@ -153,8 +204,11 @@ class CropOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(crop, ops::CropOp, ops::CropOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::CropGradOpDescMaker);
 REGISTER_OPERATOR(crop_grad, ops::CropOpGrad);
-REGISTER_OP_CPU_KERNEL(crop, ops::CropKernel<float>);
 REGISTER_OP_CPU_KERNEL(
-    crop_grad, ops::CropGradKernel<paddle::platform::CPUDeviceContext, float>);
+    crop, ops::CropKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CropKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    crop_grad, ops::CropGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CropGradKernel<paddle::platform::CPUDeviceContext, double>);

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <mutex>  // NOLINT
 #include <set>
 #include <tuple>
@@ -22,7 +23,6 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/detail/memory_block.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
@@ -32,8 +32,8 @@ namespace detail {
 
 class BuddyAllocator {
  public:
-  BuddyAllocator(SystemAllocator* system_allocator, size_t min_chunk_size,
-                 size_t max_chunk_size);
+  BuddyAllocator(std::unique_ptr<SystemAllocator> system_allocator,
+                 size_t min_chunk_size, size_t max_chunk_size);
 
   ~BuddyAllocator();
 
@@ -41,6 +41,8 @@ class BuddyAllocator {
   void* Alloc(size_t unaligned_size);
   void Free(void* ptr);
   size_t Used();
+  size_t GetMinChunkSize();
+  size_t GetMaxChunkSize();
 
  public:
   // Disable copy and assignment
@@ -57,7 +59,7 @@ class BuddyAllocator {
   void* SystemAlloc(size_t size);
 
   /*! \brief If existing chunks are not suitable, refill pool */
-  PoolSet::iterator RefillPool();
+  PoolSet::iterator RefillPool(size_t request_bytes);
 
   /**
    *  \brief   Find the suitable chunk from existing pool and split
@@ -73,18 +75,14 @@ class BuddyAllocator {
   /*! \brief Find the existing chunk which used to allocation */
   PoolSet::iterator FindExistChunk(size_t size);
 
-  /*! \brief Clean idle fallback allocation */
-  void CleanIdleFallBackAlloc();
-
-  /*! \brief Clean idle normal allocation */
-  void CleanIdleNormalAlloc();
-
  private:
   size_t total_used_ = 0;  // the total size of used memory
   size_t total_free_ = 0;  // the total size of free memory
 
   size_t min_chunk_size_;  // the minimum size of each chunk
   size_t max_chunk_size_;  // the maximum size of each chunk
+
+  size_t realloc_size_ = 0;  // the size of re-allocated chunk
 
  private:
   /**
@@ -94,16 +92,13 @@ class BuddyAllocator {
    */
   PoolSet pool_;
 
-  /*! Record fallback allocation count for auto-scaling */
-  size_t fallback_alloc_count_ = 0;
-
  private:
   /*! Unify the metadata format between GPU and CPU allocations */
   MetadataCache cache_;
 
  private:
   /*! Allocate CPU/GPU memory from system */
-  SystemAllocator* system_allocator_;
+  std::unique_ptr<SystemAllocator> system_allocator_;
   std::mutex mutex_;
 };
 

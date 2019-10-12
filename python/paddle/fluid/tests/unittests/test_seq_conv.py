@@ -12,10 +12,59 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 import random
 from op_test import OpTest
+
+
+def seqconv(x,
+            lod,
+            filter,
+            context_length,
+            context_start,
+            padding_trainable=False,
+            padding_data=None):
+    [T, M] = x.shape
+    col = np.zeros((T, context_length * M)).astype('float32')
+    offset = [0]
+    for seq_len in lod[0]:
+        offset.append(offset[-1] + seq_len)
+    begin_pad = np.max([0, -context_start])
+    for i in range(len(offset) - 1):
+        for j in range(context_length):
+            in_begin = offset[i] + context_start + j
+            in_end = offset[i + 1] + context_start + j
+            out_begin = offset[i]
+            out_end = offset[i + 1]
+            if in_begin < offset[i]:
+                pad_size = np.min(
+                    [offset[i] - in_begin, offset[i + 1] - offset[i]])
+                if padding_trainable:
+                    sub_w = padding_data[j:j + pad_size, :]
+                    col[offset[i]:offset[i] + pad_size, j * M:(j + 1) *
+                        M] = sub_w
+                out_begin = offset[i] + pad_size
+                in_begin = offset[i]
+
+            if in_end > offset[i + 1]:
+                pad_size = np.min(
+                    [in_end - offset[i + 1], offset[i + 1] - offset[i]])
+                if padding_trainable:
+                    sub_w = padding_data[begin_pad + context_start + j -
+                                         pad_size:begin_pad + context_start +
+                                         j, :]
+                    col[offset[i + 1] - pad_size:offset[i + 1], j * M:(j + 1) *
+                        M] = sub_w
+                in_end = offset[i + 1]
+                out_end = offset[i + 1] - pad_size
+            if in_end <= in_begin:
+                continue
+            in_sub = x[in_begin:in_end, :]
+            col[out_begin:out_end, j * M:(j + 1) * M] += in_sub
+    return np.dot(col, filter)
 
 
 class TestSeqProject(OpTest):
@@ -26,9 +75,9 @@ class TestSeqProject(OpTest):
         if self.context_length == 1 \
                 and self.context_start == 0 \
                 and self.padding_trainable:
-            print "If context_start is 0 " \
+            print("If context_start is 0 " \
                   "and context_length is 1," \
-                  " padding_trainable should be false."
+                  " padding_trainable should be false.")
             return
 
         # one level, batch size
@@ -64,54 +113,9 @@ class TestSeqProject(OpTest):
             'paddingTrainable': self.padding_trainable,
             'contextStride': self.context_stride
         }
-        out = np.zeros(
-            (self.input_size[0], self.output_represention)).astype('float32')
+        out = seqconv(x, self.lod, w, self.context_length, self.context_start,
+                      self.padding_trainable, self.pad_data)
         self.outputs = {'Out': out}
-        self.compute()
-
-    def compute(self):
-        x, lod = self.inputs['X']
-        filter = self.inputs['Filter']
-        pading_data = self.pad_data
-        out = np.zeros((self.input_size[0], self.context_length *
-                        self.input_size[1])).astype('float32')
-        lod = lod[0]
-        begin_pad = np.max([0, -self.context_start])
-
-        for i in range(len(lod) - 1):
-            for j in range(self.context_length):
-                in_begin = lod[i] + self.context_start + j
-                in_end = lod[i + 1] + self.context_start + j
-                out_begin = lod[i]
-                out_end = lod[i + 1]
-                if in_begin < lod[i]:
-                    pad_size = np.min([lod[i] - in_begin, lod[i + 1] - lod[i]])
-                    if self.padding_trainable:
-                        sub_w = pading_data[j:j + pad_size, :]
-                        out[lod[i]:lod[i] + pad_size, j * self.input_size[1]:(
-                            j + 1) * self.input_size[1]] = sub_w
-                    out_begin = lod[i] + pad_size
-                    in_begin = lod[i]
-
-                if in_end > lod[i + 1]:
-                    pad_size = np.min(
-                        [in_end - lod[i + 1], lod[i + 1] - lod[i]])
-                    if self.padding_trainable:
-                        sub_w = pading_data[begin_pad + self.context_start + j -
-                                            pad_size:begin_pad +
-                                            self.context_start + j, :]
-                        out[lod[i + 1] - pad_size:lod[i + 1], j * self.
-                            input_size[1]:(j + 1) * self.input_size[1]] = sub_w
-                    in_end = lod[i + 1]
-                    out_end = lod[i + 1] - pad_size
-                if in_end <= in_begin:
-                    continue
-
-                in_sub = x[in_begin:in_end, :]
-                out[out_begin:out_end, j * self.input_size[1]:(j + 1) *
-                    self.input_size[1]] += in_sub
-
-        np.dot(out, filter, out=self.outputs['Out'])
 
     def test_check_output(self):
         self.check_output()
@@ -175,7 +179,11 @@ class TestSeqProject(OpTest):
         self.context_stride = 1
 
         self.input_size = [self.input_row, 23]
-        self.lod = [[0, 4, 5, 8, self.input_row]]
+        offset_lod = [[0, 4, 5, 8, self.input_row]]
+        self.lod = [[]]
+        # convert from offset-based lod to length-based lod
+        for i in range(len(offset_lod[0]) - 1):
+            self.lod[0].append(offset_lod[0][i + 1] - offset_lod[0][i])
         self.output_represention = 8  # output feature size
 
 
@@ -188,11 +196,32 @@ class TestSeqProjectCase1(TestSeqProject):
         self.context_stride = 1
 
         self.input_size = [self.input_row, 23]
-        self.lod = [[0, 4, 5, 8, self.input_row]]
+        offset_lod = [[0, 4, 5, 8, self.input_row]]
+        self.lod = [[]]
+        # convert from offset-based lod to length-based lod
+        for i in range(len(offset_lod[0]) - 1):
+            self.lod[0].append(offset_lod[0][i + 1] - offset_lod[0][i])
         self.output_represention = 8  # output feature size
 
 
-class TestSeqProjectCase2(TestSeqProject):
+class TestSeqProjectCase2Len0(TestSeqProject):
+    def init_test_case(self):
+        self.input_row = 11
+        self.context_start = -1
+        self.context_length = 3
+        self.padding_trainable = True
+        self.context_stride = 1
+
+        self.input_size = [self.input_row, 23]
+        offset_lod = [[0, 0, 4, 5, 5, 8, self.input_row, self.input_row]]
+        self.lod = [[]]
+        # convert from offset-based lod to length-based lod
+        for i in range(len(offset_lod[0]) - 1):
+            self.lod[0].append(offset_lod[0][i + 1] - offset_lod[0][i])
+        self.output_represention = 8  # output feature size
+
+
+class TestSeqProjectCase3(TestSeqProject):
     def init_test_case(self):
         self.input_row = 25
         self.context_start = 2
@@ -201,11 +230,31 @@ class TestSeqProjectCase2(TestSeqProject):
         self.context_stride = 1
 
         self.input_size = [self.input_row, 23]
-        idx = range(self.input_size[0])
+        idx = list(range(self.input_size[0]))
         del idx[0]
-        self.lod = [[0] + np.sort(random.sample(idx, 8)).tolist() +
-                    [self.input_size[0]]]
+        offset_lod = [[0] + np.sort(random.sample(idx, 8)).tolist() +
+                      [self.input_size[0]]]
+        self.lod = [[]]
+        # convert from offset-based lod to length-based lod
+        for i in range(len(offset_lod[0]) - 1):
+            self.lod[0].append(offset_lod[0][i + 1] - offset_lod[0][i])
         self.output_represention = 8  # output feature size
+
+
+class TestSeqConvApi(unittest.TestCase):
+    def test_api(self):
+        import paddle.fluid as fluid
+
+        x = fluid.layers.data('x', shape=[32], lod_level=1)
+        y = fluid.layers.sequence_conv(
+            input=x, num_filters=2, filter_size=3, padding_start=None)
+
+        place = fluid.CPUPlace()
+        x_tensor = fluid.create_lod_tensor(
+            np.random.rand(10, 32).astype("float32"), [[2, 3, 1, 4]], place)
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        ret = exe.run(feed={'x': x_tensor}, fetch_list=[y], return_numpy=False)
 
 
 if __name__ == '__main__':

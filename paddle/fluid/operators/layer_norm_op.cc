@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/layer_norm_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -44,12 +45,19 @@ class LayerNormOp : public framework::OperatorWithKernel {
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
     if (ctx->HasInput("Scale")) {
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1UL);
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], right);
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1);
+
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0], right,
+                          "scale should with right");
+      }
     }
     if (ctx->HasInput("Bias")) {
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1UL);
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], right);
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1);
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0], right,
+                          "bias should with right");
+      }
     }
 
     ctx->SetOutputDim("Y", ctx->GetInputDim("X"));
@@ -62,36 +70,33 @@ class LayerNormOp : public framework::OperatorWithKernel {
 class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The input tensor.");
+    AddInput("X", "The input tensor.");
     AddInput("Scale",
-             "(Tensor, optional) Scale is a 1-dimensional tensor of size "
+             "(optional) Scale is a 1-dimensional tensor of size "
              "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
              "It is applied to the output.")
         .AsDispensable();
     AddInput("Bias",
-             "(Tensor, optional) Bias is a 1-dimensional tensor of size "
+             "(optional) Bias is a 1-dimensional tensor of size "
              "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
              "It is applied to the output.")
         .AsDispensable();
-    AddOutput("Y", "(LoDTensor) Result after normalization.");
-    AddOutput("Mean", "(Tensor) Mean of the current mini batch.")
-        .AsIntermediate();
-    AddOutput("Variance", "(Tensor) Variance of the current mini batch.")
+    AddOutput("Y", "Result after normalization.");
+    AddOutput("Mean", "Mean of the current mini batch.").AsIntermediate();
+    AddOutput("Variance", "Variance of the current mini batch.")
         .AsIntermediate();
 
     AddAttr<float>("epsilon",
-                   "(float, default 1e-5) Constant for "
-                   "numerical stability")
+                   "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
           PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
                          "'epsilon' should be between 0.0 and 0.001.");
         });
     AddAttr<int>("begin_norm_axis",
-                 "(int default:1), the "
-                 "axis of `begin_norm_axis ... Rank(X) - 1` will be "
+                 "the axis of `begin_norm_axis ... Rank(X) - 1` will be "
                  "normalized. `begin_norm_axis` splits the tensor(`X`) to a "
-                 "matrix [N,H].")
+                 "matrix [N,H]. [default 1].")
         .SetDefault(1)
         .AddCustomChecker([](const int &begin_norm_axis) {
           PADDLE_ENFORCE_GT(begin_norm_axis, 0,
@@ -99,10 +104,14 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
         });
 
     AddComment(R"DOC(
-Layer Normalization.
-Layer Norm has been implemented as discussed in the paper:
-https://arxiv.org/abs/1607.06450
-...
+Assume feature vectors exist on dimensions
+:attr:`begin_norm_axis ... rank(input)` and calculate the moment statistics
+along these dimensions for each feature vector :math:`a` with size
+:math:`H`, then normalize each feature vector using the corresponding
+statistics. After that, apply learnable gain and bias on the normalized
+tensor to scale and shift if :attr:`scale` and :attr:`shift` are set.
+
+Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
 )DOC");
   }
 };
@@ -132,7 +141,7 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
     }
     if (ctx->HasOutput(framework::GradVarName("Bias"))) {
       ctx->SetOutputDim(framework::GradVarName("Bias"),
-                        ctx->GetInputDim("Bias"));
+                        ctx->GetInputDim("Scale"));
     }
   }
 
@@ -152,8 +161,34 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
     if (t == nullptr) {
       PADDLE_THROW("can't find Y@GRAD");
     }
-    return framework::OpKernelType(framework::ToDataType(t->type()),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(t->type(), ctx.GetPlace());
+  }
+};
+
+class LayerNormGradOpDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("layer_norm_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("Mean", Output("Mean"));
+    op->SetInput("Variance", Output("Variance"));
+    if (ForwardOp().Inputs().count("Scale") > 0) {
+      op->SetInput("Scale", Input("Scale"));
+      op->SetOutput(framework::GradVarName("Scale"), InputGrad("Scale"));
+    }
+
+    if (ForwardOp().Inputs().count("Bias") > 0) {
+      op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+    }
+
+    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return op;
   }
 };
 
@@ -162,7 +197,7 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(layer_norm, ops::LayerNormOp, ops::LayerNormOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::LayerNormGradOpDescMaker);
 REGISTER_OPERATOR(layer_norm_grad, ops::LayerNormGradOp);
 REGISTER_OP_CPU_KERNEL(
     layer_norm, ops::LayerNormKernel<paddle::platform::CPUDeviceContext, float>,

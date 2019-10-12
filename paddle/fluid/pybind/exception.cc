@@ -18,10 +18,13 @@ namespace paddle {
 namespace pybind {
 
 void BindException(pybind11::module* m) {
+  static pybind11::exception<platform::EOFException> eof(*m, "EOFException");
   static pybind11::exception<platform::EnforceNotMet> exc(*m, "EnforceNotMet");
   pybind11::register_exception_translator([](std::exception_ptr p) {
     try {
       if (p) std::rethrow_exception(p);
+    } catch (const platform::EOFException& e) {
+      eof(e.what());
     } catch (const platform::EnforceNotMet& e) {
       exc(e.what());
     }

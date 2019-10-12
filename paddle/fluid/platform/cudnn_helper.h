@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
@@ -21,6 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/macros.h"
+
+DECLARE_bool(cudnn_deterministic);
 
 namespace paddle {
 namespace platform {
@@ -57,26 +60,97 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
 
-#define CUDNN_ENFORCE(condition)                                  \
-  do {                                                            \
-    cudnnStatus_t status = condition;                             \
-    if (status != CUDNN_STATUS_SUCCESS) {                         \
-      VLOG(1) << ::paddle::platform::cudnnGetErrorString(status); \
-      PADDLE_THROW("cuDNN call failed");                          \
-    }                                                             \
+#define CUDNN_ENFORCE(condition)                                     \
+  do {                                                               \
+    auto status = condition;                                         \
+    if (UNLIKELY(status != CUDNN_STATUS_SUCCESS)) {                  \
+      PADDLE_THROW(::paddle::platform::cudnnGetErrorString(status)); \
+    }                                                                \
   } while (false)
 
 enum class DataLayout {  // Not use
   kNHWC,
   kNCHW,
   kNCDHW,
+  kNDHWC,  // add, liyamei
   kNCHW_VECT_C,
 };
 
 enum class PoolingMode {
   kMaximum,
-  kAverage,
+  kMaximumDeterministic,
+  kAverageExclusive,
+  kAverageInclusive,
 };
+
+enum ActivationMode {
+  kNone,  // activation identity
+  kSigmoid,
+  kRelu,
+  kRelu6,
+  kReluX,
+  kTanh,
+  kBandPass,
+};
+
+#if CUDNN_VERSION < 6000
+#pragma message "CUDNN version under 6.0 is supported at best effort."
+#pragma message "We strongly encourage you to move to 6.0 and above."
+#pragma message "This message is intended to annoy you enough to update."
+#pragma message \
+    "please see https://docs.nvidia.com/deeplearning/sdk/cudnn-release-notes/"
+
+inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
+  switch (mode) {
+    case PoolingMode::kMaximumDeterministic:
+      return CUDNN_POOLING_MAX;
+    case PoolingMode::kAverageExclusive:
+      return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    case PoolingMode::kAverageInclusive:
+      return CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
+    case PoolingMode::kMaximum:
+      return CUDNN_POOLING_MAX;
+    default:
+      PADDLE_THROW("Unexpected pooling mode.");
+  }
+}
+#else
+
+inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
+  switch (mode) {
+    case PoolingMode::kMaximumDeterministic:
+      return CUDNN_POOLING_MAX_DETERMINISTIC;
+    case PoolingMode::kAverageExclusive:
+      return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    case PoolingMode::kAverageInclusive:
+      return CUDNN_POOLING_AVERAGE_COUNT_INCLUDE_PADDING;
+    case PoolingMode::kMaximum:
+      return CUDNN_POOLING_MAX;
+    default:
+      PADDLE_THROW("Unexpected pooling mode.");
+  }
+}
+#endif  // CUDNN_VERSION < 6000
+
+inline ActivationMode StringToActivationMode(const std::string& str) {
+  if (str == "identity") {
+    return ActivationMode::kNone;
+  } else if (str == "sigmoid") {
+    return ActivationMode::kSigmoid;
+  } else if (str == "relu") {
+    return ActivationMode::kRelu;
+  } else if (str == "relu6") {
+    return ActivationMode::kRelu6;
+  } else if (str == "relux") {
+    return ActivationMode::kReluX;
+  } else if (str == "tanh") {
+    return ActivationMode::kTanh;
+  } else if (str == "bandpass") {
+    return ActivationMode::kBandPass;
+  } else {
+    PADDLE_THROW("Unknown activation string: %s", str);
+  }
+}
 
 template <typename T>
 class CudnnDataType;
@@ -139,6 +213,8 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
       return CUDNN_TENSOR_NCHW;
     case DataLayout::kNCDHW:
       return CUDNN_TENSOR_NCHW;  // NOTE: cudnn treat NdTensor as the same
+    case DataLayout::kNDHWC:
+      return CUDNN_TENSOR_NHWC;  // add, liyamei
     default:
       PADDLE_THROW("Unknown cudnn equivalent for order");
   }
@@ -148,10 +224,10 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
 class ScopedTensorDescriptor {
  public:
   ScopedTensorDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnCreateTensorDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateTensorDescriptor(&desc_));
   }
   ~ScopedTensorDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnDestroyTensorDescriptor(desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyTensorDescriptor(desc_));
   }
 
   inline cudnnTensorDescriptor_t descriptor(const cudnnTensorFormat_t format,
@@ -165,14 +241,31 @@ class ScopedTensorDescriptor {
       strides[i] = dims[i + 1] * strides[i + 1];
     }
     // Update tensor descriptor dims setting if groups > 1
-    // NOTE: Assume using NCHW or NCDHW order
-    std::vector<int> dims_with_group(dims.begin(), dims.end());  // copy
+    // NOTE: Here, Assume using NCHW or NCDHW order
+    std::vector<int> dims_with_group(dims.begin(), dims.end());
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
-    PADDLE_ENFORCE(dynload::cudnnSetTensorNdDescriptor(
-        desc_, type, dims_with_group.size(), dims_with_group.data(),
-        strides.data()));
+
+    if (dims.size() == 4) {
+      if (format == CUDNN_TENSOR_NCHW) {
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
+            desc_, type, dims_with_group.size(), dims_with_group.data(),
+            strides.data()));
+      } else {  // CUDNN_TENSOR_NHWC
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensor4dDescriptor(
+            desc_, format, type, dims[0], dims[3], dims[1], dims[2]));
+      }
+    } else if (dims.size() == 5) {
+      if (format == CUDNN_TENSOR_NCHW) {
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
+            desc_, type, dims_with_group.size(), dims_with_group.data(),
+            strides.data()));
+      } else {  // CUDNN_TENSOR_NHWC
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptorEx(
+            desc_, format, type, dims.size(), dims.data()));
+      }
+    }
     return desc_;
   }
 
@@ -192,10 +285,10 @@ class ScopedTensorDescriptor {
 class ScopedFilterDescriptor {
  public:
   ScopedFilterDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnCreateFilterDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateFilterDescriptor(&desc_));
   }
   ~ScopedFilterDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnDestroyFilterDescriptor(desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyFilterDescriptor(desc_));
   }
 
   inline cudnnFilterDescriptor_t descriptor(const cudnnTensorFormat_t format,
@@ -211,7 +304,7 @@ class ScopedFilterDescriptor {
       kernel_with_group[0] /= groups;
       // NOTE: input filter(C) of the filter is already asserted to be C/groups.
     }
-    PADDLE_ENFORCE(dynload::cudnnSetFilterNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetFilterNdDescriptor(
         desc_, type, format, kernel_with_group.size(),
         kernel_with_group.data()));
     return desc_;
@@ -233,10 +326,12 @@ class ScopedFilterDescriptor {
 class ScopedConvolutionDescriptor {
  public:
   ScopedConvolutionDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnCreateConvolutionDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnCreateConvolutionDescriptor(&desc_));
   }
   ~ScopedConvolutionDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnDestroyConvolutionDescriptor(desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnDestroyConvolutionDescriptor(desc_));
   }
 
   inline cudnnConvolutionDescriptor_t descriptor(
@@ -259,7 +354,7 @@ class ScopedConvolutionDescriptor {
 
     cudnnDataType_t compute_type =
         (type == CUDNN_DATA_DOUBLE) ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
-    PADDLE_ENFORCE(dynload::cudnnSetConvolutionNdDescriptor(
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetConvolutionNdDescriptor(
         desc_, pads.size(), pads.data(), strides.data(), dilations.data(),
         CUDNN_CROSS_CORRELATION, compute_type));
     return desc_;
@@ -280,10 +375,10 @@ class ScopedConvolutionDescriptor {
 class ScopedPoolingDescriptor {
  public:
   ScopedPoolingDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnCreatePoolingDescriptor(&desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreatePoolingDescriptor(&desc_));
   }
   ~ScopedPoolingDescriptor() {
-    PADDLE_ENFORCE(dynload::cudnnDestroyPoolingDescriptor(desc_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyPoolingDescriptor(desc_));
   }
 
   inline cudnnPoolingDescriptor_t descriptor(const PoolingMode& mode,
@@ -292,10 +387,8 @@ class ScopedPoolingDescriptor {
                                              const std::vector<int>& strides) {
     PADDLE_ENFORCE_EQ(kernel.size(), pads.size());
     PADDLE_ENFORCE_EQ(kernel.size(), strides.size());
-    PADDLE_ENFORCE(dynload::cudnnSetPoolingNdDescriptor(
-        desc_, (mode == PoolingMode::kMaximum
-                    ? CUDNN_POOLING_MAX
-                    : CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING),
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetPoolingNdDescriptor(
+        desc_, (GetPoolingMode(mode)),
         CUDNN_PROPAGATE_NAN,  // Always propagate nans.
         kernel.size(), kernel.data(), pads.data(), strides.data()));
     return desc_;
@@ -304,6 +397,84 @@ class ScopedPoolingDescriptor {
  private:
   cudnnPoolingDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedPoolingDescriptor);
+};
+
+class ScopedSpatialTransformerDescriptor {
+ public:
+  ScopedSpatialTransformerDescriptor() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnCreateSpatialTransformerDescriptor(&desc_));
+  }
+  ~ScopedSpatialTransformerDescriptor() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnDestroySpatialTransformerDescriptor(desc_));
+  }
+
+  template <typename T>
+  inline cudnnSpatialTransformerDescriptor_t descriptor(const int nbDims,
+                                                        const int dimA[]) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetSpatialTransformerNdDescriptor(
+        desc_, CUDNN_SAMPLER_BILINEAR, CudnnDataType<T>::type, nbDims, dimA));
+    return desc_;
+  }
+
+ private:
+  cudnnSpatialTransformerDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedSpatialTransformerDescriptor);
+};
+
+class ScopedActivationDescriptor {
+ public:
+  ScopedActivationDescriptor() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnCreateActivationDescriptor(&desc_));
+  }
+  ~ScopedActivationDescriptor() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnDestroyActivationDescriptor(desc_));
+  }
+
+  template <typename T>
+  inline cudnnActivationDescriptor_t descriptor(
+      const std::string& act, double value_max = static_cast<double>(0.)) {
+    double relu_ceiling = 0.0;
+    ActivationMode activation_mode = StringToActivationMode(act);
+    cudnnActivationMode_t mode;
+    switch (activation_mode) {
+#if CUDNN_VERSION >= 7100
+      case ActivationMode::kNone:
+        mode = CUDNN_ACTIVATION_IDENTITY;
+        break;
+#endif
+      case ActivationMode::kRelu6:
+        relu_ceiling = 6.0;
+        mode = CUDNN_ACTIVATION_CLIPPED_RELU;
+        break;
+      case ActivationMode::kReluX:
+        relu_ceiling = value_max;
+        mode = CUDNN_ACTIVATION_CLIPPED_RELU;
+        break;
+      case ActivationMode::kRelu:
+        mode = CUDNN_ACTIVATION_RELU;
+        break;
+      case ActivationMode::kSigmoid:
+        mode = CUDNN_ACTIVATION_SIGMOID;
+        break;
+      case ActivationMode::kTanh:
+        mode = CUDNN_ACTIVATION_TANH;
+        break;
+      default:
+        PADDLE_THROW("unrecognized activation mode: %d .",
+                     static_cast<int>(activation_mode));
+    }
+    CUDNN_ENFORCE(dynload::cudnnSetActivationDescriptor(
+        desc_, mode, CUDNN_NOT_PROPAGATE_NAN, relu_ceiling));
+    return desc_;
+  }
+
+ private:
+  cudnnActivationDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedActivationDescriptor);
 };
 
 inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
@@ -317,6 +488,29 @@ inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
 #endif
   return use_cudnn;
 }
+
+#if CUDNN_VERSION >= 7001
+class ScopedCTCLossDescriptor {
+ public:
+  ScopedCTCLossDescriptor() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateCTCLossDescriptor(&desc_));
+  }
+  ~ScopedCTCLossDescriptor() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyCTCLossDescriptor(desc_));
+  }
+
+  template <typename T>
+  inline cudnnCTCLossDescriptor_t descriptor() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        dynload::cudnnSetCTCLossDescriptor(desc_, CudnnDataType<T>::type));
+    return desc_;
+  }
+
+ private:
+  cudnnCTCLossDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedCTCLossDescriptor);
+};
+#endif
 
 }  // namespace platform
 }  // namespace paddle

@@ -118,10 +118,8 @@ TEST(OpRegistry, IllegalAttr) {
   } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg = "larger_than check fail";
-    const char* err_msg = err.what();
-    for (size_t i = 0; i < msg.length(); ++i) {
-      ASSERT_EQ(err_msg[i], msg[i]);
-    }
+    std::string err_msg = err.what();
+    ASSERT_TRUE(err_msg.find(msg) != std::string::npos);
   }
   ASSERT_TRUE(caught);
 }
@@ -154,10 +152,8 @@ TEST(OpRegistry, CustomChecker) {
   } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg = "Attribute 'test_attr' is required!";
-    const char* err_msg = err.what();
-    for (size_t i = 0; i < msg.length(); ++i) {
-      ASSERT_EQ(err_msg[i], msg[i]);
-    }
+    std::string err_msg = err.what();
+    ASSERT_TRUE(err_msg.find(msg) != std::string::npos);
   }
   ASSERT_TRUE(caught);
 
@@ -172,10 +168,8 @@ TEST(OpRegistry, CustomChecker) {
   } catch (paddle::platform::EnforceNotMet err) {
     caught = true;
     std::string msg = "'test_attr' must be even!";
-    const char* err_msg = err.what();
-    for (size_t i = 0; i < msg.length(); ++i) {
-      ASSERT_EQ(err_msg[i], msg[i]);
-    }
+    std::string err_msg = err.what();
+    ASSERT_TRUE(err_msg.find(msg) != std::string::npos);
   }
   ASSERT_TRUE(caught);
 
@@ -193,15 +187,10 @@ TEST(OpRegistry, CustomChecker) {
   ASSERT_EQ(test_attr, 4);
 }
 
-class CosineOpComplete : public paddle::framework::CosineOp {
- public:
-  DEFINE_OP_CONSTRUCTOR(CosineOpComplete, paddle::framework::CosineOp);
-  DEFINE_OP_CLONE_METHOD(CosineOpComplete);
-};
-
 TEST(OperatorRegistrar, Test) {
   paddle::framework::OperatorRegistrar<
-      CosineOpComplete, paddle::framework::CosineOpProtoAndCheckerMaker>
+      paddle::framework::CosineOp,
+      paddle::framework::CosineOpProtoAndCheckerMaker>
       reg("cos");
 }
 

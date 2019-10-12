@@ -1,1 +1,0 @@
-../../v2/build_and_install/docker_install_cn.rst

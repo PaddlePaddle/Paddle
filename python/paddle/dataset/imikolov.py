@@ -14,17 +14,22 @@
 """
 imikolov's simple dataset.
 
-This module will download dataset from 
+This module will download dataset from
 http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse training set and test set
 into paddle reader creators.
 """
+
+from __future__ import print_function
+
 import paddle.dataset.common
 import collections
 import tarfile
+import six
 
-__all__ = ['train', 'test', 'build_dict', 'convert']
+__all__ = ['train', 'test', 'build_dict']
 
-URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
+#URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
+URL = 'https://dataset.bj.bcebos.com/imikolov%2Fsimple-examples.tgz'
 MD5 = '30177ea32e27c525793142b6bf2c8e2d'
 
 
@@ -64,11 +69,13 @@ def build_dict(min_word_freq=50):
             # remove <unk> for now, since we will set it as last index
             del word_freq['<unk>']
 
-        word_freq = filter(lambda x: x[1] > min_word_freq, word_freq.items())
+        word_freq = [
+            x for x in six.iteritems(word_freq) if x[1] > min_word_freq
+        ]
 
         word_freq_sorted = sorted(word_freq, key=lambda x: (-x[1], x[0]))
         words, _ = list(zip(*word_freq_sorted))
-        word_idx = dict(zip(words, xrange(len(words))))
+        word_idx = dict(list(zip(words, six.moves.range(len(words)))))
         word_idx['<unk>'] = len(words)
 
     return word_idx
@@ -89,7 +96,7 @@ def reader_creator(filename, word_idx, n, data_type):
                     l = ['<s>'] + l.strip().split() + ['<e>']
                     if len(l) >= n:
                         l = [word_idx.get(w, UNK) for w in l]
-                        for i in range(n, len(l) + 1):
+                        for i in six.moves.range(n, len(l) + 1):
                             yield tuple(l[i - n:i])
                 elif DataType.SEQ == data_type:
                     l = l.strip().split()
@@ -146,15 +153,3 @@ def test(word_idx, n, data_type=DataType.NGRAM):
 
 def fetch():
     paddle.dataset.common.download(URL, "imikolov", MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    N = 5
-    word_dict = build_dict()
-    paddle.dataset.common.convert(path,
-                                  train(word_dict, N), 1000, "imikolov_train")
-    paddle.dataset.common.convert(path,
-                                  test(word_dict, N), 1000, "imikolov_test")

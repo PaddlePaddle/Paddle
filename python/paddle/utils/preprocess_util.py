@@ -14,7 +14,7 @@
 
 import os
 import math
-import cPickle as pickle
+import six.moves.cPickle as pickle
 import random
 import collections
 
@@ -169,7 +169,7 @@ class Dataset:
             random.shuffle(keyvalue_indices[k])
 
         num_data_per_key_batch = \
-            math.ceil(num_per_batch / float(len(keyvalue_indices.keys())))
+            math.ceil(num_per_batch / float(len(list(keyvalue_indices.keys()))))
 
         if num_data_per_key_batch < 2:
             raise Exception("The number of data in a batch is too small")
@@ -182,8 +182,8 @@ class Dataset:
                 end_idx = int(
                     min(begin_idx + num_data_per_key_batch,
                         len(keyvalue_indices[k])))
-                print "begin_idx, end_idx"
-                print begin_idx, end_idx
+                print("begin_idx, end_idx")
+                print(begin_idx, end_idx)
                 for idx in range(begin_idx, end_idx):
                     permuted_data.append(self.data[keyvalue_indices[k][idx]])
                 keyvalue_readpointer[k] = end_idx
@@ -357,6 +357,6 @@ class DatasetCreater(object):
             data_batcher.create_batches_and_list(
                 self.output_path, self.train_list_name, self.test_list_name,
                 self.label_set_name)
-            self.num_classes = len(train_label_set.keys())
+            self.num_classes = len(list(train_label_set.keys()))
             self.create_meta_file(train_data)
         return out_path

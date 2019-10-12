@@ -11,19 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import re
-import cStringIO
 import functools
 import warnings
+import string
 
+from six.moves import cStringIO
 from ..proto import framework_pb2
-from ..framework import OpProtoHolder, Variable
+from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_
 from ..layer_helper import LayerHelper
 
 __all__ = [
-    'deprecated',
-    'generate_layer_fn',
-    'autodoc',
+    'deprecated', 'generate_layer_fn', 'generate_activation_fn', 'autodoc',
+    'templatedoc'
 ]
 
 
@@ -43,7 +45,25 @@ def _convert_(name):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
-def _generate_doc_string_(op_proto):
+def _type_to_str_(tp):
+    return framework_pb2.AttrType.Name(tp)
+
+
+_two_dollar_pattern_ = re.compile(r"\$\$([^\$]+)\$\$")
+_single_dollar_pattern_ = re.compile(r"\$([^\$]+)\$")
+_two_bang_pattern_ = re.compile(r"!!([^!]+)!!")
+
+
+def escape_math(text):
+    return _two_bang_pattern_.sub(
+        r'$$\1$$',
+        _single_dollar_pattern_.sub(r':math:`\1`',
+                                    _two_dollar_pattern_.sub(r"!!\1!!", text)))
+
+
+def _generate_doc_string_(op_proto,
+                          additional_args_lines=None,
+                          skip_attrs_set=None):
     """
     Generate docstring by OpProto
 
@@ -54,35 +74,49 @@ def _generate_doc_string_(op_proto):
         str: the document string
     """
 
-    def _type_to_str_(tp):
-        return framework_pb2.AttrType.Name(tp)
-
     if not isinstance(op_proto, framework_pb2.OpProto):
         raise TypeError("OpProto should be `framework_pb2.OpProto`")
 
-    buf = cStringIO.StringIO()
-    buf.write(op_proto.comment)
+    buf = cStringIO()
+    buf.write(escape_math(op_proto.comment))
     buf.write('\nArgs:\n')
     for each_input in op_proto.inputs:
         line_begin = '    {0}: '.format(_convert_(each_input.name))
         buf.write(line_begin)
-        buf.write(each_input.comment)
-        buf.write('\n')
-        buf.write(' ' * len(line_begin))
-        buf.write('Duplicable: ')
-        buf.write(str(each_input.duplicable))
-        buf.write('  Optional: ')
-        buf.write(str(each_input.dispensable))
+        buf.write(escape_math(each_input.comment))
+        if each_input.duplicable:
+            buf.write("  Duplicatable.")
+        if each_input.dispensable:
+            buf.write("  Optional.")
         buf.write('\n')
 
+    skip_attrs = OpProtoHolder.generated_op_attr_names()
+    # attr use_mkldnn and is_test also should not be visible to users.
+    skip_attrs.add("use_mkldnn")
+    skip_attrs.add("is_test")
+    skip_attrs.add("use_cudnn")
+
+    if skip_attrs_set:
+        for t in skip_attrs_set:
+            skip_attrs.add(t)
+
     for each_attr in op_proto.attrs:
+        if each_attr.name in skip_attrs:
+            continue
         buf.write('    ')
         buf.write(each_attr.name)
         buf.write(' (')
         buf.write(_type_to_str_(each_attr.type))
         buf.write('): ')
-        buf.write(each_attr.comment)
+        buf.write(escape_math(each_attr.comment))
         buf.write('\n')
+
+    if additional_args_lines is not None:
+        for line in additional_args_lines:
+            line = line.strip()
+            buf.write('    ')
+            buf.write(line)
+            buf.write('\n')
 
     if len(op_proto.outputs) != 0:
         buf.write('\nReturns:\n')
@@ -90,7 +124,7 @@ def _generate_doc_string_(op_proto):
         for each_opt in op_proto.outputs:
             if not each_opt.intermediate:
                 break
-        buf.write(each_opt.comment)
+        buf.write(escape_math(each_opt.comment))
 
     return buf.getvalue()
 
@@ -107,9 +141,9 @@ def generate_layer_fn(op_type):
     """
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
     not_intermediate_outputs = \
-        filter(lambda output: not output.intermediate, op_proto.outputs)
+        [output for output in op_proto.outputs if not output.intermediate]
     intermediate_outputs = \
-        filter(lambda output: output.intermediate, op_proto.outputs)
+        [output for output in op_proto.outputs if output.intermediate]
 
     if len(not_intermediate_outputs) != 1:
         raise ValueError("Only one non intermediate output operator can be",
@@ -154,6 +188,15 @@ def generate_layer_fn(op_type):
                         "operator {0} must input same dtype. {1} vs {2}".format(
                             op_type, dtype, each.dtype))
 
+        if dtype is None:
+            arg_dtype = kwargs.get("dtype")
+            if arg_dtype:
+                if not isinstance(arg_dtype, core.VarDesc.VarType):
+                    dtype = convert_np_dtype_to_dtype_(arg_dtype)
+                else:
+                    dtype = arg_dtype
+            else:
+                dtype = core.VarDesc.VarType.FP32
         return dtype
 
     def func(*args, **kwargs):
@@ -178,16 +221,66 @@ def generate_layer_fn(op_type):
             out_var = out[0] if (isinstance(out, list) or
                                  isinstance(out, tuple)) else out
         else:
-            out_var = helper.create_tmp_variable(dtype=dtype)
+            out_var = helper.create_variable_for_type_inference(dtype=dtype)
         outputs[o_name] = [out_var]
         for name in intermediate_output_names:
-            outputs[name] = [helper.create_tmp_variable(dtype=dtype)]
+            outputs[name] = [
+                helper.create_variable_for_type_inference(dtype=dtype)
+            ]
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
         return helper.append_activation(out_var)
 
     func.__name__ = op_type
     func.__doc__ = _generate_doc_string_(op_proto)
+    return func
+
+
+def generate_activation_fn(op_type):
+    """Register the Python layer for an Operator without Attribute.
+
+    Args:
+       op_type: The name of the operator to be created.
+
+    This function takes in the operator type (sigmoid, exp , tanh etc) and
+    creates the operator functionality.
+
+    """
+    op_proto = OpProtoHolder.instance().get_op_proto(op_type)
+
+    def func(x, name=None):
+        helper = LayerHelper(op_type, **locals())
+        output = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": output})
+        return output
+
+    func.__name__ = op_type
+    func.__doc__ = _generate_doc_string_(
+        op_proto,
+        additional_args_lines=[
+            "name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` ."
+        ])
+    func.__doc__ = func.__doc__ + """
+
+Return type
+  Variable
+Examples:
+    .. code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        inputs = fluid.data(name="x", shape = [None, 4], dtype='float32')
+        output = fluid.layers.%s(inputs)
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(fluid.default_startup_program())
+
+        #input.shape=1X4, batch_size=1
+        img = np.array([[1.0, 2.0, 3.0, 4.0]]).astype(np.float32)
+        res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+        print(res)
+""" % op_type
     return func
 
 
@@ -217,6 +310,64 @@ def autodoc(comment=""):
     def __impl__(func):
         func.__doc__ = _generate_doc_string_(OpProtoHolder.instance(
         ).get_op_proto(func.__name__)) + comment
+        return func
+
+    return __impl__
+
+
+def templatedoc(op_type=None):
+    """
+    Decorator of layer function. It will use the docstring from the layer
+    function as the template. The template arguments are:
+
+    * ${comment}: The operator comment written in CPP.
+    * ${{name}_comment}: The comment of ${name} written with AddAttr, AddOutput,
+        and AddInput. The ${name} is Python snake style. i.e., xxx_xxx.
+    * ${{name}_type}: The type of ${name}.
+
+    Returns:
+        Decorated function.
+    """
+
+    def trim_ending_dot(msg):
+        return msg.rstrip('.')
+
+    def __impl__(func):
+        if op_type is None:
+            op_type_name = func.__name__
+        else:
+            op_type_name = op_type
+        op_proto = OpProtoHolder.instance().get_op_proto(op_type_name)
+        tmpl = string.Template(func.__doc__)
+
+        comment_lines = op_proto.comment.split("\n")
+        comment = ""
+        for line in comment_lines:
+            line = line.strip()
+            if len(line) != 0:
+                comment += escape_math(line)
+                comment += " "
+            elif len(comment) != 0:
+                comment += "\n    \n    "
+
+        args = {"comment": trim_ending_dot(comment)}
+        for each_input in op_proto.inputs:
+            input_name = _convert_(each_input.name)
+            args["{0}_comment".format(input_name)] = trim_ending_dot(
+                each_input.comment)
+            args["{0}_type".format(input_name)] = "Variable"
+        for each_attr in op_proto.attrs:
+            input_name = _convert_(each_attr.name)
+            args["{0}_comment".format(input_name)] = trim_ending_dot(
+                each_attr.comment)
+            args["{0}_type".format(input_name)] = _type_to_str_(each_attr.type)
+
+        for each_opt in op_proto.outputs:
+            output_name = _convert_(each_opt.name)
+            args["{0}_comment".format(output_name)] = trim_ending_dot(
+                each_opt.comment)
+            args["{0}_type".format(output_name)] = "Variable"
+        func.__doc__ = tmpl.substitute(args)
         return func
 
     return __impl__
