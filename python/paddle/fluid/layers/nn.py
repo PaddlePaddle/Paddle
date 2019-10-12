@@ -249,6 +249,7 @@ def fc(input,
     multiple output Tensors with shape :math:`[M, size]` will be summed up. If :attr:`bias_attr`
     is not None, a bias variable will be created and added to the output.
     Finally, if :attr:`act` is not None, it will be applied to the output as well.
+    Some extra changes for fc.
 
     When the input is a single Tensor(or LoDTensor):
 
