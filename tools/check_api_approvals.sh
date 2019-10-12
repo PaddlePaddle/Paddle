@@ -42,6 +42,14 @@ if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
   fi
 fi    
 
+api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec` 
+if [ "$api_spec_diff" != "" ]; then
+    APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 46782768 7534971 14105589 12605721 3064195 328693 47554610 39645414 11195205 20274488 45024560     `
+    failed_num=`expr $failed_num + 1`
+    echo_line="You must have two RD (XiaoguangHu01 or wanghaoshuang or guoshengCS or heavengate or kuke or Superjomn or lanxianghit or cyj1986 or hutuxian or frankwhzhang or nepeplwu) approval for the api change for the management reason of API interface and API document."
+    echo_list=(${echo_list[@]}$failed_num "." $echo_line)
+fi
+
 for API_FILE in ${API_FILES[*]}; do
   API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "${API_FILE}" | grep -v "/CMakeLists.txt" || true`
   echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
@@ -133,6 +141,7 @@ if [ -n "${echo_list}" ];then
   echo -e ${echo_list[@]}
   git diff -U0 upstream/$BRANCH |grep "+" |grep -v "PADDLE_ENFORCE_" |grep "PADDLE_ENFORCE"
   echo "There are ${failed_num} approved errors."
+  python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec
   echo "****************"
   exit 1
 fi
