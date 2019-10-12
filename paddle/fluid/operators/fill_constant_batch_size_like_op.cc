@@ -38,6 +38,11 @@ class FillConstantBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
         .SetDefault(framework::proto::VarType::FP32);
     AddAttr<float>("value", "default 0. The value to be filled")
         .SetDefault(0.0f);
+    AddAttr<bool>("force_cpu",
+                  "(bool, default false) Force fill output variable to cpu "
+                  "memory. Otherwise, fill output variable to the running "
+                  "device")
+        .SetDefault(false);
     AddComment(R"DOC(
 This function creates a tensor of specified *shape*, *dtype* and batch size,
 and initializes this with a constant supplied in *value*. The batch size is
@@ -65,4 +70,6 @@ REGISTER_OP_CPU_KERNEL(
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
                                            int>,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
-                                           int64_t>);
+                                           int64_t>,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
+                                           bool>);

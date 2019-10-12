@@ -223,6 +223,19 @@ class ReduceOp : public framework::OperatorWithKernel {
   }
 };
 
+class ReduceOpUseInputPlace : public ReduceOp {
+ public:
+  using ReduceOp::ReduceOp;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    return kt;
+  }
+};
+
 class ReduceGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -313,11 +326,11 @@ namespace ops = paddle::operators;
                     paddle::framework::DefaultGradOpDescMaker<true>);    \
   REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)
 
-#define REGISTER_REDUCE_OP_WITHOUT_GRAD(op_name)                         \
-  class __##op_name##Maker__ : public ops::ReduceOpMaker {               \
-   protected:                                                            \
-    virtual std::string GetName() const { return #op_name; }             \
-    virtual std::string GetOpType() const { return "Reduce " #op_name; } \
-  };                                                                     \
-  REGISTER_OPERATOR(op_name, ops::ReduceOp, __##op_name##Maker__,        \
+#define REGISTER_REDUCE_OP_WITHOUT_GRAD(op_name, ...)                          \
+  class __##op_name##Maker__ : public ops::ReduceOpMaker {                     \
+   protected:                                                                  \
+    virtual std::string GetName() const { return #op_name; }                   \
+    virtual std::string GetOpType() const { return "Reduce " #op_name; }       \
+  };                                                                           \
+  REGISTER_OPERATOR(op_name, ops::ReduceOp##__VA_ARGS__, __##op_name##Maker__, \
                     paddle::framework::EmptyGradOpMaker);
