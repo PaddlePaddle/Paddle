@@ -24,10 +24,9 @@ class ExpandAsOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("target_tensor"),
-                   "Input(target_tensor) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true);
+    PADDLE_ENFORCE_EQ(ctx->HasInput("target_tensor"), true);
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true);
     auto x_dims = ctx->GetInputDim("X");
     auto target_tensor_dims = ctx->GetInputDim("target_tensor");
     PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dims.size()),
@@ -80,9 +79,8 @@ class ExpandAsGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true);
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true);
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");

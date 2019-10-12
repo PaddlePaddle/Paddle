@@ -63,8 +63,7 @@ class ExpandAsKernel : public framework::OpKernel<T> {
     switch (rank) {
       REP_EXPAND_AS_TEMPLATE(MAX_RANK_SUPPORTED)
       default:
-        PADDLE_ENFORCE(false,
-                       "Only support tensor with rank being between 1 and 6.");
+        PADDLE_THROW("Only support tensor with rank being between 1 and 6.");
     }
   }
 
@@ -143,8 +142,7 @@ class ExpandAsGradKernel : public framework::OpKernel<T> {
       switch (dims) {
         REP_EXPAND_AS_GRAD_TEMPLATE(72)
         default:
-          PADDLE_ENFORCE(
-              false, "Only support tensor with rank being between 1 and 6.");
+          PADDLE_THROW("Only support tensor with rank being between 1 and 6.");
       }
     }
   }
