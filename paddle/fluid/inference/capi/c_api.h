@@ -39,6 +39,7 @@ typedef struct PD_AnalysisConfig PD_AnalysisConfig;
 typedef struct PD_ZeroCopyData {
   char* name;
   void* data;
+  int data_size;
   PD_DataType dtype;
   int* shape;
   int shape_size;

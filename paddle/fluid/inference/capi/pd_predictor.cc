@@ -101,6 +101,7 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
         out_data.resize(out_num);
         output_t->copy_to_cpu(out_data.data());
         output[i].data = static_cast<void*>(out_data.data());
+        output[i].data_size = out_data.size();
       } break;
       case PD_INT32: {
         std::vector<int32_t> out_data;
@@ -109,6 +110,7 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
         out_data.resize(out_num);
         output_t->copy_to_cpu(out_data.data());
         output[i].data = static_cast<void*>(out_data.data());
+        output[i].data_size = out_data.size();
       } break;
       case PD_INT64: {
         std::vector<int64_t> out_data;
@@ -117,6 +119,7 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
         out_data.resize(out_num);
         output_t->copy_to_cpu(out_data.data());
         output[i].data = static_cast<void*>(out_data.data());
+        output[i].data_size = out_data.size();
       } break;
       case PD_UINT8: {
         std::vector<uint8_t> out_data;
@@ -125,6 +128,7 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
         out_data.resize(out_num);
         output_t->copy_to_cpu(out_data.data());
         output[i].data = static_cast<void*>(out_data.data());
+        output[i].data_size = out_data.size();
       } break;
       default:
         CHECK(false) << "Unsupport data type.";
