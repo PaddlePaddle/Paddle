@@ -4429,8 +4429,8 @@ def default_main_program():
     This API can be used to get ``default main program`` which store the 
     descriptions of ``op`` and ``variable``.
     
-    ``Op`` and ``variable`` appened to the model by the APIs in ``fluid.layers`` 
-    will be saved in ``default main program`` 
+    For example ``z = fluid.layers.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
+    ``op`` and a new ``z`` ``variable``, and they will be recorded in ``default main program`` 
 
     The ``default_main_program`` is the default value for ``Program`` parameter in 
     a lot of ``fluid`` APIs. For example, the :code:`Executor.run()` will execute the
@@ -4439,7 +4439,7 @@ def default_main_program():
     If you want to replace the ``default main program``, you can use :ref:`api_fluid_program_guard`
     
     Returns:
-        :ref:`api_fluid_Program`: a ``Program`` which saves the descriptions of ops and variables in the network.
+        :ref:`api_fluid_Program`: a ``Program`` which holding the descriptions of ops and variables in the network.
 
     Examples:
         ..  code-block:: python
@@ -4447,8 +4447,8 @@ def default_main_program():
             import paddle.fluid as fluid
 
             # Sample Network:
-            data = fluid.data(name='image', shape=[-1, 3, 224, 224], dtype='float32')
-            label = fluid.data(name='label', shape=[1], dtype='int64')
+            data = fluid.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             
             conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None)
             bn1 = fluid.layers.batch_norm(conv1, act='relu')
