@@ -5500,8 +5500,8 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             import paddle.fluid.layers as layers
             import numpy as np
 
-            x = fluid.data(name='x', shape=[1], dtype='float32')
-            y = fluid.data(name='y', shape=[1],
+            x = fluid.data(name='x', shape=[4, 1], dtype='float32')
+            y = fluid.data(name='y', shape=[8, 1],
                         dtype='float32', lod_level=1)
             out = layers.sequence_expand(x=x, y=y, ref_level=0)
 
@@ -5517,8 +5517,8 @@ def sequence_expand(x, y, ref_level=-1, name=None):
             #    dtype: float
             #    data: [1 2 3 4]
 
-            y_lod_tensor = fluid.create_random_int_lodtensor([[2, 2], [3,3,1,1]], [1],
-                                                            place, low=0, high=1)
+            np_data = np.array([[1], [2], [3], [4], [5], [6], [7], [8]]).astype('float32')
+	    y_lod_tensor = fluid.create_lod_tensor(np_data, [[2, 2], [3,3,1,1]], place)
             print(y_lod_tensor)
             #lod: [[0, 2, 4][0, 3, 6, 7, 8]]
             #    dim: 8, 1
@@ -5616,8 +5616,8 @@ def sequence_expand_as(x, y, name=None):
             import paddle.fluid.layers as layers
             import numpy as np
 
-            x = fluid.data(name='x', shape=[1], dtype='float32')
-            y = fluid.data(name='y', shape=[1], dtype='float32', lod_level=1)
+            x = fluid.data(name='x', shape=[4, 1], dtype='float32')
+            y = fluid.data(name='y', shape=[8, 1], dtype='float32', lod_level=1)
             out = layers.sequence_expand_as(x=x, y=y)
 
             exe = fluid.Executor(fluid.CPUPlace())
@@ -5632,8 +5632,8 @@ def sequence_expand_as(x, y, name=None):
             #    dtype: float
             #    data: [1 2 3 4]
 
-            y_lod_tensor = fluid.create_random_int_lodtensor([[3,3,1,1]], [1], 
-                                                            place, low=0, high=1)
+            np_data = np.array([[1], [2], [3], [4], [5], [6], [7], [8]]).astype('float32')
+	    y_lod_tensor = fluid.create_lod_tensor(np_data, [[3,3,1,1]], place)
             print(y_lod_tensor)
             #lod: [[0, 3, 6, 7, 8]]
             #    dim: 8, 1
@@ -5666,8 +5666,6 @@ def sequence_expand_as(x, y, name=None):
 
 def sequence_pad(x, pad_value, maxlen=None, name=None):
     """
-    **Sequence Pad Layer**
-
     This layer padding the sequences in a same batch to a common length (according \
          to ``maxlen``). The padding value is defined by ``pad_value``, and will be \
         appended to the tail of sequences. The result is a Python tuple ``(Out, Length)``: \
