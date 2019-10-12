@@ -46,14 +46,14 @@ TEST(MultiHeadMatmulFusePass, basic) {
   auto* elementwise_out_2 = layers.elementwise_add(mul_out_2, b2);
 
   std::vector<int> shape = {128, 12, 64};
-  auto* reshape_0 = layers.reshape(elementwise_out_0, shape);
-  auto* reshape_1 = layers.reshape(elementwise_out_1, shape);
-  auto* reshape_2 = layers.reshape(elementwise_out_2, shape);
+  auto* reshape_0 = layers.reshape2(elementwise_out_0, shape);
+  auto* reshape_1 = layers.reshape2(elementwise_out_1, shape);
+  auto* reshape_2 = layers.reshape2(elementwise_out_2, shape);
 
   std::vector<int> axis = {0, 2, 1, 3};
-  auto* transpose_0 = layers.transpose(reshape_0, axis);
-  auto* transpose_1 = layers.transpose(reshape_1, axis);
-  auto* transpose_2 = layers.transpose(reshape_2, axis);
+  auto* transpose_0 = layers.transpose2(reshape_0, axis);
+  auto* transpose_1 = layers.transpose2(reshape_1, axis);
+  auto* transpose_2 = layers.transpose2(reshape_2, axis);
 
   auto* scale_0 = layers.scale(transpose_0, 0.125, 0, false);
   auto* matmul_qk = layers.matmul(scale_0, transpose_1);
@@ -64,8 +64,10 @@ TEST(MultiHeadMatmulFusePass, basic) {
 
   auto* matmul_qkv = layers.matmul(softmax_qk, transpose_2);
 
-  auto* transpose_qkv = layers.transpose(matmul_qkv, {0, 2, 1, 3});
-  layers.reshape(transpose_qkv, {128, 768});
+  auto* transpose_qkv = layers.transpose2(matmul_qkv, {0, 2, 1, 3});
+  auto* reshape_qkv_out = layers.reshape2(transpose_qkv, {128, 768});
+  auto* weights_l = layers.data("weightsl", {768, 768}, true);
+  layers.mul(reshape_qkv_out, weights_l);
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   auto pass = PassRegistry::Instance().Get("multihead_matmul_fuse_pass");
@@ -77,7 +79,7 @@ TEST(MultiHeadMatmulFusePass, basic) {
   int num_fused_nodes_after = GetNumOpNodes(graph, "multihead_matmul");
   VLOG(3) << DebugString(graph);
 
-  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 16);
+  PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 29);
   PADDLE_ENFORCE_EQ(num_fused_nodes_after, 1);
 }
 

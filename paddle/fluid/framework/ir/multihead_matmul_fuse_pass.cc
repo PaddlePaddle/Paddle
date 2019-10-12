@@ -54,8 +54,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
       Node* mul1_out, Node* mul2_out, Node* eltadd0_b, Node* eltadd1_b,
       Node* eltadd2_b, Node* eltadd_qk_b, Node* reshape2,
       Node* reshape2_qkv_out, Node* scale, Node* scale_out) {
-    PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-
     auto scale_attr = boost::get<float>(scale->Op()->GetAttr("scale"));
     // auto scale_bias = boost::get<float>(scale->Op()->GetAttr("bias"));
     // bool after_scale =
@@ -434,9 +432,7 @@ void MultiHeadMatmulFusePass::ApplyImpl(Graph* graph) const {
   FusePassBase::Init(name_scope_, graph);
 
   int fusion_count = patterns::BuildFusion(graph, name_scope_);
-
   AddStatis(fusion_count);
-  // return graph;
 }
 
 }  // namespace ir
