@@ -455,12 +455,12 @@ def assign(input, output=None):
     helper = LayerHelper('assign', **locals())
     if isinstance(input, Variable):
         if convert_dtype(input.dtype) not in [
-                'float32', 'float64', 'int32', 'int64'
+                'float32', 'float64', 'int32', 'int64', 'bool'
         ]:
             raise TypeError(
                 "When the type of 'input' in assign is Variable, the data "
-                "type of 'input' must be float32, float64, int32 or int64, "
-                "but received %s." % convert_dtype(input.dtype))
+                "type of 'input' must be float32, float64, int32, int64 or "
+                "bool, but received %s." % convert_dtype(input.dtype))
         if output is None:
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
