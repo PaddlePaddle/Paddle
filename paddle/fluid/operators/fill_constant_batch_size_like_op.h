@@ -23,6 +23,11 @@ template <typename DeviceContext, typename T>
 class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    auto data_type =
+        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
+    auto value = ctx.Attr<float>("value");
+    auto force_cpu = ctx.Attr<bool>("force_cpu");
+
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto* in = ctx.Input<framework::LoDTensor>("Input");
     if (in->lod().size() && ctx.Attr<int>("input_dim_idx") == 0) {
@@ -32,12 +37,16 @@ class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
       odims[output_dim_idx] = static_cast<int>(in->lod().back().size()) - 1;
       out->mutable_data<T>(odims, ctx.GetPlace());
     }
-    out->mutable_data<T>(ctx.GetPlace());
-    auto value = ctx.Attr<float>("value");
 
-    math::SetConstant<DeviceContext, T> setter;
-    setter(ctx.template device_context<DeviceContext>(), out,
-           static_cast<T>(value));
+    if (force_cpu) {
+      out->mutable_data(platform::CPUPlace(), data_type);
+    } else {
+      out->mutable_data(ctx.GetPlace(), data_type);
+    }
+
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& dev_ctx = *pool.Get(ctx.GetPlace());
+    math::set_constant(dev_ctx, out, value);
   }
 };
 
