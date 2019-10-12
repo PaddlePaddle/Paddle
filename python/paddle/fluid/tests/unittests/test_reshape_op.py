@@ -238,16 +238,26 @@ class TestReshapeOpError(OpTest):
 
             self.assertRaises(TypeError, test_x_type)
 
-            # The x dtype of reshape_op must be float32, float64, int32 or int64.
+            # The x dtype of reshape_op must be float16, float32, float64, int32 or int64.
             def test_x_dtype():
                 x2 = fluid.layers.data(
                     name="x2",
                     shape=[2, 25],
                     append_batch_size=False,
-                    dtype="float16")
+                    dtype="bool")
                 fluid.layers.reshape(x2, shape=[2, 5, 5])
 
             self.assertRaises(TypeError, test_x_dtype)
+
+            def test_x_dtype_float16():
+                x_float16 = fluid.layers.data(
+                    name="x_float16",
+                    shape=[2, 25],
+                    append_batch_size=False,
+                    dtype="float16")
+                fluid.layers.reshape(x_float16, shape=[2, 5, 5])
+
+            test_x_dtype_float16()
 
             x3 = fluid.layers.data(
                 name="x3",

@@ -138,6 +138,7 @@ class QuantizationStrategy(Strategy):
         build_strategy = BuildStrategy()
         build_strategy.enable_inplace = False
         build_strategy.memory_optimize = False
+        build_strategy.fuse_all_reduce_ops = False
         # for quantization training
         context.optimize_graph.compiled_graph = CompiledProgram(
             train_ir_graph.graph).with_data_parallel(
