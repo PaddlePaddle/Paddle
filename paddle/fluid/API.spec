@@ -8,7 +8,7 @@ paddle.fluid.Program.list_vars (ArgSpec(args=['self'], varargs=None, keywords=No
 paddle.fluid.Program.parse_from_string (ArgSpec(args=['binary_str'], varargs=None, keywords=None, defaults=None), ('document', 'fc4a5660ff4280278402688f0014ce7f'))
 paddle.fluid.Program.to_string (ArgSpec(args=['self', 'throw_on_error', 'with_details'], varargs=None, keywords=None, defaults=(False,)), ('document', '7dde33f16b63aa50d474870a9cebb539'))
 paddle.fluid.default_startup_program (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', 'f53890b2fb8c0642b6047e4fee2d6d58'))
-paddle.fluid.default_main_program (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '853718df675e59aea7104f3d61bbf11d'))
+paddle.fluid.default_main_program (ArgSpec(args=[], varargs=None, keywords=None, defaults=None), ('document', '082aa471d247bd8d7c87814105439e1a'))
 paddle.fluid.program_guard (ArgSpec(args=['main_program', 'startup_program'], varargs=None, keywords=None, defaults=(None,)), ('document', '78fb5c7f70ef76bcf4a1862c3f6b8191'))
 paddle.fluid.name_scope (ArgSpec(args=['prefix'], varargs=None, keywords=None, defaults=(None,)), ('document', '907a5f877206079d8e67ae69b06bb3ba'))
 paddle.fluid.cuda_places (ArgSpec(args=['device_ids'], varargs=None, keywords=None, defaults=(None,)), ('document', 'ab9bd2079536114aa7c1488a489ee87f'))
