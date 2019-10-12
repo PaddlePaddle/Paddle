@@ -10711,7 +10711,7 @@ def sequence_scatter(input, index, updates, name=None):
                               please refer to :ref:`api_guide_Name`
 
     Returns:
-        Variable: A Tensor which contains information after updates. It has the same shape and data type with input.
+        Variable: A Tensor which has been updated. It has the same shape and data type with input.
 
     Examples:
 
