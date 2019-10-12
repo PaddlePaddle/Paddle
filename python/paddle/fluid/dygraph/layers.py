@@ -180,6 +180,14 @@ class Layer(core.Layer):
         return outputs
 
     def forward(self, *inputs, **kwargs):
+        """
+        Defines the computation performed at every call.
+        Should be overridden by all subclasses.
+
+        Parameters:
+            *inputs(tuple): unpacked tuple arguments
+            **kwargs(dict): unpacked dict arguments
+        """
         raise NotImplementedError
 
     def backward(self, *inputs):
@@ -188,7 +196,7 @@ class Layer(core.Layer):
     def add_sublayer(self, name, sublayer):
         """Adds a sub Layer instance.
 
-        Added sublayer can be access by self.name
+        Added sublayer can be accessed by self.name
 
         Parameters:
             name(str): name of this sublayer.
@@ -204,7 +212,7 @@ class Layer(core.Layer):
     def add_parameter(self, name, parameter):
         """Adds a Parameter instance.
 
-        Added parameter can be access by self.name
+        Added parameter can be accessed by self.name
 
         Parameters:
             name(str): name of this sublayer.
