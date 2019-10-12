@@ -28,6 +28,7 @@ extern "C" {
 bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
                      int in_size, PD_Tensor* output_data, int** out_size,
                      int batch_size) {
+  PADDLE_ENFORCE_NOT_NULL(config);
   auto predictor = paddle::CreatePaddlePredictor(config->config);
   std::vector<paddle::PaddleTensor> in;
   for (int i = 0; i < in_size; ++i) {
@@ -48,6 +49,7 @@ bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
 bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
                              PD_ZeroCopyData* inputs, int in_size,
                              PD_ZeroCopyData* output, int** out_size) {
+  PADDLE_ENFORCE_NOT_NULL(config);
   auto predictor = paddle::CreatePaddlePredictor(config->config);
   auto input_names = predictor->GetInputNames();
   PADDLE_ENFORCE_EQ(
@@ -83,7 +85,7 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
   *out_size = &osize;
   output = new PD_ZeroCopyData[osize];
   for (int i = 0; i < osize; ++i) {
-    LOG(INFO) << 1;
+    LOG(INFO) << "The output size is " << osize;
     output[i].name = new char[output_names[i].length() + 1];
     snprintf(output[i].name, output_names[i].length() + 1, "%s",
              output_names[i].c_str());
@@ -134,6 +136,8 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
         CHECK(false) << "Unsupport data type.";
         break;
     }
+    LOG(INFO) << "The Current output PD_ZeroCopyData's data_size is"
+              << output[i].data_size;
   }
   return true;
 }
