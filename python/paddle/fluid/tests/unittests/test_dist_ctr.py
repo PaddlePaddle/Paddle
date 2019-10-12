@@ -80,6 +80,28 @@ class TestDistCTR2x2_ASYNC(TestDistBase):
             log_name=flag_name)
 
 
+class TestDistCTR2x2_ASYNCWithL2Decay2x2(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._hogwild_mode = True
+        self._enforce_place = "CPU"
+
+    def test_dist_ctr(self):
+        need_envs = {
+            "FLAGS_communicator_send_queue_size": "2",
+            "FLAGS_communicator_max_merge_var_num": "2",
+            "FLAGS_communicator_max_send_grad_num_before_recv": "2",
+            "USE_L2_DECAY": "1"
+        }
+
+        self.check_with_place(
+            "dist_ctr.py",
+            delta=100,
+            check_error_log=True,
+            need_envs=need_envs,
+            log_name=flag_name)
+
+
 class TestDistCTR2x2_ASYNC2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
