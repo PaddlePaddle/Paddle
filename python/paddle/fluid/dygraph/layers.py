@@ -115,7 +115,7 @@ class Layer(core.Layer):
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
                 If set None, it will be ``core.VarDesc.VarType.FP32``. Default: None
-            type(core.VarDesc.VarType, optional): type of the variable. Default: ``core.VarDesc.VarType.LOD_TENSOR``
+            type(core.VarDesc.VarType, optional): type of the variable. No need to set this parameter. Default: ``core.VarDesc.VarType.LOD_TENSOR``
 
         Returns:
             :ref:`api_guide_Variable_en` : created Variable.
@@ -188,7 +188,7 @@ class Layer(core.Layer):
     def add_sublayer(self, name, sublayer):
         """Adds a sub Layer instance.
 
-        Added sublayer can be access like self.name.
+        Added sublayer can be access by self.name
 
         Parameters:
             name(str): name of this sublayer.
@@ -204,7 +204,7 @@ class Layer(core.Layer):
     def add_parameter(self, name, parameter):
         """Adds a Parameter instance.
 
-        Added parameter can be access like self.name.
+        Added parameter can be access by self.name
 
         Parameters:
             name(str): name of this sublayer.
@@ -270,7 +270,7 @@ class Layer(core.Layer):
 
     def state_dict(self, destination=None, include_sublayers=True):
         '''
-        Get all parameter of current and sub-layers. And set all the parameters into a dict
+        Get all parameters of current layer and its sub-layers. And set all the parameters into a dict
 
         Parameters:
             destination(dict, optional) : If provide, all the parameter will set to this dict . Default: None
