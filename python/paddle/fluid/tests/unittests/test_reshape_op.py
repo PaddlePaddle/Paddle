@@ -19,6 +19,7 @@ import numpy as np
 
 from op_test import OpTest
 import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 # situation 1: have shape( list, no tensor), no actual shape(Tensor)
@@ -202,10 +203,13 @@ class TestReshapeAPI(OpTest):
 
         # situation 1: have shape( list, no tensor), no actual shape(Tensor)
         out_1 = fluid.layers.reshape(x, shape)
+
         # situation 2: have shape(list, no tensor), have actual shape(Tensor)
         out_2 = fluid.layers.reshape(x, shape=shape, actual_shape=actual_shape)
+
         # Situation 3: have shape(list, have tensor), no actual shape(Tensor)
         out_3 = fluid.layers.reshape(x, shape=[positive_five, 10])
+
         # Situation 4: have shape(Tensor), no actual shape(Tensor)
         out_4 = fluid.layers.reshape(x, shape=actual_shape)
 
@@ -220,6 +224,76 @@ class TestReshapeAPI(OpTest):
         assert np.array_equal(res_2, input.reshape(shape))
         assert np.array_equal(res_3, input.reshape([5, 10]))
         assert np.array_equal(res_4, input.reshape(shape))
+
+
+# Test Input Error
+class TestReshapeOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The x type of reshape_op must be Variable.
+            def test_x_type():
+                x1 = fluid.create_lod_tensor(
+                    np.array([[-1]]), [[1]], fluid.CPUPlace())
+                fluid.layers.reshape(x1, shape=[1])
+
+            self.assertRaises(TypeError, test_x_type)
+
+            # The x dtype of reshape_op must be float16, float32, float64, int32 or int64.
+            def test_x_dtype():
+                x2 = fluid.layers.data(
+                    name="x2",
+                    shape=[2, 25],
+                    append_batch_size=False,
+                    dtype="bool")
+                fluid.layers.reshape(x2, shape=[2, 5, 5])
+
+            self.assertRaises(TypeError, test_x_dtype)
+
+            def test_x_dtype_float16():
+                x_float16 = fluid.layers.data(
+                    name="x_float16",
+                    shape=[2, 25],
+                    append_batch_size=False,
+                    dtype="float16")
+                fluid.layers.reshape(x_float16, shape=[2, 5, 5])
+
+            test_x_dtype_float16()
+
+            x3 = fluid.layers.data(
+                name="x3",
+                shape=[2, 25],
+                append_batch_size=False,
+                dtype="float32")
+
+            # The argument shape's type of reshape_op must be list, tuple or Variable.
+            def test_shape_type():
+                fluid.layers.reshape(x3, shape=1)
+
+            self.assertRaises(TypeError, test_shape_type)
+
+            # The argument actual_shape's type of reshape_op must be Variable or None.
+            def test_actual_shape_type():
+                fluid.layers.reshape(x3, shape=[25, 2], actual_shape=1)
+
+            self.assertRaises(TypeError, test_actual_shape_type)
+
+            # The argument shape have more than one -1.
+            def test_shape_1():
+                fluid.layers.reshape(x3, shape=[-1, -1, 5])
+
+            self.assertRaises(AssertionError, test_shape_1)
+
+            # The argument shape have element 0 whose index exceed the input dimension.
+            def test_shape_2():
+                fluid.layers.reshape(x3, [2, 5, 5, 0])
+
+            self.assertRaises(AssertionError, test_shape_2)
+
+            # The argument shape have more than one negtive value.
+            def test_shape_3():
+                fluid.layers.reshape(x3, [-1, -2, 5])
+
+            self.assertRaises(AssertionError, test_shape_3)
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 def output_hist(out):
@@ -114,6 +115,27 @@ class TestUniformRandomOp(OpTest):
         self.assertTrue(
             np.allclose(
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+
+class TestUniformRandomOpError(OpTest):
+    def test_errors(self):
+        main_prog = Program()
+        start_prog = Program()
+        with program_guard(main_prog, start_prog):
+
+            def test_Variable():
+                x1 = fluid.create_lod_tensor(
+                    np.zeros((4, 784)), [[1, 1, 1, 1]], fluid.CPUPlace())
+                fluid.layers.uniform_random(x1)
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_dtype():
+                x2 = fluid.layers.data(
+                    name='x2', shape=[4, 784], dtype='float32')
+                fluid.layers.uniform_random(x2, 'int32')
+
+            self.assertRaises(TypeError, test_dtype)
 
 
 class TestUniformRandomOpWithDiagInit(TestUniformRandomOp):
@@ -219,6 +241,32 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
             exe.run(startup_program)
             outs = exe.run(train_program, fetch_list=[ret])
+
+
+class TestUniformRandomOp_API_seed(unittest.TestCase):
+    def test_attr_tensor_API(self):
+        startup_program = fluid.Program()
+        train_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            _min = 5
+            _max = 10
+            _seed = 10
+            ret = fluid.layers.nn.uniform_random(
+                [2, 3, 2], min=_min, max=_max, seed=_seed)
+            ret_2 = fluid.layers.nn.uniform_random(
+                [2, 3, 2], min=_min, max=_max, seed=_seed)
+            res = fluid.layers.equal(ret, ret_2)
+            place = fluid.CPUPlace()
+            if fluid.core.is_compiled_with_cuda():
+                place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+
+            exe.run(startup_program)
+            ret_value, cmp_value = exe.run(train_program, fetch_list=[ret, res])
+            self.assertTrue(np.array(cmp_value).all())
+            for i in ret_value.flatten():
+                self.assertGreaterEqual(i, _min)
+                self.assertLess(i, _max)
 
 
 class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):

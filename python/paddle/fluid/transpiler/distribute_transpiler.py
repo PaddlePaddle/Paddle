@@ -130,7 +130,7 @@ def slice_variable(var_list, slice_count, min_block_size):
 
 class DistributeTranspilerConfig(object):
     """
-    A configuration class that provide support for distributed jobs.
+    A configuration class that provide support for transpiler distributed jobs.
     Some important parameters are explained as follows:
 
 
@@ -180,6 +180,10 @@ class DistributeTranspilerConfig(object):
     _runtime_split_send_recv = False
     _sync_mode = True
 
+    # Geo-sgd algorithm
+    geo_sgd_mode = False
+    geo_sgd_need_push_nums = 100
+
     nccl_comm_num = 1
     #The picture here illustrates the principle:
     #https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
@@ -228,7 +232,7 @@ class DistributeTranspiler(object):
     **DistributeTranspiler**
 
     Convert the fluid program to distributed data-parallelism programs.
-    Supports two modes: pserver mode and nccl2 mode.
+    Supports two modes: parameter server(pserver) mode and nccl2 mode.
 
     In pserver mode, the main_program will be transformed to use a remote
     parameter server to do parameter optimization. And the optimization
@@ -243,8 +247,8 @@ class DistributeTranspiler(object):
     Examples:
         .. code-block:: python
 
-            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            x = fluid.data(name='x', shape=[13], dtype='float32')
+            y = fluid.data(name='y', shape=[1], dtype='float32')
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
 
             cost = fluid.layers.square_error_cost(input=y_predict, label=y)
@@ -496,7 +500,7 @@ class DistributeTranspiler(object):
                   startup_program=None,
                   current_endpoint="127.0.0.1:6174"):
         """
-        Run the transpiler. Transpile the input program.
+        Transpile the input program to distributed programs with config and arguments.
 
         Args:
             trainer_id (int): id for current trainer worker, if you have
@@ -827,7 +831,15 @@ class DistributeTranspiler(object):
 
     def get_trainer_program(self, wait_port=True):
         """
-        Get transpiled trainer side program.
+        Get transpiled trainer side program. The program on trainer side compared with origin program 
+        has following difference:
+
+            - Delete optimizer related op, because parameter updated on Pserver
+            - After the op which computed gradient of each parameter, add ``Send_op`` and ``Recv_op`` 
+        
+        Args:
+            wait_port(bool): Whether to wait for the parameter server to be ready before returning to program, 
+            default is True
 
         Returns:
             Program: trainer side program.
@@ -961,7 +973,12 @@ class DistributeTranspiler(object):
 
     def get_pserver_program(self, endpoint):
         """
-        Get parameter server side program.
+        Get parameter server side program.The program on pserver side compared with origin program 
+        has following difference:
+
+            - Only the following op is included: optimize-related op and communication-related op 
+            - NO.0 block only has variable definitions and ``listen_and_serv_op``
+            - Every variable which need to be updated has a unique block
 
         Args:
             endpoint (str): current parameter server endpoint.
@@ -1189,6 +1206,7 @@ class DistributeTranspiler(object):
         attrs = {
             "optimize_blocks": optimize_blocks,
             "endpoint": endpoint,
+            "pserver_id": self.pserver_endpoints.index(endpoint),
             "Fanin": self.trainer_num,
             "sync_mode": self.sync_mode,
             "grad_to_block_id": grad_to_block_id,
@@ -1219,6 +1237,8 @@ class DistributeTranspiler(object):
     def get_pserver_programs(self, endpoint):
         """
         Get pserver side main program and startup program for distributed training.
+        The ``main_program`` returned by this function is consistent with the 
+        return value of the function ``get_pserver_program`` .
 
         Args:
             endpoint (str): current pserver endpoint.
