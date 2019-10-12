@@ -16335,9 +16335,12 @@ def sign(x):
                 "The type of 'x' in sign_op must be Variable or numpy.ndarray, but received %s."
                 % (type(x)))
 
-    if convert_dtype(x.dtype) not in ['float32', 'float64']:
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'x' in sign_op only support float16 in GPU now.")
+    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
         raise TypeError(
-            "The data type of 'x' in sign_op must be float32 or float64, but received %s."
+            "The data type of 'x' in sign_op must be float16, float32 or float64, but received %s."
             % (convert_dtype(x.dtype)))
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
