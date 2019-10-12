@@ -496,7 +496,6 @@ class TestAddQuantDequantPass(unittest.TestCase):
 
     def check_graph(self, graph):
         ops = graph.all_op_nodes()
-
         for op_node in ops:
             if op_node.name() in self._target_ops:
                 in_nodes_all_not_persistable = True
@@ -508,11 +507,6 @@ class TestAddQuantDequantPass(unittest.TestCase):
                         not in_node.persistable())
                 if not in_nodes_all_not_persistable:
                     continue
-
-                if op_node.op().has_attr("pooling_type") and \
-                    op_node.op().attr("pooling_type") == 'max':
-                    continue
-
                 input_names = op_node.input_arg_names()
                 for input_name in input_names:
                     self.assertTrue(input_name.endswith('.quant_dequant'))
