@@ -5564,6 +5564,7 @@ def sequence_expand_as(x, y, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
             import numpy as np
 
