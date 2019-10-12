@@ -1048,25 +1048,31 @@ class Executor(object):
                            print_period=100,
                            fetch_handler=None):
         """
-        The document of infer_from_dataset is almost the same as
-        train_from_dataset, except that in distributed training,
-        push gradients will be disabled in infer_from_dataset.
-        infer_from_dataset() can be used for evaluation in multi-thread
-        very easily.
+        Infer from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
+        Given a program, either a program or compiled program, infer_from_dataset will
+        consume all data samples in dataset. Input scope can be given by users. By default,
+        scope is global_scope(). The total number of thread run in training is `thread`.
+        Thread number used in training will be minimum value of threadnum in Dataset and
+        the value of thread in this interface. Debug can be set so that executor will display
+        Run-Time for all operators and the throughputs of current infer task.
+
+        The document of infer_from_dataset is almost the same as train_from_dataset,
+        except that in distributed training, push gradients will be disabled in infer_from_dataset.
+        infer_from_dataset() can be used for evaluation in multi-threadvery easily.
 
         Args:
             program(Program|CompiledProgram): the program that needs to be run,
-               if not provided, then default_main_program (not compiled) will be used.
+                if not provided, then default_main_program (not compiled) will be used.
             dataset(paddle.fluid.Dataset): dataset created outside this function,
-               a user should provide a well-defined dataset before calling this function.
-               Please check the document of Dataset if needed. default is None
+                a user should provide a well-defined dataset before calling this function.
+                Please check the document of Dataset if needed. default is None
             scope(Scope): the scope used to run this program, you can switch it to different scope
-               for each run. default is global_scope
-            thread(int): number of thread a user wants to run in this function. The actual number
-               of thread will be min(Dataset.thread_num, thread) if thread > 0, default is 0
+                for each run. default is global_scope
+            thread(int): number of thread a user wants to run in this function. Default is 0, which
+                means using thread num of dataset
             debug(bool): whether a user wants to run infer_from_dataset, default is False
-            fetch_list(Variable List): fetch variable list, each variable
-                                       will be printed during training, default is None
+            fetch_list(Variable List): fetch variable list, each variable will be printed during
+                training, default is None
             fetch_info(String List): print information for each variable, default is None
             print_period(int): the number of mini-batches for each print, default is 100
             fetch_handler(FetchHandler): a user define class for fetch output.
@@ -1116,24 +1122,25 @@ class Executor(object):
         Thread number used in training will be minimum value of threadnum in Dataset and
         the value of thread in this interface. Debug can be set so that executor will display
         Run-Time for all operators and the throughputs of current training task.
-        
+
         Note: train_from_dataset will destroy all resources created within executor for each run.
 
         Args:
             program(Program|CompiledProgram): the program that needs to be run,
-               if not provided, then default_main_program (not compiled) will be used.
+                if not provided, then default_main_program (not compiled) will be used.
             dataset(paddle.fluid.Dataset): dataset created outside this function,
-               a user should provide a well-defined dataset before calling this function.
-               Please check the document of Dataset if needed.
+                a user should provide a well-defined dataset before calling this function.
+                Please check the document of Dataset if needed.
             scope(Scope): the scope used to run this program, you can switch it to different scope
-               for each run. default is global_scope
-            thread(int): number of thread a user wants to run in this function. The actual number
-               of thread will be min(Dataset.thread_num, thread)
+                for each run. default is global_scope
+            thread(int): number of thread a user wants to run in this function. Default is 0, which
+                means using thread num of dataset
             debug(bool): whether a user wants to run train_from_dataset 
-            fetch_list(Variable List): fetch variable list, each variable
-                                       will be printed during training
-            fetch_info(String List): print information for each variable
-            print_period(int): the number of mini-batches for each print
+            fetch_list(Variable List): fetch variable list, each variable will be printed
+                during training
+            fetch_info(String List): print information for each variable, its length should be equal
+                to fetch_list
+            print_period(int): the number of mini-batches for each print, default is 100
             fetch_handler(FetchHandler): a user define class for fetch output.
 
         Returns:
