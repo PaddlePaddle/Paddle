@@ -329,7 +329,7 @@ paddle.fluid.layers.argmax (ArgSpec(args=['x', 'axis'], varargs=None, keywords=N
 paddle.fluid.layers.argsort (ArgSpec(args=['input', 'axis', 'name'], varargs=None, keywords=None, defaults=(-1, None)), ('document', '8c7966eb4b37b2272a16717cac3a876c'))
 paddle.fluid.layers.ones (ArgSpec(args=['shape', 'dtype', 'force_cpu'], varargs=None, keywords=None, defaults=(False,)), ('document', '4c5de61e6920f59992d7d15452cf4248'))
 paddle.fluid.layers.zeros (ArgSpec(args=['shape', 'dtype', 'force_cpu'], varargs=None, keywords=None, defaults=(False,)), ('document', '6fe7fc0956ffbfb00c05fb5ea5b575ea'))
-paddle.fluid.layers.reverse (ArgSpec(args=['x', 'axis'], varargs=None, keywords=None, defaults=None), ('document', '3373e9b0a47407714d8d28dbe6c29494'))
+paddle.fluid.layers.reverse (ArgSpec(args=['x', 'axis'], varargs=None, keywords=None, defaults=None), ('document', 'e735e3fe926f5cc9f68a2336fe229681'))
 paddle.fluid.layers.has_inf (ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None), ('document', 'aca8a35516cef98af836fb6a64ac8acb'))
 paddle.fluid.layers.has_nan (ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None), ('document', '99f4cf36db08a4e23c8c3857e2af1316'))
 paddle.fluid.layers.isfinite (ArgSpec(args=['x'], varargs=None, keywords=None, defaults=None), ('document', 'b9fff4ffc8d11934cde099f4c39bf841'))
