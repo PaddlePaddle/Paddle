@@ -40,7 +40,7 @@ class TestListenAndServOp(OpTest):
             print(sys.platform)
             cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt"
             os.system(cmd)
-            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True)
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
@@ -96,7 +96,7 @@ class TestListenAndServOp(OpTest):
             print(sys.platform)
             cmd = "wget --no-check-certificate https://pslib.bj.bcebos.com/fleet_desc.prototxt"
             os.system(cmd)
-            x = fluid.layers.data(name='x', shape=[1], dtype='float32')
+            x = fluid.layers.data(name='x', shape=[1], dtype='int64')
             x_emb = fluid.layers.embedding(
                 input=x, size=[1, 2], is_distributed=True)
             y_predict = fluid.layers.fc(input=x_emb, size=1, act=None)
