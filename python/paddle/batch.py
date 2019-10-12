@@ -17,9 +17,8 @@ __all__ = ['batch']
 
 def batch(reader, batch_size, drop_last=False):
     """
-    This operator creates a batched reader. When reading with the result decorated
-    reader, output data will be automatically organized to batched data at a 
-    specified :code:`batch_size` size.
+    This operator creates a batched reader which combines the data from the 
+    input reader to batched data.
     
     Args:
         reader(generator): the data reader to read from.
