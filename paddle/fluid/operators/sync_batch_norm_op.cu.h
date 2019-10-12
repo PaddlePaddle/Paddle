@@ -193,11 +193,15 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
         comm, stream));
 #endif
 
-    T *est_mean_data = mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    T *est_var_data = variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    auto *est_mean_data =
+        mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    auto *est_var_data =
+        variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
 
-    T *sv_mean_data = saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-    T *sv_inv_var_data = saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    auto *sv_mean_data =
+        saved_mean->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+    auto *sv_inv_var_data =
+        saved_variance->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
 
     // Note, Input('Mean')/Input('Variance') share variable with
     // Output('MeanOut')/Output('VarianceOut')
@@ -299,15 +303,20 @@ static __global__ void KeBNBackwardScaleBias(
 }
 
 template <typename T, framework::DataLayout layout>
-static __global__ void KeBNRestoreData(T *x, const T *scale, const T *bias,
-                                       const T *mean, const T *variance,
+static __global__ void KeBNRestoreData(T *x, const BatchNormParamType<T> *scale,
+                                       const BatchNormParamType<T> *bias,
+                                       const BatchNormParamType<T> *mean,
+                                       const BatchNormParamType<T> *variance,
                                        const double epsilon, int C, int M,
                                        int num, const T *y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   for (int i = gid; i < num; i += stride) {
     const int c = layout == framework::DataLayout::kNCHW ? (i / M) % C : i % C;
-    x[i] = (y[i] - bias[c]) / scale[c] * sqrt(variance[c] + epsilon) + mean[c];
+    auto x_i = static_cast<BatchNormParamType<T>>(x[i]);
+    auto x_i =
+        (y[i] - bias[c]) / scale[c] * sqrt(variance[c] + epsilon) + mean[c];
+    x[i] = static_cast<T>(x_i);
   }
 }
 
@@ -389,8 +398,8 @@ void SyncBatchNormGradFunctor(
   auto &dev_ctx = ctx.cuda_device_context();
   auto stream = dev_ctx.stream();
 
-  const T *saved_mean = mean->data<BatchNormParamType<T>>();
-  const T *saved_inv_var = variance->data<BatchNormParamType<T>>();
+  const auto *saved_mean = mean->data<BatchNormParamType<T>>();
+  const auto *saved_inv_var = variance->data<BatchNormParamType<T>>();
   const int bytes = (C * 2 + 1) * sizeof(BatchNormParamType<T>);
   auto alloc_ptr = memory::Alloc(dev_ctx, bytes);
   auto *stats = reinterpret_cast<BatchNormParamType<T> *>(alloc_ptr->ptr());
@@ -405,15 +414,17 @@ void SyncBatchNormGradFunctor(
 
   if (is_inplace) {
     if (layout == framework::DataLayout::kNCHW) {
-//      KeBNRestoreData<
-//          T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-//          const_cast<T *>(x_d), scale->data<T>(), bias->data<T>(), saved_mean,
-//          saved_inv_var, epsilon, C, H * W * D, x_numel, y->data<T>());
+      KeBNRestoreData<
+          T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
+          const_cast<T *>(x_d), scale->data<BatchNormParamType<T>>(),
+          bias->data<BatchNormParamType<T>>(), saved_mean, saved_inv_var,
+          epsilon, C, H * W * D, x_numel, y->data<T>());
     } else {
-//      KeBNRestoreData<
-//          T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-//          const_cast<T *>(x_d), scale->data<T>(), bias->data<T>(), saved_mean,
-//          saved_inv_var, epsilon, C, H * W * D, x_numel, y->data<T>());
+      KeBNRestoreData<
+          T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
+          const_cast<T *>(x_d), scale->data<BatchNormParamType<T>>(),
+          bias->data<BatchNormParamType<T>>(), saved_mean, saved_inv_var,
+          epsilon, C, H * W * D, x_numel, y->data<T>());
     }
   }
 
