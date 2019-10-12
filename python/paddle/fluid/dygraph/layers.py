@@ -281,7 +281,7 @@ class Layer(core.Layer):
         Get all parameters of current layer and its sub-layers. And set all the parameters into a dict
 
         Parameters:
-            destination(dict, optional) : If provide, all the parameter will set to this dict . Default: None
+            destination(dict, optional) : If provide, all the parameters will set to this dict . Default: None
             include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
 
         Retruns:
@@ -317,10 +317,10 @@ class Layer(core.Layer):
 
     def set_dict(self, stat_dict, include_sublayers=True):
         '''
-        Set parameter from stat_dict. All the parameter will be reset by the tensor in the stat_dict
+        Set parameters from stat_dict. All the parameters will be reset by the tensor in the stat_dict
 
         Parameters:
-            state_dict(dict) : Dict contains all the Parameter
+            state_dict(dict) : Dict contains all the parameters
             include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
         Returns:
             None
@@ -344,12 +344,12 @@ class Layer(core.Layer):
 
     def load_dict(self, stat_dict, include_sublayers=True):
         '''
-        Set parameter from stat_dict. All the parameter will be reset by the tensor in the stat_dict
+        Set parameters from stat_dict. All the parameters will be reset by the tensor in the stat_dict
 
         This api will be Deprecated. Please use set_dict
 
         Parameters:
-            state_dict(dict) : Dict contains all the Parameter
+            state_dict(dict) : Dict contains all the parameters
             include_sublayers(bool, optional) : If true, also include the parameters from sublayers. Default: True
         Returns:
             None
