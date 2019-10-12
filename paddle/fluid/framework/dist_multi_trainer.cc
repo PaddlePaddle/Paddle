@@ -131,26 +131,27 @@ void DistMultiTrainer::Run() {
 }
 
 Scope *DistMultiTrainer::GetWorkerScope(int thread_id) {
-  { return workers_[thread_id]->GetThreadScope(); }
+  return workers_[thread_id]->GetThreadScope();
+}
 
-  void DistMultiTrainer::Finalize() {
-    for (auto &th : threads_) {
-      th.join();
+void DistMultiTrainer::Finalize() {
+  for (auto &th : threads_) {
+    th.join();
+  }
+  for (int i = 0; i < need_merge_var_names_.size(); i++) {
+    Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
+    if (root_var == nullptr) {
+      continue;
     }
-    for (int i = 0; i < need_merge_var_names_.size(); i++) {
-      Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
-      if (root_var == nullptr) {
+    LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
+    for (int j = 1; j < thread_num_; j++) {
+      Scope *cur_thread_scope = workers_[j]->GetThreadScope();
+      Variable *thread_var =
+          cur_thread_scope->FindVar(need_merge_var_names_[i]);
+      LoDTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
+      if (root_tensor->numel() != thread_tensor->numel()) {
         continue;
       }
-      LoDTensor *root_tensor = root_var->GetMutable<LoDTensor>();
-      for (int j = 1; j < thread_num_; j++) {
-        Scope *cur_thread_scope = workers_[j]->GetThreadScope();
-        Variable *thread_var =
-            cur_thread_scope->FindVar(need_merge_var_names_[i]);
-        LoDTensor *thread_tensor = thread_var->GetMutable<LoDTensor>();
-        if (root_tensor->numel() != thread_tensor->numel()) {
-          continue;
-        }
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
     if (root_tensor->type() == proto_type) {                                   \
@@ -164,29 +165,28 @@ Scope *DistMultiTrainer::GetWorkerScope(int thread_id) {
       MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \
     }                                                                          \
   } while (0)
-        _ForEachDataType_(MergeCallback);
-      }
+      _ForEachDataType_(MergeCallback);
     }
-
-    if (need_dump_field_) {
-      FinalizeDumpEnv();
-    }
-    pull_dense_worker_->Stop();
-    root_scope_->DropKids();
-
-    // flush local client push queue
-    auto fleet_ptr_ = FleetWrapper::GetInstance();
-    fleet_ptr_->ClientFlush();
   }
 
-  template <typename T>
-  void DistMultiTrainer::MergeToRootScope(LoDTensor * root_tensor,
-                                          LoDTensor * tensor) {
-    T *root_data = root_tensor->data<T>();
-    T *data = tensor->data<T>();
-    for (int i = 0; i < tensor->numel(); i++) {
-      root_data[i] += data[i];
-    }
+  if (need_dump_field_) {
+    FinalizeDumpEnv();
+  }
+  pull_dense_worker_->Stop();
+  root_scope_->DropKids();
+
+  // flush local client push queue
+  auto fleet_ptr_ = FleetWrapper::GetInstance();
+  fleet_ptr_->ClientFlush();
+}
+
+template <typename T>
+void DistMultiTrainer::MergeToRootScope(LoDTensor *root_tensor,
+                                        LoDTensor *tensor) {
+  T *root_data = root_tensor->data<T>();
+  T *data = tensor->data<T>();
+  for (int i = 0; i < tensor->numel(); i++) {
+    root_data[i] += data[i];
   }
 }
 }  // namespace framework
