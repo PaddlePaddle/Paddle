@@ -797,7 +797,7 @@ def reverse(x, axis):
     The OP reverses the tensor :attr:`x` along the given :attr:`axis`.
 
     Parameters:
-        x (Variable): A tensor to be reversed, its data type supports int32, int64 and float64.
+        x (Variable): A tensor to be reversed, its data type supports bool, float32, float64, int32, int64 and uint8.
         axis (int|tuple|list): A dimension or a set of dimensions of :attr:`x` to reverse. Must be
             in the range [-rank( :attr:`x` ), rank( :attr:`x` )). If it is a tuple or a list, reversing
             will be apply on each axis in the tuple or list.
