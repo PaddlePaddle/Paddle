@@ -188,7 +188,7 @@ class Layer(core.Layer):
     def add_sublayer(self, name, sublayer):
         """Adds a sub Layer instance.
 
-          Added sublayer can be access like self.name.
+        Added sublayer can be access like self.name.
 
         Parameters:
             name(str): name of this sublayer.
