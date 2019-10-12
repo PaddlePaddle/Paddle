@@ -313,9 +313,9 @@ static __global__ void KeBNRestoreData(T *x, const BatchNormParamType<T> *scale,
   int stride = blockDim.x * gridDim.x;
   for (int i = gid; i < num; i += stride) {
     const int c = layout == framework::DataLayout::kNCHW ? (i / M) % C : i % C;
-    auto x_i = static_cast<BatchNormParamType<T>>(x[i]);
+    auto y_i = static_cast<BatchNormParamType<T>>(y[i]);
     auto x_i =
-        (y[i] - bias[c]) / scale[c] * sqrt(variance[c] + epsilon) + mean[c];
+        (y_i - bias[c]) / scale[c] * sqrt(variance[c] + epsilon) + mean[c];
     x[i] = static_cast<T>(x_i);
   }
 }
