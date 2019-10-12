@@ -11751,23 +11751,24 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
 def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
     """
     ${comment}
-    Args:
-        x(${x_type}): ${x_comment}
-        slope(${slope_type}|0.2): ${slope_comment}
-        offset(${offset_type}|0.5): ${offset_comment}
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+    Parameters:
+        x (${x_type}): ${x_comment}
+        slope (float, optional): ${slope_comment}
+        offset (float, optional): ${offset_comment}
+        name (str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`
 
     Returns:
-        output(${out_type}): ${out_comment}
+        ${out_type}: ${out_comment}
 
     Examples:
 
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name="x", shape=[3,10,32,32], dtype="float32")
-            y = fluid.layers.hard_sigmoid(x, slope=0.3, offset=0.8)
+            data = fluid.layers.fill_constant(shape=[3, 2], value=0.5, dtype='float32') # [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]]
+            result = fluid.layers.hard_sigmoid(data) # [[0.6, 0.6], [0.6, 0.6], [0.6, 0.6]]
     """
     helper = LayerHelper('hard_sigmoid', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
