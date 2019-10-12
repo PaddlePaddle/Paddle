@@ -7655,8 +7655,10 @@ def transpose(x, perm, name=None):
     Returns:
         Variable: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
 
-    Examples:
-        .. code-block:: python
+    For Example:
+
+        .. code-block:: text
+
          x = [[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
              [[13 14 15 16] [17 18 19 20] [21 22 23 24]]]
          shape(x) =  [2,3,4]
@@ -7677,16 +7679,18 @@ def transpose(x, perm, name=None):
          shape(y_perm1) = [4,3,2]
 
     Examples:
+
         .. code-block:: python
 
             # use append_batch_size=False to avoid prepending extra
             # batch size in shape
-            x = fluid.layers.data(name='x', shape=[5, 10, 15],
+            import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[2, 3, 4],
                             dtype='float32', append_batch_size=False)
             x_transposed = fluid.layers.transpose(x, perm=[1, 0, 2])
             print x_transposed.shape
             #(3L, 2L, 4L)
+
     """
     if not isinstance(x, Variable):
         raise TypeError(
