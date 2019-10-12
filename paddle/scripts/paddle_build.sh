@@ -498,8 +498,8 @@ function generate_api_spec() {
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > $spec_path
     if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then 
         # Use sed to make python2 and python3 sepc keeps the same
-        sed -i 's/arg0: str/arg0: unicode/g' new.spec
-        sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
+        sed -i 's/arg0: str/arg0: unicode/g' $spec_path
+        sed -i "s/\(.*Transpiler.*\).__init__ (ArgSpec(args=\['self'].*/\1.__init__ /g" $spec_path
     fi   
 
     # TODO(paddle-dev): remove op_use_default_grad_op_maker.spec 
