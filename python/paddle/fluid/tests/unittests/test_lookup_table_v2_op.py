@@ -21,6 +21,8 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from paddle.fluid.op import Operator
 import paddle.compat as cpt
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 class TestLookupTableOp(OpTest):
@@ -210,6 +212,34 @@ class TestLookupTableApi(unittest.TestCase):
         ret = exe.run(feed={'x': x_data, },
                       fetch_list=[emb],
                       return_numpy=False)
+
+
+class TestEmbedOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input_data = np.random.randint(0, 10, (4, 6)).astype("int64")
+
+            def test_Variable():
+                # the input type must be Variable
+                fluid.embedding(input=input_data, size=(10, 64))
+
+            self.assertRaises(TypeError, test_Variable)
+
+            def test_input_dtype():
+                # the input dtype must be int64
+                input = fluid.data(name='x1', shape=[4, 6], dtype='float32')
+                fluid.embedding(input=input, size=(10, 64))
+
+            self.assertRaises(TypeError, test_input_dtype)
+
+            def test_param_dtype():
+                # dtype must be float32 or float64
+                input2 = fluid.data(name='x2', shape=[4, 6], dtype='int64')
+                fluid.embedding(input=input2, size=(10, 64), dtype='int64')
+
+            self.assertRaises(TypeError, test_param_dtype)
+            input3 = fluid.data(name='x3', shape=[4, 6], dtype='int64')
+            fluid.embedding(input=input3, size=(10, 64), dtype='float16')
 
 
 if __name__ == "__main__":
