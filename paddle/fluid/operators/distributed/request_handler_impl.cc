@@ -260,8 +260,8 @@ bool RequestNotifyHandler::Handle(const std::string& varname,
                                   const std::string& table_name) {
   VLOG(4) << "RequestNotifyHandler" << varname;
   if (varname == LEARNING_RATE_DECAY_MESSAGE) {
-    PADDLE_ENFORCE(
-        lr_decay_block_id != -1,
+    PADDLE_ENFORCE_NE(
+        lr_decay_block_id, -1,
         "when lr_decay_block_id = -1, there should be no RPC invoke.");
     executor_->RunPreparedContext(lr_decay_prepared_ctx_.get(), scope_);
   }
