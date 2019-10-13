@@ -532,7 +532,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           data2 = fluid.layers.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1) 
           #data1=[[5], [5]] data2=[[5], [5]]
     """
-
     helper = LayerHelper("fill_constant", **locals())
     if convert_dtype(dtype) not in [
             'bool', 'float16', 'float32', 'float64', 'int32', 'int64'
@@ -541,6 +540,56 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             "The create data type in fill_constant must be one of 'bool', float16, float32,"
             "float64, int32 or int64, but received %s." % convert_dtype(
                 (dtype)))
+
+    if not isinstance(shape, (list, tuple, Variable)):
+        raise TypeError(
+            "The type of 'shape' in fill_constant must be Variable, list or tuple, but "
+            "received %s." % (type(shape)))
+
+    inputs = {}
+    attrs = {
+        'value': float(value),
+        'force_cpu': force_cpu or force_init_on_cpu()
+    }
+
+    def _contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def _get_attr_shape(list_shape):
+        attr_shape = []
+        for idx, dim in enumerate(list_shape):
+            if isinstance(dim, Variable):
+                attr_shape.append(-1)
+            else:
+                attr_shape.append(dim)
+        return attr_shape
+
+    def _get_shape_tensor(list_shape):
+        new_shape_tensor = []
+        for dim in list_shape:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_shape_tensor.append(dim)
+            else:
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_shape_tensor.append(temp_out)
+        return new_shape_tensor
+
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        inputs["ShapeTensor"] = shape
+    elif isinstance(shape, (list, tuple)):
+        assert len(shape) > 0, (
+            "The size of 'shape' in fill_constant can't be zero, "
+            "but received %s." % len(shape))
+        attrs["shape"] = _get_attr_shape(shape)
+        if _contain_var(shape):
+            inputs['ShapeTensorList'] = _get_shape_tensor(shape)
+
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
     else:
@@ -549,16 +598,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                 "The create data type in op must be same with out type"
                 "but received %s and out dtype %s." % (convert_dtype(
                     (dtype), convert_dtype(out.dtype))))
+    attrs['dtype'] = out.dtype
     helper.append_op(
         type='fill_constant',
-        inputs={},
+        inputs=inputs,
         outputs={'Out': [out]},
-        attrs={
-            'shape': shape,
-            'dtype': out.dtype,
-            'value': float(value),
-            'force_cpu': force_cpu or force_init_on_cpu()
-        },
+        attrs=attrs,
         stop_gradient=True)
     out.stop_gradient = True
     return out
