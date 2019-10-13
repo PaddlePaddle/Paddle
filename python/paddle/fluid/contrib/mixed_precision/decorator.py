@@ -78,13 +78,15 @@ class OptimizerWithMixedPrecison(object):
                 shape=[1],
                 value=0,
                 dtype='int32',
-                persistable=True)
+                persistable=True,
+                force_cpu=True)
             self._num_bad_steps = layers.create_global_var(
                 name=unique_name.generate("num_bad_steps"),
                 shape=[1],
                 value=0,
                 dtype='int32',
-                persistable=True)
+                persistable=True,
+                force_cpu=True)
 
         # Ensure the data type of learning rate vars is float32 (same as the 
         # master parameter dtype)
