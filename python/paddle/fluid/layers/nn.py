@@ -221,6 +221,7 @@ __all__ = [
     'filter_by_instag',
     'shard_index',
     'hard_swish',
+    'gather_tree',
     'mse_loss',
     'uniform_random',
 ]
@@ -4110,7 +4111,7 @@ def batch_norm(input,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
-               do_model_average_for_mean_and_var=False,
+               do_model_average_for_mean_and_var=True,
                fuse_with_relu=False,
                use_global_stats=False):
     """
@@ -4194,7 +4195,8 @@ def batch_norm(input,
         moving_variance_name(str, Default None): The name of the moving_variance which store the global Variance.
             If it is set to None, batch_norm will save global variance with a random name, otherwise, batch_norm 
             will save global variance with the string.
-        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance should do model
+            average when model average is enabled.
         fuse_with_relu (bool): if True, this OP performs relu after batch norm.
         use_global_stats(bool, Default False): Whether to use global mean and
             variance. In inference or test mode, set use_global_stats to true
@@ -4441,7 +4443,7 @@ def data_norm(input,
               name=None,
               moving_mean_name=None,
               moving_variance_name=None,
-              do_model_average_for_mean_and_var=False):
+              do_model_average_for_mean_and_var=True):
     """
     **Data Normalization Layer**
 
@@ -4475,7 +4477,8 @@ def data_norm(input,
             will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
-        do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+        do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance
+            should do model average when model average is enabled.
 
     Returns:
         Variable: A tensor variable which is the result after applying data normalization on the input.
@@ -7868,40 +7871,82 @@ def hsigmoid(input,
 
 def transpose(x, perm, name=None):
     """
-    Permute the dimensions of `input` according to `perm`.
+    Permute the data dimensions of `input` according to `perm`.
 
     The `i`-th dimension  of the returned tensor will correspond to the
     perm[i]-th dimension of `input`.
 
     Args:
-        x (Variable): The input Tensor.
-        perm (list): A permutation of the dimensions of `input`.
+        x (Variable): The input Tensor. It is a N-D Tensor of data types float32, float64, int32.
+        perm (list): Permute the input accoring to the data of perm.
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Variable: A transposed Tensor.
+        Variable: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
+
+    For Example:
+
+        .. code-block:: text
+
+         x = [[[ 1  2  3  4] [ 5  6  7  8] [ 9 10 11 12]]
+             [[13 14 15 16] [17 18 19 20] [21 22 23 24]]]
+         shape(x) =  [2,3,4]
+
+         # Example 1
+         perm0 = [1,0,2]
+         y_perm0 = [[[ 1  2  3  4] [13 14 15 16]]
+                   [[ 5  6  7  8]  [17 18 19 20]]
+                   [[ 9 10 11 12]  [21 22 23 24]]]
+         shape(y_perm0) = [3,2,4]
+
+         # Example 2
+         perm1 = [2,1,0]
+         y_perm1 = [[[ 1 13] [ 5 17] [ 9 21]]
+                   [[ 2 14] [ 6 18] [10 22]]
+                   [[ 3 15]  [ 7 19]  [11 23]]
+                   [[ 4 16]  [ 8 20]  [12 24]]]
+         shape(y_perm1) = [4,3,2]
 
     Examples:
+
         .. code-block:: python
 
             # use append_batch_size=False to avoid prepending extra
             # batch size in shape
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[5, 10, 15],
+            x = fluid.layers.data(name='x', shape=[2, 3, 4],
                             dtype='float32', append_batch_size=False)
             x_transposed = fluid.layers.transpose(x, perm=[1, 0, 2])
-    """
+            print x_transposed.shape
+            #(3L, 2L, 4L)
 
+    """
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of Input(x) in transpose must be Variable, but received %s"
+            % (type(x)))
+    if convert_dtype(x.dtype) not in [
+            "float16", "float32", "float64", "int32", "int64"
+    ]:
+        raise TypeError(
+            "The data type of Input(x) in transpose must be one of [float16, float32, float64, int32, int64], but received %s."
+            % (convert_dtype(x.dtype)))
+    if not isinstance(perm, list):
+        raise TypeError(
+            "The type of Input(perm) in transpose must be list, but received %s"
+            % (type(perm)))
     if len(perm) != len(x.shape):
         raise ValueError(
-            "Input(perm) is the permutation of dimensions of Input(input). "
-            "Its length should be equal to Input(input)'s rank.")
+            "Input(perm) is the permutation of dimensions of Input(x), "
+            "its length should be equal to dimensions of Input(x), "
+            "but received dimension of Input(x) is %s, "
+            "the length of Input(perm) is %s." % (len(x.shape), len(perm)))
     for idx, dim in enumerate(perm):
         if dim >= len(x.shape):
             raise ValueError(
-                "Each element in perm should be less than x's rank. "
-                "%d-th element in perm is %d which accesses x's rank %d." %
-                (idx, perm[idx], len(x.shape)))
+                "Each element in Input(perm) should be less than Input(x)'s dimension, "
+                "but %d-th element in Input(perm) is %d which exceeds Input(x)'s "
+                "dimension %d." % (idx, perm[idx], len(x.shape)))
 
     helper = LayerHelper('transpose', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -8100,58 +8145,61 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
 @templatedoc()
 def multiplex(inputs, index):
     """
-    ${comment}
+
+    Based on the given index parameter, the OP selects a specific row from each input Tensor to construct the output Tensor.
+
+    If the input of this OP contains :math:`m` Tensors, where :math:`I_{i}` means the i-th input Tensor, :math:`i` between :math:`[0,m)` .
+
+    And :math:`O` means the output, where :math:`O[i]` means the i-th row of the output, then the output satisfies that :math:`O[i] = I_{index[i]}[i]` .
 
     For Example:
 
-    .. code-block:: text
+            .. code-block:: text
 
-        case 1:
+                Given:
 
-        Given:
+                inputs = [[[0,0,3,4], [0,1,3,4], [0,2,4,4], [0,3,3,4]],
+                          [[1,0,3,4], [1,1,7,8], [1,2,4,2], [1,3,3,4]],
+                          [[2,0,3,4], [2,1,7,8], [2,2,4,2], [2,3,3,4]],
+                          [[3,0,3,4], [3,1,7,8], [3,2,4,2], [3,3,3,4]]]
 
-        X = [[[0,0,3,4], [0,1,3,4], [0,2,4,4], [0,3,3,4]],
-             [[1,0,3,4], [1,1,7,8], [1,2,4,2], [1,3,3,4]],
-             [[2,0,3,4], [2,1,7,8], [2,2,4,2], [2,3,3,4]],
-             [[3,0,3,4], [3,1,7,8], [3,2,4,2], [3,3,3,4]]]
+                index = [[3],[0],[1],[2]]
 
-        index = [3,0,1,2]
+                out = [[3,0,3,4],    # out[0] = inputs[index[0]][0] = inputs[3][0] = [3,0,3,4]
+                       [0,1,3,4],    # out[1] = inputs[index[1]][1] = inputs[0][1] = [0,1,3,4]
+                       [1,2,4,2],    # out[2] = inputs[index[2]][2] = inputs[1][2] = [1,2,4,2]
+                       [2,3,3,4]]    # out[3] = inputs[index[3]][3] = inputs[2][3] = [2,3,3,4]
 
-        out:[[3 0 3 4]    // X[3,0] (3 = index[i], 0 = i); i=0
-             [0 1 3 4]    // X[0,1] (0 = index[i], 1 = i); i=1
-             [1 2 4 2]    // X[1,2] (0 = index[i], 2 = i); i=2
-             [2 3 3 4]]   // X[2,3] (0 = index[i], 3 = i); i=3
 
-        case 2:
+    Args:
+       inputs (list): The input Tensor list. The list elements are N-D Tensors of data types float32, float64, int32, int64. All input Tensor shapes should be the same and rank must be at least 2.
+       index (Variable): Used to select some rows in the input Tensor to construct an index of the output Tensor. It is a 2-D Tensor with data type int32 or int64 and shape [M, 1], where M is the number of input Tensors.
 
-        Given:
-
-        X = [[[0,0,3,4], [0,1,3,4], [0,2,4,4], [0,3,3,4]],
-             [[1,0,3,4], [1,1,7,8], [1,2,4,2], [1,3,3,4]]]
-
-        index = [1,0]
-
-        out:[[1 0 3 4]    // X[1,0] (3 = index[0], 0 = i); i=1
-             [0 1 3 4]    // X[0,1] (0 = index[1], 1 = i); i=2
-             [0 2 4 4]    // X[0,2] (0 = 0, 2 = i); i=3
-             [0 3 3 4]]   // X[0,3] (0 = 0, 3 = i); i=4
+    Returns:
+        Variable(Tensor): Output of multiplex OP, with data type being float32, float64, int32, int64.
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle.fluid as fluid
-        x1 = fluid.layers.data(name='x1', shape=[4], dtype='float32')
-        x2 = fluid.layers.data(name='x2', shape=[4], dtype='float32')
-        index = fluid.layers.data(name='index', shape=[1], dtype='int32')
-        out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
+            import paddle.fluid as fluid
+            import numpy as np
 
-    Args:
-       inputs (list): ${x_comment}.
-       index (${ids_type}): ${ids_comment}.
+            x1 = fluid.data(name='x1', shape=[None, 2], dtype='float32')
+            x2 = fluid.data(name='x2', shape=[None, 2], dtype='float32')
+            index = fluid.data(name='index', shape=[None, 1], dtype='int32')
+            out = fluid.layers.multiplex(inputs=[x1, x2], index=index)
 
-    Returns:
-        ${out_comment}.
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            img1 = np.array([[1, 2], [3, 4]]).astype(np.float32)
+            img2 = np.array([[5, 6], [7, 8]]).astype(np.float32)
+            index = np.array([[1], [0]]).astype(np.int32)
+
+            res = exe.run(fluid.default_main_program(), feed={'x1':img1, 'x2':img2, 'index':index}, fetch_list=[out])
+            print(res) # [array([[5., 6.], [3., 4.]], dtype=float32)]
+
     """
     helper = LayerHelper('multiplex', **locals())
 
@@ -8733,9 +8781,15 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             "The type of 'x' in reshape must be Variable, but received %s." %
             (type(x)))
 
-    if convert_dtype(x.dtype) not in ['float32', 'float64', 'int32', 'int64']:
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'x' in reshape only support float16 in GPU now.")
+
+    if convert_dtype(x.dtype) not in [
+            'float16', 'float32', 'float64', 'int32', 'int64'
+    ]:
         raise TypeError(
-            "The data type of 'x' in reshape must be float32, float64, int32 or int64, "
+            "The data type of 'x' in reshape must be float16, float32, float64, int32 or int64, "
             "but received %s." % (convert_dtype(x.dtype)))
 
     if not isinstance(shape, (list, tuple, Variable)):
@@ -8885,6 +8939,23 @@ def squeeze(input, axes, name=None):
     assert not in_dygraph_mode(), (
         "squeeze layer is not supported in dygraph mode yet.")
     helper = LayerHelper("squeeze", **locals())
+
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in squeeze must be Variable, but received %s" %
+            (type(input)))
+
+    if convert_dtype(input.dtype
+                     ) not in ['float32', 'float64', 'int8', 'int32', 'int64']:
+        raise TypeError(
+            "The data type of 'input' in squeeze must be float32, float64, int8, int32,"
+            "int64, but received %s." % (convert_dtype(input.dtype)))
+
+    if not isinstance(axes, list):
+        raise TypeError(
+            "The type of 'axes' in squeeze must be list, but received %s" %
+            (type(axes)))
+
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -8899,7 +8970,7 @@ def squeeze(input, axes, name=None):
 
 def unsqueeze(input, axes, name=None):
     """
-    Insert single-dimensional entries to the shape of a tensor. Takes one
+    Insert single-dimensional entries to the shape of a Tensor. Takes one
     required argument axes, a list of dimensions that will be inserted.
     Dimension indices in axes are as seen in the output tensor.
 
@@ -8911,12 +8982,12 @@ def unsqueeze(input, axes, name=None):
       then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
 
     Args:
-        input (Variable): The input variable to be unsqueezed.
+        input (Variable): The input Tensor to be unsqueezed. It is a N-D Tensor of data types float32, float64, int32.
         axes (list): List of integers, indicating the dimensions to be inserted.
         name (str|None): Name for this layer.
 
     Returns:
-        Variable: Output unsqueezed variable.
+        Variable: Output unsqueezed Tensor, with data type being float32, float64, int32, int64.
 
     Examples:
         .. code-block:: python
@@ -8924,6 +8995,7 @@ def unsqueeze(input, axes, name=None):
             import paddle.fluid as fluid
             x = fluid.layers.data(name='x', shape=[5, 10])
             y = fluid.layers.unsqueeze(input=x, axes=[1])
+
     """
     helper = LayerHelper("unsqueeze", **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -12671,7 +12743,7 @@ def unstack(x, axis=0, num=None):
     """
     **UnStack Layer**
 
-    This layer unstacks input :code:`x` into several tensors along axis.
+    This layer unstacks input Tensor :code:`x` into several Tensors along :code:`axis`.
 
     If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
     If :code:`num` is None, it would be inferred from :code:`x.shape[axis]`,
@@ -12679,21 +12751,24 @@ def unstack(x, axis=0, num=None):
     raised.
 
     Args:
-        x (Variable): Input variable.
+        x (Variable): Input Tensor. It is a N-D Tensors of data types float32, float64, int32, int64.
         axis (int): The axis along which the input is unstacked.
         num (int|None): The number of output variables.
 
     Returns:
-        list(Variable): The unstacked variables.
+        list(Variable): The unstacked Tensors list. The list elements are N-D Tensors of data types float32, float64, int32, int64.
+
+    Raises:
+        ValueError: If x.shape[axis] <= 0 or axis is not in range [-D, D).
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[5, 10], dtype='float32')
-            y = fluid.layers.unstack(x, axis=1)
-    """
+            x = fluid.layers.data(name='x', shape=[2, 3, 5], dtype='float32')  # create a tensor with shape=[2, 3, 5]
+            y = fluid.layers.unstack(x, axis=1)  # unstack with second axis, which results 3 tensors with shape=[2, 5]
 
+    """
     helper = LayerHelper('unstack', **locals())
     if num is None:
         if axis is None or x.shape[axis] <= 0:
@@ -12770,10 +12845,21 @@ def expand(x, expand_times, name=None):
             expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
             # the shape of expanded_2 is [48, 56].
     """
-
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'input' in reduce_sum must be Variable, but received %s"
+            % (type(x)))
     if not isinstance(expand_times, (list, tuple, Variable)):
         raise ValueError(
             "Input expand_times must be an Variable, python list or tuple.")
+    if convert_dtype(
+            x.dtype) not in ['bool', 'float32', 'float64', 'int32', 'int64']:
+        raise TypeError(
+            "The data type of input  in expand  must be one of bool float32, float64, int32 or int64, but received %s."
+            % (convert_dtype(x.dtype)))
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
+        raise ValueError(
+            "expand op bool date type must set the stop_gradient to be False")
 
     helper = LayerHelper('expand', input=x, **locals())
     inputs = {"X": x}
@@ -13634,6 +13720,35 @@ def _elementwise_op(helper):
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'x' in %s must be Variable, but received %s" %
+            (op_type, type(x)))
+    if not isinstance(y, Variable):
+        raise TypeError(
+            "The type of 'y' in %s must be Variable, but received %s" %
+            (op_type, type(y)))
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'x' in %s only support float16 on GPU now." %
+            (op_type))
+    if convert_dtype(y.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'y' in %s only support float16 on GPU now." %
+            (op_type))
+    if convert_dtype(x.dtype) not in [
+            'float16', 'float32', 'float64', 'int32', 'int64'
+    ]:
+        raise TypeError(
+            "The data type of 'x' in %s must be float16 or float32 or float64 or int32 or int64, "
+            "but received %s." % (op_type, convert_dtype(x.dtype)))
+    if convert_dtype(y.dtype) not in [
+            'float16', 'float32', 'float64', 'int32', 'int64'
+    ]:
+        raise TypeError(
+            "The data type of 'y' in %s must be float16 or float32 or float64 or int32 or int64, "
+            "but received %s." % (op_type, convert_dtype(y.dtype)))
+
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
     name = helper.kwargs.get('name', None)
@@ -17287,6 +17402,81 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         attrs={'threshold': threshold,
                'scale': scale,
                'offset': offset})
+    return out
+
+
+def gather_tree(ids, parents):
+    """
+    To be used after beam search. After beam search, we get selected ids at
+    each time step and the corresponding parents in the search tree. Both ids
+    and parents have the layout :attr:`[max_time, batch_size, beam_size]`. Then
+    :attr:`gather_tree` is used to backtrace from the last time step and
+    generate the full sequences by collecting selected ids.
+
+    Here is an example:
+
+    .. code-block:: text
+
+            Given:
+                ids = [[[2 2]
+                        [6 1]]
+                       [[3 9]
+                        [6 1]]
+                       [[0 1]
+                        [9 0]]]
+                parents = [[[0 0]
+                            [1 1]]
+                           [[1 0]
+                            [1 0]]
+                           [[0 0]
+                            [0 1]]]
+
+            Then:                
+                gather_tree(ids, parents)  
+                         = [[[2 2]
+                             [1 6]]
+                            [[3 3]
+                             [6 1]]
+                            [[0 1]
+                             [9 0]]]
+
+    Args:
+        ids(Variable): A Tensor with shape :attr:`[length, batch_size, beam_size]`
+            and data type :attr:`int32` or :attr:`int64`. It contains the selected
+            ids of all time steps.
+        parents(Variable): A Tensor with the same shape and data type as :attr:`ids`,
+            It contains the parents corresponding to selected ids when searching
+            among beams.
+
+    Returns:
+        Variable: A Tensor with the same shape and data type as :attr:`ids`. \
+            It contains the full sequences. The sequences are collected from \
+            :attr:`ids` by backtracing according to :attr:`parents`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            ids = fluid.layers.data(name='ids',
+                                    shape=[5, 2, 2],
+                                    dtype='int64',
+                                    append_batch_size=False)
+            parents = fluid.layers.data(name='parents',
+                                        shape=[5, 2, 2],
+                                        dtype='int64',
+                                        append_batch_size=False)
+            final_sequences = fluid.layers.gather_tree(ids, parents)
+    """
+    helper = LayerHelper('gather_tree', **locals())
+    out = helper.create_variable_for_type_inference(dtype=ids.dtype)
+
+    helper.append_op(
+        type="gather_tree",
+        inputs={"Ids": ids,
+                "Parents": parents},
+        outputs={"Out": out})
+
     return out
 
 
