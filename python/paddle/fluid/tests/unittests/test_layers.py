@@ -3071,25 +3071,17 @@ class TestBook(LayerTest):
             sequence_length = fluid.data(
                 name="sequence_length", shape=[None], dtype='int32')
 
-            rnn_out, last_hidden = fluid.contrib.layers.basic_gru(
-                input,
-                pre_hidden,
-                hidden_size=256,
-                num_layers=2,
-                sequence_length=sequence_length,
-                dropout_prob=0.5,
-                bidirectional=True,
-                batch_first=True)
-
-            rnn_out, last_hidden = fluid.contrib.layers.basic_gru(
-                input,
-                pre_hidden,
-                hidden_size=256,
-                num_layers=2,
-                sequence_length=sequence_length,
-                dropout_prob=0.5,
-                bidirectional=False,
-                batch_first=False)
+            for bidirectional in [True, False]:
+                for batch_first in [True, False]:
+                    rnn_out, last_hidden = fluid.contrib.layers.basic_gru(
+                        input,
+                        pre_hidden,
+                        hidden_size=256,
+                        num_layers=2,
+                        sequence_length=sequence_length,
+                        dropout_prob=0.5,
+                        bidirectional=bidirectional,
+                        batch_first=batch_first)
 
 
 if __name__ == '__main__':
