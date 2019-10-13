@@ -135,7 +135,7 @@ class OptimizerWithMixedPrecison(object):
                 scaled_g = g / self._loss_scaling
                 scaled_params_grads.append([p, scaled_g])
 
-        return scaled_params_grads, scaled_loss
+        return scaled_params_grads
 
     def apply_gradients(self, scaled_params_grads):
         """
@@ -194,7 +194,7 @@ class OptimizerWithMixedPrecison(object):
             The scaled loss by scaling factor, the list of optimize ops, and a
             list of scaled parameters and gradients.
         """
-        scaled_params_grads, scaled_loss = self.backward(
+        scaled_params_grads = self.backward(
             loss,
             startup_program=startup_program,
             parameter_list=parameter_list,
