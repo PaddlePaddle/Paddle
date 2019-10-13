@@ -174,7 +174,7 @@ def cast(x, dtype):
             'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'
     ]:
         raise TypeError(
-            "The data type of 'x' in cast must be bool, float16, float32, float64, int32, int64, uint8, but received %s."
+            "The data type of 'x' in cast must be one of [bool, float16, float32, float64, int32, int64, uint8], but received %s."
             % (convert_dtype(x.dtype)))
 
     out = helper.create_variable_for_type_inference(dtype=dtype)
