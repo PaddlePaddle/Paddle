@@ -175,6 +175,58 @@ struct Layers {
     return outs;
   }
 
+  VarDesc* matmul(VarDesc* x, VarDesc* y, VarDesc* alpha = nullptr) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("matmul");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Y", {y->Name()});
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* transpose2(VarDesc* x, std::vector<int> axis) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("transpose2");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("axis", axis);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* reshape2(VarDesc* x, std::vector<int> shape) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("reshape2");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("shape", shape);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* softmax(VarDesc* x, int axis) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("softmax");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("axis", axis);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
+  VarDesc* scale(VarDesc* x, float scale, float bias, bool bias_after) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("scale");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("scale", scale);
+    op->SetAttr("bias", bias);
+    op->SetAttr("bias_after_scale", bias_after);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
   std::vector<VarDesc*> batch_norm(VarDesc* x, VarDesc* scale, VarDesc* bias,
                                    VarDesc* mean, VarDesc* variance) {
     VarDesc* y = lod_tensor(unique_name());
