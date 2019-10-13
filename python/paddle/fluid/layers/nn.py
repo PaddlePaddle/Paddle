@@ -221,6 +221,7 @@ __all__ = [
     'filter_by_instag',
     'shard_index',
     'hard_swish',
+    'gather_tree',
     'mse_loss',
     'uniform_random',
 ]
@@ -12666,10 +12667,21 @@ def expand(x, expand_times, name=None):
             expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
             # the shape of expanded_2 is [48, 56].
     """
-
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'input' in reduce_sum must be Variable, but received %s"
+            % (type(x)))
     if not isinstance(expand_times, (list, tuple, Variable)):
         raise ValueError(
             "Input expand_times must be an Variable, python list or tuple.")
+    if convert_dtype(
+            x.dtype) not in ['bool', 'float32', 'float64', 'int32', 'int64']:
+        raise TypeError(
+            "The data type of input  in expand  must be one of bool float32, float64, int32 or int64, but received %s."
+            % (convert_dtype(x.dtype)))
+    if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
+        raise ValueError(
+            "expand op bool date type must set the stop_gradient to be False")
 
     helper = LayerHelper('expand', input=x, **locals())
     inputs = {"X": x}
@@ -17178,6 +17190,81 @@ def hard_swish(x, threshold=6.0, scale=6.0, offset=3.0, name=None):
         attrs={'threshold': threshold,
                'scale': scale,
                'offset': offset})
+    return out
+
+
+def gather_tree(ids, parents):
+    """
+    To be used after beam search. After beam search, we get selected ids at
+    each time step and the corresponding parents in the search tree. Both ids
+    and parents have the layout :attr:`[max_time, batch_size, beam_size]`. Then
+    :attr:`gather_tree` is used to backtrace from the last time step and
+    generate the full sequences by collecting selected ids.
+
+    Here is an example:
+
+    .. code-block:: text
+
+            Given:
+                ids = [[[2 2]
+                        [6 1]]
+                       [[3 9]
+                        [6 1]]
+                       [[0 1]
+                        [9 0]]]
+                parents = [[[0 0]
+                            [1 1]]
+                           [[1 0]
+                            [1 0]]
+                           [[0 0]
+                            [0 1]]]
+
+            Then:                
+                gather_tree(ids, parents)  
+                         = [[[2 2]
+                             [1 6]]
+                            [[3 3]
+                             [6 1]]
+                            [[0 1]
+                             [9 0]]]
+
+    Args:
+        ids(Variable): A Tensor with shape :attr:`[length, batch_size, beam_size]`
+            and data type :attr:`int32` or :attr:`int64`. It contains the selected
+            ids of all time steps.
+        parents(Variable): A Tensor with the same shape and data type as :attr:`ids`,
+            It contains the parents corresponding to selected ids when searching
+            among beams.
+
+    Returns:
+        Variable: A Tensor with the same shape and data type as :attr:`ids`. \
+            It contains the full sequences. The sequences are collected from \
+            :attr:`ids` by backtracing according to :attr:`parents`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            ids = fluid.layers.data(name='ids',
+                                    shape=[5, 2, 2],
+                                    dtype='int64',
+                                    append_batch_size=False)
+            parents = fluid.layers.data(name='parents',
+                                        shape=[5, 2, 2],
+                                        dtype='int64',
+                                        append_batch_size=False)
+            final_sequences = fluid.layers.gather_tree(ids, parents)
+    """
+    helper = LayerHelper('gather_tree', **locals())
+    out = helper.create_variable_for_type_inference(dtype=ids.dtype)
+
+    helper.append_op(
+        type="gather_tree",
+        inputs={"Ids": ids,
+                "Parents": parents},
+        outputs={"Out": out})
+
     return out
 
 
