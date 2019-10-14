@@ -1519,6 +1519,7 @@ def gru_unit(input,
         attrs={
             'activation': 2,  # tanh
             'gate_activation': 1,  # sigmoid
+            'origin_mode': origin_mode
         })
 
     return updated_hidden, reset_hidden_pre, gate
@@ -4646,17 +4647,24 @@ def layer_norm(input,
     input_shape = input.shape
     param_shape = [reduce(lambda x, y: x * y, input_shape[begin_norm_axis:])]
     if scale:
+        assert param_attr is not False, "param_attr should not be False when using scale."
         scale = helper.create_parameter(
             attr=helper.param_attr,
             shape=param_shape,
             dtype=dtype,
             default_initializer=Constant(1.0))
         inputs['Scale'] = scale
+    else:
+        if param_attr:
+            warnings.warn("param_attr is only avaliable with scale is True.")
     if shift:
-        assert bias_attr is not False
+        assert bias_attr is not False, "bias_attr should not be False when using shift."
         bias = helper.create_parameter(
             attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
         inputs['Bias'] = bias
+    else:
+        if bias_attr:
+            warnings.warn("bias_attr is only avaliable with shift is True.")
 
     # create output
     mean_out = helper.create_variable_for_type_inference(
