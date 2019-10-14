@@ -184,7 +184,6 @@ $out = e^x$
 
 UNUSED constexpr char ReluDoc[] = R"DOC(
 Relu Activation Operator.
-Some extra docs of relu.
 
 $out = \max(x, 0)$
 

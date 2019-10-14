@@ -1,4 +1,5 @@
 paddle/fluid/operators/distributed/send_recv.proto
+paddle/fluid/API.spec
 paddle/fluid/API_DEV.spec
 paddle/fluid/API_PR.spec
 *.DS_Store
