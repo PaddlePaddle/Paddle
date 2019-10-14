@@ -6899,6 +6899,22 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
 
     def __check_input(x, y):
+        var_names = {'x': x, 'y': y}
+        for name, val in var_names.items():
+            if not isinstance(val, Variable):
+                raise TypeError(
+                    "The type of %s in matmul must be Variable, but received %s.\n"
+                    % (name, (type(val))))
+            if convert_dtype(val.dtype) in ['float16']:
+                warnings.warn(
+                    "The data type of %s in matmul only support float16 in GPU now."
+                    % name)
+            if convert_dtype(
+                    val.dtype) not in ['float16', 'float32', 'float64']:
+                raise TypeError(
+                    "The data type of %s in matmul must be float16 or float32 or float64, but received %s.\n"
+                    % (name, (convert_dtype(val.dtype))))
+
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) == 1:
@@ -6912,8 +6928,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if transpose_y:
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
-            raise ValueError("Invalid inputs for matmul. x: %s, y: %s\n" %
-                             (x_shape, y_shape))
+            raise ValueError(
+                "After performing an optional transpose, Input X's width should be "
+                "equal to Y's width for multiplication "
+                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %
+                (x_shape, y_shape))
 
         if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
@@ -6921,8 +6940,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
                 if dim_x < 0 or y_shape[i] < 0:
                     continue
                 if dim_x != y_shape[i]:
-                    raise ValueError("Invalid inputs for matmul. x(%s), y(%s)" %
-                                     (x.shape, y.shape))
+                    raise ValueError(
+                        "When the matrix is larger than 2 dimensions, the higher "
+                        "dimensional values of the two matrices need to be equal. "
+                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
+                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape))
 
     __check_input(x, y)
 
@@ -14765,6 +14787,20 @@ def mean(x, name=None):
     """
 
     helper = LayerHelper("mean", **locals())
+
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'x' in mean must be Variable, but received %s.\n" %
+            (type(x)))
+
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'x' in mean only support float16 in GPU now.")
+
+    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
+        raise TypeError(
+            "The data type of 'x' in mean must be float16 or float32 or float64, but received %s.\n"
+            % (convert_dtype(x.dtype)))
 
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
