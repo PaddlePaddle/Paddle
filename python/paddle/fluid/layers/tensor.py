@@ -190,6 +190,17 @@ def cast(x, dtype):
             #  [ 0  4]] int32
     """
     helper = LayerHelper('cast', **locals())
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'x' in cast must be Variable, but received %s" %
+            (type(x)))
+    if convert_dtype(x.dtype) not in [
+            'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'
+    ]:
+        raise TypeError(
+            "The data type of 'x' in cast must be one of [bool, float16, float32, float64, int32, int64, uint8], but received %s."
+            % (convert_dtype(x.dtype)))
+
     out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='cast',
