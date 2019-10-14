@@ -87,11 +87,9 @@ if (WITH_DGC)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(dgc);\n")
     set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dgc)
 endif()
-#set_source_files_properties(memcpy.S PROPERTIES COMPILE_FLAGS "-x assembler-with-cpp")
-cc_library(search_pyramid_hash_op SRCS search_pyramid_hash_op.cc memcpy.S DEPS xxhash)
-cc_library(memcpy_s SRCS memcpy.S)
+cc_library(search_pyramid_hash_op SRCS search_pyramid_hash_op.cc DEPS xxhash
+framework_proto)
 file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(search_pyramid_hash);\n")
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} memcpy_s)
 set(OP_LIBRARY search_pyramid_hash_op ${OP_LIBRARY} CACHE INTERNAL "op libs")
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor)
