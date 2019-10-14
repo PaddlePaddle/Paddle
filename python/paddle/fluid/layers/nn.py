@@ -232,6 +232,21 @@ kIgnoreIndex = -100
 
 
 def my_func():
+    """
+    My func test for API.spec.
+
+    Args:
+        None
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          fluid.layers.my_func()
+    """
     pass
 
 
