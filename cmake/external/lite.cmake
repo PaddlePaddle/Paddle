@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if (NOT LITE_SUBGRAPH_PATH)
+if (NOT LITE_SOURCE_DIR) OR (NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_PROJECT extern_lite)
   set(LITE_SOURCES_DIR ${THIRD_PARTY_PATH}/lite)
@@ -53,38 +53,20 @@ if (NOT LITE_SUBGRAPH_PATH)
                           ${EXTERNAL_OPTIONAL_ARGS}
                           ${LITE_OPTIONAL_ARGS}
   )
-  ExternalProject_Get_property(${LITE_PROJECT} BINARY_DIR)
-  ExternalProject_Get_property(${LITE_PROJECT} SOURCE_DIR)
-
-  message(STATUS "Paddle-lite BINARY_DIR: ${BINARY_DIR}")
-  message(STATUS "Paddle-lite SOURCE_DIR: ${SOURCE_DIR}")
-
-  function(external_lite_static_libs alias path)
-    add_library(${alias} STATIC IMPORTED GLOBAL) 
-    SET_PROPERTY(TARGET ${alias} PROPERTY IMPORTED_LOCATION 
-                 ${path}) 
-    add_dependencies(${alias} ${LITE_PROJECT})
-  endfunction()
-
-  include_directories(${SOURCE_DIR})
-  include_directories(${BINARY_DIR})
-  external_lite_static_libs(lite_full_static ${BINARY_DIR}/lite/api/libapi_full_static.a)
-
-else()
-  # Print path of subgraph.
-  message(STATUS "LITE_SUBGRAPH_PATH: ${LITE_SUBGRAPH_PATH}")
-
-  # Set the LITE_SUBGRAPH_LIB_PATH variable.
-  find_library(LITE_SUBGRAPH_LIB_PATH NAMES libapi_full_static.a
-      PATHS ${LITE_SUBGRAPH_PATH}
-      NO_DEFAULT_PATH
-      DOC "Path to lite library.")
-
-  # Add library lite_full_static by path LITE_SUBGRAPH_LIB_PATH.
-  add_library(lite_full_static STATIC IMPORTED GLOBAL)
-  SET_PROPERTY(TARGET lite_full_static PROPERTY IMPORTED_LOCATION ${LITE_SUBGRAPH_LIB_PATH})
-
-  # Make target model_optimize_tool. The sequence of glog gflags needs to be attention.
-  message(STATUS "LITE_SUBGRAPH_LIB_PATH: ${LITE_SUBGRAPH_LIB_PATH}")
-  include_directories(${LITE_SUBGRAPH_PATH}/include)
+  ExternalProject_Get_property(${LITE_PROJECT} LITE_BINARY_DIR)
+  ExternalProject_Get_property(${LITE_PROJECT} LITE_SOURCE_DIR)
 endif()
+
+message(STATUS "Paddle-lite BINARY_DIR: ${LITE_BINARY_DIR}")
+message(STATUS "Paddle-lite SOURCE_DIR: ${LITE_SOURCE_DIR}")
+
+function(external_lite_static_libs alias path)
+  add_library(${alias} STATIC IMPORTED GLOBAL) 
+  SET_PROPERTY(TARGET ${alias} PROPERTY IMPORTED_LOCATION 
+               ${path}) 
+  add_dependencies(${alias} ${LITE_PROJECT})
+endfunction()
+
+include_directories(${LITE_SOURCE_DIR})
+include_directories(${LITE_BINARY_DIR})
+external_lite_static_libs(lite_full_static ${BINARY_DIR}/lite/api/libapi_full_static.a)
