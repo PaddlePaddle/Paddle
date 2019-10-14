@@ -53,8 +53,10 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                           ${EXTERNAL_OPTIONAL_ARGS}
                           ${LITE_OPTIONAL_ARGS}
   )
-  ExternalProject_Get_property(${LITE_PROJECT} LITE_BINARY_DIR)
-  ExternalProject_Get_property(${LITE_PROJECT} LITE_SOURCE_DIR)
+  ExternalProject_Get_property(${LITE_PROJECT} BINARY_DIR)
+  ExternalProject_Get_property(${LITE_PROJECT} SOURCE_DIR)
+  set(LITE_BINARY_DIR ${BINARY_DIR})
+  set(LITE_SOURCE_DIR ${SOURCE_DIR})
 endif()
 
 message(STATUS "Paddle-lite BINARY_DIR: ${LITE_BINARY_DIR}")
