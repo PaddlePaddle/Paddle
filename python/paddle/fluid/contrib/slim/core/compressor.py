@@ -194,8 +194,8 @@ class Context(object):
             reader = cached_reader(reader, sampled_rate, self.cache_path,
                                    cached_id)
 
-        if isinstance(reader, Variable) or (isinstance(reader, DataLoaderBase) and
-                (not reader.iterable)):
+        if isinstance(reader, Variable) or (
+                isinstance(reader, DataLoaderBase) and (not reader.iterable)):
             reader.start()
             try:
                 while True:
@@ -488,8 +488,8 @@ class Compressor(object):
                     build_strategy=build_strategy)
 
         if isinstance(context.train_reader, Variable) or (
-                isinstance(context.train_reader,
-                           DataLoaderBase) and (not context.train_reader.iterable)):
+                isinstance(context.train_reader, DataLoaderBase) and
+            (not context.train_reader.iterable)):
             context.train_reader.start()
             try:
                 while True:
