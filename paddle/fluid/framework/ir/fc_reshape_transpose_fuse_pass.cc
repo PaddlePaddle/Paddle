@@ -61,7 +61,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
         boost::get<bool>(scale->Op()->GetAttr("bias_after_scale"));
 
     std::vector<int> w_init_dim =
-        paddle::framework::vectorize2int(w0_tensor->dims());
+        paddle::framework::vectorize<int>(w0_tensor->dims());
     w_init_dim[1] *= 3;
 
     VarDesc fuse_column_w_desc(patterns::PDNodeName(name_scope, "Weight"));
@@ -109,7 +109,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     auto* eltadd2_tensor = eltadd2_var->GetMutable<framework::LoDTensor>();
 
     std::vector<int> b_init_dim =
-        paddle::framework::vectorize2int(eltadd0_tensor->dims());
+        paddle::framework::vectorize<int>(eltadd0_tensor->dims());
     b_init_dim[0] *= 3;
 
     VarDesc fuse_column_bias_desc(patterns::PDNodeName(name_scope, "Bias"));
