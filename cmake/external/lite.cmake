@@ -18,7 +18,7 @@ if (LITE_SUBGRAPH_PATH)
     message(STATUS "LITE_SUBGRAPH_PATH: ${LITE_SUBGRAPH_PATH}")
 
     # Set the LITE_SUBGRAPH_LIB_PATH variable.
-    find_library(LITE_SUBGRAPH_LIB_PATH NAMES liblite_full_static.a
+    find_library(LITE_SUBGRAPH_LIB_PATH NAMES libapi_full_static.a
         PATHS ${LITE_SUBGRAPH_PATH}
         NO_DEFAULT_PATH
         DOC "Path to lite library.")
