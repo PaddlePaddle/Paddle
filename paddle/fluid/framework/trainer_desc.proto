@@ -40,6 +40,9 @@ message TrainerDesc {
   repeated string dump_fields = 13;
   optional string dump_converter = 14;
 
+  optional int32 mpi_size = 16 [ default = -1 ];
+  optional int32 dump_file_num = 17 [ default = 16 ];
+
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
   optional DownpourWorkerParameter downpour_param = 103;

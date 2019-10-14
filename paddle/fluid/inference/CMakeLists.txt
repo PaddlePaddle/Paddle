@@ -36,6 +36,7 @@ else(WIN32)
 endif(WIN32)
 
 add_subdirectory(api)
+add_subdirectory(capi)
 
 if(WITH_MKLDNN)
 	set(mkldnn_quantizer_src ${CMAKE_CURRENT_SOURCE_DIR}/api/mkldnn_quantizer.cc)

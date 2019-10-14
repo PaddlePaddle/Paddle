@@ -19,10 +19,6 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-DEFINE_bool(free_idle_memory, false,
-            "If it is true, Paddle will try to free idle memory trunks during "
-            "running time.");
-
 #ifdef PADDLE_WITH_CUDA
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif

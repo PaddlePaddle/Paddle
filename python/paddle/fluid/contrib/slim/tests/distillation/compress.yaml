@@ -30,15 +30,15 @@ distillers:
         distillation_loss_weight: 1
     l2_distiller:
         class: 'L2Distiller'
-        teacher_feature_map: 'teacher.tmp_2'
-        student_feature_map: 'student.tmp_2'
+        teacher_feature_map: 'teacher.tmp_1'
+        student_feature_map: 'student.tmp_1'
         distillation_loss_weight: 1
     soft_label_distiller:
         class: 'SoftLabelDistiller'
         student_temperature: 1.0
         teacher_temperature: 1.0 
-        teacher_feature_map: 'teacher.tmp_1'
-        student_feature_map: 'student.tmp_1'
+        teacher_feature_map: 'teacher.tmp_2'
+        student_feature_map: 'student.tmp_2'
         distillation_loss_weight: 0.001
 strategies:
     distillation_strategy:

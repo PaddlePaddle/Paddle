@@ -3,7 +3,7 @@ elementwise.cc activation.cc pool2d.cc concat.cc split.cc relu.cc softmax.cc
 batch_norm.cc reshape.cc flatten.cc transpose.cc density_prior_box.cc
 detection_out.cc scale.cc dropout.cc im2sequence.cc sum.cc affine_channel.cc
 roi_align.cc shuffle_channel.cc helper.cc DEPS anakin_engine framework_proto
-scope op_registry gtest)
+scope op_registry gtest gflags)
 
 cc_test(test_anakin_fc SRCS test_fc_op.cc DEPS anakin_op_converter mul_op)
 cc_test(test_anakin_conv2d SRCS test_conv2d_op.cc DEPS anakin_op_converter conv_op im2col vol2col depthwise_conv)
