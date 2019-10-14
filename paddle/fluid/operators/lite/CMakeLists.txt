@@ -1,1 +1,1 @@
-op_library(lite_engine_op DEPS lite_tensor_utils)
+op_library(lite_engine_op DEPS lite_engine lite_tensor_utils)
