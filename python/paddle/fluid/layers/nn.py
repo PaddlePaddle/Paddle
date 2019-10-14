@@ -37,6 +37,7 @@ from ..dygraph import layers
 from ..data_feeder import convert_dtype
 
 __all__ = [
+    'my_func',
     'fc',
     'center_loss',
     'embedding',
@@ -230,6 +231,10 @@ __all__ = [
 kIgnoreIndex = -100
 
 
+def my_func():
+    pass
+
+
 def fc(input,
        size,
        num_flatten_dims=1,
@@ -250,6 +255,7 @@ def fc(input,
     multiple output Tensors with shape :math:`[M, size]` will be summed up. If :attr:`bias_attr`
     is not None, a bias variable will be created and added to the output.
     Finally, if :attr:`act` is not None, it will be applied to the output as well.
+    Extra docs to check new API.spec mechanism.
 
     When the input is a single Tensor(or LoDTensor):
 
@@ -404,7 +410,8 @@ def center_loss(input,
                 num_classes,
                 alpha,
                 param_attr,
-                update_center=True):
+                update_center=True,
+                extra_param=None):
     """
     **Center loss Cost layer**
     
