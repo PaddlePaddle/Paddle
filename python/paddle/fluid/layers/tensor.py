@@ -249,10 +249,15 @@ def concat(input, axis=0, name=None):
                 #  [14 15 16]]
     """
     helper = LayerHelper('concat', **locals())
+    if not isinstance(input, list):
+        warnings.warn(
+            "The type of input in concat should be list, but received %s." %
+            (type(input)))
+        input = [input]
     for x in input:
         if not isinstance(x, Variable):
             raise TypeError(
-                "The type of x in 'input' in concat must be Variable, but received %s"
+                "The type of x in 'input' in concat must be Variable, but received %s."
                 % (type(x)))
         if convert_dtype(x.dtype) in ['float16']:
             warnings.warn(
