@@ -13,36 +13,25 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import unittest
-from test_dist_base import TestDistBase
+import numpy as np
+from op_test import OpTest
 
-import os
-flag_name = os.path.splitext(__file__)[0]
-
-
-def skip_ci(func):
-    on_ci = bool(int(os.environ.get("SKIP_UNSTABLE_CI", '0')))
-
-    def __func__(*args, **kwargs):
-        if on_ci:
-            return
-        return func(*args, **kwargs)
-
-    return __func__
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
-class TestDistSeResneXt2x2Async(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = False
-        self._use_reader_alloc = False
-
-    @skip_ci
-    def test_dist_train(self):
-        self.check_with_place(
-            "dist_se_resnext.py",
-            delta=100,
-            check_error_log=True,
-            log_name=flag_name)
+class TestZerosOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input dtype of zeros_op must be bool, float16, float32, float64, int32, int64.
+            x1 = fluid.layers.data(name='x1', shape=[4], dtype="int8")
+            self.assertRaises(TypeError, fluid.layers.zeros, x1)
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            self.assertRaises(TypeError, fluid.layers.zeros, x2)
 
 
 if __name__ == "__main__":

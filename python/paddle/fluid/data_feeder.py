@@ -173,7 +173,6 @@ class DataFeeder(object):
     Example:
         ..  code-block:: python
 
-
             import numpy as np
             import paddle
             import paddle.fluid as fluid
@@ -187,8 +186,8 @@ class DataFeeder(object):
             startup_program = fluid.Program()
             
             with fluid.program_guard(main_program, startup_program):
-                data_1 = fluid.layers.data(name='data_1', shape=[-1, 2, 2])
-                data_2 = fluid.layers.data(name='data_2', shape=[-1, 1, 3])
+                data_1 = fluid.data(name='data_1', shape=[None, 2, 2], dtype='float32')
+                data_2 = fluid.data(name='data_2', shape=[None, 1, 3], dtype='float32')
                 out = fluid.layers.fc(input=[data_1, data_2], size=2)
                 # ...
             feeder = fluid.DataFeeder([data_1, data_2], place)
@@ -205,8 +204,7 @@ class DataFeeder(object):
             outs = exe.run(program=main_program,
                             feed=feed_data,
                             fetch_list=[out])
-            print(outs)            
-
+            print(outs)
 
     """
 
@@ -255,18 +253,17 @@ class DataFeeder(object):
                     for i in range(1, limit + 1):
                         yield np.ones([6]).astype('float32') * i , np.ones([1]).astype('int64') * i, np.random.random([9]).astype('float32')
                 
-                data_1 = fluid.layers.data(name='data_1', shape=[2, 1, 3])
-                data_2 = fluid.layers.data(name='data_2', shape=[1], dtype='int64')
-                data_3 = fluid.layers.data(name='data_3', shape=[3, 3], dtype='float32')
+                data_1 = fluid.data(name='data_1', shape=[None, 2, 1, 3])
+                data_2 = fluid.data(name='data_2', shape=[None, 1], dtype='int64')
+                data_3 = fluid.data(name='data_3', shape=[None, 3, 3], dtype='float32')
                 feeder = fluid.DataFeeder(['data_1','data_2', 'data_3'], fluid.CPUPlace())
                 
                 
                 result = feeder.feed(reader())
                 print(result['data_1'])
                 print(result['data_2'])
-                print(result['data_3'])                
+                print(result['data_3'])
 
-    
         """
         converter = []
         for lod_level, shape, dtype in six.moves.zip(
@@ -313,21 +310,20 @@ class DataFeeder(object):
         Example:
             ..  code-block:: python
 
-                
                 import numpy as np
                 import paddle.fluid as fluid
-                
+
                 def generate_reader(batch_size, base=0, factor=1):
                     def _reader():
                         for i in range(batch_size):
                             yield np.ones([4]) * factor + base, np.ones([4]) * factor + base + 5
                     return _reader()
-                
-                x = fluid.layers.data(name='x', shape=[-1, 2, 2])
-                y = fluid.layers.data(name='y', shape=[-1, 2, 2], dtype='float32')
-                
+
+                x = fluid.data(name='x', shape=[None, 2, 2])
+                y = fluid.data(name='y', shape=[None, 2, 2], dtype='float32')
+
                 z = fluid.layers.elementwise_add(x, y)
-                
+
                 feeder = fluid.DataFeeder(['x','y'], fluid.CPUPlace())
                 place_num = 2
                 places = [fluid.CPUPlace() for x in range(place_num)]
@@ -335,17 +331,16 @@ class DataFeeder(object):
                 exe = fluid.Executor(fluid.CPUPlace())
                 exe.run(fluid.default_startup_program())
                 program = fluid.CompiledProgram(fluid.default_main_program()).with_data_parallel(places=places)
-                
+
                 # print sample feed_parallel r resultt
                 # for item in list(feeder.feed_parallel([generate_reader(5, 0, 1), generate_reader(3, 10, 2)], 2)):
                 #     print(item['x'])
                 #     print(item['y'])
-                
+
                 reader_list = [generate_reader(5, 0, 1), generate_reader(3, 10, 2)]
                 res = exe.run(program=program, feed=list(feeder.feed_parallel(reader_list, 2)), fetch_list=[z])
                 print(res)
-    
-   
+
         """
         if isinstance(self.place, core.CUDAPlace):
             places = [
@@ -418,7 +413,7 @@ class DataFeeder(object):
                     def _mini_batch(batch_size):
                         for i in range(batch_size):
                             yield np.random.random([16]).astype('float32'), np.random.randint(10, size=[1])
-                    
+
                     for _ in range(10):
                         yield _mini_batch(np.random.randint(1, 10))
                 
@@ -426,8 +421,8 @@ class DataFeeder(object):
                 places = [fluid.CPUPlace() for _ in range(place_num)]
                 
                 # a simple network sample
-                data = fluid.layers.data(name='data', shape=[-1, 4, 4], dtype='float32')
-                label = fluid.layers.data(name='label', shape=[-1, 1], dtype='int64')
+                data = fluid.data(name='data', shape=[None, 4, 4], dtype='float32')
+                label = fluid.data(name='label', shape=[None, 1], dtype='int64')
                 hidden = fluid.layers.fc(input=data, size=10)
                 
                 feeder = fluid.DataFeeder(place=places[0], feed_list=[data, label])

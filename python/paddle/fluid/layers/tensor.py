@@ -249,10 +249,15 @@ def concat(input, axis=0, name=None):
                 #  [14 15 16]]
     """
     helper = LayerHelper('concat', **locals())
+    if not isinstance(input, list):
+        warnings.warn(
+            "The type of input in concat should be list, but received %s." %
+            (type(input)))
+        input = [input]
     for x in input:
         if not isinstance(x, Variable):
             raise TypeError(
-                "The type of x in 'input' in concat must be Variable, but received %s"
+                "The type of x in 'input' in concat must be Variable, but received %s."
                 % (type(x)))
         if convert_dtype(x.dtype) in ['float16']:
             warnings.warn(
@@ -368,38 +373,53 @@ def tensor_array_to_tensor(input, axis=1, name=None, use_stack=False):
 
 def sums(input, out=None):
     """
-    This function performs the sum operation on the input and returns the
-    result as the output.
+    This function computes the sum of multiple input Tensors elementwisely.
+
+    - Case 1, sum of 3 Tensors
+
+    .. code-block:: text
+
+        # Input Tensors
+        x0.shape = [2, 3]
+        x0.data = [[1., 2., 3.],
+                   [4., 5., 6.]]
+        x1.shape = [2, 3]
+        x1.data = [[10., 20., 30.],
+                   [40., 50., 60.]]
+        x2.shape = [2, 3]
+        x2.data = [[100., 200., 300.],
+                   [400., 500., 600.]]
+
+        # Output Tensor
+        out.shape = [2, 3]
+        out.data = [[111., 222., 333.],
+                    [444., 555., 666.]]
 
     Args:
-        input (Variable|list): The input tensor that has the elements
-                               that need to be summed up.
-        out (Variable|None): Output parameter. The sum result.
-                             Default: None
+        input (list): A list of Variables which hold input Tensors with the same
+            data type and shape. Optional data types are: float32, float64, int32, int64.
+        out (Variable, optional): Output Tensor. It can be any existing Variable.
+            The default value is None, then a new Variable will be created and returned.
 
     Returns:
-        Variable: the sum of input. The same as the argument 'out'
+        Variable: The sum of inputs. The shape and data type is the same with input. \
+            If :code:`out` is not None, the returned value is :code:`out` .
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+            import paddle.fluid as fluid
 
-          # sum of several tensors
-          a0 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
-          a1 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=2)
-          a2 = fluid.layers.fill_constant(shape=[1], dtype='int64', value=3)
-          sums = fluid.layers.sums(input=[a0, a1, a2])
+            x0 = fluid.layers.fill_constant(shape=[16, 32], dtype='int64', value=1)
+            x1 = fluid.layers.fill_constant(shape=[16, 32], dtype='int64', value=2)
+            x2 = fluid.layers.fill_constant(shape=[16, 32], dtype='int64', value=3)
+            x3 = fluid.layers.fill_constant(shape=[16, 32], dtype='int64', value=0)
 
-          # sum of a tensor array
-          array = fluid.layers.create_array('int64')
-          i = fluid.layers.zeros(shape=[1], dtype='int64', force_cpu=True)
-          fluid.layers.array_write(a0, array=array, i=i)
-          i = fluid.layers.increment(x=i)
-          fluid.layers.array_write(a1, array=array, i=i)
-          i = fluid.layers.increment(x=i)
-          fluid.layers.array_write(a2, array=array, i=i)
-          sums = fluid.layers.sums(input=array)
+            # Sum of multiple Tensors, the result is stored to a new Variable sum0 (sum0=x0+x1+x2, the value is [[6, ..., 6], ..., [6, ..., 6]])
+            sum0 = fluid.layers.sums(input=[x0, x1, x2])
+
+            # Sum of multiple Tensors, sum1 and x3 represents the same Variable (x3=x0+x1+x2, the value is [[6, ..., 6], ..., [6, ..., 6]])
+            sum1 = fluid.layers.sums(input=[x0, x1, x2], out=x3)
     """
     helper = LayerHelper('sum', **locals())
     if out is None:
@@ -415,35 +435,37 @@ def sums(input, out=None):
 
 def assign(input, output=None):
     """
-    **Assign**
+    The OP copies the :attr:`input` to the :attr:`output`.
 
-    This function copies the *input* Variable to the *output* Variable.
-
-    Args:
-        input(Variable|numpy.ndarray): The source variable
-        output(Variable|None): The destination variable
+    Parameters:
+        input (Variable|numpy.ndarray): A tensor or numpy ndarray, its data type supports
+            float32, float64, int32 and int64.
+        output (Variable, optional): A tensor. If :attr:`output` is None, a new tensor will
+            be created as :attr:`output`. Default: None.
 
     Returns:
-        Variable: The destination variable that was supplied as the *output*.
+        Variable: A tensor with the same shape, data type and value as :attr:`input`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name="data", shape=[3, 32, 32], dtype="float32")
-          out = fluid.layers.create_tensor(dtype='float32')
-          hidden = fluid.layers.fc(input=data, size=10)
-          fluid.layers.assign(hidden, out)
+          import numpy as np
+          data = fluid.layers.fill_constant(shape=[3, 2], value=2.5, dtype='float64') # [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result1 = fluid.layers.create_tensor(dtype='float64')
+          fluid.layers.assign(data, result1) # result1 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result2 = fluid.layers.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
+          result3 = fluid.layers.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
     if isinstance(input, Variable):
         if convert_dtype(input.dtype) not in [
-                'float32', 'float64', 'int32', 'int64'
+                'float32', 'float64', 'int32', 'int64', 'bool'
         ]:
             raise TypeError(
                 "When the type of 'input' in assign is Variable, the data "
-                "type of 'input' must be float32, float64, int32 or int64, "
-                "but received %s." % convert_dtype(input.dtype))
+                "type of 'input' must be float32, float64, int32, int64 or "
+                "bool, but received %s." % convert_dtype(input.dtype))
         if output is None:
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
@@ -515,7 +537,6 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           data2 = fluid.layers.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1) 
           #data1=[[5], [5]] data2=[[5], [5]]
     """
-
     helper = LayerHelper("fill_constant", **locals())
     if convert_dtype(dtype) not in [
             'bool', 'float16', 'float32', 'float64', 'int32', 'int64'
@@ -524,6 +545,56 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             "The create data type in fill_constant must be one of 'bool', float16, float32,"
             "float64, int32 or int64, but received %s." % convert_dtype(
                 (dtype)))
+
+    if not isinstance(shape, (list, tuple, Variable)):
+        raise TypeError(
+            "The type of 'shape' in fill_constant must be Variable, list or tuple, but "
+            "received %s." % (type(shape)))
+
+    inputs = {}
+    attrs = {
+        'value': float(value),
+        'force_cpu': force_cpu or force_init_on_cpu()
+    }
+
+    def _contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def _get_attr_shape(list_shape):
+        attr_shape = []
+        for idx, dim in enumerate(list_shape):
+            if isinstance(dim, Variable):
+                attr_shape.append(-1)
+            else:
+                attr_shape.append(dim)
+        return attr_shape
+
+    def _get_shape_tensor(list_shape):
+        new_shape_tensor = []
+        for dim in list_shape:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_shape_tensor.append(dim)
+            else:
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
+                new_shape_tensor.append(temp_out)
+        return new_shape_tensor
+
+    if isinstance(shape, Variable):
+        shape.stop_gradient = True
+        inputs["ShapeTensor"] = shape
+    elif isinstance(shape, (list, tuple)):
+        assert len(shape) > 0, (
+            "The size of 'shape' in fill_constant can't be zero, "
+            "but received %s." % len(shape))
+        attrs["shape"] = _get_attr_shape(shape)
+        if _contain_var(shape):
+            inputs['ShapeTensorList'] = _get_shape_tensor(shape)
+
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
     else:
@@ -532,16 +603,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                 "The create data type in op must be same with out type"
                 "but received %s and out dtype %s." % (convert_dtype(
                     (dtype), convert_dtype(out.dtype))))
+    attrs['dtype'] = out.dtype
     helper.append_op(
         type='fill_constant',
-        inputs={},
+        inputs=inputs,
         outputs={'Out': [out]},
-        attrs={
-            'shape': shape,
-            'dtype': out.dtype,
-            'value': float(value),
-            'force_cpu': force_cpu or force_init_on_cpu()
-        },
+        attrs=attrs,
         stop_gradient=True)
     out.stop_gradient = True
     return out
@@ -808,25 +875,25 @@ def argsort(input, axis=-1, name=None):
 
 def ones(shape, dtype, force_cpu=False):
     """
-    **ones**
+    The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 1.
+    Its :attr:`stop_gradient` will be set to True to stop gradient computation.
 
-    This function creates a tensor of specified *shape* and
-    *dtype*, and initializes this with 1.
-
-    It also sets *stop_gradient* to True.
-
-    Args:
-        shape(tuple|list): Shape of output tensor
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor
+    Parameters:
+        shape (tuple|list): Shape of output tensor.
+        dtype (np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
+            bool, float16, float32, float64, int32 and int64.
+        force_cpu (bool, optional): Whether force to store the output tensor in CPU memory.
+            If :attr:`force_cpu` is False, the output tensor will be stored in running device memory.
+            Default: False.
 
     Returns:
-        Variable: The tensor variable storing the output
+        Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 1.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.ones(shape=[1], dtype='int64')
+          data = fluid.layers.ones(shape=[2, 4], dtype='float32') # [[1., 1., 1., 1.], [1., 1., 1., 1.]]
     """
     assert isinstance(shape, list) or isinstance(
         shape, tuple), "The shape's type should be list or tuple."
@@ -837,53 +904,57 @@ def ones(shape, dtype, force_cpu=False):
 
 def zeros(shape, dtype, force_cpu=False):
     """
-    **zeros**
+    The OP creates a tensor of specified :attr:`shape` and :attr:`dtype`, and fills it with 0.
+    Its :attr:`stop_gradient` will be set to True to stop gradient computation.
 
-    This function creates a tensor of specified *shape* and
-    *dtype*, and initializes this with 0.
-
-    It also sets *stop_gradient* to True.
-
-    Args:
-        shape(tuple|list|None): Shape of output tensor.
-        dtype(np.dtype|core.VarDesc.VarType|str): Data type of output tensor.
-        force_cpu(bool, default False): Whether to make output stay on CPU.
+    Parameters:
+        shape (tuple|list): Shape of output tensor.
+        dtype (np.dtype|core.VarDesc.VarType|str): Data type of output tensor, it supports
+            bool, float16, float32, float64, int32 and int64.
+        force_cpu (bool, optional): Whether force to store the output tensor in CPU memory.
+            If :attr:`force_cpu` is False, the output tensor will be stored in running device memory.
+            Default: False.
 
     Returns:
-        Variable: The tensor variable storing the output.
+        Variable: A tensor of data type :attr:`dtype` with shape :attr:`shape` and all elements set to 0.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.zeros(shape=[1], dtype='int64')
+          data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
     """
+    if convert_dtype(dtype) not in [
+            'bool', 'float16', 'float32', 'float64', 'int32', 'int64'
+    ]:
+        raise TypeError(
+            "The create data type in zeros must be one of bool, float16, float32,"
+            " float64, int32 or int64, but received %s." % convert_dtype(
+                (dtype)))
     return fill_constant(value=0.0, **locals())
 
 
 def reverse(x, axis):
     """
-    **reverse**
+    The OP reverses the tensor :attr:`x` along the given :attr:`axis`.
 
-    This function reverse the input 'x' along given axises.
-
-    Args:
-        x(Vairbale): the input to be reversed.
-        axis(int|tuple|list): Axis that along which order of elements
-                    is reversed. If it is a tuple or a list, reversing
-                    will be apply on each axis in the tuple or list.
+    Parameters:
+        x (Variable): A tensor to be reversed, its data type supports bool, float32, float64, int32, int64 and uint8.
+        axis (int|tuple|list): A dimension or a set of dimensions of :attr:`x` to reverse. Must be
+            in the range [-rank( :attr:`x` ), rank( :attr:`x` )). If it is a tuple or a list, reversing
+            will be apply on each axis in the tuple or list.
 
     Returns:
-        Variable: The reversed tensor.
+        Variable: The reversed tensor with the same shape and data type as :attr:`x`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name="data", shape=[4, 8], dtype="float32")
-          out = fluid.layers.reverse(x=data, axis=0)
-          # or:
-          out = fluid.layers.reverse(x=data, axis=[0,1])
+          import numpy as np
+          data = fluid.layers.assign(np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]], dtype='float32')) # [[0., 1., 2.], [3., 4., 5.], [6., 7., 8.]]
+          result1 = fluid.layers.reverse(data, 0) # [[6., 7., 8.], [3., 4., 5.], [0., 1., 2.]]
+          result2 = fluid.layers.reverse(data, [0, 1]) # [[8., 7., 6.], [5., 4., 3.], [2., 1., 0.]]
     """
     if isinstance(axis, int):
         axis = [axis]

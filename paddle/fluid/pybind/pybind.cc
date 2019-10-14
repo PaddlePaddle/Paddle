@@ -258,6 +258,24 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
+  m.def("from_dlpack", [](py::capsule *dltensor) {
+    DLManagedTensor *dmt = reinterpret_cast<DLManagedTensor *>(
+        PyCapsule_GetPointer(dltensor->ptr(), "dltensor"));
+    PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
+    DLTensor dl = dmt->dl_tensor;
+    Tensor tensor;
+
+    if (dl.ctx.device_type == kDLCPU) {
+      paddle::framework::TensorFromDLPack(dl, &tensor);
+    }
+#ifdef PADDLE_WITH_CUDA
+    if (dl.ctx.device_type == kDLGPU) {
+      paddle::framework::TensorFromDLPack(dl, &tensor);
+    }
+#endif
+    return tensor;
+  });
+
   m.def("_save_static_dict",
         [](const std::string &str_file_name, const py::handle &vec_var_list,
            const Scope &scope) {
@@ -291,6 +309,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
     return map_output;
   });
+
   m.def("save_op_compatible_info", [](framework::ProgramDesc &desc) {
     framework::OpCompatibleMap op_compatible_map;
     op_compatible_map.InitOpCompatibleMap();
@@ -467,6 +486,28 @@ PYBIND11_MODULE(core_noavx, m) {
                   t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                   print(t.shape())  # [5, 30]
            )DOC")
+      .def("_to_dlpack",
+           [](Tensor &self) {
+             DLPackTensor dlpack_tensor(self, 1);
+             DLManagedTensor *dmt =
+                 dlpack_tensor.ToCudfCompatibleDLManagedTensor();
+             auto capsule = py::capsule(
+                 static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
+                   if (ptr) {
+                     auto dltensor = new DLManagedTensor;
+                     try {
+                       dltensor = reinterpret_cast<DLManagedTensor *>(
+                           PyCapsule_GetPointer(ptr, "used_dltensor"));
+                       return;
+                     } catch (...) {
+                       dltensor = reinterpret_cast<DLManagedTensor *>(
+                           PyCapsule_GetPointer(ptr, "dltensor"));
+                     }
+                     dltensor->deleter(dltensor);
+                   }
+                 });
+             return capsule;
+           })
       .def("_set_float_element", TensorSetElement<float>)
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
@@ -860,6 +901,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("size", &LoDTensorBlockingQueue::Size)
       .def("capacity", &LoDTensorBlockingQueue::Cap)
       .def("close", &LoDTensorBlockingQueue::Close)
+      .def("kill", &LoDTensorBlockingQueue::Kill)
       .def("is_closed", &LoDTensorBlockingQueue::IsClosed);
 
   m.def("init_lod_tensor_blocking_queue",
