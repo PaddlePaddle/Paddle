@@ -42,6 +42,21 @@ struct SameDimsElemwiseDiv {
                   framework::Tensor* z);
 };
 
+template <typename T>
+bool check_divisor_zero(const T& y_data_) {
+  if (y_data_ - 0.0 < 1e-6) {
+    return true;
+  } else {
+    return false;
+  }
+}
+template <>
+bool check_divisor_zero<int>(const int& y_data_);
+template <>
+bool check_divisor_zero<int64_t>(const int64_t& y_data_);
+template <>
+bool check_divisor_zero<platform::float16>(const platform::float16& y_data_);
+
 template <typename DeviceContext, typename T>
 class ElementwiseDivKernel : public framework::OpKernel<T> {
  public:
@@ -50,6 +65,16 @@ class ElementwiseDivKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
+
+    // check whether the divisor(y) has a 0
+    auto y_size = y->numel();
+    const T* y_data = y->data<T>();
+    for (int i = 0; i < y_size; i++) {
+      if (check_divisor_zero(y_data[i])) {
+        LOG(WARNING)
+            << "ArgumentWarning: division by zero encountered in divide";
+      }
+    }
 
     auto dims_equal = x->dims() == y->dims();
     if (dims_equal) {

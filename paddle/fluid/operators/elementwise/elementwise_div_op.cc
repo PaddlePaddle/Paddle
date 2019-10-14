@@ -20,6 +20,28 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+#define CHECK_DIVISOR(TYPE)                                        \
+  template <>                                                      \
+  bool check_divisor_zero<TYPE>(const TYPE &y_data_) {             \
+    PADDLE_ENFORCE_NE(y_data_, 0,                                  \
+                      "InvalidArgumentError: Integer division by"  \
+                      "zero encountered in divide.Please check."); \
+    return false;                                                  \
+  }
+CHECK_DIVISOR(int)
+CHECK_DIVISOR(int64_t)
+
+#undef CHECK_DIVISOR
+
+template <>
+bool check_divisor_zero<platform::float16>(const platform::float16 &y_data_) {
+  if (static_cast<float>(y_data_) - 0.0 < 1e-6) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 template <typename T>
 struct SameDimsElemwiseDiv<
     platform::CPUDeviceContext, T,
