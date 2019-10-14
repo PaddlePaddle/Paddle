@@ -285,7 +285,7 @@ void AsyncCommunicator::SendThread() {
           MergeVars(var_name, vars, send_scope_.get());
 
           auto var_str =
-              operators::GetTensorDetails(var_name, send_scope_.get());
+              operators::GetTensorDetails(*(send_scope_.get()), var_name);
           VLOG(1) << var_str;
 
           auto after_merge = GetCurrentUS();
@@ -480,7 +480,7 @@ void HalfAsyncCommunicator::ConsumeThread() {
           MergeVars(var_name, vars, send_scope_.get());
 
           auto var_str =
-              operators::GetTensorDetails(var_name, send_scope_.get());
+              operators::GetTensorDetails(*(send_scope_.get()), var_name);
           VLOG(1) << var_str;
 
           auto after_merge = GetCurrentUS();
