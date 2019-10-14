@@ -26,6 +26,7 @@ class TestReader(unittest.TestCase):
     """
     Test API of quantization strategy.
     """
+
     def set_train_reader(self, image, label, place):
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=128)
@@ -36,9 +37,7 @@ class TestReader(unittest.TestCase):
         return val_reader
 
     def set_feed_list(self, image, label):
-        return  [('img', image.name), ('label', label.name)]
-
-
+        return [('img', image.name), ('label', label.name)]
 
     def quan(self, config_file):
         if os.path.exists('./checkpoints_quan'):
@@ -52,7 +51,6 @@ class TestReader(unittest.TestCase):
         train_program = fluid.Program()
         startup_program = fluid.Program()
         val_program = fluid.Program()
-        
 
         with fluid.program_guard(train_program, startup_program):
             with fluid.unique_name.guard():
@@ -69,10 +67,10 @@ class TestReader(unittest.TestCase):
                 cost = fluid.layers.cross_entropy(input=out, label=label)
                 avg_cost = fluid.layers.mean(x=cost)
         optimizer = fluid.optimizer.Momentum(
-                    momentum=0.9,
-                    learning_rate=0.01,
-                    regularization=fluid.regularizer.L2Decay(4e-5))
-        
+            momentum=0.9,
+            learning_rate=0.01,
+            regularization=fluid.regularizer.L2Decay(4e-5))
+
         val_program = train_program.clone(for_test=False)
 
         place = fluid.CUDAPlace(0)
@@ -105,20 +103,24 @@ class TestReader(unittest.TestCase):
         eval_graph = com_pass.run()
 
 
-class TestReader2(TestReader):
+class TestReader1(TestReader):
     def set_train_reader(self, image, label, place):
-        loader = fluid.io.DataLoader.from_generator(feed_list=[image, label], 
-                capacity=16, iterable=True)
-        loader.set_sample_generator(paddle.dataset.mnist.train(), batch_size=128, places=place)
+        loader = fluid.io.DataLoader.from_generator(
+            feed_list=[image, label], capacity=16, iterable=True)
+        loader.set_sample_generator(
+            paddle.dataset.mnist.train(), batch_size=128, places=place)
         return loader
 
     def set_val_reader(self, image, label, place):
-        loader = fluid.io.DataLoader.from_generator(feed_list=[image, label], 
-                capacity=16, iterable=True)
-        loader.set_sample_generator(paddle.dataset.mnist.test(), batch_size=128, places=place)
+        loader = fluid.io.DataLoader.from_generator(
+            feed_list=[image, label], capacity=16, iterable=True)
+        loader.set_sample_generator(
+            paddle.dataset.mnist.test(), batch_size=128, places=place)
         return loader
-    
+
     def test_compression(self):
         self.quan("./quantization/compress_1.yaml")
+
+
 if __name__ == '__main__':
     unittest.main()
