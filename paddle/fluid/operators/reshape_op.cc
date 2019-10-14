@@ -423,7 +423,6 @@ class Reshape2GradMaker : public framework::SingleGradOpDescMaker {
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto *grad_op = new framework::OpDesc();
     grad_op->SetType("reshape2_grad");
-    grad_op->SetInput("X", Input("X"));
     grad_op->SetInput("XShape", Output("XShape"));
     grad_op->SetInput("ShapeTensor", Input("ShapeTensor"));
     grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
@@ -441,12 +440,9 @@ class Reshape2DoubleGradMaker : public framework::SingleGradOpDescMaker {
     auto *grad_op = new framework::OpDesc();
     grad_op->SetType("reshape2_grad_grad");
 
-    grad_op->SetInput("X", Input("X"));
     grad_op->SetInput("ShapeTensor", Input("ShapeTensor"));
     grad_op->SetInput("DOut", Input(framework::GradVarName("Out")));
     grad_op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-
-    auto ddx = OutputGrad(framework::GradVarName("X"));
 
     grad_op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
     grad_op->SetAttrMap(Attrs());
@@ -501,7 +497,6 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) shouldn't be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("DDX"), true,
                       "Input(X@GRAD_GRAD) shouldn't be null.");
 

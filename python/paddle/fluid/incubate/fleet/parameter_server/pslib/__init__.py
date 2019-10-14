@@ -588,6 +588,7 @@ class DownpourOptimizer(DistributedOptimizer):
                           no_grad_set,
                           self._strategy)
         opt_info["mpi_rank"] = fleet._role_maker._get_rank()
+        opt_info["mpi_size"] = fleet._role_maker._get_size()
         fleet._set_opt_info(opt_info)
 
         programs = [loss.block.program for loss in losses]
