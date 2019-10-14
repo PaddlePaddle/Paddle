@@ -134,7 +134,10 @@ class TestQuantizationTransformPass(unittest.TestCase):
                             arg_name.endswith('.quantized.dequantized'))
                         self.assertTrue(arg_name in quantized_ops)
 
-    def linear_fc_quant(self, activation_quant_type, for_ci=True):
+    def linear_fc_quant(self,
+                        activation_quant_type,
+                        weight_quantize_type,
+                        for_ci=True):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -146,7 +149,8 @@ class TestQuantizationTransformPass(unittest.TestCase):
         transform_pass = QuantizationTransformPass(
             scope=fluid.global_scope(),
             place=place,
-            activation_quantize_type=activation_quant_type)
+            activation_quantize_type=activation_quant_type,
+            weight_quantize_type=weight_quantize_type)
         transform_pass.apply(graph)
         if not for_ci:
             marked_nodes = set()
@@ -167,15 +171,19 @@ class TestQuantizationTransformPass(unittest.TestCase):
                            val_marked_nodes)
 
     def test_linear_fc_quant_abs_max(self):
-        self.linear_fc_quant('abs_max', for_ci=True)
+        self.linear_fc_quant('abs_max', 'abs_max', for_ci=True)
 
     def test_linear_fc_quant_range_abs_max(self):
-        self.linear_fc_quant('range_abs_max', for_ci=True)
+        self.linear_fc_quant('range_abs_max', 'abs_max', for_ci=True)
 
     def test_linear_fc_quant_moving_average_abs_max(self):
-        self.linear_fc_quant('moving_average_abs_max', for_ci=True)
+        self.linear_fc_quant(
+            'moving_average_abs_max', 'channel_wise_abs_max', for_ci=True)
 
-    def residual_block_quant(self, activation_quant_type, for_ci=True):
+    def residual_block_quant(self,
+                             activation_quant_type,
+                             weight_quantize_type,
+                             for_ci=True):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
@@ -187,7 +195,8 @@ class TestQuantizationTransformPass(unittest.TestCase):
         transform_pass = QuantizationTransformPass(
             scope=fluid.global_scope(),
             place=place,
-            activation_quantize_type=activation_quant_type)
+            activation_quantize_type=activation_quant_type,
+            weight_quantize_type=weight_quantize_type)
         transform_pass.apply(graph)
         if not for_ci:
             marked_nodes = set()
@@ -208,13 +217,14 @@ class TestQuantizationTransformPass(unittest.TestCase):
                            val_marked_nodes)
 
     def test_residual_block_abs_max(self):
-        self.residual_block_quant('abs_max', for_ci=True)
+        self.residual_block_quant('abs_max', 'abs_max', for_ci=True)
 
     def test_residual_block_range_abs_max(self):
-        self.residual_block_quant('range_abs_max', for_ci=True)
+        self.residual_block_quant('range_abs_max', 'abs_max', for_ci=True)
 
     def test_residual_block_moving_average_abs_max(self):
-        self.residual_block_quant('moving_average_abs_max', for_ci=True)
+        self.residual_block_quant(
+            'moving_average_abs_max', 'channel_wise_abs_max', for_ci=True)
 
 
 class TestQuantizationFreezePass(unittest.TestCase):
