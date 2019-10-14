@@ -71,4 +71,4 @@ endfunction()
 
 include_directories(${LITE_SOURCE_DIR})
 include_directories(${LITE_BINARY_DIR})
-external_lite_static_libs(lite_full_static ${BINARY_DIR}/lite/api/libapi_full_static.a)
+external_lite_static_libs(lite_full_static ${LITE_BINARY_DIR}/lite/api/libapi_full_static.a)
