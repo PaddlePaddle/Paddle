@@ -48,9 +48,9 @@ inline bool NeedSend(const framework::Scope &scope,
   return false;
 }
 
-inline std::string GetTensorDetails(const std::string &var_name,
-                                    framework::Scope *scope) {
-  auto *var = scope->Var(var_name);
+inline std::string GetTensorDetails(const framework::Scope &scope,
+                                    const std::string &var_name) {
+  auto *var = scope.Var(var_name);
 
   std::stringstream ss;
   ss << "------------  " << var_name << "  ---------------\n";
