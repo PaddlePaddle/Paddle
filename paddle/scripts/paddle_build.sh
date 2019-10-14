@@ -475,7 +475,7 @@ function generate_upstream_develop_api_spec() {
     git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen $1
     build $2
-    generate_api_spec $1 "DEV"
+    generate_api_spec "$1" "DEV"
     git checkout $cur_branch
     git branch -D develop_base_pr 
     ENABLE_MAKE_CLEAN="OFF"
@@ -1027,7 +1027,7 @@ function example() {
 
 
 function main() {
-    local CMD=$1
+    local CMD=$1 
     local parallel_number=$2
     init
     case $CMD in
