@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if (NOT LITE_SOURCE_DIR) OR (NOT LITE_BINARY_DIR)
+if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_PROJECT extern_lite)
   set(LITE_SOURCES_DIR ${THIRD_PARTY_PATH}/lite)
@@ -63,8 +63,10 @@ message(STATUS "Paddle-lite SOURCE_DIR: ${LITE_SOURCE_DIR}")
 function(external_lite_static_libs alias path)
   add_library(${alias} STATIC IMPORTED GLOBAL) 
   SET_PROPERTY(TARGET ${alias} PROPERTY IMPORTED_LOCATION 
-               ${path}) 
-  add_dependencies(${alias} ${LITE_PROJECT})
+               ${path})
+  if (LITE_PROJECT)
+    add_dependencies(${alias} ${LITE_PROJECT})
+  endif()
 endfunction()
 
 include_directories(${LITE_SOURCE_DIR})
