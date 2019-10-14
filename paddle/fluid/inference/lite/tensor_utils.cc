@@ -21,11 +21,11 @@ namespace paddle {
 namespace inference {
 namespace lite {
 
+namespace {
+
 using paddle::lite_api::TargetType;
 using paddle::lite_api::PrecisionType;
 using paddle::lite_api::DataLayoutType;
-
-namespace {
 
 platform::Place GetNativePlace(const TargetType& type) {
   switch (type) {
@@ -82,13 +82,11 @@ void MemoryCopy(const platform::Place& dst_place, void* dst_data,
 
 template<>
 void TensorCopy(paddle::lite::Tensor* dst, const framework::LoDTensor& src) {
-  const TargetType dst_target = dst->target();
   const platform::Place& src_place = src.place();
-  const platform::Place& dst_place = GetNativePlace(dst_target);
+  const platform::Place& dst_place = GetNativePlace(dst->target());
   PADDLE_ENFORCE_EQ(src.type(), GetNativePrecisionType(dst->precision()));
-  const std::vector<int64_t> dims = framework::vectorize(src.dims());
   const size_t size = static_cast<size_t>(src.numel());
-  dst->Resize(dims);
+  dst->Resize(framework::vectorize(src.dims()));
   const void* src_data = src.data<void>();
   void* dst_data = dst->mutable_data(size);
   MemoryCopy(dst_place, dst_data, src_place, src_data, size);
@@ -99,8 +97,7 @@ void TensorCopy(framework::LoDTensor* dst, const paddle::lite::Tensor& src) {
   const platform::Place& src_place = GetNativePlace(src.target());
   const platform::Place& dst_place = dst->place();
   PADDLE_ENFORCE_EQ(dst->type(), GetNativePrecisionType(src.precision()));
-  const std::vector<int64_t> dims = src.dims().Vectorize();
-  dst->Resize(paddle::framework::make_ddim(dims));
+  dst->Resize(paddle::framework::make_ddim(src.dims().Vectorize()));
   const size_t size = static_cast<size_t>(src.numel());
   const void* src_data = src.raw_data();
   void* dst_data = dst->mutable_data(dst_place, dst->type());
