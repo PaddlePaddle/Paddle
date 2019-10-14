@@ -373,8 +373,8 @@ def cuda_pinned_places(device_count=None):
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_count is None:
-        device_count = _cpu_num()
-    return [core.cuda_pinned_places()] * device_count
+        device_count = len(_cuda_ids())
+    return [core.CUDAPinnedPlace()] * device_count
 
 
 class NameScope(object):
