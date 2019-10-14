@@ -75,7 +75,8 @@ class DownpourServer(Server):
                     'sparse_accessor_class', 'sparse_learning_rate', 'sparse_initial_g2sum', 'sparse_initial_range', \
                     'sparse_weight_bounds', 'sparse_embedx_dim', 'sparse_embedx_threshold', 'sparse_nonclk_coeff', \
                     'sparse_click_coeff', 'sparse_base_threshold', 'sparse_delta_threshold', 'sparse_delta_keep_days', \
-                    'sparse_delete_after_unseen_days', 'sparse_show_click_decay_rate', 'sparse_delete_threshold']
+                    'sparse_delete_after_unseen_days', 'sparse_show_click_decay_rate', 'sparse_delete_threshold', \
+                    'sparse_converter', 'sparse_deconverter']
 
         for key in strategy:
             if key not in support_sparse_key_list:
@@ -145,14 +146,23 @@ class DownpourServer(Server):
                     'sparse_show_click_decay_rate', 0.98)
                 table.accessor.downpour_accessor_param.delete_threshold = strategy.get(
                     'sparse_delete_threshold', 0.8)
+                converter = strategy.get(
+                    'sparse_converter',
+                    "(scripts/xbox_compressor_mf.py | bin/xbox_pb_converter)")
+                deconverter = strategy.get(
+                    'sparse_deconverter',
+                    "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)"
+                )
+
                 table1 = table.accessor.table_accessor_save_param.add()
                 table1.param = 1
-                table1.converter = "(scripts/xbox_compressor_mf.py | bin/xbox_pb_converter)"
-                table1.deconverter = "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)"
+                table1.converter = converter
+                table1.deconverter = deconverter
+
                 table2 = table.accessor.table_accessor_save_param.add()
                 table2.param = 2
-                table2.converter = "(scripts/xbox_compressor_mf.py | bin/xbox_pb_converter)"
-                table2.deconverter = "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)"
+                table2.converter = converter
+                table2.deconverter = deconverter
 
     def add_dense_table(self, table_id, param_var, grad_var, strategy,
                         sparse_table_names):
@@ -254,13 +264,13 @@ class DownpourServer(Server):
         table = self._server.downpour_server_param.downpour_table_param.add()
         table.table_id = table_id
         table.table_class = strategy.get('datanorm_table_class',
-                                         "DownpourDenseDoubleTable")
+                                         'DownpourDenseTable')
         table.type = pslib.PS_DENSE_TABLE
         table.compress_in_save = strategy.get('datanorm_compress_in_save', True)
         table.accessor.accessor_class = strategy.get(
-            'datanorm_accessor_class', "DownpourDenseValueDoubleAccessor")
+            'datanorm_accessor_class', 'DownpourDenseValueAccessor')
         table.accessor.dense_sgd_param.name = strategy.get('datanorm_operation',
-                                                           "summarydouble")
+                                                           'summary')
         table.accessor.dense_sgd_param.summary.summary_decay_rate = strategy.get(
             'datanorm_decay_rate', 0.999999)
         table.accessor.fea_dim = fea_dim
@@ -377,30 +387,32 @@ class DownpourWorker(Worker):
         table = self._worker.dense_table.add()
         table.table_id = table_id
 
-        def cmp_fc(x, y):
-            if x.startswith("fc_") and y.startswith("fc_"):
-                index_x = x.find('.')
-                index_y = y.find('.')
-                if index_x > 0 and index_y > 0:
-                    num_x = x[3:index_x]
-                    num_y = y[3:index_y]
-                    if num_x.isdigit() and num_y.isdigit():
-                        if int(num_x) < int(num_y):
-                            return -1
-                        if int(num_x) > int(num_y):
-                            return 1
-                        if x[index_x + 1] == 'w' and y[index_y + 1] == 'b':
-                            return -1
-                        if x[index_x + 1] == 'b' and y[index_y + 1] == 'w':
-                            return 1
-            if x < y:
-                return -1
-            else:
-                return 1
+        #def cmp_fc(x, y):
+        #    if x.startswith("fc_") and y.startswith("fc_"):
+        #        index_x = x.find('.')
+        #        index_y = y.find('.')
+        #        if index_x > 0 and index_y > 0:
+        #            num_x = x[3:index_x]
+        #            num_y = y[3:index_y]
+        #            if num_x.isdigit() and num_y.isdigit():
+        #                if int(num_x) < int(num_y):
+        #                    return -1
+        #                if int(num_x) > int(num_y):
+        #                    return 1
+        #                if x[index_x + 1] == 'w' and y[index_y + 1] == 'b':
+        #                    return -1
+        #                if x[index_x + 1] == 'b' and y[index_y + 1] == 'w':
+        #                    return 1
+        #    if x < y:
+        #        return -1
+        #    else:
+        #        return 1
 
-        table.dense_variable_name.extend(sorted(dense_param_name, cmp_fc))
-        table.dense_gradient_variable_name.extend(
-            sorted(dense_grad_name, cmp_fc))
+        #table.dense_variable_name.extend(sorted(dense_param_name, cmp_fc))
+        #table.dense_gradient_variable_name.extend(
+        #    sorted(dense_grad_name, cmp_fc))
+        table.dense_variable_name.extend(dense_param_name)
+        table.dense_gradient_variable_name.extend(dense_grad_name)
 
     def get_desc(self):
         """

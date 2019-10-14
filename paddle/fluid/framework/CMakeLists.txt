@@ -51,9 +51,9 @@ endif()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 if(WITH_GPU)
-  nv_test(tensor_util_test SRCS tensor_util_test.cc tensor_util_test.cu DEPS tensor)
+  nv_test(tensor_util_test SRCS tensor_util_test.cc tensor_util_test.cu DEPS tensor dlpack_tensor)
 else()
-  cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor)
+  cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor dlpack_tensor)
 endif()
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
@@ -225,6 +225,9 @@ cc_test(dlpack_tensor_test SRCS dlpack_tensor_test.cc DEPS dlpack_tensor glog)
 
 cc_library(op_compatible_info SRCS op_compatible_info DEPS string_helper proto_desc)
 cc_test(op_compatible_info_test SRCS op_compatible_info_test.cc DEPS op_compatible_info proto_desc string_helper glog)
+
+cc_library(save_load_util SRCS save_load_util DEPS tensor scope layer)
+cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
 
 # Get the current working branch
 execute_process(

@@ -22,6 +22,7 @@ import warnings
 import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
+from .data_feeder import convert_dtype
 from .framework import Program, default_main_program, Variable, convert_np_dtype_to_dtype_
 from . import core
 from . import compiler
@@ -41,6 +42,9 @@ def global_scope():
     Get the global/default scope instance. There are a lot of APIs use
     :code:`global_scope` as its default value, e.g., :code:`Executor.run`
 
+    Returns:
+        Scope: The global/default scope instance.
+
     Examples:
         .. code-block:: python
 
@@ -49,9 +53,6 @@ def global_scope():
 
           fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
           numpy.array(fluid.global_scope().find_var("data").get_tensor())
-
-    Returns:
-        Scope: The global/default scope instance.
     """
     return g_scope
 
@@ -66,11 +67,21 @@ def _switch_scope(scope):
 @signature_safe_contextmanager
 def scope_guard(scope):
     """
-    Change the global/default scope instance by Python `with` statement. All
-    variable in runtime will assigned to the new scope.
+    This function switches scope through python `with` statement.
+    Scope records the mapping between variable names and variables ( :ref:`api_guide_Variable` ),
+    similar to brackets in programming languages.
+    If this function is not invoked, all variables and variable names are recorded in the default global scope.
+    When users need to create variables with the same name,
+    they need to switch scopes through this function
+    if they do not want the mapping of variables with the same name to be overwritten.
+    After switching through the `with` statement,
+    all variables created in the `with` block will be assigned to a new scope.
 
-    Args:
-        scope: The new global/default scope.
+    Parameters:
+        scope: The new scope.
+
+    Returns:
+        None
 
     Examples:
         .. code-block:: python
@@ -204,13 +215,18 @@ def check_feed_shape_type(var, feed):
     """
     if var.desc.need_check_feed():
         if not dimension_is_compatible_with(feed.shape(), var.shape):
-            raise ValueError('Cannot feed value of shape %r for Variable %r, '
-                             'which has shape %r' %
-                             (feed.shape, var.name, var.shape))
+            raise ValueError(
+                'The feeded Variable %r should have dimensions = %d, shape = '
+                '%r, but received feeded shape %r' %
+                (var.name, len(var.shape), var.shape, feed.shape()))
         if not dtype_is_compatible_with(feed._dtype(), var.dtype):
-            raise ValueError('Cannot feed value of type %r for Variable %r, '
-                             'which has type %r' %
-                             (feed._dtype(), var.name, var.dtype))
+            var_dtype_format = convert_dtype(var.dtype) if isinstance(
+                var.dtype, core.VarDesc.VarType) else var.dtype
+            feed_dtype_format = convert_dtype(feed._dtype()) if isinstance(
+                feed._dtype(), core.VarDesc.VarType) else feed._dtype()
+            raise ValueError(
+                'The data type of feeded Variable %r must be %r, but received %r'
+                % (var.name, var_dtype_format, feed_dtype_format))
     return True
 
 
@@ -402,16 +418,15 @@ class FetchHandlerExamlpe(FetchHandler):
 class Executor(object):
     """
     An Executor in Python, supports single/multiple-GPU running,
-    and single/multiple-CPU running. Python executor takes a program,
-    adds feed operators and fetch operators to this program according
-    to feed map and fetch_list. Feed map provides input data for the
-    program. fetch_list provides the variables(or names) that user wants
-    to get after program runs. Note: the executor will run all operators
-    in the program but not only the operators dependent by the fetch_list.
-    It stores the global variables into the global scope, and creates a
-    local scope for the temporary variables. The contents in local scope
-    may be discarded after every minibatch forward/backward finished.
-    But the global scope variables will be persistent through different runs.
+    and single/multiple-CPU running. When construction the Executor,
+    the device is required.
+
+    Args:
+        place(fluid.CPUPlace()|fluid.CUDAPlace(n)): This parameter represents
+            the executor run on which device.
+
+    Returns:
+        Executor
 
     Examples:
         .. code-block:: python
@@ -428,7 +443,7 @@ class Executor(object):
           train_program = fluid.Program()
           startup_program = fluid.Program()
           with fluid.program_guard(train_program, startup_program):
-              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
               loss = fluid.layers.mean(hidden)
               fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
@@ -461,10 +476,6 @@ class Executor(object):
           loss_data, = exe.run(compiled_prog,
                                feed={"X": x},
                                fetch_list=[loss.name])
-
-    Args:
-        place(fluid.CPUPlace|fluid.CUDAPlace(n)): indicate the executor run on which device.
-
     """
 
     def __init__(self, place):
@@ -579,11 +590,12 @@ class Executor(object):
 
     def close(self):
         """
-        Close this executor.
+        Close the executor. This interface is used for distributed training (PServers mode).
+        This executor can not be used after calling the interface, because
+        this interface releases resources associated with the current Trainer.
 
-        You can no longer use this executor after calling this method.
-        For the distributed training, this method would free the resource
-        on PServers related to the current Trainer.
+        Returns:
+            None
 
         Examples:
             .. code-block:: python
@@ -667,14 +679,61 @@ class Executor(object):
             return_numpy=True,
             use_program_cache=False):
         """
-        Run program by this Executor. Feed data by feed map, fetch result by
-        fetch_list. Python executor takes a program, add feed operators and
-        fetch operators to this program according to feed map and fetch_list.
-        Feed map provides input data for the program. fetch_list provides
-        the variables(or names) that user want to get after program run.
+        Run the specified :code:`Program` or :code:`CompiledProgram`. It should be noted that the executor
+        will execute all the operators in :code:`Program` or :code:`CompiledProgram` without pruning some
+        operators of the :code:`Program` or :code:`CompiledProgram` according to fetch_list. And you could
+        specify the scope to store the :code:`Variables` during the executor running if the scope
+        is not set, the executor will use the global scope, i.e. :code:`fluid.global_scope()`.
 
-        Note: the executor will run all operators in the program but not
-        only the operators dependent by the fetch_list.
+        Args:
+            program(Program|CompiledProgram): This parameter represents the :code:`Program` or
+                :code:`CompiledProgram` to be executed. If this parameter is not provided, that
+                parameter is None, the program will be set to :code:`fluid.default_main_program()`.
+                The default is None.
+            feed(list|dict): This parameter represents the input variables of the model.
+                If it is single card training, the feed is dict type, and if it is multi-card
+                training, the parameter feed can be dict or list type variable. If the
+                parameter type is dict, the data in the feed will be split and sent to
+                multiple devices (CPU/GPU), that is to say, the input data will be evenly
+                sent to different devices, so you should make sure the number of samples of
+                the current mini-batch must be greater than the number of places;
+                if the parameter type is list, those data are copied directly to each device,
+                so the length of this list should be equal to the number of places.
+                The default is None.
+            fetch_list(list): This parameter represents the variables that need to be returned
+                after the model runs. The default is None.
+            feed_var_name(str): This parameter represents the name of the input variable of
+                the feed operator. The default is "feed".
+            fetch_var_name(str): This parameter represents the name of the output variable of
+                the fetch operator. The default is "fetch".
+            scope(Scope): the scope used to run this program, you can switch 
+                it to different scope. default is :code:`fluid.global_scope()`
+            return_numpy(bool): This parameter indicates whether convert the fetched variables
+                (the variable specified in the fetch list) to numpy.ndarray. if it is False,
+                the type of the return value is a list of :code:`LoDTensor`. The default is True.
+            use_program_cache(bool): This parameter indicates whether the input :code:`Program` is cached.
+                If the parameter is True, the model may run faster in the following cases:
+                the input program is :code:`fluid.Program`, and the parameters(program, feed variable name
+                and fetch_list variable) of this interface remains unchanged during running.
+                The default is False.
+                
+        Returns:
+
+            List: The fetched result list.
+
+        NOTES:
+            1. If it is multi-card running and the feed parameter is dict type, the input data
+               will be evenly sent to different cards. For example, using two GPUs to run the model,
+               the input sample number is 3, that is, [0, 1, 2], the sample number on GPU0 is 1,
+               that is, [0], and the sample number on GPU1 is 2, that is, [1, 2].
+               If the number of samples is less than the number of devices, the program will
+               throw an exception, so when running the model, you should make sure that the
+               number of samples of the last batch of the data set should be greater than the
+               number of CPU cores or GPU cards, if it is less than, it is recommended that
+               the batch be discarded.
+            2. If the number of CPU cores or GPU cards available is greater than 1, the fetch
+               results are spliced together in dimension 0 for the same variable values
+               (variables in fetch_list) on different devices.
 
         Examples:
             .. code-block:: python
@@ -686,7 +745,7 @@ class Executor(object):
               place = fluid.CPUPlace() # fluid.CUDAPlace(0)
               exe = fluid.Executor(place)
 
-              data = fluid.layers.data(name='X', shape=[1], dtype='float32')
+              data = fluid.data(name='X', shape=[None, 1], dtype='float32')
               hidden = fluid.layers.fc(input=data, size=10)
               loss = fluid.layers.mean(hidden)
               adam = fluid.optimizer.Adam()
@@ -698,29 +757,6 @@ class Executor(object):
               x = numpy.random.random(size=(10, 1)).astype('float32')
               outs = exe.run(feed={'X': x},
                              fetch_list=[loss.name])
-
-        Args:
-            program(Program|CompiledProgram): the program that need to run,
-                if not provided, then default_main_program (not compiled) will be used.
-            feed(dict): feed variable map, e.g. {"image": ImageData, "label": LabelData}
-            fetch_list(list): a list of variable or variable names that user 
-                wants to get, this method will return them according to this list.
-            feed_var_name(str): the name for the input variable of 
-                feed Operator.
-            fetch_var_name(str): the name for the output variable of 
-                fetch Operator.
-            scope(Scope): the scope used to run this program, you can switch 
-                it to different scope. default is global_scope
-            return_numpy(bool): if convert the fetched tensor to numpy
-            use_program_cache(bool): whether to use the cached program 
-                settings across batches. Setting it be true would be faster 
-                only when (1) the program is not compiled with data parallel, 
-                and (2) program, feed variable names and fetch_list variable 
-                names do not changed compared to the last step. 
-                
-        Returns:
-
-            list(numpy.array): fetch result according to fetch_list.
         """
         try:
             return self._run_impl(
@@ -1012,25 +1048,31 @@ class Executor(object):
                            print_period=100,
                            fetch_handler=None):
         """
-        The document of infer_from_dataset is almost the same as
-        train_from_dataset, except that in distributed training,
-        push gradients will be disabled in infer_from_dataset.
-        infer_from_dataset() can be used for evaluation in multi-thread
-        very easily.
+        Infer from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
+        Given a program, either a program or compiled program, infer_from_dataset will
+        consume all data samples in dataset. Input scope can be given by users. By default,
+        scope is global_scope(). The total number of thread run in training is `thread`.
+        Thread number used in training will be minimum value of threadnum in Dataset and
+        the value of thread in this interface. Debug can be set so that executor will display
+        Run-Time for all operators and the throughputs of current infer task.
+
+        The document of infer_from_dataset is almost the same as train_from_dataset,
+        except that in distributed training, push gradients will be disabled in infer_from_dataset.
+        infer_from_dataset() can be used for evaluation in multi-threadvery easily.
 
         Args:
             program(Program|CompiledProgram): the program that needs to be run,
-               if not provided, then default_main_program (not compiled) will be used.
+                if not provided, then default_main_program (not compiled) will be used.
             dataset(paddle.fluid.Dataset): dataset created outside this function,
-               a user should provide a well-defined dataset before calling this function.
-               Please check the document of Dataset if needed. default is None
+                a user should provide a well-defined dataset before calling this function.
+                Please check the document of Dataset if needed. default is None
             scope(Scope): the scope used to run this program, you can switch it to different scope
-               for each run. default is global_scope
-            thread(int): number of thread a user wants to run in this function. The actual number
-               of thread will be min(Dataset.thread_num, thread) if thread > 0, default is 0
+                for each run. default is global_scope
+            thread(int): number of thread a user wants to run in this function. Default is 0, which
+                means using thread num of dataset
             debug(bool): whether a user wants to run infer_from_dataset, default is False
-            fetch_list(Variable List): fetch variable list, each variable
-                                       will be printed during training, default is None
+            fetch_list(Variable List): fetch variable list, each variable will be printed during
+                training, default is None
             fetch_info(String List): print information for each variable, default is None
             print_period(int): the number of mini-batches for each print, default is 100
             fetch_handler(FetchHandler): a user define class for fetch output.
@@ -1080,24 +1122,25 @@ class Executor(object):
         Thread number used in training will be minimum value of threadnum in Dataset and
         the value of thread in this interface. Debug can be set so that executor will display
         Run-Time for all operators and the throughputs of current training task.
-        
+
         Note: train_from_dataset will destroy all resources created within executor for each run.
 
         Args:
             program(Program|CompiledProgram): the program that needs to be run,
-               if not provided, then default_main_program (not compiled) will be used.
+                if not provided, then default_main_program (not compiled) will be used.
             dataset(paddle.fluid.Dataset): dataset created outside this function,
-               a user should provide a well-defined dataset before calling this function.
-               Please check the document of Dataset if needed.
+                a user should provide a well-defined dataset before calling this function.
+                Please check the document of Dataset if needed.
             scope(Scope): the scope used to run this program, you can switch it to different scope
-               for each run. default is global_scope
-            thread(int): number of thread a user wants to run in this function. The actual number
-               of thread will be min(Dataset.thread_num, thread)
+                for each run. default is global_scope
+            thread(int): number of thread a user wants to run in this function. Default is 0, which
+                means using thread num of dataset
             debug(bool): whether a user wants to run train_from_dataset 
-            fetch_list(Variable List): fetch variable list, each variable
-                                       will be printed during training
-            fetch_info(String List): print information for each variable
-            print_period(int): the number of mini-batches for each print
+            fetch_list(Variable List): fetch variable list, each variable will be printed
+                during training
+            fetch_info(String List): print information for each variable, its length should be equal
+                to fetch_list
+            print_period(int): the number of mini-batches for each print, default is 100
             fetch_handler(FetchHandler): a user define class for fetch output.
 
         Returns:

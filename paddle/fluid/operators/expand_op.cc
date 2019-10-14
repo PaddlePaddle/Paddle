@@ -31,7 +31,6 @@ class ExpandOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       "Output(Out) should not be null.");
-
     auto x_dims = ctx->GetInputDim("X");
     auto expand_times = ctx->Attrs().Get<std::vector<int>>("expand_times");
 
@@ -162,10 +161,13 @@ class ExpandGradOp : public framework::OperatorWithKernel {
       if (expand_times[i] == -1) {
         continue;
       } else {
-        PADDLE_ENFORCE_EQ(x_dims[i] * expand_times[i], out_dims[i],
-                          "Each dimension size of Input(Out@GRAD) should be "
-                          "equal to multiplication of crroresponding dimension "
-                          "size of Input(X) and Attr(expand_times) value.");
+        if (ctx->IsRuntime()) {
+          PADDLE_ENFORCE_EQ(
+              x_dims[i] * expand_times[i], out_dims[i],
+              "Each dimension size of Input(Out@GRAD) should be "
+              "equal to multiplication of crroresponding dimension "
+              "size of Input(X) and Attr(expand_times) value.");
+        }
       }
     }
     auto x_grad_name = framework::GradVarName("X");
@@ -226,8 +228,11 @@ REGISTER_OP_CPU_KERNEL(
     expand, ops::ExpandKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ExpandKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ExpandKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ExpandKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::ExpandKernel<paddle::platform::CPUDeviceContext, bool>);
 REGISTER_OP_CPU_KERNEL(
     expand_grad,
     ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::ExpandGradKernel<paddle::platform::CPUDeviceContext, int64_t>);

@@ -131,6 +131,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // profile related.
   CP_MEMBER(with_profile_);
 
+  // glog related.
+  CP_MEMBER(with_glog_info_);
+
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
   CP_MEMBER(use_feed_fetch_ops_);
@@ -382,6 +385,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
 
   ss << with_profile_;
 
+  ss << with_glog_info_;
+
   ss << enable_ir_optim_;
   ss << use_feed_fetch_ops_;
   ss << ir_debug_;
@@ -455,6 +460,11 @@ void AnalysisConfig::SwitchIrDebug(int x) {
 
 void AnalysisConfig::EnableProfile() {
   with_profile_ = true;
+  Update();
+}
+
+void AnalysisConfig::DisableGlogInfo() {
+  with_glog_info_ = false;
   Update();
 }
 

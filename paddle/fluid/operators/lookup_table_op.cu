@@ -158,9 +158,14 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto *d_table_data = d_table_value->data<T>();
       auto *d_output_data = d_output->data<T>();
       auto d_output_dims = d_output->dims();
-      PADDLE_ENFORCE_EQ(
-          d_table_value->dims(),
-          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1));
+      auto d_output_dims_2d =
+          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
+                        "ShapeError: The shape of lookup_table@Grad and "
+                        "output@Grad should be same. "
+                        "But received lookup_table@Grad's shape = [%s], "
+                        "output@Grad's shape = [%s].",
+                        d_table_value->dims(), d_output_dims_2d);
       memory::Copy(gpu_place, d_table_data, gpu_place, d_output_data,
                    d_output->numel() * sizeof(T), stream);
 
