@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #include "paddle/fluid/inference/anakin/engine.h"
@@ -136,7 +137,7 @@ class AnakinConvertValidation {
       if (parameters_.count(input)) continue;
       auto& t = inference::analysis::GetFromScope<framework::LoDTensor>(*scope_,
                                                                         input);
-      auto t_shape = framework::vectorize2int(t.dims());
+      auto t_shape = framework::vectorize<int>(t.dims());
       while (t_shape.size() < 4) {
         t_shape.push_back(1);
       }

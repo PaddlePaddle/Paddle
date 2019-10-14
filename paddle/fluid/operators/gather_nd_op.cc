@@ -38,8 +38,9 @@ class GatherNdOp : public framework::OperatorWithKernel {
     auto index_dims = ctx->GetInputDim("Index");
     auto index_dims_size = index_dims.size();
 
-    PADDLE_ENFORCE_LE(index_dims[index_dims_size - 1], x_dims_size,
-                      "Input(Index).shape[-1] <= Input(X).rank");
+    PADDLE_ENFORCE_LE(
+        index_dims[index_dims_size - 1], x_dims_size,
+        "Input(Index).shape[-1] should be no greater than Input(X).rank");
     PADDLE_ENFORCE_GE(index_dims_size, 2UL,
                       "The rank of Input(Index) should be greater than 1");
 
@@ -59,8 +60,13 @@ class GatherNdOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    auto* x = ctx.Input<Tensor>("X");
+    const auto& x_type = x->type();
+    return framework::OpKernelType(
+        x_type,
+        x_type == framework::proto::VarType::BOOL
+            ? x->place()  // to be consistent with compare and logical ops
+            : ctx.device_context().GetPlace());
   }
 };
 
@@ -172,7 +178,7 @@ REGISTER_OPERATOR(gather_nd_grad, ops::GatherNdGradOp,
 REGISTER_OP_CPU_KERNEL(gather_nd, ops::GatherNdOpKernel<float>,
                        ops::GatherNdOpKernel<double>,
                        ops::GatherNdOpKernel<int64_t>,
-                       ops::GatherNdOpKernel<int>,
+                       ops::GatherNdOpKernel<int>, ops::GatherNdOpKernel<bool>,
                        ops::GatherNdOpKernel<uint8_t>);
 
 REGISTER_OP_CPU_KERNEL(gather_nd_grad, ops::GatherNdGradOpKernel<float>,

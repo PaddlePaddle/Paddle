@@ -18,7 +18,6 @@
 
 #include "paddle/fluid/operators/math/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 #endif
 
@@ -135,9 +134,10 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                                     const Tensor& in, Tensor* out,
                                     platform::Place place) {
 #ifdef PADDLE_WITH_MKLDNN
-  PADDLE_ENFORCE(in.format() != memory::format::format_undef &&
-                     in.format() != memory::format::any,
-                 "Input tensor should have specified memory format");
+  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::format_undef,
+                    "Input tensor should have specified memory format");
+  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::any,
+                    "Input tensor should have specified memory format");
 
   // Set default as NCHW in case not specified
   out_layout =
@@ -147,8 +147,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
   auto& cpu_engine = dev_ctx->GetEngine();
 
-  std::vector<int> in_tz = paddle::framework::vectorize2int(in.dims());
-  std::vector<int> out_tz = in_tz;
+  auto in_tz = paddle::framework::vectorize<int>(in.dims());
+  auto out_tz = in_tz;
 
   memory::data_type in_type = ToMKLDNNDataType(in.type());
   PADDLE_ENFORCE(in_type != memory::data_type::data_undef,
@@ -163,8 +163,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
 
   if (in_format != out_format) {
     void* in_data = GetDataFromTensor(in, in_type);
-    const std::string key = platform::ReorderMKLDNNHandler::GetHash(
-        in_tz, in_format, out_format, std::to_string(in_type));
+    const std::string key = platform::CreateKey(in_tz, in_format, out_format,
+                                                std::to_string(in_type));
 
     platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type, *dev_ctx,
                                            cpu_engine, key);
@@ -183,7 +183,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   }
   out->set_layout(out_layout);
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
-  out->set_format(memory::format::format_undef);
+  out->set_format(MKLDNNMemoryFormat::format_undef);
 #endif
 }
 

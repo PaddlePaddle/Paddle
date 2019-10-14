@@ -52,6 +52,8 @@ limitations under the License. */
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
+#define WITH_SIMPLE_TRACEBACK
+
 namespace paddle {
 namespace platform {
 
@@ -66,81 +68,71 @@ inline std::string demangle(std::string name) {
 inline std::string demangle(std::string name) { return name; }
 #endif
 
+template <typename StrType>
+inline std::string GetTraceBackString(StrType&& what, const char* file,
+                                      int line) {
+  static constexpr int TRACE_STACK_LIMIT = 100;
+  std::ostringstream sout;
+
+#if !defined(_WIN32)
+  void* call_stack[TRACE_STACK_LIMIT];
+  auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
+  auto symbols = backtrace_symbols(call_stack, size);
+  Dl_info info;
+  int idx = 0;
+  for (int i = 0; i < size; ++i) {
+    if (dladdr(call_stack[i], &info) && info.dli_sname) {
+      auto demangled = demangle(info.dli_sname);
+#ifdef WITH_SIMPLE_TRACEBACK
+      std::string path(info.dli_fname);
+      // C++ traceback info are from core.so
+      if (path.substr(path.length() - 3).compare(".so") == 0) {
+        sout << string::Sprintf("%-3d %s\n", idx++, demangled);
+      }
+#else
+      auto addr_offset = static_cast<char*>(call_stack[i]) -
+                         static_cast<char*>(info.dli_saddr);
+      sout << string::Sprintf("%-3d %*0p %s + %zd\n", i, 2 + sizeof(void*) * 2,
+                              call_stack[i], demangled, addr_offset);
+    } else {
+      sout << string::Sprintf("%-3d %*0p\n", i, 2 + sizeof(void*) * 2,
+                              call_stack[i]);
+#endif
+    }
+  }
+  free(symbols);
+#else
+  sout << "Windows not support stack backtrace yet.";
+#endif
+  sout << string::Sprintf("PaddleCheckError: %s at [%s:%d]",
+                          std::forward<StrType>(what), file, line)
+       << std::endl;
+  return sout.str();
+}
+
 struct EnforceNotMet : public std::exception {
   std::string err_str_;
-  EnforceNotMet(std::exception_ptr e, const char* f, int l) {
+  EnforceNotMet(std::exception_ptr e, const char* file, int line) {
     try {
       std::rethrow_exception(e);
     } catch (std::exception& e) {
-      Init(e.what(), f, l);
+      err_str_ = GetTraceBackString(e.what(), file, line);
     }
   }
 
-  EnforceNotMet(const std::string& str, const char* f, int l) {
-    Init(str, f, l);
-  }
+  EnforceNotMet(const std::string& str, const char* file, int line)
+      : err_str_(GetTraceBackString(str, file, line)) {}
 
   const char* what() const noexcept override { return err_str_.c_str(); }
-
- private:
-  const std::string output_file_name{"paddle_err_info"};
-  void saveErrorInformation(const std::string& err) {
-    std::stringstream ss;
-    ss << output_file_name;
-    std::time_t t = std::time(nullptr);
-    std::tm* tm = std::localtime(&t);
-    char mbstr[100];
-    std::strftime(mbstr, sizeof(mbstr), "%F-%H-%M-%S", tm);
-    ss << "_" << mbstr << ".log";
-    std::ofstream err_file(ss.str(), std::ofstream::out);
-    if (err_file.is_open()) {
-      err_file << err;
-      err_file.close();
-    }
-  }
-
-  template <typename StrType>
-  inline void Init(StrType what, const char* f, int l) {
-    static constexpr int TRACE_STACK_LIMIT = 100;
-    std::ostringstream sout;
-
-    sout << string::Sprintf("%s at [%s:%d]", what, f, l) << std::endl;
-    sout << "PaddlePaddle Call Stacks: " << std::endl;
-#if !defined(_WIN32)
-    void* call_stack[TRACE_STACK_LIMIT];
-    auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
-    auto symbols = backtrace_symbols(call_stack, size);
-    Dl_info info;
-    for (int i = 0; i < size; ++i) {
-      if (dladdr(call_stack[i], &info) && info.dli_sname) {
-        auto demangled = demangle(info.dli_sname);
-        auto addr_offset = static_cast<char*>(call_stack[i]) -
-                           static_cast<char*>(info.dli_saddr);
-        sout << string::Sprintf("%-3d %*0p %s + %zd\n", i,
-                                2 + sizeof(void*) * 2, call_stack[i], demangled,
-                                addr_offset);
-      } else {
-        sout << string::Sprintf("%-3d %*0p\n", i, 2 + sizeof(void*) * 2,
-                                call_stack[i]);
-      }
-    }
-    free(symbols);
-#else
-    sout << "Windows not support stack backtrace yet.";
-#endif
-    err_str_ = sout.str();
-
-    saveErrorInformation(err_str_);
-  }
 };
 
 struct EOFException : public std::exception {
   std::string err_str_;
-  EOFException(const char* err_msg, const char* f, int l) {
-    err_str_ = string::Sprintf("%s at [%s:%d]", err_msg, f, l);
+  EOFException(const char* err_msg, const char* file, int line) {
+    err_str_ = string::Sprintf("%s at [%s:%d]", err_msg, file, line);
   }
 
-  const char* what() const noexcept { return err_str_.c_str(); }
+  const char* what() const noexcept override { return err_str_.c_str(); }
 };
 
 // Because most enforce conditions would evaluate to true, we can use
@@ -287,6 +279,19 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
         ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
   } while (0)
 
+#if defined(__CUDA_ARCH__)
+// For cuda, the assertions can affect performance and it is therefore
+// recommended to disable them in production code
+// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#assertion
+#define PADDLE_ENFORCE(_IS_NOT_ERROR, __FORMAT, ...)                   \
+  do {                                                                 \
+    if (!(_IS_NOT_ERROR)) {                                            \
+      printf("Exception: %s:%d Assertion `%s` failed. " __FORMAT "\n", \
+             __FILE__, __LINE__, #_IS_NOT_ERROR, ##__VA_ARGS__);       \
+      asm("trap;");                                                    \
+    }                                                                  \
+  } while (0)
+#else
 #define PADDLE_ENFORCE(COND, ...)                                         \
   do {                                                                    \
     auto __cond__ = (COND);                                               \
@@ -300,6 +305,7 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
       }                                                                   \
     }                                                                     \
   } while (0)
+#endif
 
 #ifdef PADDLE_WITH_CUDA
 #define PADDLE_ENFORCE_CUDA_SUCCESS(COND, ...)                            \
@@ -329,6 +335,12 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
                                            __LINE__);                          \
   } while (0)
 
+#define PADDLE_THROW_BAD_ALLOC(...)                                  \
+  do {                                                               \
+    throw ::paddle::memory::allocation::BadAlloc(                    \
+        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+  } while (0)
+
 /*
  * Some enforce helpers here, usage:
  *    int a = 1;
@@ -336,7 +348,7 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
  *    PADDLE_ENFORCE_EQ(a, b);
  *
  *    will raise an expression described as follows:
- *    "Enforce failed. Expected input a == b, but received a(1) != b(2)."
+ *    "Expected input a == b, but received a(1) != b(2)."
  *      with detailed stack information.
  *
  *    extra messages is also supported, for example:
@@ -443,8 +455,8 @@ struct BinaryCompareMessageConverter<false> {
       constexpr bool __kCanToString__ =                                        \
           ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&       \
           ::paddle::platform::details::CanToString<__TYPE2__>::kValue;         \
-      PADDLE_THROW("Enforce failed. Expected %s " #__CMP                       \
-                   " %s, but received %s " #__INV_CMP " %s.\n%s",              \
+      PADDLE_THROW("Expected %s " #__CMP " %s, but received %s " #__INV_CMP    \
+                   " %s.\n%s",                                                 \
                    #__VAL1, #__VAL2,                                           \
                    ::paddle::platform::details::BinaryCompareMessageConverter< \
                        __kCanToString__>::Convert(#__VAL1, __val1),            \
@@ -467,32 +479,32 @@ struct BinaryCompareMessageConverter<false> {
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
-#define __PADDLE_INFERSHAPE_BINARY_COMPARE(__CTX, __VAL1, __VAL2, __CMP, \
-                                           __INV_CMP, ...)               \
-  do {                                                                   \
-    auto __val1 = (__VAL1);                                              \
-    auto __val2 = (__VAL2);                                              \
-    if (!__CTX->IsRuntime()) {                                           \
-      if (__val1 == -1 || __val2 == -1) {                                \
-        break;                                                           \
-      }                                                                  \
-    }                                                                    \
-    using __TYPE1__ = decltype(__val1);                                  \
-    using __TYPE2__ = decltype(__val2);                                  \
-    using __COMMON_TYPE1__ =                                             \
-        ::paddle::platform::details::CommonType1<__TYPE1__, __TYPE2__>;  \
-    using __COMMON_TYPE2__ =                                             \
-        ::paddle::platform::details::CommonType2<__TYPE1__, __TYPE2__>;  \
-    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(  \
-        static_cast<__COMMON_TYPE2__>(__val2));                          \
-    if (UNLIKELY(!__is_not_error)) {                                     \
-      PADDLE_THROW("Enforce failed. Expected %s " #__CMP                 \
-                   " %s, but received %s:%s " #__INV_CMP " %s:%s.\n%s",  \
-                   #__VAL1, #__VAL2, #__VAL1,                            \
-                   ::paddle::string::to_string(__val1), #__VAL2,         \
-                   ::paddle::string::to_string(__val2),                  \
-                   ::paddle::string::Sprintf(__VA_ARGS__));              \
-    }                                                                    \
+#define __PADDLE_INFERSHAPE_BINARY_COMPARE(__CTX, __VAL1, __VAL2, __CMP,       \
+                                           __INV_CMP, ...)                     \
+  do {                                                                         \
+    auto __val1 = (__VAL1);                                                    \
+    auto __val2 = (__VAL2);                                                    \
+    if (!__CTX->IsRuntime()) {                                                 \
+      if (__val1 == -1 || __val2 == -1) {                                      \
+        break;                                                                 \
+      }                                                                        \
+    }                                                                          \
+    using __TYPE1__ = decltype(__val1);                                        \
+    using __TYPE2__ = decltype(__val2);                                        \
+    using __COMMON_TYPE1__ =                                                   \
+        ::paddle::platform::details::CommonType1<__TYPE1__, __TYPE2__>;        \
+    using __COMMON_TYPE2__ =                                                   \
+        ::paddle::platform::details::CommonType2<__TYPE1__, __TYPE2__>;        \
+    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(        \
+        static_cast<__COMMON_TYPE2__>(__val2));                                \
+    if (UNLIKELY(!__is_not_error)) {                                           \
+      PADDLE_THROW("Expected %s " #__CMP " %s, but received %s:%s " #__INV_CMP \
+                   " %s:%s.\n%s",                                              \
+                   #__VAL1, #__VAL2, #__VAL1,                                  \
+                   ::paddle::string::to_string(__val1), #__VAL2,               \
+                   ::paddle::string::to_string(__val2),                        \
+                   ::paddle::string::Sprintf(__VA_ARGS__));                    \
+    }                                                                          \
   } while (0)
 
 #define PADDLE_INFERSHAPE_ENFORCE_EQ(__CTX, __VAL0, __VAL1, ...) \

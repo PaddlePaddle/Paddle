@@ -74,6 +74,7 @@ option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools" 
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(WITH_PSLIB       "Compile with pslib support"                    OFF)
+option(WITH_BOX_PS      "Compile with box_ps support"                   OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
@@ -91,7 +92,7 @@ set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING
       "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel"
       FORCE)
 endif()
@@ -170,6 +171,9 @@ if(WITH_PSLIB)
     include(external/pslib_brpc)
     include(external/pslib)
 endif(WITH_PSLIB)
+if(WITH_BOX_PS)
+    include(external/box_ps)
+endif(WITH_BOX_PS)
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)

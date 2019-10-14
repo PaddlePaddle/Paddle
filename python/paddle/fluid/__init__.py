@@ -44,6 +44,8 @@ from .data_feed_desc import *
 from . import dataset
 from .dataset import *
 
+from .data import *
+
 from . import trainer_desc
 from . import inferencer
 
@@ -62,6 +64,7 @@ from . import average
 from . import metrics
 from . import transpiler
 from . import incubate
+from .input import embedding, one_hot
 from . import distribute_lookup_table
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
@@ -83,6 +86,8 @@ from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from . import install_check
 from .dygraph.nn import *
 from .dygraph.layers import *
+from .io import save, load
+from .dygraph.checkpoint import save_dygraph, load_dygraph
 
 Tensor = LoDTensor
 
@@ -92,8 +97,11 @@ __all__ = framework.__all__ + executor.__all__ + \
     data_feed_desc.__all__ + compiler.__all__ + backward.__all__ + [
         'io',
         'initializer',
+        'embedding',
+        'one_hot',
         'layers',
         'contrib',
+        'data',
         'dygraph',
         'transpiler',
         'nets',
@@ -116,6 +124,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'unique_name',
         'Scope',
         'install_check',
+        'save',
+        'load',
     ]
 
 
@@ -152,13 +162,13 @@ def __bootstrap__():
     read_env_flags = [
         'check_nan_inf', 'fast_check_nan_inf', 'benchmark',
         'eager_delete_scope', 'initial_cpu_memory_in_mb', 'init_allocated_mem',
-        'free_idle_memory', 'paddle_num_threads', "dist_threadpool_size",
-        'eager_delete_tensor_gb', 'fast_eager_deletion_mode',
-        'memory_fraction_of_eager_deletion', 'allocator_strategy',
-        'reader_queue_speed_test_mode', 'print_sub_graph_dir',
-        'pe_profile_fname', 'inner_op_parallelism', 'enable_parallel_graph',
-        'fuse_parameter_groups_size', 'multiple_of_cupti_buffer_size',
-        'fuse_parameter_memory_size', 'tracer_profile_fname', 'dygraph_debug'
+        'paddle_num_threads', 'dist_threadpool_size', 'eager_delete_tensor_gb',
+        'fast_eager_deletion_mode', 'memory_fraction_of_eager_deletion',
+        'allocator_strategy', 'reader_queue_speed_test_mode',
+        'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
+        'enable_parallel_graph', 'fuse_parameter_groups_size',
+        'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
+        'tracer_profile_fname', 'dygraph_debug'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -175,6 +185,7 @@ def __bootstrap__():
     if core.is_compiled_with_dist():
         #env for rpc
         read_env_flags.append('rpc_deadline')
+        read_env_flags.append('rpc_retry_times')
         read_env_flags.append('rpc_server_profile_path')
         read_env_flags.append('enable_rpc_profiler')
         read_env_flags.append('rpc_send_thread_num')
@@ -182,12 +193,15 @@ def __bootstrap__():
         read_env_flags.append('rpc_prefetch_thread_num')
         read_env_flags.append('rpc_disable_reuse_port')
 
+        read_env_flags.append('worker_update_interval_secs')
+
         # env for communicator
         read_env_flags.append('communicator_independent_recv_thread')
         read_env_flags.append('communicator_send_queue_size')
         read_env_flags.append('communicator_min_send_grad_num_before_recv')
         read_env_flags.append('communicator_thread_pool_size')
         read_env_flags.append('communicator_max_merge_var_num')
+        read_env_flags.append('communicator_merge_sparse_bucket')
         read_env_flags.append('communicator_fake_rpc')
         read_env_flags.append('communicator_send_wait_times')
         read_env_flags.append('communicator_merge_sparse_grad')
@@ -202,9 +216,8 @@ def __bootstrap__():
             'reallocate_gpu_memory_in_mb', 'cudnn_deterministic',
             'enable_cublas_tensor_op_math', 'conv_workspace_size_limit',
             'cudnn_exhaustive_search', 'selected_gpus', 'sync_nccl_allreduce',
-            'limit_of_tmp_allocation',
-            'times_excess_than_required_tmp_allocation',
-            'cudnn_batchnorm_spatial_persistent'
+            'cudnn_batchnorm_spatial_persistent', 'gpu_allocator_retry_time',
+            'local_exe_sub_scope_limit'
         ]
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])

@@ -62,6 +62,10 @@ if(WITH_PSLIB)
     add_definitions(-DPADDLE_WITH_PSLIB)
 endif()
 
+if(WITH_BOX_PS)
+    add_definitions(-DPADDLE_WITH_BOX_PS)
+endif()
+
 if(WITH_GPU)
     add_definitions(-DPADDLE_WITH_CUDA)
     add_definitions(-DEIGEN_USE_GPU)

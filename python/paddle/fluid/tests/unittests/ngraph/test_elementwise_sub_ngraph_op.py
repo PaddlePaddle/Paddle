@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest, sys
 sys.path.append("../")
-from test_elementwise_sub_op import *
+from test_elementwise_sub_op import TestElementwiseSubOp_scalar, TestElementwiseSubOp_Vector, TestElementwiseSubOp_broadcast_0
 
 if __name__ == '__main__':
     unittest.main()

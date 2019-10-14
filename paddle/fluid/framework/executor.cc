@@ -39,11 +39,11 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_NGRAPH
 #include "paddle/fluid/operators/ngraph/ngraph_engine.h"
-DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 #endif
 
 DECLARE_bool(benchmark);
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 
 namespace paddle {
 namespace framework {
@@ -78,10 +78,11 @@ void ExecutorPrepareContext::PrepareUnusedVars(
   // If gc is enabled and block size > 1
   if (prog_.Size() > 1) {
     operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
-        block_id_, ops_);
-    operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(block_id_, ops_);
+        prog_, block_id_, ops_);
+    operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(prog_, block_id_,
+                                                               ops_);
     operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-        block_id_, ops_);
+        prog_, block_id_, ops_);
   }
   unused_vars_ = GetUnusedVars(prog_.Block(block_id_), ops_, keep_vars);
 }
@@ -139,14 +140,14 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
   }
 }
 
-void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
-                              Dataset* dataset,
-                              const std::string& trainer_desc_str) {
+std::shared_ptr<TrainerBase> Executor::InitForDataset(
+    const ProgramDesc& main_program, const std::string& trainer_desc_str,
+    Scope* scope, Dataset* dataset) {
   VLOG(3) << "Start to RunFromDataset in executor";
   TrainerDesc trainer_desc;
   bool success = trainer_desc.ParseFromString(trainer_desc_str);
-  PADDLE_ENFORCE(success, "Fail to parse TrainerDesc from string:\n%s",
-                 trainer_desc_str.c_str());
+  PADDLE_ENFORCE_EQ(success, true, "Fail to parse TrainerDesc from string:\n%s",
+                    trainer_desc_str.c_str());
   VLOG(3) << "Going to create trainer, trainer class is "
           << trainer_desc.class_name();
   std::shared_ptr<TrainerBase> trainer;
@@ -161,12 +162,17 @@ void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
   trainer->InitTrainerEnv(main_program, place_);
   VLOG(3) << "Try to init other environment";
   trainer->InitOtherEnv(main_program);
+  return trainer;
+}
+
+void Executor::RunFromDataset(std::shared_ptr<TrainerBase> trainer) {
+  PADDLE_ENFORCE_NE(trainer, nullptr,
+                    "Trainer is nullptr, invoke InitForDataset first");
   // training and finalize training
   VLOG(3) << "Trainer starts to run";
   trainer->Run();
   VLOG(3) << "Trainer going to finalize";
   trainer->Finalize();
-  return;
 }
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
@@ -409,8 +415,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
-  // FIXME(zjl): recurrent_op is rather complex, we would
-  // disable gc forcely in recurrent_op
   if (!ctx->force_disable_gc_ && max_memory_size >= 0) {
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {

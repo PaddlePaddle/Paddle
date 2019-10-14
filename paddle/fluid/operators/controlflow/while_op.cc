@@ -62,6 +62,17 @@ class WhileOp : public framework::OperatorBase {
 
     auto step_scopes =
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
+
+    if (step_scopes->size() > 0) {
+      platform::DeviceContextPool::Instance().Get(dev_place)->Wait();
+      for (auto &s : *step_scopes) {
+        if (scope.HasKid(s)) {
+          scope.DeleteScope(s);
+        }
+      }
+      step_scopes->clear();
+    }
+
     PADDLE_ENFORCE_EQ(step_scopes->size(), 0, "The StepScope should be empty.");
     PADDLE_ENFORCE(platform::is_cpu_place(cond.place()),
                    "Condition of while op must in CPU memory.");
@@ -281,7 +292,7 @@ class WhileGradOp : public framework::OperatorBase {
             auto &inside_tensor = var->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
             attrs["dtype"] = inside_tensor.type();
-            attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
+            attrs["shape"] = framework::vectorize<int>(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
             auto var_name = pg_ig_names[param_id];
