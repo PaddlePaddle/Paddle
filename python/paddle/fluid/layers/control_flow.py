@@ -154,17 +154,18 @@ def Print(input,
 
     Args:
         input (Variable): A Tensor to print.
-        summarize (int): Print this number of elements in the tensor, will print
-                all if left is negative.
+        summarize (int): Number of elements in the tensor to be print. If it's
+                vaule is -1, then all elements in the tensor will be print.
         message (str): A string message to print as a prefix.
         first_n (int): Only log `first_n` number of times.
-        print_tensor_name (bool): Print the tensor name.
-        print_tensor_type (bool): Print the tensor type.
-        print_tensor_shape (bool): Print the tensor shape.
-        print_tensor_lod (bool): Print the tensor lod.
+        print_tensor_name (bool, optional): Print the tensor name. Default: True.
+        print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
+        print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
+        print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
         print_phase (str): Which phase to displace, including 'forward',
-                'backward' and 'both'. If set to 'backward' or 'both', will
-                print the gradients of input tensor.
+                'backward' and 'both'. Default: 'both'. If set to 'backward', will 
+                only print the gradients of input tensor; If set to 'both', will
+                both print the input tensor itself and the gradients of input tensor.
 
     Returns:
         Variable: Output tensor.
@@ -189,16 +190,12 @@ def Print(input,
     Output at runtime:
         .. code-block:: bash 
            
-           1564546375   The content of input layer:     The place is:CPUPlace
+           The content of input layer:     The place is:CPUPlace
            Tensor[fill_constant_0.tmp_0]
                shape: [10,2,]
                dtype: x
                data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
                
-           # The information of dtype at runtime may vary in different environments.
-           # Eg: 
-           #    If the dtype='int64' of Tensor y, the corresponding c++ type is int64_t.
-           #    The dtype of output is "x" ("x" is typeid(int64_t).name()) with MacOS and gcc4.8.2
     '''
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
@@ -1021,26 +1018,24 @@ def array_to_lod_tensor(x, table):
 
 def increment(x, value=1.0, in_place=True):
     """
-    This function performs an operation that increments the value in the
-    input :math:`x` by an amount: :math:`value` as mentioned in the input
-    parameter. This operation is performed in-place by default. Notice that
-    the number of elements in :math:`x` must be equal to 1.
+    The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
+    Notice that the number of elements in :attr:`x` must be equal to 1.
 
-    Args:
-        x (Variable|list): The tensor that has the input values.
-        value (float): The amount by which the values should be incremented.
-        in_place (bool): If the increment should be performed in-place.
+    Parameters:
+        x (Variable): A tensor that must alway contain only one element, its data type supports
+            float32, float64, int32 and int64.
+        value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
+        in_place (bool, optional): Whether the OP should be performed in-place. Default: True.
 
     Returns:
-        Variable: The elementwise-incremented object.
+        Variable: The elementwise-incremented tensor with the same shape and data type as :attr:`x`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[1], dtype='float32',
-                                   append_batch_size=False)
-          data = fluid.layers.increment(x=data, value=3.0, in_place=True)
+          counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
+          fluid.layers.increment(counter) # [1.]
     """
     helper = LayerHelper("increment", **locals())
     if not in_place:
@@ -1121,22 +1116,23 @@ def array_write(x, i, array=None):
 
 def create_array(dtype):
     """
-    **Create LoDTensorArray**
-
-    This function creates an array of LOD_TENSOR_ARRAY . It is mainly used to
-    implement RNN with array_write, array_read and While.
+    This OP creates an LOD_TENSOR_ARRAY. It is used as
+    the input of :ref:`api_fluid_layers_array_read` and 
+    :ref:`api_fluid_layers_array_write`. Also it can be used
+    with  :ref:`api_fluid_layers_While` to create RNN network.
 
     Args:
-        dtype (int|float): The data type of the elements in the lod_tensor_array.
+        dtype (str): The data type of the elements in the lod_tensor_array.
+                     Support data type: float32, float64, int32, int64.
 
     Returns:
-        Variable: The lod_tensor_array variable storing the elements of data type.
+        Variable: The empty lod_tensor_array. The data type of elements in Tensor is ``dtype``.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.create_array(dtype='float32')
+          data = fluid.layers.create_array(dtype='float32') # Create a float32 LoDTensorArray.
 
     """
     helper = LayerHelper("array", **locals())
@@ -2710,8 +2706,8 @@ def is_empty(x, cond=None):
 
     Args:
         x (Variable): The Variable to be tested.
-        cond (Variable|None): Output parameter. Returns the test result
-                              of given 'x'. Default: None
+        cond (Variable, optional): Output parameter. Default: None. If this parameter is given, it
+                              saves the test result of given 'x'.
 
     Returns:
         Variable: A bool scalar. True if 'x' is an empty Variable.
