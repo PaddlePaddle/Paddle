@@ -25,15 +25,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-inline bool NeedSend(const framework::Scope& scope,
-                     const std::string& varname) {
+inline bool NeedSend(const framework::Scope &scope,
+                     const std::string &varname) {
   // dummy variable is only used in parallel executor to represent
   // some dependency relationship, we don't need to send/recv it.
   // TODO(paddle-dev): Why would parallel executor logic leaked into here?
   if (varname.find(framework::ir::Node::kControlDepVarName) !=
       std::string::npos)
     return false;
-  auto* var = scope.FindVar(varname);
+  auto *var = scope.FindVar(varname);
   PADDLE_ENFORCE_NOT_NULL(var, "Can not find variable '%s' in the send side.",
                           varname);
   if (var->IsType<framework::LoDTensor>()) {
@@ -48,8 +48,44 @@ inline bool NeedSend(const framework::Scope& scope,
   return false;
 }
 
+inline std::string GetTensorDetails(const std::string &var_name,
+                                    framework::Scope *scope) {
+  auto *var = scope->Var(var_name);
+
+  std::stringstream ss;
+  ss << "------------  " << var_name << "  ---------------\n";
+
+  if (var->IsType<framework::LoDTensor>()) {
+    auto &var_t = var->Get<framework::LoDTensor>();
+    const auto *data = var_t.data<float>();
+
+    for (int i = 0; i < var_t.numel(); i++) {
+      ss << data[i] << " ";
+    }
+  } else {
+    auto &var_t = var->Get<framework::SelectedRows>();
+    auto &rows = var_t.rows();
+    auto &values = var_t.value();
+
+    ss << "ROWS: \n";
+    for (auto &id : rows) {
+      ss << id << " ";
+    }
+
+    ss << "VALUES: \n";
+    const auto *data = values.data<float>();
+    for (int i = 0; i < values.numel(); i++) {
+      ss << data[i] << " ";
+    }
+  }
+
+  ss << "------------------------------------------------\n";
+
+  return ss.str();
+}
+
 inline std::vector<int64_t> ToAbsoluteSection(
-    const std::vector<int64_t>& height_sections) {
+    const std::vector<int64_t> &height_sections) {
   std::vector<int64_t> abs_sections;
   abs_sections.resize(height_sections.size());
   abs_sections[0] = 0;
@@ -60,7 +96,7 @@ inline std::vector<int64_t> ToAbsoluteSection(
 }
 
 inline size_t GetSectionIndex(int64_t id,
-                              const std::vector<int64_t>& abs_sections) {
+                              const std::vector<int64_t> &abs_sections) {
   for (size_t i = 1; i < abs_sections.size(); ++i) {
     if (id < abs_sections[i]) {
       return i - 1;

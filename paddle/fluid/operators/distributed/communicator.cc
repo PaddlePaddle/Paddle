@@ -283,6 +283,11 @@ void AsyncCommunicator::SendThread() {
           }
           auto before_merge = GetCurrentUS();
           MergeVars(var_name, vars, send_scope_.get());
+
+          auto var_str =
+              operators::GetTensorDetails(var_name, send_scope_.get());
+          VLOG(1) << var_str;
+
           auto after_merge = GetCurrentUS();
           VLOG(3) << "merge " << merged_var_num << " " << var_name
                   << " use time " << after_merge - before_merge;
@@ -473,6 +478,11 @@ void HalfAsyncCommunicator::ConsumeThread() {
           }
           auto before_merge = GetCurrentUS();
           MergeVars(var_name, vars, send_scope_.get());
+
+          auto var_str =
+              operators::GetTensorDetails(var_name, send_scope_.get());
+          VLOG(1) << var_str;
+
           auto after_merge = GetCurrentUS();
           VLOG(3) << "merge " << merged_var_num << " " << var_name
                   << " use time " << after_merge - before_merge;

@@ -56,6 +56,9 @@ class SendOp : public framework::OperatorBase {
       distributed::RPCClient* rpc_client =
           distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
+      auto var_str = operators::GetTensorDetails(ins[0], &scope);
+      VLOG(1) << var_str;
+
       std::vector<distributed::VarHandlePtr> rets;
       for (size_t i = 0; i < ins.size(); i++) {
         if (NeedSend(scope, ins[i])) {
