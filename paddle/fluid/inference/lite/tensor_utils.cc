@@ -24,37 +24,35 @@ namespace lite {
 using paddle::lite_api::TargetType;
 using paddle::lite_api::PrecisionType;
 using paddle::lite_api::DataLayoutType;
-using platform::CPUPlace;
-using platform::CUDAPlace;
 
 namespace {
 
-const platform::Place& GetNativePlace(TargetType) {
-  switch (TargetType) {
+platform::Place GetNativePlace(const TargetType& type) {
+  switch (type) {
     case TargetType::kHost:
-      return CPUPlace();
+      return platform::CPUPlace();
     case TargetType::kCUDA:
-      return CUDAPlace();
+      return platform::CUDAPlace();
     default:
       LOG(FATAL) << "Error target type.";
       return platform::Place();
   }
 }
 
-const proto::VarType::Type& GetNativePrecisionType(PrecisionType) {
-  switch (PrecisionType) {
+framework::proto::VarType::Type GetNativePrecisionType(const PrecisionType& type) {
+  switch (type) {
     case PrecisionType::kFloat:
-      return proto::VarType_Type_FP32;
+      return framework::proto::VarType_Type_FP32;
     case PrecisionType::kInt8:
-      return proto::VarType_Type_INT8;
+      return framework::proto::VarType_Type_INT8;
     default:
       LOG(FATAL) << "Error precision type.";
-      return static_cast<proto::VarType::Type>(-1);
+      return static_cast<framework::proto::VarType::Type>(-1);
   }
 }
 
-const framework::DataLayout& GetNativeLayoutType(DataLayoutType) {
-  switch (DataLayoutType) {
+framework::DataLayout GetNativeLayoutType(const DataLayoutType& type) {
+  switch (type) {
     case DataLayoutType::kNCHW:
       return framework::DataLayout::kNCHW;
     default:
@@ -66,14 +64,14 @@ const framework::DataLayout& GetNativeLayoutType(DataLayoutType) {
 void MemoryCopy(const platform::Place& dst_place, void* dst_data,
     const platform::Place& src_place, const void* src_data, const size_t size) {
   if (platform::is_cpu_place(dst_place) && platform::is_cpu_place(src_place)) {
-    Copy(dst_place, dst_data, src_place, src_data, SizeOfType(src.numel()));
+    memory::Copy(dst_place, dst_data, src_place, src_data, size);
   } else {
 #ifdef PADDLE_WITH_CUDA
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &ctx = *pool.Get(place);
+    auto &ctx = *pool.Get(platform::CUDAPlace());
     auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    Copy(dst_place, dst_data, src_place, src_data, SizeOfType(src.numel()), stream);
+    memory::Copy(dst_place, dst_data, src_place, src_data, size, stream);
 #else
     LOG(FATAL) << "You must define PADDLE_WITH_CUDA for using CUDAPlace.";
 #endif
@@ -82,29 +80,31 @@ void MemoryCopy(const platform::Place& dst_place, void* dst_data,
 
 } // namespace
 
-template<paddle::lite::Tensor, framework::LoDTensor>
+template<>
 void TensorCopy(paddle::lite::Tensor* dst, const framework::LoDTensor& src) {
   const TargetType dst_target = dst->target();
   const platform::Place& src_place = src.place();
   const platform::Place& dst_place = GetNativePlace(dst_target);
   PADDLE_ENFORCE_EQ(src.type(), GetNativePrecisionType(dst->precision()));
-  std::vector<int64_t> dims = framework::vectorize(src.dims());
+  const std::vector<int64_t> dims = framework::vectorize(src.dims());
+  const size_t size = static_cast<size_t>(src.numel());
   dst->Resize(dims);
   const void* src_data = src.data<void>();
-  void* dst_data = dst->mutable_data<void>(dst_target);
-  MemoryCopy(dst_place, dst_data, src_place, src_data, src.numel());
+  void* dst_data = dst->mutable_data(size);
+  MemoryCopy(dst_place, dst_data, src_place, src_data, size);
 }
 
-template<framework::LoDTensor, paddle::lite::Tensor>
+template<>
 void TensorCopy(framework::LoDTensor* dst, const paddle::lite::Tensor& src) {
   const platform::Place& src_place = GetNativePlace(src.target());
   const platform::Place& dst_place = dst->place();
   PADDLE_ENFORCE_EQ(dst->type(), GetNativePrecisionType(src.precision()));
-  std::vector<int64_t> dims = src.dims().Vectorize();
-  dst->Resize(dims);
+  const std::vector<int64_t> dims = src.dims().Vectorize();
+  dst->Resize(paddle::framework::make_ddim(dims));
+  const size_t size = static_cast<size_t>(src.numel());
   const void* src_data = src.raw_data();
-  void* dst_data = dst->mutable_data<void>(dst_place, dst->type());
-  MemoryCopy(dst_place, dst_data, src_place, src_data, src.numel());
+  void* dst_data = dst->mutable_data(dst_place, dst->type());
+  MemoryCopy(dst_place, dst_data, src_place, src_data, size);
 }
 
 }  // namespace lite
