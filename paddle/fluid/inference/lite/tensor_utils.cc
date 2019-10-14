@@ -63,15 +63,23 @@ framework::DataLayout GetNativeLayoutType(const DataLayoutType& type) {
 
 void MemoryCopy(const platform::Place& dst_place, void* dst_data,
     const platform::Place& src_place, const void* src_data, const size_t size) {
+  const platform::CPUPlace cpu_place;
+  const platform::CUDAPlace gpu_place;
   if (platform::is_cpu_place(dst_place) && platform::is_cpu_place(src_place)) {
-    memory::Copy(dst_place, dst_data, src_place, src_data, size);
+    memory::Copy(cpu_place, dst_data, cpu_place, src_data, size);
   } else {
 #ifdef PADDLE_WITH_CUDA
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(platform::CUDAPlace());
     auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(dst_place, dst_data, src_place, src_data, size, stream);
+    if (platform::is_cpu_place(dst_place) && platform::is_gpu_place(src_place)) {
+      memory::Copy(cpu_place, dst_data, gpu_place, src_data, size, stream);
+    } else if (platform::is_gpu_place(dst_place) && platform::is_cpu_place(src_place)) {
+      memory::Copy(gpu_place, dst_data, cpu_place, src_data, size, stream);
+    } else if (platform::is_gpu_place(dst_place) && platform::is_gpu_place(src_place)) {
+      memory::Copy(gpu_place, dst_data, gpu_place, src_data, size, stream);
+    }
 #else
     LOG(FATAL) << "You must define PADDLE_WITH_CUDA for using CUDAPlace.";
 #endif
