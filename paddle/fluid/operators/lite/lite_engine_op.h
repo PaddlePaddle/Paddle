@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/analysis/helper.h"
 
 #include "paddle/fluid/inference/lite/engine.h"
+#include "paddle/fluid/inference/lite/tensor_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -58,47 +59,20 @@ class LiteEngineOp : public framework::OperatorBase {
 
   void Execute(const framework::Scope &scope,
                const platform::Place &dev_place) const {
-    platform::CPUPlace cpu_place;
-    platform::CUDAPlace gpu_place;
-    cudaStream_t stream;
-    cudaStreamCreate(&stream);
     for (size_t i = 0; i < in_names_.size(); i++) {
       const framework::LoDTensor& src_t = inference::analysis::GetFromScope<framework::LoDTensor>(scope, in_names_[i]);
       paddle::lite::Tensor* dst_t = engine_->GetInput(i);
-      const void* src_dat = src_t.data<float>();
-      std::vector<int64_t> dims = framework::vectorize(src_t.dims());
-      LOG(INFO) << "Execute In: " << i << ": " << in_names_[i];
-      for (auto a: dims) {
-        LOG(INFO) << "dim: " << a;
-      }
-
-      dst_t->Resize(dims);
-      // dst_t->set_lod({src_t.lod()});
-      float* dst_dat = dst_t->mutable_data<float>(lite_api::TargetType::kHost);
-      memory::Copy(cpu_place, dst_dat, gpu_place, src_dat, src_t.numel() * sizeof(float), stream);
+      inference::lite::TensorCopy(dst_t, src_t);
     }
     engine_->Run();
     cudaDeviceSynchronize();
     for (size_t i = 0; i < out_names_.size(); i++) {
       const paddle::lite::Tensor& src_t = *(engine_->GetOutput(i));
       framework::LoDTensor* dst_t = &inference::analysis::GetFromScope<framework::LoDTensor>(scope, out_names_[i]);
-      const void* src_dat = src_t.data<float>();
-      LOG(INFO) << "src_dat[0]" << ((float*)src_dat)[0];
-
-      std::vector<int64_t> dims = src_t.dims().Vectorize();
-      LOG(INFO) << "Execute Out: " << i << ": " << out_names_[i];
-      for (auto a: dims) {
-        LOG(INFO) << "dim: " << a;
-      }
-
-      dst_t->Resize(framework::make_ddim(dims));
-      // dst_t->set_lod(src_t.lod());
-      float* dst_dat = dst_t->mutable_data<float>(cpu_place);
-      memory::Copy(cpu_place, dst_dat, cpu_place, src_dat, src_t.numel() * sizeof(float));
+      inference::lite::TensorCopy(dst_t, src_t);
     }
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
- 

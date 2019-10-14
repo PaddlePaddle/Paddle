@@ -1,1 +1,1 @@
-op_library(lite_engine_op DEPS memcpy)
+op_library(lite_engine_op DEPS lite_tensor_utils)
