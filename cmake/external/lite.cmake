@@ -66,8 +66,8 @@ include_directories(${LITE_SOURCE_DIR})
 include_directories(${LITE_BINARY_DIR})
 
 function(external_lite_static_libs alias path)
-  add_library(${alias} STATIC IMPORTED GLOBAL) 
-  SET_PROPERTY(TARGET ${alias} PROPERTY IMPORTED_LOCATION 
+  add_library(${alias} STATIC IMPORTED GLOBAL)
+  SET_PROPERTY(TARGET ${alias} PROPERTY IMPORTED_LOCATION
                ${path})
   if (LITE_PROJECT)
     add_dependencies(${alias} ${LITE_PROJECT})
