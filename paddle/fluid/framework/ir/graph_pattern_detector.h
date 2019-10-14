@@ -404,7 +404,8 @@ struct ConvBN : public PatternBase {
   ConvBN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_bn") {}
 
-  PDNode* operator()(PDNode* conv_input, bool with_eltwise_add);
+  PDNode* operator()(PDNode* conv_input, const std::string& conv_type,
+                     bool with_eltwise_add);
 
   // declare operator node's name
   PATTERN_DECL_NODE(conv);

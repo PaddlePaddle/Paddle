@@ -93,19 +93,21 @@ class DistMultiTrainer : public MultiTrainer {
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
   virtual void FinalizeDumpEnv();
   virtual void InitDumpEnv();
-  virtual void DumpWork();
+  virtual void DumpWork(int tid);
   virtual Scope* GetWorkerScope(int thread_id) { return root_scope_; }
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
-  std::thread dump_thread_;
-  std::shared_ptr<FILE> fp_;
+  std::vector<std::thread> dump_thread_;
+  int dump_thread_num_;
   std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;
 
   bool need_dump_field_;
   std::string dump_fields_path_;
   std::string dump_converter_;
   int mpi_rank_;
+  int mpi_size_;
+  int dump_file_num_;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
