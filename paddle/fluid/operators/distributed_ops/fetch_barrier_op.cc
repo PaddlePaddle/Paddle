@@ -56,7 +56,8 @@ class FetchBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Any) Dummy inputs, used for control dependency")
-        .AsDispensable();
+        .AsDispensable()
+        .AsDuplicable();
     AddOutput("Out", "(Any) Dummy outputs, used for control dependency")
         .AsDuplicable();
     AddComment(R"DOC(
