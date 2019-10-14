@@ -35,7 +35,8 @@ class LiteSubgraphPass : public framework::ir::FusePassBase {
 
   void SetUpEngine(framework::ProgramDesc* program,
                    const std::vector<std::string>& repetitive_params,
-                   const std::string& unique_key) const;
+                   const std::string& unique_key,
+                   bool dump_model = false) const;
 };
 
 }  // namespace analysis

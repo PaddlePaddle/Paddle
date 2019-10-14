@@ -185,7 +185,7 @@ void OrganizeProgram(Node *merged_node,
 
 void LiteSubgraphPass::SetUpEngine(framework::ProgramDesc* program,
   const std::vector<std::string>& repetitive_params,
-  const std::string& unique_key) const {
+  const std::string& unique_key, bool dump_model) const {
   inference::lite::EngineConfig config;
   auto *scope = param_scope();
 
@@ -221,6 +221,10 @@ void LiteSubgraphPass::SetUpEngine(framework::ProgramDesc* program,
       paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)}),
 #endif
   };
+  if (dump_model) {
+    StrToBinaryFile("./model.bin", config.model);
+    StrToBinaryFile("./param.bin", config.param);
+  }
   inference::Singleton<inference::lite::EngineManager>::Global()
       .Create(unique_key, config);
 }
