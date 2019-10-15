@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import threading
+import time
+
+import numpy as np
+
 from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
 from .device_worker import Hogwild, DownpourSGD, Section
 
-__all__ = ["TrainerFactory"]
+__all__ = ["TrainerFactory", "FetchHandler", "FetchHandlerMonitor"]
 
 
 class TrainerFactory(object):
@@ -42,9 +47,69 @@ class TrainerFactory(object):
                 trainer._set_scale_datanorm(opt_info["scale_datanorm"])
                 trainer._set_dump_slot(opt_info["dump_slot"])
                 trainer._set_mpi_rank(opt_info["mpi_rank"])
+                trainer._set_mpi_size(opt_info["mpi_size"])
                 trainer._set_dump_fields(opt_info["dump_fields"])
                 trainer._set_dump_fields_path(opt_info["dump_fields_path"])
+                trainer._set_dump_file_num(opt_info["dump_file_num"])
                 trainer._set_dump_converter(opt_info["dump_converter"])
                 trainer._set_adjust_ins_weight(opt_info["adjust_ins_weight"])
             trainer._set_device_worker(device_worker)
         return trainer
+
+
+class FetchHandlerMonitor(object):
+    def __init__(self, scope, handler):
+        self.fetch_instance = handler
+        self.fetch_thread = threading.Thread(
+            target=self.handler_decorator,
+            args=(scope, self.fetch_instance.handler))
+        self.running = False
+
+    def start(self):
+        self.running = True
+        self.fetch_thread.setDaemon(True)
+        self.fetch_thread.start()
+
+    def handler_decorator(self, fetch_scope, fetch_handler):
+        fetch_target_names = self.fetch_instance.fetch_target_names
+        period_secs = self.fetch_instance.period_secs
+
+        elapsed_secs = 0
+        while True:
+            while self.running and elapsed_secs >= period_secs:
+                elapsed_secs = 0
+
+                fetch_vars = [
+                    fetch_scope.find_var(varname)
+                    for varname in fetch_target_names
+                ]
+
+                fetch_tensors = [var.get_tensor() for var in fetch_vars]
+
+                if self.fetch_instance.return_np:
+                    fetch_nps = []
+
+                    for tensor in fetch_tensors:
+                        lod = tensor.lod()
+
+                        if len(lod) > 0:
+                            raise RuntimeError(
+                                "Some of your fetched tensors hold LoD information. \
+                        They can not be completely cast to Python ndarray. We can not \
+                        return LoDTensor itself directly, please choose another targets"
+                            )
+
+                        if tensor._is_initialized():
+                            fetch_nps.append(np.array(tensor))
+                        else:
+                            fetch_nps.append(None)
+
+                    fetch_handler(fetch_nps)
+                else:
+                    fetch_handler(fetch_tensors)
+            else:
+                time.sleep(1)
+                elapsed_secs += 1
+
+    def stop(self):
+        self.running = False
