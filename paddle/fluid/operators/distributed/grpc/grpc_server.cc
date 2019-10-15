@@ -481,9 +481,9 @@ void AsyncGRPCServer::StartServer() {
       break;
     }
 
-    LOG(INFO) << "Server listening on " << bind_address_
-              << " failed, selected port: " << selected_port_
-              << ", retry after 3 seconds!";
+    LOG(WARNING) << "Server listening on " << bind_address_
+                 << " failed, selected port: " << selected_port_
+                 << ", retry after 3 seconds!";
 
     sleep(3);
   }
