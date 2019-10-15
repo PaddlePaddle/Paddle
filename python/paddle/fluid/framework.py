@@ -1756,9 +1756,12 @@ class Operator(object):
                             elif isinstance(arg, Variable):
                                 in_arg_names.append(cpt.to_text(arg.name))
                             else:
-                                raise ValueError(
-                                    "not suprt args type , should be[ string_type, binary_type, Varibale]"
-                                )
+                                raise TypeError(
+                                    "The type of '%s' in operator %s should be "
+                                    "one of [basestring(), str, Varibale] in python2, "
+                                    "or one of [str, bytes, Variable] in python3."
+                                    "but received : " % (in_proto.name, type),
+                                    arg)
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
