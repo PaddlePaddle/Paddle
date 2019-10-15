@@ -291,6 +291,10 @@ class TestDistRunnerBase(object):
             build_stra.num_trainers = 1
             build_stra.trainer_id = 0
 
+        if args.use_dgc:
+            # fuse_all_reduce_ops require that gradients should not be sparse types
+            build_stra.fuse_all_reduce_ops = False
+
         print_to_err(type(self).__name__, "begin to compile with data parallel")
         binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
             loss_name=avg_cost.name,
@@ -525,7 +529,11 @@ class TestDistBase(unittest.TestCase):
                 self._port_set.add(port)
                 return port
 
-    def start_pserver(self, model_file, check_error_log, required_envs):
+    def start_pserver(self,
+                      model_file,
+                      check_error_log,
+                      required_envs,
+                      log_name=""):
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
         ps_cmd = "%s"
 
@@ -548,8 +556,8 @@ class TestDistBase(unittest.TestCase):
 
         print(ps0_cmd)
         print(ps1_cmd)
-        ps0_pipe = open("/tmp/ps0_err.log", "wb")
-        ps1_pipe = open("/tmp/ps1_err.log", "wb")
+        ps0_pipe = open(log_name + "_ps0_err.log", "wb")
+        ps1_pipe = open(log_name + "_ps1_err.log", "wb")
 
         print_to_err(type(self).__name__, "going to start pserver process 0")
         ps0_proc = subprocess.Popen(
@@ -628,8 +636,8 @@ class TestDistBase(unittest.TestCase):
 
     def _run_cluster(self, model, envs, check_error_log, log_name):
         # Run dist train to compare with local results
-        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model,
-                                                          check_error_log, envs)
+        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(
+            model, check_error_log, envs, log_name=log_name)
 
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
 
@@ -848,7 +856,9 @@ class TestDistBase(unittest.TestCase):
 
         if check_error_log:
             required_envs["GLOG_vmodule"] = \
-                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10,alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10"
+                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
+                "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
+                "sparse_all_reduce_op_handle=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         local_losses \

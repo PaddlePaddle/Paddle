@@ -20,7 +20,7 @@ from .... import profiler
 from .... import scope_guard
 from ....data_feeder import DataFeeder
 from ....log_helper import get_logger
-from ....reader import PyReader
+from ....reader import DataLoaderBase
 from ..graph import *
 from .config import ConfigFactory
 import numpy as np
@@ -194,8 +194,8 @@ class Context(object):
             reader = cached_reader(reader, sampled_rate, self.cache_path,
                                    cached_id)
 
-        if isinstance(reader, Variable) or (isinstance(reader, PyReader) and
-                                            (not reader.iterable)):
+        if isinstance(reader, Variable) or (
+                isinstance(reader, DataLoaderBase) and (not reader.iterable)):
             reader.start()
             try:
                 while True:
@@ -480,13 +480,16 @@ class Compressor(object):
         executor = SlimGraphExecutor(self.place)
 
         if context.optimize_graph.compiled_graph is None:
+            build_strategy = compiler.BuildStrategy()
+            build_strategy.fuse_all_reduce_ops = False
             context.optimize_graph.compiled_graph = compiler.CompiledProgram(
                 context.optimize_graph.program).with_data_parallel(
-                    loss_name=context.optimize_graph.out_nodes['loss'])
+                    loss_name=context.optimize_graph.out_nodes['loss'],
+                    build_strategy=build_strategy)
 
         if isinstance(context.train_reader, Variable) or (
-                isinstance(context.train_reader,
-                           PyReader) and (not context.train_reader.iterable)):
+                isinstance(context.train_reader, DataLoaderBase) and
+            (not context.train_reader.iterable)):
             context.train_reader.start()
             try:
                 while True:

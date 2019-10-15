@@ -175,19 +175,21 @@ class SumOp : public framework::OperatorWithKernel {
 class SumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(vector<Tensor>) The input tensors of sum operator.")
+    AddInput("X",
+             "A Varaible list. The shape and data type of the list elements"
+             "should be consistent. Variable can be multi-dimensional Tensor"
+             "or LoDTensor, and data types can be: float32, float64, int32, "
+             "int64.")
         .AsDuplicable();
-    AddOutput("Out", "(Tensor) The output tensor of sum operator.");
+    AddOutput("Out",
+              "the sum of input :code:`x`. its shape and data types are "
+              "consistent with :code:`x`.");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-    AddComment(R"DOC(
-Sum operator.
-
-This operators sums the input tensors. All the inputs can carry the
-LoD (Level of Details) information. However, the output only shares
-the LoD information with the first input.
-)DOC");
+    AddComment(R"DOC(This OP is used to sum one or more Tensor or LoDTensor
+                    of the input. If the input is LoDTensor, the output only
+                    shares LoD information with the first input.)DOC");
   }
 };
 

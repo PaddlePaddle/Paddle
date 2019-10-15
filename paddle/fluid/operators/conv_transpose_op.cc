@@ -64,7 +64,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                       "dimension should be the same.");
 
   const int64_t C =
-      (data_layout == DataLayout::kNCHW ? in_dims[1]
+      (data_layout != DataLayout::kNHWC ? in_dims[1]
                                         : in_dims[in_dims.size() - 1]);
   PADDLE_ENFORCE_EQ(
       C, filter_dims[0],
@@ -72,7 +72,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
       "be equal to the number of filter's channels.");
 
   framework::DDim in_data_dims;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout != DataLayout::kNHWC) {
     in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
   } else {
     in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
@@ -84,10 +84,10 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                            in_data_dims, strides, ksize);
 
   std::vector<int64_t> output_shape({in_dims[0]});
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout != DataLayout::kNHWC) {
     output_shape.push_back(filter_dims[1] * groups);
   }
-  const int offset = (data_layout == DataLayout::kNCHW ? 2 : 1);
+  const int offset = (data_layout != DataLayout::kNHWC ? 2 : 1);
   for (size_t i = 0; i < strides.size(); ++i) {
     auto filter_extent = dilations[i] * (filter_dims[i + 2] - 1) + 1;
     auto infer_shape = (in_dims[i + offset] - 1) * strides[i] -

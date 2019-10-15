@@ -43,12 +43,6 @@ class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor), "
               "the output of PRROIPoolOp is a 4-D Tensor with shape "
               "(num_rois, output_channels, pooled_h, pooled_w).");
-    AddAttr<int>(
-        "output_channels",
-        "(int), "
-        "the number of channels of the output feature map. "
-        "For a task of C classes of objects, output_channels should be "
-        "(C + 1) for classification only.");
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
                    "Multiplicative spatial scale factor "
@@ -100,28 +94,18 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
 
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
-    int output_channels = ctx->Attrs().Get<int>("output_channels");
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
-
-    PADDLE_ENFORCE_EQ(
-        input_dims[1], output_channels * pooled_height * pooled_width,
-        "the channel of X(%d) should be equal to the product of "
-        "output_channels(%d), pooled_height(%d) and pooled_width(%d)",
-        input_dims[1], output_channels, pooled_height, pooled_width);
 
     PADDLE_ENFORCE_GT(pooled_height, 0,
                       "The pooled output height must be greater than 0");
     PADDLE_ENFORCE_GT(pooled_width, 0,
                       "The pooled output width must be greater than 0");
-    PADDLE_ENFORCE_GT(output_channels, 1,
-                      "The pooled output channels must greater than 1");
     PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
                       "The spatial scale must greater than 0.");
 
     auto out_dims = input_dims;
     out_dims[0] = rois_dims[0];
-    out_dims[1] =
-        output_channels;  // input_dims[1] / (pooled_height * pooled_width);
+    out_dims[1] = input_dims[1];
     out_dims[2] = pooled_height;
     out_dims[3] = pooled_width;
     ctx->SetOutputDim("Out", out_dims);
@@ -145,6 +129,7 @@ class PRROIPoolGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
                       "The gradient of X should not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->SetOutputDim(framework::GradVarName("ROIs"), ctx->GetInputDim("ROIs"));
   }
 
  protected:
@@ -165,9 +150,11 @@ class PRROIPoolGradMaker : public framework::SingleGradOpMaker<T> {
     std::unique_ptr<T> op(new T());
     op->SetType("prroi_pool_grad");
     op->SetInput("X", this->Input("X"));
+    op->SetInput("Out", this->Output("Out"));
     op->SetInput("ROIs", this->Input("ROIs"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("ROIs"), this->InputGrad("ROIs"));
     op->SetAttrMap(this->Attrs());
     return op;
   }

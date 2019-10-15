@@ -22,6 +22,7 @@ from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedCollectiveRol
 from paddle.fluid.incubate.fleet.base.role_maker import Role
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
 from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import TranspilerOptimizer
+from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer
 
 
 class DistributeTranspilerConfigTest(unittest.TestCase):
@@ -202,6 +203,12 @@ class UserDefinedCollectiveRoleMakerTest(unittest.TestCase):
             current_id=1,
             worker_endpoints=["127.0.0.1:8080"]
         )  # current_id must be less than len(worker_endpoints)
+
+
+class CollectiveOptimizerTest(unittest.TestCase):
+    def test_ds_as_None(self):
+        optimizer = fluid.optimizer.AdamOptimizer()
+        dist_optimizer = CollectiveOptimizer(optimizer, strategy=None)
 
 
 if __name__ == '__main__':

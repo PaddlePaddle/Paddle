@@ -17,6 +17,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):
@@ -110,6 +112,21 @@ class Generator(object):
     def test_check_grad_ignore_y(self):
         self.check_grad(
             ['X'], 'Out', max_relative_error=1e-3, no_grad_set=set('Y'))
+
+
+class TestMatmulOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The inputs type of matmul_op must be Variable.
+            input1 = 12
+            self.assertRaises(TypeError, fluid.layers.matmul, input1, input1)
+            # The inputs dtype of matmul_op must be float32, float64.
+            input2 = fluid.layers.data(
+                name='input2', shape=[10, 10], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.matmul, input2, input2)
+            input3 = fluid.layers.data(
+                name='input3', shape=[2, 2], dtype="float16")
+            fluid.layers.matmul(input3, input3)
 
 
 # Generate test cases for all possibilities
