@@ -122,9 +122,9 @@ class GradOpBaseMakerBase {
       for (auto& var_base_temp : iterator->second) {
         if (is_grad) {
           PADDLE_ENFORCE_NOT_NULL(var_base_temp->GradVarBase(),
-                                  "var base grad should not be null");
+                                  "VarBase grad of OP [%s] should not be null",
+                                  fw_op_base_->Type());
           auto grad_var_base_tmp = var_base_temp->GradVarBase();
-          grad_var_base_tmp->SetIsGradFromGradMaker(true);
           auto* tensor = grad_var_base_tmp->MutableVar()
                              ->GetMutable<framework::LoDTensor>();
           tensor->Resize(

@@ -93,6 +93,19 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
 
   size_t grad_op_num = grad_op_bases_.size();
 
+  std::set<VarBase*> set_input_vars;
+  for (auto& grad_in_it : ins) {
+    for (auto& var_base_it : grad_in_it.second) {
+      set_input_vars.insert(var_base_it.get());
+    }
+  }
+
+  for (auto& grad_out_it : outs) {
+    for (auto& var_base_it : grad_out_it.second) {
+      set_input_vars.insert(var_base_it.get());
+    }
+  }
+
   for (size_t i = 0; i < grad_op_num; ++i) {
     size_t trace_id = fwd_op->id();
 
@@ -105,7 +118,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
     auto& grad_out = *(grad_op->GetMutableOutsMap());
     for (auto& grad_in_it : grad_in) {
       for (auto& var_base_it : grad_in_it.second) {
-        if (var_base_it->IsGradFromGradMaker() == true) {
+        if (set_input_vars.count(var_base_it.get()) == 0) {
           var_base_it->AddGradOps(grad_op);
           engine_->InsertGradVar(var_base_it.get());
         }
