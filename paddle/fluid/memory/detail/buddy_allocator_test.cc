@@ -265,10 +265,10 @@ TEST(BuddyAllocator, SpeedAna) {
   std::vector<bool> vec_free_flag;
 
   std::string line;
-  while (getline(in_file, line)) {
-    size_t pos = line.find("\t");
-    vec_size.push_back(atoi(line.substr(0, pos).c_str()));
-    vec_pos.push_back(atoi(line.substr(pos + 1).c_str()));
+  int size, id;
+  while (in_file >> size >> id) {
+    vec_size.push_back(size);
+    vec_pos.push_back(id);
   }
 
   vec_ptr.reserve(vec_size.size());
