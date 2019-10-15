@@ -265,36 +265,53 @@ def run_convert():
 
 def main_pascalvoc_preprocess(args):
     parser = argparse.ArgumentParser(
-        description="Convert the full pascalvoc val set or local data to binary file."
-    )
+        description="Convert the full pascalvoc val set or local data to binary file.",
+        usage=None,
+        add_help=True)
     parser.add_argument(
         '--choice', choices=['local', 'VOC_test_2007'], required=True)
     parser.add_argument(
         "--data_dir",
-        default="/home/li/AIPG-Paddle/paddle/build/third_party/inference_demo/int8v2/pascalvoc_small",
+        default="./third_party/inference_demo/int8v2/pascalvoc_small",
         type=str,
         help="Dataset root directory")
     parser.add_argument(
         "--img_annotation_list",
         type=str,
         default="test_100.txt",
-        help="A file containing the image file path and relevant annotation file path"
+        help="A file containing the image file path and corresponding annotation file path"
     )
     parser.add_argument(
         "--label_file",
         type=str,
         default="label_list",
-        help="List the labels in the same sequence as denoted in the annotation file"
+        help="List of object labels with same sequence as denoted in the annotation file"
     )
     parser.add_argument(
         "--output_file",
         type=str,
         default="pascalvoc_small.bin",
         help="File path of the output binary file")
-    parser.add_argument("--resize_h", type=int, default=RESIZE_H)
-    parser.add_argument("--resize_w", type=int, default=RESIZE_W)
-    parser.add_argument("--mean_value", type=str, default=MEAN_VALUE)
-    parser.add_argument("--ap_version", type=str, default=AP_VERSION)
+    parser.add_argument(
+        "--resize_h",
+        type=int,
+        default=RESIZE_H,
+        help="Image preprocess with resize_h")
+    parser.add_argument(
+        "--resize_w",
+        type=int,
+        default=RESIZE_W,
+        help="Image prerocess with resize_w")
+    parser.add_argument(
+        "--mean_value",
+        type=str,
+        default=MEAN_VALUE,
+        help="Image preprocess with mean_value")
+    parser.add_argument(
+        "--ap_version",
+        type=str,
+        default=AP_VERSION,
+        help="Image preprocess with ap_version")
     args = parser.parse_args()
     if args.choice == 'local':
         convert_pascalvoc_local2bin(args)

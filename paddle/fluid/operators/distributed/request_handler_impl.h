@@ -17,6 +17,7 @@
 #include <time.h>
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -124,6 +125,22 @@ class RequestCheckpointHandler final : public RequestHandler {
 
  private:
   int checkpoint_notify_id;
+};
+
+class RequestNotifyHandler final : public RequestHandler {
+ public:
+  explicit RequestNotifyHandler(bool sync_mode, int lr_decay_block_id)
+      : RequestHandler(sync_mode) {
+    this->lr_decay_block_id = lr_decay_block_id;
+  }
+  virtual ~RequestNotifyHandler() {}
+  bool Handle(const std::string& varname, framework::Scope* scope,
+              framework::Variable* var, framework::Variable** outvar,
+              const int trainer_id, const std::string& out_var_name = "",
+              const std::string& table_name = "") override;
+
+ private:
+  int lr_decay_block_id;
 };
 
 }  // namespace distributed
