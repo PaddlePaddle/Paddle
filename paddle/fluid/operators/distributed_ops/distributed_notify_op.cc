@@ -78,7 +78,8 @@ class DistributedNotifyOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(distributed_notify, ops::DistributedNotifyOp,
-                  paddle::framework::EmptyGradOpMaker,
-                  ops::DistributedNotifyOpMaker,
-                  ops::DistributedNotifyOpShapeInference);
+REGISTER_OPERATOR(
+    distributed_notify, ops::DistributedNotifyOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::DistributedNotifyOpMaker, ops::DistributedNotifyOpShapeInference);
