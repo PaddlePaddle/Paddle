@@ -144,7 +144,11 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
+<<<<<<< HEAD
         if not self._transpile_config.sync_mode and not self._transpile_config.runtime_split_send_recv:
+=======
+        if not self._transpile_config.sync_mode:
+>>>>>>> 940c6ff1c8... Fix communicator slow bug & fix communicator stop bug (#20366)
             self._communicator.stop()
         self._executor.close()
         if isinstance(self._role_maker, MPISymetricRoleMaker):

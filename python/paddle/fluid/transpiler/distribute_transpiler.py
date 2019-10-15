@@ -703,6 +703,7 @@ class DistributeTranspiler(object):
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
 
+<<<<<<< HEAD
         send_barrier_out = program.global_block().create_var(
             name=framework.generate_control_dev_var_name())
         if self.has_distributed_lookup_table:
@@ -710,6 +711,17 @@ class DistributeTranspiler(object):
                 self.table_name] = program.global_block().create_var(
                     name=framework.generate_control_dev_var_name())
         input_deps = list(self.grad_name_to_send_dummy_out.values())
+=======
+        if self.sync_mode:
+            fetch_barrier_input = []
+            send_barrier_out = program.global_block().create_var(
+                name=framework.generate_control_dev_var_name())
+            if self.has_distributed_lookup_table:
+                self.grad_name_to_send_dummy_out[
+                    self.table_name] = program.global_block().create_var(
+                        name=framework.generate_control_dev_var_name())
+            input_deps = list(self.grad_name_to_send_dummy_out.values())
+>>>>>>> 940c6ff1c8... Fix communicator slow bug & fix communicator stop bug (#20366)
 
         if self.sync_mode:
             program.global_block().append_op(
@@ -722,6 +734,7 @@ class DistributeTranspiler(object):
                     "is_communicator": False,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
+<<<<<<< HEAD
         else:
             if self.config.runtime_split_send_recv and self.config.half_async:
                 program.global_block().append_op(
@@ -734,6 +747,9 @@ class DistributeTranspiler(object):
                         "half_async": True,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                     })
+=======
+            fetch_barrier_input.append(send_barrier_out)
+>>>>>>> 940c6ff1c8... Fix communicator slow bug & fix communicator stop bug (#20366)
 
         # step 3: insert recv op to receive parameters from parameter server
         recv_vars = []
@@ -804,6 +820,8 @@ class DistributeTranspiler(object):
                         OP_ROLE_VAR_ATTR_NAME:
                         [param_varname, recv_op_role_var_name]
                     })
+                if self.sync_mode:
+                    fetch_barrier_input.extend(splited_var)
 
         self._update_remote_sparse_update_op(program, need_sparse_update_params)
 
@@ -811,7 +829,7 @@ class DistributeTranspiler(object):
             # form a WAW dependency
             program.global_block().append_op(
                 type="fetch_barrier",
-                inputs={},
+                inputs={"X": fetch_barrier_input},
                 outputs={"Out": all_recv_outputs},
                 attrs={
                     "endpoints": pserver_endpoints,
