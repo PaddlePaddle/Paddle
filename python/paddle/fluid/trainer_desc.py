@@ -84,12 +84,18 @@ class TrainerDesc(object):
     def _set_mpi_rank(self, mpi_rank):
         self.proto_desc.mpi_rank = mpi_rank
 
+    def _set_mpi_size(self, mpi_size):
+        self.proto_desc.mpi_size = mpi_size
+
     def _set_dump_fields(self, dump_fields):
         for field in dump_fields:
             self.proto_desc.dump_fields.append(field)
 
     def _set_dump_fields_path(self, path):
         self.proto_desc.dump_fields_path = path
+
+    def _set_dump_file_num(self, dump_file_num):
+        self.proto_desc.dump_file_num = dump_file_num
 
     def _set_dump_converter(self, converter):
         self.proto_desc.dump_converter = converter
