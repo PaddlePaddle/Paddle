@@ -106,7 +106,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   size_t in_numel = 0;
   size_t out_numel = 0;
   PADDLE_ENFORCE(nranks_ > 1);
-  std::vector<std::function<void()>> all_reduce_calls;
+  std::vector<std::function<void()>> all_gather_calls;
   std::vector<std::function<void()>> sparse_reduce_calls;
 
   std::vector<memory::AllocationPtr> allocations;
@@ -143,24 +143,62 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
              << ", nranks:" << nranks_ << ", gather_buf size:" << buf_size
              << ", k:" << k << ", place:" << place << ", dtype:" << dtype;
 
-    all_reduce_calls.emplace_back([=] {
-      PADDLE_ENFORCE(platform::dynload::ncclAllGather(
+    all_gather_calls.emplace_back([=] {
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
           in_tensor_buf, gather_buff, 2 * k, static_cast<ncclDataType_t>(dtype),
           comm, stream));
     });
 
     sparse_reduce_calls.emplace_back([=] {
       platform::CUDADeviceGuard guard(dev_id);
-      PADDLE_ENFORCE(paddle::communication::dgc::sparseReduce(
-          gather_buff, k, out_tensor_buf, static_cast<int>(out_numel), nranks_,
-          stream));
+      PADDLE_ENFORCE_EQ(paddle::communication::dgc::sparseReduce(
+                            gather_buff, k, out_tensor_buf,
+                            static_cast<int>(out_numel), nranks_, stream),
+                        true);
     });
   }
 
   WaitInputVarGenerated();
-  NCCLAllReduceFunc(all_reduce_calls);
-  for (auto &call : sparse_reduce_calls) {
-    call();
+  SparseAllReduceFunc(all_gather_calls, sparse_reduce_calls);
+}
+
+void SparseAllReduceOpHandle::SparseAllReduceFunc(
+    const std::vector<std::function<void()>> &all_gather_calls,
+    const std::vector<std::function<void()>> &sparse_reduce_calls) {
+  this->RunAndRecordEvent([&] {
+    if (all_gather_calls.size() == 1UL) {
+      // Do not use NCCLGroup when manage NCCL by per thread per device
+      all_gather_calls[0]();
+    } else {
+      platform::NCCLGroupGuard guard;
+      for (auto &call : all_gather_calls) {
+        call();
+      }
+    }
+
+    for (auto &call : sparse_reduce_calls) {
+      call();
+    }
+  });
+
+  if (FLAGS_sync_nccl_allreduce) {
+    for (auto &p : places_) {
+      int dev_id = boost::get<platform::CUDAPlace>(p).device;
+      auto *nccl_ctxs =
+          nccl_ctxs_->GetRunEnvNCCLCtx(run_order_, use_hierarchical_allreduce_);
+      auto &nccl_ctx = nccl_ctxs->at(dev_id);
+      auto stream = nccl_ctx.stream();
+      cudaError_t e_sync = cudaStreamSynchronize(stream);
+      if (e_sync != 0) {
+        LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync);
+      }
+
+      cudaError_t e_get = cudaGetLastError();
+      if (e_get != 0) {
+        LOG(FATAL) << "cudaGetLastError  " << cudaGetErrorString(e_get)
+                   << " errno:" << e_get;
+      }
+    }
   }
 }
 
