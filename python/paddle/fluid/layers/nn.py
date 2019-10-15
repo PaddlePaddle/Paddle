@@ -157,6 +157,7 @@ __all__ = [
     'unique',
     'unique_with_counts',
     'expand',
+    'expand_as',
     'sequence_concat',
     'scale',
     'elementwise_add',
@@ -12945,6 +12946,76 @@ def expand(x, expand_times, name=None):
     return out
 
 
+def expand_as(x, target_tensor, name=None):
+    """
+    expand_as operator tiles to the input by given expand tensor. You should set expand tensor
+    for each dimension by providing tensor 'target_tensor'. The rank of X
+    should be in [1, 6]. Please note that size of 'target_tensor' must be the same
+    with X's rank. Following is a using case:
+
+
+    .. code-block:: text
+
+        Input(X) is a 3-D tensor with shape [2, 3, 1]:
+
+                [
+                   [[1], [2], [3]],
+                   [[4], [5], [6]]
+                ]
+
+        target_tensor's shape:  [2, 6, 2] 
+
+        Output(Out) is a 3-D tensor with shape [2, 6, 2]:
+
+                [
+                    [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
+                    [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
+                ]
+                
+
+    Args:
+        x (Variable): A Tensor with dtype float64, float32, int32.
+        A tensor with rank in [1, 6].
+        target_tensor (Variable): A Tensor with dtype float64, float32, int32.
+        target_tensor for expanding to Input(X). Only use target_tensor'shape.
+
+    Returns:
+        Variable: A Tensor with dtype float64, float32, int32. 
+        After expanding, size of each dimension of Output(Out) is equal to the size 
+        of the corresponding dimension of target_tensor multiplying the corresponding
+        value given by target_tensor.
+
+
+    Examples:
+        .. code-block:: python
+          
+        import paddle.fluid as fluid
+        import numpy as np
+
+        data = fluid.layers.data(name="data", shape=[-1,10], dtype='float64')
+        target_tensor = fluid.layers.data(
+          name="target_tensor", shape=[-1,20], dtype='float64')
+        result = fluid.layers.expand_as(x=data, target_tensor=target_tensor) 
+        use_cuda = False
+        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        x = np.random.rand(3,10)
+        y = np.random.rand(3,20)
+        output= exe.run(feed={"data":x,"target_tensor":y},fetch_list=[result.name])
+        print(output[0].shape)
+        #(3,20)
+
+    """
+
+    helper = LayerHelper('expand_as', input=x, **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    inputs = {'X': x, 'target_tensor': target_tensor}
+    helper.append_op(type='expand_as', inputs=inputs, outputs={'Out': out})
+    return out
+
+
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
@@ -14918,6 +14989,29 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
     """
 
     helper = LayerHelper("mul", **locals())
+
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'x' in mul must be Variable, but received %s" %
+            (type(x)))
+    if not isinstance(y, Variable):
+        raise TypeError(
+            "The type of 'y' in mul must be Variable, but received %s" %
+            (type(y)))
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'x' in mul only support float16 in GPU now.")
+    if convert_dtype(y.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'y' in mul only support float16 in GPU now.")
+    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
+        raise TypeError(
+            "The data type of 'x' in mul must be float16, float32 or float64, but received %s."
+            % (convert_dtype(x.dtype)))
+    if convert_dtype(y.dtype) not in ['float16', 'float32', 'float64']:
+        raise TypeError(
+            "The data type of 'y' in mul must be float16, float32 or float64, but received %s."
+            % (convert_dtype(y.dtype)))
 
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)

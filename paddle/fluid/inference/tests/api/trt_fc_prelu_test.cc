@@ -35,6 +35,7 @@ TEST(ZeroCopyTensor, uint8) {
   config.SetModel(model_dir);
   config.SwitchUseFeedFetchOps(false);
   config.EnableProfile();
+  config.DisableGlogInfo();
 
   std::vector<std::vector<PaddleTensor>> inputs_all;
   auto predictor = CreatePaddlePredictor(config);
