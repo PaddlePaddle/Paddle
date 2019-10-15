@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <fstream>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -27,6 +28,7 @@
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/var_type_traits.h"
+#include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -142,6 +144,10 @@ bool AnalysisPredictor::PrepareProgram(
     // If config_.ir_optim() is False, parameters is loaded in LoadParameters(),
     // still need to create other persistable variables.
     // So in both case, create persistable variables at first.
+    if (!CheckOperatorCompatible()) {
+      LOG(WARNING) << "WARNING: Results may be DIFF! "
+                      "Using same versions between model and lib.";
+    }
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
     // if enable_ir_optim_ is false,
@@ -500,6 +506,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       framework::InitGflags(flags);
     }
   }
+  if (config.glog_info_disabled()) {
+    google::InitGoogleLogging("Init");
+    FLAGS_logtostderr = 1;
+    FLAGS_minloglevel = google::WARNING;
+    LOG(WARNING) << " - GLOG's LOG(INFO) is disabled.";
+  }
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
   // Each config can only be used for one predictor.
@@ -821,6 +833,37 @@ std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
 
 std::string AnalysisPredictor::GetSerializedProgram() const {
   return inference_program_->Proto()->SerializeAsString();
+}
+
+bool AnalysisPredictor::CheckOperatorCompatible() {
+  if (!inference_program_) {
+    LOG(FATAL) << "Inference program version check failed because the program "
+                  "does not exist.";
+    return false;
+  }
+  bool res = true;
+  op_compatible_map_.ReadFromProto(*inference_program_->OpCompatibleMap());
+  const auto &version = framework::DumpVersion(framework::kCurProgramVersion);
+  LOG(INFO) << "MODEL VERSION: "
+            << framework::DumpVersion(inference_program_->Version());
+  LOG(INFO) << "PREDICTOR VERSION: " << version;
+  std::set<std::string> op_types;
+  for (size_t i = 0; i < inference_program_->Size(); ++i) {
+    const auto &block = inference_program_->Block(i);
+    for (const auto *op : block.AllOps()) {
+      op_types.insert(op->Type());
+    }
+  }
+  for (const auto type : op_types) {
+    auto compatible_type =
+        op_compatible_map_.IsRequireMiniVersion(type, version);
+    if (compatible_type != framework::OpCompatibleType::compatible) {
+      LOG(WARNING) << " - Version incompatible ("
+                   << static_cast<int>(compatible_type) << ") " << type;
+      res = false;
+    }
+  }
+  return res;
 }
 
 // Add SaveOptimModel

@@ -58,6 +58,7 @@ class OptimizerWithMixedPrecison(object):
         self._param_grads = None
         self._train_program = default_main_program()
         self._startup_prog = default_startup_program()
+        self._scaled_loss = None
         self._loss_scaling = layers.create_global_var(
             name=unique_name.generate("loss_scaling"),
             shape=[1],
@@ -101,6 +102,13 @@ class OptimizerWithMixedPrecison(object):
         """
         return self._loss_scaling
 
+    def get_scaled_loss(self):
+        """Return the scaled loss.
+        It's useful when you feed customed loss into executor.
+        """
+
+        return self._scaled_loss
+
     def backward(self,
                  loss,
                  startup_program=None,
@@ -124,9 +132,9 @@ class OptimizerWithMixedPrecison(object):
             gradient respectively, and the scaled loss.
         """
         rewrite_program(self._train_program, self._amp_lists)
-        scaled_loss = loss * self._loss_scaling
+        self._scaled_loss = loss * self._loss_scaling
         self._params_grads = self._optimizer.backward(
-            scaled_loss, startup_program, parameter_list, no_grad_set,
+            self._scaled_loss, startup_program, parameter_list, no_grad_set,
             callbacks)
         update_role_var_grad(self._train_program, self._params_grads)
         scaled_params_grads = []
@@ -135,7 +143,7 @@ class OptimizerWithMixedPrecison(object):
                 scaled_g = g / self._loss_scaling
                 scaled_params_grads.append([p, scaled_g])
 
-        return scaled_params_grads, scaled_loss
+        return scaled_params_grads
 
     def apply_gradients(self, scaled_params_grads):
         """
@@ -194,7 +202,7 @@ class OptimizerWithMixedPrecison(object):
             The scaled loss by scaling factor, the list of optimize ops, and a
             list of scaled parameters and gradients.
         """
-        scaled_params_grads, scaled_loss = self.backward(
+        scaled_params_grads = self.backward(
             loss,
             startup_program=startup_program,
             parameter_list=parameter_list,
@@ -245,7 +253,7 @@ def decorate(optimizer,
 	              optimizer=optimizer, init_loss_scaling=8.0)
 	
             ops, param_grads = mp_optimizer.minimize(loss)
-            scaled_loss = mp_optimizer.get_loss_scaling()
+            scaled_loss = mp_optimizer.get_scaled_loss()
     """
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()

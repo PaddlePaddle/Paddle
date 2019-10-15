@@ -291,6 +291,10 @@ class TestDistRunnerBase(object):
             build_stra.num_trainers = 1
             build_stra.trainer_id = 0
 
+        if args.use_dgc:
+            # fuse_all_reduce_ops require that gradients should not be sparse types
+            build_stra.fuse_all_reduce_ops = False
+
         print_to_err(type(self).__name__, "begin to compile with data parallel")
         binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
             loss_name=avg_cost.name,
@@ -525,7 +529,11 @@ class TestDistBase(unittest.TestCase):
                 self._port_set.add(port)
                 return port
 
-    def start_pserver(self, model_file, check_error_log, required_envs):
+    def start_pserver(self,
+                      model_file,
+                      check_error_log,
+                      required_envs,
+                      log_name=""):
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
         ps_cmd = "%s"
 
@@ -548,8 +556,8 @@ class TestDistBase(unittest.TestCase):
 
         print(ps0_cmd)
         print(ps1_cmd)
-        ps0_pipe = open("/tmp/ps0_err.log", "wb")
-        ps1_pipe = open("/tmp/ps1_err.log", "wb")
+        ps0_pipe = open(log_name + "_ps0_err.log", "wb")
+        ps1_pipe = open(log_name + "_ps1_err.log", "wb")
 
         print_to_err(type(self).__name__, "going to start pserver process 0")
         ps0_proc = subprocess.Popen(
@@ -571,7 +579,8 @@ class TestDistBase(unittest.TestCase):
                    envs,
                    check_error_log=False,
                    batch_size=DEFAULT_BATCH_SIZE,
-                   batch_merge_repeat=1):
+                   batch_merge_repeat=1,
+                   log_name=""):
 
         cmd = self._python_interp
 
@@ -602,7 +611,7 @@ class TestDistBase(unittest.TestCase):
         print("local_cmd: {}, env: {}".format(cmd, env_local))
 
         if check_error_log:
-            err_log = open("/tmp/trainer.err.log", "wb")
+            err_log = open(log_name + "_local.log", "wb")
             local_proc = subprocess.Popen(
                 cmd.split(" "),
                 stdout=subprocess.PIPE,
@@ -625,10 +634,10 @@ class TestDistBase(unittest.TestCase):
 
         return pickle.loads(local_out)
 
-    def _run_cluster(self, model, envs, check_error_log):
+    def _run_cluster(self, model, envs, check_error_log, log_name):
         # Run dist train to compare with local results
-        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model,
-                                                          check_error_log, envs)
+        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(
+            model, check_error_log, envs, log_name=log_name)
 
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
 
@@ -673,8 +682,8 @@ class TestDistBase(unittest.TestCase):
 
         print("tr0_cmd: {}, env: {}".format(tr0_cmd, env0))
         print("tr1_cmd: {}, env: {}".format(tr1_cmd, env1))
-        tr0_pipe = open("/tmp/tr0_err.log", "wb")
-        tr1_pipe = open("/tmp/tr1_err.log", "wb")
+        tr0_pipe = open(log_name + "_tr0_err.log", "wb")
+        tr1_pipe = open(log_name + "_tr1_err.log", "wb")
 
         print_to_err(type(self).__name__, "going to start trainer process 0")
         tr0_proc = subprocess.Popen(
@@ -773,7 +782,7 @@ class TestDistBase(unittest.TestCase):
         return tr_cmd, env
 
     def _run_cluster_nccl2(self, model, envs, nccl2_reduce_layer,
-                           check_error_log):
+                           check_error_log, log_name):
         if self._use_hallreduce:
             self._ps_endpoints = ""
             for i in range(0, 4):
@@ -798,7 +807,7 @@ class TestDistBase(unittest.TestCase):
             print("use_hallreduce:{} tr_cmd:{}, env: {}".format(
                 self._use_hallreduce, tr_cmd, tr_env))
 
-            tr_pipe = open("/tmp/tr{}_err.log".format(i), "wb")
+            tr_pipe = open(log_name + "_tr{}_err.log".format(i), "wb")
 
             print_to_err(
                 type(self).__name__,
@@ -828,7 +837,8 @@ class TestDistBase(unittest.TestCase):
                          model_file,
                          delta=1e-3,
                          check_error_log=False,
-                         need_envs={}):
+                         need_envs={},
+                         log_name=""):
         # TODO(typhoonzero): should auto adapt GPU count on the machine.
         required_envs = {
             "PATH": os.getenv("PATH", ""),
@@ -845,22 +855,34 @@ class TestDistBase(unittest.TestCase):
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "10"
+            required_envs["GLOG_vmodule"] = \
+                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
+                "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
+                "sparse_all_reduce_op_handle=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         local_losses \
             = self._run_local(model_file, required_envs,
-                              check_error_log)
+                              check_error_log, log_name=log_name)
+
         if self._nccl2_mode:
             if self._nccl2_reduce_layer:
                 tr0_losses, tr1_losses = self._run_cluster_nccl2(
-                    model_file, required_envs, True, check_error_log)
+                    model_file,
+                    required_envs,
+                    True,
+                    check_error_log,
+                    log_name=log_name)
             else:
                 tr0_losses, tr1_losses = self._run_cluster_nccl2(
-                    model_file, required_envs, False, check_error_log)
+                    model_file,
+                    required_envs,
+                    False,
+                    check_error_log,
+                    log_name=log_name)
         else:
             tr0_losses, tr1_losses = self._run_cluster(
-                model_file, required_envs, check_error_log)
+                model_file, required_envs, check_error_log, log_name=log_name)
 
         for step_id in range(RUN_STEP):
             local_loss = local_losses[step_id]

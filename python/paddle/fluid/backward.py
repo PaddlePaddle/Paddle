@@ -19,13 +19,18 @@ from . import core
 import collections
 import copy
 import six
+import logging
 from .. import compat as cpt
 from . import unique_name
-
+from . import log_helper
+import paddle.fluid
 __all__ = [
     'append_backward',
     'gradients',
 ]
+
+_logger = log_helper.get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class ProgramStats(object):
@@ -38,7 +43,7 @@ class ProgramStats(object):
     def get_input_nodes(self):
         input_names = []
         for name in self.var_op_deps:
-            if len(self.var_op_deps[name]["var_as_output_ops"]) <= 0 and \
+            if len(self.var_op_deps[name]["var_as_output_ops"]) == 0 and \
                len(self.var_op_deps[name]["var_as_input_ops"]) > 0:
                 if self.block.var(name).persistable:
                     continue
@@ -114,6 +119,22 @@ class ProgramStats(object):
 
             for op_idx in self.op_deps[i]["in_ops"]:
                 self.op_deps[op_idx]["out_ops"].extend([i])
+
+    def sort_checkpoints(self, checkpoints_name):
+        sorted_checkpoints = []
+        for name in checkpoints_name:
+            if name not in self.var_op_deps:
+                _logger.debug(
+                    "Recompute Optimizer: deleted %s from checkpoints, because it is not used in paddle program."
+                    % name)
+            elif self.var_op_deps[name]["var_as_output_ops"] == []:
+                # input nodes
+                sorted_checkpoints.append((name, -1))
+            else:
+                sorted_checkpoints.append(
+                    (name, max(self.var_op_deps[name]["var_as_output_ops"])))
+        sorted_checkpoints = sorted(sorted_checkpoints, key=lambda x: x[1])
+        return [x[0] for x in sorted_checkpoints]
 
 
 def _pretty_op_desc_(op_desc, prefix):
@@ -584,15 +605,17 @@ def _append_backward_ops_with_checkpoints_(
     """
 
     checkpoints_name = [x.name for x in checkpoints]
+    checkpoints_name = list(set(checkpoints_name))
     local_block = block.program._create_block()
     buffer_block = block.program._create_block()
 
     # 1) find ops between checkpoints, i.e. recompute_segments
     program_stat = ProgramStats(block, ops)
     program_stat.build_stats()
+    checkpoints_name = program_stat.sort_checkpoints(checkpoints_name)
     segments = []
 
-    if len(checkpoints) == 1:
+    if len(checkpoints_name) == 1:
         # only one checkpoint
         max_op_idx = -1
         var_group = [checkpoints_name[0]]
@@ -616,8 +639,6 @@ def _append_backward_ops_with_checkpoints_(
                 segments.append([min_idx, max_idx + 1])
             start_idx += 1
 
-    checkpoints_name = list(set(checkpoints_name))
-
     if segments != [] and segments[0][0] != 0:
         recompute_segments = [[0, segments[0][0]]] + segments
     else:
@@ -625,7 +646,7 @@ def _append_backward_ops_with_checkpoints_(
 
     # 2) go through all forward ops and induct all variables that will be hold in memory
     vars_should_be_hold = []
-    # a. variables that are used across segments will be held in memory 
+    # a. variables that are used across segments will be held in memory
     for segment in recompute_segments:
         vars_should_be_hold.extend(
             program_stat.get_out_of_subgraph_vars(segment[0], segment[1]))
@@ -635,10 +656,6 @@ def _append_backward_ops_with_checkpoints_(
     vars_should_be_hold.extend(program_stat.get_input_nodes())
     vars_should_be_hold = list(set(vars_should_be_hold))
 
-    # find variables that can not be deleted
-    grad_should_be_hold = [x + "@GRAD" for x in vars_should_be_hold]
-    vars_should_be_hold.extend(grad_should_be_hold)
-
     # 3) go through each recompute_segments, add backward ops with forward recomputation
     grad_op_descs = []
     var_name_dict = {}
@@ -647,7 +664,7 @@ def _append_backward_ops_with_checkpoints_(
 
     max_calculated_op_position = len(ops)
     if recompute_segments == []:
-        # if there is no recompute segment, add backward ops like 
+        # if there is no recompute segment, add backward ops like
         # _append_backward_ops_ function
         gap_ops = ops[0:max_calculated_op_position]
         for op in reversed(gap_ops):
@@ -919,29 +936,31 @@ def append_backward(loss,
                     callbacks=None,
                     checkpoints=None):
     """
-    Append backward part to main_program.
+    This function appends backward part to main_program.
 
     A complete neural network training is made up of forward and backward
     propagation. However, when we configure a network, we only need to
-    specify its forwrd part. The backward part is generated automatically
-    according to the forward part by this function.
+    specify its forward part. This function uses the chain rule to automatically
+    generate the backward part according to the forward part.
 
-    In most cases, users do not need to invoke this function manually. It
-    will be automatically invoked by the optimizer's `minimize` function.
+    In most cases, users do not need to invoke this function manually.
+    It will be automatically invoked by the optimizer's `minimize` function.
 
-    Args:
-        loss(Variable): The loss variable of the network.
-        parameter_list(list[string]|None): Names of parameters that need
+    Parameters:
+        loss( :ref:`api_guide_Variable_en` ): The loss variable of the network.
+        parameter_list(list of str, optional): Names of parameters that need
                                            to be updated by optimizers.
                                            If it is None, all parameters
                                            will be updated.
-                                           Default: None
-        no_grad_set(set|None): Variables in the Block 0 whose gradients
+                                           Default: None.
+        no_grad_set(set of str, optional): Variable names in the :ref:`api_guide_Block_en` 0 whose gradients
                                should be ignored. All variables with
                                `stop_gradient=True` from all blocks will
                                be automatically added into this set.
-                               Default: None
-        callbacks(list[callable object]|None): The callbacks are used for
+                               If this parameter is not None, the names in this set will be added to the default set.
+                               Default: None.
+        callbacks(list of callable object, optional): List of callback functions.
+                                               The callbacks are used for
                                                doing some custom jobs during
                                                backward part building. All
                                                callable objects in it will
@@ -950,23 +969,23 @@ def append_backward(loss,
                                                into the program. The callable
                                                object must has two input
                                                parameters: 'block' and 'context'.
-                                               The 'block' is the block which
+                                               The 'block' is the :ref:`api_guide_Block_en` which
                                                the new gradient operator will
                                                be added to. The 'context' is a
                                                map, whose keys are gradient
                                                variable names and values are
-                                               corresponding original variables.
+                                               corresponding original :ref:`api_guide_Variable_en` .
                                                In addition to this, the 'context'
                                                has another special key-value pair:
                                                the key is string '__current_op_desc__'
                                                and the value is the op_desc of the
                                                gradient operator who has just
                                                triggered the callable object.
+                                               Default: None.
 
     Returns:
-        list[(Variable,Variable)]: Pairs of parameter and its
-        corresponding gradients. The key is the parameter and the
-        value is gradient variable.
+        list of tuple ( :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` ): Pairs of parameter and its corresponding gradients.
+        The key is the parameter and the value is gradient variable.
 
     Raises:
         AssertionError: If `loss` is not an instance of Variable.
@@ -974,17 +993,20 @@ def append_backward(loss,
     Examples:
         .. code-block:: python
 
-            # network configuration code
-            # loss from ...
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-            y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+            x = fluid.data(name='x', shape=[None, 13], dtype='float32')
+            y = fluid.data(name='y', shape=[None, 1], dtype='float32')
 
             y_predict = fluid.layers.fc(input=x, size=1, act=None)
             loss = fluid.layers.square_error_cost(input=y_predict, label=y)
 
             avg_loss = fluid.layers.mean(loss)
             param_grad_list = fluid.backward.append_backward(loss=avg_loss)
+            p_g_list1 = fluid.backward.append_backward(loss=avg_loss)  # len(p_g_list1) == 2
+            p_g_list2 = fluid.backward.append_backward(loss=avg_loss, parameter_list=[p_g_list1[0][0].name])  # len(p_g_list1) == 1
+            p_g_list3 = fluid.backward.append_backward(loss=avg_loss, no_grad_set=set([p_g_list1[0][0].name]))  # len(p_g_list1) == 1
+            p_g_list4 = fluid.backward.append_backward(loss=avg_loss, parameter_list=[p_g_list1[0][0].name], no_grad_set=set([p_g_list1[0][0].name]))  # len(p_g_list1) == 0
+
     """
     assert isinstance(loss, framework.Variable)
 
@@ -1225,15 +1247,15 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         target = targets[i]
         if grad is None:
             grad_name = _append_grad_suffix_(target.name)
-            op_desc = _create_op_desc_("fill_constant_batch_size_like",
-                                       {"Input": [target.name]},
+            target_shape = paddle.fluid.layers.shape(target)
+            op_desc = _create_op_desc_("fill_constant",
+                                       {"ShapeTensor": [target_shape.name]},
                                        {"Out": [grad_name]}, {
-                                           "shape": target.shape,
+                                           "shape": [],
                                            "value": 1.0,
                                            "dtype": target.dtype,
-                                           'input_dim_idx': 0,
-                                           'output_dim_idx': 0
                                        })
+
             block.desc.append_op().copy_from(op_desc)
             input_grad_names_set.add(grad_name)
         else:

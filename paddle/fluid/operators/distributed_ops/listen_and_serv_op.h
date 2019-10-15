@@ -37,6 +37,7 @@ namespace operators {
 constexpr char kOptimizeBlocks[] = "optimize_blocks";
 constexpr char kPrefetchVarNameToBlockId[] = "prefetch_var_name_to_block_id";
 constexpr char kCheckpointBlockId[] = "checkpint_block_id";
+constexpr char kLRDecayBlockId[] = "lr_decay_block_id";
 constexpr char kSparseGradToParam[] = "sparse_grad_to_param";
 
 void RunServer(std::shared_ptr<distributed::RPCServer> service);
@@ -97,6 +98,7 @@ class ListenAndServOp : public framework::OperatorBase {
       request_prefetch_handler_;
   mutable std::shared_ptr<distributed::RequestHandler>
       request_checkpoint_handler_;
+  mutable std::shared_ptr<distributed::RequestHandler> request_notify_handler_;
 
   mutable std::shared_ptr<std::thread> server_thread_;
   mutable std::vector<std::string> sparse_vars_;

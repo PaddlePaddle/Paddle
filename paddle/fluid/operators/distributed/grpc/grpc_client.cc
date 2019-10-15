@@ -392,6 +392,7 @@ VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
   s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
+  req.set_trainer_id(trainer_id_);
   req.set_varname(COMPLETE_MESSAGE);
 
   platform::RecordRPCEvent record_event(method);
@@ -427,6 +428,35 @@ VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   platform::RecordRPCEvent record_event(method);
 
   auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
+  rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
+  req_count_++;
+
+  if (UNLIKELY(platform::IsProfileEnabled())) {
+    h->Wait();
+  }
+
+  return h;
+}
+
+VarHandlePtr GRPCClient::AsyncDistributeNotify(const std::string& ep,
+                                               const std::string& type,
+                                               int64_t time_out) {
+  const auto ch = GetChannel(ep);
+
+  DistributeNotifyProcessor* s = new DistributeNotifyProcessor(ch);
+
+  const std::string method = kRequestNotify;
+
+  VarHandlePtr h(
+      new VarHandle(ep, method, LEARNING_RATE_DECAY_MESSAGE, nullptr, nullptr));
+  s->Prepare(h, time_out);
+
+  sendrecv::VariableMessage req;
+  req.set_varname(type);
+
+  platform::RecordRPCEvent record_event(method);
+
+  auto rpc = s->stub_->AsyncDistributeNotify(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
 

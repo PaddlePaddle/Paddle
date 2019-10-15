@@ -47,25 +47,25 @@ def data(name,
     """
     **Data Layer**
 
-    This function takes in the input and based on whether data has
-    to be returned back as a minibatch, it creates the global variable by using
-    the helper functions. The global variables can be accessed by all the
-    following operators in the graph.
+    This operator creates the global variable. The global variables can be
+    accessed by all the following operators in the graph.
 
-    All the input variables of this function are passed in as local variables
-    to the LayerHelper constructor.
+    Note: 
+        :code:`paddle.fluid.layers.data` is deprecated as it will be removed in 
+        a later version. Please use :code:`paddle.fluid.data` .
 
-    Notice that paddle would only use :code:`shape` to infer the shapes of 
-    following variables in the network during compile-time. During run-time, 
-    paddle would not check whether the shape of the feeded data matches the 
-    :code:`shape` settings in this function. 
+        The :code:`paddle.fluid.layers.data` set shape and dtype at compile time
+        but does NOT check the shape or the dtype of feeded data, this
+        :code:`paddle.fluid.data` checks the shape and the dtype of data feeded 
+        by Executor or ParallelExecutor during run time.
 
     Args:
-       name(str): The name/alias of the function
+       name(str): The name/alias of the variable, see :ref:`api_guide_Name`
+            for more details.
        shape(list): Tuple declaring the shape. If :code:`append_batch_size` is 
-                    True and there is no -1 inside :code:`shape`, it should be 
-                    considered as the shape of the each sample. Otherwise, it
-                    should be considered as the shape of the batched data.  
+            True and there is no -1 inside :code:`shape`, it should be 
+            considered as the shape of the each sample. Otherwise, it should
+            be considered as the shape of the batched data.  
        append_batch_size(bool):
           1. If true, it prepends -1 to the shape.
             For example if shape=[1], the resulting shape is [-1, 1]. This will 
@@ -74,13 +74,20 @@ def data(name,
             append_batch_size will be enforced to be be False (ineffective)
             because PaddlePaddle cannot set more than 1 unknown number on the
             shape.
-       dtype(np.dtype|VarType|str): The type of data : float32, float16, int etc
-       type(VarType): The output type. By default it is LOD_TENSOR.
+       dtype(np.dtype|VarType|str): The type of the data. Supported dtype: bool,
+            float16, float32, float64, int8, int16, int32, int64, uint8.
+       type(VarType): The output type. Supported dtype: VarType.LOD_TENSOR,
+            VarType.SELECTED_ROWS, VarType.NCCL_ID. Default: VarType.LOD_TENSOR. 
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
+            Default: 0.
        stop_gradient(bool): A boolean that mentions whether gradient should flow.
+            Default: True. 
 
     Returns:
-        Variable: The global variable that gives access to the data.
+        The global variable that gives access to the data.
+
+    Return Type:
+        Variable
 
     Examples:
         .. code-block:: python
@@ -462,7 +469,7 @@ def _py_reader(capacity,
                         break
                 feed_queue.close()
             except Exception as ex:
-                feed_queue.close()
+                feed_queue.kill()
                 logging.warn('Your decorated reader has raised an exception!')
                 six.reraise(*sys.exc_info())
 
@@ -531,29 +538,43 @@ def py_reader(capacity,
     """
     Create a Python reader for data feeding in Python
 
-    This layer returns a Reader Variable.
+    This operator returns a Reader Variable.
     The Reader provides :code:`decorate_paddle_reader()` and
     :code:`decorate_tensor_provider()` to set a Python generator as the data
-    source. More details :ref:`user_guide_use_py_reader_en` .  When
-    :code:`Executor::Run()` is invoked in C++ side, the data from the generator
-    would be read automatically. Unlike :code:`DataFeeder.feed()`, the data
-    reading process and :code:`Executor::Run()` process can run in parallel
-    using :code:`py_reader`. The :code:`start()` method of the Reader should be
-    called when each pass begins, while the :code:`reset()` method should be
-    called when the pass ends and :code:`fluid.core.EOFException` raises.
-    Note that :code:`Program.clone()` method cannot clone :code:`py_reader`.
+    source and feed the data from the data source to the Reader Variable. 
+    When :code:`Executor::Run()` is invoked in C++ side, the data from the 
+    generator would be read automatically. Unlike :code:`DataFeeder.feed()`,
+    the data reading process and :code:`Executor::Run()` process can run in 
+    parallel using :code:`py_reader`. The :code:`start()` method of the Reader
+    should be called when each pass begins, while the :code:`reset()` method 
+    should be called when the pass ends and :code:`fluid.core.EOFException` raises.
+
+    Note:
+       :code:`Program.clone()` method cannot clone :code:`py_reader`. You can 
+       refer to :ref:`api_fluid_Program` for more details.
+       
+       The :code:`read_file` call needs to be in the program block of :code:`py_reader`.
+       You can refer to :ref:`api_fluid_layers_read_file` for more details.
 
     Args:
        capacity(int): The buffer capacity maintained by :code:`py_reader`.
-       shapes(list|tuple): List of tuples which declaring data shapes.
-       dtypes(list|tuple): List of strs which declaring data type.
+       shapes(list|tuple): List of tuples which declaring data shapes. shapes[i] 
+            represents the i-th data shape.
+       dtypes(list|tuple): List of strings which declaring data type. Supported dtype:
+            bool, float16, float32, float64, int8, int16, int32, int64, uint8.
        lod_levels(list|tuple): List of ints which declaring data lod_level.
-       name(basestring): The prefix Python queue name and Reader name. None will
-            be generated automatically.
-       use_double_buffer(bool): Whether use double buffer or not.
+       name(basestring): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+       use_double_buffer(bool): Whether use double buffer or not. The double buffer is 
+            for pre-reading the data of the next batch and copy the data asynchronously 
+            from CPU to GPU. Default is True.
 
     Returns:
-       Variable: A Reader from which we can get feeding data.
+       A Reader from which we can get feeding data.
+
+    Return Type:
+       Variable
 
     Examples:
        1. The basic usage of :code:`py_reader` is as follows:
@@ -667,7 +688,7 @@ def py_reader(capacity,
     """
     logging.warn(
         'paddle.fluid.layers.py_reader() may be deprecated in the near future. '
-        'Please use paddle.fluid.io.PyReader() instead.')
+        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
     return _py_reader(
         capacity=capacity,
         shapes=shapes,
@@ -682,71 +703,72 @@ def create_py_reader_by_data(capacity,
                              name=None,
                              use_double_buffer=True):
     """
-    Create a Python reader for data feeding in Python
+    The OP creates a Python reader for data feeding in Python, it is similar
+    to :ref:`api_fluid_layers_py_reader` except that it can read data from
+    the list of feed variables.
 
-    This layer returns a Reader Variable.
-
-    Works much like py_reader except that it's input is feed_list
-    instead of shapes, dtypes and lod_levels
-
-    Args:
-       capacity(int): The buffer capacity maintained by :code:`py_reader`.
-       feed_list(list(Variable)): The data feed list.
-       name(basestring): The prefix Python queue name and Reader name. None will
-            be generated automatically.
-       use_double_buffer(bool): Whether use double buffer or not.
+    Parameters:
+        capacity (int): The buffer capacity maintained by :code:`py_reader`. Its unit
+            is batch number. Set larger :attr:`capacity` if the reader is fast.
+        feed_list (list(Variable)): The feed variables, are usually created by
+            :code:`fluid.data()`.
+        name (str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name`. Default: None.
+        use_double_buffer (bool, optional): Whether use double buffer. If it's True,
+            the OP would prefetch next batch data asynchronously. Default: True.
 
     Returns:
-       Variable: A Reader from which we can get feeding data.
+        Reader: A Reader for data feeding. The data types of read data are the same as the data types of variables of :attr:`feed_list`.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-         import paddle
-         import paddle.fluid as fluid
-         import paddle.dataset.mnist as mnist
-         import paddle.fluid.compiler as compiler
+          import paddle
+          import paddle.fluid as fluid
+          import paddle.dataset.mnist as mnist
 
-         def network(img, label):
-             # User defined network. Here a simple regression as example
-             predict = fluid.layers.fc(input=img, size=10, act='softmax')
-             loss = fluid.layers.cross_entropy(input=predict, label=label)
-             return fluid.layers.mean(loss)
+          def network(img, label):
+              # User defined network. Here a simple regression as example
+              predict = fluid.layers.fc(input=img, size=10, act='softmax')
+              loss = fluid.layers.cross_entropy(input=predict, label=label)
+              return fluid.layers.mean(loss)
 
-         MEMORY_OPT = False
-         USE_CUDA = False
+          MEMORY_OPT = False
+          USE_CUDA = False
 
-         image = fluid.layers.data(name='image', shape=[1, 28, 28], dtype='float32')
-         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-         reader = fluid.layers.create_py_reader_by_data(capacity=64,
-                                                        feed_list=[image, label])
-         reader.decorate_paddle_reader(
-             paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5),
-                                   buf_size=500))
+          image = fluid.data(name='image', shape=[None, 1, 28, 28], dtype='float32')
+          label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+          reader = fluid.layers.create_py_reader_by_data(capacity=64,
+                                                         feed_list=[image, label])
+          reader.decorate_paddle_reader(
+              paddle.reader.shuffle(paddle.batch(mnist.train(), batch_size=5), buf_size=500))
+          img, label = fluid.layers.read_file(reader)
+          loss = network(img, label) # The definition of custom network and the loss funtion
 
-         img, label = fluid.layers.read_file(reader)
-         loss = network(img, label)  # some network definition
+          place = fluid.CUDAPlace(0) if USE_CUDA else fluid.CPUPlace()
+          exe = fluid.Executor(place)
+          exe.run(fluid.default_startup_program())
 
-         place = fluid.CUDAPlace(0) if USE_CUDA else fluid.CPUPlace()
-         exe = fluid.Executor(place)
-         exe.run(fluid.default_startup_program())
+          build_strategy = fluid.BuildStrategy()
+          build_strategy.memory_optimize = True if MEMORY_OPT else False
+          exec_strategy = fluid.ExecutionStrategy()
+          compiled_prog = fluid.compiler.CompiledProgram(
+          fluid.default_main_program()).with_data_parallel(
+              loss_name=loss.name,
+              build_strategy=build_strategy,
+              exec_strategy=exec_strategy)
 
-         build_strategy = fluid.BuildStrategy()
-         build_strategy.memory_optimize = True if MEMORY_OPT else False
-         compiled_prog = compiler.CompiledProgram(
-             fluid.default_main_program()).with_data_parallel(
-                 loss_name=loss.name,
-                 build_strategy=build_strategy,
-                 exec_strategy=exec_strategy)
-
-         for epoch_id in range(2):
-             reader.start()
-             try:
-                 while True:
-                     exe.run(compiled_prog, fetch_list=[loss.name])
-             except fluid.core.EOFException:
-                 reader.reset()
+          for epoch_id in range(2):
+          reader.start()
+          try:
+              while True:
+                  exe.run(compiled_prog, fetch_list=[loss.name])
+          except fluid.core.EOFException:
+              reader.reset()
     """
+    logging.warn(
+        'paddle.fluid.layers.create_py_reader_by_data() may be deprecated in the near future. '
+        'Please use paddle.fluid.io.DataLoader.from_generator() instead.')
     return _py_reader(
         capacity=capacity,
         shapes=None,
@@ -787,30 +809,27 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
 
 def double_buffer(reader, place=None, name=None):
     """
-    Wrap a double buffer reader. The data will copy to target place with a
-    double buffer queue. If the target place is None, the place that executor
-    perform on will be used.
+    Wrap a double buffer reader. The class Reader contains DecoratedReader and FileReader. Moreover, the DecoratedReader is inherited by CustomReader and BufferedReader. This function is related to BufferedReader. The data will copy to target place with a double buffer queue. If the target place is None, the place that executor perform on will be used.
+
 
     Args:
-        reader(Variable): the reader variable need to be wrapped.
-        place(Place): the place of target data. Default is the sample place of
-            executor perform.
-
-        name(str): Variable name. None if the user does not care.
+        reader (Variable): The Reader Variable need to be wrapped.
+        place (Place, optional): The place of target data, such as CPU, GPU, and if use GPU, it's necessary to point out which card is involved. Default is the sample place of executor perform.
+        name (str, optional): Variable name. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`. Default is None. 
 
     Returns:
-        wrapped reader with double buffer.
+        Variable(Reader): wrapped reader with double buffer.
 
     Examples:
-        .. code-block:: python
+        ..  code-block:: python
           
-           import paddle.fluid as fluid
-           reader = fluid.layers.py_reader(capacity=64,
-                                           shapes=[(-1, 1, 28, 28), (-1, 1)],
-                                           dtypes=['float32', 'int64'],
-                                           use_double_buffer=False)
-           reader = fluid.layers.double_buffer(reader)
-           image, label = fluid.layers.read_file(reader)
+            import paddle.fluid as fluid
+            reader = fluid.layers.py_reader(capacity=64,
+                                            shapes=[(-1, 1, 28, 28), (-1, 1)],
+                                            dtypes=['float32', 'int64'],
+                                            use_double_buffer=False)
+            reader = fluid.layers.double_buffer(reader)
+            image, label = fluid.layers.read_file(reader)
     """
     attrs = dict()
     if place is not None:
@@ -825,14 +844,14 @@ def read_file(reader):
 
     A reader is also a Variable. It can be a raw reader generated by
     `fluid.layers.open_files()` or a decorated one generated by
-    `fluid.layers.double_buffer()` and so on.
+    `fluid.layers.double_buffer()` .
 
     Args:
 
         reader(Variable): The reader to execute.
 
     Returns:
-        Tuple[Variable]: Data read via the given reader.
+        Tuple[Variable]: Data read from the given reader.
 
     Examples:
         .. code-block:: python
@@ -857,24 +876,25 @@ def read_file(reader):
         return out
 
 
-@templatedoc()
 def load(out, file_path, load_as_fp16=None):
     """
-    ${comment}
-
-    >>> import paddle.fluid as fluid
-    >>> tmp_tensor = fluid.layers.create_tensor(dtype='float32')
-    >>> fluid.layers.load(tmp_tensor, "./tmp_tensor.bin")
+    Load operator will load a LoDTensor / SelectedRows variable from disk file.
 
     Args:
-        out(${out_type}): ${out_comment}.
+        out(Variable): The LoDTensor / SelectedRows need to be loaded..
 
-        file_path(${file_path_type}): ${file_path_comment}.
+        file_path(STRING): Variable will be loaded from "file_path".
 
-        load_as_fp16(${load_as_fp16_type}): ${load_as_fp16_comment}.
-
+        load_as_fp16(BOOLEAN): If true, the tensor will be first loaded and then converted to float16 data type. Otherwise, the tensor will be directly loaded without data type conversion. Default is false..
     Returns:
         None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            tmp_tensor = fluid.layers.create_tensor(dtype='float32')
+            fluid.layers.load(tmp_tensor, "./tmp_tensor.bin")
     """
     helper = LayerHelper("load", **locals())
     attrs = {"file_path": file_path}
