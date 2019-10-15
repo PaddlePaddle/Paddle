@@ -49,11 +49,11 @@ inline bool NeedSend(const framework::Scope &scope,
 }
 
 inline std::string GetTensorDetails(const framework::Scope &scope,
-                                    const std::string &var_name) {
-  auto *var = scope.Var(var_name);
+                                    const std::string &varname) {
+  auto *var = scope.FindVar(varname);
 
   std::stringstream ss;
-  ss << "------------  " << var_name << "  ---------------\n";
+  ss << "------------  " << varname << "  ---------------\n";
 
   if (var->IsType<framework::LoDTensor>()) {
     auto &var_t = var->Get<framework::LoDTensor>();
