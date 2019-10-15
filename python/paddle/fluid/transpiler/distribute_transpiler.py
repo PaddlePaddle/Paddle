@@ -834,6 +834,24 @@ class DistributeTranspiler(object):
                             RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
                         })
 
+<<<<<<< HEAD
+=======
+            self._update_remote_sparse_update_op(program,
+                                                 need_sparse_update_params)
+        if not self.sync_mode:
+            lr_ops = self._get_lr_ops()
+            if len(lr_ops) > 0:
+                program.global_block().append_op(
+                    type="distributed_notify",
+                    inputs={},
+                    outputs={},
+                    attrs={
+                        "epmap": pserver_endpoints,
+                        "trainer_id": self.trainer_id,
+                        "type": "LRDECAY@RECV"
+                    })
+
+>>>>>>> b4a3b75002... bug fix: invalid learning rate decay in pserver async mode (#20325)
         self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
 
         if self.has_distributed_lookup_table:
@@ -1140,6 +1158,8 @@ class DistributeTranspiler(object):
         lr_ops = self._get_lr_ops()
         # record optimize blocks and we can run them on pserver parallel
         optimize_blocks = []
+
+        lr_decay_block_id = -1
         if len(lr_ops) > 0:
             lr_decay_block = pserver_program._create_block(
                 pserver_program.num_blocks - 1)
@@ -1149,6 +1169,7 @@ class DistributeTranspiler(object):
                 # append sub blocks to pserver_program in lr_decay_op
                 __clone_lr_op_sub_block__(cloned_op, pserver_program,
                                           lr_decay_block)
+            lr_decay_block_id = lr_decay_block.idx
 
         # append op to the current block
         grad_to_block_id = []
@@ -1226,6 +1247,7 @@ class DistributeTranspiler(object):
             "sync_mode": self.sync_mode,
             "grad_to_block_id": grad_to_block_id,
             "sparse_grad_to_param": sparse_grad_to_param,
+            "lr_decay_block_id": lr_decay_block_id,
         }
 
         if self.has_distributed_lookup_table:
