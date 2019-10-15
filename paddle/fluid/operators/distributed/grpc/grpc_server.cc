@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <unistd.h>
 #include <limits>
 #include <memory>
 #include <string>
@@ -22,6 +23,7 @@ limitations under the License. */
 using ::grpc::ServerAsyncResponseWriter;
 
 DECLARE_bool(rpc_disable_reuse_port);
+DECLARE_int32(rpc_retry_bind_port);
 
 namespace paddle {
 namespace operators {
@@ -468,9 +470,20 @@ void AsyncGRPCServer::StartServer() {
     rpc_cq_[t.first].reset(builder.AddCompletionQueue().release());
   }
 
-  server_ = builder.BuildAndStart();
-  LOG(INFO) << "Server listening on " << bind_address_
-            << " selected port: " << selected_port_;
+  for (int i = 0; i < FLAGS_rpc_retry_bind_port; i++) {
+    server_ = builder.BuildAndStart();
+    if (selected_port_ == 0) {
+      LOG(INFO) << "Server listening on " << bind_address_
+                << " successful, selected port: " << selected_port_;
+      break;
+    }
+
+    LOG(INFO) << "Server listening on " << bind_address_
+              << " failed, selected port: " << selected_port_
+              << ", retry after 3 seconds!";
+
+    sleep(3);
+  }
 
   std::function<void(const std::string&, int)> f =
       std::bind(&AsyncGRPCServer::TryToRegisterNewOne, this,
