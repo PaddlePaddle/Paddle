@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.layers.device import get_places
 import unittest
 import os
 import numpy as np
@@ -80,16 +83,7 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         avg_cost, predict_word = __network__(
             [first_word, second_word, third_word, forth_word, next_word])
     else:
-        places = fluid.layers.get_places()
-        pd = fluid.layers.ParallelDo(places)
-        with pd.do():
-            avg_cost, predict_word = __network__(
-                map(pd.read_input, [
-                    first_word, second_word, third_word, forth_word, next_word
-                ]))
-            pd.write_output(avg_cost)
-
-        avg_cost = fluid.layers.mean(pd())
+        raise NotImplementedError()
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
@@ -125,16 +119,16 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
     if is_local:
         train_loop(fluid.default_main_program())
     else:
-        port = os.getenv("PADDLE_INIT_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        port = os.getenv("PADDLE_PSERVER_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
         eplist = []
         for ip in pserver_ips.split(","):
             eplist.append(':'.join([ip, port]))
         pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
-        trainers = int(os.getenv("TRAINERS"))
+        trainers = int(os.getenv("PADDLE_TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
-        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
-        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+        training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
@@ -166,23 +160,24 @@ def infer(use_cuda, save_dirname=None):
         word_dict = paddle.dataset.imikolov.build_dict()
         dict_size = len(word_dict)
 
-        # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word 
-        # is simply an index to look up for the corresponding word vector and hence 
-        # the shape of word (base_shape) should be [1]. The length-based level of 
-        # detail (lod) info of each LoDtensor should be [[1]] meaning there is only 
-        # one lod_level and there is only one sequence of one word on this level.
-        # Note that lod info should be a list of lists.
-        lod = [[1]]
+        # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word
+        # is simply an index to look up for the corresponding word vector and hence
+        # the shape of word (base_shape) should be [1]. The recursive_sequence_lengths,
+        # which is length-based level of detail (lod) of each LoDTensor, should be [[1]]
+        # meaning there is only one level of detail and there is only one sequence of
+        # one word on this level.
+        # Note that recursive_sequence_lengths should be a list of lists.
+        recursive_seq_lens = [[1]]
         base_shape = [1]
         # The range of random integers is [low, high]
         first_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
         second_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
         third_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
         fourth_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
 
         assert feed_target_names[0] == 'firstw'
         assert feed_target_names[1] == 'secondw'
@@ -200,9 +195,32 @@ def infer(use_cuda, save_dirname=None):
                           },
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print(results[0].lod())
+
+        def to_infer_tensor(lod_tensor):
+            infer_tensor = fluid.core.PaddleTensor()
+            infer_tensor.lod = lod_tensor.lod()
+            infer_tensor.data = fluid.core.PaddleBuf(np.array(lod_tensor))
+            infer_tensor.shape = lod_tensor.shape()
+            infer_tensor.dtype = fluid.core.PaddleDType.INT64
+            return infer_tensor
+
+        infer_inputs = [first_word, second_word, third_word, fourth_word]
+        infer_inputs = [to_infer_tensor(t) for t in infer_inputs]
+
+        infer_config = fluid.core.NativeConfig()
+        infer_config.model_dir = 'word2vec.inference.model'
+        infer_config.use_gpu = use_cuda
+        if use_cuda:
+            infer_config.device = 0
+            infer_config.fraction_of_gpu_memory = 0.15
+        compiled_program = fluid.compiler.CompiledProgram(inference_program)
+        compiled_program._with_inference_optimize(infer_config)
+        assert compiled_program._is_inference is True
+        infer_outputs = exe.run(compiled_program, feed=infer_inputs)
         np_data = np.array(results[0])
-        print("Inference Shape: ", np_data.shape)
+        infer_out = infer_outputs[0].data.float_data()
+        for a, b in zip(np_data[0], infer_out):
+            assert np.isclose(a, b), "a: {}, b: {}".format(a, b)
 
 
 def main(use_cuda, is_sparse, is_parallel):
@@ -243,7 +261,7 @@ def inject_test_method(use_cuda, is_sparse, is_parallel):
                     is_sparse=is_sparse,
                     is_parallel=is_parallel)
 
-    if use_cuda and is_sparse:
+    if (not fluid.core.is_compiled_with_cuda() or use_cuda) and is_sparse:
         fn = __impl__
     else:
         # skip the other test when on CI server
@@ -255,7 +273,7 @@ def inject_test_method(use_cuda, is_sparse, is_parallel):
 
 for use_cuda in (False, True):
     for is_sparse in (False, True):
-        for is_parallel in (False, True):
+        for is_parallel in (False, ):
             inject_test_method(use_cuda, is_sparse, is_parallel)
 
 if __name__ == '__main__':

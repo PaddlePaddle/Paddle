@@ -11,19 +11,36 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 class ElementwiseMulOp(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
     def setUp(self):
         self.op_type = "elementwise_mul"
+        self.dtype = np.float32
+        self.axis = -1
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
+
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [13, 17]).astype("float64"),
-            'Y': np.random.uniform(0.1, 1, [13, 17]).astype("float64")
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.outputs = {'Out': np.multiply(self.inputs['X'], self.inputs['Y'])}
+        self.outputs = {'Out': self.out}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):
         self.check_output()
@@ -36,6 +53,17 @@ class ElementwiseMulOp(OpTest):
 
     def test_check_grad_ingore_y(self):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
+    def init_dtype(self):
+        pass
+
+    def init_axis(self):
+        pass
 
 
 class TestElementwiseMulOp_scalar(ElementwiseMulOp):
@@ -59,17 +87,13 @@ class TestElementwiseMulOp_Vector(ElementwiseMulOp):
 
 
 class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp):
-    def setUp(self):
-        self.op_type = "elementwise_mul"
-        self.inputs = {
-            'X': np.random.rand(2, 3, 4).astype(np.float64),
-            'Y': np.random.rand(2).astype(np.float64)
-        }
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(2).astype(self.dtype)
+        self.out = self.x * self.y.reshape(2, 1, 1)
 
-        self.attrs = {'axis': 0}
-        self.outputs = {
-            'Out': self.inputs['X'] * self.inputs['Y'].reshape(2, 1, 1)
-        }
+    def init_axis(self):
+        self.axis = 0
 
 
 class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp):
@@ -111,6 +135,48 @@ class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 3, 4, 1)
         }
+
+
+class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 4).astype(np.float64),
+            'Y': np.random.rand(2, 1, 4).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+
+
+class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 4, 5).astype(np.float64),
+            'Y': np.random.rand(2, 3, 1, 5).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+
+
+class TestElementwiseMulOpFp16(ElementwiseMulOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestElementwiseMulOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input of elementwise_mul must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            y1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.elementwise_mul, x1, y1)
+
+            # the input dtype of elementwise_mul must be float16 or float32 or float64 or int32 or int64
+            # float16 only can be set on GPU place
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="uint8")
+            y2 = fluid.layers.data(name='y2', shape=[3, 4, 5, 6], dtype="uint8")
+            self.assertRaises(TypeError, fluid.layers.elementwise_mul, x2, y2)
 
 
 if __name__ == '__main__':

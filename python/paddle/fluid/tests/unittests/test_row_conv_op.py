@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -19,8 +21,10 @@ from op_test import OpTest
 
 def row_conv_forward(x, lod, wt):
     out = np.zeros_like(x)
-    seq_info = lod[0]
-    num_sequences = len(seq_info) - 1
+    num_sequences = len(lod[0])
+    seq_info = [0]
+    for seq_len in lod[0]:
+        seq_info.append(seq_info[-1] + seq_len)
     context_length = wt.shape[0]
 
     for i in range(num_sequences):  # loop over number of sequences
@@ -32,7 +36,6 @@ def row_conv_forward(x, lod, wt):
         cur_timesteps = end - start
         for j in range(cur_timesteps):  # loop over different timesteps
             for k in range(context_length):
-
                 if j + k >= cur_timesteps:
                     continue
                 curoutput[j, :] += curinput[j + k, :] * wt[k, :]
@@ -44,8 +47,8 @@ class TestRowConvOp1(OpTest):
     def setUp(self):
 
         self.op_type = "row_conv"
-        lod = [[0, 2, 5, 7]]
-        T = lod[0][-1]
+        lod = [[2, 3, 2]]
+        T = sum(lod[0])
         D = 16
         context_length = 2
 
@@ -75,8 +78,8 @@ class TestRowConvOp2(OpTest):
     def setUp(self):
 
         self.op_type = "row_conv"
-        lod = [[0, 20, 50, 100]]
-        T = lod[0][-1]
+        lod = [[20, 30, 50]]
+        T = sum(lod[0])
         D = 35
         context_length = 35
 
@@ -91,7 +94,7 @@ class TestRowConvOp2(OpTest):
         self.check_output()
 
     #max_relative_error is increased from 0.05 to 0.06 as for higher
-    #dimensional input, the dX on CPU for some values has max_rel_error 
+    #dimensional input, the dX on CPU for some values has max_rel_error
     #slightly more than 0.05
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Filter'], 'Out', max_relative_error=0.06)
@@ -103,6 +106,53 @@ class TestRowConvOp2(OpTest):
     def test_check_grad_ignore_wt(self):
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.06, no_grad_set=set('Filter'))
+
+
+def row_conv_foward_Tensor(x, wt):
+    out = np.zeros_like(x)
+    num_sequence = x.shape[0]
+    timesteps = x.shape[1]
+    context_length = wt.shape[0]
+    for i in range(num_sequence):
+        cur_in = x[i:i + 1, :][0]
+        cur_out = out[i:i + 1, :][0]
+        for j in range(timesteps):
+            for k in range(context_length):
+                if j + k >= timesteps:
+                    continue
+                cur_out[j, :] += cur_in[j + k, :] * wt[k, :]
+    return out
+
+
+class TestRowOpWithTensorInput(OpTest):
+    def setUp(self):
+        self.op_type = "row_conv"
+        length = [3, 2, 4]
+        B = 2
+        T = sum(length)
+        D = 16
+        context_length = 2
+
+        x = np.random.random((B, T, D)).astype("float32")
+        wt = np.random.random((context_length, D)).astype("float32")
+        self.inputs = {'X': x, 'Filter': wt}
+
+        out = row_conv_foward_Tensor(x, wt)
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad(
+            ['Filter'], 'Out', max_relative_error=0.05, no_grad_set=set('X'))
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Filter'], 'Out', max_relative_error=0.05)
+
+    def test_check_grad_ignore_wt(self):
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.05, no_grad_set=set('Filter'))
 
 
 if __name__ == '__main__':

@@ -126,9 +126,10 @@ class DocstringChecker(BaseChecker):
         'W9002':
         ('Doc string does not end with "." period', symbol + "-end-with",
          'Used when a doc string does not end with a period'),
-        'W9003': ('All args with their types must be mentioned in doc string',
-                  symbol + "-with-all-args",
-                  'Used when not all arguments are in the doc string '),
+        'W9003':
+        ('All args with their types must be mentioned in doc string %s',
+         symbol + "-with-all-args",
+         'Used when not all arguments are in the doc string '),
         'W9005': ('Missing docstring or docstring is too short',
                   symbol + "-missing", 'Add docstring longer >=10'),
         'W9006': ('Docstring indent error, use 4 space for indent',
@@ -178,6 +179,8 @@ class DocstringChecker(BaseChecker):
         self.indent_style(node)
 
     def missing_doc_string(self, node):
+        if node.name.startswith("__") or node.name.startswith("_"):
+            return True
         if node.tolineno - node.fromlineno <= 10:
             return True
 
@@ -199,12 +202,16 @@ class DocstringChecker(BaseChecker):
 
         doc = node.doc
         lines = doc.splitlines()
+        line_num = 0
 
         for l in lines:
+            if line_num == 0:
+                continue
             cur_indent = len(l) - len(l.lstrip())
             if cur_indent % indent != 0:
                 self.add_message('W9006', node=node, line=node.fromlineno)
                 return False
+            line_num += 1
 
         return True
 
@@ -284,6 +291,8 @@ class DocstringChecker(BaseChecker):
             True if successful otherwise False.
         """
 
+        if node.name.startswith("__") or node.name.startswith("_"):
+            return True
         find = False
         for t in node.body:
             if not isinstance(t, astroid.Return):
@@ -309,6 +318,8 @@ class DocstringChecker(BaseChecker):
         Returns:
             True if successful otherwise False.
         """
+        if node.name.startswith("__") or node.name.startswith("_"):
+            return True
         args = []
         for arg in node.args.get_children():
             if (not isinstance(arg, astroid.AssignName)) \
@@ -320,15 +331,19 @@ class DocstringChecker(BaseChecker):
             return True
 
         parsed_args = doc.args
+        args_not_documented = set(args) - set(parsed_args)
         if len(args) > 0 and len(parsed_args) <= 0:
-            print "debug:parsed args: ", parsed_args
-            self.add_message('W9003', node=node, line=node.fromlineno)
+            self.add_message(
+                'W9003',
+                node=node,
+                line=node.fromlineno,
+                args=list(args_not_documented))
             return False
 
         for t in args:
             if t not in parsed_args:
-                print t, " with (type) not in ", parsed_args
-                self.add_message('W9003', node=node, line=node.fromlineno)
+                self.add_message(
+                    'W9003', node=node, line=node.fromlineno, args=[t, ])
                 return False
 
         return True

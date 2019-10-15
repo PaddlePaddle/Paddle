@@ -17,10 +17,10 @@ limitations under the License. */
 
 #include <cuda.h>
 #include <cupti.h>
-#include <dlfcn.h>
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace platform {
@@ -45,7 +45,7 @@ extern void *cupti_dso_handle;
       std::call_once(cupti_dso_flag, []() {                                \
         cupti_dso_handle = paddle::platform::dynload::GetCUPTIDsoHandle(); \
       });                                                                  \
-      void *p_##__name = dlsym(cupti_dso_handle, #__name);                 \
+      static void *p_##__name = dlsym(cupti_dso_handle, #__name);          \
       return reinterpret_cast<cuptiFunc>(p_##__name)(args...);             \
     }                                                                      \
   };                                                                       \
@@ -72,7 +72,6 @@ extern void *cupti_dso_handle;
   __macro(cuptiGetResultString);              \
   __macro(cuptiActivityGetNumDroppedRecords); \
   __macro(cuptiActivityFlushAll);             \
-  __macro(cuptiFinalize);                     \
   __macro(cuptiSubscribe);                    \
   __macro(cuptiUnsubscribe);                  \
   __macro(cuptiEnableCallback);               \

@@ -32,20 +32,26 @@ class FillConstantBatchSizeLikeOp : public BatchSizeLikeOp {
 class FillConstantBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
  protected:
   void Apply() override {
-    AddAttr<int>("dtype",
-                 "(int, default 5 (FP32)) "
-                 "Output data type")
+    AddAttr<int>(
+        "dtype",
+        "It could be numpy.dtype. Output data type. Default is float32")
         .SetDefault(framework::proto::VarType::FP32);
-    AddAttr<float>("value", "(float, default 0) The value to be filled")
+    AddAttr<float>("value", "default 0. The value to be filled")
         .SetDefault(0.0f);
+    AddAttr<bool>("force_cpu",
+                  "(bool, default false) Force fill output variable to cpu "
+                  "memory. Otherwise, fill output variable to the running "
+                  "device")
+        .SetDefault(false);
     AddComment(R"DOC(
-FillConstantBatchSizeLike Operator.
-
-Fill up a variable with specified constant value.
+This function creates a tensor of specified *shape*, *dtype* and batch size,
+and initializes this with a constant supplied in *value*. The batch size is
+obtained from the `input` tensor.
 
 )DOC");
   }
 };
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -53,7 +59,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(fill_constant_batch_size_like,
                   ops::FillConstantBatchSizeLikeOp,
                   paddle::framework::EmptyGradOpMaker,
-                  ops::FillConstantBatchSizeLikeOpMaker);
+                  ops::FillConstantBatchSizeLikeOpMaker,
+                  ops::BatchSizeLikeNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     fill_constant_batch_size_like,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
@@ -63,4 +70,6 @@ REGISTER_OP_CPU_KERNEL(
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
                                            int>,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
-                                           int64_t>);
+                                           int64_t>,
+    ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
+                                           bool>);

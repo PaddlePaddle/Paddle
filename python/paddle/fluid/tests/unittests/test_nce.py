@@ -12,8 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+from __future__ import print_function
+
 import numpy as np
+import unittest
+
+import paddle.fluid as fluid
+import paddle.fluid.initializer as initializer
+from paddle.fluid import Program, program_guard
+
 from op_test import OpTest
 
 
@@ -57,16 +64,20 @@ def nce(input, weight, bias, sample_weight, labels, num_classes,
 
 class TestNCE(OpTest):
     def generate_data(self, dim, batch_size, num_classes, num_true_class,
-                      num_neg_samples):
+                      num_neg_samples, is_sparse):
         input = np.random.randn(batch_size, dim).astype(np.float32)
         weight = np.random.randn(num_classes, dim).astype(np.float32)
         bias = np.random.randn(num_classes).astype(np.float32)
         sample_weight = np.random.randn(batch_size).astype(np.float32)
-        labels = np.random.randint(0, num_classes, (batch_size, num_true_class))
+        labels = np.random.randint(0, num_classes,
+                                   (batch_size, num_true_class)).astype("int64")
         self.attrs = {
             'num_total_classes': num_classes,
             'num_neg_samples': num_neg_samples,
-            'custom_neg_classes': range(num_neg_samples)
+            'custom_neg_classes': list(range(num_neg_samples)),
+            'seed': 0,
+            'sampler': 0,
+            'is_sparse': is_sparse
         }
         self.inputs = {
             'Input': input,
@@ -77,7 +88,7 @@ class TestNCE(OpTest):
         }
 
     def set_data(self):
-        self.generate_data(5, 5, 4, 1, 2)
+        self.generate_data(5, 5, 4, 1, 2, False)
 
     def compute(self):
         out = nce(self.inputs['Input'], self.inputs['Weight'],
@@ -103,9 +114,142 @@ class TestNCE(OpTest):
             ["Input", "Weight", "Bias"], "Cost", max_relative_error=0.02)
 
 
-class TestNCECase1(TestNCE):
+class TestNCECase1Tensor(TestNCE):
     def set_data(self):
-        self.generate_data(10, 20, 10, 2, 5)
+        self.generate_data(10, 20, 10, 2, 5, False)
+
+
+class TestNCECase1SelectedRows(unittest.TestCase):
+    def setUp(self):
+        self.base_lr = 0.0001
+        self.batch_size = 8
+
+    @staticmethod
+    def get_place():
+        place = fluid.core.CPUPlace()
+        return place
+
+    @staticmethod
+    def get_train_data(batch_size):
+        batchs = []
+        for i in range(batch_size):
+            input = np.random.randn(batch_size, 10).astype(np.float32)
+            labels = np.random.randint(0, 20, (batch_size, 1))
+            batchs.append([input, labels])
+        return batchs
+
+    def get_optimizer(self):
+        # SGD optimizer
+        optimizer = fluid.optimizer.SGD(learning_rate=self.base_lr)
+        return optimizer
+
+    def train_network(self, num_total_classes, num_neg_samples, sampler,
+                      custom_dist, is_sparse):
+        input = fluid.layers.data(name="input", shape=[10], dtype="float32")
+        label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+
+        w_param = fluid.default_main_program().global_block().create_parameter(
+            shape=[num_total_classes, 10],
+            dtype='float32',
+            name='nce_w',
+            initializer=initializer.ConstantInitializer())
+        b_param = fluid.default_main_program().global_block().create_parameter(
+            shape=[num_total_classes, 1],
+            dtype='float32',
+            name='nce_b',
+            initializer=initializer.ConstantInitializer())
+
+        cost = fluid.layers.nce(input=input,
+                                label=label,
+                                num_total_classes=num_total_classes,
+                                sampler=sampler,
+                                custom_dist=custom_dist,
+                                sample_weight=None,
+                                param_attr='nce_w',
+                                bias_attr='nce_b',
+                                seed=1,
+                                num_neg_samples=num_neg_samples,
+                                is_sparse=is_sparse)
+        avg_cost = fluid.layers.mean(cost)
+        # optimizer
+        optimizer = self.get_optimizer()
+        optimizer.minimize(avg_cost)
+
+        return [avg_cost, [input, label]]
+
+    def test_input_is_selected_rows(self):
+        place = self.get_place()
+        exe = fluid.Executor(place)
+
+        data = self.get_train_data(self.batch_size)
+        nid_freq_arr = np.random.dirichlet(np.ones(20) * 1000).astype('float32')
+
+        rets = []
+        # for dense
+        dense_scope = fluid.core.Scope()
+        dense_startup_program = fluid.framework.Program()
+        dense_train_program = fluid.framework.Program()
+        with fluid.scope_guard(dense_scope):
+            with fluid.program_guard(dense_train_program,
+                                     dense_startup_program):
+                cost, feeds = self.train_network(20, 5, "custom_dist",
+                                                 nid_freq_arr.tolist(), False)
+                feeder = fluid.DataFeeder(feed_list=feeds, place=place)
+                exe.run(dense_startup_program)
+                loss_val = exe.run(dense_train_program,
+                                   feed=feeder.feed(data),
+                                   fetch_list=[cost.name])
+                rets.append(np.mean(loss_val))
+
+        # for sparse
+        sparse_scope = fluid.core.Scope()
+        sparse_startup_program = fluid.framework.Program()
+        sparse_train_program = fluid.framework.Program()
+        with fluid.scope_guard(sparse_scope):
+            with fluid.program_guard(sparse_train_program,
+                                     sparse_startup_program):
+                cost, feeds = self.train_network(20, 5, "custom_dist",
+                                                 nid_freq_arr.tolist(), True)
+                feeder = fluid.DataFeeder(feed_list=feeds, place=place)
+                exe.run(sparse_startup_program)
+                loss_val = exe.run(sparse_train_program,
+                                   feed=feeder.feed(data),
+                                   fetch_list=[cost.name])
+                rets.append(np.mean(loss_val))
+
+        self.assertEqual(rets[0], rets[1])
+
+
+class TestNCE_OpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            input1 = fluid.create_lod_tensor(
+                np.array([0.0, 3.0, 2.0, 4.0]), [[1, 1, 2]], fluid.CPUPlace())
+            label1 = fluid.layers.data(
+                name='label1', shape=[-1, 4], dtype="int64")
+            # the input(input) of nce layer must be Variable.
+            self.assertRaises(TypeError, fluid.layers.nce, input1, label1, 5)
+
+            input2 = fluid.layers.data(
+                name='input2', shape=[-1, 4], dtype="float32")
+            label2 = fluid.create_lod_tensor(
+                np.array([0.0, 3.0, 2.0, 4.0]), [[1, 1, 2]], fluid.CPUPlace())
+            # the input(label) of nce layer must be Variable.
+            self.assertRaises(TypeError, fluid.layers.nce, input2, label2, 5)
+
+            input3 = fluid.layers.data(
+                name='input3', shape=[-1, 4], dtype="float16")
+            label3 = fluid.layers.data(
+                name='label3', shape=[-1, 1], dtype="int64")
+            # the data type of input(input) must be float32 or float64.
+            self.assertRaises(TypeError, fluid.layers.nce, input3, label3, 5)
+
+            input4 = fluid.layers.data(
+                name='input4', shape=[-1, 4], dtype="float32")
+            label4 = fluid.layers.data(
+                name='label4', shape=[-1, 1], dtype="int32")
+            # the data type of input(label) must be int64.
+            self.assertRaises(TypeError, fluid.layers.nce, input4, label4, 5)
 
 
 if __name__ == '__main__':

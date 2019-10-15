@@ -18,12 +18,15 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/fluid/framework/var_type_inference.h"
 
 namespace paddle {
 namespace framework {
@@ -50,37 +53,184 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   const std::vector<std::string> &Outputs(
       const std::string &name) const override;
 
+  void ShareDim(const std::string &in, const std::string &out, size_t i = 0,
+                size_t j = 0) override {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size());
+    PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    const std::string &input_n = Inputs(in)[i];
+    const std::string &output_n = Outputs(out)[j];
+
+    PADDLE_ENFORCE(input_n != framework::kEmptyVarName, "The %s[%d] is @EMPTY@",
+                   in, i);
+    PADDLE_ENFORCE(output_n != framework::kEmptyVarName,
+                   "The %s[%d] is @EMPTY@", out, j);
+
+    auto *in_var = block_.FindVarRecursive(input_n);
+    auto *out_var = block_.FindVarRecursive(output_n);
+
+    PADDLE_ENFORCE(in_var->GetType() == out_var->GetType(),
+                   "The type of %s and %s is not the same.", input_n, output_n);
+
+    SetDim(output_n, GetDim(input_n));
+  }
+
   void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,
                 size_t j = 0) const override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    PADDLE_ENFORCE(Inputs(in)[i] != framework::kEmptyVarName,
+                   "The %s[%d] is @EMPTY@", in, i);
+    PADDLE_ENFORCE(Outputs(out)[j] != framework::kEmptyVarName,
+                   "The %s[%d] is @EMPTY@", out, j);
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
-    if (in_var->GetType() != proto::VarType::LOD_TENSOR) {
-      VLOG(3) << "input " << in << " is not LodTensor";
+    if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
+        in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
+      VLOG(3) << "input " << in << " is not LodTensor or LodTensorArray.";
       return;
     }
-    PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarType::LOD_TENSOR,
-                      "The %d-th output of Output(%s) must be LoDTensor.", j,
-                      out);
     out_var->SetLoDLevel(in_var->GetLoDLevel());
+  }
+
+  void DecreaseLoDLevel(const std::string &in, const std::string &out,
+                        size_t i = 0, size_t j = 0) const override {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size());
+    PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    PADDLE_ENFORCE(Inputs(in)[i] != framework::kEmptyVarName,
+                   "The %s[%d] is @EMPTY@", in, i);
+    PADDLE_ENFORCE(Outputs(out)[j] != framework::kEmptyVarName,
+                   "The %s[%d] is @EMPTY@", out, j);
+    auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
+    auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
+    PADDLE_ENFORCE(out_var->GetType() == proto::VarType::LOD_TENSOR_ARRAY ||
+                       out_var->GetType() == proto::VarType::LOD_TENSOR,
+                   "The input %s should be LodTensorArray or LodTensor.",
+                   out_var->Name());
+    PADDLE_ENFORCE(in_var->GetType() == proto::VarType::LOD_TENSOR,
+                   "The input %s should be LodTensor.", in_var->Name());
+    if (in_var->GetLoDLevel() > 0) {
+      out_var->SetLoDLevel(in_var->GetLoDLevel() - 1);
+    }
+  }
+
+  std::vector<InferShapeVarPtr> GetInputVarPtrs(
+      const std::string &name) override {
+    const std::vector<std::string> arg_names = Inputs(name);
+    std::vector<InferShapeVarPtr> res;
+    res.reserve(arg_names.size());
+    std::transform(arg_names.begin(), arg_names.end(), std::back_inserter(res),
+                   [this](const std::string &name) {
+                     return block_.FindVarRecursive(name);
+                   });
+    return res;
+  }
+
+  std::vector<InferShapeVarPtr> GetOutputVarPtrs(
+      const std::string &name) override {
+    const std::vector<std::string> arg_names = Outputs(name);
+    std::vector<InferShapeVarPtr> res;
+    res.reserve(arg_names.size());
+    std::transform(arg_names.begin(), arg_names.end(), std::back_inserter(res),
+                   [this](const std::string &name) {
+                     return block_.FindVarRecursive(name);
+                   });
+    return res;
+  }
+
+  DDim GetInputDim(const std::string &name) const override {
+    const std::vector<std::string> &arg_names = Inputs(name);
+    PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
+                      "Input(%s) should hold one element, but now it holds %d",
+                      name, arg_names.size());
+    return this->GetDim(arg_names[0]);
+  }
+
+  std::vector<DDim> GetInputsDim(const std::string &name) const override {
+    const std::vector<std::string> &arg_names = Inputs(name);
+    return GetDims(arg_names);
   }
 
   bool IsRuntime() const override;
 
+  std::vector<proto::VarType::Type> GetInputsVarType(
+      const std::string &name) const override {
+    return GetVarTypes(Inputs(name));
+  }
+
+  std::vector<proto::VarType::Type> GetOutputsVarType(
+      const std::string &name) const override {
+    return GetVarTypes(Outputs(name));
+  }
+
+  void SetOutputDim(const std::string &name, const DDim &dim) override {
+    auto &arg_names = Outputs(name);
+    PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
+                      "Output(%s) should hold one element, but now it holds %d",
+                      name, arg_names.size());
+    SetDim(arg_names[0], dim);
+  }
+
+  void SetOutputsDim(const std::string &name,
+                     const std::vector<DDim> &dims) override {
+    auto &names = Outputs(name);
+    SetDims(names, dims);
+  }
+
  protected:
-  proto::VarType::Type GetVarType(const std::string &name) const override;
+  std::vector<proto::VarType::Type> GetVarTypes(
+      const std::vector<std::string> &names) const {
+    std::vector<proto::VarType::Type> retv;
+    retv.resize(names.size());
+    std::transform(
+        names.begin(), names.end(), retv.begin(),
+        std::bind(std::mem_fn(&CompileTimeInferShapeContext::GetVarType), this,
+                  std::placeholders::_1));
+    return retv;
+  }
 
-  DDim GetDim(const std::string &name) const override;
+  proto::VarType::Type GetVarType(const std::string &name) const;
 
-  void SetDim(const std::string &name, const DDim &dim) override;
+  DDim GetDim(const std::string &name) const {
+    auto var = block_.FindVarRecursive(name);
+    PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
+    DDim res;
+    try {
+      auto shape = var->GetShape();
+      res = shape.empty() ? make_ddim({0UL}) : make_ddim(shape);
+    } catch (...) {
+      VLOG(5) << "GetDim of variable " << name << " error";
+      std::rethrow_exception(std::current_exception());
+    }
+    return res;
+  }
+
+  std::vector<DDim> GetDims(const std::vector<std::string> &names) const {
+    std::vector<DDim> ret;
+    ret.reserve(names.size());
+    std::transform(
+        names.begin(), names.end(), std::back_inserter(ret),
+        [this](const std::string &name) { return this->GetDim(name); });
+    return ret;
+  }
+
+  void SetDim(const std::string &name, const DDim &dim);
+
+  void SetDims(const std::vector<std::string> &names,
+               const std::vector<DDim> &dims) {
+    size_t length = names.size();
+    PADDLE_ENFORCE_EQ(length, dims.size());
+    for (size_t i = 0; i < length; ++i) {
+      if (names[i] == framework::kEmptyVarName) {
+        continue;
+      }
+      SetDim(names[i], dims[i]);
+    }
+  }
 
   std::vector<DDim> GetRepeatedDims(const std::string &name) const override;
 
   void SetRepeatedDims(const std::string &name,
                        const std::vector<DDim> &dims) override;
-
-  InferShapeVarPtr GetVarPtr(const std::string &name) override;
 
   const OpDesc &op_;
   const BlockDesc &block_;
@@ -93,6 +243,13 @@ OpDesc::OpDesc(const std::string &type, const VariableNameMap &inputs,
   outputs_ = outputs;
   attrs_ = attrs;
   need_update_ = true;
+  block_ = nullptr;
+}
+
+OpDesc::OpDesc(const OpDesc &other, BlockDesc *block) {
+  CopyFrom(other);
+  block_ = block;
+  need_update_ = true;
 }
 
 void OpDesc::CopyFrom(const OpDesc &op_desc) {
@@ -103,7 +260,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   need_update_ = true;
 }
 
-OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block)
+OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
     : desc_(desc), need_update_(false) {
   // restore inputs_
   int input_size = desc_.inputs_size();
@@ -131,8 +288,9 @@ OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block)
   for (const proto::OpDesc::Attr &attr : desc_.attrs()) {
     std::string attr_name = attr.name();
     // The sub_block referred to by the BLOCK attr hasn't been added
-    // to ProgramDesc class yet, we skip setting BLOCK attr here.
-    if (attr.type() != proto::AttrType::BLOCK) {
+    // to ProgramDesc class yet, we skip setting BLOCK/BLOCKS attr here.
+    if (attr.type() != proto::AttrType::BLOCK &&
+        attr.type() != proto::AttrType::BLOCKS) {
       attrs_[attr_name] = GetAttrValue(attr);
     }
   }
@@ -186,6 +344,23 @@ void OpDesc::SetOutput(const std::string &param_name,
   this->outputs_[param_name] = args;
 }
 
+bool OpDesc::HasProtoAttr(const std::string &name) const {
+  auto &op_info = OpInfoMap::Instance();
+  if (op_info.Has(desc_.type())) {
+    auto op_info_ptr = op_info.Get(desc_.type());
+    if (op_info_ptr.HasOpProtoAndChecker()) {
+      const proto::OpProto &proto = op_info_ptr.Proto();
+      for (int i = 0; i != proto.attrs_size(); ++i) {
+        const proto::OpProto::Attr &attr = proto.attrs(i);
+        if (attr.name() == name) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 proto::AttrType OpDesc::GetAttrType(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
@@ -201,13 +376,76 @@ std::vector<std::string> OpDesc::AttrNames() const {
   return retv;
 }
 
+void OpDesc::RemoveAttr(const std::string &name) {
+  attrs_.erase(name);
+  need_update_ = true;
+}
+
 void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
+  // NOTICE(minqiyang): pybind11 will take the empty list in python as
+  // the std::vector<int> type in C++; so we have to change the attr's type
+  // here if we meet this issue
+  proto::AttrType attr_type = static_cast<proto::AttrType>(v.which() - 1);
+  if (attr_type == proto::AttrType::INTS &&
+      boost::get<std::vector<int>>(v).size() == 0u) {
+    // Find current attr via attr name and set the correct attribute value
+    const proto::OpProto::Attr &attr = GetProtoAttr(name);
+    switch (attr.type()) {
+      case proto::AttrType::BOOLEANS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to BOOLEANS";
+        this->attrs_[name] = std::vector<bool>();
+        break;
+      }
+      case proto::AttrType::INTS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to INTS";
+        this->attrs_[name] = std::vector<int>();
+        break;
+      }
+      case proto::AttrType::LONGS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from LONGS to LONGS";
+        this->attrs_[name] = std::vector<int64_t>();
+        break;
+      }
+      case proto::AttrType::FLOATS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to FLOATS";
+        this->attrs_[name] = std::vector<float>();
+        break;
+      }
+      case proto::AttrType::STRINGS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to STRINGS";
+        this->attrs_[name] = std::vector<std::string>();
+        break;
+      }
+      case proto::AttrType::BLOCKS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to BLOCKS";
+        this->SetBlocksAttr(name, std::vector<BlockDesc *>());
+        return;
+      }
+      default:
+        PADDLE_THROW("Wrong attr type %d", attr.type());
+    }
+    need_update_ = true;
+    return;
+  }
+
   this->attrs_[name] = v;
   need_update_ = true;
 }
 
 void OpDesc::SetBlockAttr(const std::string &name, BlockDesc *block) {
   this->attrs_[name] = block;
+  need_update_ = true;
+}
+
+void OpDesc::SetBlocksAttr(const std::string &name,
+                           std::vector<BlockDesc *> blocks) {
+  this->attrs_[name] = blocks;
   need_update_ = true;
 }
 
@@ -223,6 +461,19 @@ Attribute OpDesc::GetAttr(const std::string &name) const {
   return it->second;
 }
 
+const proto::OpProto::Attr &OpDesc::GetProtoAttr(
+    const std::string &name) const {
+  const proto::OpProto &proto = OpInfoMap::Instance().Get(Type()).Proto();
+  for (int i = 0; i != proto.attrs_size(); ++i) {
+    const proto::OpProto::Attr &attr = proto.attrs(i);
+    if (attr.name() == name) {
+      return attr;
+    }
+  }
+
+  PADDLE_THROW("Attribute %s is not found in proto %s", name, proto.type());
+}
+
 Attribute OpDesc::GetNullableAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   if (it != attrs_.end()) {
@@ -232,7 +483,20 @@ Attribute OpDesc::GetNullableAttr(const std::string &name) const {
   }
 }
 
-int OpDesc::GetBlockAttr(const std::string &name) const {
+std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
+  auto it = attrs_.find(name);
+  PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
+  auto blocks = boost::get<std::vector<BlockDesc *>>(it->second);
+
+  std::vector<int> ids;
+  for (auto n : blocks) {
+    ids.push_back(n->ID());
+  }
+
+  return ids;
+}
+
+int OpDesc::GetBlockAttrId(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
   return boost::get<BlockDesc *>(it->second)->ID();
@@ -305,8 +569,22 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   void operator()(const std::vector<bool> &v) const {
     VectorToRepeated(v, attr_->mutable_bools());
   }
+  void operator()(const std::vector<BlockDesc *> &v) const {
+    std::vector<int> blocks_idx;
+    for (auto blk : v) {
+      blocks_idx.push_back(blk->ID());
+    }
+    VectorToRepeated(blocks_idx, attr_->mutable_blocks_idx());
+  }
+
   void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
+
   void operator()(int64_t v) const { attr_->set_l(v); }
+
+  void operator()(const std::vector<int64_t> &v) const {
+    VectorToRepeated(v, attr_->mutable_longs());
+  }
+
   void operator()(boost::blank) const { PADDLE_THROW("Unexpected branch"); }
 };
 
@@ -342,6 +620,25 @@ void OpDesc::Flush() {
 
 static std::once_flag init_infer_shape_funcs;
 
+/**
+ * NOTE(paddle-dev): Very tricky code here. Maybe we should find a
+ * better way to register compile-time infershape method gentlely.
+ *
+ * Normally, we can register a class derived from InferShapeBase, so that
+ * we can set the field of `infer_shape_` inside OpInfo when registering op.
+ *
+ * However, there is another way we can set the field of `infer_shape_` inside
+ * OpInfo. Usually, we overload InferShape method of OperatorWithKernel. After
+ * running the following method InitInferShapeFuncs, `infer_shape_` would be set
+ * to be the InferShape method of OperatorWithKernel. That is to say, we borrow
+ * the run-time InferShape method of OperatorWithKernel to be the compile-time
+ * InferShape method.
+ *
+ * However, during compiling time, we may not know inputs, outputs and attrs of
+ * run-time OperatorWithKernel. So the following code creates a fake
+ * OperatorWithKernel object. That is why the field info_ of OperatorBase
+ * would be null.
+ */
 static void InitInferShapeFuncs() {
   std::call_once(init_infer_shape_funcs, [] {
     auto &map = OpInfoMap::Instance();
@@ -349,12 +646,20 @@ static void InitInferShapeFuncs() {
 
     for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
       auto op_type = kern_pair.first;
-      auto &op_info = info_map.at(op_type);
-      auto op = static_cast<OperatorWithKernel *>(op_info.Creator()(
-          "", VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
+      auto it = info_map.find(op_type);
+      PADDLE_ENFORCE(it != info_map.end(), "%s has not been registered",
+                     op_type);
+      auto &op_info = it->second;
       if (op_info.infer_shape_) {  // infer_shape has been registered.
         continue;
       }
+
+      auto op = dynamic_cast<OperatorWithKernel *>(op_info.Creator()(
+          "", VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
+
+      PADDLE_ENFORCE_NOT_NULL(
+          op, "InferShapeBase is not registered to Operator %s", op_type);
+
       op_info.infer_shape_ = [op](InferShapeContext *ctx) {
         op->InferShape(ctx);
       };
@@ -371,47 +676,50 @@ void OpDesc::CheckAttrs() {
     // not by users.
     return;
   }
-  checker->Check(attrs_);
+  VLOG(10) << "begin to check attribute of " << Type();
+  checker->Check(&attrs_);
 }
 
 void OpDesc::InferShape(const BlockDesc &block) const {
-  VLOG(3) << "CompileTime infer shape on " << Type();
-  InitInferShapeFuncs();
-  auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
-  PADDLE_ENFORCE(static_cast<bool>(infer_shape),
-                 "%s's infer_shape has not been registered", this->Type());
-  CompileTimeInferShapeContext ctx(*this, block);
-  if (VLOG_IS_ON(10)) {
-    std::ostringstream sout;
-    auto inames = this->InputArgumentNames();
-    sout << " From [";
-    std::copy(inames.begin(), inames.end(),
-              std::ostream_iterator<std::string>(sout, ", "));
-    sout << "] to [";
-    auto onames = this->OutputArgumentNames();
-    std::copy(onames.begin(), onames.end(),
-              std::ostream_iterator<std::string>(sout, ", "));
-    sout << "]";
-    VLOG(10) << sout.str();
+  try {
+    VLOG(3) << "CompileTime infer shape on " << Type();
+    InitInferShapeFuncs();
+    auto &infer_shape = OpInfoMap::Instance().Get(this->Type()).infer_shape_;
+    PADDLE_ENFORCE(static_cast<bool>(infer_shape),
+                   "%s's infer_shape has not been registered", this->Type());
+    CompileTimeInferShapeContext ctx(*this, block);
+    if (VLOG_IS_ON(10)) {
+      std::ostringstream sout;
+      auto inames = this->InputArgumentNames();
+      sout << " From [";
+      std::copy(inames.begin(), inames.end(),
+                std::ostream_iterator<std::string>(sout, ", "));
+      sout << "] to [";
+      auto onames = this->OutputArgumentNames();
+      std::copy(onames.begin(), onames.end(),
+                std::ostream_iterator<std::string>(sout, ", "));
+      sout << "]";
+      VLOG(10) << sout.str();
+    }
+    infer_shape(&ctx);
+  } catch (platform::EnforceNotMet exception) {
+    framework::InsertCallStackInfo(Type(), attrs_, &exception);
+    throw std::move(exception);
+  } catch (...) {
+    std::rethrow_exception(std::current_exception());
   }
-  infer_shape(&ctx);
 }
 
 void OpDesc::InferVarType(BlockDesc *block) const {
+  // There are a few places that var type can be set.
+  // When VarDesc is created, default set to LOD_TENSOR.
+  // When output variable is created, default is defaut set to LOD_TENSOR.
+  // We limit here to be the only place that operator defines its customized
+  // var type inference. Hence, we don't do any "default" setting here.
   auto &info = OpInfoMap::Instance().Get(this->Type());
   if (info.infer_var_type_) {
-    info.infer_var_type_(*this, block);
-  } else {
-    // all output type is LoDTensor by default
-    VLOG(10) << this->Type()
-             << " has not registered InferVarType. Set output variables to "
-                "LOD_TENSOR";
-    for (auto &out_pair : this->outputs_) {
-      for (auto &out_var_name : out_pair.second) {
-        block->FindRecursiveOrCreateVar(out_var_name)
-            .SetType(proto::VarType::LOD_TENSOR);
-      }
-    }
+    InferVarTypeContext context(this, block);
+    info.infer_var_type_(&context);
   }
 }
 
@@ -481,20 +789,6 @@ const std::vector<std::string> &CompileTimeInferShapeContext::Outputs(
   return op_.Output(name);
 }
 
-DDim CompileTimeInferShapeContext::GetDim(const std::string &name) const {
-  auto var = block_.FindVarRecursive(name);
-  PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
-  DDim res;
-  try {
-    auto shape = var->GetShape();
-    res = shape.empty() ? make_ddim({0UL}) : make_ddim(shape);
-  } catch (...) {
-    VLOG(5) << "GetDim of variable " << name << " error";
-    std::rethrow_exception(std::current_exception());
-  }
-  return res;
-}
-
 std::vector<DDim> CompileTimeInferShapeContext::GetRepeatedDims(
     const std::string &name) const {
   auto var = block_.FindVarRecursive(name);
@@ -522,7 +816,7 @@ void CompileTimeInferShapeContext::SetRepeatedDims(
   auto var = block_.FindVarRecursive(name);
   PADDLE_ENFORCE(var != nullptr, "Cannot find variable %s", name);
   std::vector<std::vector<int64_t>> dim_vec(dims.size());
-  std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize);
+  std::transform(dims.begin(), dims.end(), dim_vec.begin(), vectorize<>);
   var->SetShapes(dim_vec);
 }
 
@@ -531,11 +825,6 @@ bool CompileTimeInferShapeContext::IsRuntime() const { return false; }
 proto::VarType::Type CompileTimeInferShapeContext::GetVarType(
     const std::string &name) const {
   return block_.FindVarRecursive(name)->GetType();
-}
-
-InferShapeVarPtr CompileTimeInferShapeContext::GetVarPtr(
-    const std::string &name) {
-  return block_.FindVarRecursive(name);
 }
 
 }  // namespace framework

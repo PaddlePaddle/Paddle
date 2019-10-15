@@ -11,11 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-IF(USE_EIGEN_FOR_BLAS)
-    return()
-ENDIF(USE_EIGEN_FOR_BLAS)
-
 INCLUDE(cblas)
 
 IF(NOT ${CBLAS_FOUND})
@@ -29,45 +24,26 @@ IF(NOT ${CBLAS_FOUND})
         "${CBLAS_INSTALL_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
         CACHE FILEPATH "openblas library." FORCE)
 
+    ADD_DEFINITIONS(-DPADDLE_USE_OPENBLAS)
+
+    IF (WIN32)
+        SET(CBLAS_FOUND true)
+        MESSAGE(WARNING, "In windows, openblas only support msvc build, please build it manually and put it at " ${CBLAS_INSTALL_DIR})
+    ENDIF(WIN32)
+
+    IF (NOT WIN32)
     SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -Wno-unused-but-set-variable -Wno-unused-variable")
     SET(OPENBLAS_COMMIT "v0.2.20")
 
-    IF(CMAKE_CROSSCOMPILING)
-        SET(OPTIONAL_ARGS HOSTCC=${HOST_C_COMPILER})
-        GET_FILENAME_COMPONENT(CROSS_SUFFIX ${CMAKE_C_COMPILER} DIRECTORY)
-        SET(CROSS_SUFFIX ${CROSS_SUFFIX}/)
-        IF(ANDROID)
-            IF(ANDROID_ABI MATCHES "^armeabi(-v7a)?$")
-                # use softfp
-                SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV7 ARM_SOFTFP_ABI=1 USE_THREAD=0)
-            ELSEIF(ANDROID_ABI STREQUAL "arm64-v8a")
-                SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0)
-            ENDIF()
-        ELSEIF(IOS)
-            IF(CMAKE_OSX_ARCHITECTURES MATCHES "arm64")
-                SET(OPENBLAS_CC "${OPENBLAS_CC} ${CMAKE_C_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT}")
-                SET(OPENBLAS_CC "${OPENBLAS_CC} -arch arm64")
-                SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV8 BINARY=64 USE_THREAD=0 CROSS_SUFFIX=${CROSS_SUFFIX})
-            ELSE()
-                MESSAGE(FATAL_ERROR "OpenBLAS only support arm64 architectures on iOS. "
-                       "You can set IOS_USE_VECLIB_FOR_BLAS=ON or USE_EIGEN_FOR_BLAS=ON to use other blas library instead.")
-            ENDIF()
-        ELSEIF(RPI)
-            # use hardfp
-            SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} TARGET=ARMV7 USE_THREAD=0)
-        ENDIF()
-    ELSE()
-        IF(APPLE)
-            SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT}")
-        ENDIF()
-        SET(OPTIONAL_ARGS "")
-        IF(CMAKE_SYSTEM_PROCESSOR MATCHES "^x86(_64)?$")
-            SET(OPTIONAL_ARGS DYNAMIC_ARCH=1 NUM_THREADS=64)
-        ENDIF()
+    IF(APPLE)
+        SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -isysroot ${CMAKE_OSX_SYSROOT}")
+    ENDIF()
+    SET(OPTIONAL_ARGS "")
+    IF(CMAKE_SYSTEM_PROCESSOR MATCHES "^x86(_64)?$")
+        SET(OPTIONAL_ARGS DYNAMIC_ARCH=1 NUM_THREADS=64)
     ENDIF()
 
     SET(COMMON_ARGS CC=${OPENBLAS_CC} NO_SHARED=1 NO_LAPACK=1 libs)
-
     ExternalProject_Add(
         extern_openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -82,29 +58,47 @@ IF(NOT ${CBLAS_FOUND})
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
+    ELSE(NOT WIN32)
+        SET(CBLAS_FOUND false)
+        SET(CBLAS_LIBRARIES
+            "${CBLAS_INSTALL_DIR}/lib/openblas${CMAKE_STATIC_LIBRARY_SUFFIX}"
+            CACHE FILEPATH "openblas library." FORCE)
+        INCLUDE_DIRECTORIES(${CBLAS_INC_DIR}/openblas) # For openbals code to include its own headers.
+        INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install)
+        ExternalProject_Add(
+            extern_openblas
+            ${EXTERNAL_PROJECT_LOG_ARGS}
+            GIT_REPOSITORY      https://github.com/xianyi/OpenBLAS.git
+            GIT_TAG            "v0.3.7"
+            PREFIX              ${CBLAS_SOURCES_DIR}
+            INSTALL_DIR         ${CBLAS_INSTALL_DIR}
+            BUILD_IN_SOURCE     0
+            UPDATE_COMMAND      ""
+            CMAKE_ARGS          -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                                    -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                                    -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                                    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                                    -DCMAKE_INSTALL_PREFIX=${CBLAS_INSTALL_DIR}
+                                    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                                    -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                                    -DBUILD_SHARED_LIBS=ON
+                                    -DMSVC_STATIC_CRT=${MSVC_STATIC_CRT}
+                                    ${EXTERNAL_OPTIONAL_ARGS}
+                CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${CBLAS_INSTALL_DIR}
+                                    -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                                    -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+            )
+        add_custom_command(TARGET extern_openblas POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${CBLAS_INSTALL_DIR}/bin/openblas${CMAKE_SHARED_LIBRARY_SUFFIX}  ${CBLAS_INSTALL_DIR}/lib )
+        ADD_LIBRARY(openblas STATIC IMPORTED GLOBAL)
+        SET_PROPERTY(TARGET openblas PROPERTY IMPORTED_LOCATION ${CBLAS_LIBRARIES})
+        ADD_DEPENDENCIES(openblas extern_openblas)
+    ENDIF(NOT WIN32)
     SET(CBLAS_PROVIDER openblas)
-    IF(WITH_C_API)
-        INSTALL(DIRECTORY ${CBLAS_INC_DIR} DESTINATION third_party/openblas)
-        # Because libopenblas.a is a symbolic link of another library, thus need to
-        # install the whole directory.
-        IF(ANDROID)
-            SET(TMP_INSTALL_DIR third_party/openblas/lib/${ANDROID_ABI})
-        ELSE()
-            SET(TMP_INSTALL_DIR third_party/openblas/lib)
-        ENDIF()
-        INSTALL(CODE "execute_process(
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CBLAS_INSTALL_DIR}/lib
-                    ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}
-            )"
-        )
-        INSTALL(CODE "MESSAGE(STATUS \"Installing: \"
-                \"${CBLAS_INSTALL_DIR}/lib -> ${CMAKE_INSTALL_PREFIX}/${TMP_INSTALL_DIR}\"
-            )"
-        )
-    ENDIF()
 ENDIF(NOT ${CBLAS_FOUND})
 
 MESSAGE(STATUS "BLAS library: ${CBLAS_LIBRARIES}")
+MESSAGE(STATUS "BLAS Include: ${CBLAS_INC_DIR}")
 INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 
 # FIXME(gangliao): generate cblas target to track all high performance
@@ -112,11 +106,20 @@ INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
 FILE(WRITE ${dummyfile} "const char *dummy_cblas = \"${dummyfile}\";")
 ADD_LIBRARY(cblas STATIC ${dummyfile})
-TARGET_LINK_LIBRARIES(cblas ${CBLAS_LIBRARIES})
+
+IF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
+  TARGET_LINK_LIBRARIES(cblas dynload_mklml)
+ELSE()
+  TARGET_LINK_LIBRARIES(cblas ${CBLAS_LIBRARIES})
+ENDIF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
+
+IF(WITH_LIBXSMM)
+  TARGET_LINK_LIBRARIES(cblas ${LIBXSMM_LIBS})
+  ADD_DEPENDENCIES(cblas extern_libxsmm)
+ENDIF()
 
 IF(NOT ${CBLAS_FOUND})
     ADD_DEPENDENCIES(cblas extern_openblas)
-    LIST(APPEND external_project_dependencies cblas)
 ELSE()
     IF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
         ADD_DEPENDENCIES(cblas mklml)

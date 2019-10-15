@@ -17,8 +17,10 @@ limitations under the License. */
 #include <map>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -38,31 +40,58 @@ struct OpInfo {
   OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;
   InferShapeFN infer_shape_;
+  InferInplaceOpFN infer_inplace_;
+  InferNoNeedBufferVarsFN infer_no_need_buffer_vars_;
+
+  // NOTE(zjl): this flag is added to check whether
+  // the grad maker is the default one.
+  bool use_default_grad_op_desc_maker_{false};
 
   bool HasOpProtoAndChecker() const {
     return proto_ != nullptr && checker_ != nullptr;
   }
 
   const proto::OpProto& Proto() const {
-    PADDLE_ENFORCE_NOT_NULL(proto_, "Operator Proto has not been registered");
+    PADDLE_ENFORCE_NOT_NULL(proto_, "Operator's Proto has not been registered");
     PADDLE_ENFORCE(proto_->IsInitialized(),
-                   "Operator Proto must be initialized in op info");
+                   "Operator's Proto must be initialized in op info");
     return *proto_;
   }
 
   const OpCreator& Creator() const {
     PADDLE_ENFORCE_NOT_NULL(creator_,
-                            "Operator Creator has not been registered");
+                            "Operator's Creator has not been registered");
     return creator_;
   }
 
   const GradOpMakerFN& GradOpMaker() const {
-    PADDLE_ENFORCE_NOT_NULL(grad_op_maker_,
-                            "Operator GradOpMaker has not been registered.");
+    // Normally, proto_ should not be null, except some special operators, such
+    // as LeaklyReluDoubleGrad op.
+    std::string type = proto_ ? proto_->type() : "unknown";
+    PADDLE_ENFORCE_NOT_NULL(
+        grad_op_maker_,
+        "Operator %s's GradOpMaker has not been "
+        "registered.\nPlease check whether %s_op has "
+        "grad_op.\nIf not, please set stop_gradient to True "
+        "for its input and output variables using var.stop_gradient=True.",
+        type.c_str(), type.c_str());
     return grad_op_maker_;
   }
 
+  // some op has no grad_op_maker, add check before use GradOpMaker()
+  bool HasGradOpMaker() const {
+    return grad_op_maker_ != nullptr ? true : false;
+  }
+
+  bool HasInferInplace() const {
+    return infer_inplace_ != nullptr ? true : false;
+  }
+
   const OpAttrChecker* Checker() const { return checker_; }
+
+  const InferNoNeedBufferVarsFN& NoNeedBufferVarsInferer() const {
+    return infer_no_need_buffer_vars_;
+  }
 };
 
 class OpInfoMap {
@@ -97,6 +126,8 @@ class OpInfoMap {
   const std::unordered_map<std::string, OpInfo>& map() const { return map_; }
 
   std::unordered_map<std::string, OpInfo>* mutable_map() { return &map_; }
+
+  std::vector<std::string> GetUseDefaultGradOpDescMakerOps() const;
 
  private:
   OpInfoMap() = default;

@@ -18,28 +18,15 @@
 #include "paddle/fluid/framework/tensor.h"
 
 #ifdef PADDLE_WITH_MKLML
-#include <mkl_cblas.h>
-#include <mkl_lapacke.h>
-#include <mkl_vml_functions.h>
+#include "paddle/fluid/platform/dynload/mklml.h"
+#endif
+
+#ifdef PADDLE_WITH_LIBXSMM
+#include <libxsmm.h>
 #endif
 
 #ifdef PADDLE_USE_OPENBLAS
 #include <cblas.h>
-#include <lapacke.h>
-#endif
-
-#ifndef LAPACK_FOUND
-extern "C" {
-#include <cblas.h>  // NOLINT
-int LAPACKE_sgetrf(int matrix_layout, int m, int n, float* a, int lda,
-                   int* ipiv);
-int LAPACKE_dgetrf(int matrix_layout, int m, int n, double* a, int lda,
-                   int* ipiv);
-int LAPACKE_sgetri(int matrix_layout, int n, float* a, int lda,
-                   const int* ipiv);
-int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
-                   const int* ipiv);
-}
 #endif
 
 namespace paddle {
@@ -104,6 +91,50 @@ class Blas {
             int lda, const T* B, int ldb, T beta, T* C, int ldc) const;
 
   template <typename T>
+  void GEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+            T alpha, const T* A, int lda, const T* B, int ldb, T beta, T* C,
+            int ldc) const;
+
+#ifdef PADDLE_WITH_MKLML
+  template <typename T>
+  T* GEMM_ALLOC(const CBLAS_IDENTIFIER id, const int M, const int N,
+                const int K) const;
+
+  template <typename T>
+  void GEMM_PACK(const CBLAS_IDENTIFIER id, const CBLAS_TRANSPOSE trans, int M,
+                 int N, int K, const T alpha, const T* src, const int ld,
+                 T* dst) const;
+
+  template <typename T>
+  void GEMM_COMPUTE(int transA, int transB, int M, int N, int K, const T* A,
+                    const int lda, const T* B, const int ldb, T beta, T* C,
+                    const int ldc) const;
+
+  template <typename T>
+  void GEMM_FREE(T* data) const;
+
+  template <typename T>
+  void CSRMM(const char* transa, const int* m, const int* n, const int* k,
+             const T* alpha, const char* matdescra, const T* val,
+             const int* indx, const int* pntrb, const int* pntre, const T* b,
+             const int* ldb, const T* beta, T* c, const int* ldc) const;
+
+#if !defined(PADDLE_WITH_CUDA)
+  template <typename T>
+  void MatMulWithHead(const framework::Tensor& mat_a,
+                      const MatDescriptor& dim_a,
+                      const framework::Tensor& mat_b,
+                      const MatDescriptor& dim_b, T alpha, int head_number,
+                      framework::Tensor* mat_out, T beta,
+                      bool mat_y_split_vertical) const;
+#endif
+#endif
+
+  template <typename T>
+  void MatMul(const int M, const int N, const int K, const T* A, const T* B,
+              T* C) const;
+
+  template <typename T>
   void MatMul(const framework::Tensor& mat_a, bool trans_a,
               const framework::Tensor& mat_b, bool trans_b, T alpha,
               framework::Tensor* mat_out, T beta) const;
@@ -129,21 +160,63 @@ class Blas {
   void VADD(int n, const T* x, const T* y, T* z) const;
 
   template <typename T>
+  void VSUB(int n, const T* x, const T* y, T* z) const;
+
+  template <typename T>
+  void VMUL(int n, const T* x, const T* y, T* z) const;
+
+  template <typename T>
+  void VDIV(int n, const T* x, const T* y, T* z) const;
+
+  template <typename T>
   void VCOPY(int n, const T* x, T* y) const;
+
+  template <typename T>
+  void VEXP(int n, const T* x, T* y) const;
+
+  template <typename T>
+  void VSQUARE(int n, const T* x, T* y) const;
+
+  template <typename T>
+  void VPOW(int n, const T* x, T alpha, T* y) const;
 
   template <typename T>
   void GEMV(bool trans_a, int M, int N, T alpha, const T* A, const T* B, T beta,
             T* C) const;
 
   template <typename T>
+  T DOT(int n, const T* x, const T* y) const;
+
+  template <typename T>
+  void SCAL(int n, const T a, T* x) const;
+
+  template <typename T>
+  T ASUM(int n, T* x, int inc) const;
+
+  template <typename T>
   void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
                    int K, T alpha, const T* A, const T* B, T beta, T* C,
                    int batchCount, int64_t strideA, int64_t strideB) const;
+
+#if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
+  template <typename T>
+  void BatchedGEMMWithHead(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB,
+                           int W1, int H1, int W2, int H2, T alpha, const T* A,
+                           const T* B, T beta, T* C, int batchCount,
+                           int64_t strideA, int64_t strideB,
+                           int64_t head_number, bool split_b_vertical) const;
+#endif
 
   template <typename T>
   void MatMul(const framework::Tensor& mat_a, const MatDescriptor& dim_a,
               const framework::Tensor& mat_b, const MatDescriptor& dim_b,
               T alpha, framework::Tensor* mat_out, T beta) const;
+
+  template <typename T>
+  void VINV(int n, const T* a, T* y) const;
+
+  template <typename T>
+  void VMERF(int n, const T* a, T* y, int64_t mode) const;
 
  private:
   const DeviceContext& context_;
@@ -158,6 +231,40 @@ class BlasT : private Blas<DeviceContext> {
   void GEMM(ARGS... args) const {
     Base()->template GEMM<T>(args...);
   }
+
+#ifdef PADDLE_WITH_MKLML
+  template <typename... ARGS>
+  T* GEMM_ALLOC(ARGS... args) const {
+    return Base()->template GEMM_ALLOC<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void GEMM_PACK(ARGS... args) const {
+    Base()->template GEMM_PACK<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void GEMM_COMPUTE(ARGS... args) const {
+    Base()->template GEMM_COMPUTE<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void GEMM_FREE(ARGS... args) const {
+    Base()->template GEMM_FREE<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void CSRMM(ARGS... args) const {
+    Base()->template CSRMM<T>(args...);
+  }
+
+#if !defined(PADDLE_WITH_CUDA)
+  template <typename... ARGS>
+  void MatMulWithHead(ARGS... args) const {
+    Base()->template MatMulWithHead<T>(args...);
+  }
+#endif
+#endif
 
   template <typename... ARGS>
   void MatMul(ARGS... args) const {
@@ -175,8 +282,38 @@ class BlasT : private Blas<DeviceContext> {
   }
 
   template <typename... ARGS>
+  void VSUB(ARGS... args) const {
+    Base()->template VSUB<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VMUL(ARGS... args) const {
+    Base()->template VMUL<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VDIV(ARGS... args) const {
+    Base()->template VDIV<T>(args...);
+  }
+
+  template <typename... ARGS>
   void VCOPY(ARGS... args) const {
     Base()->template VCOPY<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VEXP(ARGS... args) const {
+    Base()->template VEXP<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VSQUARE(ARGS... args) const {
+    Base()->template VSQUARE<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VPOW(ARGS... args) const {
+    Base()->template VPOW<T>(args...);
   }
 
   template <typename... ARGS>
@@ -185,8 +322,33 @@ class BlasT : private Blas<DeviceContext> {
   }
 
   template <typename... ARGS>
+  T DOT(ARGS... args) const {
+    return Base()->template DOT<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void SCAL(ARGS... args) const {
+    Base()->template SCAL<T>(args...);
+  }
+
+  template <typename... ARGS>
+  T ASUM(ARGS... args) const {
+    return Base()->template ASUM<T>(args...);
+  }
+
+  template <typename... ARGS>
   void BatchedGEMM(ARGS... args) const {
     Base()->template BatchedGEMM<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VINV(ARGS... args) const {
+    Base()->template VINV<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VMERF(ARGS... args) const {
+    Base()->template VMERF<T>(args...);
   }
 
  private:

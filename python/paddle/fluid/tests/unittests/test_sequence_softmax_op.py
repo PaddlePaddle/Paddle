@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -26,19 +28,25 @@ class TestSequenceSoftmaxOp(OpTest):
         self.init_op_type()
 
         x = np.random.uniform(0.1, 1, (11, 1)).astype("float32")
-        lod = [[0, 4, 5, 8, 11]]
-
+        self.init_lod()
         out = np.zeros((11, 1)).astype("float32")
-        for i in range(4):
-            sub_x = x[lod[0][i]:lod[0][i + 1], :]
-            sub_x = sub_x.reshape(1, lod[0][i + 1] - lod[0][i])
+        offset = 0
+        for i in range(len(self.lod[0])):
+            if (self.lod[0][i] == 0):
+                continue
+            sub_x = x[offset:offset + self.lod[0][i], :]
+            sub_x = sub_x.reshape(1, self.lod[0][i])
             sub_out = stable_softmax(sub_x)
-            out[lod[0][i]:lod[0][i + 1], :] = sub_out.reshape(
-                lod[0][i + 1] - lod[0][i], 1)
+            out[offset:offset + self.lod[0][i], :] = sub_out.reshape(
+                self.lod[0][i], 1)
+            offset += self.lod[0][i]
 
-        self.inputs = {"X": (x, lod)}
+        self.inputs = {"X": (x, self.lod)}
         self.outputs = {"Out": out}
         self.attrs = {'use_cudnn': self.use_cudnn, }
+
+    def init_lod(self):
+        self.lod = [[4, 1, 3, 3]]
 
     def init_op_type(self):
         pass
@@ -60,9 +68,26 @@ class TestSequenceSoftmaxOp(OpTest):
 
 
 # ----------------cudnn Sequencesoftmax----------------
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestSequenceSoftmaxCUDNNOp(TestSequenceSoftmaxOp):
     def init_op_type(self):
         self.use_cudnn = True
+
+
+class TestSequenceSoftmaxOpSeqLen0Case0(TestSequenceSoftmaxOp):
+    def init_lod(self):
+        self.lod = [[4, 0, 4, 3]]
+
+
+class TestSequenceSoftmaxOpSeqLen0Case1(TestSequenceSoftmaxOp):
+    def init_lod(self):
+        self.lod = [[0, 4, 7, 0]]
+
+
+class TestSequenceSoftmaxOpSeqLen0Case2(TestSequenceSoftmaxOp):
+    def init_lod(self):
+        self.lod = [[0, 0, 0, 11]]
 
 
 if __name__ == "__main__":

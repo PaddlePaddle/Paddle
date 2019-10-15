@@ -11,26 +11,34 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 class TestElementwiseAddOp(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
     def setUp(self):
         self.op_type = "elementwise_add"
         self.dtype = np.float32
         self.axis = -1
         self.init_dtype()
         self.init_input_output()
+        self.init_kernel_type()
         self.init_axis()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.attrs = {'axis': self.axis}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
@@ -212,6 +220,34 @@ class TestFP16ElementwiseAddOp_broadcast_4(TestFP16ElementwiseAddOp):
         self.axis = 0
 
 
+class TestElementwiseAddOp_broadcast_5(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(2, 1, 4).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+class TestFP16ElementwiseAddOp_broadcast_5(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(2, 1, 4).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+class TestElementwiseAddOp_broadcast_6(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
+        self.y = np.random.rand(2, 3, 1, 5).astype(self.dtype)
+        self.out = self.x + self.y
+
+
+class TestFP16ElementwiseAddOp_broadcast_6(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
+        self.y = np.random.rand(2, 3, 1, 5).astype(self.dtype)
+        self.out = self.x + self.y
+
+
 class TestElementwiseAddOp_rowwise_add_0(TestElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
@@ -250,6 +286,43 @@ class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
 
     def init_axis(self):
         self.axis = 1
+
+
+class TestElementwiseAddOp_channelwise_add(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(3, 20, 20).astype(self.dtype)
+        self.y = np.random.rand(3, 1, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+class TestFP16ElementwiseAddOp_channelwise_add(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(3, 10, 20).astype(self.dtype)
+        self.y = np.random.rand(3, 1, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+class TestElementwiseAddOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input of elementwise_add must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            y1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.elementwise_add, x1, y1)
+
+            # the input dtype of elementwise_add must be float16 or float32 or float64 or int32 or int64
+            # float16 only can be set on GPU place
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="uint8")
+            y2 = fluid.layers.data(name='y2', shape=[3, 4, 5, 6], dtype="uint8")
+            self.assertRaises(TypeError, fluid.layers.elementwise_add, x2, y2)
 
 
 if __name__ == '__main__':

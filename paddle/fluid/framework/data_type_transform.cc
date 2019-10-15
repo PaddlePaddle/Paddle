@@ -37,7 +37,7 @@ struct CastDataType {
   const platform::DeviceContext* ctx_;
 
   template <typename OutType>
-  void operator()() {
+  void apply() {
     auto* in_begin = in_.data<InType>();
     auto* in_end = in_begin + in_.numel();
     auto* out_begin = out_->mutable_data<OutType>(in_.place());

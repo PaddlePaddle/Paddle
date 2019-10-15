@@ -16,8 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 
-USE_NO_KERNEL_OP(save);
-USE_NO_KERNEL_OP(load);
+USE_CPU_ONLY_OP(save);
+USE_CPU_ONLY_OP(load);
 
 TEST(SaveLoadOp, CPU) {
   paddle::framework::Scope scope;
@@ -139,6 +139,7 @@ TEST(LoadFP16Op, CPU) {
   save_op->Run(scope, place);
 
   auto load_var = scope.Var("out_var");
+  load_var->GetMutable<paddle::framework::LoDTensor>();
   auto load_op = paddle::framework::OpRegistry::CreateOp(
       "load", {}, {{"Out", {"out_var"}}}, attrs);
   load_op->Run(scope, place);

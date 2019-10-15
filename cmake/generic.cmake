@@ -90,11 +90,47 @@
 # including binary directory for generated headers.
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-if(NOT APPLE AND NOT ANDROID)
-    find_package(Threads REQUIRED)
-    link_libraries(${CMAKE_THREAD_LIBS_INIT})
-    set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
-endif(NOT APPLE AND NOT ANDROID)
+if(NOT APPLE)
+  find_package(Threads REQUIRED)
+  link_libraries(${CMAKE_THREAD_LIBS_INIT})
+  set(CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE} -pthread -ldl -lrt")
+endif(NOT APPLE)
+
+set_property(GLOBAL PROPERTY FLUID_MODULES "")
+# find all fluid modules is used for paddle fluid static library
+# for building inference libs
+function(find_fluid_modules TARGET_NAME)
+  get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
+  string(REGEX REPLACE "^${PADDLE_SOURCE_DIR}/" "" __target_path ${__target_path})
+  string(FIND "${__target_path}" "fluid" pos)
+  if(pos GREATER 1)
+    get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
+    set(fluid_modules ${fluid_modules} ${TARGET_NAME})
+    set_property(GLOBAL PROPERTY FLUID_MODULES "${fluid_modules}")
+  endif()
+endfunction(find_fluid_modules)
+
+
+function(common_link TARGET_NAME)
+  if (WITH_PROFILER)
+    target_link_libraries(${TARGET_NAME} gperftools::profiler)
+  endif()
+endfunction()
+
+
+# find all third_party modules is used for paddle static library
+# for reduce the dependency when building the inference libs.
+set_property(GLOBAL PROPERTY FLUID_THIRD_PARTY)
+function(find_fluid_thirdparties TARGET_NAME)
+  get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
+  string(REGEX REPLACE "^${PADDLE_SOURCE_DIR}/" "" __target_path ${__target_path})
+  string(FIND "${__target_path}" "third_party" pos)
+  if(pos GREATER 1)
+    get_property(fluid_ GLOBAL PROPERTY FLUID_THIRD_PARTY)
+    set(fluid_third_partys ${fluid_third_partys} ${TARGET_NAME})
+    set_property(GLOBAL PROPERTY FLUID_THIRD_PARTY "${fluid_third_partys}")
+  endif()
+endfunction(find_fluid_thirdparties)
 
 function(merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
@@ -134,7 +170,8 @@ function(merge_static_libs TARGET_NAME)
       COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
       COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles}
       )
-  else() # general UNIX: use "ar" to extract objects and re-add to a common lib
+  endif(APPLE)
+  if(LINUX) # general UNIX: use "ar" to extract objects and re-add to a common lib
     set(target_DIR ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.dir)
 
     foreach(lib ${libs})
@@ -173,7 +210,31 @@ function(merge_static_libs TARGET_NAME)
         COMMAND ${CMAKE_AR} crs ${target_LIBNAME} `find ${target_DIR} -name '*.o'`
         COMMAND ${CMAKE_RANLIB} ${target_LIBNAME}
         WORKING_DIRECTORY ${target_DIR})
-  endif()
+  endif(LINUX)
+  if(WIN32) # windows do not support gcc/nvcc combined compiling. Use msvc lib.exe to merge libs.
+    # Make the generated dummy source file depended on all static input
+    # libs. If input lib changes,the source file is touched
+    # which causes the desired effect (relink).
+    add_custom_command(OUTPUT ${target_SRCS}
+      COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
+      DEPENDS ${libs})
+
+    # Generate dummy staic lib
+    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
+    add_library(${TARGET_NAME} STATIC ${target_SRCS})
+    target_link_libraries(${TARGET_NAME} ${libs_deps})
+
+    foreach(lib ${libs})
+      # Get the file names of the libraries to be merged
+      set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
+    endforeach()
+    # msvc will put libarary in directory of "/Release/xxxlib" by default
+    #       COMMAND cmake -E remove "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND cmake -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}"
+      COMMAND lib /OUT:${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib${TARGET_NAME}.lib ${libfiles}
+      )
+  endif(WIN32)
 endfunction(merge_static_libs)
 
 function(cc_library TARGET_NAME)
@@ -181,6 +242,10 @@ function(cc_library TARGET_NAME)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  if(WIN32)
+      # add libxxx.lib prefix in windows
+      set(${TARGET_NAME}_LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "output library name for target ${TARGET_NAME}")
+  endif(WIN32)
   if(cc_library_SRCS)
     if(cc_library_SHARED OR cc_library_shared) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
@@ -195,10 +260,35 @@ function(cc_library TARGET_NAME)
         list(REMOVE_ITEM cc_library_DEPS warpctc)
         add_dependencies(${TARGET_NAME} warpctc)
       endif()
+      # Only deps libmklml.so, not link
+      if("${cc_library_DEPS};" MATCHES "mklml;")
+        list(REMOVE_ITEM cc_library_DEPS mklml)
+        if(NOT "${TARGET_NAME}" MATCHES "dynload_mklml")
+          list(APPEND cc_library_DEPS dynload_mklml)
+        endif()
+        add_dependencies(${TARGET_NAME} mklml)
+        if(WIN32)
+          target_link_libraries(${TARGET_NAME} ${MKLML_IOMP_LIB})
+        else(WIN32)
+          target_link_libraries(${TARGET_NAME} "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
+        endif(WIN32)
+      endif()
+      # remove link to python, see notes at:
+      # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst#building-manually
+      if("${cc_library_DEPS};" MATCHES "python;")
+        list(REMOVE_ITEM cc_library_DEPS python)
+        add_dependencies(${TARGET_NAME} python)
+        if(WIN32)
+          target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
+        else()
+          target_link_libraries(${TARGET_NAME} "-Wl,-undefined,dynamic_lookup")
+        endif(WIN32)
+      endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
+      common_link(${TARGET_NAME})
     endif()
-    
+
     # cpplint code style
     foreach(source_file ${cc_library_SRCS})
       string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
@@ -210,10 +300,49 @@ function(cc_library TARGET_NAME)
     if(cc_library_DEPS)
       merge_static_libs(${TARGET_NAME} ${cc_library_DEPS})
     else()
-      message(FATAL "Please specify source file or library in cc_library.")
+      message(FATAL_ERROR "Please specify source files or libraries in cc_library(${TARGET_NAME} ...).")
     endif()
   endif(cc_library_SRCS)
 endfunction(cc_library)
+
+# The link operation under windows may exceeds the maximum characters limit, simply break the link command
+# into multiple link opeartion can fix that, say
+# original:
+#     lib /out:target.lib a.lib b.lib c.lib d.lib
+# after:
+#    1. lib /out:dummy_lib_1.lib a.lib b.lib
+#    2. lib /out:dummy_lib_2.lib c.lib d.lib
+#    1. lib /out:target.lib dummy_lib_1.lib dummy_lib_2.lib
+function(sep_library TARGET_NAME)
+  set(options STATIC static SHARED shared)
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(sep_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  set(dummy_index 1)
+  set(dummy_offset 1)
+  # the dummy target would be consisted of limit size libraries
+  set(dummy_limit 50)
+  list(LENGTH sep_library_DEPS sep_all_len)
+  foreach(v ${sep_library_DEPS})
+    list(APPEND dummy_list ${v})
+    list(LENGTH dummy_list listlen )
+    if ((${listlen} GREATER ${dummy_limit}) OR (${dummy_offset} EQUAL ${sep_all_len}))
+      message("create dummy library ${TARGET_NAME}_dummy_lib_${dummy_index} for ${TARGET_NAME}")
+      cc_library(${TARGET_NAME}_dummy_lib_${dummy_index} STATIC DEPS ${dummy_list})
+      foreach(i ${dummy_list})
+        list(REMOVE_AT dummy_list 0)
+      endforeach()
+      list(APPEND ${TARGET_NAME}_dummy_list ${TARGET_NAME}_dummy_lib_${dummy_index})
+      MATH(EXPR dummy_index "${dummy_index}+1")
+    endif()
+    MATH(EXPR dummy_offset "${dummy_offset}+1")
+  endforeach()
+  if(${sep_library_SHARED})
+    cc_library(${TARGET_NAME} SHARED SRCS ${sep_library_SRCS} DEPS ${${TARGET_NAME}_dummy_list})
+  else(${sep_library_SHARED})
+    cc_library(${TARGET_NAME} STATIC SRCS ${sep_library_SRCS} DEPS ${${TARGET_NAME}_dummy_list})
+  endif(${sep_library_SHARED})
+endfunction(sep_library)
 
 function(cc_binary TARGET_NAME)
   set(options "")
@@ -224,24 +353,59 @@ function(cc_binary TARGET_NAME)
   if(cc_binary_DEPS)
     target_link_libraries(${TARGET_NAME} ${cc_binary_DEPS})
     add_dependencies(${TARGET_NAME} ${cc_binary_DEPS})
+    common_link(${TARGET_NAME})
   endif()
+  get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+  target_link_libraries(${TARGET_NAME} ${os_dependency_modules})
 endfunction(cc_binary)
+
+function(cc_test_build TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    add_executable(${TARGET_NAME} ${cc_test_SRCS})
+    if(WIN32)
+      if("${cc_test_DEPS};" MATCHES "python;")
+        list(REMOVE_ITEM cc_test_DEPS python)
+        target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
+      endif()
+    endif(WIN32)
+    get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} ${os_dependency_modules} paddle_gtest_main lod_tensor memory gtest gflags glog)
+    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
+    common_link(${TARGET_NAME})
+  endif()
+endfunction()
+
+function(cc_test_run TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs COMMAND ARGS)
+    cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    add_test(NAME ${TARGET_NAME}
+	    COMMAND ${cc_test_COMMAND}
+	    ARGS ${cc_test_ARGS}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
+    # No unit test should exceed 10 minutes.
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+  endif()
+endfunction()
 
 function(cc_test TARGET_NAME)
   if(WITH_TESTING)
-    set(options SERIAL)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    add_executable(${TARGET_NAME} ${cc_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main memory gtest gflags glog)
-    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main memory gtest gflags glog)
-    add_test(NAME ${TARGET_NAME}
-             COMMAND ${TARGET_NAME} ${cc_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-    if (${cc_test_SERIAL})
-        set_property(TEST ${TARGET_NAME} PROPERTY SERIAL 1)
-    endif()
+    cc_test_build(${TARGET_NAME}
+	    SRCS ${cc_test_SRCS}
+	    DEPS ${cc_test_DEPS})
+    cc_test_run(${TARGET_NAME}
+	    COMMAND ${TARGET_NAME}
+	    ARGS ${cc_test_ARGS})
   endif()
 endfunction(cc_test)
 
@@ -289,23 +453,25 @@ function(nv_binary TARGET_NAME)
     if(nv_binary_DEPS)
       target_link_libraries(${TARGET_NAME} ${nv_binary_DEPS})
       add_dependencies(${TARGET_NAME} ${nv_binary_DEPS})
+      common_link(${TARGET_NAME})
     endif()
   endif()
 endfunction(nv_binary)
 
 function(nv_test TARGET_NAME)
   if (WITH_GPU AND WITH_TESTING)
-    set(options SERIAL)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(nv_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     cuda_add_executable(${TARGET_NAME} ${nv_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main memory gtest gflags glog)
-    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main memory gtest gflags glog)
+    get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+    target_link_libraries(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog ${os_dependency_modules})
+    add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
+    common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
-    if (nv_test_SERIAL)
-        set_property(TEST ${TARGET_NAME} PROPERTY SERIAL 1)
-    endif()
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
   endif()
 endfunction(nv_test)
 
@@ -327,25 +493,29 @@ function(hip_library TARGET_NAME)
       else()
         add_library(${TARGET_NAME} STATIC ${_cmake_options} ${_generated_files} ${_sources})
         set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE CXX)
-        target_link_libraries(${TARGET_NAME} /opt/rocm/hip/lib/libhip_hcc.so /opt/rocm/hip/lib/libhip_device.a)
-	find_fluid_modules(${TARGET_NAME})
+        target_link_libraries(${TARGET_NAME} /opt/rocm/hip/lib/libhip_hcc.so /opt/rocm/hip/lib/libhip_device.a /opt/rocm/rccl/lib/librccl.so /opt/rocm/hiprand/lib/libhiprand.so)
+        find_fluid_modules(${TARGET_NAME})
       endif()
-      if (hip_library_DEPS)
-	add_dependencies(${TARGET_NAME} ${hip_library_DEPS})
-	target_link_libraries(${TARGET_NAME} ${hip_library_DEPS})
+      if("${hip_library_DEPS}" MATCHES "ARCHIVE_START")
+        # Support linking flags: --whole-archive (Linux) / -force_load (MacOS).
+        # WARNING: Please don't use ARCHIVE_START&ARCHIVE_END if TARGET_NAME will be linked by other libraries.
+        target_circle_link_libraries(${TARGET_NAME} ${hip_library_DEPS})
+        list(REMOVE_ITEM hip_library_DEPS ARCHIVE_START ARCHIVE_END)
+      else()
+        target_link_libraries(${TARGET_NAME} ${hip_library_DEPS})
       endif()
       # cpplint code style
       foreach(source_file ${hip_library_SRCS})
-	string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
-	if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
-	  list(APPEND hip_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
-	endif()
+        string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
+        if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+          list(APPEND hip_library_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/${source}.h)
+        endif()
       endforeach()
     else(hip_library_SRCS)
       if (hip_library_DEPS)
-	merge_static_libs(${TARGET_NAME} ${hip_library_DEPS})
+        merge_static_libs(${TARGET_NAME} ${hip_library_DEPS})
       else()
-	message(FATAL "Please specify source file or library in nv_library.")
+        message(FATAL "Please specify source file or library in nv_library.")
       endif()
     endif(hip_library_SRCS)
   endif()
@@ -361,6 +531,7 @@ function(hip_binary TARGET_NAME)
     if(hip_binary_DEPS)
       target_link_libraries(${TARGET_NAME} ${hip_binary_DEPS})
       add_dependencies(${TARGET_NAME} ${hip_binary_DEPS})
+      common_link(${TARGET_NAME})
     endif()
   endif()
 endfunction(hip_binary)
@@ -378,8 +549,10 @@ function(hip_test TARGET_NAME)
     endif()
     add_executable(${TARGET_NAME} ${_cmake_options} ${_generated_files} ${_sources})
     set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE HIP)
-    target_link_libraries(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags)
+    get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+    target_link_libraries(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags ${os_dependency_modules})
     add_dependencies(${TARGET_NAME} ${hip_test_DEPS} paddle_gtest_main memory gtest gflags)
+    common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
   endif()
 endfunction(hip_test)
@@ -422,6 +595,7 @@ function(go_library TARGET_NAME)
   endif()
   if(go_library_DEPS)
     add_dependencies(${TARGET_NAME} ${go_library_DEPS})
+    common_link(${TARGET_NAME})
   endif(go_library_DEPS)
 
   # The "source file" of the library is `${dummyfile}` which never
@@ -492,29 +666,23 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
   set(${SRCS})
   set(${HDRS})
 
-  if (MOBILE_INFERENCE)
-      set(EXTRA_FLAG "lite:")  
-  else()
-      set(EXTRA_FLAG "") 
-  endif()
-
   foreach(FIL ${ARGN})
     get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
     get_filename_component(FIL_WE ${FIL} NAME_WE)
-    
+
     set(_protobuf_protoc_src "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.cc")
     set(_protobuf_protoc_hdr "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.h")
     list(APPEND ${SRCS} "${_protobuf_protoc_src}")
     list(APPEND ${HDRS} "${_protobuf_protoc_hdr}")
-    
+
     add_custom_command(
       OUTPUT "${_protobuf_protoc_src}"
              "${_protobuf_protoc_hdr}"
 
       COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}"
-      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} 
+      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
       -I${CMAKE_CURRENT_SOURCE_DIR}
-      --cpp_out "${EXTRA_FLAG}${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
+      --cpp_out "${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
       DEPENDS ${ABS_FIL} protoc
       COMMENT "Running C++ protocol buffer compiler on ${FIL}"
       VERBATIM )
@@ -542,7 +710,7 @@ function(py_proto_compile TARGET_NAME)
   cmake_parse_arguments(py_proto_compile "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
   set(py_srcs)
   protobuf_generate_python(py_srcs ${py_proto_compile_SRCS})
-  add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs})
+  add_custom_target(${TARGET_NAME} ALL DEPENDS ${py_srcs} protobuf)
 endfunction()
 
 function(py_test TARGET_NAME)
@@ -551,10 +719,26 @@ function(py_test TARGET_NAME)
     set(oneValueArgs "")
     set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    add_test(NAME ${TARGET_NAME}
-             COMMAND env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
-             ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+    if(WITH_COVERAGE)
+      add_test(NAME ${TARGET_NAME}
+               COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+               FLAGS_cpu_deterministic=true
+               PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
+               COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+               ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS} ${py_test_ARGS}
+               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+      add_test(NAME ${TARGET_NAME}
+               COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+               FLAGS_cpu_deterministic=true
+               PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
+               ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
+               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
+
+    # No unit test should exceed 10 minutes.
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
   endif()
 endfunction()
 
@@ -579,9 +763,9 @@ function(grpc_library TARGET_NAME)
   get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
 
   #FIXME(putcn): the follwoing line is supposed to generate *.pb.h and cc, but
-  # somehow it didn't. line 602 to 604 is to patching this. Leaving this here 
+  # somehow it didn't. line 602 to 604 is to patching this. Leaving this here
   # for now to enable dist CI.
-  protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
+  paddle_protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
   set(grpc_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.cc")
   set(grpc_grpc_hdrs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.h")
   cc_library("${TARGET_NAME}_proto" SRCS "${grpc_proto_srcs}")
@@ -609,4 +793,22 @@ function(grpc_library TARGET_NAME)
     PROPERTIES
     COMPILE_FLAGS  "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
   cc_library("${TARGET_NAME}" SRCS "${grpc_library_SRCS}" DEPS "${TARGET_NAME}_grpc" "${TARGET_NAME}_proto" "${grpc_library_DEPS}")
+endfunction()
+
+
+function(brpc_library TARGET_NAME)
+  set(oneValueArgs PROTO)
+  set(multiValueArgs SRCS DEPS)
+  set(options "")
+  cmake_parse_arguments(brpc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+  message(STATUS "generating brpc ${brpc_library_PROTO}")
+
+  get_filename_component(ABS_PROTO ${brpc_library_PROTO} ABSOLUTE)
+  get_filename_component(PROTO_WE ${brpc_library_PROTO} NAME_WE)
+  get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
+
+  paddle_protobuf_generate_cpp(brpc_proto_srcs brpc_proto_hdrs "${ABS_PROTO}")
+  cc_library("${TARGET_NAME}_proto" SRCS "${brpc_proto_srcs}")
+  cc_library("${TARGET_NAME}" SRCS "${brpc_library_SRCS}" DEPS "${TARGET_NAME}_proto" "${brpc_library_DEPS}")
 endfunction()

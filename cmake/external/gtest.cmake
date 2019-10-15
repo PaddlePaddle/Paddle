@@ -12,8 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(WITH_TESTING)
-    ENABLE_TESTING()
+#FIXME:(gongwb) Move brpc's gtest dependency.
+
+include(GNUInstallDirs)
+
+IF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))
+    IF(WITH_TESTING)
+        ENABLE_TESTING()
+    ENDIF(WITH_TESTING)
+
     INCLUDE(ExternalProject)
 
     SET(GTEST_SOURCES_DIR ${THIRD_PARTY_PATH}/gtest)
@@ -24,14 +31,14 @@ IF(WITH_TESTING)
 
     IF(WIN32)
         set(GTEST_LIBRARIES
-            "${GTEST_INSTALL_DIR}/lib/gtest.lib" CACHE FILEPATH "gtest libraries." FORCE)
+            "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/gtest.lib" CACHE FILEPATH "gtest libraries." FORCE)
         set(GTEST_MAIN_LIBRARIES
-            "${GTEST_INSTALL_DIR}/lib/gtest_main.lib" CACHE FILEPATH "gtest main libraries." FORCE)
+            "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/gtest_main.lib" CACHE FILEPATH "gtest main libraries." FORCE)
     ELSE(WIN32)
         set(GTEST_LIBRARIES
-            "${GTEST_INSTALL_DIR}/lib/libgtest.a" CACHE FILEPATH "gtest libraries." FORCE)
+            "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgtest.a" CACHE FILEPATH "gtest libraries." FORCE)
         set(GTEST_MAIN_LIBRARIES
-            "${GTEST_INSTALL_DIR}/lib/libgtest_main.a" CACHE FILEPATH "gtest main libraries." FORCE)
+            "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgtest_main.a" CACHE FILEPATH "gtest main libraries." FORCE)
     ENDIF(WIN32)
 
     IF(WITH_MKLML)
@@ -44,13 +51,17 @@ IF(WITH_TESTING)
         ${EXTERNAL_PROJECT_LOG_ARGS}
         DEPENDS         ${GTEST_DEPENDS}
         GIT_REPOSITORY  "https://github.com/google/googletest.git"
-        GIT_TAG         "release-1.8.0"
+        GIT_TAG         "release-1.8.1"
         PREFIX          ${GTEST_SOURCES_DIR}
         UPDATE_COMMAND  ""
         CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                        -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+                        -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
                         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                        -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+                        -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
                         -DCMAKE_INSTALL_PREFIX=${GTEST_INSTALL_DIR}
                         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                         -DBUILD_GMOCK=ON
@@ -71,5 +82,4 @@ IF(WITH_TESTING)
     SET_PROPERTY(TARGET gtest_main PROPERTY IMPORTED_LOCATION ${GTEST_MAIN_LIBRARIES})
     ADD_DEPENDENCIES(gtest_main extern_gtest)
 
-    LIST(APPEND external_project_dependencies gtest gtest_main)
-ENDIF(WITH_TESTING)
+ENDIF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))

@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/roi_pool_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
@@ -31,7 +32,7 @@ static inline int NumBlocks(const int N) {
 
 template <typename T>
 __global__ void GPUROIPoolForward(
-    const int nthreads, const T* input_data, const int64_t* input_rois,
+    const int nthreads, const T* input_data, const T* input_rois,
     const float spatial_scale, const int channels, const int height,
     const int width, const int pooled_height, const int pooled_width,
     int* roi_batch_id_data, T* output_data, int64_t* argmax_data) {
@@ -43,7 +44,7 @@ __global__ void GPUROIPoolForward(
     int c = (i / pooled_width / pooled_height) % channels;
     int n = i / pooled_width / pooled_height / channels;
 
-    const int64_t* offset_input_rois = input_rois + n * kROISize;
+    const T* offset_input_rois = input_rois + n * kROISize;
     int roi_batch_ind = roi_batch_id_data[n];
     int roi_start_w = round(offset_input_rois[0] * spatial_scale);
     int roi_start_h = round(offset_input_rois[1] * spatial_scale);
@@ -93,7 +94,7 @@ __global__ void GPUROIPoolForward(
 
 template <typename T>
 __global__ void GPUROIPoolBackward(
-    const int nthreads, const int64_t* input_rois, const T* output_grad,
+    const int nthreads, const T* input_rois, const T* output_grad,
     const int64_t* argmax_data, const int num_rois, const float spatial_scale,
     const int channels, const int height, const int width,
     const int pooled_height, const int pooled_width, int* roi_batch_id_data,
@@ -152,8 +153,8 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
 
     framework::Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({rois_num});
-    int* roi_batch_id_data =
-        roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
+    auto cplace = platform::CPUPlace();
+    int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
     auto rois_lod = rois->lod().back();
     int rois_batch_size = rois_lod.size() - 1;
     PADDLE_ENFORCE_EQ(
@@ -168,15 +169,18 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    framework::Tensor roi_batch_id_list_gpu;
-    framework::TensorCopy(roi_batch_id_list, ctx.GetPlace(),
-                          ctx.device_context(), &roi_batch_id_list_gpu);
+    auto& dev_ctx = ctx.cuda_device_context();
+    int bytes = roi_batch_id_list.numel() * sizeof(int);
+    auto roi_ptr = memory::Alloc(dev_ctx, bytes);
+    int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
+    const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
+                 dev_ctx.stream());
 
-    GPUROIPoolForward<
-        T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
-        output_size, in->data<T>(), rois->data<int64_t>(), spatial_scale,
-        channels, height, width, pooled_height, pooled_width,
-        roi_batch_id_list_gpu.data<int>(), out->mutable_data<T>(ctx.GetPlace()),
+    GPUROIPoolForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+        output_size, in->data<T>(), rois->data<T>(), spatial_scale, channels,
+        height, width, pooled_height, pooled_width, roi_id_data,
+        out->mutable_data<T>(ctx.GetPlace()),
         argmax->mutable_data<int64_t>(ctx.GetPlace()));
   }
 };
@@ -204,8 +208,8 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
     if (x_grad) {
       framework::Tensor roi_batch_id_list;
       roi_batch_id_list.Resize({rois_num});
-      int* roi_batch_id_data =
-          roi_batch_id_list.mutable_data<int>(platform::CPUPlace());
+      auto cplace = platform::CPUPlace();
+      int* roi_batch_id_data = roi_batch_id_list.mutable_data<int>(cplace);
       auto rois_lod = rois->lod().back();
       int rois_batch_size = rois_lod.size() - 1;
       for (int n = 0; n < rois_batch_size; ++n) {
@@ -213,25 +217,28 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
           roi_batch_id_data[i] = n;
         }
       }
-      framework::Tensor roi_batch_id_list_gpu;
-      framework::TensorCopy(roi_batch_id_list, ctx.GetPlace(),
-                            ctx.device_context(), &roi_batch_id_list_gpu);
+
+      auto& dev_ctx = ctx.cuda_device_context();
+      int bytes = roi_batch_id_list.numel() * sizeof(int);
+      auto roi_ptr = memory::Alloc(dev_ctx, bytes);
+      int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
+      const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+      memory::Copy(gplace, roi_id_data, cplace, roi_batch_id_data, bytes,
+                   dev_ctx.stream());
 
       x_grad->mutable_data<T>(ctx.GetPlace());
       math::SetConstant<Place, T> set_zero;
-      set_zero(ctx.cuda_device_context(), x_grad, static_cast<T>(0));
+      set_zero(dev_ctx, x_grad, static_cast<T>(0));
 
       int output_grad_size = out_grad->numel();
       int blocks = NumBlocks(output_grad_size);
       int threads = kNumCUDAThreads;
 
       if (output_grad_size > 0) {
-        GPUROIPoolBackward<
-            T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
-            output_grad_size, rois->data<int64_t>(), out_grad->data<T>(),
+        GPUROIPoolBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
+            output_grad_size, rois->data<T>(), out_grad->data<T>(),
             argmax->data<int64_t>(), rois_num, spatial_scale, channels, height,
-            width, pooled_height, pooled_width,
-            roi_batch_id_list_gpu.data<int>(),
+            width, pooled_height, pooled_width, roi_id_data,
             x_grad->mutable_data<T>(ctx.GetPlace()));
       }
     }
@@ -249,4 +256,4 @@ REGISTER_OP_CUDA_KERNEL(
 REGISTER_OP_CUDA_KERNEL(
     roi_pool_grad,
     ops::GPUROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GPUROIPoolOpKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::GPUROIPoolGradOpKernel<paddle::platform::CUDADeviceContext, double>);
