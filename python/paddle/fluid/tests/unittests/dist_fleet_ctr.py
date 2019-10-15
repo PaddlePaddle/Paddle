@@ -139,7 +139,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         dataset.set_filelist(filelist)
         dataset.set_thread(thread_num)
 
-        for epoch_id in range(2):
+        for epoch_id in range(1):
             pass_start = time.time()
             dataset.set_filelist(filelist)
             exe.train_from_dataset(
@@ -157,7 +157,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                     print("{}: \n {}\n".format(self.fetch_target_names[0],
                                                fetch_target_vars[0]))
 
-        for epoch_id in range(2):
+        for epoch_id in range(1):
             pass_start = time.time()
             dataset.set_filelist(filelist)
             exe.train_from_dataset(
