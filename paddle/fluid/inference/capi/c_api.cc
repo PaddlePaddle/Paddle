@@ -29,22 +29,34 @@ void PD_DeletePaddleBuf(PD_PaddleBuf* buf) {
   if (buf) {
     delete buf;
     buf = nullptr;
+    VLOG(3) << "PD_PaddleBuf delete successfully. ";
   }
 }
 
 void PD_PaddleBufResize(PD_PaddleBuf* buf, size_t length) {
+  PADDLE_ENFORCE_NOT_NULL(buf);
   buf->buf.Resize(length);
 }
 
 void PD_PaddleBufReset(PD_PaddleBuf* buf, void* data, size_t length) {
+  PADDLE_ENFORCE_NOT_NULL(buf);
   buf->buf.Reset(data, length);
 }
 
-bool PD_PaddleBufEmpty(PD_PaddleBuf* buf) { return buf->buf.empty(); }
+bool PD_PaddleBufEmpty(PD_PaddleBuf* buf) {
+  PADDLE_ENFORCE_NOT_NULL(buf);
+  return buf->buf.empty();
+}
 
-void* PD_PaddleBufData(PD_PaddleBuf* buf) { return buf->buf.data(); }
+void* PD_PaddleBufData(PD_PaddleBuf* buf) {
+  PADDLE_ENFORCE_NOT_NULL(buf);
+  return buf->buf.data();
+}
 
-size_t PD_PaddleBufLength(PD_PaddleBuf* buf) { return buf->buf.length(); }
+size_t PD_PaddleBufLength(PD_PaddleBuf* buf) {
+  PADDLE_ENFORCE_NOT_NULL(buf);
+  return buf->buf.length();
+}
 
 }  // extern "C"
 

@@ -74,7 +74,7 @@ void zero_copy_run() {
   inputs->shape = shape;
   inputs->shape_size = shape_size;
 
-  PD_PredictorZeroCopyRun(config, inputs, in_size, outputs, &out_size);
+  PD_PredictorZeroCopyRun(config, inputs, in_size, &outputs, &out_size);
 }
 
 TEST(PD_ZeroCopyRun, zero_copy_run) { zero_copy_run<float>(); }
