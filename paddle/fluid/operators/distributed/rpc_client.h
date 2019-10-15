@@ -80,6 +80,10 @@ class RPCClient {
       const std::string& ep, const std::string& dir,
       int64_t time_out = FLAGS_rpc_deadline) = 0;
 
+  virtual VarHandlePtr AsyncDistributeNotify(
+      const std::string& ep, const std::string& type,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
+
   virtual VarHandlePtr AsyncSendComplete(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
 
