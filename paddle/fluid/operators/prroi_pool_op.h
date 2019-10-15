@@ -281,19 +281,29 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
 
-    auto rois_lod = rois->lod().back();
-    int rois_batch_size = rois_lod.size() - 1;
-    PADDLE_ENFORCE_EQ(
-        rois_batch_size, batch_size,
-        "the rois_batch_size and input(X) batch_size should be the same.");
-    int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(rois_num_with_lod, rois_num,
-                      "the rois_num from input and lod must be the same");
+    bool has_batch_index = ctx.HasInput("Batch_index");
+    if (has_batch_index) {
+      auto* BatchIndex = ctx.Input<framework::Tensor>("Batch_index");
+      auto* batch_index = BatchIndex->data<int64_t>();
+      int rois_batch_size = BatchIndex->dims()[0];
+      for (int n = 0; n < rois_batch_size; ++n) {
+        rois_batch_id_data[n] = batch_index[n];
+      }
+    } else {
+      auto rois_lod = rois->lod().back();
+      int rois_batch_size = rois_lod.size() - 1;
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          "the rois_batch_size and input(X) batch_size should be the same.");
+      int rois_num_with_lod = rois_lod[rois_batch_size];
+      PADDLE_ENFORCE_EQ(rois_num_with_lod, rois_num,
+                        "the rois_num from input and lod must be the same");
 
-    // calculate batch id index for each roi according to LoD
-    for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-        rois_batch_id_data[i] = n;
+      // calculate batch id index for each roi according to LoD
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          rois_batch_id_data[i] = n;
+        }
       }
     }
 
@@ -390,7 +400,7 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
-    if (input_grad && input_roi_grad) {
+    if (input_grad || input_roi_grad) {
       auto in_dims = in->dims();
       auto* in_data = in->data<T>();
       auto* out_data = out->data<T>();
@@ -406,12 +416,23 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       rois_batch_id_list.Resize({rois_num});
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
-      auto rois_lod = rois->lod().back();
-      int rois_batch_size = rois_lod.size() - 1;
-      // calculate batch id index for each roi according to LoD
-      for (int n = 0; n < rois_batch_size; ++n) {
-        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-          rois_batch_id_data[i] = n;
+
+      bool has_batch_index = ctx.HasInput("Batch_index");
+      if (has_batch_index || rois->lod().empty()) {
+        auto* BatchIndex = ctx.Input<framework::Tensor>("Batch_index");
+        auto* batch_index = BatchIndex->data<int64_t>();
+        int rois_batch_size = BatchIndex->dims()[0];
+        for (int n = 0; n < rois_batch_size; ++n) {
+          rois_batch_id_data[n] = batch_index[n];
+        }
+      } else {
+        auto rois_lod = rois->lod().back();
+        int rois_batch_size = rois_lod.size() - 1;
+        // calculate batch id index for each roi according to LoD
+        for (int n = 0; n < rois_batch_size; ++n) {
+          for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+            rois_batch_id_data[i] = n;
+          }
         }
       }
 

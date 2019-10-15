@@ -39,6 +39,11 @@ class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "where (x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates. "
              "The roi batch index can be calculated from LoD.");
+    AddInput("Batch_index",
+             "(Tensor), "
+             "the batchindex data for rois, its shape is [num_rois]"
+             "where num_roi is the number of ROIs")
+        .AsDispensable();
     AddOutput("Out",
               "(Tensor), "
               "the output of PRROIPoolOp is a 4-D Tensor with shape "
@@ -108,6 +113,13 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
     out_dims[1] = input_dims[1];
     out_dims[2] = pooled_height;
     out_dims[3] = pooled_width;
+    bool has_batch_index = ctx->HasInput("Batch_index");
+    if (has_batch_index) {
+      auto rois_batch_index = ctx->GetInputDim("Batch_index");
+      PADDLE_ENFORCE_EQ(rois_batch_index[0], rois_dims[0],
+                        "The length of batch_index should equal to  "
+                        "first dim of ROI");
+    }
     ctx->SetOutputDim("Out", out_dims);
   }
 
@@ -151,6 +163,7 @@ class PRROIPoolGradDescMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("X", Input("X"));
     op->SetInput("Out", Output("Out"));
     op->SetInput("ROIs", Input("ROIs"));
+    op->SetInput("Batch_index", Input("Batch_index"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetOutput(framework::GradVarName("ROIs"), InputGrad("ROIs"));

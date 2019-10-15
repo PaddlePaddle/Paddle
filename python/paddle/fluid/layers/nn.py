@@ -16188,6 +16188,7 @@ def prroi_pool(input,
                spatial_scale=1.0,
                pooled_height=1,
                pooled_width=1,
+               batch_index=None,
                name=None):
     """
     The precise roi pooling implementation for paddle?https://arxiv.org/pdf/1807.11590.pdf
@@ -16197,14 +16198,20 @@ def prroi_pool(input,
                         [N,C,H,W]. Where N is batch size,C is number of input channels,H
                         is height of the feature, and W is the width of the feature.
         rois (Variable): ROIs (Regions of Interest) to pool over.It should be
-                        a 2-D LoDTensor of shape (num_rois, 4), the lod level
-                        is 1. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+                        a 2-D LoDTensor or Tensor of shape (num_rois, 4), the lod level
+                        is 1 when it is LoDTensor. The LoD include the rois's batch index
+                        information. If rois is Tensor, its batch index information shoule
+                        be provided by batch_index.
+                        Given as [[x1, y1, x2, y2], ...], (x1, y1) is
                         the top left coordinates, and (x2, y2) is the bottom
                         right coordinates.
         spatial_scale (float): Ratio of input feature map height (or width) to raw image height (or width).
                              Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
         pooled_height (integer): The pooled output height. Default: 1.
         pooled_width (integer): The pooled output width. Default: 1.
+        batch_index (Variable): The batch index informatioin for each roi in rois. It 
+                         shoule be 1-D Tensor, with shape [num_rois] and dtype int64, 
+                         where num_rois is the number of rois. Default: None.
         name (str, default None): The name of this operation.
 
     Returns:
@@ -16228,10 +16235,12 @@ def prroi_pool(input,
         raise TypeError("pooled_width must be int type")
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
+    inputs_op = {'X': input, 'ROIs': rois}
+    if batch_index is not None:
+        inputs_op['Batch_index'] = batch_index
     helper.append_op(
         type='prroi_pool',
-        inputs={'X': input,
-                'ROIs': rois},
+        inputs=inputs_op,
         outputs={'Out': out},
         attrs={
             'spatial_scale': spatial_scale,

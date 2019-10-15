@@ -214,23 +214,40 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     int rois_num = rois->dims()[0];
     if (rois_num == 0) return;
 
-    auto rois_lod = rois->lod().back();
-    int rois_batch_size = rois_lod.size() - 1;
-    PADDLE_ENFORCE_EQ(
-        rois_batch_size, batch_size,
-        "The rois_batch_size and input(X) batch_size must be the same.");
-    int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
-                      "The rois_num from input and lod must be the same.");
-
     // set rois batch id
     framework::Tensor rois_batch_id_list;
     rois_batch_id_list.Resize({rois_num});
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
-    for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-        rois_batch_id_data[i] = n;
+
+    bool has_batch_index = ctx.HasInput("Batch_index");
+    if (has_batch_index) {
+      auto* BatchIndex = ctx.Input<Tensor>("Batch_index");
+      framework::Tensor batch_index_cpu;
+      framework::TensorCopy(*BatchIndex, platform::CPUPlace(),
+                            &batch_index_cpu);
+
+      // auto* batch_index = BatchIndex->data<int64_t>();
+      int rois_batch_size = BatchIndex->dims()[0];
+      // rois_batch_id_data = batch_index;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        rois_batch_id_data[n] = batch_index_cpu.data<int64_t>()[n];
+      }
+
+    } else {
+      auto rois_lod = rois->lod().back();
+      int rois_batch_size = rois_lod.size() - 1;
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          "The rois_batch_size and input(X) batch_size must be the same.");
+      int rois_num_with_lod = rois_lod[rois_batch_size];
+      PADDLE_ENFORCE_EQ(rois_num, rois_num_with_lod,
+                        "The rois_num from input and lod must be the same.");
+
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          rois_batch_id_data[i] = n;
+        }
       }
     }
 
@@ -281,11 +298,25 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       rois_batch_id_list.Resize({rois_num});
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
-      auto rois_lod = rois->lod().back();
-      int rois_batch_size = rois_lod.size() - 1;
-      for (int n = 0; n < rois_batch_size; ++n) {
-        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-          rois_batch_id_data[i] = n;
+
+      bool has_batch_index = ctx.HasInput("Batch_index");
+      if (has_batch_index) {
+        auto* BatchIndex = ctx.Input<Tensor>("Batch_index");
+        framework::Tensor batch_index_cpu;
+        framework::TensorCopy(*BatchIndex, platform::CPUPlace(),
+                              &batch_index_cpu);
+
+        int rois_batch_size = BatchIndex->dims()[0];
+        for (int n = 0; n < rois_batch_size; ++n) {
+          rois_batch_id_data[n] = batch_index_cpu.data<int64_t>()[n];
+        }
+      } else {
+        auto rois_lod = rois->lod().back();
+        int rois_batch_size = rois_lod.size() - 1;
+        for (int n = 0; n < rois_batch_size; ++n) {
+          for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+            rois_batch_id_data[i] = n;
+          }
         }
       }
 
