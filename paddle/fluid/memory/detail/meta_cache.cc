@@ -22,17 +22,16 @@ namespace detail {
 
 MetadataCache::MetadataCache(bool uses_gpu) : uses_gpu_(uses_gpu) {}
 
-MemoryBlock::Desc* MetadataCache::load_desc(const MemoryBlock* block) const {
+MemoryBlock::Desc* MetadataCache::load_desc(MemoryBlock* block) {
   if (uses_gpu_) {
     auto existing_desc = cache_.find(block);
     PADDLE_ENFORCE_EQ(existing_desc->second.check_guards(), true);
-    return const_cast<MemoryBlock::Desc*>(&(existing_desc->second));
+    return &(existing_desc->second);
   } else {
-    auto* desc = reinterpret_cast<const MemoryBlock::Desc*>(block);
+    auto* desc = reinterpret_cast<MemoryBlock::Desc*>(block);
     VLOG(10) << "Load MemoryBlock::Desc type=" << desc->type;
     PADDLE_ENFORCE_EQ(desc->check_guards(), true);
-    return const_cast<MemoryBlock::Desc*>(
-        reinterpret_cast<const MemoryBlock::Desc*>(block));
+    return reinterpret_cast<MemoryBlock::Desc*>(block);
   }
 }
 

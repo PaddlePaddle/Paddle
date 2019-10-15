@@ -120,8 +120,8 @@ void BuddyAllocator::Free(void* p) {
   total_free_ += desc->total_size;
 
   // Trying to merge the right buddy
-  MemoryBlock* right_buddy = nullptr;
-  if (block->get_right_buddy(cache_, right_buddy)) {
+  MemoryBlock* right_buddy = block->GetRightBuddy(&cache_);
+  if (right_buddy) {
     VLOG(10) << "Merging this block " << block << " with its right buddy "
              << right_buddy;
 
@@ -137,8 +137,8 @@ void BuddyAllocator::Free(void* p) {
   }
 
   // Trying to merge the left buddy
-  MemoryBlock* left_buddy = nullptr;
-  if (block->get_left_buddy(cache_, left_buddy)) {
+  MemoryBlock* left_buddy = block->GetLeftBuddy(&cache_);
+  if (left_buddy) {
     VLOG(10) << "Merging this block " << block << " with its left buddy "
              << left_buddy;
 
@@ -254,8 +254,8 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
   desc->update_guards();
 
   // the rest of memory if exist
-  MemoryBlock* right_buddy = nullptr;
-  if (block->get_right_buddy(cache_, right_buddy)) {
+  MemoryBlock* right_buddy = block->GetRightBuddy(&cache_);
+  if (right_buddy) {
     auto* rb_desc = cache_.load_desc(right_buddy);
     if (rb_desc->type == MemoryBlock::FREE_CHUNK) {
       VLOG(10) << "Insert right block (" << right_buddy << ", "

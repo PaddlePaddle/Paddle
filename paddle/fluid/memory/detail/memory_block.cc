@@ -27,16 +27,12 @@ void MemoryBlock::init(MetadataCache* cache, Type t, size_t index, size_t size,
                               static_cast<MemoryBlock*>(right_buddy)));
 }
 
-bool MemoryBlock::get_left_buddy(const MetadataCache& cache,
-                                 MemoryBlock*& buddy) const {
-  buddy = cache.load_desc(this)->left_buddy;
-  return buddy == nullptr ? false : true;
+MemoryBlock* MemoryBlock::GetLeftBuddy(MetadataCache* cache) {
+  return cache->load_desc(this)->left_buddy;
 }
 
-bool MemoryBlock::get_right_buddy(const MetadataCache& cache,
-                                  MemoryBlock*& buddy) const {
-  buddy = cache.load_desc(this)->right_buddy;
-  return buddy == nullptr ? false : true;
+MemoryBlock* MemoryBlock::GetRightBuddy(MetadataCache* cache) {
+  return cache->load_desc(this)->right_buddy;
 }
 
 void MemoryBlock::split(MetadataCache* cache, size_t size) {

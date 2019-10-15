@@ -41,10 +41,8 @@ struct MemoryBlock {
   void init(MetadataCache* cache, Type t, size_t index, size_t size,
             void* left_buddy, void* right_buddy);
 
-  bool get_left_buddy(const MetadataCache& cache,
-                      MemoryBlock*& buddy) const;  // NOLINT
-  bool get_right_buddy(const MetadataCache& cache,
-                       MemoryBlock*& buddy) const;  // NOLINT
+  MemoryBlock* GetLeftBuddy(MetadataCache* cache);
+  MemoryBlock* GetRightBuddy(MetadataCache* cache);
 
   // Split the allocation into left/right blocks.
   void split(MetadataCache* cache, size_t size);
@@ -99,7 +97,7 @@ class MetadataCache {
   // used to manage CPU memory, the MemoryBlock::Desc resides at the beginning
   // of the memory block; when used to manage GPU memory, the
   // Meatadata resides in CPU memory indexed by cache_.
-  MemoryBlock::Desc* load_desc(const MemoryBlock* memory_block) const;
+  MemoryBlock::Desc* load_desc(MemoryBlock* memory_block);
 
   // Saves the MemoryBlock::Desc of a memory block into the cache.  For CPU
   // memory block, writes the MemoryBlock::Desc to the beginning of the memory
