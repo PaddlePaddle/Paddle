@@ -291,6 +291,10 @@ class TestDistRunnerBase(object):
             build_stra.num_trainers = 1
             build_stra.trainer_id = 0
 
+        if args.use_dgc:
+            # fuse_all_reduce_ops require that gradients should not be sparse types
+            build_stra.fuse_all_reduce_ops = False
+
         print_to_err(type(self).__name__, "begin to compile with data parallel")
         binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
             loss_name=avg_cost.name,
@@ -852,7 +856,9 @@ class TestDistBase(unittest.TestCase):
 
         if check_error_log:
             required_envs["GLOG_vmodule"] = \
-                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10,alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10"
+                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
+                "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
+                "sparse_all_reduce_op_handle=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         local_losses \
