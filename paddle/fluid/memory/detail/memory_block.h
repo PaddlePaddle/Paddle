@@ -38,23 +38,23 @@ struct MemoryBlock {
   // MemoryBlock::Desc to the beginning of the block; or, if it is a GPU memory
   // block, the MetadataCache writes the Meatadata to a std::map in
   // the CPU.
-  void init(MetadataCache* cache, Type t, size_t index, size_t size,
+  void Init(MetadataCache* cache, Type t, size_t index, size_t size,
             void* left_buddy, void* right_buddy);
 
   MemoryBlock* GetLeftBuddy(MetadataCache* cache);
   MemoryBlock* GetRightBuddy(MetadataCache* cache);
 
   // Split the allocation into left/right blocks.
-  void split(MetadataCache* cache, size_t size);
+  void Split(MetadataCache* cache, size_t size);
 
   // Merge left and right blocks together.
-  void merge(MetadataCache* cache, MemoryBlock* right_buddy);
+  void Merge(MetadataCache* cache, MemoryBlock* right_buddy);
 
   // Mark the allocation as free.
-  void mark_as_free(MetadataCache* cache);
+  void MarkAsFree(MetadataCache* cache);
 
-  void* data() const;
-  MemoryBlock* metadata() const;
+  void* Data() const;
+  MemoryBlock* Metadata() const;
 
   // MemoryBlock::Desc describes a MemoryBlock.
   struct Desc {
@@ -63,10 +63,10 @@ struct MemoryBlock {
     Desc();
 
     // Updates guard_begin and guard_end by hashes of the Metadata object.
-    void update_guards();
+    void UpdateGuards();
 
     // Checks that guard_begin and guard_end are hashes of the Metadata object.
-    bool check_guards() const;
+    bool CheckGuards() const;
 
     // TODO(gangliao): compress this
     size_t guard_begin = 0;
@@ -97,15 +97,15 @@ class MetadataCache {
   // used to manage CPU memory, the MemoryBlock::Desc resides at the beginning
   // of the memory block; when used to manage GPU memory, the
   // Meatadata resides in CPU memory indexed by cache_.
-  MemoryBlock::Desc* load_desc(MemoryBlock* memory_block);
+  MemoryBlock::Desc* LoadDesc(MemoryBlock* memory_block);
 
   // Saves the MemoryBlock::Desc of a memory block into the cache.  For CPU
   // memory block, writes the MemoryBlock::Desc to the beginning of the memory
   // block; whereas for GPU memory, writes it to cache_.
-  void save(MemoryBlock* memory_block, const MemoryBlock::Desc& meta_data);
+  void Save(MemoryBlock* memory_block, const MemoryBlock::Desc& meta_data);
 
   // For GPU memory block, erases its MemoryBlock::Desc from cache_.
-  void invalidate(MemoryBlock* memory_block);
+  void Invalidate(MemoryBlock* memory_block);
 
  private:
   typedef std::unordered_map<const MemoryBlock*, MemoryBlock::Desc> MetadataMap;

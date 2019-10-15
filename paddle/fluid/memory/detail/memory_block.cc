@@ -19,24 +19,24 @@ namespace paddle {
 namespace memory {
 namespace detail {
 
-void MemoryBlock::init(MetadataCache* cache, Type t, size_t index, size_t size,
+void MemoryBlock::Init(MetadataCache* cache, Type t, size_t index, size_t size,
                        void* left_buddy, void* right_buddy) {
-  cache->save(
+  cache->Save(
       this, MemoryBlock::Desc(t, index, size - sizeof(MemoryBlock::Desc), size,
                               static_cast<MemoryBlock*>(left_buddy),
                               static_cast<MemoryBlock*>(right_buddy)));
 }
 
 MemoryBlock* MemoryBlock::GetLeftBuddy(MetadataCache* cache) {
-  return cache->load_desc(this)->left_buddy;
+  return cache->LoadDesc(this)->left_buddy;
 }
 
 MemoryBlock* MemoryBlock::GetRightBuddy(MetadataCache* cache) {
-  return cache->load_desc(this)->right_buddy;
+  return cache->LoadDesc(this)->right_buddy;
 }
 
-void MemoryBlock::split(MetadataCache* cache, size_t size) {
-  auto desc = cache->load_desc(this);
+void MemoryBlock::Split(MetadataCache* cache, size_t size) {
+  auto desc = cache->LoadDesc(this);
   // make sure the split fits
   PADDLE_ENFORCE_GE(desc->total_size, size);
 
@@ -54,7 +54,7 @@ void MemoryBlock::split(MetadataCache* cache, size_t size) {
   // Write the metadata for the new block
   auto new_block_right_buddy = desc->right_buddy;
 
-  cache->save(static_cast<MemoryBlock*>(right_partition),
+  cache->Save(static_cast<MemoryBlock*>(right_partition),
               MemoryBlock::Desc(FREE_CHUNK, desc->index,
                                 remaining_size - sizeof(MemoryBlock::Desc),
                                 remaining_size, this, new_block_right_buddy));
@@ -63,21 +63,21 @@ void MemoryBlock::split(MetadataCache* cache, size_t size) {
   desc->size = size - sizeof(MemoryBlock::Desc);
   desc->total_size = size;
 
-  desc->update_guards();
+  desc->UpdateGuards();
 
   // Write metadata for the new block's right buddy
   if (new_block_right_buddy != nullptr) {
-    auto buddy_desc = cache->load_desc(new_block_right_buddy);
+    auto buddy_desc = cache->LoadDesc(new_block_right_buddy);
 
     buddy_desc->left_buddy = static_cast<MemoryBlock*>(right_partition);
-    buddy_desc->update_guards();
+    buddy_desc->UpdateGuards();
   }
 }
 
-void MemoryBlock::merge(MetadataCache* cache, MemoryBlock* right_buddy) {
+void MemoryBlock::Merge(MetadataCache* cache, MemoryBlock* right_buddy) {
   // only free blocks can be merged
-  auto desc = cache->load_desc(this);
-  auto rb_desc = cache->load_desc(right_buddy);
+  auto desc = cache->LoadDesc(this);
+  auto rb_desc = cache->LoadDesc(right_buddy);
   PADDLE_ENFORCE_EQ(desc->type, FREE_CHUNK);
   PADDLE_ENFORCE_EQ(rb_desc->type, FREE_CHUNK);
 
@@ -86,37 +86,37 @@ void MemoryBlock::merge(MetadataCache* cache, MemoryBlock* right_buddy) {
 
   // link buddy's buddy -> this
   if (desc->right_buddy != nullptr) {
-    auto buddy_metadata = cache->load_desc(desc->right_buddy);
+    auto buddy_metadata = cache->LoadDesc(desc->right_buddy);
 
     buddy_metadata->left_buddy = this;
-    buddy_metadata->update_guards();
+    buddy_metadata->UpdateGuards();
   }
 
   desc->size += rb_desc->total_size;
   desc->total_size += rb_desc->total_size;
 
-  desc->update_guards();
+  desc->UpdateGuards();
 
-  cache->save(right_buddy,
+  cache->Save(right_buddy,
               MemoryBlock::Desc(INVALID_CHUNK, 0, 0, 0, nullptr, nullptr));
 }
 
-void MemoryBlock::mark_as_free(MetadataCache* cache) {
+void MemoryBlock::MarkAsFree(MetadataCache* cache) {
   // check for double free or corruption
-  auto desc = cache->load_desc(this);
+  auto desc = cache->LoadDesc(this);
   PADDLE_ENFORCE_NE(desc->type, FREE_CHUNK);
   PADDLE_ENFORCE_NE(desc->type, INVALID_CHUNK);
   desc->type = FREE_CHUNK;
-  desc->update_guards();
+  desc->UpdateGuards();
 }
 
-void* MemoryBlock::data() const {
+void* MemoryBlock::Data() const {
   return const_cast<MemoryBlock::Desc*>(
              reinterpret_cast<const MemoryBlock::Desc*>(this)) +
          1;
 }
 
-MemoryBlock* MemoryBlock::metadata() const {
+MemoryBlock* MemoryBlock::Metadata() const {
   return const_cast<MemoryBlock*>(reinterpret_cast<const MemoryBlock*>(
       reinterpret_cast<const MemoryBlock::Desc*>(this) - 1));
 }
