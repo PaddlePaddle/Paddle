@@ -44,9 +44,11 @@ fi
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec` 
 if [ "$api_spec_diff" != "" ]; then
     APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 46782768 7534971 14105589 12605721 3064195 328693 47554610 39645414 11195205 20274488 45024560`
-    failed_num=`expr $failed_num + 1`
-    echo_line="You must have two RD (XiaoguangHu01 or wanghaoshuang or guoshengCS or heavengate or kuke or Superjomn or lanxianghit or cyj1986 or hutuxian or frankwhzhang or nepeplwu) approval for the api change for the management reason of API interface and API document."
-    echo_list=(${echo_list[@]}$failed_num "." $echo_line)
+    if [ "${APPROVALS}" == "FALSE" ]; then
+        failed_num=`expr $failed_num + 1`
+        echo_line="You must have two RD (XiaoguangHu01 or wanghaoshuang or guoshengCS or heavengate or kuke or Superjomn or lanxianghit or cyj1986 or hutuxian or frankwhzhang or nepeplwu) approval for the api change for the management reason of API interface and API document."
+        echo_list=(${echo_list[@]}$failed_num "." $echo_line)
+    fi
 fi
 
 for API_FILE in ${API_FILES[*]}; do
