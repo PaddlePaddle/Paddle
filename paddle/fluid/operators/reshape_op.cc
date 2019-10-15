@@ -433,21 +433,22 @@ class Reshape2GradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-class Reshape2DoubleGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Reshape2DoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("reshape2_grad_grad");
 
-    grad_op->SetInput("ShapeTensor", Input("ShapeTensor"));
-    grad_op->SetInput("DOut", Input(framework::GradVarName("Out")));
-    grad_op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
+    grad_op->SetInput("ShapeTensor", this->Input("ShapeTensor"));
+    grad_op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    grad_op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
 
-    grad_op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -555,7 +556,9 @@ REGISTER_OPERATOR(reshape2, ops::Reshape2Op, ops::Reshape2OpMaker,
                   ops::Reshape2GradMaker<paddle::imperative::OpBase>,
                   ops::ReshapeOpInplaceInToOut);
 REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
-                  ops::Reshape2DoubleGradMaker, ops::ReshapeGradInplaceInToOut);
+                  ops::Reshape2DoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::Reshape2DoubleGradMaker<paddle::imperative::OpBase>,
+                  ops::ReshapeGradInplaceInToOut);
 REGISTER_OPERATOR(reshape2_grad_grad, ops::Reshape2DoubleGradOp,
                   ops::ReshapeDoubleGradInplaceInToOut);
 
