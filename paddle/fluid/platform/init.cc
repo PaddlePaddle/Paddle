@@ -32,9 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
-#if defined(PADDLE_WITH_DGC)
-#include "dgc/dgc.h"
-#endif
 
 DECLARE_int32(paddle_num_threads);
 DEFINE_int32(multiple_of_cupti_buffer_size, 1,
@@ -50,10 +47,6 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
-
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-std::once_flag dgc_init_flag;
-#endif
 
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
@@ -228,16 +221,6 @@ void InitGLOG(const std::string &prog_name) {
   google::InstallFailureWriter(&SignalHandle);
 #endif
 }
-
-#if defined(PADDLE_WITH_DGC)
-void InitDGC() {
-  std::call_once(dgc_init_flag, []() {
-    PADDLE_ENFORCE(paddle::communication::dgc::dynloadNcclLib());
-  });
-}
-#else
-void InitDGC() {}
-#endif
 
 }  // namespace framework
 }  // namespace paddle

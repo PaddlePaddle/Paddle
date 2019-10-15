@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -106,6 +107,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   size_t out_numel = 0;
   PADDLE_ENFORCE(nranks_ > 1);
   std::vector<std::function<void()>> all_reduce_calls;
+  std::vector<std::function<void()>> sparse_reduce_calls;
 
   std::vector<memory::AllocationPtr> allocations;
 
@@ -142,14 +144,24 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
              << ", k:" << k << ", place:" << place << ", dtype:" << dtype;
 
     all_reduce_calls.emplace_back([=] {
-      PADDLE_ENFORCE(paddle::communication::dgc::sparseAllGReduce(
-          in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel, comm,
+      PADDLE_ENFORCE(platform::dynload::ncclAllGather(
+          in_tensor_buf, gather_buff, 2 * k, static_cast<ncclDataType_t>(dtype),
+          comm, stream));
+    });
+
+    sparse_reduce_calls.emplace_back([=] {
+      platform::CUDADeviceGuard guard(dev_id);
+      PADDLE_ENFORCE(paddle::communication::dgc::sparseReduce(
+          gather_buff, k, out_tensor_buf, static_cast<int>(out_numel), nranks_,
           stream));
     });
   }
 
   WaitInputVarGenerated();
   NCCLAllReduceFunc(all_reduce_calls);
+  for (auto &call : sparse_reduce_calls) {
+    call();
+  }
 }
 
 int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {
