@@ -93,8 +93,8 @@ class DistMultiTrainer : public MultiTrainer {
   void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
   virtual void FinalizeDumpEnv();
   virtual void InitDumpEnv();
+  virtual Scope* GetWorkerScope(int thread_id);
   virtual void DumpWork(int tid);
-  virtual Scope* GetWorkerScope(int thread_id) { return root_scope_; }
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
