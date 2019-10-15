@@ -32,7 +32,7 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     int rid = ctx.Attr<int>("ring_id");
     int nranks = ctx.Attr<int>("nranks");
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommunicator::Instance().Get(rid, place);
+    auto comm = platform::NCCLReference::Instance().Get(rid, place);
 
     auto out_dims = in->dims();
     out_dims[0] = out_dims[0] / nranks;

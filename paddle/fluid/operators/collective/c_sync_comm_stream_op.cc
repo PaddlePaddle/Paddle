@@ -43,7 +43,7 @@ class CSyncCommStreamOp : public framework::OperatorBase {
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     int ring_id = Attr<int>("ring_id");
     auto stream =
-        platform::NCCLCommunicator::Instance().Get(ring_id, place)->stream();
+        platform::NCCLReference::Instance().Get(ring_id, place)->stream();
     cudaError_t e_sync = cudaStreamSynchronize(stream);
     if (e_sync != 0) {
       LOG(FATAL) << "Fail to sync nccl stream: " << cudaGetErrorString(e_sync);

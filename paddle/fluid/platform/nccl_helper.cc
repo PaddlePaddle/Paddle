@@ -72,17 +72,18 @@ NCCLContextMap::NCCLContextMap(const std::vector<platform::Place>& places,
   }
 }
 
-void NCCLCommunicator::InitNCCLContexts(const std::vector<Place>& places,
-                                        ncclUniqueId* nccl_id, int ntrainers,
-                                        int trainer_id, int ring_id) {
+void NCCLReference::InitNCCLContexts(const std::vector<Place>& places,
+                                     ncclUniqueId* nccl_id, int ntrainers,
+                                     int trainer_id, int ring_id) {
   PADDLE_ENFORCE_GE(ntrainers, 1);
   PADDLE_ENFORCE_GE(trainer_id, 0);
   PADDLE_ENFORCE_LT(trainer_id, ntrainers);
 
   // TODO(liuyi05): support update NCCLContextMap, e.g. multithreads
   PADDLE_ENFORCE_EQ(ring2map_.count(ring_id), 0,
-                    "Cannot call this function twice with the same ring_id by "
-                    "now, we will fix it soon");
+                    "Cannot call this function twice with the same ring_id %d"
+                    " by now, we will fix it soon.",
+                    ring_id);
 
   auto ptr = new NCCLContextMap(places, nccl_id, ntrainers, trainer_id);
   ring2map_.emplace(ring_id, std::unique_ptr<NCCLContextMap>(ptr));
@@ -90,16 +91,26 @@ void NCCLCommunicator::InitNCCLContexts(const std::vector<Place>& places,
   VLOG(1) << "nccl communicator of ring_id" << ring_id << " has been created";
 
   std::call_once(once_flag_, []() {
-    std::atexit([]() { NCCLCommunicator::Instance().ReleaseNCCLResource(); });
+    std::atexit([]() { NCCLReference::Instance().ReleaseNCCLResource(); });
   });
 }
 
-void NCCLCommunicator::ReleaseNCCLResource() {
+void NCCLReference::ReleaseNCCLResource() {
   // CUDADeviceContext maintain the lifetime of nccl_comm_t, so we should not
   // destroy nccl_comm_t explicitly. Please refer to
   // platform::CUDADeviceContext::~CUDADeviceContext()
   for (auto& p : ring2map_) {
     p.second.reset();
+  }
+}
+
+void NCCLReference::CollectNCCLContextMaps(std::vector<NCCLContextMap*>* maps,
+                                           std::vector<int> ring_ids) {
+  PADDLE_ENFORCE_NOT_NULL(maps);
+  maps->clear();
+  for (int ring_id : ring_ids) {
+    PADDLE_ENFORCE_GT(ring2map_.count(ring_id), 0);
+    maps->push_back(ring2map_[ring_id].get());
   }
 }
 

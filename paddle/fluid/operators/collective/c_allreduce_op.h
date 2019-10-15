@@ -69,7 +69,7 @@ class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
     void* recvbuff = out->mutable_data<T>(place);
 
     int rid = ctx.Attr<int>("ring_id");
-    auto comm = platform::NCCLCommunicator::Instance().Get(rid, place);
+    auto comm = platform::NCCLReference::Instance().Get(rid, place);
 
     cudaStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {

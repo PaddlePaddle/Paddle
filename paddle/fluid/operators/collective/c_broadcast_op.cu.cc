@@ -33,7 +33,7 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
 
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommunicator::Instance().Get(rid, place);
+    auto comm = platform::NCCLReference::Instance().Get(rid, place);
 
     cudaStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {

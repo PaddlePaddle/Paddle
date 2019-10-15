@@ -35,7 +35,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
     int nranks = ctx.Attr<int>("nranks");
     int rid = ctx.Attr<int>("ring_id");
     auto place = ctx.GetPlace();
-    auto comm = platform::NCCLCommunicator::Instance().Get(rid, place);
+    auto comm = platform::NCCLReference::Instance().Get(rid, place);
 
     framework::DDim out_dims = in->dims();
     out_dims[0] *= nranks;
