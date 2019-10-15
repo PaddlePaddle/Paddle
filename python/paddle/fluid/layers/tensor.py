@@ -524,7 +524,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     The attribute `stop_gradient` of the created Tensor is setted to True.
 
     Args:
-        shape(tuple|list): Shape of the Tensor to be created.
+        shape(list|tuple|Variable): Shape of the Tensor to be created.
+                The data type is ``int32`` or ``int64`` . If ``shape`` is a list or tuple,
+                the elements of it should be integers or Tensors with shape [1].
+                If ``shape`` is an Variable, it should be an 1-D Tensor .
         dtype(np.dtype|core.VarDesc.VarType|str): Data type of the output tensor which can
             be float16, float32, float64, int32, int64.
         value(float): The constant value used to initialize the Tensor to be created.
@@ -544,9 +547,18 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data1 = fluid.layers.fill_constant(shape=[2,1], value=0, dtype='int64') #data1=[[0],[0]]
-          data2 = fluid.layers.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1) 
-          #data1=[[5], [5]] data2=[[5], [5]]
+          # attr shape is a list which doesn't contain Variable Tensor.
+          data1 = fluid.layers.fill_constant(shape=[2,1], value=0, dtype='int64') # data1=[[0],[0]]
+          data2 = fluid.layers.fill_constant(shape=[2,1], value=5, dtype='int64', out=data1)
+          # data1=[[0], [0]] data2=[[5], [5]]
+
+          # attr shape is a list which contains Variable Tensor.
+          positive_2 = fluid.layers.fill_constant([1], "int32", 2)
+          data3 = fluid.layers.fill_constant(shape=[1, positive_2], dtype='float32', value=1.5) # data3=[1.5, 1.5]
+
+          # attr shape is an Variable Tensor.
+          shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
+          data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
     """
     helper = LayerHelper("fill_constant", **locals())
     if convert_dtype(dtype) not in [
@@ -585,9 +597,17 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     def _get_shape_tensor(list_shape):
         new_shape_tensor = []
-        for dim in list_shape:
+        for idx, dim in enumerate(list_shape):
             if isinstance(dim, Variable):
                 dim.stop_gradient = True
+                if convert_dtype(dim.dtype) not in ['int32', 'int64']:
+                    raise TypeError(
+                        "When type of 'shape' in fill_constant is list or tuple, "
+                        "the data type of the element with type Variable must be int32 or int64, "
+                        "but received the data type of shape[%d] is %s." %
+                        (idx, convert_dtype(dim.dtype)))
+                if convert_dtype(dim.dtype) == 'int64':
+                    dim = cast(x=dim, dtype='int32')
                 new_shape_tensor.append(dim)
             else:
                 temp_out = helper.create_variable_for_type_inference('int32')
@@ -597,6 +617,12 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     if isinstance(shape, Variable):
         shape.stop_gradient = True
+        if convert_dtype(shape.dtype) not in ['int32', 'int64']:
+            raise TypeError(
+                "When type of 'shape' in fill_constant is Variable, the data type of 'shape' must be int32 or int64, "
+                "but received %s." % (convert_dtype(shape.dtype)))
+        if (convert_dtype(shape.dtype) == 'int64'):
+            shape = cast(shape, 'int32')
         inputs["ShapeTensor"] = shape
     elif isinstance(shape, (list, tuple)):
         assert len(shape) > 0, (
