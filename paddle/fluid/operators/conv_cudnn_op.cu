@@ -549,23 +549,22 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       }
 
       transformed_input_grad_channel.mutable_data(ctx.GetPlace());
-      if(!is_sys_pad){
-      if (transformed_input_channel.dims().size() == 4) {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
-            ctx, &transformed_input_grad, &transformed_input_grad_channel,
-            starts, axes);
-      } else {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
-            ctx, &transformed_input_grad, &transformed_input_grad_channel,
-            starts, axes);
-      }
+      if (!is_sys_pad) {
+        if (transformed_input_channel.dims().size() == 4) {
+          Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
+              ctx, &transformed_input_grad, &transformed_input_grad_channel,
+              starts, axes);
+        } else {
+          Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
+              ctx, &transformed_input_grad, &transformed_input_grad_channel,
+              starts, axes);
+        }
       }
 
       if (channel_last) {
         TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
             ctx, &transformed_input_grad_channel, input_grad);
       }
-
     }
     // ------------------- cudnn conv backward filter ---------------------
     if (filter_grad) {
@@ -993,14 +992,14 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
         starts[i] = input_pad[2 * i];
         axes[i] = i;
       }
-      if(!is_sys_pad){
-      if (X->dims().size() == 4) {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
-            ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
-      } else {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
-            ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
-      }
+      if (!is_sys_pad) {
+        if (X->dims().size() == 4) {
+          Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
+              ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
+        } else {
+          Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
+              ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
+        }
       }
       if (channel_last) {
         TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
