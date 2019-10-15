@@ -326,7 +326,7 @@ paddle.fluid.layers.concat (ArgSpec(args=['input', 'axis', 'name'], varargs=None
 paddle.fluid.layers.sums (ArgSpec(args=['input', 'out'], varargs=None, keywords=None, defaults=(None,)), ('document', '191164436efbc1b7bccc4190a88e7de2'))
 paddle.fluid.layers.assign (ArgSpec(args=['input', 'output'], varargs=None, keywords=None, defaults=(None,)), ('document', '98ce6e7c3659b8377c04cecfc72c2000'))
 paddle.fluid.layers.fill_constant_batch_size_like (ArgSpec(args=['input', 'shape', 'dtype', 'value', 'input_dim_idx', 'output_dim_idx', 'force_cpu'], varargs=None, keywords=None, defaults=(0, 0, False)), ('document', '2bb57637664173fee5f654e55896aec6'))
-paddle.fluid.layers.fill_constant (ArgSpec(args=['shape', 'dtype', 'value', 'force_cpu', 'out'], varargs=None, keywords=None, defaults=(False, None)), ('document', '66e1e468666dd47e5b2715226cebeac0'))
+paddle.fluid.layers.fill_constant (ArgSpec(args=['shape', 'dtype', 'value', 'force_cpu', 'out'], varargs=None, keywords=None, defaults=(False, None)), ('document', 'fa349c956a3e44297caf07a376eedaad'))
 paddle.fluid.layers.argmin (ArgSpec(args=['x', 'axis'], varargs=None, keywords=None, defaults=(0,)), ('document', '53629e27597e5dfb7020aac5bc639ebb'))
 paddle.fluid.layers.argmax (ArgSpec(args=['x', 'axis'], varargs=None, keywords=None, defaults=(0,)), ('document', 'd9a89fbedbaebd5f65897ac75ee636f3'))
 paddle.fluid.layers.argsort (ArgSpec(args=['input', 'axis', 'name'], varargs=None, keywords=None, defaults=(-1, None)), ('document', '8c7966eb4b37b2272a16717cac3a876c'))
