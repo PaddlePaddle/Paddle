@@ -73,6 +73,30 @@ void TestMain(const platform::Place &place, uint16_t lanes) {
 }
 
 template <typename T>
+void TestToCudfCompatibleDLManagedTensor(const platform::Place &place,
+                                         uint16_t lanes) {
+  DDim dims{6, 7};
+  Tensor tensor;
+  tensor.Resize(dims);
+  tensor.mutable_data<T>(place);
+
+  DLPackTensor dlpack_tensor(tensor, lanes);
+
+  ::DLManagedTensor *dl_managed_tensor =
+      dlpack_tensor.ToCudfCompatibleDLManagedTensor();
+
+  CHECK_EQ(dl_managed_tensor->manager_ctx == nullptr, true);
+
+  for (auto i = 0; i < dims.size(); ++i) {
+    CHECK_EQ(dims[i], dl_managed_tensor->dl_tensor.shape[i]);
+  }
+
+  CHECK_EQ(dl_managed_tensor->dl_tensor.strides[0] == 1, true);
+
+  dl_managed_tensor->deleter(dl_managed_tensor);
+}
+
+template <typename T>
 void TestMainLoop() {
 #ifdef PADDLE_WITH_CUDA
   std::vector<platform::Place> places{platform::CPUPlace(),
@@ -88,6 +112,7 @@ void TestMainLoop() {
   for (auto &p : places) {
     for (auto &l : lanes) {
       TestMain<T>(p, l);
+      TestToCudfCompatibleDLManagedTensor<T>(p, l);
     }
   }
 }

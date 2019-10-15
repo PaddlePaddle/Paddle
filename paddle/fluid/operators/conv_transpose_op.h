@@ -176,7 +176,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     const int batch_size = static_cast<int>(input->dims()[0]);
 
     framework::DDim in_data_dims;
-    if (data_layout == framework::DataLayout::kNCHW) {
+    if (data_layout != framework::DataLayout::kNHWC) {
       in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
     } else {
       in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
@@ -198,7 +198,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     // col_shape_vec: {o_c/g, k_h, k_w, h, w} or {o_c/g, k_d, k_h, k_w, d, h, w}
     size_t data_dim = filter_shape_vec.size() - 2;
     std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
-    if (data_layout == framework::DataLayout::kNCHW) {
+    if (data_layout != framework::DataLayout::kNHWC) {
       col_shape_vec[0] = out_dims[1] / groups;
       for (size_t j = 0; j < data_dim; ++j) {
         col_shape_vec[j + 1] = filter_shape_vec[j + 2];
@@ -234,7 +234,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     // input matrix size: (i_c, h * w) or (i_c, d * h * w) for channel_first
     // input matrix size: (h * w, i_c) or (d * h * w, i_c) for channel_last
     DDim input_matrix_shape;
-    if (data_layout == framework::DataLayout::kNCHW) {
+    if (data_layout != framework::DataLayout::kNHWC) {
       input_matrix_shape = {in_dims[1], col_matrix_shape[1]};
     } else {
       input_matrix_shape = {col_matrix_shape[1], in_dims[in_dims.size() - 1]};
@@ -242,7 +242,7 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
 
     // filter size: (i_c, o_c/g * k_h * k_w) or (i_c, o_c/g * k_d * k_h * k_w)
     DDim filter_matrix_shape;
-    if (data_layout == framework::DataLayout::kNCHW) {
+    if (data_layout != framework::DataLayout::kNHWC) {
       filter_matrix_shape = {in_dims[1], col_matrix_shape[0]};
     } else {
       filter_matrix_shape = {in_dims[in_dims.size() - 1], col_matrix_shape[0]};
@@ -256,12 +256,12 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
     set_zero(dev_ctx, output, static_cast<T>(0));
 
     int in_step =
-        (data_layout == framework::DataLayout::kNCHW
+        (data_layout != framework::DataLayout::kNHWC
              ? static_cast<int>(in_dims[1]) / groups
              : static_cast<int>(in_dims[in_dims.size() - 1]) / groups);
 
     int out_step =
-        (data_layout == framework::DataLayout::kNCHW
+        (data_layout != framework::DataLayout::kNHWC
              ? static_cast<int>(out_dims[1]) / groups
              : static_cast<int>(out_dims[out_dims.size() - 1]) / groups);
     math::Col2ImFunctor<math::ColFormat::kCFO, DeviceContext, T> col2im;
@@ -284,14 +284,14 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
       for (int g = 0; g < groups; g++) {
         int64_t start = g * in_step;
         int64_t end = (g + 1) * in_step;
-        int axes = (data_layout == framework::DataLayout::kNCHW ? 0 : 1);
+        int axes = (data_layout != framework::DataLayout::kNHWC ? 0 : 1);
         Tensor filter_slice = filter.Slice(g * in_step, (g + 1) * in_step);
         Tensor in_slice, out_slice;
 
         // col_matrix = filter_slice * input_slice
         // of shape (o_c/g * k_h * k_w, h * w)
         // or (o_c/g * k_d * k_h * k_w, d * h * w)
-        if (data_layout == framework::DataLayout::kNCHW) {
+        if (data_layout != framework::DataLayout::kNHWC) {
           in_slice = input_batch.Slice(g * in_step, (g + 1) * in_step);
           out_slice = output_batch.Slice(g * out_step, (g + 1) * out_step);
           blas.MatMul(filter_slice, true, in_slice, false, static_cast<T>(1.0),
@@ -372,7 +372,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     const int batch_size = static_cast<int>(input->dims()[0]);
 
     framework::DDim in_data_dims;
-    if (data_layout == framework::DataLayout::kNCHW) {
+    if (data_layout != framework::DataLayout::kNHWC) {
       in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
     } else {
       in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
@@ -394,7 +394,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     // col_shape_vec: {o_c, k_h, k_w, h, w} or {o_c, k_d, k_h, k_w, d, h, w} for
     size_t data_dim = filter_shape_vec.size() - 2;
     std::vector<int64_t> col_shape_vec(1 + 2 * data_dim);
-    if (data_layout == framework::DataLayout::kNCHW) {
+    if (data_layout != framework::DataLayout::kNHWC) {
       col_shape_vec[0] = out_grad_dims[1];
       for (size_t j = 0; j < data_dim; ++j) {
         col_shape_vec[j + 1] = filter_shape_vec[j + 2];
@@ -421,7 +421,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     // input matrix size: (i_c, h * w) or (i_c, d * h * w) for channel_first
     // input matrix size: (h * w, i_c) or (d * h * w, i_c) for channel_last
     DDim input_matrix_shape;
-    if (data_layout == framework::DataLayout::kNCHW) {
+    if (data_layout != framework::DataLayout::kNHWC) {
       input_matrix_shape = {in_dims[1], col_matrix_shape[1]};
     } else {
       input_matrix_shape = {col_matrix_shape[1], in_dims[in_dims.size() - 1]};
@@ -429,7 +429,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
 
     // filter size: (i_c, o_c/g * k_h * k_w) or (i_c, o_c/g * k_d * k_h * k_w)
     DDim filter_matrix_shape;
-    if (data_layout == framework::DataLayout::kNCHW) {
+    if (data_layout != framework::DataLayout::kNHWC) {
       filter_matrix_shape = {in_dims[1], col_matrix_shape[0] / groups};
     } else {
       filter_matrix_shape = {in_dims[in_dims.size() - 1],
@@ -438,7 +438,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
     filter.Resize(filter_matrix_shape);
 
     int in_step =
-        (data_layout == framework::DataLayout::kNCHW
+        (data_layout != framework::DataLayout::kNHWC
              ? static_cast<int>(in_dims[1]) / groups
              : static_cast<int>(in_dims[in_dims.size() - 1]) / groups);
     int col_step = static_cast<int>(col_matrix_shape[0]) / groups;
@@ -531,7 +531,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
             // k_h * k_w, d * h * w)
             Tensor col_matrix_slice =
                 col_matrix.Slice(g * col_step, (g + 1) * col_step);
-            if (data_layout == framework::DataLayout::kNCHW) {
+            if (data_layout != framework::DataLayout::kNHWC) {
               Tensor input_grad_slice =
                   input_grad_batch.Slice(g * in_step, (g + 1) * in_step);
               blas.MatMul(filter_slice, false, col_matrix_slice, false,
@@ -579,7 +579,7 @@ class GemmConvTransposeGradKernel : public framework::OpKernel<T> {
                 filter_grad_.Slice(g * in_step, (g + 1) * in_step);
             Tensor col_matrix_slice =
                 col_matrix.Slice(g * col_step, (g + 1) * col_step);
-            if (data_layout == framework::DataLayout::kNCHW) {
+            if (data_layout != framework::DataLayout::kNHWC) {
               Tensor in_batch_slice =
                   in_batch.Slice(g * in_step, (g + 1) * in_step);
               blas.MatMul(in_batch_slice, false, col_matrix_slice, true,
@@ -629,7 +629,7 @@ class DepthwiseConvTransposeKernel : public framework::OpKernel<T> {
     auto filter_dims = filter.dims();
 
     framework::DDim in_data_dims;
-    if (data_layout == framework::DataLayout::kNCHW) {
+    if (data_layout != framework::DataLayout::kNHWC) {
       in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
     } else {
       in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
@@ -684,7 +684,7 @@ class DepthwiseConvTransposeGradKernel : public framework::OpKernel<T> {
     auto filter_dims = filter.dims();
 
     framework::DDim in_data_dims;
-    if (data_layout == framework::DataLayout::kNCHW) {
+    if (data_layout != framework::DataLayout::kNHWC) {
       in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
     } else {
       in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
