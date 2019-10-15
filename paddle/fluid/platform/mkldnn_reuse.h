@@ -820,6 +820,15 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
                             mkldnn::engine engine, const std::string& base_key)
       : platform::MKLDNNHandler(dev_ctx, engine, base_key) {}
 
+  // TODO(jczaja): remove after conv int8 is adapted
+  ConvMKLDNNTemplateHandler(
+      std::shared_ptr<typename forward_t::primitive_desc> conv_pd,
+      const platform::MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
+      const std::string& base_key)
+      : platform::MKLDNNHandler(dev_ctx, engine, base_key) {
+    conv_pd_ = conv_pd;
+  }
+
   ConvMKLDNNTemplateHandler(
       std::shared_ptr<typename forward_t::primitive_desc> conv_pd,
       std::shared_ptr<typename backward_data_t::primitive_desc>
@@ -1139,6 +1148,16 @@ using ConvTransposeMKLDNNHandler =
     ConvMKLDNNTemplateHandler<mkldnn::deconvolution_forward,
                               mkldnn::deconvolution_backward_data,
                               mkldnn::deconvolution_backward_weights>;
+
+template <typename T>
+static void SetDstMemoryHandler(
+    const framework::ExecutionContext& ctx, framework::Tensor* output,
+    const std::shared_ptr<ConvMKLDNNHandler>& handler,
+    std::shared_ptr<mkldnn::memory> dst_memory_p) {
+  T* output_data =
+      output->mutable_data<T>(ctx.GetPlace(), handler->GetDstMemorySize());
+  dst_memory_p->set_data_handle(to_void_cast<T>(output_data));
+}
 
 template <typename T>
 static void SetDstMemoryQuantized(
