@@ -1138,7 +1138,7 @@ Scope* OperatorWithKernel::PrepareData(
   return new_scope;
 }
 
-void OperatorWithKernel::GetInputDataType(
+void OperatorWithKernel::ParseInputDataType(
     const ExecutionContext& ctx, const std::string& name,
     proto::VarType::Type* data_type) const {
   proto::VarType::Type dafault_data_type =
@@ -1157,9 +1157,9 @@ void OperatorWithKernel::GetInputDataType(
       }
       if (t != nullptr) {
         PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                          "The Tensor in the %s Op's Input Variable %s(%lu) is "
+                          "The Tensor in the %s Op's Input Variable %s(%s) is "
                           "not initialized.",
-                          Type(), name, i);
+                          Type(), name, ctx.Inputs(name).at(i));
         proto::VarType::Type tmp = t->type();
         PADDLE_ENFORCE(tmp == *data_type || *data_type == dafault_data_type,
                        "The DataType of %s Op's duplicable Variable %s must be "
@@ -1179,7 +1179,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
   for (auto& input : this->inputs_) {
-    GetInputDataType(ctx, input.first, &data_type);
+    ParseInputDataType(ctx, input.first, &data_type);
   }
   PADDLE_ENFORCE_NE(data_type, dafault_data_type,
                     "DataType should be indicated by input Variable.");
@@ -1191,7 +1191,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  GetInputDataType(ctx, name, &data_type);
+  ParseInputDataType(ctx, name, &data_type);
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
       "The Input Variable(%s) of %s Op used to determine kernel data type "

@@ -473,10 +473,10 @@ class OperatorWithKernel : public OperatorBase {
       const OpKernelType& expected_kernel_type) const;
 
  private:
+  void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,
+                          proto::VarType::Type* type) const;
   // indicate kernel DataType by input data. By default all input data must be
   // same.
-  void GetInputDataType(const ExecutionContext& ctx, const std::string& name,
-                        proto::VarType::Type* type) const;
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,
