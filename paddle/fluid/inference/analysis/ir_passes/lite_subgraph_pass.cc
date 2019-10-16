@@ -222,8 +222,8 @@ void LiteSubgraphPass::SetUpEngine(framework::ProgramDesc* program,
 #endif
   };
   if (dump_model) {
-    StrToBinaryFile("./model.bin", config.model);
-    StrToBinaryFile("./param.bin", config.param);
+    lite::StrToBinaryFile("./model.bin", config.model);
+    lite::StrToBinaryFile("./param.bin", config.param);
   }
   inference::Singleton<inference::lite::EngineManager>::Global()
       .Create(unique_key, config);
