@@ -211,33 +211,35 @@ static void TensorReduceImpl(
   }
   */
 
+  /**
+   * Since we have combined the adjacent reduce dimensions inside TensorReduce,
+   * The reduce ranks and non-reduce ranks must be interleaving. That is to say,
+   * the rank of Tensor must be `1010...` or `0101...` where 1 represents that
+   * the dimension is about to be reduced.
+   *
+   * Therefore,
+   * If rank is odd, only need to switch-case (rank - 1)/2 and (rank + 1)/2.
+   * If rank is even, only need to switch-case rank/2.
+   *
+   * The total switch-case numbers reduce from 1+2+3+...+8=36 to (1+2)*4=12,
+   * it would speed up compiling and make the binary size lower.
+   */
   switch (rank) {
     CUB_RANK_CASE(2, CUB_REDUCE_RANK_CASE(1););
 
     CUB_RANK_CASE(3, CUB_REDUCE_RANK_CASE(1); CUB_REDUCE_RANK_CASE(2););
 
-    CUB_RANK_CASE(4, CUB_REDUCE_RANK_CASE(1); CUB_REDUCE_RANK_CASE(2);
-                  CUB_REDUCE_RANK_CASE(3););
+    CUB_RANK_CASE(4, CUB_REDUCE_RANK_CASE(2););
 
-    CUB_RANK_CASE(5, CUB_REDUCE_RANK_CASE(1); CUB_REDUCE_RANK_CASE(2);
-                  CUB_REDUCE_RANK_CASE(3); CUB_REDUCE_RANK_CASE(4););
+    CUB_RANK_CASE(5, CUB_REDUCE_RANK_CASE(2); CUB_REDUCE_RANK_CASE(3););
 
-    CUB_RANK_CASE(6, CUB_REDUCE_RANK_CASE(1); CUB_REDUCE_RANK_CASE(2);
-                  CUB_REDUCE_RANK_CASE(3); CUB_REDUCE_RANK_CASE(4);
-                  CUB_REDUCE_RANK_CASE(5););
+    CUB_RANK_CASE(6, CUB_REDUCE_RANK_CASE(3););
 
-    CUB_RANK_CASE(7, CUB_REDUCE_RANK_CASE(1); CUB_REDUCE_RANK_CASE(2);
-                  CUB_REDUCE_RANK_CASE(3); CUB_REDUCE_RANK_CASE(4);
-                  CUB_REDUCE_RANK_CASE(5); CUB_REDUCE_RANK_CASE(6););
+    CUB_RANK_CASE(7, CUB_REDUCE_RANK_CASE(3); CUB_REDUCE_RANK_CASE(4););
 
-    CUB_RANK_CASE(8, CUB_REDUCE_RANK_CASE(1); CUB_REDUCE_RANK_CASE(2);
-                  CUB_REDUCE_RANK_CASE(3); CUB_REDUCE_RANK_CASE(4);
-                  CUB_REDUCE_RANK_CASE(5); CUB_REDUCE_RANK_CASE(6););
+    CUB_RANK_CASE(8, CUB_REDUCE_RANK_CASE(4););
 
-    CUB_RANK_CASE(9, CUB_REDUCE_RANK_CASE(1); CUB_REDUCE_RANK_CASE(2);
-                  CUB_REDUCE_RANK_CASE(3); CUB_REDUCE_RANK_CASE(4);
-                  CUB_REDUCE_RANK_CASE(5); CUB_REDUCE_RANK_CASE(6);
-                  CUB_REDUCE_RANK_CASE(7); CUB_REDUCE_RANK_CASE(8););
+    CUB_RANK_CASE(9, CUB_REDUCE_RANK_CASE(4); CUB_REDUCE_RANK_CASE(5););
   }
 
 #undef CUB_REDUCE_RANK_CASE
