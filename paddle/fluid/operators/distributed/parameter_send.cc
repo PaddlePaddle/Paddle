@@ -139,6 +139,10 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     auto abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
 
     auto &send_rows = send_slr.rows();
+    PADDLE_ENFORCE_GT(send_rows.size(), 0,
+                      "In parameter send function, SelectedRows can't be "
+                      "empty. If you set use_double_buffer = true in reader, "
+                      "you can try to turn it false.");
     std::vector<std::vector<size_t>> outs_rows_idx;
     std::vector<std::vector<size_t>> outs_dense_idx;
 

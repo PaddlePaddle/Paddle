@@ -701,7 +701,7 @@ def py_reader(capacity,
 def create_py_reader_by_data(capacity,
                              feed_list,
                              name=None,
-                             use_double_buffer=True):
+                             use_double_buffer=False):
     """
     The OP creates a Python reader for data feeding in Python, it is similar
     to :ref:`api_fluid_layers_py_reader` except that it can read data from
