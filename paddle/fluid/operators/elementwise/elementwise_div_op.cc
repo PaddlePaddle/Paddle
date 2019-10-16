@@ -16,31 +16,10 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {
-
-#define CHECK_DIVISOR(TYPE)                                        \
-  template <>                                                      \
-  bool check_divisor_zero<TYPE>(const TYPE &y_data_) {             \
-    PADDLE_ENFORCE_NE(y_data_, 0,                                  \
-                      "InvalidArgumentError: Integer division by"  \
-                      "zero encountered in divide.Please check."); \
-    return false;                                                  \
-  }
-CHECK_DIVISOR(int)
-CHECK_DIVISOR(int64_t)
-
-#undef CHECK_DIVISOR
-
-template <>
-bool check_divisor_zero<platform::float16>(const platform::float16 &y_data_) {
-  if (static_cast<float>(y_data_) - 0.0 < 1e-6) {
-    return true;
-  } else {
-    return false;
-  }
-}
 
 template <typename T>
 struct SameDimsElemwiseDiv<
@@ -54,6 +33,20 @@ struct SameDimsElemwiseDiv<
   }
 };
 
+// use default div function for int32/int64 type because of divison zero
+// checking.
+template <typename T>
+struct SameDimsElemwiseDiv<
+    platform::CPUDeviceContext, T,
+    typename std::enable_if<std::is_integral<T>::value>::type> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    default_elementwise_div<platform::CPUDeviceContext, T>(ctx, x, y, z);
+  }
+};
+
+/*
 template <typename T>
 struct SameDimsElemwiseDiv<
     platform::CPUDeviceContext, T,
@@ -69,6 +62,7 @@ struct SameDimsElemwiseDiv<
     eigen_z.device(place) = eigen_x / eigen_y;
   }
 };
+*/
 
 class ElementwiseDivOpMaker : public ElementwiseOpMaker {
  protected:
