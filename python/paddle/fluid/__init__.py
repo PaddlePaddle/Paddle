@@ -192,6 +192,7 @@ def __bootstrap__():
         read_env_flags.append('rpc_get_thread_num')
         read_env_flags.append('rpc_prefetch_thread_num')
         read_env_flags.append('rpc_disable_reuse_port')
+        read_env_flags.append('rpc_retry_bind_port')
 
         read_env_flags.append('worker_update_interval_secs')
 
