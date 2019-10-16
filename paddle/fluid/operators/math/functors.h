@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/operators/math.h"
+
 namespace paddle {
 namespace operators {
 namespace math {
@@ -40,8 +42,8 @@ struct AddFunctor {
 
 template <typename T>
 struct AddGradFunctor {
-  inline HOSTDEVICE T Dx(T x, T y) { return 1; }
-  inline HOSTDEVICE T Dy(T x, T y) { return 1; }
+  inline HOSTDEVICE T Dx(T x, T y) { return static_cast<T>(1.); }
+  inline HOSTDEVICE T Dy(T x, T y) { return static_cast<T>(1.); }
 };
 
 template <typename T>
@@ -68,14 +70,22 @@ struct ScaleGradFunctor {
 
 template <typename T>
 struct ReluFunctor {
-  inline HOSTDEVICE T operator()(T x) { return x * (x > 0); }
+  inline HOSTDEVICE T operator()(T x) {
+    return x * (x > static_cast<T>(0) ? static_cast<T>(1) : static_cast<T>(0));
+  }
 };
 
 template <typename T>
 struct ReluGradFunctor {
-  inline HOSTDEVICE T UseX(T x) { return x > 0 ? 1 : 0; }
-  inline HOSTDEVICE T UseOut(T out) { return out > 0 ? 1 : 0; }
-  inline HOSTDEVICE T UseXAndOut(T x, T out) { return out > 0 ? 1 : 0; }
+  inline HOSTDEVICE T UseX(T x) {
+    return x > static_cast<T>(0) ? static_cast<T>(1) : static_cast<T>(0);
+  }
+  inline HOSTDEVICE T UseOut(T out) {
+    return out > static_cast<T>(0) ? static_cast<T>(1) : static_cast<T>(0);
+  }
+  inline HOSTDEVICE T UseXAndOut(T x, T out) {
+    return out > static_cast<T>(0) ? static_cast<T>(1) : static_cast<T>(0);
+  }
 };
 
 template <typename T>
@@ -84,9 +94,9 @@ struct TanhFunctor {
   const T kMax = static_cast<T>(13);
   inline HOSTDEVICE T operator()(T x) {
     // y = 2 / (1 + e^-2x) - 1
-    T t0 = 2 * x;
+    T t0 = static_cast<T>(2) * x;
     T t1 = (t0 < kMin) ? kMin : ((t0 > kMax) ? kMax : t0);
-    return static_cast<T>(2) / (static_cast<T>(1) + std::exp(-t1)) -
+    return static_cast<T>(2) / (static_cast<T>(1) + real_exp(-t1)) -
            static_cast<T>(1);
   }
 };
@@ -107,7 +117,7 @@ struct SigmoidFunctor {
   inline HOSTDEVICE T operator()(T x) {
     // y = 1 / (1 + e^-x)
     T tmp = (x < kMin) ? kMin : ((x > kMax) ? kMax : x);
-    return static_cast<T>(1) / (static_cast<T>(1) + std::exp(-tmp));
+    return static_cast<T>(1) / (static_cast<T>(1) + real_exp(-tmp));
   }
 };
 
