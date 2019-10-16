@@ -838,12 +838,7 @@ class TestDistBase(unittest.TestCase):
             print("outs[1]:", outs[1])
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={},
-                         log_name=""):
+    def _get_required_envs(self, check_error_log=False, need_envs={}):
         # TODO(typhoonzero): should auto adapt GPU count on the machine.
         required_envs = {
             "PATH": os.getenv("PATH", ""),
@@ -857,14 +852,23 @@ class TestDistBase(unittest.TestCase):
             "NCCL_SHM_DISABLE": "1"
         }
 
-        required_envs.update(need_envs)
-
         if check_error_log:
             required_envs["GLOG_vmodule"] = \
                 "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
                 "sparse_all_reduce_op_handle=10"
             required_envs["GLOG_logtostderr"] = "1"
+
+        required_envs.update(need_envs)
+        return required_envs
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={},
+                         log_name=""):
+        required_envs = self._get_required_envs(check_error_log, need_envs)
 
         local_losses \
             = self._run_local(model_file, required_envs,
@@ -897,12 +901,18 @@ class TestDistBase(unittest.TestCase):
             print("=======", local_loss, ":", dist_loss[0], "=======")
             self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)
 
+    def check_with_place_multi_cards(self,
+                                     model_file,
+                                     delta=1e-3,
+                                     check_error_log=False,
+                                     need_envs={},
+                                     log_name=""):
+        # need open p2p or shm otherwise multi cards mode will hang
+        need_envs.update({"NCCL_P2P_DISABLE": "0", "NCCL_SHM_DISABLE": "0"})
+
+        required_envs = self._get_required_envs(check_error_log, need_envs)
+
         if self._use_dgc:
-            # need open p2p or shm otherwise multi cards mode will hang
-            required_envs.update({
-                "NCCL_P2P_DISABLE": "0",
-                "NCCL_SHM_DISABLE": "0"
-            })
             multi_cards_losses = self._run_local(
                 model_file,
                 required_envs,
@@ -917,6 +927,8 @@ class TestDistBase(unittest.TestCase):
                 check_error_log,
                 log_name=log_name + "_base_2cards",
                 gpus="0,1")
+
+            self._use_dgc = True
 
             for step_id in range(RUN_STEP):
                 base_loss = base_losses[step_id]
