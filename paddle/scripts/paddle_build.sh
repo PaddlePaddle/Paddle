@@ -303,8 +303,11 @@ function build_base() {
         make clean
     fi
 
+<<<<<<< HEAD
 >>>>>>> 40c258a77b... Refine API.spec mechanism (#20574)
     make -j ${parallel_number}
+=======
+>>>>>>> dfa239253c... reduce make install time in CI (#20643)
     make install -j ${parallel_number}
 }
 
@@ -332,8 +335,11 @@ EOF
     if [[ "$ENABLE_MAKE_CLEAN" != "OFF" ]]; then
         make clean
     fi
+<<<<<<< HEAD
 >>>>>>> 40c258a77b... Refine API.spec mechanism (#20574)
     make -j 8
+=======
+>>>>>>> dfa239253c... reduce make install time in CI (#20643)
     make install -j 8
 }
 
@@ -912,7 +918,7 @@ EOF
         xz-utils tk-dev libffi-dev liblzma-dev
     RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
         tar -zxf sqlite-autoconf-3250300.tar.gz && cd sqlite-autoconf-3250300 && \
-        ./configure -prefix=/usr/local && make -j8 && make install && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
+        ./configure -prefix=/usr/local && make install -j8 && cd ../ && rm sqlite-autoconf-3250300.tar.gz && \
         wget -q https://www.python.org/ftp/python/3.6.0/Python-3.6.0.tgz && \
         tar -xzf Python-3.6.0.tgz && cd Python-3.6.0 && \
         CFLAGS="-Wformat" ./configure --prefix=/usr/local/ --enable-shared > /dev/null && \
