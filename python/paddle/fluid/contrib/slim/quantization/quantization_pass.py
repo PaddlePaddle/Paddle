@@ -26,7 +26,7 @@ __all__ = [
     'AddQuantDequantPass'
 ]
 
-_quantizable_op_list = ['conv2d', 'depthwise_conv2d', 'mul', 'pool2d']
+_quantizable_op_list = ['conv2d', 'depthwise_conv2d', 'mul']
 
 _fake_quant_op_list = [
     'fake_quantize_abs_max', 'fake_quantize_range_abs_max',
@@ -161,13 +161,11 @@ class QuantizationTransformPass(object):
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
 
         def _quant_preprocess(op_node):
-            pool_skipped = op_node.op().has_attr("pooling_type") and \
-                    op_node.op().attr("pooling_type") == 'avg'
             user_skipped = isinstance(self._skip_pattern, str) and \
                            op_node.op().has_attr("op_namescope") and \
                            op_node.op().attr("op_namescope").find(self._skip_pattern) != -1
 
-            if pool_skipped or user_skipped:
+            if user_skipped:
                 op_node.op()._set_attr("skip_quant", True)
 
         def _transform_forward(graph, op):
@@ -1163,10 +1161,15 @@ class ScaleForInferencePass(object):
 
 
 class AddQuantDequantPass(object):
-    def __init__(self, scope=None, place=None, moving_rate=0.9, quant_bits=8):
+    def __init__(self,
+                 scope=None,
+                 place=None,
+                 moving_rate=0.9,
+                 quant_bits=8,
+                 skip_pattern='skip_quant'):
         """
         This pass is used to add quant_dequant op for some ops, such as the
-        'elementwise_add' and 'average pool2d' op.
+        'elementwise_add' and 'pool2d' op.
         """
         self._scope = scope
         self._place = place
@@ -1175,11 +1178,12 @@ class AddQuantDequantPass(object):
         self._is_test = None
         self._target_ops = ["elementwise_add", "pool2d"]
         self._target_grad_ops = ['%s_grad' % (op) for op in self._target_ops]
+        self._skip_pattern = skip_pattern
 
     def apply(self, graph):
         """
         Add quant_dequant before some ops, such as the 'elementwise_add'
-        and 'average pool2d' op.
+        and 'pool2d' op.
         Args:
             graph(IrGraph): the target graph.
         """
@@ -1191,6 +1195,11 @@ class AddQuantDequantPass(object):
 
         for op_node in ops:
             if op_node.name() in self._target_ops:
+                if isinstance(self._skip_pattern, str) and \
+                           op_node.op().has_attr("op_namescope") and \
+                           op_node.op().attr("op_namescope").find(self._skip_pattern) != -1:
+                    continue
+
                 in_nodes_all_not_persistable = True
                 for input_name in op_node.input_arg_names():
                     in_node = graph._find_node_by_name(op_node.inputs,
@@ -1199,10 +1208,6 @@ class AddQuantDequantPass(object):
                         in_nodes_all_not_persistable and
                         not in_node.persistable())
                 if not in_nodes_all_not_persistable:
-                    continue
-
-                if op_node.op().has_attr("pooling_type") and \
-                    op_node.op().attr("pooling_type") == 'max':
                     continue
 
                 input_names = op_node.input_arg_names()
