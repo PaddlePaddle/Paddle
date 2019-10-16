@@ -17,6 +17,8 @@
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/imperative/type_defs.h"
 #include "pybind11/pybind11.h"
 
 // This include must be the last line
