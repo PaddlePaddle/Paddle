@@ -6874,6 +6874,22 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
 
     def __check_input(x, y):
+        var_names = {'x': x, 'y': y}
+        for name, val in var_names.items():
+            if not isinstance(val, Variable):
+                raise TypeError(
+                    "The type of %s in matmul must be Variable, but received %s.\n"
+                    % (name, (type(val))))
+            if convert_dtype(val.dtype) in ['float16']:
+                warnings.warn(
+                    "The data type of %s in matmul only support float16 in GPU now."
+                    % name)
+            if convert_dtype(
+                    val.dtype) not in ['float16', 'float32', 'float64']:
+                raise TypeError(
+                    "The data type of %s in matmul must be float16 or float32 or float64, but received %s.\n"
+                    % (name, (convert_dtype(val.dtype))))
+
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) == 1:
@@ -6887,8 +6903,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if transpose_y:
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
-            raise ValueError("Invalid inputs for matmul. x: %s, y: %s\n" %
-                             (x_shape, y_shape))
+            raise ValueError(
+                "After performing an optional transpose, Input X's width should be "
+                "equal to Y's width for multiplication "
+                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %
+                (x_shape, y_shape))
 
         if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
@@ -6896,8 +6915,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
                 if dim_x < 0 or y_shape[i] < 0:
                     continue
                 if dim_x != y_shape[i]:
-                    raise ValueError("Invalid inputs for matmul. x(%s), y(%s)" %
-                                     (x.shape, y.shape))
+                    raise ValueError(
+                        "When the matrix is larger than 2 dimensions, the higher "
+                        "dimensional values of the two matrices need to be equal. "
+                        "But received x_shape[%d] != y_shape[%d]. X's shape: %s, "
+                        "Y's shape: %s.\n" % (i, i, x_shape, y_shape))
 
     __check_input(x, y)
 
@@ -13751,24 +13773,24 @@ def _elementwise_op(helper):
             (op_type, type(y)))
     if convert_dtype(x.dtype) in ['float16']:
         warnings.warn(
-            "The data type of 'x' in batch_norm only support float16 on GPU now."
-        )
+            "The data type of 'x' in %s only support float16 on GPU now." %
+            (op_type))
     if convert_dtype(y.dtype) in ['float16']:
         warnings.warn(
-            "The data type of 'y' in batch_norm only support float16 on GPU now."
-        )
+            "The data type of 'y' in %s only support float16 on GPU now." %
+            (op_type))
     if convert_dtype(x.dtype) not in [
             'float16', 'float32', 'float64', 'int32', 'int64'
     ]:
         raise TypeError(
-            "The data type of 'x' in batch_norm must be float16 or float32 or float64 or int32 or int64, but received %s."
-            % (convert_dtype(x.dtype)))
+            "The data type of 'x' in %s must be float16 or float32 or float64 or int32 or int64, "
+            "but received %s." % (op_type, convert_dtype(x.dtype)))
     if convert_dtype(y.dtype) not in [
             'float16', 'float32', 'float64', 'int32', 'int64'
     ]:
         raise TypeError(
-            "The data type of 'y' in batch_norm must be float16 or float32 or float64 or int32 or int64, but received %s."
-            % (convert_dtype(y.dtype)))
+            "The data type of 'y' in %s must be float16 or float32 or float64 or int32 or int64, "
+            "but received %s." % (op_type, convert_dtype(y.dtype)))
 
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
@@ -14299,10 +14321,60 @@ Examples:
 
 
 def elementwise_mod(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    ..  code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([10, 15, 8]).astype('int32'),
+                "y": np.array([3, 6, 5]).astype('int32')
+            }
+
+        x = fluid.data(name="x", shape=[3], dtype='int32')
+        y = fluid.data(name="y", shape=[3], dtype='int32')
+        z = fluid.layers.elementwise_mod(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[1, 3, 3]
+    """
     return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
 
 def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    ..  code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([10, 15, 8]).astype('int32'),
+                "y": np.array([3, 7, 5]).astype('int32')
+            }
+
+        x = fluid.data(name="x", shape=[3], dtype='int32')
+        y = fluid.data(name="y", shape=[3], dtype='int32')
+        z = fluid.layers.elementwise_floordiv(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[3, 2, 1]
+    """
     return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
 
 
@@ -14314,6 +14386,8 @@ for func in [
         elementwise_max,
         elementwise_pow,
         elementwise_min,
+        elementwise_mod,
+        elementwise_floordiv,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
@@ -14331,10 +14405,7 @@ for func in [
         skip_attrs_set={"x_data_format", "y_data_format", "axis"
                         }) + """\n""" + str(func.__doc__)
 
-for func in [
-        elementwise_mod,
-        elementwise_floordiv,
-]:
+for func in []:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
         op_proto,
@@ -14711,6 +14782,20 @@ def mean(x, name=None):
     """
 
     helper = LayerHelper("mean", **locals())
+
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'x' in mean must be Variable, but received %s.\n" %
+            (type(x)))
+
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'x' in mean only support float16 in GPU now.")
+
+    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
+        raise TypeError(
+            "The data type of 'x' in mean must be float16 or float32 or float64, but received %s.\n"
+            % (convert_dtype(x.dtype)))
 
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
