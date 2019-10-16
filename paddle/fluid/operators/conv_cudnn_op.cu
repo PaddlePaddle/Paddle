@@ -540,23 +540,25 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
             workspace_size);
       }
 
-      std::vector<int> starts(transformed_input_channel.dims().size(), 0);
-      std::vector<int> axes(transformed_input_channel.dims().size(), 0);
+      if (!is_sys_pad) {
+        std::vector<int> starts(transformed_input_channel.dims().size(), 0);
+        std::vector<int> axes(transformed_input_channel.dims().size(), 0);
 
-      for (size_t i = 0; i < transformed_input_channel.dims().size(); ++i) {
-        starts[i] = input_pad[2 * i];
-        axes[i] = i;
-      }
+        for (size_t i = 0; i < transformed_input_channel.dims().size(); ++i) {
+          starts[i] = input_pad[2 * i];
+          axes[i] = i;
+        }
 
-      transformed_input_grad_channel.mutable_data(ctx.GetPlace());
-      if (transformed_input_channel.dims().size() == 4) {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
-            ctx, &transformed_input_grad, &transformed_input_grad_channel,
-            starts, axes);
-      } else {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
-            ctx, &transformed_input_grad, &transformed_input_grad_channel,
-            starts, axes);
+        transformed_input_grad_channel.mutable_data(ctx.GetPlace());
+        if (transformed_input_channel.dims().size() == 4) {
+          Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
+              ctx, &transformed_input_grad, &transformed_input_grad_channel,
+              starts, axes);
+        } else {
+          Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
+              ctx, &transformed_input_grad, &transformed_input_grad_channel,
+              starts, axes);
+        }
       }
 
       if (channel_last) {
@@ -982,20 +984,22 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
             workspace_size);
       }
 
-      // reverse padded input
-      std::vector<int> starts(X->dims().size(), 0);
-      std::vector<int> axes(X->dims().size(), 0);
+      if (!is_sys_pad) {
+        // reverse padded input
+        std::vector<int> starts(X->dims().size(), 0);
+        std::vector<int> axes(X->dims().size(), 0);
 
-      for (size_t i = 0; i < X->dims().size(); ++i) {
-        starts[i] = input_pad[2 * i];
-        axes[i] = i;
-      }
-      if (X->dims().size() == 4) {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
-            ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
-      } else {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
-            ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
+        for (size_t i = 0; i < X->dims().size(); ++i) {
+          starts[i] = input_pad[2 * i];
+          axes[i] = i;
+        }
+        if (X->dims().size() == 4) {
+          Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
+              ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
+        } else {
+          Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
+              ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
+        }
       }
       if (channel_last) {
         TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
