@@ -2,4 +2,5 @@ cc_binary(test_leaky_relu SRCS test_leaky_relu.cc DEPS lite_full_static dynload_
 cc_library(lite_op_teller SRCS op_teller.cc DEPS framework_proto device_context boost xxhash)
 cc_library(lite_engine SRCS engine.cc DEPS lite_full_static framework_proto)
 cc_library(lite_tensor_utils SRCS tensor_utils.cc DEPS memcpy lite_full_static framework_proto boost)
-nv_test(test_lite_engine SRCS test_engine.cc DEPS lite_engine)
+cc_test(test_lite_engine SRCS test_engine.cc DEPS lite_engine protobuf)
+cc_test(test_lite_predictor SRCS test_predictor.cc DEPS lite_engine paddle_fluid)
