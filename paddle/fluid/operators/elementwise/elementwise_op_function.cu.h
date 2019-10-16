@@ -57,31 +57,11 @@ template <typename T>
 struct DivFunctor<T,
                   typename std::enable_if<std::is_integral<T>::value>::type> {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    if (b != 0) {
-      return a / b;
-    } else {
-      PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
-      return 0;
-    }
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+    return a / b;
   }
 };
-/*
-template <typename T>
-struct DivFunctor<T,
-          typename std::enable_if<std::is_integral<T>::value>::type>{
-  DivFunctor(bool *error = NULL): error(error) {}
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    PADDLE_ENFORCE(*error == false, "div zero wrong");
-    if(b != 0) {
-      return a/b;
-    } else {
-      *error = true;
-      return 0;
-    }
-  }
-  bool *error ;
-};
-*/
+
 #define DEFINE_SIMPLE_CUDA_BINARY_FUNCTOR(Func, expr)                         \
   template <typename T, class Enable = void>                                  \
   struct Func##RangeFunctor {                                                 \
@@ -105,12 +85,8 @@ struct DivRangeFunctor<
     T, typename std::enable_if<std::is_integral<T>::value>::type> {
   DivRangeFunctor(const T* x, const T* y, T* z) : x_(x), y_(y), z_(z) {}
   inline HOSTDEVICE void operator()(size_t id) const {
-    if (y_[id] != 0) {
-      z_[id] = x_[id] / y_[id];
-    } else {
-      PADDLE_ENFORCE(y_[id] != 0, DIV_ERROR_INFO);
-      z_[id] = 0;
-    }
+    PADDLE_ENFORCE(y_[id] != 0, DIV_ERROR_INFO);
+    z_[id] = x_[id] / y_[id];
   }
   const T* x_;
   const T* y_;
