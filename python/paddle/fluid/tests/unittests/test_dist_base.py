@@ -846,6 +846,7 @@ class TestDistBase(unittest.TestCase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
+            "FLAGS_rpc_retry_bind_port": "50",
             "FLAGS_cudnn_deterministic": "1",
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
