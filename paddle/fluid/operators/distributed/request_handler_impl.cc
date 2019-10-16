@@ -53,9 +53,17 @@ bool RequestSendHandler::Handle(const std::string& varname,
     rpc_server_->IncreaseBatchBarrier(kRequestSend);
   } else if (varname == COMPLETE_MESSAGE) {
     VLOG(3) << "sync: recv complete message";
+<<<<<<< HEAD
     if(HeartBeatMonitor::GetInstance() != nullptr) {
         HeartBeatMonitor::GetInstance()->Update(trainer_id, "", COMPLETED);
     }
+=======
+
+    if (HeartBeatMonitor::GetInstance() != nullptr) {
+      HeartBeatMonitor::GetInstance()->Update(trainer_id, "", COMPLETED);
+    }
+
+>>>>>>> 04384502a8... fix bug with heart beat , test=develop (#20654)
     rpc_server_->Complete();
   } else {
     // Async

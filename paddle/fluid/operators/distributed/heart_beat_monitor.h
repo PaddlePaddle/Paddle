@@ -84,9 +84,13 @@ class HeartBeatMonitor {
                    be_monitored_var);
   }
 
+<<<<<<< HEAD
   static HeartBeatMonitor* GetInstance() {
     return monitor_.get();
   }
+=======
+  static HeartBeatMonitor* GetInstance() { return monitor_.get(); }
+>>>>>>> 04384502a8... fix bug with heart beat , test=develop (#20654)
 
   void Stop() {
     running_ = false;
