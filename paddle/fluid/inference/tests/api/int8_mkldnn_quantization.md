@@ -1,6 +1,6 @@
 # INT8 MKL-DNN quantization
 
-This document describes how to use Paddle inference Engine to convert the FP32 model to INT8 model on ResNet-50 and MobileNet-V1. We provide the instructions on enabling INT8 MKL-DNN quantization in Paddle inference and show the ResNet-50 and MobileNet-V1 results in accuracy and performance.
+This document describes how to use Paddle inference Engine to convert the FP32 models to INT8 models. We provide the instructions on enabling INT8 MKL-DNN quantization in Paddle inference and show the accuracy and performance results of the quantized models, including 7 image classification models: GoogleNet, MobileNet-V1, MobileNet-V2, ResNet-101, ResNet-50, VGG16, VGG19, and 1 object detection model Mobilenet-SSD.
 
 ## 0. Install PaddlePaddle
 
@@ -15,7 +15,7 @@ Note: MKL-DNN and MKL are required.
 
 ## 1. Enable INT8 MKL-DNN quantization
 
-For reference, please examine the code of unit test enclosed in [analyzer_int8_image_classification_tester.cc](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/api/analyzer_int8_image_classification_tester.cc).
+For reference, please examine the code of unit test enclosed in [analyzer_int8_image_classification_tester.cc](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/api/analyzer_int8_image_classification_tester.cc) and [analyzer_int8_object_detection_tester.cc](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/api/analyzer_int8_object_detection_tester.cc).
 
 * ### Create Analysis config
 
@@ -34,11 +34,9 @@ cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
 cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(100);
 ```
 
-## 2. Accuracy and Performance benchmark
+## 2. Accuracy and Performance benchmark for Image Classification models
 
 We provide the results of accuracy and performance measured on Intel(R) Xeon(R) Gold 6271 on single core.
-
->**Dataset: ILSVRC2012 Validation dataset**
 
 >**I. Top-1 Accuracy on Intel(R) Xeon(R) Gold 6271**
 
@@ -64,20 +62,10 @@ We provide the results of accuracy and performance measured on Intel(R) Xeon(R) 
 | VGG16        |     3.64                   |    10.56                  |   2.90          |
 | VGG19        |     2.95                   |     9.02                  |   3.05          |
 
-Notes:
 
-* Measurement of accuracy requires a model which accepts two inputs: data and labels.
+* ## Prepare dataset
 
-* Different sampling batch size data may cause slight difference on INT8 top accuracy.
-* CAPI performance data is better than python API performance data because of the python overhead. Especially for the small computational model, python overhead will be more obvious.
-
-## 3. Commands to reproduce the above accuracy and performance benchmark
-
-Two steps to reproduce the above-mentioned accuracy results, and we take GoogleNet benchmark as an example:
-
-* ### Prepare dataset
-
-Running the following commands to download and preprocess the ILSVRC2012 Validation dataset.
+Run the following commands to download and preprocess the ILSVRC2012 Validation dataset.
 
 ```bash
 cd /PATH/TO/PADDLE/build
@@ -86,12 +74,13 @@ python ../paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
 
 Then the ILSVRC2012 Validation dataset will be preprocessed and saved by default in `~/.cache/paddle/dataset/int8/download/int8_full_val.bin`
 
-* ### Commands to reproduce benchmark
+* ## Commands to reproduce image classification benchmark
 
-You can run `test_analyzer_int8_imagenet_classification` with the following arguments to reproduce the accuracy result on GoogleNet.
+You can run `test_analyzer_int8_imagenet_classification` with the following arguments to reproduce the accuracy result on Resnet50.
 
 ```bash
-./paddle/fluid/inference/tests/api/test_analyzer_int8_image_classification --infer_model=third_party/inference_demo/int8v2/resnet50/model --infer_data=/~/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
+cd /PATH/TO/PADDLE/build
+./paddle/fluid/inference/tests/api/test_analyzer_int8_image_classification --infer_model=third_party/inference_demo/int8v2/resnet50/model --infer_data=$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
 ```
 
 To verify all the 7 models, you need to set the parameter of `--infer_model` to one of the following values in command line:
@@ -103,3 +92,59 @@ To verify all the 7 models, you need to set the parameter of `--infer_model` to 
 ```text
 MODEL_NAME=googlenet, mobilenetv1, mobilenetv2, resnet101, resnet50, vgg16, vgg19
 ```
+
+## 3. Accuracy and Performance benchmark for Object Detection models
+
+>**I. mAP on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core):**
+
+| Model        | FP32 Accuracy   | INT8 Accuracy   | Accuracy Diff(FP32-INT8)   |
+| :----------: | :-------------: | :------------:  | :--------------:           |
+| Mobilenet-SSD| 73.80%         |  73.17%         |   0.63%                    |
+
+>**II. Throughput on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core)**
+
+| Model        | FP32 Throughput(images/s)  | INT8 Throughput(images/s) | Ratio(INT8/FP32)|
+| :-----------:| :------------:             | :------------:            | :------------:  |
+| Mobilenet-SSD    |    37.8180       | 115.0604 |3.04 |
+
+* ## Prepare dataset
+
+* Run the following commands to download and preprocess the Pascal VOC2007 test set.
+  
+```bash
+cd /PATH/TO/PADDLE/build
+python ./paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --choice=VOC_test_2007 \\
+```
+
+Then the Pascal VOC2007 test set will be preprocessed and saved by default in `~/.cache/paddle/dataset/pascalvoc/pascalvoc_full.bin`
+
+* Run the following commands to prepare your own dataset.
+
+```bash
+cd /PATH/TO/PADDLE/build
+python ./paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --choice=local \\
+                                         --data_dir=./third_party/inference_demo/int8v2/pascalvoc_small \\
+                                         --img_annotation_list=test_100.txt \\
+                                         --label_file=label_list \\
+                                         --output_file=pascalvoc_small.bin \\
+                                         --resize_h=300 \\
+                                         --resize_w=300 \\
+                                         --mean_value=[127.5, 127.5, 127.5] \\
+                                         --ap_version=11point \\
+```
+Then the user dataset will be preprocessed and saved by default in `/PATH/TO/PADDLE/build/third_party/inference_demo/int8v2/pascalvoc_small/pascalvoc_small.bin`
+
+* ## Commands to reproduce object detection benchmark
+
+You can run `test_analyzer_int8_object_detection` with the following arguments to reproduce the benchmark results for Mobilenet-SSD.
+
+```bash
+cd /PATH/TO/PADDLE/build
+./paddle/fluid/inference/tests/api/test_analyzer_int8_object_detection --infer_model=third_party/inference_demo/int8v2/mobilenet-ssd/model --infer_data=$HOME/.cache/paddle/dataset/pascalvoc/pascalvoc_full.bin --warmup_batch_size=10 --batch_size=100 --paddle_num_threads=1
+```
+
+## 4. Notes
+
+* Measurement of accuracy requires a model which accepts two inputs: data and labels.
+* Different sampling batch size data may cause slight difference on INT8 accuracy.
+* CAPI performance data is better than python API performance data because of the python overhead. Especially for the small computational model, python overhead will be more obvious.
