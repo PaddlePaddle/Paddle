@@ -92,7 +92,7 @@ class MulOp : public framework::OperatorWithKernel {
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     int customized_type_value =
         framework::OpKernelType::kDefaultCustomizedTypeValue;
-    auto input_data_type = ctx.Input<Tensor>("X")->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {

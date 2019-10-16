@@ -459,6 +459,9 @@ class OperatorWithKernel : public OperatorBase {
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
                          const RuntimeContext& ctx) const override;
 
+  proto::VarType::Type IndicateVarDataType(const ExecutionContext& ctx,
+                                           const std::string& name) const;
+
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
 
   std::vector<KernelConfig>* GetKernelConfig(const OpKernelType& key) const;
@@ -470,6 +473,8 @@ class OperatorWithKernel : public OperatorBase {
       const OpKernelType& expected_kernel_type) const;
 
  private:
+  void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,
+                          proto::VarType::Type* type) const;
   // indicate kernel DataType by input data. By default all input data must be
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
