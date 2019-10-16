@@ -16,6 +16,7 @@
 #include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/inference/lite/tensor_utils.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
 namespace inference {

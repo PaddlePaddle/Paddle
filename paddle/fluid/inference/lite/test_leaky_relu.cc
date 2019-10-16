@@ -30,7 +30,8 @@ void TestModel(const std::vector<Place>& valid_places,
                const Place& preferred_place,
                bool use_npu = false) {
   lite_api::CxxConfig cfg; 
-  cfg.set_model_dir("/shixiaowei02/Paddle_lite/xingzhaolong/leaky_relu_model");
+  // cfg.set_model_dir("/shixiaowei02/Paddle_lite/xingzhaolong/leaky_relu_model");
+  cfg.set_model_dir("/shixiaowei02/models/tmp");
   cfg.set_preferred_place(preferred_place);
   cfg.set_valid_places(valid_places);
   auto predictor = lite_api::CreatePaddlePredictor(cfg);

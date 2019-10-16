@@ -17,9 +17,6 @@
 #include <map>
 #include <string>
 #include <unordered_map>
-#include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/inference/engine.h"
-#include "paddle/fluid/inference/utils/singleton.h"
 
 #include "lite/api/cxx_api.h"
 

@@ -29,6 +29,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/inference/lite/tensor_utils.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 namespace operators {
