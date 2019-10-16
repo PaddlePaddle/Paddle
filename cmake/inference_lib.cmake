@@ -208,9 +208,10 @@ copy(fluid_lib_dist
         DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}/ir/memory_optimize_pass ${dst_dir}/${module}/ir ${dst_dir}/${module}/fleet)
 
 
+set(module "imperative")
 copy(fluid_lib_dist
-        SRCS ${src_dir}/imperative/type_defs.h
-        DSTS ${dst_dir}/imperative/
+        SRCS ${src_dir}/${module}/type_defs.h
+        DSTS ${dst_dir}/${module}/
         )
 
 set(module "operators")
