@@ -210,8 +210,8 @@ copy(fluid_lib_dist
 
 set(module "imperative")
 copy(fluid_lib_dist
-        SRCS ${src_dir}/${module}/type_defs.h
-        DSTS ${dst_dir}/${module}/
+        SRCS ${src_dir}/${module}/type_defs.h  ${src_dir}/${module}/dygraph_grad_maker.h
+        DSTS ${dst_dir}/${module}/ ${dst_dir}/${module}/
         )
 
 set(module "operators")
