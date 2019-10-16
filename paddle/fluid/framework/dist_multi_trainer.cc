@@ -70,6 +70,11 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
   SetDebug(trainer_desc.debug());
 }
 
+void DistMultiTrainer::PullSparseTableToLocal(int table_id, int feadim) {
+    auto fleet_ptr_ = FleetWrapper::GetInstance();
+    fleet_ptr_->PullSparseToLocal(table_id, dataset_ptr_->GetUniqueFeasigns(), feadim);
+    dataset_ptr_->ClearUniqueFeasigns();
+}
 void DistMultiTrainer::DumpWork(int tid) {
 #ifdef _LINUX
   int err_no = 0;

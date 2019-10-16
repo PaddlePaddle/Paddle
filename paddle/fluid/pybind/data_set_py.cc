@@ -247,6 +247,10 @@ void BindDataset(py::module *m) {
            py::call_guard<py::gil_scoped_release>())
       .def("merge_by_lineid", &framework::Dataset::MergeByInsId,
            py::call_guard<py::gil_scoped_release>())
+      .def("set_generate_unique_feasigns", &framework::Dataset::SetGenerateUniqueFeasign,
+           py::call_guard<py::gil_scoped_release>())
+      .def("generate_unique_feasigns", &framework::Dataset::GenerateUniqueFeasign,
+           py::call_guard<py::gil_scoped_release>())
       .def("slots_shuffle", &framework::Dataset::SlotsShuffle,
            py::call_guard<py::gil_scoped_release>())
       .def("set_fea_eval", &framework::Dataset::SetFeaEval,

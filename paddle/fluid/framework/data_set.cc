@@ -130,6 +130,12 @@ void DatasetImpl<T>::SetMergeByInsId(
 }
 
 template <typename T>
+void DatasetImpl<T>::SetGenerateUniqueFeasign(bool gen_uni_feasigns) {
+    gen_uni_feasigns_ = gen_uni_feasigns;
+    VLOG(3) << "Set generate unique feasigns: " << gen_uni_feasigns;
+}
+
+template <typename T>
 void DatasetImpl<T>::SetFeaEval(bool fea_eval, int record_candidate_size) {
   slots_shuffle_fea_eval_ = fea_eval;
   slots_shuffle_rclist_.ReSize(record_candidate_size);
@@ -635,6 +641,35 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
 
 // explicit instantiation
 template class DatasetImpl<Record>;
+
+void MultiSlotDataset::GenerateUniqueFeasign() {
+  VLOG(3) << "MultiSlotDataset::GenerateUniqueFeasign begin";
+  if (!gen_uni_feasigns_) {
+    VLOG(3) << "generate_unique_feasign_=false, will not GenerateUniqueFeasign";
+    return;
+  }
+  CHECK(multi_output_channel_.size() != 0);  // NOLINT
+  std::unordered_set<uint64_t> local_feasigns_set;
+  for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
+      std::vector<Record> vec_data;
+      multi_output_channel_[i]->Close();
+      multi_output_channel_[i]->ReadAll(vec_data);
+      for (size_t j = 0; j < vec_data.size(); j++) {
+          for (auto& feature : vec_data[j].uint64_feasigns_){
+              local_feasigns_set.insert(feature.sign().uint64_feasign_);
+          }
+
+      }
+      multi_output_channel_[i]->Open();
+      multi_output_channel_[i]->Write(std::move(vec_data));
+      vec_data.clear();
+      vec_data.shrink_to_fit();
+  }
+  local_feasigns_.reserve(local_feasigns_set.size() + 1);
+  local_feasigns_.assign(local_feasigns_set.begin(), local_feasigns_set.end());
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  local_feasigns_set.clear();
+}
 
 void MultiSlotDataset::MergeByInsId() {
   VLOG(3) << "MultiSlotDataset::MergeByInsId begin";

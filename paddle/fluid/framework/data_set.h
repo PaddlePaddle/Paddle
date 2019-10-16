@@ -65,6 +65,8 @@ class Dataset {
   virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
                                bool erase_duplicate_feas, int min_merge_size,
                                bool keep_unmerged_ins) = 0;
+  //set generate unique feasigns
+  virtual void SetGenerateUniqueFeasign(bool gen_uni_feasigns) = 0;
   // set fea eval mode
   virtual void SetFeaEval(bool fea_eval, int record_candidate_size) = 0;
   // get file list
@@ -114,6 +116,12 @@ class Dataset {
   virtual int64_t GetShuffleDataSize() = 0;
   // merge by ins id
   virtual void MergeByInsId() = 0;
+  // generate unique feasigns
+  virtual void GenerateUniqueFeasign() = 0;
+  // get unique feasigns
+  virtual const std::vector<uint64_t>& GetUniqueFeasigns() = 0;
+  // clear unique feasigns
+  virtual void ClearUniqueFeasigns() = 0;
   // create preload readers
   virtual void CreatePreLoadReaders() = 0;
   // destroy preload readers after prelaod done
@@ -152,7 +160,7 @@ class DatasetImpl : public Dataset {
   virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
                                bool erase_duplicate_feas, int min_merge_size,
                                bool keep_unmerged_ins);
-
+  virtual void SetGenerateUniqueFeasign(bool gen_uni_feasigns);
   virtual void SetFeaEval(bool fea_eval, int record_candidate_size);
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
@@ -183,6 +191,9 @@ class DatasetImpl : public Dataset {
   virtual int64_t GetMemoryDataSize();
   virtual int64_t GetShuffleDataSize();
   virtual void MergeByInsId() {}
+  virtual void GenerateUniqueFeasign() {}
+  virtual const std::vector<uint64_t>& GetUniqueFeasigns() {return *(std::vector<uint64_t>*)NULL;};
+  virtual void ClearUniqueFeasigns() {};
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
   virtual void SetPreLoadThreadNum(int thread_num);
@@ -199,6 +210,7 @@ class DatasetImpl : public Dataset {
   int channel_num_;
   std::vector<paddle::framework::Channel<T>> multi_output_channel_;
   std::vector<paddle::framework::Channel<T>> multi_consume_channel_;
+  std::vector<uint64_t> local_feasigns_;
   // when read ins, we put ins from one channel to the other,
   // and when finish reading, we set cur_channel = 1 - cur_channel,
   // so if cur_channel=0, all data are in output_channel, else consume_channel
@@ -206,6 +218,7 @@ class DatasetImpl : public Dataset {
   std::vector<T> slots_shuffle_original_data_;
   RecordCandidateList slots_shuffle_rclist_;
   int thread_num_;
+  int pull_sparse_to_local_thread_num_;
   paddle::framework::DataFeedDesc data_feed_desc_;
   int trainer_num_;
   std::vector<std::string> filelist_;
@@ -224,6 +237,7 @@ class DatasetImpl : public Dataset {
   int min_merge_size_;
   std::vector<std::string> merge_slots_list_;
   bool slots_shuffle_fea_eval_ = false;
+  bool gen_uni_feasigns_ = false;
   int preload_thread_num_;
   std::mutex global_index_mutex_;
   int64_t global_index_ = 0;
@@ -234,6 +248,10 @@ class MultiSlotDataset : public DatasetImpl<Record> {
  public:
   MultiSlotDataset() {}
   virtual void MergeByInsId();
+  virtual void GenerateUniqueFeasign();
+  virtual const std::vector<uint64_t>& GetUniqueFeasigns() {return local_feasigns_;}
+  virtual void ClearUniqueFeasigns() {local_feasigns_.clear();}
+
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace);
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
                              std::vector<Record>* result);

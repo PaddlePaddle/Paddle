@@ -156,6 +156,54 @@ void FleetWrapper::CreateClient2ClientConnection() {
 #endif
 }
 
+void FleetWrapper::SetLocalSparseTable(const std::vector<uint64_t>& fea_keys, int fea_value_dim) {
+    CHECK(fea_keys.size() > 0);
+    
+    std::vector<std::vector<float>> local_fea_values(fea_keys.size(), std::vector<float>(fea_value_dim, 0));
+    int i = 0;
+    for (auto fea_key : fea_keys) {
+        local_table_[fea_key] = local_fea_values[i];
+        i++;
+    }
+}
+void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<uint64_t>& fea_keys, int fea_value_dim) {
+    SetLocalSparseTable(fea_keys, fea_value_dim);
+    std::vector<float*> pull_result_ptr;
+    for (auto& t : fea_keys) {
+        pull_result_ptr.push_back(local_table_[t].data());
+    }
+    auto status = pslib_ptr_->_worker_ptr->pull_sparse(
+            pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size());
+
+}
+
+void FleetWrapper::PullSparseVarsFromLocal(
+    const Scope& scope, const uint64_t table_id,
+    const std::vector<std::string>& var_names,
+    std::vector<std::vector<float>>* fea_values, int fea_value_dim) {
+#ifdef PADDLE_WITH_PSLIB
+  for (auto name : var_names) {
+    Variable* var = scope.FindVar(name);
+    if (var == nullptr) {
+      continue;
+    }
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
+    int64_t* ids = tensor->data<int64_t>();
+    int len = tensor->numel();
+    for (auto i = 0u; i < len; ++i) {
+      if (ids[i] == 0u) {
+        continue;
+      }
+      // fea_keys->push_back(static_cast<uint64_t>(ids[i]));
+      fea_values->emplace_back(local_table_[static_cast<uint64_t>(ids[i])]);
+    }
+  }
+#endif
+
+}
+
+
 void FleetWrapper::PullSparseVarsSync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,

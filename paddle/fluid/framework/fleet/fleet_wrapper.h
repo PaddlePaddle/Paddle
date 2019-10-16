@@ -102,6 +102,17 @@ class FleetWrapper {
   void PushDenseVarsSync(Scope* scope, const uint64_t table_id,
                          const std::vector<std::string>& var_names);
 
+  //Pull sparse to local table if set local sparse table
+  std::unordered_map<uint64_t, std::vector<float>>  local_table_;
+  void SetLocalSparseTable(const std::vector<uint64_t>& fea_keys, int fea_value_dim);
+  void PullSparseToLocal(const uint64_t table_id, const std::vector<uint64_t>& fea_keys, int fea_value_dim);
+
+  void PullSparseVarsFromLocal(
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<std::string>& var_names,
+      std::vector<std::vector<float>>* fea_values, int fea_value_dim);
+  void ClearLocalTable() {local_table_.clear();};
+
   // Push sparse variables with labels to server in Async mode
   // This is specially designed for click/show stats in server
   // Param<in>: scope, table_id, var_grad_names,

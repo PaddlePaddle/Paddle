@@ -627,6 +627,7 @@ void DownpourWorker::TrainFiles() {
           break;
         }
       }
+      std::cout << "Debug TrainFiles current tid: " << tid << " is local: " << table.is_local() <<  std::endl;
       fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
                                      sparse_key_names_[tid], &features_[tid],
                                      &feature_values_[tid], table.fea_dim());

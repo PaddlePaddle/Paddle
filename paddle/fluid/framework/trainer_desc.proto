@@ -137,4 +137,5 @@ message TableParameter {
   optional int32 emb_dim = 10;
   optional int32 fea_dim = 11;
   optional string label_var_name = 12;
+  optional bool is_local = 13 [ default = false ];
 }
