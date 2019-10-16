@@ -132,8 +132,9 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                 ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+      layout_, library_);
 }
 
 void Conv2DTransposeOpMaker::Make() {
@@ -384,8 +385,9 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
   }
 
   framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                 ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+      layout_, library_);
 }
 
 class ConvTransposeGradOpDescMaker : public framework::SingleGradOpDescMaker {

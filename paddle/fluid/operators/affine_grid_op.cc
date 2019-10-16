@@ -80,7 +80,7 @@ class AffineGridOp : public framework::OperatorWithKernel {
       library = framework::LibraryType::kCUDNN;
     }
 #endif
-    auto data_type = ctx.Input<Tensor>("Theta")->type();
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Theta");
     return framework::OpKernelType(data_type, ctx.GetPlace(),
                                    framework::DataLayout::kAnyLayout, library);
   }
@@ -191,9 +191,9 @@ class AffineGridOpGrad : public framework::OperatorWithKernel {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
-    return framework::OpKernelType(ctx.Input<Tensor>("Theta")->type(),
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kAnyLayout, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Theta"), ctx.GetPlace(),
+        framework::DataLayout::kAnyLayout, library_);
   }
 };
 

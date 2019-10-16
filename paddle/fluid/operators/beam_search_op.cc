@@ -109,10 +109,11 @@ class BeamSearchOp : public framework::OperatorWithKernel {
     // Compute on CPU for cases with batch_size > 4.
     if (batch_size <= 4) {
       return framework::OpKernelType(
-          ctx.Input<framework::LoDTensor>("pre_ids")->type(), ctx.GetPlace());
+          OperatorWithKernel::IndicateVarDataType(ctx, "pre_ids"),
+          ctx.GetPlace());
     } else {
       return framework::OpKernelType(
-          ctx.Input<framework::LoDTensor>("pre_ids")->type(),
+          OperatorWithKernel::IndicateVarDataType(ctx, "pre_ids"),
           platform::CPUPlace());
     }
   }

@@ -115,7 +115,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
 
 framework::OpKernelType BatchNormOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
-  auto input_data_type = ctx.Input<Tensor>("X")->type();
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   // By default, the type of the scale, bias, mean,
   // and var tensors should both be float. (For float or float16 input tensor)
   // or double (For double input tensor).
@@ -432,8 +432,9 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
-                                 layout, library);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(), layout,
+      library);
 }
 
 template <typename T>
