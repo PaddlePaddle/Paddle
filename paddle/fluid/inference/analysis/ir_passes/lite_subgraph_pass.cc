@@ -26,6 +26,7 @@
 
 #include "paddle/fluid/inference/lite/op_teller.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 
 #include "paddle/fluid/inference/analysis/ir_passes/lite_subgraph_pass.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_detector.h"
