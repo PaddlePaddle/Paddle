@@ -42,7 +42,7 @@ def linear_fc(num):
     return loss
 
 
-def residual_block(num):
+def residual_block(num, quant_skip_pattern):
     def conv_bn_layer(input,
                       ch_out,
                       filter_size,
@@ -67,8 +67,14 @@ def residual_block(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
         hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
-    pool = fluid.layers.pool2d(
-        input=hidden, pool_size=2, pool_type='avg', pool_stride=2)
+
+    if quant_skip_pattern:
+        with fluid.name_scope(quant_skip_pattern):
+            pool = fluid.layers.pool2d(
+                input=hidden, pool_size=2, pool_type='avg', pool_stride=2)
+    else:
+        pool = fluid.layers.pool2d(
+            input=hidden, pool_size=2, pool_type='avg', pool_stride=2)
     fc = fluid.layers.fc(input=pool, size=10)
     loss = fluid.layers.cross_entropy(input=fc, label=label)
     loss = fluid.layers.mean(loss)
@@ -504,10 +510,14 @@ class TestAddQuantDequantPass(unittest.TestCase):
         self._target_ops = {'elementwise_add', 'pool2d'}
         self._target_grad_ops = {'elementwise_add_grad', 'pool2d_grad'}
 
-    def check_graph(self, graph):
+    def check_graph(self, graph, skip_pattern=None):
         ops = graph.all_op_nodes()
         for op_node in ops:
             if op_node.name() in self._target_ops:
+                if skip_pattern and op_node.op().has_attr("op_namescope") and \
+                    op_node.op().attr("op_namescope").find(skip_pattern) != -1:
+                    continue
+
                 in_nodes_all_not_persistable = True
                 for input_name in op_node.input_arg_names():
                     in_node = graph._find_node_by_name(op_node.inputs,
@@ -521,11 +531,11 @@ class TestAddQuantDequantPass(unittest.TestCase):
                 for input_name in input_names:
                     self.assertTrue(input_name.endswith('.quant_dequant'))
 
-    def residual_block_quant(self, for_ci=True):
+    def residual_block_quant(self, skip_pattern=None, for_ci=True):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
-            loss = residual_block(1)
+            loss = residual_block(2, skip_pattern)
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
         place = fluid.CPUPlace()
@@ -539,7 +549,7 @@ class TestAddQuantDequantPass(unittest.TestCase):
                 if op.name().find('quant') > -1:
                     marked_nodes.add(op)
             graph.draw('.', 'add_quant_dequant_graph', marked_nodes)
-        self.check_graph(graph)
+        self.check_graph(graph, skip_pattern)
         program = graph.to_program()
         val_graph = IrGraph(core.Graph(program.desc), for_test=False)
         if not for_ci:
@@ -550,7 +560,10 @@ class TestAddQuantDequantPass(unittest.TestCase):
             val_graph.draw('.', 'val_add_quant_dequant_graph', val_marked_nodes)
 
     def test_residual_block(self):
-        self.residual_block_quant(for_ci=True)
+        self.residual_block_quant(skip_pattern=None, for_ci=True)
+
+    def test_residual_block_skip_pattern(self):
+        self.residual_block_quant(skip_pattern='skip_quant', for_ci=True)
 
 
 if __name__ == '__main__':
