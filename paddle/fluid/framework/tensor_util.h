@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -71,6 +72,9 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
                     const platform::DeviceContext& dev_ctx);
 void TensorFromStream(std::istream& is, Tensor* tensor,
                       const platform::DeviceContext& dev_ctx);
+
+// convert dlpack's DLTensor to tensor
+void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst);
 
 //
 // The implementation of template functions.

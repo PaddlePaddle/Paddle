@@ -55,7 +55,7 @@ __global__ void vol2col(int num_kernels, const T* data_vol, int depth,
           int h = h_in + i * dilation_h;
           int w = w_in + j * dilation_w;
           int vol_idx;
-          if (data_layout == DataLayout::kNCHW) {
+          if (data_layout != DataLayout::kNHWC) {
             vol_idx = ((channel_in * depth + d) * height + h) * width + w;
           } else {
             vol_idx =
@@ -96,13 +96,13 @@ class Vol2ColFunctor<platform::CUDADeviceContext, T> {
                       "The dimension of col should be 7.");
 
     int input_channels =
-        (data_layout == DataLayout::kNCHW ? vol.dims()[0] : vol.dims()[3]);
+        (data_layout != DataLayout::kNHWC ? vol.dims()[0] : vol.dims()[3]);
     int input_depth =
-        (data_layout == DataLayout::kNCHW ? vol.dims()[1] : vol.dims()[0]);
+        (data_layout != DataLayout::kNHWC ? vol.dims()[1] : vol.dims()[0]);
     int input_height =
-        (data_layout == DataLayout::kNCHW ? vol.dims()[2] : vol.dims()[1]);
+        (data_layout != DataLayout::kNHWC ? vol.dims()[2] : vol.dims()[1]);
     int input_width =
-        (data_layout == DataLayout::kNCHW ? vol.dims()[3] : vol.dims()[2]);
+        (data_layout != DataLayout::kNHWC ? vol.dims()[3] : vol.dims()[2]);
     int filter_depth = col->dims()[1];
     int filter_height = col->dims()[2];
     int filter_width = col->dims()[3];
@@ -170,16 +170,16 @@ __global__ void col2vol(int num_kernels, const T* data_col, int depth,
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < num_kernels;
        index += blockDim.x * gridDim.x) {
     T src_val = 0;
-    int w = (data_layout == DataLayout::kNCHW
+    int w = (data_layout != DataLayout::kNHWC
                  ? index % width + padding_width
                  : (index / input_channels) % width + padding_width);
-    int h = (data_layout == DataLayout::kNCHW
+    int h = (data_layout != DataLayout::kNHWC
                  ? (index / width) % height + padding_height
                  : (index / input_channels / width) % height + padding_height);
-    int d = (data_layout == DataLayout::kNCHW
+    int d = (data_layout != DataLayout::kNHWC
                  ? (index / width / height) % depth + padding_depth
                  : index / input_channels / width / height + padding_depth);
-    int c = (data_layout == DataLayout::kNCHW ? index / width / height / depth
+    int c = (data_layout != DataLayout::kNHWC ? index / width / height / depth
                                               : index % input_channels);
 
     // compute the start and end of the output
@@ -247,13 +247,13 @@ class Col2VolFunctor<platform::CUDADeviceContext, T> {
                       "The dimension of col should be 7.");
 
     int input_channels =
-        (data_layout == DataLayout::kNCHW ? vol->dims()[0] : vol->dims()[3]);
+        (data_layout != DataLayout::kNHWC ? vol->dims()[0] : vol->dims()[3]);
     int input_depth =
-        (data_layout == DataLayout::kNCHW ? vol->dims()[1] : vol->dims()[0]);
+        (data_layout != DataLayout::kNHWC ? vol->dims()[1] : vol->dims()[0]);
     int input_height =
-        (data_layout == DataLayout::kNCHW ? vol->dims()[2] : vol->dims()[1]);
+        (data_layout != DataLayout::kNHWC ? vol->dims()[2] : vol->dims()[1]);
     int input_width =
-        (data_layout == DataLayout::kNCHW ? vol->dims()[3] : vol->dims()[2]);
+        (data_layout != DataLayout::kNHWC ? vol->dims()[3] : vol->dims()[2]);
     int filter_depth = col.dims()[1];
     int filter_height = col.dims()[2];
     int filter_width = col.dims()[3];

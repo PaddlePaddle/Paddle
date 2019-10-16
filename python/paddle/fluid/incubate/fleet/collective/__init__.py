@@ -152,7 +152,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def __init__(self, optimizer, strategy=DistributedStrategy()):
         super(CollectiveOptimizer, self).__init__(optimizer, strategy)
-        if strategy.forward_recompute:
+        if strategy is not None and strategy.forward_recompute:
             self.forward_recompute = True
             self.recompute_checkpoints = strategy.recompute_checkpoints
         else:
@@ -271,7 +271,6 @@ class CollectiveOptimizer(DistributedOptimizer):
         node_num = self._node_num()
         assert node_num >= 1, "nccl2 node_num must >= 1, now:{}" % node_num
 
-        self._strategy.fuse_all_reduce_ops = True
         exec_strategy = self._strategy.exec_strategy
 
         if node_num <= 1:

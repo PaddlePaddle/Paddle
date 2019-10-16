@@ -220,7 +220,8 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
               if (bias_data) val -= bias_data[gid * group_size + cid];
               T dval = iter_y_data[0];
               dp_scale += val * dval;
-              dp_bias += dval * scale_data[gid * group_size + cid];
+              if (scale_data)
+                dp_bias += dval * scale_data[gid * group_size + cid];
 
               if (scale_data && scale_data[gid * group_size + cid] != 0)
                 val /= scale_data[gid * group_size + cid];
@@ -237,8 +238,9 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
               T dly = tmp_y[0];
               T dss = dp_scale;
               T dbs = dp_bias;
-              T v_scale = scale_data[gid * group_size + cid];
-              T v_bias = bias_data[gid * group_size + cid];
+              T v_scale = 1., v_bias = 0.;
+              if (scale_data) v_scale = scale_data[gid * group_size + cid];
+              if (bias_data) v_bias = bias_data[gid * group_size + cid];
               v_y -= v_bias;
               if (v_scale != 0) v_y /= v_scale;
               iter_d_x_data[0] =
@@ -256,7 +258,8 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
               if (bias_data) val -= bias_data[gid * group_size + cid];
               T dval = iter_y_data[0];
               dp_scale += val * dval;
-              dp_bias += dval * scale_data[gid * group_size + cid];
+              if (scale_data)
+                dp_bias += dval * scale_data[gid * group_size + cid];
 
               if (scale_data && scale_data[gid * group_size + cid] != 0)
                 val /= scale_data[gid * group_size + cid];
@@ -276,8 +279,9 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
               T dly = tmp_y[0];
               T dss = dp_scale;
               T dbs = dp_bias;
-              T v_scale = scale_data[gid * group_size + cid];
-              T v_bias = bias_data[gid * group_size + cid];
+              T v_scale = 1.0, v_bias = 0.;
+              if (scale_data) v_scale = scale_data[gid * group_size + cid];
+              if (bias_data) v_bias = bias_data[gid * group_size + cid];
               v_y -= v_bias;
               if (v_scale != 0) v_y /= v_scale;
               iter_d_x_data[0] =

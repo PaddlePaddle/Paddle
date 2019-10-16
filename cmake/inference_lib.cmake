@@ -51,7 +51,7 @@ function(copy TARGET)
 endfunction()
 
 # third party
-set(third_party_deps eigen3 gflags glog boost xxhash zlib)
+set(third_party_deps eigen3 gflags glog boost xxhash zlib dlpack)
 if(NOT PROTOBUF_FOUND OR WIN32)
     list(APPEND third_party_deps extern_protobuf)
 endif ()
@@ -84,6 +84,11 @@ copy(inference_lib_dist
 set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/boost")
 copy(inference_lib_dist
         SRCS ${BOOST_INCLUDE_DIR}/boost
+        DSTS ${dst_dir})
+
+set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/dlpack")
+copy(inference_lib_dist
+        SRCS ${DLPACK_INCLUDE_DIR}/dlpack
         DSTS ${dst_dir})
 
 if(WITH_MKLML)
