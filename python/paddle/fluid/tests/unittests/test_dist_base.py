@@ -580,7 +580,8 @@ class TestDistBase(unittest.TestCase):
                    check_error_log=False,
                    batch_size=DEFAULT_BATCH_SIZE,
                    batch_merge_repeat=1,
-                   log_name=""):
+                   log_name="",
+                   gpus="0"):
 
         cmd = self._python_interp
 
@@ -600,12 +601,16 @@ class TestDistBase(unittest.TestCase):
         if self.__use_cuda:
             cmd += " --use_cuda"
             env_local = {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": gpus,
                 "PADDLE_TRAINERS_NUM": "1",
                 "PADDLE_TRAINER_ID": "0"
             }
         else:
             env_local = {'CPU_NUM': '1'}
+
+        # not use dgc in single card
+        if len(gpus) > 1 and self._use_dgc:
+            cmd += " --use_dgc"
 
         env_local.update(envs)
         print("local_cmd: {}, env: {}".format(cmd, env_local))
@@ -891,3 +896,30 @@ class TestDistBase(unittest.TestCase):
             dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
             print("=======", local_loss, ":", dist_loss[0], "=======")
             self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)
+
+        if self._use_dgc:
+            # need open p2p or shm otherwise multi cards mode will hang
+            required_envs.update({
+                "NCCL_P2P_DISABLE": "0",
+                "NCCL_SHM_DISABLE": "0"
+            })
+            multi_cards_losses = self._run_local(
+                model_file,
+                required_envs,
+                check_error_log,
+                log_name=log_name + "_dgc_2cards",
+                gpus="0,1")
+
+            self._use_dgc = False
+            base_losses = self._run_local(
+                model_file,
+                required_envs,
+                check_error_log,
+                log_name=log_name + "_base_2cards",
+                gpus="0,1")
+
+            for step_id in range(RUN_STEP):
+                base_loss = base_losses[step_id]
+                multi_cards_loss = multi_cards_losses[step_id]
+                print("=======", base_loss, ":", multi_cards_loss, "=======")
+                self.assertAlmostEqual(base_loss, multi_cards_loss, delta=delta)
