@@ -207,6 +207,13 @@ copy(fluid_lib_dist
         ${src_dir}/${module}/ir/*.h ${src_dir}/${module}/fleet/*.h
         DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}/ir/memory_optimize_pass ${dst_dir}/${module}/ir ${dst_dir}/${module}/fleet)
 
+
+set(module, "imperative")
+copy(fluid_lib_dist
+        SRCS ${src_dir}/${module}/paddle/fluid/imperative/type_defs.h
+        DSTS ${dst_dir}/${module}/paddle/fluid/imperative/
+        )
+
 set(module "operators")
 copy(fluid_lib_dist
         SRCS ${src_dir}/${module}/reader/blocking_queue.h
