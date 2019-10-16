@@ -42,7 +42,7 @@ def linear_fc(num):
     return loss
 
 
-def residual_block(num, quant_skip_pattern):
+def residual_block(num, quant_skip_pattern=None):
     def conv_bn_layer(input,
                       ch_out,
                       filter_size,
