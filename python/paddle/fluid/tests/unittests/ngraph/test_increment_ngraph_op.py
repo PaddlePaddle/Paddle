@@ -38,7 +38,7 @@ class TestNGRAPHIncrementOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_grad=False)
 
 
 if __name__ == "__main__":

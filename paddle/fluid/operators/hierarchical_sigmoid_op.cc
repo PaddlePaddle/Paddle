@@ -61,16 +61,18 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("PreOut"),
-                   "Output(PreOut) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Label"), true,
+                      "Input(Label) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true, "Input(W) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) should not be null.");
+    PADDLE_ENFORCi_EQ(ctx->HasOutput("PreOut"), true,
+                      "Output(PreOut) should not be null.");
     auto with_prefetch = ctx->Attrs().Get<bool>("remote_prefetch");
     if (with_prefetch) {
-      PADDLE_ENFORCE(ctx->HasOutput("W_Out"),
-                     "Output(W_Out) should not be null.");
+      PADDLE_ENFORCE_EQ(ctx->HasOutput("W_Out"), true,
+                        "Output(W_Out) should not be null.");
     }
     const int64_t batch_size = ctx->GetInputDim("X")[0];
     std::vector<int64_t> output_shape({batch_size, 1});
@@ -201,16 +203,17 @@ class HierarchicalSigmoidGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Label"), "Input(Label) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@Grad) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("PreOut"),
-                   "Input(Preout) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("W")),
-                   "Output(W@Grad should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")),
-                   "Output(X@Grad should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true, "Input(W) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Label"), true,
+                      "Input(Label) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      "Input(Out@Grad) should not be null");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("PreOut"), true,
+                      "Input(Preout) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("W")), true,
+                      "Output(W@Grad should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
+                      "Output(X@Grad should not be null.");
 
     if (ctx->HasOutput(framework::GradVarName("Bias"))) {
       ctx->SetOutputDim(framework::GradVarName("Bias"),
