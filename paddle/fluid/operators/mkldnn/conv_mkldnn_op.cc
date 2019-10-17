@@ -268,8 +268,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto residual_param = ctx.Input<Tensor>("ResidualData");
       auto residual_param_data = residual_param->data<T>();
 
-      PADDLE_ENFORCE(
-          residual_param_data != nullptr,
+      PADDLE_ENFORCE_NE(
+          residual_param_data, nullptr,
           "Provide data if you want MKLDNN conv+elementwise_add fusion");
       PADDLE_ENFORCE_EQ(output->dims(), residual_param->dims(),
                         "Output and elementwise parameter need to have the "
@@ -399,7 +399,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             : dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
         "dilation in convolution is not implemented yet");
 
-    PADDLE_ENFORCE(is_conv3d != true, "int8 does not support conv3d currently");
+    PADDLE_ENFORCE_NE(is_conv3d, true,
+                      "int8 does not support conv3d currently");
 
     const T* input_data = input->data<T>();
 
@@ -755,8 +756,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto conv_pd =
         std::static_pointer_cast<mkldnn::convolution_forward::primitive_desc>(
             dev_ctx.GetBlob(key_conv_pd));
-    PADDLE_ENFORCE(conv_pd != nullptr,
-                   "Fail to find conv_pd in device context");
+    PADDLE_ENFORCE_NE(conv_pd, nullptr,
+                      "Fail to find conv_pd in device context");
 
     // create backward convolution weights primitive descriptor
     auto conv_bwd_weights_desc = mkldnn::convolution_backward_weights::desc(
