@@ -153,6 +153,18 @@ static inline int GetDesiredBlockDim(int block_dim) {
              : (1 << static_cast<int>(std::log2(block_dim)));
 }
 
+static inline void CheckReduceRankIsValid(int reduce_rank, int rank) {
+  if (rank % 2 == 0) {
+    PADDLE_ENFORCE_EQ(reduce_rank, rank / 2);
+  } else {
+    auto lower_rank = (rank - 1) / 2;
+    auto upper_rank = (rank + 1) / 2;
+    PADDLE_ENFORCE(reduce_rank == lower_rank || reduce_rank == upper_rank,
+                   "When rank = %d, reduce_rank must be %d or %d, but got %d",
+                   rank, lower_rank, upper_rank, reduce_rank);
+  }
+}
+
 template <typename Tx, typename Ty, int BlockDim, typename ReduceOp,
           typename TransformOp>
 static void TensorReduceImpl(
@@ -224,6 +236,7 @@ static void TensorReduceImpl(
    * The total switch-case numbers reduce from 1+2+3+...+8=36 to (1+2)*4=12,
    * it would speed up compiling and make the binary size lower.
    */
+  CheckReduceRankIsValid(reduce_rank, rank);
   switch (rank) {
     CUB_RANK_CASE(2, CUB_REDUCE_RANK_CASE(1););
 
