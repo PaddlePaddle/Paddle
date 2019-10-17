@@ -274,7 +274,6 @@ class OpTest(unittest.TestCase):
 
     def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
         with fluid.dygraph.base.guard(place=place):
-            #try:
             block = fluid.default_main_program().global_block()
 
             # prepare input variable
@@ -410,16 +409,12 @@ class OpTest(unittest.TestCase):
                 for attrs_name in self.attrs:
                     if self.attrs[attrs_name] is not None:
                         attrs_outputs[attrs_name] = self.attrs[attrs_name]
-            #print("-------------LOG------------- ", attrs_outputs, " ", self.attrs)
             block.append_op(
                 type=self.op_type,
                 inputs=inputs,
                 outputs=outputs,
                 attrs=attrs_outputs if hasattr(self, "attrs") else None)
             return outputs
-        #except core.EnforceNotMet as ex:
-        #    exception = ex
-        #    self.assertIsNotNone(exception)
 
     def _calc_output(self,
                      place,
@@ -840,10 +835,8 @@ class OpTest(unittest.TestCase):
                                 check_dygraph=True,
                                 inplace_atol=None):
         if check_dygraph:
-            #print("-----LOGGING----- check_dygraph")
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
-        #print("-----LOGGING----- check_static")
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
@@ -996,7 +989,6 @@ class OpTest(unittest.TestCase):
                      inplace_atol=None):
         places = self._get_places()
         for place in places:
-            #print("-----LOGGING----- check_output", place)
             self.check_output_with_place(place, atol, no_check_set, equal_nan,
                                          check_dygraph)
 
@@ -1017,8 +1009,6 @@ class OpTest(unittest.TestCase):
 
             diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
-
-            #print("============== ", a, b, abs_a, diff_mat, max_diff)
 
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
@@ -1099,7 +1089,6 @@ class OpTest(unittest.TestCase):
         if check_dygraph:
             dygraph_grad = self._get_dygraph_grad(inputs_to_check, place,
                                                   output_names, no_grad_set)
-            #print(dygraph_grad)
             self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
                                   max_relative_error,
                                   "Gradient Check On %s" % str(place))
@@ -1328,12 +1317,8 @@ class OpTest(unittest.TestCase):
                     attrs={'scale': 1.0 / float(len(avg_sum))})
             loss.backward()
 
-            #print("backward?")
             fetch_list_grad = []
             for inputs_to_check_name in inputs_to_check:
-                #print(inputs_to_check_name, " iiiiiiiiiiiiiiiiii")
-                #print("1212 ", inputs_grad_dict[inputs_to_check_name]._ivar._grad_ivar())
-                #print("1212222 ", type(inputs_grad_dict[inputs_to_check_name]._ivar)._grad_ivar())
                 a = (np.array(inputs_grad_dict[inputs_to_check_name]
                               ._ivar._grad_ivar().value().get_tensor()))
                 fetch_list_grad.append(a)
