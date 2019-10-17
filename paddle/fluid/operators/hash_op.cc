@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,14 +46,13 @@ class HashOp : public framework::OperatorWithKernel {
 class HashOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor) Input tensor of scale operator.");
-    AddOutput("Out", "(Tensor) Output tensor of scale operator.");
+    AddInput("X", "(Tensor) Input tensor of hash operator.");
+    AddOutput("Out", "(Tensor) Output tensor of hash operator.");
     AddComment(R"DOC(
-**Hash Operator**
-$$Out = scale * X$$
+        Execute `num_hash` times xxHash algorithm on all elements on second dimension of input. 
 )DOC");
     AddAttr<int>("num_hash", "").SetDefault(1);
-    AddAttr<int>("mod_by", "").SetDefault(100000);
+    AddAttr<int64_t>("mod_by", "").SetDefault(100000);
     AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
                   "Skip calling InferShape() function in the runtime.")
         .SetDefault(true);

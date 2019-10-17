@@ -67,7 +67,7 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Input", "(Tensor) NCHW layout.");
     AddInput("Filter", "(vector<Tensor>) 4 aggregated filters").AsDuplicable();
-    AddInput("Bias", "(vector<Tensor>) it's lenght is equal to Filter")
+    AddInput("Bias", "(vector<Tensor>) it's length is equal to Filter")
         .AsDuplicable();
     AddOutput("Output",
               "(Tensor) The output tensor of convolution operator. "
@@ -82,7 +82,7 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
         "exclusive",
         "(bool, default True) When true, will exclude the zero-padding in the "
         "averaging calculating, otherwise, include the zero-padding. Note, it "
-        "is only used when pooling_type is avg. The defalut is True.")
+        "is only used when pooling_type is avg. The default is True.")
         .SetDefault(true);
     AddAttr<std::string>(
         "activation",
@@ -96,7 +96,7 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
                  "allocated/freed each time the operator runs, larger "
                  "workspace size can increase performance but also requires "
                  "better hardware. This size should be chosen carefully.")
-        .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
+        .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
     AddComment(R"DOC(
 )DOC");
   }

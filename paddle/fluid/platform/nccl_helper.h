@@ -63,11 +63,11 @@ class NCCLGroupGuard {
 
   inline NCCLGroupGuard() {
     NCCLMutex().lock();
-    PADDLE_ENFORCE(dynload::ncclGroupStart());
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupStart());
   }
 
   inline ~NCCLGroupGuard() {
-    PADDLE_ENFORCE(dynload::ncclGroupEnd());
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupEnd());
     NCCLMutex().unlock();
   }
 };
@@ -94,7 +94,7 @@ struct NCCLContextMap {
   explicit NCCLContextMap(const std::vector<platform::Place> &places,
                           ncclUniqueId *nccl_id = nullptr,
                           size_t num_trainers = 1, size_t trainer_id = 0) {
-    PADDLE_ENFORCE(!places.empty());
+    PADDLE_ENFORCE_EQ(!places.empty(), true);
     order_.reserve(places.size());
     for (auto &p : places) {
       int dev_id = boost::get<CUDAPlace>(p).device;
@@ -109,7 +109,7 @@ struct NCCLContextMap {
     // if num_trainers == 1, should create a new nccl id for local comms.
     if (num_trainers == 1 && nccl_id == nullptr) {
       std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
-      PADDLE_ENFORCE(platform::dynload::ncclCommInitAll(
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
           comms.get(), static_cast<int>(order_.size()), order_.data()));
     } else {
       PADDLE_ENFORCE_NOT_NULL(nccl_id);
@@ -126,8 +126,8 @@ struct NCCLContextMap {
           }
           VLOG(1) << "init nccl rank:" << rank << ", nranks:" << nranks
                   << ", gpu_id:" << gpu_id << ", dev_id:" << order_[i];
-          PADDLE_ENFORCE(cudaSetDevice(gpu_id));
-          PADDLE_ENFORCE(platform::dynload::ncclCommInitRank(
+          PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(gpu_id));
+          PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitRank(
               comms.get() + i, nranks, *nccl_id, rank));
         }
       }
@@ -176,10 +176,10 @@ inline std::string GetHierarchicalInterNCCLVarName(size_t pos) {
                          static_cast<int>(pos));
 }
 
-class MultiNCCLContextMap {
+class NCCLCommunicator {
  public:
-  MultiNCCLContextMap() {}
-  virtual ~MultiNCCLContextMap() {}
+  NCCLCommunicator() {}
+  virtual ~NCCLCommunicator() {}
 
   NCCLContextMap *DefaultFlatCtx() const {
     if (flat_ctxs_.size() == 0) {
@@ -206,6 +206,25 @@ class MultiNCCLContextMap {
     return GetHierarchicalInterCtx(run_order);
   }
 
+  /*
+   *When nccl inits nccl comm using ncclCommInitAll, it meets error when
+   *allreduce ophandle and sync_batch_norm_op use ncclallreduce parallelly. So
+   *create a new nccl comm for sync_batch_norm_op. And these codes should be
+   *polished with a unified nccl management.
+  */
+  NCCLContextMap *GetSyncBatchNormCtx(
+      framework::Scope *scope, const std::vector<platform::Place> &places) {
+    auto *nccl_id_var = scope->FindVar(NCCL_ID_VARNAME);
+    if (nccl_id_var != nullptr) {
+      return DefaultFlatCtx();
+    }
+
+    if (sync_batch_norm_ctx_.get() == nullptr) {
+      sync_batch_norm_ctx_.reset(new NCCLContextMap(places));
+    }
+    return sync_batch_norm_ctx_.get();
+  }
+
   void InitFlatCtxs(const std::vector<platform::Place> &places,
                     const std::vector<ncclUniqueId *> &nccl_ids,
                     size_t trainers_num, size_t trainer_id) {
@@ -230,13 +249,13 @@ class MultiNCCLContextMap {
                             size_t trainers_num, size_t trainer_id,
                             size_t inter_trainers_num,
                             size_t exter_trainers_num) {
-    PADDLE_ENFORCE(trainers_num == inter_trainers_num * exter_trainers_num,
-                   "trainers_num:%llu != inter_trainers_num:%llu * "
-                   "exter_trainers_num:%llu",
-                   trainers_num, inter_trainers_num, exter_trainers_num);
+    PADDLE_ENFORCE_EQ(trainers_num, inter_trainers_num * exter_trainers_num,
+                      "trainers_num:%llu != inter_trainers_num:%llu * "
+                      "exter_trainers_num:%llu",
+                      trainers_num, inter_trainers_num, exter_trainers_num);
 
-    PADDLE_ENFORCE(inter_trainers_num > 1, "inter_trainers_num:%llu must > 1",
-                   inter_trainers_num);
+    PADDLE_ENFORCE_GT(inter_trainers_num, 1, "inter_trainers_num:%llu must > 1",
+                      inter_trainers_num);
 
     int inter_trainer_id = trainer_id % inter_trainers_num;
     for (size_t i = 0; i < inter_nccl_ids.size(); i++) {
@@ -267,10 +286,14 @@ class MultiNCCLContextMap {
   bool NeedExterAllReduce() const { return h_exter_ctxs_.size() > 0; }
 
   NCCLContextMap *GetHierarchicalInterCtx(size_t run_order) const {
+    PADDLE_ENFORCE(h_inter_ctxs_.size() > 0,
+                   "must init hierarchical ctxs first!");
     return h_inter_ctxs_[run_order % h_inter_ctxs_.size()].get();
   }
 
   NCCLContextMap *GetHierarchicalExterCtx(size_t run_order) const {
+    PADDLE_ENFORCE(h_exter_ctxs_.size() > 0,
+                   "must init hierarchical ctxs first!");
     return h_exter_ctxs_[run_order % h_exter_ctxs_.size()].get();
   }
 
@@ -290,6 +313,9 @@ class MultiNCCLContextMap {
   // And h_exter_ctxs_ can support multi comm too.
   std::vector<std::unique_ptr<NCCLContextMap>> h_inter_ctxs_;
   std::vector<std::unique_ptr<NCCLContextMap>> h_exter_ctxs_;
+
+  // just used for sync_batch_norm op.
+  std::unique_ptr<NCCLContextMap> sync_batch_norm_ctx_;
 };
 
 }  // namespace platform

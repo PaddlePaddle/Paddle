@@ -24,22 +24,20 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-inline void NewTempScopeAndInitVars(const std::vector<VarInfo> &var_infos,
-                                    Scope *scope) {
-  VLOG(3) << "NewTempScopeAndInitVars";
-  Scope &local_scope = scope->NewScope();
-  *scope->Var(details::kLocalExecScopeName)->GetMutable<Scope *>() =
-      &local_scope;
-
+inline void InitVarsInScope(const std::vector<VarInfo> &var_infos, Scope *scope,
+                            Scope *local_scope) {
+  VLOG(3) << "InitVarsInScope";
   for (auto &info : var_infos) {
-    if (scope->FindVar(info.name_) != nullptr) {
-      continue;
-    }
-
     if (info.persistable_) {  // Persistable
+      auto *var = scope->FindVar(info.name_);
+      if (var != nullptr) {
+        VLOG(2) << info.name_
+                << " has been initialized beforehand in global scope, skipped";
+        continue;
+      }
       InitializeVariable(scope->Var(info.name_), info.type_);
     } else {
-      InitializeVariable(local_scope.Var(info.name_), info.type_);
+      InitializeVariable(local_scope->Var(info.name_), info.type_);
     }
   }
 }
@@ -87,23 +85,28 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
   // init communicator here
   if (send_varname_to_ctx.size() > 0) {
     VLOG(3) << "this is distribute mode, will use communicator";
-    operators::distributed::Communicator::Init(send_varname_to_ctx,
-                                               recv_varname_to_ctx, scope);
-    operators::distributed::Communicator::GetInstance()->Start();
+
+    auto *instance = operators::distributed::Communicator::InitInstance<
+        operators::distributed::AsyncCommunicator>(send_varname_to_ctx,
+                                                   recv_varname_to_ctx, scope);
+    if (!instance->IsRunning()) instance->Start();
   }
 #endif
 }
 
 AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const std::vector<Scope *> &local_exec_scopes,
     const std::vector<platform::Place> &places, std::vector<ir::Graph *> graphs)
     : strategy_(std::move(strategy)),
       local_scopes_(std::move(local_scopes)),
+      local_exec_scopes_(local_exec_scopes),
       pool_(places.size() >= 2 ? new ::ThreadPool(places.size()) : nullptr),
       places_(std::move(places)),
       graphs_(std::move(graphs)) {
   VLOG(3) << "build AsyncSSAGraphExecutor";
   PADDLE_ENFORCE_EQ(places_.size(), local_scopes_.size());
+  PADDLE_ENFORCE_EQ(local_scopes_.size(), local_exec_scopes_.size());
 
   // set the correct size of thread pool to each device.
   strategy_.num_threads_ = strategy_.num_threads_ < places_.size()
@@ -113,7 +116,8 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
           << " to run the operators of the graph on each device.";
   for (size_t i = 0; i < places.size(); ++i) {
     executors_.emplace_back(new details::ThreadedSSAGraphExecutor(
-        strategy_, {local_scopes_[i]}, {places_[i]}, graphs_[i]));
+        strategy_, {local_scopes_[i]}, {local_exec_scopes_[i]}, {places_[i]},
+        graphs_[i]));
   }
 
   for (auto &node : graphs_[0]->Nodes()) {
@@ -124,8 +128,9 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
       var_infos_.back().persistable_ = node->Var()->Persistable();
     }
   }
-  for (auto *scope : local_scopes_) {
-    NewTempScopeAndInitVars(var_infos_, scope);
+
+  for (size_t i = 0; i < local_scopes_.size(); ++i) {
+    InitVarsInScope(var_infos_, local_scopes_[i], local_exec_scopes_[i]);
   }
   ProcessGraph(graphs_, local_scopes_[0]);
 }

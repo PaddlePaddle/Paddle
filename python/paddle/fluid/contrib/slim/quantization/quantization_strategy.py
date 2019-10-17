@@ -17,18 +17,18 @@ import sys
 import numpy as np
 from .... import Executor
 from .... import io
-from .... import core
+from .... import core, scope_guard
 from ....compiler import CompiledProgram
 from ....compiler import BuildStrategy
 from ....framework import IrGraph, Variable, Program
+from ....log_helper import get_logger
 from ..core.strategy import Strategy
 from .quantization_pass import *
 
 __all__ = ['QuantizationStrategy']
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class QuantizationStrategy(Strategy):
@@ -53,11 +53,11 @@ class QuantizationStrategy(Strategy):
             start_epoch(int): The 'on_epoch_begin' function will be called in start_epoch. default: 0
             end_epoch(int): The 'on_epoch_end' function will be called in end_epoch. default: 0
             float_model_save_path(str): The path to save model with float weights.
-                            None means it doesn't save float model. defalut: None.
+                            None means it doesn't save float model. default: None.
             mobile_model_save_path(str): The path to save model for paddle-mobile execution.
-                            None means it doesn't save mobile model. defalut: None.
+                            None means it doesn't save mobile model. default: None.
             int8_model_save_path(str): The path to save model with int8_t weight.
-                            None means it doesn't save int8 model. defalut: None.
+                            None means it doesn't save int8 model. default: None.
             activation_bits(int): quantization bit number for activation. default: 8.
             weight_bits(int): quantization bit number for weights. The bias is not quantized.
                               default: 8.
@@ -90,7 +90,7 @@ class QuantizationStrategy(Strategy):
 
     def restore_from_checkpoint(self, context):
         """
-        Restore graph when the compressoin task is inited from checkpoint.
+        Restore graph when the compression task is inited from checkpoint.
         """
         # It is inited from checkpoint and has missed start epoch.
         if context.epoch_id != 0 and context.epoch_id > self.start_epoch:
@@ -100,7 +100,7 @@ class QuantizationStrategy(Strategy):
 
     def _modify_graph_for_quantization(self, context):
         """
-        Insert fake_quantize_op and fake_dequantize_op before trainging and testing.
+        Insert fake_quantize_op and fake_dequantize_op before training and testing.
         """
         train_ir_graph = IrGraph(
             core.Graph(context.optimize_graph.program.clone().desc),
@@ -138,6 +138,7 @@ class QuantizationStrategy(Strategy):
         build_strategy = BuildStrategy()
         build_strategy.enable_inplace = False
         build_strategy.memory_optimize = False
+        build_strategy.fuse_all_reduce_ops = False
         # for quantization training
         context.optimize_graph.compiled_graph = CompiledProgram(
             train_ir_graph.graph).with_data_parallel(
@@ -151,7 +152,7 @@ class QuantizationStrategy(Strategy):
 
     def on_epoch_begin(self, context):
         """
-        Insert fake_quantize_op and fake_dequantize_op before trainging and testing.
+        Insert fake_quantize_op and fake_dequantize_op before training and testing.
         """
         super(QuantizationStrategy, self).on_epoch_begin(context)
         if self.start_epoch == context.epoch_id:
@@ -199,15 +200,16 @@ class QuantizationStrategy(Strategy):
             # save float model
             if self.float_model_save_path:
                 executor = Executor(context.place)
-                io.save_inference_model(
-                    self.float_model_save_path,
-                    in_vars,
-                    out_vars,
-                    executor,
-                    main_program=test_ir_graph.to_program(),
-                    model_filename='model',
-                    params_filename='weights',
-                    export_for_deployment=True)
+                with scope_guard(context.scope):
+                    io.save_inference_model(
+                        self.float_model_save_path,
+                        in_vars,
+                        out_vars,
+                        executor,
+                        main_program=test_ir_graph.to_program(),
+                        model_filename='model',
+                        params_filename='weights',
+                        export_for_deployment=True)
 
             # save int8 model
             if self.int8_model_save_path:
@@ -216,15 +218,17 @@ class QuantizationStrategy(Strategy):
                 convert_int8_pass.apply(test_ir_graph)
 
                 executor = Executor(context.place)
-                io.save_inference_model(
-                    self.int8_model_save_path,
-                    in_vars,
-                    out_vars,
-                    executor,
-                    main_program=test_ir_graph.to_program(),
-                    model_filename='model',
-                    params_filename='weights',
-                    export_for_deployment=True)
+
+                with scope_guard(context.scope):
+                    io.save_inference_model(
+                        self.int8_model_save_path,
+                        in_vars,
+                        out_vars,
+                        executor,
+                        main_program=test_ir_graph.to_program(),
+                        model_filename='model',
+                        params_filename='weights',
+                        export_for_deployment=True)
 
             # save mobile model
             if self.mobile_model_save_path:
@@ -237,13 +241,14 @@ class QuantizationStrategy(Strategy):
                 mobile_pass = TransformForMobilePass()
                 mobile_pass.apply(test_ir_graph)
                 executor = Executor(context.place)
-                io.save_inference_model(
-                    self.mobile_model_save_path,
-                    in_vars,
-                    out_vars,
-                    executor,
-                    main_program=test_ir_graph.to_program(),
-                    model_filename='model',
-                    params_filename='weights',
-                    export_for_deployment=True)
+                with scope_guard(context.scope):
+                    io.save_inference_model(
+                        self.mobile_model_save_path,
+                        in_vars,
+                        out_vars,
+                        executor,
+                        main_program=test_ir_graph.to_program(),
+                        model_filename='model',
+                        params_filename='weights',
+                        export_for_deployment=True)
             _logger.info('Finish QuantizationStrategy::on_epoch_end')

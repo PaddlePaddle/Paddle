@@ -81,6 +81,8 @@ TAlgorithm framework::AlgorithmsCache<TAlgorithm>::GetAlgorithm(
   seed ^= hashFn(static_cast<int64_t>(algorithmFlags)) + 0x9e3779b9 +
           (seed << 6) + (seed >> 2) + 5;
 
+  VLOG(10) << "seed:" << seed << ", hash_.size:" << hash_.size();
+
   if (seed == 0) return gen_func();
 
   if (hash_.find(seed) == hash_.end()) {
@@ -103,7 +105,7 @@ TAlgorithm AlgorithmsCache<TAlgorithm>::GetAlgorithm(
     ++search_times_;
     return algo;
   }
-  TAlgorithm algo;
+  TAlgorithm algo{};
   int64_t min = static_cast<uint64_t>(INT_MAX);
   for (const auto& m : hash_) {
     if (m.first < min) {

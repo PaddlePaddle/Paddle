@@ -23,7 +23,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
+using Tensor = framework::Tensor;
 
 class ConcatOp : public framework::OperatorWithKernel {
  public:
@@ -31,15 +31,19 @@ class ConcatOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                      "Inputs(X) of ConcatOp should be empty.");
+                      "Inputs(X) of ConcatOp should not be empty.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ConcatOp should not be null.");
 
     auto ins = ctx->GetInputsDim("X");
-    size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
-    const size_t n = ins.size();
+    size_t axis =
+        ComputeAxis(static_cast<int64_t>(ctx->Attrs().Get<int>("axis")),
+                    static_cast<int64_t>(ins[0].size()));
 
-    PADDLE_ENFORCE_GT(n, 0, "Input tensors count should > 0.");
+    const size_t n = ins.size();
+    PADDLE_ENFORCE_GT(n, 0,
+                      "ShapeError: Input tensors count should > 0. But "
+                      "recevied inputs' length is 0.");
     if (n == 1) {
       VLOG(3) << "Warning: concat op have only one input, may waste memory";
     }
@@ -63,9 +67,14 @@ class ConcatOp : public framework::OperatorWithKernel {
               ctx->IsRuntime() || (out_dims[j] > 0 && ins[i][j] > 0);
           if (check_shape) {
             // check all shape in run time
-            PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
-                              "Input tensors should have the same "
-                              "elements except the specify axis.");
+            PADDLE_ENFORCE_EQ(
+                out_dims[j], ins[i][j],
+                "ShapeError: Input tensors should have same "
+                "dimensions(or specific dimension = -1) except the axis. "
+                "But recevied axis = %s, input[0]'s shape = "
+                "[%s], input[%s]'s shape = [%s], the \"%s\" "
+                "dimension of input[%s] is unexpected",
+                axis, ins[0], i, ins[j], j, i);
           }
         }
       }
@@ -80,12 +89,12 @@ class ConcatOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto vars = ctx.MultiInputVar("X");
+    auto inputs = ctx.MultiInput<Tensor>("X");
     auto input_data_type = framework::proto::VarType::Type(0);
     bool flag = 0;
-    for (auto *var : vars) {
-      if (var->IsInitialized()) {
-        input_data_type = framework::GetDataTypeOfVar(var);
+    for (auto *input : inputs) {
+      if (input->IsInitialized() && input->numel() > 0) {
+        input_data_type = input->type();
         flag = 1;
         break;
       }
@@ -115,7 +124,10 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
         .SetDefault(false);
     AddAttr<int>("axis",
-                 "The axis along which the input tensors will be concatenated.")
+                 "The axis along which the input tensors will be concatenated."
+                 "The axis could also be negative numbers. Negative axis is "
+                 "interpreted as counting from the end of the rank."
+                 "i.e., axis + rank(X) th dimension.")
         .SetDefault(0);
     AddAttr<bool>("use_quantizer",
                   "(bool, default false) "

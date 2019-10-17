@@ -83,6 +83,7 @@ ParallelSSAGraphExecutor::SeparateMultiDevicesGraph(ir::Graph *graph) {
 
 ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
+    const std::vector<Scope *> &local_exec_scopes,
     const std::vector<platform::Place> &places, ir::Graph *graph)
     : strategy_(std::move(strategy)),
       local_scopes_(std::move(local_scopes)),
@@ -108,8 +109,18 @@ ParallelSSAGraphExecutor::ParallelSSAGraphExecutor(
           << " to run the operators of the graph on each device.";
   for (size_t i = 0; i < places.size(); ++i) {
     executors_.emplace_back(new details::FastThreadedSSAGraphExecutor(
-        strategy_, local_scopes_, {places_[i]}, graphs_.at(i).get()));
+        strategy_, local_scopes_, local_exec_scopes, {places_[i]},
+        graphs_.at(i).get()));
   }
+}
+
+std::vector<ir::Graph *> ParallelSSAGraphExecutor::Graphs() {
+  std::vector<ir::Graph *> result;
+  result.reserve(graphs_.size());
+  for (auto &g : graphs_) {
+    result.emplace_back(g.get());
+  }
+  return result;
 }
 
 FeedFetchList ParallelSSAGraphExecutor::Run(

@@ -16,7 +16,6 @@ limitations under the License. */
 #include <thrust/sort.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/argsort_op.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 

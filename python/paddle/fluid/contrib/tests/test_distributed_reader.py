@@ -20,26 +20,21 @@ import paddle.fluid as fluid
 import os
 
 
-def data_generator(input_shape=(1, 32, 32), label_range=9):
-    while True:
-        img = np.random.random(size=input_shape).astype(np.float32)
-        label = np.array(np.random.randint(0, label_range)).astype("int64")
-        yield img, label
+def data_generator():
+    data = [0, 1, 2, 3]
+    for val in data:
+        yield val
 
 
 class TestDistributedReader(unittest.TestCase):
     def test_distributed_reader(self):
-        batch_size = 32
         trainer_num = 4
-        os.environ['PADDLE_TRAINER_ID'] = str(0)
+        os.environ['PADDLE_TRAINER_ID'] = str(1)
         os.environ['PADDLE_TRAINERS_NUM'] = str(trainer_num)
 
-        reader = fluid.contrib.reader.distributed_sampler(
-            data_generator, batch_size=batch_size)
+        reader = fluid.contrib.reader.distributed_batch_reader(data_generator)
         data = next(reader())
-        assert len(data) == batch_size // trainer_num,\
-            "sub batch size should be {}, but the returned size is {}".format(
-            batch_size // trainer_num, len(data))
+        assert data == 1
 
         os.unsetenv('PADDLE_TRAINER_ID')
         os.unsetenv('PADDLE_TRAINERS_NUM')

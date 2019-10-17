@@ -15,7 +15,7 @@
 Print all signature of a python module in alphabet order.
 
 Usage:
-    ./print_signature  "paddle.fluid,paddle.reader" > signature.txt
+    ./print_signature  "paddle.fluid" > signature.txt
 """
 from __future__ import print_function
 
@@ -28,7 +28,12 @@ import hashlib
 
 member_dict = collections.OrderedDict()
 
-experimental_namespace = {"paddle.fluid.dygraph", "paddle.fluid.LoDTensorset"}
+# APIs that should not be printed into API.spec 
+omitted_list = [
+    "paddle.fluid.LoDTensor.set",  # Do not know why it should be omitted
+    "paddle.fluid.io.ComposeNotAligned",
+    "paddle.fluid.io.ComposeNotAligned.__init__",
+]
 
 
 def md5(doc):
@@ -37,28 +42,35 @@ def md5(doc):
     return hash.hexdigest()
 
 
-def visit_member(parent_name, member):
-    if parent_name + member.__name__ in experimental_namespace:
+def queue_dict(member, cur_name):
+    if cur_name in omitted_list:
         return
+
+    try:
+        doc = ('document', md5(member.__doc__))
+        if inspect.isclass(member):
+            args = member.__module__ + "." + member.__name__
+        else:
+            args = inspect.getargspec(member)
+        all = (args, doc)
+        member_dict[cur_name] = all
+    except TypeError:  # special for PyBind method
+        member_dict[cur_name] = "  ".join([
+            line.strip() for line in pydoc.render_doc(member).split('\n')
+            if "->" in line
+        ])
+
+
+def visit_member(parent_name, member):
     cur_name = ".".join([parent_name, member.__name__])
     if inspect.isclass(member):
+        queue_dict(member, cur_name)
         for name, value in inspect.getmembers(member):
             if hasattr(value, '__name__') and (not name.startswith("_") or
                                                name == "__init__"):
                 visit_member(cur_name, value)
     elif callable(member):
-        try:
-            doc = ('document', md5(member.__doc__))
-            args = inspect.getargspec(member)
-            all = (args, doc)
-            member_dict[cur_name] = all
-        except TypeError:  # special for PyBind method
-            if cur_name in check_modules_list:
-                return
-            member_dict[cur_name] = "  ".join([
-                line.strip() for line in pydoc.render_doc(member).split('\n')
-                if "->" in line
-            ])
+        queue_dict(member, cur_name)
     elif inspect.isgetsetdescriptor(member):
         return
     else:
@@ -67,8 +79,6 @@ def visit_member(parent_name, member):
 
 
 def visit_all_module(mod):
-    if (mod.__name__ in experimental_namespace):
-        return
     for member_name in (
             name
             for name in (mod.__all__ if hasattr(mod, "__all__") else dir(mod))
@@ -82,7 +92,6 @@ def visit_all_module(mod):
             visit_member(mod.__name__, instance)
 
 
-check_modules_list = ["paddle.reader.ComposeNotAligned.__init__"]
 modules = sys.argv[1].split(",")
 for m in modules:
     visit_all_module(importlib.import_module(m))

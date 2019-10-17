@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/api/api_anakin_engine.h"
-
-#ifdef PADDLE_WITH_CUDA
-#include <cuda.h>
-#endif
-
-#include <mkl_service.h>
-#include <omp.h>
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "paddle/fluid/inference/api/api_anakin_engine.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
 
 #include "framework/core/net/net.h"
 #include "framework/operators/ops.h"
@@ -32,209 +27,409 @@
 namespace paddle {
 
 using paddle::contrib::AnakinConfig;
+template <typename T, Precision P, OpRunType R>
+extern std::mutex PaddleInferenceAnakinPredictor<T, P, R>::mutex_;
+template <typename T, Precision P, OpRunType R>
+extern std::once_flag PaddleInferenceAnakinPredictor<T, P, R>::init_anakin_;
 
-template <typename Target>
-PaddleInferenceAnakinPredictor<Target>::PaddleInferenceAnakinPredictor(
-    const contrib::AnakinConfig &config) {
-  CHECK(Init(config));
+template <typename T, Precision P, OpRunType R>
+void PaddleInferenceAnakinPredictor<T, P, R>::InitEnv() {
+  std::call_once(this->init_anakin_, [this]() {
+    anakin::Env<T>::env_init(this->config_.max_stream);
+  });
+  anakin::TargetWrapper<T>::set_device(this->config_.device_id);
 }
-template <>
-PaddleInferenceAnakinPredictor<anakin::X86>::PaddleInferenceAnakinPredictor(
-    const contrib::AnakinConfig &config) {
-  omp_set_dynamic(0);
-  omp_set_num_threads(1);
-  mkl_set_num_threads(1);
-  CHECK(Init(config));
+template <typename T, Precision P, OpRunType R>
+void PaddleInferenceAnakinPredictor<T, P, R>::InitNet() {
+  std::unique_lock<std::mutex> lock(this->mutex_);
+  delete this->executor_p_;
+  this->executor_p_ = new anakin::Net<T, P, R>(*this->graph_p_, true);
 }
-template <typename Target>
-bool PaddleInferenceAnakinPredictor<Target>::Init(
-    const contrib::AnakinConfig &config) {
-  if (!(graph_.load(config.model_file))) {
-    VLOG(3) << "fail to load graph from " << config.model_file;
-    return false;
+template <typename T, Precision P, OpRunType R>
+void PaddleInferenceAnakinPredictor<T, P, R>::SetContext() {
+  this->ctx_p_ = std::make_shared<anakin::Context<T>>(
+      this->config_.device_id, this->config_.data_stream_id,
+      this->config_.compute_stream_id);
+}
+template <typename T, Precision P, OpRunType R>
+void PaddleInferenceAnakinPredictor<T, P, R>::InitGraph() {
+  this->graph_p_ =
+      std::make_shared<anakin::graph::Graph<T, anakin::Precision::FP32>>();
+  if (!this->config_.model_file.empty()) {
+    this->graph_p_->load(this->config_.model_file);
+  } else if (this->config_.model_buf_p) {
+    this->graph_p_->load(this->config_.model_buf_p,
+                         this->config_.model_buf_len);
+  } else {
+    LOG(FATAL) << "Model load error.";
   }
-  auto inputs = graph_.get_ins();
-  for (auto &input_str : inputs) {
-    graph_.ResetBatchSize(input_str, config.max_batch_size);
-    max_batch_size_ = config.max_batch_size;
+  this->input_names_ = this->graph_p_->get_ins();
+  this->output_names_ = this->graph_p_->get_outs();
+  for (auto &input_str : this->input_names_) {
+    if (this->config_.init_inputs_shape.find(input_str) ==
+        this->config_.init_inputs_shape.end()) {
+      LOG(FATAL) << input_str << " should be set in init_inputs_shape.";
+    }
+    std::vector<int> shape =
+        this->config_.init_inputs_shape.find(input_str)->second;
+    this->graph_p_->Reshape(input_str, shape);
   }
-  // optimization for graph
-  if (!(graph_.Optimize())) {
-    return false;
+}
+template <typename T, Precision P, OpRunType R>
+void PaddleInferenceAnakinPredictor<T, P, R>::OptimizeGraph() {
+  if (!this->graph_p_->Optimize()) {
+    LOG(FATAL) << "Graph optimization error.";
   }
-  // construct executer
-  if (executor_p_ == nullptr) {
-    executor_p_ = new anakin::Net<Target, anakin::saber::AK_FLOAT,
-                                  anakin::Precision::FP32>(graph_, true);
+}
+template <typename T, Precision P, OpRunType R>
+void PaddleInferenceAnakinPredictor<T, P, R>::InitPredictor() {
+  this->InitEnv();
+  this->SetContext();
+  this->InitGraph();
+  this->OptimizeGraph();
+  this->InitNet();
+}
+template <typename T, Precision P, OpRunType R>
+void PaddleInferenceAnakinPredictor<T, P, R>::Predict(int batch_size) {
+  anakin::TargetWrapper<T>::device_sync();
+  this->executor_p_->prediction();
+  anakin::TargetWrapper<T>::device_sync();
+}
+template <typename T, Precision P, OpRunType R>
+bool PaddleInferenceAnakinPredictor<T, P, R>::Run(
+    const std::vector<PaddleTensor> &inputs,
+    std::vector<PaddleTensor> *output_data, int batch_size) {
+  if (this->config_.re_allocable) {
+    return this->RunImpl(inputs, output_data, batch_size);
+  } else {
+    // Run inputs data that exceeds batch size in batches.
+    // 1. Reassign the batch size.
+    if (batch_size == -1) {
+      if (!inputs[0].lod.empty()) {
+        batch_size = inputs[0].lod[0].size() - 1;
+      } else {
+        batch_size = inputs[0].shape[0];
+      }
+    }
+    // 2. If the data don't need to be batched, run it directly.
+    if (batch_size <= this->config_.init_batch_size) {
+      return this->RunImpl(inputs, output_data);
+    }
+    // 3. Check the batch size and define temporary variables.
+    std::vector<PaddleTensor> cur_inputs;
+    std::vector<PaddleTensor> outputs_master;
+    std::vector<std::vector<paddle::PaddleTensor>> outputs_vec;
+    for (const auto &input : inputs) {
+      if (!input.lod.empty()) {
+        if (input.lod.size() != 1) {
+          return false;
+        }
+        if (input.lod[0].size() - 1 != batch_size) {
+          return false;
+        }
+      } else {
+        LOG(INFO) << "Non-lod mode to be implemented.";
+        return false;
+      }
+      PaddleTensor tensor;
+      tensor.name = input.name;
+      tensor.dtype = PaddleDType::FLOAT32;
+      cur_inputs.push_back(tensor);
+    }
+    for (auto output : *output_data) {
+      PaddleTensor tensor;
+      tensor.name = output.name;
+      outputs_master.push_back(tensor);
+    }
+    // 4. Batch execution.
+    for (size_t start_batch = 0; start_batch < batch_size;) {
+      auto end_batch = start_batch + this->config_.init_batch_size;
+      if (end_batch > batch_size) {
+        end_batch = batch_size;
+      }
+      auto cur_outputs = outputs_master;
+      for (size_t i = 0; i < inputs.size(); i++) {
+        auto start = inputs[i].lod[0][start_batch];
+        auto end = inputs[i].lod[0][end_batch];
+        std::vector<size_t> offsets;
+        for (size_t j = start_batch; j <= end_batch; j++) {
+          offsets.push_back(inputs[i].lod[0][j] -
+                            inputs[i].lod[0][start_batch]);
+        }
+        auto mem_start = static_cast<float *>(inputs[i].data.data()) + start;
+        cur_inputs[i].data =
+            PaddleBuf(mem_start, (end - start) * sizeof(float));
+        cur_inputs[i].lod = std::vector<std::vector<size_t>>({offsets});
+        cur_inputs[i].shape =
+            std::vector<int>({static_cast<int>(end - start), 1, 1, 1});
+      }
+      if (!this->RunImpl(cur_inputs, &cur_outputs)) {
+        return false;
+      }
+      outputs_vec.push_back(cur_outputs);
+      start_batch = end_batch;
+    }
+    // 5. Copy the results to contiguous memory.
+    // Assume that each batch has the same final outputs size.
+    auto count = [](const std::vector<int> &v) {
+      int cnt = 1;
+      for_each(v.begin(), v.end(), [&cnt](int n) { cnt *= n; });
+      return cnt;
+    };
+    for (size_t i = 0; i < output_data->size(); i++) {
+      std::vector<int> shape = outputs_vec[i][0].shape;
+      shape[0] = batch_size;
+      int total_cnt = count(shape);
+      (*output_data)[i].shape = shape;
+      (*output_data)[i].data.Resize(total_cnt * sizeof(float));
+      float *addr = static_cast<float *>((*output_data)[i].data.data());
+      for (const auto &single_out : outputs_vec) {
+        int cnt = count(single_out[i].shape);
+        memcpy(addr, single_out[i].data.data(), cnt * sizeof(float));
+        addr += cnt;
+      }
+    }
   }
   return true;
 }
-
-template <typename Target>
-bool PaddleInferenceAnakinPredictor<Target>::Run(
+template <typename T, Precision P, OpRunType R>
+bool PaddleInferenceAnakinPredictor<T, P, R>::RunImpl(
     const std::vector<PaddleTensor> &inputs,
     std::vector<PaddleTensor> *output_data, int batch_size) {
+  anakin::TargetWrapper<T>::set_device(this->config_.device_id);
   for (const auto &input : inputs) {
     if (input.dtype != PaddleDType::FLOAT32) {
-      VLOG(3) << "Only support float type inputs. " << input.name
-              << "'s type is not float";
-      return false;
+      LOG(FATAL) << "Only support float type inputs. " << input.name
+                 << "'s type is not float";
     }
-    auto d_tensor_in_p = executor_p_->get_in(input.name);
-    auto net_shape = d_tensor_in_p->shape();
+    auto d_tensor_p = this->executor_p_->get_in(input.name);
+    auto net_shape = d_tensor_p->valid_shape();
     if (net_shape.size() != input.shape.size()) {
-      VLOG(3) << " input  " << input.name
-              << "'s shape size should be equal to that of net";
-      return false;
+      LOG(FATAL) << " input  " << input.name
+                 << "'s shape size should be equal to that of net";
     }
+#ifndef ANAKIN_MLU_PLACE
     int sum = 1;
     for_each(input.shape.begin(), input.shape.end(), [&](int n) { sum *= n; });
     if (sum > net_shape.count()) {
-      graph_.Reshape(input.name, input.shape);
-      delete executor_p_;
-      executor_p_ = new anakin::Net<Target, anakin::saber::AK_FLOAT,
-                                    anakin::Precision::FP32>(graph_, true);
-      d_tensor_in_p = executor_p_->get_in(input.name);
+      if (this->config_.re_allocable) {
+        this->graph_p_->Reshape(input.name, input.shape);
+        this->InitNet();
+        d_tensor_p = this->executor_p_->get_in(input.name);
+      } else {
+        LOG(FATAL)
+            << "Run failed because Anakin was expected not to reallocate "
+               "memory.";
+      }
     }
-
-    anakin::saber::Shape tmp_shape;
+#endif
+    std::vector<int> tmp_shape;
     for (auto s : input.shape) {
       tmp_shape.push_back(s);
     }
-    d_tensor_in_p->reshape(tmp_shape);
-
+    auto *data = static_cast<float *>(input.data.data());
+    anakin::saber::Tensor<typename anakin::DefaultHostType<T>::Host_type>
+        h_tensor(data, typename anakin::DefaultHostType<T>::Host_type(), 0,
+                 tmp_shape);
+#ifndef ANAKIN_MLU_PLACE
+    d_tensor_p->reshape(tmp_shape);
+#endif
     if (input.lod.size() > 0) {
       if (input.lod.size() > 1) {
-        VLOG(3) << " input lod first dim should <=1, but you set "
-                << input.lod.size();
-        return false;
+        LOG(FATAL) << " input lod first dim should <=1, but you set "
+                   << input.lod.size();
       }
-      std::vector<int> offset(input.lod[0].begin(), input.lod[0].end());
-      d_tensor_in_p->set_seq_offset(offset);
-      VLOG(3) << "offset.size(): " << offset.size();
-      for (int i = 0; i < offset.size(); i++) {
-        VLOG(3) << offset[i];
-      }
-    }
-
-    float *d_data_p = d_tensor_in_p->mutable_data();
-
-#ifdef PADDLE_WITH_CUDA
-    if (std::is_same<anakin::NV, Target>::value) {
-      if (cudaMemcpy(d_data_p, static_cast<float *>(input.data.data()),
-                     d_tensor_in_p->valid_size() * sizeof(float),
-                     cudaMemcpyHostToDevice) != 0) {
-        VLOG(3) << "copy data from CPU to GPU error";
-        return false;
+      std::vector<int> lod(input.lod[0].begin(), input.lod[0].end());
+      std::vector<std::vector<int>> offset({lod});
+      d_tensor_p->set_seq_offset(offset);
+      VLOG(3) << "offset.size(): " << offset[0].size();
+      for (int i = 0; i < offset[0].size(); i++) {
+        VLOG(3) << offset[0][i];
       }
     }
-#endif
-    if (std::is_same<anakin::X86, Target>::value) {
-      memcpy(d_data_p, static_cast<float *>(input.data.data()),
-             d_tensor_in_p->valid_size() * sizeof(float));
-    }
+    d_tensor_p->copy_from(h_tensor);
   }
-#ifdef PADDLE_WITH_CUDA
-  cudaDeviceSynchronize();
-  executor_p_->prediction();
-  cudaDeviceSynchronize();
-#endif
-
+  this->Predict(batch_size);
   if (output_data->empty()) {
-    VLOG(3) << "At least one output should be set with tensors' names.";
-    return false;
+    LOG(FATAL) << "The output param in the Run function is incorrect.";
   }
   for (auto &output : *output_data) {
-    auto *tensor = executor_p_->get_out(output.name);
-    output.shape = tensor->valid_shape();
-    if (output.data.length() < tensor->valid_size() * sizeof(float)) {
-      output.data.Resize(tensor->valid_size() * sizeof(float));
+    if (std::find(this->output_names_.begin(), this->output_names_.end(),
+                  output.name) == this->output_names_.end()) {
+      LOG(FATAL) << output.name << " is not in the outputs of the graph.";
     }
-
-#if PADDLE_WITH_CUDA
-    if (std::is_same<anakin::NV, Target>::value) {
-      // Copy data from GPU -> CPU
-      if (cudaMemcpy(output.data.data(), tensor->mutable_data(),
-                     tensor->valid_size() * sizeof(float),
-                     cudaMemcpyDeviceToHost) != 0) {
-        VLOG(3) << "copy data from GPU to CPU error";
-        return false;
-      }
-    }
+    auto *d_tensor_p = this->executor_p_->get_out(output.name);
+    auto tmp_shape = d_tensor_p->valid_shape();
+#ifdef ANAKIN_MLU_PLACE
+    tmp_shape.set_num(batch_size);
 #endif
-    if (std::is_same<anakin::X86, Target>::value) {
-      memcpy(output.data.data(), tensor->mutable_data(),
-             tensor->valid_size() * sizeof(float));
+    output.shape = tmp_shape;
+    if (output.data.length() < tmp_shape.count() * sizeof(float)) {
+      output.data.Resize(tmp_shape.count() * sizeof(float));
     }
+    auto *data = static_cast<float *>(output.data.data());
+    anakin::saber::Tensor<typename anakin::DefaultHostType<T>::Host_type>
+        h_tensor(data, typename anakin::DefaultHostType<T>::Host_type(), 0,
+                 tmp_shape);
+    h_tensor.copy_from(*d_tensor_p);
   }
   return true;
 }
-
-template <typename Target>
-anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
-    &PaddleInferenceAnakinPredictor<Target>::get_executer() {
-  return *executor_p_;
+template <typename T, Precision P, OpRunType R>
+bool PaddleInferenceAnakinPredictor<T, P, R>::Reset(
+    PaddleInferenceAnakinPredictor<T, P, R> *predictor) {
+  this->config_ = predictor->GetConfig();
+  this->graph_p_ = predictor->GetGraph();
+  this->input_names_ = predictor->GetInputNames();
+  this->output_names_ = predictor->GetOutputNames();
+  this->ctx_p_ = std::make_shared<anakin::Context<T>>(
+      this->config_.device_id, this->config_.data_stream_id,
+      this->config_.compute_stream_id);
+  this->InitNet();
+  return true;
 }
-
+template <typename T, Precision P, OpRunType R>
+std::unique_ptr<PaddlePredictor>
+PaddleInferenceAnakinPredictor<T, P, R>::New() {
+  return std::unique_ptr<PaddlePredictor>(
+      new PaddleInferenceAnakinPredictor<T, P, R>());
+}
 // the cloned new Predictor of anakin share the same net weights from original
 // Predictor
-template <typename Target>
+template <typename T, Precision P, OpRunType R>
 std::unique_ptr<PaddlePredictor>
-PaddleInferenceAnakinPredictor<Target>::Clone() {
+PaddleInferenceAnakinPredictor<T, P, R>::Clone() {
   VLOG(3) << "Anakin Predictor::clone";
-  std::unique_ptr<PaddlePredictor> cls(
-      new PaddleInferenceAnakinPredictor<Target>());
-  // construct executer from other graph
+  std::unique_ptr<PaddlePredictor> cls = std::move(this->New());
   auto anakin_predictor_p =
-      dynamic_cast<PaddleInferenceAnakinPredictor<Target> *>(cls.get());
+      dynamic_cast<PaddleInferenceAnakinPredictor<T, P, R> *>(cls.get());
   if (!anakin_predictor_p) {
-    VLOG(3) << "fail to call Init";
-    return nullptr;
+    LOG(FATAL) << "fail to call Init";
   }
-  anakin_predictor_p->get_executer().init(graph_);
-
-  return std::move(cls);
+  anakin_predictor_p->Reset(this);
+  return cls;
 }
 
-#ifdef PADDLE_WITH_CUDA
-template class PaddleInferenceAnakinPredictor<anakin::NV>;
+#ifdef ANAKIN_MLU_PLACE
+template <Precision P, OpRunType R>
+std::unique_ptr<PaddlePredictor>
+PaddleInferenceAnakinMLUPredictor<P, R>::New() {
+  return std::unique_ptr<PaddlePredictor>(
+      new PaddleInferenceAnakinMLUPredictor<P, R>());
+}
+template <Precision P, OpRunType R>
+void PaddleInferenceAnakinMLUPredictor<P, R>::SetContext() {
+  this->ctx_p_ = std::make_shared<anakin::Context<anakin::MLU>>(
+      this->config_.device_id, this->config_.data_stream_id,
+      this->config_.compute_stream_id);
+  this->ctx_p_->set_model_parallel(this->config_.model_parallel);
+  this->ctx_p_->set_fusion(this->config_.op_fuse);
+  this->ctx_p_->enable_batch_changable();
+  this->ctx_p_->enable_channel_duplicate();
+}
+template <Precision P, OpRunType R>
+void PaddleInferenceAnakinMLUPredictor<P, R>::OptimizeGraph() {
+  if (!this->graph_p_->fusion_optimize(this->config_.op_fuse)) {
+    LOG(FATAL) << "Graph optimization error.";
+  }
+}
+template <Precision P, OpRunType R>
+void PaddleInferenceAnakinMLUPredictor<P, R>::InitNet() {
+  std::unique_lock<std::mutex> lock(this->mutex_);
+  delete this->executor_p_;
+  this->executor_p_ = new anakin::Net<anakin::MLU, P, R>();
+  this->executor_p_->fusion_init(*this->graph_p_, this->ctx_p_, true);
+}
+template <Precision P, OpRunType R>
+void PaddleInferenceAnakinMLUPredictor<P, R>::Predict(int batch_size) {
+  this->executor_p_->fusion_prediction(batch_size);
+}
 #endif
-template class PaddleInferenceAnakinPredictor<anakin::X86>;
+
+#ifdef ANAKIN_BM_PLACE
+template <Precision P, OpRunType R>
+std::unique_ptr<PaddlePredictor> PaddleInferenceAnakinBMPredictor<P, R>::New() {
+  return std::unique_ptr<PaddlePredictor>(
+      new PaddleInferenceAnakinBMPredictor<P, R>());
+}
+template <Precision P, OpRunType R>
+void PaddleInferenceAnakinBMPredictor<P, R>::OptimizeGraph() {
+  if (!this->graph_p_->fusion_optimize()) {
+    LOG(FATAL) << "Graph optimization error.";
+  }
+}
+template <Precision P, OpRunType R>
+void PaddleInferenceAnakinBMPredictor<P, R>::InitNet() {
+  std::unique_lock<std::mutex> lock(this->mutex_);
+  delete this->executor_p_;
+  this->executor_p_ = new anakin::Net<anakin::BM, P, R>();
+  this->executor_p_->fusion_init(*this->graph_p_, this->ctx_p_, true);
+}
+template <Precision P, OpRunType R>
+void PaddleInferenceAnakinBMPredictor<P, R>::Predict(int batch_size) {
+  this->executor_p_->fusion_prediction();
+}
+#endif
+
+#ifdef PADDLE_WITH_CUDA
+template class PaddleInferenceAnakinPredictor<
+    anakin::NV, anakin::Precision::FP32, ::anakin::OpRunType::ASYNC>;
+#endif
+#ifdef ANAKIN_X86_PLACE
+template class PaddleInferenceAnakinPredictor<
+    anakin::X86, anakin::Precision::FP32, ::anakin::OpRunType::ASYNC>;
+#endif
+#ifdef ANAKIN_MLU_PLACE
+template class PaddleInferenceAnakinMLUPredictor<anakin::Precision::FP32,
+                                                 ::anakin::OpRunType::SYNC>;
+#endif
+#ifdef ANAKIN_BM_PLACE
+template class PaddleInferenceAnakinBMPredictor<anakin::Precision::FP32,
+                                                ::anakin::OpRunType::ASYNC>;
+#endif
 
 // A factory to help create difference predictor.
 template <>
 std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<contrib::AnakinConfig, PaddleEngineKind::kAnakin>(
     const contrib::AnakinConfig &config) {
-  VLOG(3) << "Anakin Predictor create.";
-  if (config.target_type == contrib::AnakinConfig::NVGPU) {
 #ifdef PADDLE_WITH_CUDA
-    VLOG(3) << "Anakin Predictor create on [ NVIDIA GPU ].";
-    std::unique_ptr<PaddlePredictor> x(
-        new PaddleInferenceAnakinPredictor<anakin::NV>(config));
-    return x;
-#else
-    LOG(ERROR) << "AnakinConfig::NVGPU could not used in ONLY-CPU environment";
-    return nullptr;
-#endif
-  } else if (config.target_type == contrib::AnakinConfig::X86) {
-    VLOG(3) << "Anakin Predictor create on [ Intel X86 ].";
-    std::unique_ptr<PaddlePredictor> x(
-        new PaddleInferenceAnakinPredictor<anakin::X86>(config));
-    return x;
-  } else {
-    VLOG(3) << "Anakin Predictor create on unknown platform.";
-    return nullptr;
+  if (config.target_type == contrib::AnakinConfig::NVGPU) {
+    return std::unique_ptr<PaddlePredictor>(
+        new PaddleInferenceAnakinPredictor<anakin::NV, anakin::Precision::FP32,
+                                           ::anakin::OpRunType::ASYNC>(config));
   }
+#endif
+#ifdef ANAKIN_X86_PLACE
+  if (config.target_type == contrib::AnakinConfig::X86) {
+    return std::unique_ptr<PaddlePredictor>(
+        new PaddleInferenceAnakinPredictor<anakin::X86, anakin::Precision::FP32,
+                                           ::anakin::OpRunType::ASYNC>(config));
+  }
+#endif
+#ifdef ANAKIN_MLU_PLACE
+  if (config.target_type == contrib::AnakinConfig::MLU) {
+    return std::unique_ptr<PaddlePredictor>(
+        new PaddleInferenceAnakinMLUPredictor<anakin::Precision::FP32,
+                                              ::anakin::OpRunType::SYNC>(
+            config));
+  }
+#endif
+#ifdef ANAKIN_BM_PLACE
+  if (config.target_type == contrib::AnakinConfig::BM) {
+    return std::unique_ptr<PaddlePredictor>(
+        new PaddleInferenceAnakinBMPredictor<anakin::Precision::FP32,
+                                             ::anakin::OpRunType::ASYNC>(
+            config));
+  }
+#endif
+  LOG(FATAL) << "Anakin Predictor create on unknown platform: "
+             << config.target_type;
+  return nullptr;
 }
-
+template <typename T, Precision P, OpRunType R>
+void DisplayOpTimer(anakin::Net<T, P, R> *net_executor, int epoch) {
 #ifdef PADDLE_ANAKIN_ENABLE_OP_TIMER
-template <typename Target>
-using executor_t =
-    anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>;
-
-template <typename Target>
-void DisplayOpTimer(executor_t<Target> *net_executor, int epoch) {
   std::vector<float> op_time = net_executor->get_op_time();
   auto exec_funcs = net_executor->get_exec_funcs();
   auto op_param = net_executor->get_op_param();
@@ -254,16 +449,13 @@ void DisplayOpTimer(executor_t<Target> *net_executor, int epoch) {
   for (auto it = op_map.begin(); it != op_map.end(); ++it) {
     LOG(INFO) << it->first << "  " << (it->second) / epoch << " ms";
   }
+#endif
 }
-#endif
-
-template <typename Target>
-PaddleInferenceAnakinPredictor<Target>::~PaddleInferenceAnakinPredictor() {
-#ifdef PADDLE_ANAKIN_ENABLE_OP_TIMER
-  DisplayOpTimer<Target>(executor_p_, max_batch_size_);
-#endif
-  delete executor_p_;
-  executor_p_ = nullptr;
+template <typename T, Precision P, OpRunType R>
+PaddleInferenceAnakinPredictor<T, P, R>::~PaddleInferenceAnakinPredictor() {
+  DisplayOpTimer<T, P, R>(this->executor_p_, this->config_.init_batch_size);
+  delete this->executor_p_;
+  this->executor_p_ = nullptr;
 }
 
 }  // namespace paddle

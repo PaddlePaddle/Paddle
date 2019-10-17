@@ -13,11 +13,13 @@
 // limitations under the License.
 #include "paddle/fluid/framework/details/sparse_all_reduce_op_handle.h"
 #include <algorithm>
+#include <utility>
 #include "dgc/dgc.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -30,7 +32,7 @@ namespace details {
 SparseAllReduceOpHandle::SparseAllReduceOpHandle(
     ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
-    const platform::MultiNCCLContextMap *ctxs, bool is_encoded, int nranks)
+    const platform::NCCLCommunicator *ctxs, bool is_encoded, int nranks)
     : AllReduceOpHandle(node, local_scopes, places, ctxs),
       is_encoded_(is_encoded),
       nranks_(nranks) {
@@ -40,10 +42,29 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
   }
 }
 
+void SparseAllReduceOpHandle::WaitInputVarGenerated() {
+#ifdef PADDLE_WITH_CUDA
+  for (auto &p : dev_ctxes_) {
+    if (platform::is_gpu_place(p.first)) {
+      int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
+      auto *compute_dev_ctx =
+          platform::DeviceContextPool::Instance().GetByPlace(
+              platform::CUDAPlace(dev_id));
+      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(p.second);
+      if (compute_dev_ctx->stream() != dev_ctx->stream()) {
+        auto &event = events_.at(dev_id);
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            cudaEventRecord(event, compute_dev_ctx->stream()));
+        PADDLE_ENFORCE_CUDA_SUCCESS(
+            cudaStreamWaitEvent(dev_ctx->stream(), event, 0));
+      }
+    }
+  }
+#endif
+}
+
 void SparseAllReduceOpHandle::RunImplEncoded() {
   platform::RecordEvent record_event(Name());
-
-  WaitInputVarGenerated();
 
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
   auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
@@ -58,8 +79,7 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   std::vector<LoDTensor *> outs;
   int k = -1;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
-    auto &local_scope =
-        local_scopes_[i]->FindVar(kLocalExecScopeName)->Get<Scope *>();
+    auto *local_scope = local_exec_scopes_[i];
     auto original_name =
         paddle::framework::GradOriginalVarName(in_var_handles[i]->name());
     auto encode_var_name = original_name + g_dgc_encoded;
@@ -87,6 +107,8 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   PADDLE_ENFORCE(nranks_ > 1);
   std::vector<std::function<void()>> all_reduce_calls;
 
+  std::vector<memory::AllocationPtr> allocations;
+
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto &place = places_[i];
     auto &in = *ins[i];
@@ -107,14 +129,13 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     auto stream = nccl_ctx.stream();
     auto comm = nccl_ctx.comm_;
 
-    auto &allocator =
-        platform::DeviceTemporaryAllocator::Instance().Get(place, stream);
     int encode_size = 2 * k * sizeof(int);
     // dgc use ncclAllGather to get all the encoded data
     // so the buffer need nranks.
     int buf_size = nranks_ * encode_size;
-    auto tmp_ious_data = allocator.Allocate(buf_size);
+    auto tmp_ious_data = memory::Alloc(place, buf_size);
     void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
+    allocations.emplace_back(std::move(tmp_ious_data));
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
              << ", nranks:" << nranks_ << ", gather_buf size:" << buf_size
@@ -127,7 +148,8 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     });
   }
 
-  RunAllReduceFuncs(all_reduce_calls);
+  WaitInputVarGenerated();
+  NCCLAllReduceFunc(all_reduce_calls);
 }
 
 int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {
@@ -135,9 +157,8 @@ int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {
   auto var_name = original_name + g_dgc_k;
   PADDLE_ENFORCE(local_scopes_.size() > 0);
 
-  auto *scope = local_scopes_[0];
-  auto &local_scope = scope->FindVar(kLocalExecScopeName)->Get<Scope *>();
-  auto var = local_scope->FindVar(var_name);
+  auto *scope = local_exec_scopes_[0];
+  auto var = scope->FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(var);
   auto tensor = var->Get<LoDTensor>().data<float>();
   return *tensor;
@@ -151,8 +172,7 @@ bool SparseAllReduceOpHandle::IsEncoded() {
   auto step_name = g_dgc_rampup_begin_step;
   PADDLE_ENFORCE(local_scopes_.size() > 0);
 
-  auto *scope = local_scopes_[0];
-  auto &local_scope = scope->FindVar(kLocalExecScopeName)->Get<Scope *>();
+  auto *local_scope = local_exec_scopes_[0];
   auto count_var = local_scope->FindVar(counter_name);
   auto step_var = local_scope->FindVar(step_name);
   if (count_var == nullptr || step_var == nullptr) {

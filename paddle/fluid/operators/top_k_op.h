@@ -29,6 +29,10 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+
 template <typename DeviceContext, typename T>
 class TopkKernel : public framework::OpKernel<T> {
  public:
@@ -57,17 +61,24 @@ class TopkKernel : public framework::OpKernel<T> {
         framework::slice_ddim(inputdims, 0, inputdims.size() - 1));
     const size_t col = inputdims[inputdims.size() - 1];
     Eigen::DSizes<int, 2> flat2dims(row, col);
-    // NOTE: eigen shape doesn't affect paddle tensor.
-    auto eg_input = EigenMatrix<T>::Reshape(*input, inputdims.size() - 1);
-
+// NOTE: eigen shape doesn't affect paddle tensor.
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
     for (size_t i = 0; i < row; i++) {
       std::vector<std::pair<T, size_t>> vec;
       vec.reserve(col);
-      for (size_t j = 0; j < col; j++) {
-        vec.push_back(std::pair<T, size_t>(eg_input(i, j), j));
+      // 1D vector
+      if (inputdims.size() == 1) {
+        auto eg_input = EigenVector<T>::Flatten(*input);
+        for (size_t j = 0; j < col; j++) {
+          vec.push_back(std::pair<T, size_t>(eg_input(j), j));
+        }
+      } else {
+        auto eg_input = EigenMatrix<T>::Reshape(*input, inputdims.size() - 1);
+        for (size_t j = 0; j < col; j++) {
+          vec.push_back(std::pair<T, size_t>(eg_input(i, j), j));
+        }
       }
 
       std::partial_sort(

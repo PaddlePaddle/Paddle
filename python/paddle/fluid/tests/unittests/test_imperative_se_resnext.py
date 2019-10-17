@@ -64,7 +64,6 @@ def optimizer_setting(params):
 class ConvBNLayer(fluid.dygraph.Layer):
     def __init__(self,
                  name_scope,
-                 num_channels,
                  num_filters,
                  filter_size,
                  stride=1,
@@ -74,7 +73,6 @@ class ConvBNLayer(fluid.dygraph.Layer):
 
         self._conv = Conv2D(
             self.full_name(),
-            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=stride,
@@ -131,20 +129,15 @@ class BottleneckBlock(fluid.dygraph.Layer):
         super(BottleneckBlock, self).__init__(name_scope)
 
         self.conv0 = ConvBNLayer(
-            self.full_name(),
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=1)
+            self.full_name(), num_filters=num_filters, filter_size=1)
         self.conv1 = ConvBNLayer(
             self.full_name(),
-            num_channels=num_filters,
             num_filters=num_filters,
             filter_size=3,
             stride=stride,
             groups=cardinality)
         self.conv2 = ConvBNLayer(
             self.full_name(),
-            num_channels=num_filters,
             num_filters=num_filters * 4,
             filter_size=1,
             act='relu')
@@ -157,7 +150,6 @@ class BottleneckBlock(fluid.dygraph.Layer):
         if not shortcut:
             self.short = ConvBNLayer(
                 self.full_name(),
-                num_channels=num_channels,
                 num_filters=num_filters * 4,
                 filter_size=1,
                 stride=stride)
@@ -200,7 +192,6 @@ class SeResNeXt(fluid.dygraph.Layer):
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
                 self.full_name(),
-                num_channels=3,
                 num_filters=64,
                 filter_size=7,
                 stride=2,
@@ -218,7 +209,6 @@ class SeResNeXt(fluid.dygraph.Layer):
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
                 self.full_name(),
-                num_channels=3,
                 num_filters=3,
                 filter_size=7,
                 stride=2,
@@ -236,21 +226,18 @@ class SeResNeXt(fluid.dygraph.Layer):
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
                 self.full_name(),
-                num_channels=3,
                 num_filters=3,
                 filter_size=7,
                 stride=2,
                 act='relu')
             self.conv1 = ConvBNLayer(
                 self.full_name(),
-                num_channels=64,
                 num_filters=3,
                 filter_size=7,
                 stride=2,
                 act='relu')
             self.conv2 = ConvBNLayer(
                 self.full_name(),
-                num_channels=64,
                 num_filters=3,
                 filter_size=7,
                 stride=2,

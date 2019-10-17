@@ -23,9 +23,11 @@ limitations under the License. */
 #endif
 #include <stdlib.h>   // for malloc and free
 #include <algorithm>  // for std::max
+#include <string>
+#include <utility>
 
 #include "gflags/gflags.h"
-#include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -56,7 +58,7 @@ void* AlignedMalloc(size_t size) {
   PADDLE_ENFORCE_EQ(posix_memalign(&p, alignment, size), 0, "Alloc %ld error!",
                     size);
 #endif
-  PADDLE_ENFORCE(p, "Fail to allocate CPU memory: size = %d .", size);
+  PADDLE_ENFORCE_NOT_NULL(p, "Fail to allocate CPU memory: size = %d .", size);
   return p;
 }
 
@@ -118,33 +120,35 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     gpu_alloc_size_ += size;
     return p;
   } else {
-    LOG(WARNING) << "Cannot malloc " << size / 1024.0 / 1024.0
-                 << " MB GPU memory. Please shrink "
-                    "FLAGS_fraction_of_gpu_memory_to_use or "
-                    "FLAGS_initial_gpu_memory_in_mb or "
-                    "FLAGS_reallocate_gpu_memory_in_mb"
-                    "environment variable to a lower value. "
-                 << "Current FLAGS_fraction_of_gpu_memory_to_use value is "
-                 << FLAGS_fraction_of_gpu_memory_to_use
-                 << ". Current FLAGS_initial_gpu_memory_in_mb value is "
-                 << FLAGS_initial_gpu_memory_in_mb
-                 << ". Current FLAGS_reallocate_gpu_memory_in_mb value is "
-                 << FLAGS_reallocate_gpu_memory_in_mb;
-    return nullptr;
+    PADDLE_ENFORCE_NE(cudaGetLastError(), cudaSuccess);
+
+    size_t avail, total;
+    platform::GpuMemoryUsage(&avail, &total);
+
+    PADDLE_THROW_BAD_ALLOC(
+        "\n\nOut of memory error on GPU %d. "
+        "Cannot allocate %s memory on GPU %d, "
+        "available memory is only %s.\n\n"
+        "Please check whether there is any other process using GPU %d.\n"
+        "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
+        "2. If no, please try one of the following suggestions:\n"
+        "   1) Decrease the batch size of your model.\n"
+        "   2) FLAGS_fraction_of_gpu_memory_to_use is %.2lf now, "
+        "please set it to a higher value but less than 1.0.\n"
+        "      The command is "
+        "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.\n\n",
+        gpu_id_, string::HumanReadableSize(size), gpu_id_,
+        string::HumanReadableSize(avail), gpu_id_,
+        FLAGS_fraction_of_gpu_memory_to_use);
   }
 }
 
 void GPUAllocator::Free(void* p, size_t size, size_t index) {
   cudaError_t err;
-  if (index == 0) {
-    PADDLE_ASSERT(gpu_alloc_size_ >= size);
-    gpu_alloc_size_ -= size;
-    err = cudaFree(p);
-  } else {
-    PADDLE_ASSERT(fallback_alloc_size_ >= size);
-    fallback_alloc_size_ -= size;
-    err = cudaFreeHost(p);
-  }
+  PADDLE_ENFORCE_EQ(index, 0);
+  PADDLE_ENFORCE_GE(gpu_alloc_size_, size);
+  gpu_alloc_size_ -= size;
+  err = cudaFree(p);
 
   // Purposefully allow cudaErrorCudartUnloading, because
   // that is returned if you ever call cudaFree after the
@@ -194,9 +198,9 @@ void* CUDAPinnedAllocator::Alloc(size_t* index, size_t size) {
 
 void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
   cudaError_t err;
-  PADDLE_ASSERT(index == 1);
+  PADDLE_ENFORCE_EQ(index, 1);
 
-  PADDLE_ASSERT(cuda_pinnd_alloc_size_ >= size);
+  PADDLE_ENFORCE_GE(cuda_pinnd_alloc_size_, size);
   cuda_pinnd_alloc_size_ -= size;
   err = cudaFreeHost(p);
 

@@ -23,7 +23,7 @@ namespace inference {
 
 TEST(resnet50, compare_continuous_input) {
   std::string model_dir = FLAGS_infer_model + "/resnet50";
-  compare_continuous_input(model_dir, true);
+  compare_continuous_input(model_dir, /* use_tensorrt */ true);
 }
 
 }  // namespace inference

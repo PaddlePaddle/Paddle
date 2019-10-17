@@ -22,5 +22,15 @@ class SyntheticData(MultiSlotDataGenerator):
         return data_iter
 
 
+class SyntheticStringData(MultiSlotStringDataGenerator):
+    def generate_sample(self, line):
+        def data_iter():
+            for i in range(10000):
+                yield ("words", ["1", "2", "3", "4"], ("label", ["0"]))
+
+
 sd = SyntheticData()
+sd.run_from_memory()
+
+sd2 = SyntheticStringData()
 sd.run_from_memory()

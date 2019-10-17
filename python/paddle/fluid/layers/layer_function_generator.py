@@ -22,6 +22,7 @@ from six.moves import cStringIO
 from ..proto import framework_pb2
 from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_
 from ..layer_helper import LayerHelper
+from ..data_feeder import convert_dtype
 
 __all__ = [
     'deprecated', 'generate_layer_fn', 'generate_activation_fn', 'autodoc',
@@ -61,7 +62,9 @@ def escape_math(text):
                                     _two_dollar_pattern_.sub(r"!!\1!!", text)))
 
 
-def _generate_doc_string_(op_proto, additional_args_lines=None):
+def _generate_doc_string_(op_proto,
+                          additional_args_lines=None,
+                          skip_attrs_set=None):
     """
     Generate docstring by OpProto
 
@@ -92,6 +95,11 @@ def _generate_doc_string_(op_proto, additional_args_lines=None):
     # attr use_mkldnn and is_test also should not be visible to users.
     skip_attrs.add("use_mkldnn")
     skip_attrs.add("is_test")
+    skip_attrs.add("use_cudnn")
+
+    if skip_attrs_set:
+        for t in skip_attrs_set:
+            skip_attrs.add(t)
 
     for each_attr in op_proto.attrs:
         if each_attr.name in skip_attrs:
@@ -243,18 +251,48 @@ def generate_activation_fn(op_type):
 
     def func(x, name=None):
         helper = LayerHelper(op_type, **locals())
+        if not isinstance(x, Variable):
+            raise TypeError(
+                "The type of 'x' in %s must be Variable, but received %s" %
+                (op_type, type(x)))
+        if convert_dtype(x.dtype) in ['float16']:
+            warnings.warn(
+                "The data type of 'x' in %s only support float16 in GPU now." %
+                (op_type))
+        if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
+            raise TypeError(
+                "The data type of 'x' in %s must be float16 (only support on GPU), float32 or float64, but received %s."
+                % (op_type, convert_dtype(x.dtype)))
         output = helper.create_variable_for_type_inference(dtype=x.dtype)
         helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": output})
         return output
 
     func.__name__ = op_type
-    func.__doc__ = _generate_doc_string_(op_proto)
+    func.__doc__ = _generate_doc_string_(
+        op_proto,
+        additional_args_lines=[
+            "name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` ."
+        ])
     func.__doc__ = func.__doc__ + """
+
+Return type
+  Variable
 Examples:
     .. code-block:: python
 
-        data = fluid.layers.data(name="input", shape=[32, 784])
-        result = fluid.layers.%s(data)
+        import paddle.fluid as fluid
+        import numpy as np
+
+        inputs = fluid.data(name="x", shape = [None, 4], dtype='float32')
+        output = fluid.layers.%s(inputs)
+
+        exe = fluid.Executor(fluid.CPUPlace())
+        exe.run(fluid.default_startup_program())
+
+        #input.shape=1X4, batch_size=1
+        img = np.array([[1.0, 2.0, 3.0, 4.0]]).astype(np.float32)
+        res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
+        print(res)
 """ % op_type
     return func
 

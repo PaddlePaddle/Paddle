@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -53,8 +54,9 @@ class Registrar {
 template <typename... ARGS>
 struct OperatorRegistrar : public Registrar {
   explicit OperatorRegistrar(const char* op_type) {
-    PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
-                   "'%s' is registered more than once.", op_type);
+    if (OpInfoMap::Instance().Has(op_type)) {
+      PADDLE_THROW("'%s' is registered more than once.", op_type);
+    }
     static_assert(sizeof...(ARGS) != 0,
                   "OperatorRegistrar should be invoked at least by OpClass");
     OpInfo info;
@@ -206,7 +208,8 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
   }
 
 #define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \
-  REGISTER_OPERATOR(op_type, op_class, op_maker_class)
+  REGISTER_OPERATOR(op_type, op_class, op_maker_class, \
+                    paddle::framework::EmptyGradOpMaker)
 
 /**
  * Macro to register OperatorKernel.

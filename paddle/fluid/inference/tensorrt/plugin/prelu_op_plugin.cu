@@ -34,6 +34,7 @@ int PReluPlugin::initialize() {
   cudaMalloc(&p_gpu_weight_, sizeof(float) * weight_.size());
   cudaMemcpy(p_gpu_weight_, weight_.data(), weight_.size() * sizeof(float),
              cudaMemcpyHostToDevice);
+  return 0;
 }
 
 nvinfer1::Dims PReluPlugin::getOutputDimensions(int index,

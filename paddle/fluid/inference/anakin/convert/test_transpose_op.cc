@@ -79,7 +79,7 @@ TEST(transpose2_op, gpu) {
   test_transpose2_op<::anakin::saber::NV>(ctx, true);
 }
 #endif
-
+#ifdef ANAKIN_X86_PLACE
 TEST(transpose1_op, cpu) {
   platform::CPUPlace cpu_place;
   platform::CPUDeviceContext ctx(cpu_place);
@@ -91,13 +91,10 @@ TEST(transpose2_op, cpu) {
   platform::CPUDeviceContext ctx(cpu_place);
   test_transpose2_op<::anakin::saber::X86>(ctx, false);
 }
-
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle
 
 USE_OP(transpose);
-USE_CPU_ANAKIN_CONVERTER(transpose);
-#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(transpose);
-#endif

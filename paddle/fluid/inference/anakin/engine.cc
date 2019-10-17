@@ -33,17 +33,24 @@ namespace inference {
 namespace anakin {
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
+extern std::once_flag
+    AnakinEngine<TargetT, PrecisionType, RunType>::init_anakin_;
+
+template <typename TargetT, Precision PrecisionType, OpRunType RunType>
 AnakinEngine<TargetT, PrecisionType, RunType>::AnakinEngine(
     bool need_summary, int device, int max_batch_size,
     std::map<std::string, std::vector<int>> max_input_shape,
     std::vector<std::string> program_inputs, bool auto_config_layout)
-    : graph_(new AnakinGraphT<TargetT, PrecisionType>()),
-      net_(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary)) {
-  device_ = device;
-  max_batch_size_ = max_batch_size;
-  max_input_shape_ = max_input_shape;
-  program_inputs_ = program_inputs;
-  auto_config_layout_ = auto_config_layout;
+    : device_(device),
+      max_batch_size_(max_batch_size),
+      max_input_shape_(max_input_shape),
+      program_inputs_(program_inputs),
+      auto_config_layout_(auto_config_layout) {
+  ::anakin::TargetWrapper<TargetT>::set_device(device_);
+  std::call_once(init_anakin_,
+                 [this]() { ::anakin::Env<TargetT>::env_init(); });
+  graph_.reset(new AnakinGraphT<TargetT, PrecisionType>());
+  net_.reset(new AnakinNetT<TargetT, PrecisionType, RunType>(need_summary));
 }
 
 template <typename TargetT, Precision PrecisionType, OpRunType RunType>
@@ -79,7 +86,7 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::BindInput(
     auto *tensor = input.second;
     auto *data = tensor->data<float>();
 
-    auto fluid_input_shape = framework::vectorize2int(tensor->dims());
+    auto fluid_input_shape = framework::vectorize<int>(tensor->dims());
     while (fluid_input_shape.size() < 4) {
       fluid_input_shape.push_back(1);
     }
@@ -102,7 +109,7 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::BindInput(
       anakin_input = net_->get_in(input.first);
     }
     anakin_input->reshape(fluid_input_shape);
-    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), 0,
+    ::anakin::saber::Tensor<TargetT> tmp_anakin_tensor(data, TargetT(), device_,
                                                        fluid_input_shape);
     anakin_input->copy_from(tmp_anakin_tensor);
   }
@@ -186,14 +193,14 @@ template class AnakinEngine<::anakin::saber::NV, ::anakin::Precision::INT8>;
 template class AnakinEngineManager<::anakin::saber::NV,
                                    ::anakin::Precision::INT8>;
 #endif
-
+#ifdef ANAKIN_X86_PLACE
 template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
 template class AnakinEngineManager<::anakin::saber::X86,
                                    ::anakin::Precision::FP32>;
 template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::INT8>;
 template class AnakinEngineManager<::anakin::saber::X86,
                                    ::anakin::Precision::INT8>;
-
+#endif
 // template class AnakinEngine<::anakin::saber::X86, ::anakin::Precision::FP32>;
 }  // namespace anakin
 }  // namespace inference

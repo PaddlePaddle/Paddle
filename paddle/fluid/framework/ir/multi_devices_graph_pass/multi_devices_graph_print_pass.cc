@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_print_pass.h"
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/graph_printer.h"
 
 namespace paddle {
 namespace framework {
@@ -29,7 +29,12 @@ class SSAGraghBuilderWithPrinterPass : public ir::Pass {
     std::unique_ptr<std::ostream> fout(
         new std::ofstream(Get<std::string>(kGraphvizPath)));
     PADDLE_ENFORCE(fout->good());
-    Get<GraphvizSSAGraphPrinter>("graph_printer").Print(*graph, *fout);
+    if (Has("graph_printer")) {
+      Get<GraphvizSSAGraphPrinter>("graph_printer").Print(*graph, *fout);
+    } else {
+      GraphvizSSAGraphPrinter printer;
+      printer.Print(*graph, *fout);
+    }
   }
 };
 

@@ -4,7 +4,7 @@ PADDLE_ROOT=$1
 TURN_ON_MKL=$2 # use MKL or Openblas
 TEST_GPU_CPU=$3 # test both GPU/CPU mode or only CPU mode
 DATA_DIR=$4 # dataset
-TENSORRT_INCLUDE_DIR=$5 # TensorRT header file dir, defalut to /usr/local/TensorRT/include
+TENSORRT_INCLUDE_DIR=$5 # TensorRT header file dir, default to /usr/local/TensorRT/include
 TENSORRT_LIB_DIR=$6 # TensorRT lib file dir, default to /usr/local/TensorRT/lib
 inference_install_dir=${PADDLE_ROOT}/build/fluid_inference_install_dir
 

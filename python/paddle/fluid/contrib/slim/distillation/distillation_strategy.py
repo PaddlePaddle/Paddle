@@ -14,14 +14,14 @@
 
 from ..core.strategy import Strategy
 from ....framework import Program, Variable, program_guard
+from ....log_helper import get_logger
 from .... import Executor
 import logging
 
 __all__ = ['DistillationStrategy']
 
-logging.basicConfig(format='%(asctime)s-%(levelname)s: %(message)s')
-_logger = logging.getLogger(__name__)
-_logger.setLevel(logging.INFO)
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class DistillationStrategy(Strategy):
@@ -64,7 +64,8 @@ class DistillationStrategy(Strategy):
             var.stop_gradient = True
         graph = context.train_graph.clone()
         graph.merge(teacher)
-        graph.out_nodes['student_loss'] = graph.out_nodes['loss']
+        if 'loss' in graph.out_nodes:
+            graph.out_nodes['student_loss'] = graph.out_nodes['loss']
 
         # step 2
         for distiller in self.distillers:

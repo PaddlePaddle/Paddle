@@ -66,10 +66,5 @@ TEST(leaky_relu_op, gpu) {
 
 USE_OP(relu);
 USE_OP(leaky_relu);
-USE_CPU_ANAKIN_CONVERTER(relu);
-USE_CPU_ANAKIN_CONVERTER(leaky_relu);
-
-#ifdef PADDLE_WITH_CUDA
 USE_ANAKIN_CONVERTER(relu);
 USE_ANAKIN_CONVERTER(leaky_relu);
-#endif

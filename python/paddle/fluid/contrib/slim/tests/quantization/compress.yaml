@@ -1,15 +1,15 @@
 #start_epoch(int): The epoch to insert quantization operators. default: 0
 #
-#end_epoch(int): The epoch to save inferecne model. default: 0
+#end_epoch(int): The epoch to save inference model. default: 0
 #
 #float_model_save_path(str): The path to save model with float weights.
-#                None means it doesn't save float model. defalut: None.
+#                None means it doesn't save float model. default: None.
 #
 #mobile_model_save_path(str): The path to save model for paddle-mobile execution.
-#                None means it doesn't save mobile model. defalut: None.
+#                None means it doesn't save mobile model. default: None.
 #
 #int8_model_save_path(str): The path to save model with int8_t weight.
-#                None means it doesn't save int8 model. defalut: None.
+#                None means it doesn't save int8 model. default: None.
 #
 #activation_bits(int): quantization bit number for activation. default: 8.
 #

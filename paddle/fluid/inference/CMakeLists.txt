@@ -2,7 +2,7 @@ if(WITH_TESTING)
   include(tests/test.cmake) # some generic cmake funtion for inference
 endif()
 
-set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
+set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor data_feed_proto)
 
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
@@ -17,7 +17,7 @@ if (TENSORRT_FOUND)
   add_subdirectory(tensorrt)
 endif()
 
-if (ANAKIN_FOUND)
+if (ANAKIN_SUBGRAPH)
   add_subdirectory(anakin)
 endif()
 
@@ -36,6 +36,7 @@ else(WIN32)
 endif(WIN32)
 
 add_subdirectory(api)
+add_subdirectory(capi)
 
 if(WITH_MKLDNN)
 	set(mkldnn_quantizer_src ${CMAKE_CURRENT_SOURCE_DIR}/api/mkldnn_quantizer.cc)
@@ -43,11 +44,15 @@ if(WITH_MKLDNN)
 endif()
 
 set(STATIC_INFERENCE_APIS paddle_fluid_api paddle_inference_api analysis_predictor)
+if (ANAKIN_FOUND)
+    set(ANAKIN_SHARED_INFERENCE_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/api/api_anakin_engine.cc)
+endif()
 set(SHARED_INFERENCE_SRCS
-    io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
+    io.cc ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed.cc ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_set.cc ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed_factory.cc ${CMAKE_CURRENT_SOURCE_DIR}/../framework/dataset_factory.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${mkldnn_quantizer_src}
-    ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc)
+    ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
+    ${ANAKIN_SHARED_INFERENCE_SRCS})
 
 if(WIN32)
   sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array

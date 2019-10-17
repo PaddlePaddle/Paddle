@@ -62,9 +62,11 @@ struct BroadcastOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
+  std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
+
   void BroadcastOneVar(const VarHandle &in_var_handle,
                        const std::vector<VarHandle *> &out_var_handles,
-                       const std::vector<const Scope *> &var_scopes);
+                       const std::vector<Scope *> &var_scopes);
 
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;

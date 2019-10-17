@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <atomic>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -35,8 +36,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/timer.h"
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "paddle/fluid/platform/nccl_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
+
+#define SEC_LOG                                                              \
+  VLOG(3) << "[s" << section_id_ << "p" << pipeline_id_ << "t" << thread_id_ \
+          << "]: "
 
 class PullDenseWorker {
  public:
@@ -104,15 +113,22 @@ class DeviceWorker {
   // will make this zero copy in the future
   virtual void BindingDataFeedMemory() = 0;
   virtual void SetRootScope(Scope* root_scope);
-  virtual void SetDataFeed(const std::shared_ptr<DataFeed>& data_feed);
+  virtual void SetDataFeed(DataFeed* data_feed);
+  virtual void SetNeedDump(bool need_dump_field) {}
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue) {}
   virtual void SetPlace(const paddle::platform::Place& place) {
     place_ = place;
   }
+  virtual void SetReaderPlace(const paddle::platform::Place& place) {
+    device_reader_->SetPlace(place);
+  }
+  virtual Scope* GetThreadScope() { return thread_scope_; }
 
  protected:
-  Scope* root_scope_;
+  Scope* root_scope_ = nullptr;
+  Scope* thread_scope_;
   paddle::platform::Place place_;
-  std::shared_ptr<DataFeed> device_reader_;
+  DataFeed* device_reader_ = nullptr;
   int64_t batch_num_;
   FetchConfig fetch_config_;
   bool use_cvm_;
@@ -135,22 +151,30 @@ class CPUWorkerBase : public DeviceWorker {
 class HogwildWorker : public CPUWorkerBase {
  public:
   HogwildWorker() {}
-  virtual ~HogwildWorker() {}
+  virtual ~HogwildWorker() {
+    for (OperatorBase* op : ops_) {
+      delete op;
+    }
+    std::vector<OperatorBase*>().swap(ops_);
+  }
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
   virtual void PrintFetchVars();
   virtual void CreateDeviceResource(const ProgramDesc& main_prog);
   virtual void BindingDataFeedMemory();
+  template <typename T>
+  void SetZero(LoDTensor* tensor, LoDTensor* root_tensor, int tensor_dim);
 
  protected:
   void CreateThreadOperators(const ProgramDesc& program);
   void CreateThreadScope(const ProgramDesc& program);
   std::vector<std::string> op_names_;
   std::vector<OperatorBase*> ops_;
-  Scope* thread_scope_;
+  // Scope* thread_scope_;
   HogwildWorkerParameter param_;
   std::vector<std::string> skip_ops_;
+  std::map<std::string, int> stat_var_name_map_;
 };
 
 class DownpourWorker : public HogwildWorker {
@@ -160,6 +184,8 @@ class DownpourWorker : public HogwildWorker {
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
+  virtual void SetNeedDump(bool need_dump_field);
+  virtual void SetChannelWriter(ChannelObject<std::string>* queue);
 
  protected:
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
@@ -167,11 +193,17 @@ class DownpourWorker : public HogwildWorker {
   void FillSparseValue(size_t table_id);
   void PushGradients();
   void CollectLabelInfo(size_t table_id);
+  void AdjustInsWeight();
 
  private:
   bool need_to_push_dense_;
+  bool need_dump_field_;
+  bool dump_slot_;
   bool need_to_push_sparse_;
+  std::vector<std::string> dump_fields_;
+  ChannelWriter<std::string> writer_;
   DownpourWorkerParameter param_;
+  float scale_datanorm_;
   // just save the value in param_ for easy access
   std::map<uint64_t, std::string> label_var_name_;
   std::map<uint64_t, std::vector<std::string>> sparse_key_names_;
@@ -194,7 +226,106 @@ class DownpourWorker : public HogwildWorker {
   std::shared_ptr<PullDenseWorker> _pull_dense_worker;
   std::vector<::std::future<int32_t>> push_sparse_status_;
   std::vector<::std::future<int32_t>> push_dense_status_;
+
+  // adjust ins weight
+  AdjustInsWeightConfig adjust_ins_weight_config_;
+  std::vector<float> nid_show_;
 };
 
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+using ScopeQueue = operators::reader::BlockingQueue<Scope*>;
+
+class SyncFunctor {
+ public:
+  SyncFunctor(int rank_id, int rank_num, int sync_steps);
+  virtual ~SyncFunctor() {}
+
+  void SetSyncParam(const std::vector<std::string>& sync_param) {
+    sync_param_ = &sync_param;
+  }
+  void SetNcclCtxMap(platform::NCCLContextMap* nccl_ctx_map) {
+    nccl_ctx_map_ = nccl_ctx_map;
+  }
+
+  int operator()(Scope* scope);
+  static std::vector<Scope*> pipeline_scopes_;
+  static uint64_t sync_flag_;
+
+ protected:
+  const int rank_id_;
+  const int rank_num_;
+  const std::vector<std::string>* sync_param_ = nullptr;
+  platform::NCCLContextMap* nccl_ctx_map_ = nullptr;
+
+  uint64_t sync_signal_;
+  const int sync_steps_;
+  int counter_;
+
+  void Synchronize();
+};
+
+class SectionWorker : public DeviceWorker {
+ public:
+  SectionWorker() {}
+  ~SectionWorker() override {}
+
+  void Initialize(const TrainerDesc& desc) override;
+
+  void BindingDataFeedMemory() override {}
+  void CreateDeviceResource(const ProgramDesc& main_prog) override{};
+
+  void TrainFiles() override;
+  void TrainFilesWithProfiler() override;
+
+  void PrintFetchVars() override {}
+
+  const platform::Place& place() const { return place_; }
+
+  void SetSectionIndex(int section_id) { section_id_ = section_id; }
+  void SetDeviceIndex(int tid) override { pipeline_id_ = tid; }
+  void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
+  void SetVarNames(const std::vector<std::string>& in_var_names,
+                   const std::vector<std::string>& out_var_names) {
+    in_var_names_ = &in_var_names;
+    out_var_names_ = &out_var_names;
+  }
+  void SetScopeQueue(ScopeQueue* in_scope_queue, ScopeQueue* out_scope_queue) {
+    in_scope_queue_ = in_scope_queue;
+    out_scope_queue_ = out_scope_queue;
+  }
+  void SetCountMutex(std::mutex* mutex) { worker_count_mutex_ = mutex; }
+  void SetWorkerCount(int* worker_count) { worker_count_ = worker_count; }
+  void SetSectionNum(int section_num) { section_num_ = section_num; }
+  void SetPipelineNum(int pipeline_num) { pipeline_num_ = pipeline_num; }
+  void SetNextSectionPlace(const paddle::platform::Place& place) {
+    next_section_place_ = place;
+  }
+  SyncFunctor* sync_func_ = nullptr;
+  void SetSyncFunctor(SyncFunctor* sync_func) { sync_func_ = sync_func; }
+
+  static std::atomic<int> cpu_id_;
+
+ protected:
+  void AutoSetCPUAffinity(bool reuse);
+  int section_id_;
+  int pipeline_id_;
+  int section_num_;
+  int pipeline_num_;
+  int thread_id_;
+  // This worker will consume scope from in_scope_queue_
+  // and produce scope to out_scope_queue_
+  ScopeQueue* in_scope_queue_ = nullptr;
+  ScopeQueue* out_scope_queue_ = nullptr;
+  const std::vector<std::string>* in_var_names_ = nullptr;
+  const std::vector<std::string>* out_var_names_ = nullptr;
+  std::mutex* worker_count_mutex_ = nullptr;
+  int* worker_count_ = nullptr;
+  paddle::platform::Place next_section_place_;
+
+  std::vector<std::unique_ptr<OperatorBase>> ops_;
+
+  platform::DeviceContext* dev_ctx_ = nullptr;
+};
+#endif
 }  // namespace framework
 }  // namespace paddle

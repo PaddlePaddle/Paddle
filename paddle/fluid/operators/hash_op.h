@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,14 +43,10 @@ class HashKernel : public framework::OpKernel<T> {
   virtual void Compute(const framework::ExecutionContext& context) const {
     auto* out_t = context.Output<framework::LoDTensor>("Out");
     auto* in_t = context.Input<framework::LoDTensor>("X");
-    int mod_by = context.Attr<int>("mod_by");
+    int64_t mod_by = context.Attr<int64_t>("mod_by");
     int num_hash = context.Attr<int>("num_hash");
 
     auto in_dims = in_t->dims();
-    auto in_lod = in_t->lod();
-    PADDLE_ENFORCE_EQ(
-        static_cast<uint64_t>(in_dims[0]), in_lod[0].back(),
-        "The actual input data's size mismatched with LoD information.");
 
     std::vector<int64_t> out_dims;
     HashOutputSize(in_dims, out_dims, num_hash);
@@ -63,10 +59,11 @@ class HashKernel : public framework::OpKernel<T> {
     for (int idx = 0; idx < seq_length; ++idx) {
       for (int ihash = 0; ihash != num_hash; ++ihash) {
         output[idx * num_hash + ihash] =
-            XXH64(input, sizeof(int) * last_dim, ihash) % mod_by;
+            XXH64(input, sizeof(T) * last_dim, ihash) % mod_by;
       }
       input += last_dim;
     }
+
     out_t->set_lod(in_t->lod());
   }
 };

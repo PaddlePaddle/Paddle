@@ -25,9 +25,10 @@
 
 namespace paddle {
 namespace framework {
-namespace details {
 
-constexpr char kLocalExecScopeName[] = "@LOCAL_EXE_SCOPE@";
+class Scope;
+
+namespace details {
 
 // Wraps ir::Node and provide helper utilities.
 // It's responsible for populating necessary fields of ir::Node.
@@ -107,7 +108,14 @@ class OpHandleBase {
 
   ir::Node *Node() { return node_; }
 
+  const ir::Node *Node() const { return node_; }
+
+  void SetLocalExecScopes(
+      const std::unordered_map<Scope *, Scope *> &scope_map);
+
  protected:
+  virtual std::vector<Scope *> GetLocalScopes() = 0;
+
   void RunAndRecordEvent(const std::function<void()> &callback);
 
   void RunAndRecordEvent(platform::Place p,
@@ -115,10 +123,14 @@ class OpHandleBase {
 
   virtual void RunImpl() = 0;
 
+  virtual void InitCUDA();
+
   ir::Node *node_;
   std::vector<VarHandleBase *> inputs_;
   std::vector<VarHandleBase *> outputs_;
   std::map<platform::Place, platform::DeviceContext *> dev_ctxes_;
+
+  std::vector<Scope *> local_exec_scopes_;
 
 #ifdef PADDLE_WITH_CUDA
   std::unordered_map<int, cudaEvent_t> events_;

@@ -58,10 +58,14 @@ class ScatterGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    ctx->SetOutputDim(framework::GradVarName("Updates"),
-                      ctx->GetInputDim("Updates"));
-    ctx->SetOutputDim(framework::GradVarName("X"),
-                      ctx->GetInputDim(framework::GradVarName("Out")));
+    if (ctx->HasOutput(framework::GradVarName("Updates"))) {
+      ctx->SetOutputDim(framework::GradVarName("Updates"),
+                        ctx->GetInputDim("Updates"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("X"))) {
+      ctx->SetOutputDim(framework::GradVarName("X"),
+                        ctx->GetInputDim(framework::GradVarName("Out")));
+    }
   }
 
  protected:
@@ -80,6 +84,14 @@ class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Ids", "The index input of scatter op where X will be updated");
     AddInput("Updates", "The updated value of scatter op");
     AddOutput("Out", "The output of scatter op");
+    AddAttr<bool>("overwrite",
+                  "(bool, defalut: True) "
+                  "The mode that updating the output when has same index,"
+                  "If True, use the overwrite mode to update the output"
+                  "of the same index, if False, use the accumulate mode to"
+                  "update the output of the same index,Default value is True."
+                  "You can set overwrite=False to implement scatter_add.")
+        .SetDefault(true);
     AddComment(R"DOC(
 Scatter Operator.
 

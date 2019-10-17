@@ -44,7 +44,7 @@ class SimpleLSTMRNN(fluid.Layer):
         self.cell_array = []
         self.hidden_array = []
 
-    def build_once(self, input_embedding, init_hidden=None, init_cell=None):
+    def _build_once(self, input_embedding, init_hidden=None, init_cell=None):
         self.weight_1_arr = []
         self.weight_2_arr = []
         self.bias_arr = []
@@ -176,9 +176,6 @@ class PtbModel(fluid.Layer):
             default_initializer=fluid.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale))
 
-    def build_once(self, input, label, init_hidden, init_cell):
-        pass
-
     def forward(self, input, label, init_hidden, init_cell):
         init_h = fluid.layers.reshape(
             init_hidden, shape=[self.num_layers, -1, self.hidden_size])
@@ -267,6 +264,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
                     for param in ptb_model.parameters():
                         dy_param_updated[param.name] = param.numpy()
 
+            dy_loss_value = dy_loss.numpy()
+            dy_last_cell_value = last_cell.numpy()
+            dy_last_hidden_value = last_hidden.numpy()
+
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -333,11 +334,11 @@ class TestDygraphPtbRnn(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     3]] = out[k]
 
-        self.assertTrue(np.array_equal(static_loss_value, dy_loss.numpy()))
+        self.assertTrue(np.array_equal(static_loss_value, dy_loss_value))
         self.assertTrue(
-            np.array_equal(static_last_cell_value, last_cell.numpy()))
+            np.array_equal(static_last_cell_value, dy_last_cell_value))
         self.assertTrue(
-            np.array_equal(static_last_hidden_value, last_hidden.numpy()))
+            np.array_equal(static_last_hidden_value, dy_last_hidden_value))
         for key, value in six.iteritems(static_param_init):
             self.assertTrue(np.array_equal(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):

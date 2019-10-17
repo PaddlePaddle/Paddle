@@ -13,6 +13,9 @@
 # limitations under the License.
 
 #FIXME:(gongwb) Move brpc's gtest dependency.
+
+include(GNUInstallDirs)
+
 IF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))
     IF(WITH_TESTING)
         ENABLE_TESTING()
@@ -28,14 +31,14 @@ IF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))
 
     IF(WIN32)
         set(GTEST_LIBRARIES
-            "${GTEST_INSTALL_DIR}/lib/gtest.lib" CACHE FILEPATH "gtest libraries." FORCE)
+            "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/gtest.lib" CACHE FILEPATH "gtest libraries." FORCE)
         set(GTEST_MAIN_LIBRARIES
-            "${GTEST_INSTALL_DIR}/lib/gtest_main.lib" CACHE FILEPATH "gtest main libraries." FORCE)
+            "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/gtest_main.lib" CACHE FILEPATH "gtest main libraries." FORCE)
     ELSE(WIN32)
         set(GTEST_LIBRARIES
-            "${GTEST_INSTALL_DIR}/lib/libgtest.a" CACHE FILEPATH "gtest libraries." FORCE)
+            "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgtest.a" CACHE FILEPATH "gtest libraries." FORCE)
         set(GTEST_MAIN_LIBRARIES
-            "${GTEST_INSTALL_DIR}/lib/libgtest_main.a" CACHE FILEPATH "gtest main libraries." FORCE)
+            "${GTEST_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}/libgtest_main.a" CACHE FILEPATH "gtest main libraries." FORCE)
     ENDIF(WIN32)
 
     IF(WITH_MKLML)
@@ -48,7 +51,7 @@ IF(WITH_TESTING OR (WITH_DISTRIBUTE AND NOT WITH_GRPC))
         ${EXTERNAL_PROJECT_LOG_ARGS}
         DEPENDS         ${GTEST_DEPENDS}
         GIT_REPOSITORY  "https://github.com/google/googletest.git"
-        GIT_TAG         "release-1.8.0"
+        GIT_TAG         "release-1.8.1"
         PREFIX          ${GTEST_SOURCES_DIR}
         UPDATE_COMMAND  ""
         CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}

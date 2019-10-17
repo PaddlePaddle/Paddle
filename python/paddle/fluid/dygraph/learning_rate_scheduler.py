@@ -27,6 +27,10 @@ __all__ = [
 class LearningRateDecay(object):
     """
     Base class of learning rate decay
+    
+    Define the common interface of an LearningRateDecay.
+    User should not use this class directly,
+    but need to use one of it's implementation.
     """
 
     def __init__(self, begin=0, step=1, dtype='float32'):
@@ -42,13 +46,21 @@ class LearningRateDecay(object):
         return lr
 
     def create_lr_var(self, lr):
+        """
+        convert lr from float to variable
+
+        Args: 
+            lr: learning rate
+        Returns:
+            learning rate variable
+        """
         from .. import layers
         lr = layers.create_global_var(
             name=unique_name.generate("learning_rate"),
             shape=[1],
             value=float(lr),
             dtype=self.dtype,
-            persistable=True)
+            persistable=False)
         return lr
 
     def step(self):
@@ -56,6 +68,46 @@ class LearningRateDecay(object):
 
 
 class PiecewiseDecay(LearningRateDecay):
+    """
+    Piecewise decay scheduler.
+
+    The algorithm can be described as the code below.
+
+    .. code-block:: text
+
+        boundaries = [10000, 20000]
+        values = [1.0, 0.5, 0.1]
+        if global_step < 10000:
+            learning_rate = 1.0
+        elif 10000 <= global_step < 20000:
+            learning_rate = 0.5
+        else:
+            learning_rate = 0.1
+
+    Parameters:
+        boundaries(list): A list of steps numbers. The type of element in the list is python int. 
+        values(list): A list of learning rate values that will be picked during
+            different step boundaries. The type of element in the list is python float.
+        begin(int): The begin step to initilize the global_step in the description above.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          boundaries = [10000, 20000]
+          values = [1.0, 0.5, 0.1]
+          with fluid.dygraph.guard():
+              optimizer = fluid.optimizer.SGD(
+                 learning_rate=fluid.dygraph.PiecewiseDecay(boundaries, values, 0) )
+    """
+
     def __init__(self, boundaries, values, begin, step=1, dtype='float32'):
         super(PiecewiseDecay, self).__init__(begin, step, dtype)
         self.boundaries = boundaries
@@ -63,16 +115,69 @@ class PiecewiseDecay(LearningRateDecay):
 
         self.vars = []
         for value in values:
-            self.vars.append(self.create_lr_var(value))
+            self.vars.append(value)
 
     def step(self):
         for i in range(len(self.boundaries)):
             if self.step_num < self.boundaries[i]:
                 return self.vars[i]
-        return self.vars[len(self.values) - 1]
+        return self.create_lr_var(self.vars[len(self.values) - 1])
 
 
 class NaturalExpDecay(LearningRateDecay):
+    """
+    Applies natural exponential decay to the initial learning rate.
+    
+    The algorithm can be described as following.
+
+    .. math::
+
+        decayed\_learning\_rate = learning\_rate * e^{y} 
+
+    If staircase is set to False, then:
+
+    .. math::
+
+        y = - decay\_rate * \\frac{global\_step}{decay\_steps}
+
+    If staircase is set to True, then:
+
+    .. math::
+
+        y = - decay\_rate * math.floor(\\frac{global\_step}{decay\_steps}) 
+
+    Parameters:
+        learning_rate(Variable|float): The initial learning rate. If the type 
+            is Variable, it's a tensor with shape [1], the data type can be  
+            float32 or float64. It also can be set to python int number.
+        decay_steps(int): The decay step size. It determines the decay cycle.
+        decay_rate(int): The decay rate.
+        staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The 
+            default value is False.
+        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          base_lr = 0.1
+          with fluid.dygraph.guard():
+              sgd_optimizer = fluid.optimizer.SGD(
+        	      learning_rate=fluid.dygraph.NaturalExpDecay(
+	    	            learning_rate=base_lr,
+        		    decay_steps=10000,
+		            decay_rate=0.5,
+		            staircase=True))
+
+    """
+
     def __init__(self,
                  learning_rate,
                  decay_steps,
@@ -99,6 +204,60 @@ class NaturalExpDecay(LearningRateDecay):
 
 
 class ExponentialDecay(LearningRateDecay):
+    """
+    Applies exponential decay to the learning rate.
+
+    The algorithm can be described as following.
+    
+    .. math::
+
+        decayed\_learning\_rate = learning\_rate * decay\_rate ^ y 
+
+    If staircase is set to False, then:
+
+    .. math::
+
+        y = \\frac{global\_step}{decay\_steps} 
+
+    If staircase is set to True, then:
+
+    .. math::
+
+        y = math.floor(\\frac{global\_step}{decay\_steps})
+
+
+    Parameters:
+        learning_rate(Variable|float): The initial learning rate. If the type 
+            is Variable, it's a tensor with shape [1], the data type can be  
+            float32 or float64. It also can be set to python int number.
+        decay_steps(int): The decay step size. It determines the decay cycle.
+        decay_rate(float): The decay rate.
+        staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The 
+            default value is False.
+        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          base_lr = 0.1
+          with fluid.dygraph.guard():
+              sgd_optimizer = fluid.optimizer.SGD(
+    	            learning_rate=fluid.dygraph.ExponentialDecay(
+		        learning_rate=base_lr,
+    		        decay_steps=10000,
+		        decay_rate=0.5,
+		        staircase=True))
+
+    """
+
     def __init__(self,
                  learning_rate,
                  decay_steps,
@@ -125,6 +284,54 @@ class ExponentialDecay(LearningRateDecay):
 
 
 class InverseTimeDecay(LearningRateDecay):
+    """
+    Applies inverse time decay to the initial learning rate.
+
+    The algorithm can be described as following.
+    If staircase is set to False, then:
+
+    .. math::
+
+        decayed\_learning\_rate = \\frac{learning\_rate}{1 + decay\_rate * \\frac{global\_step}{decay\_step}}  
+
+    If staircase is set to True, then:
+
+    .. math::
+
+        decayed\_learning\_rate = \\frac{learning\_rate}{1 + decay\_rate * math.floor(\\frac{global\_step}{decay\_step})}
+
+    Parameters:
+        learning_rate(Variable|float): The initial learning rate. If the type 
+            is Variable, it's a tensor with shape [1], the data type can be  
+            float32 or float64. It also can be set to python int number.
+        decay_steps(int): The decay step size. It determines the decay cycle.
+        decay_rate(float): The decay rate.
+        staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The 
+            default value is False.
+        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be 
+            'float32', 'float64'. The default value is 'float32'.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          base_lr = 0.1
+          with fluid.dygraph.guard():
+              sgd_optimizer = fluid.optimizer.SGD(
+	          learning_rate=fluid.dygraph.InverseTimeDecay(
+		        learning_rate=base_lr,
+		        decay_steps=10000,
+		        decay_rate=0.5,
+		        staircase=True))
+
+    """
+
     def __init__(self,
                  learning_rate,
                  decay_steps,
@@ -151,6 +358,58 @@ class InverseTimeDecay(LearningRateDecay):
 
 
 class PolynomialDecay(LearningRateDecay):
+    """
+    Applies polynomial decay to the initial learning rate.
+
+    The algorithm can be described as following.
+
+    If cycle is set to True, then:
+
+    .. math::
+
+        decay\_steps & = decay\_steps * math.ceil(\\frac{global\_step}{decay\_steps}) 
+
+        decayed\_learning\_rate & = (learning\_rate-end\_learning\_rate)*(1-\\frac{global\_step}{decay\_steps})^{power}+end\_learning\_rate
+
+    If cycle is set to False, then:
+
+    .. math::
+
+        global\_step & = min(global\_step, decay\_steps) 
+
+        decayed\_learning\_rate & = (learning\_rate-end\_learning\_rate)*(1-\\frac{global\_step}{decay\_steps})^{power}+end\_learning\_rate
+
+    Parameters:
+        learning_rate(Variable|float): The initial learning rate. If the type 
+            is Variable, it's a tensor with shape [1], the data type can be  
+            float32 or float64. It also can be set to python int number.
+        decay_steps(int32): The decay step size. It determines the decay cycle.
+        end_learning_rate(float, optional): The minimum final learning rate. The default value is 0.0001.
+        power(float, optional): Power of polynomial. The default value is 1.0.
+        cycle(bool, optional): If set true, decay the learning rate every decay_steps. The default value is False.
+        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          start_lr = 0.01
+          total_step = 5000
+          end_lr = 0
+          with fluid.dygraph.guard():
+              optimizer  = fluid.optimizer.SGD(
+                  learning_rate = fluid.dygraph.PolynomialDecay(
+                  start_lr, total_step, end_lr, power=1.0) )
+
+    """
+
     def __init__(self,
                  learning_rate,
                  decay_steps,
@@ -189,6 +448,40 @@ class PolynomialDecay(LearningRateDecay):
 
 
 class CosineDecay(LearningRateDecay):
+    """
+    Applies cosine decay to the learning rate.
+
+    The algorithm can be described as following.
+
+    .. math::
+
+        decayed\_learning\_rate = learning\_rate * 0.5 * (math.cos(global\_step * \\frac{math.pi}{step\_each\_epoch} ) + 1)
+    
+    Parameters:
+        learning_rate(Variable|float): The initial learning rate. If the type 
+            is Variable, it's a tensor with shape [1], the data type can be  
+            float32 or float64. It also can be set to python int number.
+        step_each_epoch(int): The number of steps in an epoch.
+        epochs(int): The number of epochs.
+        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
+
+    Returns:
+        None.
+
+    Examples:
+	.. code-block:: python
+
+  	    base_lr = 0.1
+            with fluid.dygraph.guard():
+                optimizer  = fluid.optimizer.SGD(
+        	    learning_rate = fluid.dygraph.CosineDecay(
+	                    base_lr, 10000, 120) )
+    """
+
     def __init__(self,
                  learning_rate,
                  step_each_epoch,
@@ -211,6 +504,44 @@ class CosineDecay(LearningRateDecay):
 
 
 class NoamDecay(LearningRateDecay):
+    """
+    Applies Noam decay to the initial learning rate. 
+
+    The algorithm can be described as following.
+
+    .. math::
+
+        decayed\_learning\_rate = d_{model}^{-0.5} * min(global\_step^{-0.5}, global\_step * warmup\_steps^{-1.5})
+
+    Please reference `attention is all you need <https://arxiv.org/pdf/1706.03762.pdf>`_ 
+
+    Parameters:
+        d$_{model}$(Variable|int): The dimensionality of input and output feature vector of model. If type is Variable, 
+            it's a tensor with shape [1] and the data type can be int32 or int64. The type can also be python int.
+        warmup_steps(Variable|int): The number of warmup steps. A super parameter. If type is Variable, 
+            it's a tensor with shape [1] and the data type can be int32 or int64. The type can also be python int.
+        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
+
+    Returns:
+        None.
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          warmup_steps = 100
+          learning_rate = 0.01
+          with fluid.dygraph.guard():
+              optimizer  = fluid.optimizer.SGD(
+                  learning_rate = fluid.dygraph.NoamDecay(
+                         1/(warmup_steps *(learning_rate ** 2)),
+                         warmup_steps) )
+    """
+
     def __init__(self, d_model, warmup_steps, begin=1, step=1, dtype='float32'):
         super(NoamDecay, self).__init__(begin, step, dtype)
         self.d_model = d_model

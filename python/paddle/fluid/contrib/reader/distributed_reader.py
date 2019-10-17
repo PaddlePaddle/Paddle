@@ -15,52 +15,51 @@
 from __future__ import print_function
 import os
 
-__all__ = ["distributed_sampler"]
+__all__ = ["distributed_batch_reader"]
 
 
-def distributed_sampler(reader, batch_size):
+def distributed_batch_reader(batch_reader):
     """
-    Create a distributed reader.
+    Create a reader for multi-process training. The input must be a batch reader.
 
-    :param reader: the data reader to read from.
-    :type reader: callable
-    :param batch_size: the size of the batch
-    :type batch_size: int
+    Args:
+        batch_reader (callable): The input reader should be a batch reader.
+
+    Examples:
+
+    .. code-block:: python
+           import paddle
+           import paddle.fluid as fluid
+
+           train_reader = paddle.batch(paddle.dataset.mnist.train(),
+                    batch_size=32,drop_last=True)
+           train_reader = fluid.contrib.reader.distributed_batch_reader(
+                    train_reader)
+
     """
+    trainers_num = int(os.environ.get('PADDLE_TRAINERS_NUM', 1))
+    trainer_id = int(os.getenv("PADDLE_TRAINER_ID", 0))
+    assert trainer_id < trainers_num
 
-    def batch_reader():
-        if not os.getenv('PADDLE_TRAINER_ID'):
-            raise RuntimeError(
-                "The current program is not in distributed mode.")
+    def decorate_for_multi_process():
+        if trainers_num > 1:
+            print("start data reader (trainers_num: {}, trainer_id: {})".format(
+                trainers_num, trainer_id))
 
-        trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-        trainer_count = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
+        train_data, idx = None, 1
+        for batch_id, data in enumerate(batch_reader()):
+            if trainers_num > 1:
+                if idx < trainers_num:
+                    if idx == trainer_id + 1:
+                        train_data = data
+                    idx += 1
+                else:
+                    if idx == trainer_id + 1:
+                        train_data = data
+                    assert train_data is not None, "train data should not be None."
+                    yield train_data
+                    train_data, idx = None, 1
+            else:
+                yield data
 
-        def _slice_data(size):
-            per_node_lines = size // trainer_count
-            return [
-                trainer_id * per_node_lines, (trainer_id + 1) * per_node_lines
-            ]
-
-        r = reader()
-        b = []
-
-        for instance in r:
-            b.append(instance)
-            if len(b) == batch_size:
-                if len(b) >= trainer_count:
-                    begin, end = _slice_data(len(b))
-                    yield b[begin:end]
-                b = []
-
-        if len(b) >= trainer_count:
-            begin, end = _slice_data(len(b))
-            yield b[begin:end]
-
-    # Batch size check
-    batch_size = int(batch_size)
-    if batch_size <= 0:
-        raise ValueError("batch_size should be a positive integeral value, "
-                         "but got batch_size={}".format(batch_size))
-
-    return batch_reader
+    return decorate_for_multi_process

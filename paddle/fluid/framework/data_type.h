@@ -28,7 +28,9 @@ struct DataTypeTrait {};
 // Stub handle for void
 template <>
 struct DataTypeTrait<void> {
-  constexpr static auto DataType = proto::VarType::RAW;
+  constexpr static proto::VarType::Type DataType() {
+    return proto::VarType::RAW;
+  }
 };
 
 #define _ForEachDataTypeHelper_(callback, cpp_type, proto_type) \
@@ -45,10 +47,10 @@ struct DataTypeTrait<void> {
   _ForEachDataTypeHelper_(callback, int16_t, INT16);                    \
   _ForEachDataTypeHelper_(callback, int8_t, INT8)
 
-#define DefineDataTypeTrait(cpp_type, proto_type) \
-  template <>                                     \
-  struct DataTypeTrait<cpp_type> {                \
-    constexpr static auto DataType = proto_type;  \
+#define DefineDataTypeTrait(cpp_type, proto_type)                           \
+  template <>                                                               \
+  struct DataTypeTrait<cpp_type> {                                          \
+    constexpr static proto::VarType::Type DataType() { return proto_type; } \
   }
 
 _ForEachDataType_(DefineDataTypeTrait);

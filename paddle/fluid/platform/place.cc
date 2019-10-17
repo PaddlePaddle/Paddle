@@ -40,15 +40,6 @@ class PlacePrinter : public boost::static_visitor<> {
 
 }  // namespace detail
 
-static Place the_default_place;
-
-void set_place(const Place &place) { the_default_place = place; }
-const Place &get_place() { return the_default_place; }
-
-const CUDAPlace default_gpu() { return CUDAPlace(0); }
-const CPUPlace default_cpu() { return CPUPlace(); }
-const CUDAPinnedPlace default_cuda_pinned() { return CUDAPinnedPlace(); }
-
 bool is_gpu_place(const Place &p) {
   return boost::apply_visitor(IsCUDAPlace(), p);
 }

@@ -22,7 +22,6 @@ limitations under the License. */
 using anakin::AK_FLOAT;
 using anakin::Precision;
 using anakin::saber::NV;
-using anakin::saber::X86;
 using anakin::saber::Shape;
 using anakin::PBlock;
 using anakin::PTuple;
@@ -79,6 +78,7 @@ TEST_F(TestAnakinEngine, Execute) {
   std::map<std::string, framework::LoDTensor *> outputs = {{"y", &y}};
 
   cudaStream_t stream;
+  cudaStreamCreate(&stream);
 
   engine_->Execute(inputs, outputs, stream);
   auto *y_data_gpu = y_data;

@@ -20,10 +20,10 @@ import os
 
 import paddle
 import paddle.fluid.incubate.data_generator as data_generator
+from paddle.fluid.log_helper import get_logger
 
-logging.basicConfig()
-logger = logging.getLogger("paddle")
-logger.setLevel(logging.INFO)
+logger = get_logger(
+    "paddle", logging.INFO, fmt='%(asctime)s - %(levelname)s - %(message)s')
 
 DATA_URL = "http://paddle-ctr-data.bj.bcebos.com/avazu_ctr_data.tgz"
 DATA_MD5 = "c11df99fbd14e53cd4bfa6567344b26e"

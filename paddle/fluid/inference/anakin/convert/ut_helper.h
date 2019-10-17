@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/anakin/convert/op_converter.h"
 #include "paddle/fluid/inference/anakin/engine.h"
@@ -33,7 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 using anakin::Precision;
-using anakin::saber::X86;
 
 namespace paddle {
 namespace inference {
@@ -137,7 +137,7 @@ class AnakinConvertValidation {
       if (parameters_.count(input)) continue;
       auto& t = inference::analysis::GetFromScope<framework::LoDTensor>(*scope_,
                                                                         input);
-      auto t_shape = framework::vectorize2int(t.dims());
+      auto t_shape = framework::vectorize<int>(t.dims());
       while (t_shape.size() < 4) {
         t_shape.push_back(1);
       }
@@ -215,13 +215,14 @@ class AnakinConvertValidation {
 
 template class AnakinConvertValidation<::anakin::saber::NV,
                                        ::anakin::Precision::FP32>;
-template class AnakinConvertValidation<::anakin::saber::X86,
-                                       ::anakin::Precision::FP32>;
-
 template class AnakinConvertValidation<::anakin::saber::NV,
                                        ::anakin::Precision::INT8>;
+#ifdef ANAKIN_X86_PLACE
+template class AnakinConvertValidation<::anakin::saber::X86,
+                                       ::anakin::Precision::FP32>;
 template class AnakinConvertValidation<::anakin::saber::X86,
                                        ::anakin::Precision::INT8>;
+#endif
 }  // namespace anakin
 }  // namespace inference
 }  // namespace paddle

@@ -17,6 +17,8 @@ from paddle.fluid import compiler
 import unittest
 import logging
 import six
+import os
+os.environ['CPU_NUM'] = str(4)
 
 
 class TestBase(unittest.TestCase):

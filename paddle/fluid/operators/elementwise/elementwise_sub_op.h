@@ -4,7 +4,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-   http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,14 +14,27 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct SubFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a - b; }
+template <typename DeviceContext, typename T>
+void default_elementwise_sub(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y, framework::Tensor* z) {
+  int axis = ctx.Attr<int>("axis");
+  ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                        SubFunctor<T>(), z);
+}
+
+template <typename DeviceContext, typename T, class Enable = void>
+struct SameDimsElemwiseSub {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* y,
+                  framework::Tensor* z);
 };
 
 template <typename DeviceContext, typename T>
@@ -31,11 +44,15 @@ class ElementwiseSubKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* z = ctx.Output<framework::LoDTensor>("Out");
-
     z->mutable_data<T>(ctx.GetPlace());
-    int axis = ctx.Attr<int>("axis");
-    ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                          SubFunctor<T>(), z);
+
+    auto dims_equal = x->dims() == y->dims();
+    if (dims_equal) {
+      SameDimsElemwiseSub<DeviceContext, T> same_dims_sub;
+      same_dims_sub(ctx, x, y, z);
+    } else {
+      default_elementwise_sub<DeviceContext, T>(ctx, x, y, z);
+    }
   }
 };
 
@@ -48,6 +65,31 @@ template <typename T>
 struct SubGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return -dout; }
 };
+
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+elementwise_sub_grad(const framework::ExecutionContext& ctx,
+                     const framework::Tensor* x, const framework::Tensor* y,
+                     const framework::Tensor* out,
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+  ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
+      ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
+}
+
+#ifdef PADDLE_WITH_CUDA
+// cuda definition
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+elementwise_sub_grad(const framework::ExecutionContext& ctx,
+                     const framework::Tensor* x, const framework::Tensor* y,
+                     const framework::Tensor* out,
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy);
+#endif
 
 template <typename DeviceContext, typename T>
 class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
@@ -63,9 +105,13 @@ class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
     // skip out, x, y
     auto* out = dout;
     auto *x = dout, *y = dout;
-
-    ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
-        ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
+    if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
+      elementwise_sub_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
+    } else {
+      ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
+          ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(),
+          SubGradDY<T>());
+    }
   }
 };
 

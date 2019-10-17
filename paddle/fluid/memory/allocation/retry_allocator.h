@@ -14,12 +14,14 @@
 
 #pragma once
 
+#include <atomic>              // NOLINT
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
 #include <utility>
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace memory {
@@ -40,7 +42,7 @@ class RetryAllocator : public Allocator {
 
  protected:
   void FreeImpl(Allocation* allocation) override;
-  Allocation* AllocateImpl(size_t size, Allocator::Attr attr) override;
+  Allocation* AllocateImpl(size_t size) override;
 
  private:
   std::shared_ptr<Allocator> underlying_allocator_;
@@ -48,9 +50,7 @@ class RetryAllocator : public Allocator {
   std::mutex mutex_;
   std::condition_variable cv_;
 
-  // For debug, We can add an atomic integer to record how many memory sizes are
-  // waited to allocate
-  // std::atomic<size_t> waited_allocate_size_{0};
+  std::atomic<size_t> waited_allocate_size_{0};
 };
 
 }  // namespace allocation

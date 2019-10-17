@@ -26,10 +26,10 @@ class TemporalShiftOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of TemporalShiftOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of TemporalShiftOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of TemporalShiftOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of TemporalShiftOp should not be null.");
 
     auto dim_x = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(dim_x.size(), 4,
@@ -38,9 +38,10 @@ class TemporalShiftOp : public framework::OperatorWithKernel {
     int seg_num = ctx->Attrs().Get<int>("seg_num");
     float shift_ratio = ctx->Attrs().Get<float>("shift_ratio");
     PADDLE_ENFORCE_GT(seg_num, 0, "Attr(seg_num) should be greater than 0.");
-    PADDLE_ENFORCE(shift_ratio > 0 || shift_ratio < .5,
-                   "Attr(shift_ratio) should be greater than 0 and less "
-                   "than 0.5.");
+    PADDLE_ENFORCE_GT(shift_ratio, 0.,
+                      "Attr(shift_ratio) should be greater than 0");
+    PADDLE_ENFORCE_LT(shift_ratio, 0.5,
+                      "Attr(shift_ratio) should be less than 0.5");
 
     if (ctx->IsRuntime()) {
       PADDLE_ENFORCE_EQ(
@@ -68,7 +69,8 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
              "This is a 4-D tensor with shape of [N*T,  C, H, W]. "
              "While N is the batch size, T is the temporal segment "
              "number, C is the channel number, H is the height of "
-             "features and W is the width of features.");
+             "features and W is the width of features. "
+             "The data type is float32 and float64");
     AddOutput("Out",
               "The output tensor of temporal shift operator. "
               "This is a 4-D tensor in the same shape with Input(X).");
@@ -81,7 +83,8 @@ class TemporalShiftOpMaker : public framework::OpProtoAndCheckerMaker {
         "The shift ratio of the channels, the first :attr:`shift_ratio` part "
         "of channels will be shifted by -1 along the temporal dimension, "
         "and the second :attr:`shift_ratio` part of channels will be shifted "
-        "by 1 along the temporal dimension. Default 0.25.")
+        "by 1 along the temporal dimension. :attr:`shift_ratio` should be in "
+        "range [0, 0.5]. Default 0.25.")
         .SetDefault(0.25);
 
     AddComment(R"DOC(

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD']
+__all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section']
 
 
 class DeviceWorker(object):
@@ -146,27 +146,32 @@ class DownpourSGD(DeviceWorker):
                 dense_table.dense_value_name.extend(i.dense_variable_name)
                 dense_table.table_id = \
                     i.table_id
-        sparse_table = downpour.sparse_table.add()
-        sparse_table.table_id = \
-                    self._fleet_desc.trainer_param.sparse_table[0].table_id
-        sparse_table.sparse_key_name.extend(
-            self._fleet_desc.trainer_param.sparse_table[0].slot_key)
-        sparse_table.sparse_value_name.extend(
-            self._fleet_desc.trainer_param.sparse_table[0].slot_value)
-        sparse_table.sparse_grad_name.extend(
-            self._fleet_desc.trainer_param.sparse_table[0].slot_gradient)
-        if opt_info["use_cvm"]:
-            sparse_table.emb_dim = \
-                self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
-                0].accessor.fea_dim
-            sparse_table.fea_dim = sparse_table.emb_dim
-        else:
-            sparse_table.emb_dim = \
-                self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
-                0].accessor.fea_dim - 2
-            sparse_table.fea_dim = sparse_table.emb_dim + 2
-        # TODO(guru4elephant): hard code here, need to improve
-        sparse_table.label_var_name = "click"
+        sparse_len = len(self._fleet_desc.trainer_param.sparse_table)
+        for i in range(sparse_len):
+            sparse_table = downpour.sparse_table.add()
+            sparse_table.table_id = \
+                        self._fleet_desc.trainer_param.sparse_table[i].table_id
+            sparse_table.sparse_key_name.extend(
+                self._fleet_desc.trainer_param.sparse_table[i].slot_key)
+            sparse_table.sparse_value_name.extend(
+                self._fleet_desc.trainer_param.sparse_table[i].slot_value)
+            sparse_table.sparse_grad_name.extend(
+                self._fleet_desc.trainer_param.sparse_table[i].slot_gradient)
+            if opt_info["use_cvm"]:
+                sparse_table.emb_dim = \
+                    self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
+                    i].accessor.fea_dim
+                sparse_table.fea_dim = sparse_table.emb_dim
+            else:
+                sparse_table.emb_dim = \
+                    self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
+                    i].accessor.fea_dim - 2
+                sparse_table.fea_dim = sparse_table.emb_dim + 2
+            # TODO(guru4elephant): hard code here, need to improve
+            sparse_table.label_var_name = "click"
+        if opt_info["stat_var_names"]:
+            for i in opt_info["stat_var_names"]:
+                downpour.stat_var_names.extend([i])
 
         for i in self._fleet_desc.trainer_param.dense_table:
             if i.table_id in dense_table_set:
@@ -179,6 +184,58 @@ class DownpourSGD(DeviceWorker):
         if self._infer:
             downpour.push_dense = False
             downpour.push_sparse = False
+
+
+class Section(DeviceWorker):
+    """
+    SectionWorker
+    """
+
+    def __init__(self):
+        """
+        Init.
+        """
+        super(Section, self).__init__()
+
+    def _gen_worker_desc(self, trainer_desc):
+        """
+        Generator worker desc, which device worker is SectionWorker.
+        Args:
+            trainer_desc(TrainerDesc): a TrainerDesc object
+        """
+        from google.protobuf import text_format
+        from . import core
+        trainer_desc.device_worker_name = "SectionWorker"
+        pipeline_opt = self._program._pipeline_opt
+        section_param = trainer_desc.section_param
+        section_param.queue_size = pipeline_opt["queue_size"]
+        section_param.sync_steps = pipeline_opt["sync_steps"]
+        section_param.start_cpu_core_id = pipeline_opt["start_cpu_core_id"]
+        for e in pipeline_opt["param_need_sync"]:
+            section_param.param_need_sync.append(e)
+        for i, program in enumerate(pipeline_opt["section_program_list"]):
+            cfg = section_param.section_config.add()
+            cfg.program_desc.ParseFromString(program["program"]._get_desc()
+                                             .serialize_to_string())
+            # TODO: why does not work
+            #cfg.program_desc.CopyFrom(program.program._get_desc())
+            place = pipeline_opt["place_list"][i]
+            if isinstance(place, core.CPUPlace):
+                cfg.place = cfg.CPUPlace
+            elif isinstance(place, core.CUDAPlace):
+                cfg.place = cfg.CUDAPlace
+            elif isinstance(place, core.CUDAPinnedPlace):
+                cfg.place = cfg.CUDAPinnedPlace
+            else:
+                raise NotImplementedError(
+                    "SectionWorker only supports CPUPlace, CUDAPlace and CUDAPinnedPlace now."
+                )
+
+            cfg.concurrency = pipeline_opt["concurrency_list"][i]
+            for var in program["input_set"]:
+                cfg.section_in_var_names.append(var)
+            for var in program["output_set"]:
+                cfg.section_out_var_names.append(var)
 
 
 class DeviceWorkerFactory(object):

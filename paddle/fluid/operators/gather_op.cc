@@ -74,6 +74,13 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");
     AddOutput("Out", "The output of gather op");
+    AddAttr<bool>(
+        "overwrite",
+        "(bool, default: False) "
+        "In backward process, calc the grad when has same index,"
+        "If true, update the grad using the overwrite mode in same index,"
+        "If false, using the accumulate mode in same index.")
+        .SetDefault(true);
     AddComment(R"DOC(
 Gather Operator.
 
