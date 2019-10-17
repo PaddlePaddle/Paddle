@@ -1018,6 +1018,8 @@ class OpTest(unittest.TestCase):
             diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
 
+            #print("============== ", a, b, abs_a, diff_mat, max_diff)
+
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
                 return ("%s Variable %s max gradient diff %f over limit %f, "
@@ -1090,7 +1092,6 @@ class OpTest(unittest.TestCase):
         ]
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set)
-
         self._assert_is_close(numeric_grads, analytic_grads, inputs_to_check,
                               max_relative_error,
                               "Gradient Check On %s" % str(place))
@@ -1102,6 +1103,15 @@ class OpTest(unittest.TestCase):
             self._assert_is_close(numeric_grads, dygraph_grad, inputs_to_check,
                                   max_relative_error,
                                   "Gradient Check On %s" % str(place))
+
+    def _find_var_in_dygraph(self, output_vars, name):
+        if name in output_vars:
+            return output_vars[name]
+        else:
+            for output_vars_index in output_vars:
+                for output_vars_selected in output_vars[output_vars_index]:
+                    if output_vars_selected.name == name:
+                        return output_vars_selected
 
     def _get_dygraph_grad(self,
                           inputs_to_check,
@@ -1264,10 +1274,10 @@ class OpTest(unittest.TestCase):
 
             outputs_valid = {}
             for output_name in output_names:
-                outputs_valid[output_name] = outputs[output_name]
+                outputs_valid[output_name] = self._find_var_in_dygraph(
+                    outputs, output_name)  #outputs[output_name]
 
             if len(outputs_valid) == 1:
-                #print("---------LOG--------- outputs_valid = 1")
                 loss = block.create_var(
                     dtype=self.dtype,
                     type=core.VarDesc.VarType.LOD_TENSOR,
@@ -1275,17 +1285,14 @@ class OpTest(unittest.TestCase):
                     stop_gradient=False,
                     shape=[1])
                 for outputs_valid_key in outputs_valid:
-                    #print("outputs_valid_key ", outputs_valid_key, " ", outputs_valid[outputs_valid_key])
                     block.append_op(
                         type="mean",
                         inputs={"X": outputs_valid[outputs_valid_key]},
                         outputs={"Out": [loss]},
                         attrs=None)
             else:
-                #print("---------LOG--------- outputs_valid = 2")
                 avg_sum = []
                 for cur_loss in outputs_valid:
-                    #print("---------LOG--------- dygraph ", cur_loss)
                     cur_avg_loss = block.create_var(
                         dtype=self.dtype,
                         type=core.VarDesc.VarType.LOD_TENSOR,
@@ -1319,7 +1326,6 @@ class OpTest(unittest.TestCase):
                     inputs={"X": loss_sum},
                     outputs={"Out": loss},
                     attrs={'scale': 1.0 / float(len(avg_sum))})
-            #print("mean ", loss)
             loss.backward()
 
             #print("backward?")

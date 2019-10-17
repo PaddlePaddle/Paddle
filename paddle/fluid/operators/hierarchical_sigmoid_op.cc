@@ -234,10 +234,10 @@ class HierarchicalSigmoidGradOpGradVarTypeInference
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto w_grad_var_name = ctx->Output(framework::GradVarName("W")).front();
-    auto bias_grad_var_name_vec = ctx->Output(framework::GradVarName("Bias"));
+    auto has_bias_grad_var = ctx->HasOutput(framework::GradVarName("Bias"));
     std::string bias_grad_var_name;
     bool hasBias = false;
-    if (bias_grad_var_name_vec.size()) {
+    if (has_bias_grad_var) {
       hasBias = true;
       bias_grad_var_name = ctx->Output(framework::GradVarName("Bias")).front();
     }

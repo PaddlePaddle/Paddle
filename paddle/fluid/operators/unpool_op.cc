@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/unpool_op.h"
+#include <memory>
 #include <string>
 #include <vector>
 namespace paddle {
@@ -113,6 +114,22 @@ class UnpoolOp : public framework::OperatorWithKernel {
   }
 };
 
+class UnpoolOpGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("Indices", Input("Indices"));
+    op->SetInput("Out", Output("Out"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+};
+
 class UnpoolOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
@@ -135,7 +152,7 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(unpool, ops::UnpoolOp, ops::Unpool2dOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::UnpoolOpGradMaker);
 REGISTER_OPERATOR(unpool_grad, ops::UnpoolOpGrad);
 REGISTER_OP_CPU_KERNEL(
     unpool, ops::UnpoolKernel<paddle::platform::CPUDeviceContext, float>,

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/nce_op.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -190,6 +191,32 @@ By default this operator uses a uniform distribution for sampling.
   }
 };
 
+class NCEGradOpMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *op = new framework::OpDesc();
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("Input", Input("Input"));
+    op->SetInput("Label", Input("Label"));
+    op->SetInput("Bias", Input("Bias"));
+    op->SetInput("Weight", Input("Weight"));
+    op->SetInput("Cost", Output("Cost"));
+    op->SetInput("SampleLogits", Output("SampleLogits"));
+    op->SetInput("SampleLabels", Output("SampleLabels"));
+    op->SetInput("SampleWeight", Input("SampleWeight"));
+    op->SetInput("CustomDistProbs", Input("CustomDistProbs"));
+    op->SetInput("CustomDistAlias", Input("CustomDistAlias"));
+    op->SetInput("CustomDistAliasProbs", Input("CustomDistAliasProbs"));
+    op->SetInput(framework::GradVarName("Cost"), OutputGrad("Cost"));
+    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+    op->SetOutput(framework::GradVarName("Weight"), InputGrad("Weight"));
+    op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+};
+
 class NCEOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -254,9 +281,7 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(nce, ops::NCEOp,
-                  paddle::framework::DefaultGradOpDescMaker<true>,
-                  ops::NCEOpMaker);
+REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpMaker, ops::NCEGradOpMaker);
 REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad, ops::NCEOpGradVarTypeInference);
 REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);

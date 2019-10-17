@@ -146,7 +146,7 @@ class TestConv3dOp(OpTest):
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
-            place, ['Input'],
+            place, ['Filter'],
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Input']),

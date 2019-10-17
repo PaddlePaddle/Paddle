@@ -226,7 +226,9 @@ class TestWarpCTCOp(OpTest):
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss", max_relative_error=0.007)
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_grad(
+            ["Logits"], "Loss", max_relative_error=0.007, check_dygraph=False)
 
 
 class TestWarpCTCOpCase1(TestWarpCTCOp):
@@ -320,7 +322,9 @@ class TestWarpCTCOpWithPadding(OpTest):
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss", max_relative_error=0.007)
+        # TODO(wangzhongpu): support lod in dygraph mode
+        self.check_grad(
+            ["Logits"], "Loss", max_relative_error=0.007, check_dygraph=False)
 
 
 class TestWarpCTCOpWithPaddingCase1(TestWarpCTCOpWithPadding):
