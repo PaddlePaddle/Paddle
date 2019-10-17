@@ -408,7 +408,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
   }
   // slots whose embedding has been stop gradient or
-  // slots which have no embedding
+  // not involved in forward-backward
   uint64_t no_grad_fea_num = 0u;
   for (size_t i = sparse_grad_names.size(); i < sparse_key_names.size(); ++i) {
     Variable* var = scope.FindVar(sparse_key_names[i]);
