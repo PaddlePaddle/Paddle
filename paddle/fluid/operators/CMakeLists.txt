@@ -128,3 +128,5 @@ endif()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
+
+cc_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op)
