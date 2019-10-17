@@ -14,7 +14,6 @@
 
 #include <ios>
 #include <fstream>
-#include <gtest/gtest.h>
 
 #include "lite/api/paddle_use_kernels.h"
 #include "lite/api/paddle_use_ops.h"
@@ -23,14 +22,9 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
-namespace paddle {
-namespace lite {
-
-using paddle::AnalysisConfig;
-
-TEST(AnalysisPredictor, Lite) {
-
-  AnalysisConfig config;
+int main() {
+  LOG(INFO) << "Hello World!";
+  paddle::AnalysisConfig config;
   config.SetModel("/shixiaowei02/Paddle_lite/xingzhaolong/leaky_relu_model");
   config.SwitchUseFeedFetchOps(false);
   config.EnableUseGpu(10, 1);
@@ -39,8 +33,5 @@ TEST(AnalysisPredictor, Lite) {
 
   auto predictor = CreatePaddlePredictor(config);
   PADDLE_ENFORCE_NOT_NULL(predictor.get());
+  return 0;
 }
-
-
-}  // namespace lite
-}  // namespace paddle 

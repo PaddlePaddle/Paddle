@@ -168,6 +168,9 @@ void OrganizeProgram(Node *merged_node,
                           subgraph.size());
 
   std::unordered_set<Node *> io_var_nodes = GetRelatedIOVarNodes(subgraph);
+  for (const auto* node: io_var_nodes) {
+    LOG(INFO) << "IO Variable Name: " << node->Name();
+  }
 
   std::vector<framework::OpDesc*> subgraph_ops;
   for (auto *op_node : subgraph) {
@@ -178,6 +181,9 @@ void OrganizeProgram(Node *merged_node,
   ModifyEngineProgram(merged_node, host_program, engine_program, host_sub_block,
                       io_var_nodes, subgraph_ops);
   *repetitive_params = ExtractParameters(io_var_nodes);
+  for (const auto& param: *repetitive_params) {
+    LOG(INFO) << "Repetitive param: " << param;
+  }
 
   host_program->Flush();
   engine_program->Flush();
@@ -199,6 +205,7 @@ void LiteSubgraphPass::SetUpEngine(framework::ProgramDesc* program,
     std::ostringstream os;
     platform::CPUDeviceContext ctx;
     for (const auto& param: params) {
+      LOG(INFO) << "Serialize param: " << param;
       PADDLE_ENFORCE_NOT_NULL(scope->FindVar(param), "Block should already have a '%s' variable",
         param);
       auto* tensor = scope->FindVar(param)->GetMutable<framework::LoDTensor>();
@@ -261,6 +268,8 @@ void LiteSubgraphPass::ApplyImpl(
 
   auto teller = [&lite_ops_filter](const Node *node) {
     if (!node->IsOp() || !node->Op())
+      return false;
+    else if (node->Op()->Type() == "feed" || node->Op()->Type() == "fetch")
       return false;
     else if (std::find(lite_ops_filter.begin(), lite_ops_filter.end(),
                        node->Op()->Type()) != lite_ops_filter.end())
