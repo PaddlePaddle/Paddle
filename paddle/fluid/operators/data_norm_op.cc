@@ -309,8 +309,7 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
 
     // init output
     Tensor *d_x = nullptr;
-    if (ctx.OutputVar(framework::GradVarName("X")) !=
-        NULL) {  // if (ctx.HasOutput(framework::GradVarName("X"))) {
+    if (ctx.OutputVar(framework::GradVarName("X")) != nullptr) {
       d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     }
     auto *d_batch_size =

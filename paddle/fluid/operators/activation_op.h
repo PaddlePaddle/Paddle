@@ -1606,8 +1606,7 @@ class PowKernel : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
       *attr.second = context.Attr<float>(attr.first);
     }
     // get FactorTensor
-    auto* factor_tensor = context.InputVar("FactorTensor") !=
-                                  nullptr /*context.HasInput("FactorTensor")*/
+    auto* factor_tensor = context.InputVar("FactorTensor") != nullptr
                               ? context.Input<framework::Tensor>("FactorTensor")
                               : nullptr;
     if (factor_tensor) {
@@ -1655,8 +1654,7 @@ class PowGradKernel
     }
     // get FactorTensor
     auto* factor_tensor =
-        context.InputVar("FactorTensor") !=
-                nullptr /*context.HasInput("FactorTensor")*/
+        context.InputVar("FactorTensor") != nullptr
             ? context.Input<framework::LoDTensor>("FactorTensor")
             : nullptr;
     if (factor_tensor) {

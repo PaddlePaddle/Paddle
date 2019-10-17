@@ -389,7 +389,7 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
     auto &in_y = detail::Ref(ctx.Input<framework::Tensor>("Y"),
                              "Cannot get input tensor %s, variable name = %s",
                              "Y", ctx.op().Input("Y"));
-    PADDLE_ENFORCE(ctx.OutputVar("Out") != nullptr /*ctx.HasOutput("Out")*/,
+    PADDLE_ENFORCE(ctx.OutputVar("Out") != nullptr,
                    "The output(Out) should not be empty");
     auto output = ctx.Output<framework::Tensor>("Out");
 
@@ -397,8 +397,7 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
     outputs.emplace_back(output);
 
     if (ctx.Attr<bool>("save_intermediate_out")) {
-      PADDLE_ENFORCE(ctx.OutputVar("IntermediateOut") !=
-                         nullptr /*ctx.HasOutput("IntermediateOut")*/,
+      PADDLE_ENFORCE(ctx.OutputVar("IntermediateOut") != nullptr,
                      "The save_intermediate_out is enable, so the "
                      "IntermediateOut should not be empty.");
       auto intermediate_out = ctx.Output<framework::Tensor>("IntermediateOut");
@@ -452,7 +451,7 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
     }
 
     // Get in_x
-    if (ctx.InputVar("X") != nullptr /*ctx.HasInput("X")*/) {
+    if (ctx.InputVar("X") != nullptr) {
       PADDLE_ENFORCE(in_x != nullptr, "Input(X) should not be nullptr.");
     } else {
       // If functor_list contains elementwise_add, the backward doesn't use

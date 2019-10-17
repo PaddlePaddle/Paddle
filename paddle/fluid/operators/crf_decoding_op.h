@@ -39,8 +39,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     math::SetConstant<DeviceContext, int64_t>()(
         ctx.template device_context<DeviceContext>(), decoded_path, 0);
 
-    bool has_length =
-        ctx.InputVar("Length") != nullptr;  // ctx.HasInput("Length");
+    bool has_length = ctx.InputVar("Length") != nullptr;
     if (has_length) {
       auto* length = ctx.Input<Tensor>("Length");
       const size_t seq_num = length->numel();

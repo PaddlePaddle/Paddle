@@ -103,10 +103,8 @@ class SliceKernel : public framework::OpKernel<T> {
         context.MultiInput<framework::Tensor>("StartsTensorList");
 
     bool need_infer = false;
-    if (context.InputVar("StartsTensor") !=
-            nullptr /*context.HasInput("StartsTensor")*/ ||
-        /*context.HasInput("EndsTensor")*/ context.InputVar("EndsTensor") !=
-            nullptr) {
+    if (context.InputVar("StartsTensor") != nullptr ||
+        context.InputVar("EndsTensor") != nullptr) {
       need_infer = true;
     }
     if (list_new_starts_tensor.size() > 0 || list_new_ends_tensor.size() > 0) {
@@ -114,8 +112,7 @@ class SliceKernel : public framework::OpKernel<T> {
     }
 
     if (need_infer) {
-      if (context.InputVar("StartsTensor") !=
-          nullptr /*context.HasInput("StartsTensor")*/) {
+      if (context.InputVar("StartsTensor") != nullptr) {
         auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
         starts = get_new_data_from_tensor(starts_tensor);
       } else if (list_new_starts_tensor.size() > 0) {
@@ -124,8 +121,7 @@ class SliceKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           starts.size(), axes.size(),
           "The size of starts must be equal to the size of axes.");
-      if (context.InputVar("EndsTensor") !=
-          nullptr /*context.HasInput("EndsTensor")*/) {
+      if (context.InputVar("EndsTensor") != nullptr) {
         auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
         ends = get_new_data_from_tensor(ends_tensor);
       } else if (list_new_ends_tensor.size() > 0) {
@@ -284,16 +280,14 @@ class SliceGradKernel : public framework::OpKernel<T> {
 
     if (list_new_starts_tensor.size() > 0) {
       starts = get_new_data_from_tensorlist(list_new_starts_tensor);
-    } else if (context.InputVar("StartsTensor") !=
-               nullptr /*context.HasInput("StartsTensor")*/) {
+    } else if (context.InputVar("StartsTensor") != nullptr) {
       auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
       starts = get_new_data_from_tensor(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
       ends = get_new_data_from_tensorlist(list_new_ends_tensor);
-    } else if (context.InputVar("EndsTensor") !=
-               nullptr /*context.HasInput("EndsTensor")*/) {
+    } else if (context.InputVar("EndsTensor") != nullptr) {
       auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
       ends = get_new_data_from_tensor(ends_tensor);
     }

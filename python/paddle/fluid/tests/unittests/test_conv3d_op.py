@@ -574,7 +574,7 @@ class TestConv3dOp_2(OpTest):
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_grad_with_place(
-            place, ['Input'],
+            place, ['Filter'],
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Input']))
