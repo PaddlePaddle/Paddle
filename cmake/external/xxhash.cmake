@@ -22,20 +22,14 @@ if(WIN32)
           GIT_TAG         "v0.6.5"
           PREFIX          ${XXHASH_SOURCE_DIR}
           DOWNLOAD_NAME   "xxhash"
-          UPDATE_COMMAND  ""
           BUILD_IN_SOURCE 1
-          PATCH_COMMAND
-          CONFIGURE_COMMAND
-          ${CMAKE_COMMAND} ${XXHASH_SOURCE_DIR}/src/extern_xxhash/cmake_unofficial
-          -DCMAKE_INSTALL_PREFIX:PATH=${XXHASH_INSTALL_DIR}
-          -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
-          -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
-          -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-          -DBUILD_XXHSUM=OFF
-          -DCMAKE_GENERATOR_PLATFORM=x64
-          -DBUILD_SHARED_LIBS=OFF
-          ${OPTIONAL_CACHE_ARGS}
-          TEST_COMMAND      ""
+          SOURCE_SUBDIR   cmake_unofficial
+          CMAKE_ARGS      -DCMAKE_INSTALL_PREFIX:PATH=${XXHASH_INSTALL_DIR}
+                          -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+                          -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
+                          -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                          -DBUILD_XXHSUM=OFF
+                          -DBUILD_SHARED_LIBS=OFF
   )
 else()
   ExternalProject_Add(

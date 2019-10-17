@@ -197,9 +197,6 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             ${EXTERNAL_OPTIONAL_ARGS})
         SET(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
     ENDIF()
-    IF(WIN32)
-        SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} "-DCMAKE_GENERATOR_PLATFORM=x64")
-    ENDIF()
 
     SET(PROTOBUF_REPO "https://github.com/protocolbuffers/protobuf.git")
     SET(PROTOBUF_TAG "9f75c5aa851cd877fb0d93ccc31b8567a6706546")
@@ -207,28 +204,25 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     ExternalProject_Add(
         ${TARGET_NAME}
         ${EXTERNAL_PROJECT_LOG_ARGS}
-        PREFIX          ${PROTOBUF_SOURCES_DIR}
-        UPDATE_COMMAND  ""
-        DEPENDS         zlib
-        GIT_REPOSITORY  ${PROTOBUF_REPO}
-        GIT_TAG         ${PROTOBUF_TAG}
-        CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} ${PROTOBUF_SOURCES_DIR}/src/${TARGET_NAME}/cmake
-            ${OPTIONAL_ARGS}
-            -Dprotobuf_BUILD_TESTS=OFF
-            -DCMAKE_SKIP_RPATH=ON
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-            -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-            -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
-            -DCMAKE_INSTALL_LIBDIR=lib
-            -DBUILD_SHARED_LIBS=OFF
-            -Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}
-        CMAKE_CACHE_ARGS
-            -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
-            -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
-            -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
-            -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-            ${OPTIONAL_CACHE_ARGS}
+        PREFIX           ${PROTOBUF_SOURCES_DIR}
+        DEPENDS          zlib
+        GIT_REPOSITORY   ${PROTOBUF_REPO}
+        GIT_TAG          ${PROTOBUF_TAG}
+        SOURCE_SUBDIR    cmake
+        CMAKE_ARGS       ${OPTIONAL_ARGS}
+                         -Dprotobuf_BUILD_TESTS=OFF
+                         -DCMAKE_SKIP_RPATH=ON
+                         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                         -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                         -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
+                         -DCMAKE_INSTALL_LIBDIR=lib
+                         -DBUILD_SHARED_LIBS=OFF
+                         -Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}
+        CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
+                         -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+                         -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
+                         -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                         ${OPTIONAL_CACHE_ARGS}
     )
 ENDFUNCTION()
 
