@@ -41,7 +41,7 @@ class DistributedOptimizerImplBase(object):
                  no_grad_set=None):
         """
         Args:
-            loss(Variable): loss variable defined by user
+            losses(Variable): loss variable defined by user
             startup_program(Program): startup program that defined by user
             parameter_list(str list): parameter names defined by users
             no_grad_set(set): a set of variables that is defined by users

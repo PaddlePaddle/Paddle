@@ -407,7 +407,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       fea_idx++;
     }
   }
-
+  // slots whose embedding has been stop gradient or
+  // slots which have no embedding
   uint64_t no_grad_fea_num = 0u;
   for (size_t i = sparse_grad_names.size(); i < sparse_key_names.size(); ++i) {
     Variable* var = scope.FindVar(sparse_key_names[i]);
@@ -428,7 +429,6 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       ++no_grad_fea_num;
     }
   }
-
   CHECK(fea_idx + no_grad_fea_num == fea_keys.size())
       << "fea_idx: " << fea_idx << " no_grad_fea_num: " << no_grad_fea_num
       << " features size: " << fea_keys.size();

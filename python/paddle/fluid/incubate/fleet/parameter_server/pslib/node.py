@@ -312,7 +312,7 @@ class DownpourWorker(Worker):
         Args:
             table_id(int): id of sparse params table
             slot_key_vars(list): slot key id
-            slot_value_var(list): slot key value after embedding
+            slot_value_vars(list): slot key value after embedding
             slot_value_grads(list): grad of all params, default is None
 
         Returns:
@@ -360,8 +360,8 @@ class DownpourWorker(Worker):
             table_id(int): id of sparse params table
             learning_rate(float): the learning rate used to update parameters. \
                 Can be a float value
-            param_var(list): all dense param. it is a list.
-            grad_var(list): all dense grad parm it is a list.
+            param_vars(list): all dense param. it is a list.
+            grad_vars(list): all dense grad parm it is a list.
             dense_start_table_id(int): dense table start index
             sparse_table_names(list): sparse table names
         Returns:

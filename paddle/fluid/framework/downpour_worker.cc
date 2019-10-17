@@ -190,7 +190,8 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
                              << sparse_key_names_[table_id][i] << " is null";
 
     // skip slots which do not have embedding
-    Variable* emb_var = thread_scope_->FindVar(sparse_value_names_[table_id][i]);
+    Variable* emb_var =
+        thread_scope_->FindVar(sparse_value_names_[table_id][i]);
     if (emb_var == nullptr) {
       continue;
     }
@@ -429,10 +430,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
       }
       timeline.Start();
-      fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
-                                     sparse_key_names_[tid], &features_[tid],
-                                     &feature_values_[tid], table.fea_dim(),
-                                     sparse_value_names_[tid]);
+      fleet_ptr_->PullSparseVarsSync(
+          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
+          &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
       timeline.Pause();
       pull_sparse_time += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
@@ -638,10 +638,9 @@ void DownpourWorker::TrainFiles() {
           break;
         }
       }
-      fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
-                                     sparse_key_names_[tid], &features_[tid],
-                                     &feature_values_[tid], table.fea_dim(),
-                                     sparse_value_names_[tid]);
+      fleet_ptr_->PullSparseVarsSync(
+          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
+          &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
       CollectLabelInfo(i);
       FillSparseValue(i);
       auto nid_iter = std::find(sparse_value_names_[tid].begin(),
