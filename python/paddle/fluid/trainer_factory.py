@@ -53,7 +53,8 @@ class TrainerFactory(object):
                 trainer._set_dump_file_num(opt_info["dump_file_num"])
                 trainer._set_dump_converter(opt_info["dump_converter"])
                 trainer._set_adjust_ins_weight(opt_info["adjust_ins_weight"])
-                trainer._set_check_nan_var_names(opt_info["check_nan_var_names"])
+                trainer._set_check_nan_var_names(opt_info[
+                    "check_nan_var_names"])
             trainer._set_device_worker(device_worker)
         return trainer
 

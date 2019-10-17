@@ -474,7 +474,13 @@ void DownpourWorker::TrainFilesWithProfiler() {
     // check inf and nan
     for (std::string& var_name : check_nan_var_names_) {
       Variable* var = thread_scope_->FindVar(var_name);
+      if (var == nullptr) {
+        continue;
+      }
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (tensor == nullptr) {
+        continue;
+      }
       PADDLE_ENFORCE(!framework::TensorContainsInf(*tensor),
                      "Tensor %s contains Inf", var_name);
       PADDLE_ENFORCE(!framework::TensorContainsNAN(*tensor),
@@ -671,7 +677,13 @@ void DownpourWorker::TrainFiles() {
     // check inf and nan
     for (std::string& var_name : check_nan_var_names_) {
       Variable* var = thread_scope_->FindVar(var_name);
+      if (var == nullptr) {
+        continue;
+      }
       LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (tensor == nullptr) {
+        continue;
+      }
       PADDLE_ENFORCE(!framework::TensorContainsInf(*tensor),
                      "Tensor %s contains Inf", var_name);
       PADDLE_ENFORCE(!framework::TensorContainsNAN(*tensor),
