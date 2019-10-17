@@ -848,6 +848,7 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
             "FLAGS_rpc_retry_bind_port": "50",
             "FLAGS_cudnn_deterministic": "1",
+            "FLAGS_rpc_disable_reuse_port": "1",
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
             "NCCL_SHM_DISABLE": "1"

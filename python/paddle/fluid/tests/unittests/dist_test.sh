@@ -1,5 +1,6 @@
 #!/bin/bash
 unset https_proxy http_proxy
+export FLAGS_rpc_disable_reuse_port=1
 
 name=${TEST_TARGET_NAME}
 TEST_TIMEOUT=${TEST_TIMEOUT}
