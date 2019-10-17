@@ -89,7 +89,19 @@ class ConcatOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    auto inputs = ctx.MultiInput<Tensor>("X");
+    auto input_data_type = framework::proto::VarType::Type(0);
+    bool flag = 0;
+    for (auto *input : inputs) {
+      if (input->IsInitialized() && input->numel() > 0) {
+        input_data_type = input->type();
+        flag = 1;
+        break;
+      }
+    }
+    if (flag == 0) {
+      PADDLE_THROW("All Inputs of Concat OP are Empty!");
+    }
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
