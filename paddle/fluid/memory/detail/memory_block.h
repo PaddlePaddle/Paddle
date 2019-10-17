@@ -62,6 +62,24 @@ struct MemoryBlock {
          MemoryBlock* r);
     Desc();
 
+    // mutator for type
+    inline void set_type(const MemoryBlock::Type& type) {
+      this->type = type;
+      this->UpdateGuards();
+    }
+
+    // accessor for type
+    inline const MemoryBlock::Type& get_type() const { return this->type; }
+
+    // accessor for index
+    inline const size_t& get_index() const { return this->index; }
+
+    // accessor for size
+    inline const size_t& get_size() const { return this->size; }
+
+    // accessor for total_size
+    inline const size_t& get_total_size() const { return this->total_size; }
+
     // Updates guard_begin and guard_end by hashes of the Metadata object.
     void UpdateGuards();
 

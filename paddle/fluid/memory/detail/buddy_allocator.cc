@@ -41,9 +41,9 @@ BuddyAllocator::~BuddyAllocator() {
   while (!pool_.empty()) {
     auto block = static_cast<MemoryBlock*>(std::get<2>(*pool_.begin()));
     auto desc = cache_.LoadDesc(block);
-    VLOG(10) << "Free from block (" << block << ", " << desc->size << ")";
+    VLOG(10) << "Free from block (" << block << ", " << desc->get_size() << ")";
 
-    system_allocator_->Free(block, desc->size, desc->index);
+    system_allocator_->Free(block, desc->get_size(), desc->get_index());
     cache_.Invalidate(block);
     pool_.erase(pool_.begin());
   }
@@ -104,9 +104,9 @@ void BuddyAllocator::Free(void* p) {
   VLOG(10) << "Free from address " << block;
 
   auto* desc = cache_.LoadDesc(block);
-  if (desc->type == MemoryBlock::HUGE_CHUNK) {
+  if (desc->get_type() == MemoryBlock::HUGE_CHUNK) {
     VLOG(10) << "Free directly from system allocator";
-    system_allocator_->Free(block, desc->total_size, desc->index);
+    system_allocator_->Free(block, desc->get_total_size(), desc->get_index());
 
     // Invalidate GPU allocation from cache
     cache_.Invalidate(block);
@@ -116,8 +116,8 @@ void BuddyAllocator::Free(void* p) {
 
   block->MarkAsFree(&cache_);
 
-  total_used_ -= desc->total_size;
-  total_free_ += desc->total_size;
+  total_used_ -= desc->get_total_size();
+  total_free_ += desc->get_total_size();
 
   // Trying to merge the right buddy
   MemoryBlock* right_buddy = block->GetRightBuddy(&cache_);
@@ -126,10 +126,10 @@ void BuddyAllocator::Free(void* p) {
              << right_buddy;
 
     auto rb_desc = cache_.LoadDesc(right_buddy);
-    if (rb_desc->type == MemoryBlock::FREE_CHUNK) {
+    if (rb_desc->get_type() == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
-      pool_.erase(
-          IndexSizeAddress(rb_desc->index, rb_desc->total_size, right_buddy));
+      pool_.erase(IndexSizeAddress(rb_desc->get_index(),
+                                   rb_desc->get_total_size(), right_buddy));
 
       // merge its right buddy to the block
       block->Merge(&cache_, right_buddy);
@@ -144,10 +144,10 @@ void BuddyAllocator::Free(void* p) {
 
     // auto left_buddy = block->left_buddy(cache_);
     auto* lb_desc = cache_.LoadDesc(left_buddy);
-    if (lb_desc->type == MemoryBlock::FREE_CHUNK) {
+    if (lb_desc->get_type() == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
-      pool_.erase(
-          IndexSizeAddress(lb_desc->index, lb_desc->total_size, left_buddy));
+      pool_.erase(IndexSizeAddress(lb_desc->get_index(),
+                                   lb_desc->get_total_size(), left_buddy));
 
       // merge the block to its left buddy
       left_buddy->Merge(&cache_, block);
@@ -157,9 +157,10 @@ void BuddyAllocator::Free(void* p) {
   }
 
   // Dumping this block into pool
-  VLOG(10) << "Inserting free block (" << block << ", " << desc->total_size
-           << ")";
-  pool_.insert(IndexSizeAddress(desc->index, desc->total_size, block));
+  VLOG(10) << "Inserting free block (" << block << ", "
+           << desc->get_total_size() << ")";
+  pool_.insert(
+      IndexSizeAddress(desc->get_index(), desc->get_total_size(), block));
 }
 
 size_t BuddyAllocator::Used() { return total_used_; }
@@ -246,23 +247,23 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
   auto desc = cache_.LoadDesc(block);
   pool_.erase(it);
 
-  VLOG(10) << "Split block (" << block << ", " << desc->total_size << ") into";
+  VLOG(10) << "Split block (" << block << ", " << desc->get_total_size()
+           << ") into";
   block->Split(&cache_, size);
 
-  VLOG(10) << "Left block (" << block << ", " << desc->total_size << ")";
-  desc->type = MemoryBlock::ARENA_CHUNK;
-  desc->UpdateGuards();
+  VLOG(10) << "Left block (" << block << ", " << desc->get_total_size() << ")";
+  desc->set_type(MemoryBlock::ARENA_CHUNK);
 
   // the rest of memory if exist
   MemoryBlock* right_buddy = block->GetRightBuddy(&cache_);
   if (right_buddy) {
     auto* rb_desc = cache_.LoadDesc(right_buddy);
-    if (rb_desc->type == MemoryBlock::FREE_CHUNK) {
+    if (rb_desc->get_type() == MemoryBlock::FREE_CHUNK) {
       VLOG(10) << "Insert right block (" << right_buddy << ", "
-               << rb_desc->total_size << ")";
+               << rb_desc->get_total_size() << ")";
 
-      pool_.insert(
-          IndexSizeAddress(rb_desc->index, rb_desc->total_size, right_buddy));
+      pool_.insert(IndexSizeAddress(rb_desc->get_index(),
+                                    rb_desc->get_total_size(), right_buddy));
     }
   }
 
