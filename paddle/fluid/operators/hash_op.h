@@ -43,7 +43,7 @@ class HashKernel : public framework::OpKernel<T> {
   virtual void Compute(const framework::ExecutionContext& context) const {
     auto* out_t = context.Output<framework::LoDTensor>("Out");
     auto* in_t = context.Input<framework::LoDTensor>("X");
-    int mod_by = context.Attr<int>("mod_by");
+    int64_t mod_by = context.Attr<int64_t>("mod_by");
     int num_hash = context.Attr<int>("num_hash");
 
     auto in_dims = in_t->dims();
@@ -59,7 +59,7 @@ class HashKernel : public framework::OpKernel<T> {
     for (int idx = 0; idx < seq_length; ++idx) {
       for (int ihash = 0; ihash != num_hash; ++ihash) {
         output[idx * num_hash + ihash] =
-            XXH64(input, sizeof(int) * last_dim, ihash) % mod_by;
+            XXH64(input, sizeof(T) * last_dim, ihash) % mod_by;
       }
       input += last_dim;
     }

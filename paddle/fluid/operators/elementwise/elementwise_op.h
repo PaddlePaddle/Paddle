@@ -52,14 +52,25 @@ class ElementwiseOp : public framework::OperatorWithKernel {
         framework::proto::VarType::LOD_TENSOR) {
       auto x_dim = ctx->GetInputDim("X");
       auto y_dim = ctx->GetInputDim("Y");
-      PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
-                        "Rank of first input must >= rank of second input.");
+      PADDLE_ENFORCE_GE(
+          x_dim.size(), y_dim.size(),
+          "ShapeError: the dimension of input X must greater than or equal to "
+          "the one of input Y. But received: the shape of input X = [%s], the "
+          "dimension of input X = %d, the shape of input Y = [%s], the "
+          "dimension of input Y = %d",
+          x_dim, x_dim.size(), y_dim, y_dim.size());
     } else if (ctx->GetInputsVarType("X").front() ==
                framework::proto::VarType::SELECTED_ROWS) {
-      PADDLE_ENFORCE((ctx->GetInputDim("Y").size() == 1u) &&
-                         (ctx->GetInputDim("Y")[0] == 1),
-                     "For elementwise_op, if X is Sparse, "
-                     "Y must be scalar.");
+      PADDLE_ENFORCE_EQ(
+          ctx->GetInputDim("Y").size(), 1u,
+          "ShapeError: For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
+          "), Y must be scalar. But reveived the dimension of Y = %s",
+          ctx->GetInputDim("Y").size());
+      PADDLE_ENFORCE_EQ(
+          ctx->GetInputDim("Y")[0], 1,
+          "ShapeError: For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
+          "), Y must be scalar. But reveived the first dimension of Y = %s",
+          ctx->GetInputDim("Y")[0]);
     } else {
       PADDLE_THROW("X's type[%s] is not supported by elementwise_op.",
                    ctx->GetInputsVarType("X").front());
@@ -96,12 +107,15 @@ class ElementwiseOpInferVarType
 class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() final {
-    AddInput("X", "(Tensor), The first input tensor of elementwise op.");
-    AddInput("Y", "(Tensor), The second input tensor of elementwise op.");
-    AddOutput("Out", "The output of elementwise op.");
+    AddInputX();
+    AddInputY();
+    AddOpOutput();
+
     AddAttr<int>("axis",
-                 "(int, default -1). The start dimension index "
-                 "for broadcasting Y onto X.")
+                 "(int, default -1). If X.dimension != Y.dimension,"
+                 "Y.dimension must be a subsequence of x.dimension. And axis "
+                 "is the start dimension index "
+                 "for broadcasting Y onto X. ")
         .SetDefault(-1)
         .EqualGreaterThan(-1);
     AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
@@ -120,14 +134,41 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
         "Defaults to \"\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
         .SetDefault("");
-    AddComment(string::Sprintf(R"DOC(
-Elementwise %s Operator
+
+    AddOpComment();
+  }
+
+ protected:
+  virtual void AddInputX() {
+    AddInput("X", "(Tensor), The first input tensor of elementwise op.");
+  }
+  virtual void AddInputY() {
+    AddInput("Y", "(Tensor), The second input tensor of elementwise op.");
+  }
+  virtual void AddOpOutput() {
+    AddOutput("Out",
+              "N-dimension tensor. A location into which the result is stored. "
+              "It's dimension "
+              "equals with x");
+  }
+  virtual void AddOpComment() { AddComment(GetCommentExamples()); }
+
+  virtual std::string GetOpFuntionality() const { return ""; }
+
+  virtual std::string GetName() const = 0;
+  virtual std::string GetEquation() const = 0;
+
+  std::string GetCommentExamples() const {
+    return string::Sprintf(R"DOC(
+Elementwise %s Operator.
+
+%s
 
 The equation is:
 
 $$%s$$
 
-- $X$: a tensor of any dimension. 
+- $X$: a tensor of any dimension.
 - $Y$: a tensor whose dimensions must be less than or equal to the dimensions of $X$.
 
 There are two cases for this operator:
@@ -137,10 +178,10 @@ There are two cases for this operator:
 
 For case 2:
 
-1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension index 
-   for broadcasting $Y$ onto $X$. 
+1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension index
+   for broadcasting $Y$ onto $X$.
 2. If $axis$ is -1 (default), $axis = rank(X) - rank(Y)$.
-3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of 
+3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of
    subsequence, such as shape(Y) = (2, 1) => (2).
 
 For example:
@@ -154,17 +195,9 @@ For example:
     shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
     shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
-The inputs $X$ and $Y$ can carry the different LoD information. 
-But the output only shares the LoD information with the input $X$.
-
 )DOC",
-                               GetName(), GetEquation()));
+                           GetName(), GetOpFuntionality(), GetEquation());
   }
-
- protected:
-  virtual std::string GetName() const = 0;
-
-  virtual std::string GetEquation() const = 0;
 };
 
 class ElementwiseOpGrad : public framework::OperatorWithKernel {
@@ -181,8 +214,13 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim(out_grad_name);
     auto y_dims = ctx->GetInputDim("Y");
 
-    PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
-                      "Rank of first input must >= rank of second input.");
+    PADDLE_ENFORCE_GE(
+        x_dims.size(), y_dims.size(),
+        "ShapeError: the dimension of Out@GRAD must greater than or equal to "
+        "the one of input Y. But received: the shape of Out@GRAD = [%s], the "
+        "dimension of Out@GRAD = %d, the shape of input Y = [%s], the "
+        "dimension of of input Y = %d",
+        x_dims, x_dims.size(), y_dims, y_dims.size());
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
@@ -264,7 +302,18 @@ class ElementwiseOpDoubleGradWithoutDXDY
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = ctx.Input<Tensor>("DOut")->type();
+    framework::proto::VarType::Type input_data_type;
+    if (ctx.HasInput("DDX") == false) {
+      PADDLE_ENFORCE_EQ(ctx.HasInput("DDY"), true,
+                        "Input(DDY) should not be null");
+      input_data_type = ctx.Input<Tensor>("DDY")->type();
+    } else if (ctx.HasInput("DDY") == false) {
+      PADDLE_ENFORCE_EQ(ctx.HasInput("DDX"), true,
+                        "Input(DDX) should not be null");
+      input_data_type = ctx.Input<Tensor>("DDX")->type();
+    } else {
+      input_data_type = ctx.Input<Tensor>("DDX")->type();
+    }
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
@@ -317,23 +366,15 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
   }
 };
 
-class ElementwiseOpInplace : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc, bool use_cuda) const override {
-    return {{"X", "Out"}};
-  }
-};
-
-class ElementwiseGradOpInplace : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc, bool use_cuda) const override {
-    return {{framework::GradVarName("Out"), framework::GradVarName("X")}};
-  }
-};
+DECLARE_INPLACE_OP_INFERER(ElementwiseOpInplace, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(ElementwiseGradOpInplace,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
+DECLARE_INPLACE_OP_INFERER(ElementwiseDoubleGradOpInplace, {"DDX", "DDOut"});
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseGradNoBufVarsInference, "Y");
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseDoubleGradNoBufVarsInference,
+                                      "Y", "DOut");
 
 }  // namespace operators
 }  // namespace paddle
@@ -388,15 +429,9 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseGradNoBufVarsInference, "Y");
                     ::paddle::operators::ElementwiseGradOpInplace,  \
                     ::paddle::operators::ElementwiseGradNoBufVarsInference)
 
-#define REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(op_type, op_name, equation) \
-  class __ElemwiseOp##op_type##Maker__                                         \
-      : public ::paddle::operators::ElementwiseOpMaker {                       \
-   protected:                                                                  \
-    virtual std::string GetName() const { return op_name; }                    \
-    virtual std::string GetEquation() const { return equation; }               \
-  };                                                                           \
-  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,               \
-                    __ElemwiseOp##op_type##Maker__,                            \
-                    ::paddle::operators::ElementwiseOpInferVarType,            \
-                    op_type##GradMaker,                                        \
+#define REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(op_type, op_name)    \
+  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,        \
+                    ::paddle::operators::Elementwise##op_name##OpMaker, \
+                    ::paddle::operators::ElementwiseOpInferVarType,     \
+                    op_type##GradMaker,                                 \
                     ::paddle::operators::ElementwiseOpInplace);

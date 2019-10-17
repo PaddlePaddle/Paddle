@@ -30,7 +30,7 @@ class ReorderLoDTensorByRankTableOpProtoMaker
     AddInput("RankTable",
              "(LoDRankTable), the rank table according to which Input(X) is "
              "reordered.");
-    AddOutput("Out", "(LoDTensor), the reordered lod tensor.");
+    AddOutput("Out", "LoDTensor, the reordered lod tensor.");
     AddComment(R"DOC(ReorderLoDTensorByRankTable operator.
 
 Input(X) is a batch of sequences. Input(RankTable) stores new orders of the
@@ -57,7 +57,8 @@ X = [Slice0, Slice1, Slice2, Slice3] and its LoD information is empty. The
 indices in RankTable are [3, 0, 2, 1].
 Out = [Slice3, Slice0, Slice2, Slice1] with no LoD information is appended.
 
-NOTE: This operator sorts Input(X) according to a given LoDRankTable which does
+**NOTE**: 
+This operator sorts Input(X) according to a given LoDRankTable which does
 not need to be calculated according to Input(X). It can be calculated according
 to another different sequence, and then this operator sorts Input(X) according
 to the given LoDRankTable.

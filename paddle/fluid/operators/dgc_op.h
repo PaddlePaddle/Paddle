@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "dgc/dgc.h"
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 
 namespace paddle {
@@ -23,14 +24,14 @@ namespace operators {
 
 inline float get_period_sparcity(const std::vector<float>& sparsity,
                                  float cur_step, float rampup_steps) {
-  PADDLE_ENFORCE(static_cast<int>(cur_step) >= 0);
+  PADDLE_ENFORCE_GE(static_cast<int>(cur_step), 0);
 
   size_t idx = static_cast<int>(cur_step * sparsity.size() / rampup_steps);
   if (idx >= sparsity.size()) {
     return 0.999;
   }
 
-  PADDLE_ENFORCE(idx < sparsity.size());
+  PADDLE_ENFORCE_LT(idx, sparsity.size());
   return sparsity[idx];
 }
 
@@ -63,7 +64,8 @@ class DGCOpKernel : public framework::OpKernel<T> {
     float ratio =
         1 - get_period_sparcity(sparsity, static_cast<float>(*current_step),
                                 rampup_step);
-    PADDLE_ENFORCE(ratio > 0.0 && ratio < 1.0);
+    PADDLE_ENFORCE_GE(ratio, 0.0);
+    PADDLE_ENFORCE_LT(ratio, 1.0);
     int k = static_cast<int>(g->numel() * ratio);
 
     VLOG(10) << "m:" << m << ", use_nesterov:" << use_nesterov
@@ -111,9 +113,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
         framework::DDim{2 * k}, ctx.GetPlace());
 
     int buf_size = paddle::communication::dgc::get_buffer_size(k);
-    auto& allocator = platform::DeviceTemporaryAllocator::Instance().Get(
-        ctx.GetPlace(), dev_ctx.stream());
-    auto tmp_ious_data = allocator.Allocate(buf_size);
+    auto tmp_ious_data = memory::Alloc(dev_ctx, buf_size);
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
     if (!paddle::communication::dgc::k_select(

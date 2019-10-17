@@ -50,6 +50,7 @@ class TrainerBase {
   virtual void InitOtherEnv(const ProgramDesc& main_program) = 0;
   virtual void Run() = 0;
   virtual void Finalize() = 0;
+  virtual Scope* GetWorkerScope(int thread_id) = 0;
 
  protected:
   Scope* root_scope_;
@@ -70,12 +71,14 @@ class MultiTrainer : public TrainerBase {
   virtual void InitOtherEnv(const ProgramDesc& main_program) {}
   virtual void Run();
   virtual void Finalize();
+  virtual Scope* GetWorkerScope(int thread_id);
 
  protected:
   int thread_num_;
   std::vector<std::thread> threads_;
   std::vector<DataFeed*> readers_;
   std::vector<std::shared_ptr<DeviceWorker>> workers_;
+  std::vector<std::string> need_merge_var_names_;
 };
 
 class DistMultiTrainer : public MultiTrainer {
@@ -86,9 +89,26 @@ class DistMultiTrainer : public MultiTrainer {
   virtual void InitOtherEnv(const ProgramDesc& main_program);
   virtual void Run();
   virtual void Finalize();
+  template <typename T>
+  void MergeToRootScope(LoDTensor* root_tensor, LoDTensor* thread_tensor);
+  virtual void FinalizeDumpEnv();
+  virtual void InitDumpEnv();
+  virtual Scope* GetWorkerScope(int thread_id);
+  virtual void DumpWork(int tid);
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
+  std::vector<std::thread> dump_thread_;
+  int dump_thread_num_;
+  std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;
+
+  bool need_dump_field_;
+  std::string dump_fields_path_;
+  std::string dump_converter_;
+  std::vector<std::string> dump_fields_;
+  int mpi_rank_;
+  int mpi_size_;
+  int dump_file_num_;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
@@ -102,6 +122,7 @@ class PipelineTrainer : public TrainerBase {
   void InitOtherEnv(const ProgramDesc& main_program) override {}
   void Run() override;
   void Finalize() override;
+  virtual Scope* GetWorkerScope(int thread_id);
 
  protected:
   int section_num_;

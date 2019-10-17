@@ -13,13 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include <functional>
-#include <numeric>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
-#include "glog/logging.h"
-#include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimize_helper.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/type_defs.h"
 
@@ -57,6 +52,16 @@ class SingleOpInplaceInToOut : public InplaceOpInference {
     return std::unordered_map<std::string, std::string>{{x_name, out_name}};
   }
 };
+
+#define DECLARE_INPLACE_OP_INFERER(class_name, ...)                         \
+  class class_name final : public ::paddle::framework::InplaceOpInference { \
+   public:                                                                  \
+    std::unordered_map<std::string, std::string> operator()(                \
+        const ::paddle::framework::OpDesc& op_desc,                         \
+        bool use_cuda) const final {                                        \
+      return {__VA_ARGS__};                                                 \
+    }                                                                       \
+  }
 
 }  // namespace framework
 }  // namespace paddle

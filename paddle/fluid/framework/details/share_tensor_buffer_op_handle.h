@@ -14,22 +14,15 @@
 #pragma once
 
 #include <string>
-#include <unordered_set>
+#include <unordered_map>
 #include <utility>
 #include <vector>
+#include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 
 namespace paddle {
 namespace framework {
-
-class Variable;
-class Scope;
-class Tensor;
-
-namespace ir {
-class MemOptVarInfo;
-}  // namespace ir
-
 namespace details {
 
 class ShareTensorBufferOpHandle : public OpHandleBase {
@@ -37,16 +30,19 @@ class ShareTensorBufferOpHandle : public OpHandleBase {
   ShareTensorBufferOpHandle(
       ir::Node *node, Scope *scope, size_t scope_idx,
       const std::string &op_type,
-      const std::vector<ir::MemOptVarInfo *> &in_vars_infos,
+      const std::vector<const ir::MemOptVarInfo *> &in_vars_infos,
       const std::vector<std::string> &out_var_names);
 
-  std::unordered_set<std::string> ReusedVarSet() const;
+  std::unordered_map<std::string, std::string> ReusedVars() const;
 
   Priority GetPriority() const override { return Priority::kHighest; }
 
-  size_t GetScopeIdx() const { return scope_idx_; }
+  size_t GetScopeIdx() const { return functor_.GetScopeIdx(); }
 
-  void Add(ir::MemOptVarInfo *in_var_info, const std::string &ou_var_name);
+  void AddReuseVarPair(const ir::MemOptVarInfo *in_var_info,
+                       const std::string &out_var_name);
+
+  const ShareTensorBufferFunctor &Functor() const { return functor_; }
 
  protected:
   std::string Name() const override { return "buffer_share"; }
@@ -55,19 +51,16 @@ class ShareTensorBufferOpHandle : public OpHandleBase {
 
   void InitCUDA() override;
 
-  std::vector<Scope *> GetLocalScopes() override { return {scope_}; }
+  std::vector<Scope *> GetLocalScopes() override {
+    return {functor_.GetScope()};
+  }
 
  private:
-  void CallOnce();
-
-  Scope *scope_;
-  size_t scope_idx_;
-  std::string op_type_;
-  std::vector<ir::MemOptVarInfo *> in_var_infos_;
-  std::vector<std::string> out_var_names_;
-
-  std::vector<std::pair<const Variable *, Variable *>> in_out_vars_;
+  ShareTensorBufferFunctor functor_;
 };
+
+ComputationOpHandle *GetUniquePendingComputationOpHandle(
+    ShareTensorBufferOpHandle *share_tensor_op);
 
 }  // namespace details
 }  // namespace framework

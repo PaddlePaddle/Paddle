@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest, sys
 sys.path.append("../")
-from test_slice_op import TestSliceOp, TestCase1, TestCase2
+from test_slice_op import TestSliceOp, TestSliceOp_decs_dim, TestSliceOp_decs_dim_2, TestSliceOp_decs_dim_3, TestSliceOp_decs_dim_5, TestSliceOp_decs_dim_6, TestCase1, TestCase2
 
 if __name__ == '__main__':
     unittest.main()

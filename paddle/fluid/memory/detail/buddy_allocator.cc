@@ -19,9 +19,9 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-DEFINE_bool(free_idle_memory, false,
-            "If it is true, Paddle will try to free idle memory trunks during "
-            "running time.");
+#ifdef PADDLE_WITH_CUDA
+DECLARE_uint64(reallocate_gpu_memory_in_mb);
+#endif
 
 namespace paddle {
 namespace memory {
@@ -160,15 +160,6 @@ void BuddyAllocator::Free(void* p) {
            << block->total_size(cache_) << ")";
   pool_.insert(
       IndexSizeAddress(block->index(cache_), block->total_size(cache_), block));
-
-  if (FLAGS_free_idle_memory) {
-    // Clean up if existing too much free memory
-    // Prefer freeing fallback allocation first
-    CleanIdleFallBackAlloc();
-
-    // Free normal allocation
-    CleanIdleNormalAlloc();
-  }
 }
 
 size_t BuddyAllocator::Used() { return total_used_; }
@@ -200,8 +191,9 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
       // Compute the allocation size for gpu for the first allocation.
       allocate_bytes = std::max(platform::GpuInitAllocSize(), request_bytes);
     } else {
-      // Reallocation size
-      if (realloc_size_ == 0) {
+      // Compute the re-allocation size, we store the re-allocation size when
+      // user set FLAGS_reallocate_gpu_memory_in_mb to fix value.
+      if (realloc_size_ == 0 || FLAGS_reallocate_gpu_memory_in_mb == 0ul) {
         realloc_size_ = platform::GpuReallocSize();
       }
       allocate_bytes = std::max(realloc_size_, request_bytes);
@@ -219,12 +211,6 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
 
   static_cast<MemoryBlock*>(p)->init(&cache_, MemoryBlock::FREE_CHUNK, index,
                                      allocate_bytes, nullptr, nullptr);
-
-  // gpu fallback allocation
-  if (system_allocator_->UseGpu() &&
-      static_cast<MemoryBlock*>(p)->index(cache_) == 1) {
-    fallback_alloc_count_++;
-  }
 
   total_free_ += allocate_bytes;
 
@@ -281,70 +267,6 @@ void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
   }
 
   return block;
-}
-
-void BuddyAllocator::CleanIdleFallBackAlloc() {
-  // If fallback allocation does not exist, return directly
-  if (!fallback_alloc_count_) return;
-
-  for (auto pool = pool_.rbegin(); pool != pool_.rend();) {
-    // If free memory block less than max_chunk_size_, return directly
-    if (std::get<1>(*pool) < max_chunk_size_) return;
-
-    MemoryBlock* block = static_cast<MemoryBlock*>(std::get<2>(*pool));
-
-    // If no GPU fallback allocator, return
-    if (!system_allocator_->UseGpu() || block->index(cache_) == 0) {
-      return;
-    }
-
-    VLOG(10) << "Return block " << block << " to fallback allocator.";
-
-    system_allocator_->Free(block, block->size(cache_), block->index(cache_));
-    cache_.invalidate(block);
-
-    pool = PoolSet::reverse_iterator(pool_.erase(std::next(pool).base()));
-
-    total_free_ -= block->size(cache_);
-    fallback_alloc_count_--;
-
-    // If no fall allocation exists, return directly
-    if (!fallback_alloc_count_) return;
-  }
-}
-
-void BuddyAllocator::CleanIdleNormalAlloc() {
-  auto shall_free_alloc = [&]() -> bool {
-    // free all fallback allocations
-    if (fallback_alloc_count_ > 0) {
-      return true;
-    }
-    // keep 2x overhead if we haven't fallen back
-    if ((total_used_ + max_chunk_size_) * 2 < total_free_) {
-      return true;
-    }
-    return false;
-  };
-
-  if (!shall_free_alloc()) return;
-
-  for (auto pool = pool_.rbegin(); pool != pool_.rend();) {
-    // If free memory block less than max_chunk_size_, return directly
-    if (std::get<1>(*pool) < max_chunk_size_) return;
-
-    MemoryBlock* block = static_cast<MemoryBlock*>(std::get<2>(*pool));
-
-    VLOG(10) << "Return block " << block << " to base allocator.";
-
-    system_allocator_->Free(block, block->size(cache_), block->index(cache_));
-    cache_.invalidate(block);
-
-    pool = PoolSet::reverse_iterator(pool_.erase(std::next(pool).base()));
-
-    total_free_ -= block->size(cache_);
-
-    if (!shall_free_alloc()) return;
-  }
 }
 
 }  // namespace detail

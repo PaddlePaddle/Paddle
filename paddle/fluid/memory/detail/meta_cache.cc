@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/memory/detail/memory_block.h"
-#include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace memory {
@@ -25,12 +25,12 @@ MetadataCache::MetadataCache(bool uses_gpu) : uses_gpu_(uses_gpu) {}
 MemoryBlock::Desc MetadataCache::load(const MemoryBlock* block) const {
   if (uses_gpu_) {
     auto existing_desc = cache_.find(block);
-    PADDLE_ASSERT(existing_desc->second.check_guards());
+    PADDLE_ENFORCE_EQ(existing_desc->second.check_guards(), true);
     return existing_desc->second;
   } else {
     auto* desc = reinterpret_cast<const MemoryBlock::Desc*>(block);
     VLOG(10) << "Load MemoryBlock::Desc type=" << desc->type;
-    PADDLE_ASSERT(desc->check_guards());
+    PADDLE_ENFORCE_EQ(desc->check_guards(), true);
     return *reinterpret_cast<const MemoryBlock::Desc*>(block);
   }
 }

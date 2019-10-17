@@ -39,10 +39,28 @@ using GarbageCollectorMap =
 const char kMemOptVarInfoMapList[] = "mem_opt_var_info_map_list";
 const char kGarbageCollector[] = "garbage_collector";
 const char kAllPlaces[] = "all_places";
+const char kUseCuda[] = "use_cuda";
 
-using LastLiveOpsOfVars =
-    std::unordered_map<std::string,
-                       std::unordered_set<details::ComputationOpHandle *>>;
+class LastLiveOpOfVarInfo {
+ public:
+  details::VarHandle *var() { return var_; }
+
+  void set_var(details::VarHandle *var) { var_ = var; }
+
+  const std::unordered_set<details::ComputationOpHandle *> &ops() const {
+    return ops_;
+  }
+
+  std::unordered_set<details::ComputationOpHandle *> *mutable_ops() {
+    return &ops_;
+  }
+
+ private:
+  details::VarHandle *var_{nullptr};
+  std::unordered_set<details::ComputationOpHandle *> ops_;
+};
+
+using LastLiveOpsOfVars = std::unordered_map<std::string, LastLiveOpOfVarInfo>;
 const char kLastLiveOpsOfVars[] = "last_live_ops_of_var";
 
 VarDesc *TryGetLatestVarDesc(const std::vector<details::VarHandle *> &vars);

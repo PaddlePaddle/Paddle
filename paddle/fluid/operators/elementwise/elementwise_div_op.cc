@@ -20,10 +20,54 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+template <typename T>
+struct SameDimsElemwiseDiv<
+    platform::CPUDeviceContext, T,
+    typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    blas.VDIV(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
+  }
+};
+
+template <typename T>
+struct SameDimsElemwiseDiv<
+    platform::CPUDeviceContext, T,
+    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z) {
+    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
+    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
+    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
+    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
+                       .eigen_device();
+    eigen_z.device(place) = eigen_x / eigen_y;
+  }
+};
+
 class ElementwiseDivOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Div"; }
   std::string GetEquation() const override { return "Out = X / Y"; }
+
+  void AddInputX() override {
+    AddInput("X",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  void AddInputY() override {
+    AddInput("Y",
+             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
+             "should be int32, int64, float32, float64.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Divide two tensors element-wise";
+  }
 };
 
 class ElementwiseDivGradOpDescMaker : public framework::SingleGradOpDescMaker {
@@ -80,7 +124,8 @@ REGISTER_OPERATOR(elementwise_div, ops::ElementwiseOp,
 
 REGISTER_OPERATOR(elementwise_div_grad, ops::ElementwiseOpGrad,
                   ops::ElementwiseDivDoubleGradDescMaker);
-REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad);
+REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad,
+                  ops::ElementwiseDivDoubleGradOpInplace);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_div,

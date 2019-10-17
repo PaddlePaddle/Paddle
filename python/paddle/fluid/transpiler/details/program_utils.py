@@ -90,7 +90,7 @@ def variable_to_code(var):
     return var_str
 
 
-def op_to_code(op, skip_op_callstack=False):
+def op_to_code(op, skip_op_callstack=True):
     """
     Get readable codes of fluid operator.
 
@@ -187,7 +187,7 @@ def block_to_code(block, block_idx, fout=None, skip_op_callstack=False):
     print("{0}{1}".format(get_indent_space(indent), '}'), file=fout)
 
 
-def program_to_code(prog, fout=None, skip_op_callstack=False):
+def program_to_code(prog, fout=None, skip_op_callstack=True):
     """
     Print readable codes of fluid program.
 

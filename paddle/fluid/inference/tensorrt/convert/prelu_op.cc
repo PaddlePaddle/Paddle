@@ -55,8 +55,8 @@ class PReluOpConverter : public OpConverter {
     nvinfer1::IPluginLayer* layer =
         engine_->AddPlugin(&input, input_num, plugin);
     // keep alpha tensor to avoid release it's memory
-    engine_->weight_map[op_desc.Input("Alpha")[0]] =
-        std::move(alpha_tensor_temp);
+    engine_->SetWeights(op_desc.Input("Alpha")[0],
+                        std::move(alpha_tensor_temp));
 
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "prelu", {output_name}, test_mode);

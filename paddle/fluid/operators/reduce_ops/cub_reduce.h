@@ -251,7 +251,7 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
                   std::vector<int> origin_reduce_dims, const Ty& init,
                   const ReduceOp& reducer, const TransformOp& transformer,
                   cudaStream_t stream) {
-  auto x_dim = framework::vectorize2int(x.dims());
+  auto x_dim = framework::vectorize<int>(x.dims());
   std::vector<int> new_x_dim, new_reduce_dims;
   int is_reduced = 0;
   for (auto e : origin_reduce_dims) {

@@ -219,7 +219,7 @@ template class AnakinOpConverter<::anakin::saber::X86,
 #define USE_ANAKIN_CONVERTER_BASE(op_type__, place_type__, precision_type__)   \
   extern int Touch_anakin_##op_type__##_##place_type__##_##precision_type__(); \
   int use_converter_anakin_##op_type__##_##place_type__##_##precision_type__   \
-      __attribute__((unused)) =                                                \
+      UNUSED =                                                                 \
           Touch_anakin_##op_type__##_##place_type__##_##precision_type__();
 
 #if defined(PADDLE_WITH_CUDA) && defined(ANAKIN_X86_PLACE)

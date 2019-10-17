@@ -58,10 +58,14 @@ class ScatterGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    ctx->SetOutputDim(framework::GradVarName("Updates"),
-                      ctx->GetInputDim("Updates"));
-    ctx->SetOutputDim(framework::GradVarName("X"),
-                      ctx->GetInputDim(framework::GradVarName("Out")));
+    if (ctx->HasOutput(framework::GradVarName("Updates"))) {
+      ctx->SetOutputDim(framework::GradVarName("Updates"),
+                        ctx->GetInputDim("Updates"));
+    }
+    if (ctx->HasOutput(framework::GradVarName("X"))) {
+      ctx->SetOutputDim(framework::GradVarName("X"),
+                        ctx->GetInputDim(framework::GradVarName("Out")));
+    }
   }
 
  protected:

@@ -43,7 +43,7 @@ void FcBaseOpConverter<TargetT, PrecisionT>::operator()(
   auto *y_v = scope.FindVar(op_desc.Input(w_name).front());
   PADDLE_ENFORCE_NOT_NULL(y_v);
   auto weight_tensor = tensor_from_var(*y_v, platform::CPUPlace());
-  auto weight_shape = framework::vectorize2int(weight_tensor->dims());
+  auto weight_shape = framework::vectorize<int>(weight_tensor->dims());
 
   int out_dim = weight_shape[1];
   const int w_m = weight_shape[0];

@@ -29,6 +29,10 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
     int win_size = context.Attr<int>("win_size");
     auto pad_value = static_cast<T>(context.Attr<int>("pad_value"));
 
+    PADDLE_ENFORCE_EQ(in->lod().empty(), false,
+                      "Input(X) Tensor of SequenceEnumerateOp does not contain "
+                      "LoD information.");
+
     auto in_dims = in->dims();
     auto lod0 = in->lod()[0];
     PADDLE_ENFORCE_EQ(
