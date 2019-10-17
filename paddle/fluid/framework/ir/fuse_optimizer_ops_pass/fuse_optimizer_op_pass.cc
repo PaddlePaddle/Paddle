@@ -186,7 +186,15 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   auto *fused_opt_node =
       FuseOptimizerOps(aux_var_set, fused_vars_name, opt_nodes, &result);
 
+  // Step 6: Insert fused optimzier into graph
   InsertInputAndOutputForFusedOpNode(opt_nodes, graph, fused_opt_node);
+
+  // Step 7: Insert sync tensor op before fused optimizer
+  BlockDesc *current_block = opt_nodes[0]->Op()->Block();
+  InsertSyncOpBeforeFusedOptimizer(aux_var_set.at(kGrad),
+                                   fused_vars_name.at(kGrad), vars_info,
+                                   current_block, fused_opt_node, &result);
+
   // Step 6: Remove optimizer Ops
   for (auto &opt_op : opt_nodes) {
     graph->RemoveNode(opt_op);
@@ -334,6 +342,67 @@ proto::VarType::Type FuseOptimizerOpPass::GetTypeOfVar(
     const std::string &name) const {
   auto var_desc = GetVarDescFromVarsInfo(vars_info, name);
   return var_desc->GetType();
+}
+
+ir::Node *FuseOptimizerOpPass::CreateSyncTensorOpNode(
+    const std::vector<std::string> &in_args, const std::string &fused_out_arg,
+    BlockDesc *target_block, ir::Graph *result) const {
+  auto op_desc = target_block->AppendOp();
+  op_desc->SetType("sync_fused_tensor");
+  op_desc->SetInput("X", in_args);
+  op_desc->SetOutput("Out", {fused_out_arg});
+  // NOTE: multi_devices_pass requires that every op should have a role.
+  op_desc->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
+                   static_cast<int>(OpRole::kBackward));
+  return result->CreateOpNode(op_desc);
+}
+
+std::vector<ir::Node *> FuseOptimizerOpPass::GetVarNodesByName(
+    const std::vector<std::string> &var_names,
+    const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info)
+    const {
+  std::vector<ir::Node *> var_nodes;
+  for (auto &var_name : var_names) {
+    auto iter = vars_info.find(var_name);
+    PADDLE_ENFORCE_EQ(iter != vars_info.end(), true,
+                      "The Variable %s is not defined in program.", var_name);
+    for (auto var : iter->second) {
+      var_nodes.emplace_back(var);
+    }
+  }
+  return var_nodes;
+}
+
+void FuseOptimizerOpPass::InsertSyncTensorOpToGraph(
+    const std::vector<ir::Node *> &in_var_nodes, ir::Node *sync_tensor_op_node,
+    ir::Graph *result) const {
+  for (auto in_var_node : in_var_nodes) {
+    // set outpus
+    for (auto out_op_node : in_var_node->outputs) {
+      ir::Node *dep_var = result->CreateControlDepVar();
+      VLOG(6) << "Insert dep_var between " << sync_tensor_op_node->Op()->Type()
+              << " and " << out_op_node->Op()->Type();
+      sync_tensor_op_node->outputs.emplace_back(dep_var);
+      out_op_node->inputs.emplace_back(dep_var);
+      dep_var->inputs.emplace_back(sync_tensor_op_node);
+      dep_var->outputs.emplace_back(out_op_node);
+    }
+    // set inputs
+    in_var_node->outputs.emplace_back(sync_tensor_op_node);
+    sync_tensor_op_node->inputs.emplace_back(in_var_node);
+  }
+}
+
+void FuseOptimizerOpPass::InsertSyncOpBeforeFusedOptimizer(
+    const std::vector<std::string> &grads_name,
+    const std::string &fused_var_name,
+    const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
+    BlockDesc *current_block, ir::Node *fused_opt_node,
+    ir::Graph *result) const {
+  auto *sync_tensor_op_node =
+      CreateSyncTensorOpNode(grads_name, fused_var_name, current_block, result);
+  auto grad_var_nodes = GetVarNodesByName(grads_name, vars_info);
+  InsertSyncTensorOpToGraph(grad_var_nodes, sync_tensor_op_node, result);
 }
 
 void FuseOptimizerOpPass::InitFusedVarsAndAllocSpaceForVars(

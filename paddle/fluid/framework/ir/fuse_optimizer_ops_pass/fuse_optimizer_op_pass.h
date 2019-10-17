@@ -80,6 +80,27 @@ class FuseOptimizerOpPass : public ir::Pass {
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const proto::VarType::Type &dtype, ir::Graph *result) const;
 
+  ir::Node *CreateSyncTensorOpNode(const std::vector<std::string> &in_args,
+                                   const std::string &fused_out_arg,
+                                   BlockDesc *target_block,
+                                   ir::Graph *result) const;
+
+  std::vector<ir::Node *> GetVarNodesByName(
+      const std::vector<std::string> &var_names,
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info)
+      const;
+
+  void InsertSyncTensorOpToGraph(const std::vector<ir::Node *> &in_var_nodes,
+                                 ir::Node *sync_tensor_op_node,
+                                 ir::Graph *result) const;
+
+  void InsertSyncOpBeforeFusedOptimizer(
+      const std::vector<std::string> &grads_name,
+      const std::string &fused_var_name,
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
+      BlockDesc *current_block, ir::Node *fused_opt_node,
+      ir::Graph *result) const;
+
   std::unordered_map<std::string, std::vector<Node *>> GetVarInfo(
       const Graph &result) const;
 
