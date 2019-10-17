@@ -57,7 +57,7 @@ void PD_run() {
 
   PD_Tensor* out_data = PD_NewPaddleTensor();
   int* out_size;
-  out_data = PD_PredictorRun(config, input, 1, out_data, &out_size, 1);
+  PD_PredictorRun(config, input, 1, &out_data, &out_size, 1);
   LOG(INFO) << *out_size;
   LOG(INFO) << PD_GetPaddleTensorName(out_data);
   LOG(INFO) << PD_GetPaddleTensorDType(out_data);
@@ -132,7 +132,7 @@ void buffer_run() {
 
   PD_Tensor* out_data = PD_NewPaddleTensor();
   int* out_size;
-  out_data = PD_PredictorRun(config, input, 1, out_data, &out_size, 1);
+  PD_PredictorRun(config, input, 1, &out_data, &out_size, 1);
   LOG(INFO) << *out_size;
   LOG(INFO) << PD_GetPaddleTensorName(out_data);
   LOG(INFO) << PD_GetPaddleTensorDType(out_data);
