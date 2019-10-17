@@ -166,6 +166,7 @@ if(NOT APPLE)
                 -Wno-format-truncation # Warning in boost gcc 8.2
                 -Wno-error=cast-function-type # Warning in boost gcc 8.2
                 -Wno-error=parentheses # Warning in boost gcc 8.2
+                -Wno-error=catch-value # Warning in boost gcc 8.2
                 -Wno-ignored-qualifiers # Warning in boost gcc 8.2
                 )
     endif()
