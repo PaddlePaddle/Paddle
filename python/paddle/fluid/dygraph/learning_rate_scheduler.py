@@ -69,30 +69,33 @@ class LearningRateDecay(object):
 
 class PiecewiseDecay(LearningRateDecay):
     """
-    piecewise decay scheduler
+    Piecewise decay scheduler.
 
     The algorithm can be described as the code below.
 
     .. code-block:: text
 
-      boundaries = [10000, 20000]
-      values = [1.0, 0.5, 0.1]
-      if step < 10000:
-          learning_rate = 1.0
-      elif 10000 <= step < 20000:
-          learning_rate = 0.5
-      else:
-          learning_rate = 0.1
-    Args:
-        boundaries: A list of steps numbers.
-        values: A list of learning rate values that will be picked during
-            different step boundaries.
-        begin: The begin step to initilize the self.step_num
-        step: The step_size using when calculate the new step_num (Defalult is 1)
-        dtype: The dtype used to create the learning rate variable
+        boundaries = [10000, 20000]
+        values = [1.0, 0.5, 0.1]
+        if global_step < 10000:
+            learning_rate = 1.0
+        elif 10000 <= global_step < 20000:
+            learning_rate = 0.5
+        else:
+            learning_rate = 0.1
+
+    Parameters:
+        boundaries(list): A list of steps numbers. The type of element in the list is python int. 
+        values(list): A list of learning rate values that will be picked during
+            different step boundaries. The type of element in the list is python float.
+        begin(int): The begin step to initilize the global_step in the description above.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
-        The decayed learning rate.
+        None.
 
     Examples:
         .. code-block:: python
@@ -125,25 +128,40 @@ class NaturalExpDecay(LearningRateDecay):
     """
     Applies natural exponential decay to the initial learning rate.
     
-    .. code-block:: python
+    The algorithm can be described as following.
 
-        if not staircase:
-            decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
-        else:
-            decayed_learning_rate = learning_rate * exp(- decay_rate * (global_step / decay_steps))
+    .. math::
 
-    Args:
-        learning_rate: A scalar float32 value or a Variable. This
-          will be the initial learning rate during training
-        decay_steps: A Python `int32` number.
-        decay_rate: A Python `float` number.
-        staircase: Boolean. If set true, decay the learning rate every decay_steps.
-        begin: A Python 'int32' number, the begin step (Default is 0)
-        step: A Python 'int32' number, the step size (Default is 1)
-        dtype: A Python 'str', the dtype used to create learning rate variable (Default is 'float32')
+        decayed\_learning\_rate = learning\_rate * e^{y} 
+
+    If staircase is set to False, then:
+
+    .. math::
+
+        y = - decay\_rate * \\frac{global\_step}{decay\_steps}
+
+    If staircase is set to True, then:
+
+    .. math::
+
+        y = - decay\_rate * math.floor(\\frac{global\_step}{decay\_steps}) 
+
+    Parameters:
+        learning_rate(Variable|float): The initial learning rate. If the type 
+            is Variable, it's a tensor with shape [1], the data type can be  
+            float32 or float64. It also can be set to python int number.
+        decay_steps(int): The decay step size. It determines the decay cycle.
+        decay_rate(int): The decay rate.
+        staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The 
+            default value is False.
+        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
-        The decayed learning rate.
+        None.
 
     Examples:
         .. code-block:: python
@@ -189,29 +207,41 @@ class ExponentialDecay(LearningRateDecay):
     """
     Applies exponential decay to the learning rate.
 
-    When training a model, it is often recommended to lower the learning rate as the
-    training progresses. By using this function, the learning rate will be decayed by
-    'decay_rate' every 'decay_steps' steps.
+    The algorithm can be described as following.
     
-    .. code-block:: python
+    .. math::
 
-        if staircase == True:
-            decayed_learning_rate = learning_rate * decay_rate ^ floor(global_step / decay_steps)
-        else:
-            decayed_learning_rate = learning_rate * decay_rate ^ (global_step / decay_steps)
+        decayed\_learning\_rate = learning\_rate * decay\_rate ^ y 
 
-    Args:
-        learning_rate(Variable|float): The initial learning rate.
-        decay_steps(int): See the decay computation above.
-        decay_rate(float): The decay rate. See the decay computation above.
-        staircase(Boolean): If True, decay the learning rate at discrete intervals.
-                            Default: False
-        begin(int): The begin step (default is 0)
-        step(int): The step size (default is 1)
-        dtype(str): The dtype used to create learning rate (default is 'float32')
+    If staircase is set to False, then:
+
+    .. math::
+
+        y = \\frac{global\_step}{decay\_steps} 
+
+    If staircase is set to True, then:
+
+    .. math::
+
+        y = math.floor(\\frac{global\_step}{decay\_steps})
+
+
+    Parameters:
+        learning_rate(Variable|float): The initial learning rate. If the type 
+            is Variable, it's a tensor with shape [1], the data type can be  
+            float32 or float64. It also can be set to python int number.
+        decay_steps(int): The decay step size. It determines the decay cycle.
+        decay_rate(float): The decay rate.
+        staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The 
+            default value is False.
+        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
-        The decayed learning rate.
+        None.
 
     Examples:
         .. code-block:: python
@@ -257,27 +287,35 @@ class InverseTimeDecay(LearningRateDecay):
     """
     Applies inverse time decay to the initial learning rate.
 
-    When training a model, it is often recommended to lower the learning rate as the
-    training progresses. By using this function, an inverse decay function will be
-    applied to the initial learning rate.
+    The algorithm can be described as following.
+    If staircase is set to False, then:
 
-    >>> if staircase == True:
-    >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * floor(global_step / decay_step))
-    >>> else:
-    >>>     decayed_learning_rate = learning_rate / (1 + decay_rate * global_step / decay_step)
+    .. math::
 
-    Args:
-        learning_rate(Variable|float): The initial learning rate.
-        decay_steps(int): See the decay computation above.
-        decay_rate(float): The decay rate. See the decay computation above.
-        staircase(Boolean): If True, decay the learning rate at discrete intervals.
-                            Default: False
-        begin(int): The begin step (default is 0)
-        step(int): The step size (default is 1)
-        dtype(str): The dtype used to create learning rate (default is 'float32')
+        decayed\_learning\_rate = \\frac{learning\_rate}{1 + decay\_rate * \\frac{global\_step}{decay\_step}}  
+
+    If staircase is set to True, then:
+
+    .. math::
+
+        decayed\_learning\_rate = \\frac{learning\_rate}{1 + decay\_rate * math.floor(\\frac{global\_step}{decay\_step})}
+
+    Parameters:
+        learning_rate(Variable|float): The initial learning rate. If the type 
+            is Variable, it's a tensor with shape [1], the data type can be  
+            float32 or float64. It also can be set to python int number.
+        decay_steps(int): The decay step size. It determines the decay cycle.
+        decay_rate(float): The decay rate.
+        staircase(bool, optional): If set to True, decay the learning rate at discrete intervals. The 
+            default value is False.
+        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be 
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
-        The decayed learning rate.
+        None.
 
     Examples:
         .. code-block:: python
@@ -323,28 +361,40 @@ class PolynomialDecay(LearningRateDecay):
     """
     Applies polynomial decay to the initial learning rate.
 
-    .. code-block:: text
+    The algorithm can be described as following.
 
-     if cycle:
-       decay_steps = decay_steps * ceil(global_step / decay_steps)
-     else:
-       global_step = min(global_step, decay_steps)
-       decayed_learning_rate = (learning_rate - end_learning_rate) *
-            (1 - global_step / decay_steps) ^ power + end_learning_rate
+    If cycle is set to True, then:
 
-    Args:
-        learning_rate(Variable|float32): A scalar float32 value or a Variable. This
-          will be the initial learning rate during training.
-        decay_steps(int32): A Python `int32` number.
-        end_learning_rate(float): A Python `float` number.
-        power(float): A Python `float` number.
-        cycle(bool): If set true, decay the learning rate every decay_steps.
-        begin(int): The begin step (default is 0)
-        step(int): The step size (default is 1)
-        dtype(str): The dtype used to create learning rate (default is 'float32')
+    .. math::
+
+        decay\_steps & = decay\_steps * math.ceil(\\frac{global\_step}{decay\_steps}) 
+
+        decayed\_learning\_rate & = (learning\_rate-end\_learning\_rate)*(1-\\frac{global\_step}{decay\_steps})^{power}+end\_learning\_rate
+
+    If cycle is set to False, then:
+
+    .. math::
+
+        global\_step & = min(global\_step, decay\_steps) 
+
+        decayed\_learning\_rate & = (learning\_rate-end\_learning\_rate)*(1-\\frac{global\_step}{decay\_steps})^{power}+end\_learning\_rate
+
+    Parameters:
+        learning_rate(Variable|float): The initial learning rate. If the type 
+            is Variable, it's a tensor with shape [1], the data type can be  
+            float32 or float64. It also can be set to python int number.
+        decay_steps(int32): The decay step size. It determines the decay cycle.
+        end_learning_rate(float, optional): The minimum final learning rate. The default value is 0.0001.
+        power(float, optional): Power of polynomial. The default value is 1.0.
+        cycle(bool, optional): If set true, decay the learning rate every decay_steps. The default value is False.
+        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
-        The decayed learning rate.
+        None.
 
     Examples:
         .. code-block:: python
@@ -401,24 +451,26 @@ class CosineDecay(LearningRateDecay):
     """
     Applies cosine decay to the learning rate.
 
-    when training a model, it is often recommended to lower the learning rate as the
-    training progresses. By using this function, the learning rate will be decayed by
-    following cosine decay strategy.
+    The algorithm can be described as following.
 
     .. math::
 
-	decayed\_lr = learning\_rate * 0.5 * (math.cos * (epoch * \\frac{math.pi}{epochs} ) + 1)
+        decayed\_learning\_rate = learning\_rate * 0.5 * (math.cos(global\_step * \\frac{math.pi}{step\_each\_epoch} ) + 1)
     
-    Args:
-        learning_rate(Variable|float): The initial learning rate.
-        step_each_epoch(int): the number of steps in an epoch.
-        epochs(int): the number of epochs.
-        begin(int): The begin step (default is 0).
-        step(int): The step size (default is 1).
-        dtype(str): The dtype used to create learning rate (default is 'float32').
+    Parameters:
+        learning_rate(Variable|float): The initial learning rate. If the type 
+            is Variable, it's a tensor with shape [1], the data type can be  
+            float32 or float64. It also can be set to python int number.
+        step_each_epoch(int): The number of steps in an epoch.
+        epochs(int): The number of epochs.
+        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
-        The decayed learning rate.
+        None.
 
     Examples:
 	.. code-block:: python
@@ -453,33 +505,29 @@ class CosineDecay(LearningRateDecay):
 
 class NoamDecay(LearningRateDecay):
     """
-    Noam decay method. The numpy implementation of noam decay as follows.
+    Applies Noam decay to the initial learning rate. 
 
-    .. code-block:: python
-      
-      import numpy as np
-      # set hyper parameters
-      d_model = 2
-      current_steps = 20
-      warmup_steps = 200
-      # compute
-      lr_value = np.power(d_model, -0.5) * np.min([
-                              np.power(current_steps, -0.5),
-                              np.power(warmup_steps, -1.5) * current_steps])
+    The algorithm can be described as following.
 
-    Please reference `attention is all you need
-    <https://arxiv.org/pdf/1706.03762.pdf>`_.
+    .. math::
 
-    Args:
-        d_model(Variable): The dimensionality of input and output of model.
+        decayed\_learning\_rate = d_{model}^{-0.5} * min(global\_step^{-0.5}, global\_step * warmup\_steps^{-1.5})
 
-        warmup_steps(Variable): A super parameter.
-        begin(int): The begin step (default is 0)
-        step(int): The step size (default is 1)
-        dtype(str): The dtype used to create learning rate (default is 'float32')
+    Please reference `attention is all you need <https://arxiv.org/pdf/1706.03762.pdf>`_ 
+
+    Parameters:
+        d$_{model}$(Variable|int): The dimensionality of input and output feature vector of model. If type is Variable, 
+            it's a tensor with shape [1] and the data type can be int32 or int64. The type can also be python int.
+        warmup_steps(Variable|int): The number of warmup steps. A super parameter. If type is Variable, 
+            it's a tensor with shape [1] and the data type can be int32 or int64. The type can also be python int.
+        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
 
     Returns:
-        The decayed learning rate.
+        None.
 
     Examples:
         .. code-block:: python

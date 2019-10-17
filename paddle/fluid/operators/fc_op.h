@@ -24,17 +24,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-class FCOpGrad : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override;
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override;
-};
-
 inline void FCOutputSize(const framework::DDim& in_dims,
                          const framework::DDim& w_dims,
                          std::vector<int64_t>& out_dims,  // NOLINT

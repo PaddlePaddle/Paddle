@@ -425,26 +425,14 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
 
 class TestNearestAPI(OpTest):
     def test_case(self):
-        x = fluid.layers.data(name="x", shape=[3, 6, 6], dtype="float32")
-        y = fluid.layers.data(name="y", shape=[6, 6, 3], dtype="float32")
+        x = fluid.data(name="x", shape=[1, 3, 6, 6], dtype="float32")
+        y = fluid.data(name="y", shape=[1, 6, 6, 3], dtype="float32")
 
-        dim = fluid.layers.data(
-            name="dim", shape=[1], dtype="int32", append_batch_size=False)
-        shape_tensor = fluid.layers.data(
-            name="shape_tensor",
-            shape=[2],
-            dtype="int32",
-            append_batch_size=False)
-        actual_size = fluid.layers.data(
-            name="actual_size",
-            shape=[2],
-            dtype="int32",
-            append_batch_size=False)
-        scale_tensor = fluid.layers.data(
-            name="scale_tensor",
-            shape=[1],
-            dtype="float32",
-            append_batch_size=False)
+        dim = fluid.data(name="dim", shape=[1], dtype="int32")
+        shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
+        actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
+        scale_tensor = fluid.data(
+            name="scale_tensor", shape=[1], dtype="float32")
 
         out1 = fluid.layers.resize_nearest(
             y, out_shape=[12, 12], data_format='NHWC')
@@ -481,15 +469,25 @@ class TestNearestAPI(OpTest):
         for i in range(len(results) - 1):
             self.assertTrue(np.allclose(results[i + 1], expect_res))
 
+
+class TestNearestInterpException(OpTest):
     def test_exception(self):
-        # for 4-D input, data_format can only be NCHW or NHWC
-        input = fluid.layers.data(
-            name="input", shape=[3, 6, 6], dtype="float32")
-        try:
+        input = fluid.data(name="input", shape=[1, 3, 6, 6], dtype="float32")
+
+        def attr_data_format():
+            # for 4-D input, data_format can only be NCHW or NHWC
             out = fluid.layers.resize_nearest(
                 input, out_shape=[4, 8], data_format='NDHWC')
-        except:
-            pass
+
+        def attr_scale_type():
+            out = fluid.layers.resize_nearest(input, scale='scale')
+
+        def attr_scale_value():
+            out = fluid.layers.resize_nearest(input, scale=-0.3)
+
+        self.assertRaises(ValueError, attr_data_format)
+        self.assertRaises(TypeError, attr_scale_type)
+        self.assertRaises(ValueError, attr_scale_value)
 
 
 if __name__ == "__main__":

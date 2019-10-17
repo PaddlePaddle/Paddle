@@ -57,6 +57,11 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
       }
     }
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
+    if (!ctx->IsRuntime()) {
+      framework::VarDesc* out_desc =
+          boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+      out_desc->SetLoDLevel(1);
+    }
   }
 
  protected:

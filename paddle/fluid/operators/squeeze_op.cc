@@ -35,14 +35,19 @@ class SqueezeOp : public framework::OperatorWithKernel {
     const auto &x_dims = ctx->GetInputDim("X");
     // Check input tensor dims (<6) Eigen limit.
     PADDLE_ENFORCE_LE(x_dims.size(), 6,
-                      "Invalid dimnesions, the rank of Input(X) "
-                      "should be in the range of [1, 6] (Eigen limit).");
+                      "ShapeError: the dimensions of Input(X) "
+                      "should be in the range of [1, 6] (Eigen limit)."
+                      "But received X's dimensions = %d, X's shape=[%s].",
+                      x_dims.size(), x_dims);
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
     for (int a : axes) {
-      PADDLE_ENFORCE_LT(a, x_dims.size(),
-                        "The squeeze axis should be less than input "
-                        "tensor's rank.");
+      PADDLE_ENFORCE_LT(
+          a, x_dims.size(),
+          "ShapeError: The squeeze axis should be less than input "
+          "tensor's dimensions. But received axis = %d, input "
+          "tensor's dimensions = %d, input tensor's shape = [%s].",
+          a, x_dims.size(), x_dims);
     }
 
     auto out_dims = GetOutputShape(axes, x_dims);
@@ -73,9 +78,10 @@ class SqueezeOp : public framework::OperatorWithKernel {
       for (size_t idx = 0; idx < num_squeeze_dims; ++idx) {
         int current = squeeze_dims[idx] < 0 ? squeeze_dims[idx] + in_dims.size()
                                             : squeeze_dims[idx];
-        // Check current index, the upper limit has beed checked in line 36.
         PADDLE_ENFORCE_GE(current, 0,
-                          "Invalid axis, the negative axis is out of range.");
+                          "Invalid axis, the axis should >= 0."
+                          "Current axis is:%d, input tensor's shape = [%s].",
+                          current, in_dims);
 
         if (!(should_squeeze[current])) {
           ++cnt_squeezed_dims;
@@ -171,14 +177,19 @@ class Squeeze2Op : public framework::OperatorWithKernel {
     const auto &x_dims = ctx->GetInputDim("X");
     // Check input tensor dims (<6) Eigen limit.
     PADDLE_ENFORCE_LE(x_dims.size(), 6,
-                      "Invalid dimnesions, the rank of Input(X) "
-                      "should be in the range of [1, 6] (Eigen limit).");
+                      "ShapeError: the dimensions of Input(X) "
+                      "should be in the range of [1, 6] (Eigen limit)."
+                      "But received X's dimensions = %d, X's shape = [%s].",
+                      x_dims.size(), x_dims);
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
     for (int a : axes) {
-      PADDLE_ENFORCE_LT(a, x_dims.size(),
-                        "The squeeze axis should be less than input "
-                        "tensor's rank.");
+      PADDLE_ENFORCE_LT(
+          a, x_dims.size(),
+          "ShapeError: The squeeze axis should be less than input "
+          "tensor's dimensions. But received axis = %d, input "
+          "tensor's dimensions = %d, input tensor's shape = [%s].",
+          a, x_dims.size(), x_dims);
     }
 
     auto out_dims = SqueezeOp::GetOutputShape(axes, x_dims);

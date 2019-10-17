@@ -17,16 +17,29 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct DivFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a / b; }
+template <typename DeviceContext, typename T>
+void default_elementwise_div(const framework::ExecutionContext& ctx,
+                             const framework::Tensor* x,
+                             const framework::Tensor* y, framework::Tensor* z) {
+  int axis = ctx.Attr<int>("axis");
+  ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                        DivFunctor<T>(), z);
+}
+
+template <typename DeviceContext, typename T, class Enable = void>
+struct SameDimsElemwiseDiv {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* y,
+                  framework::Tensor* z);
 };
 
 template <typename DeviceContext, typename T>
@@ -36,11 +49,15 @@ class ElementwiseDivKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* z = ctx.Output<framework::LoDTensor>("Out");
-
     z->mutable_data<T>(ctx.GetPlace());
-    int axis = ctx.Attr<int>("axis");
-    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                          DivFunctor<T>(), z);
+
+    auto dims_equal = x->dims() == y->dims();
+    if (dims_equal) {
+      SameDimsElemwiseDiv<DeviceContext, T> same_dims_div;
+      same_dims_div(ctx, x, y, z);
+    } else {
+      default_elementwise_div<DeviceContext, T>(ctx, x, y, z);
+    }
   }
 };
 
@@ -64,6 +81,31 @@ struct DivDoubleDY {
 };
 
 template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+elementwise_div_grad(const framework::ExecutionContext& ctx,
+                     const framework::Tensor* x, const framework::Tensor* y,
+                     const framework::Tensor* out,
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+  ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
+      ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
+}
+
+#ifdef PADDLE_WITH_CUDA
+// cuda definition
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+elementwise_div_grad(const framework::ExecutionContext& ctx,
+                     const framework::Tensor* x, const framework::Tensor* y,
+                     const framework::Tensor* out,
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy);
+#endif
+
+template <typename DeviceContext, typename T>
 class ElementwiseDivGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -76,11 +118,15 @@ class ElementwiseDivGradKernel : public ElemwiseGradKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
-
     auto* x = dout;  // Fake x, not used
 
-    ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
-        ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(), DivGradDY<T>());
+    if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
+      elementwise_div_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
+    } else {
+      ElemwiseGradCompute<DeviceContext, T, DivGradDX<T>, DivGradDY<T>>(
+          ctx, *x, *y, *out, *dout, axis, dx, dy, DivGradDX<T>(),
+          DivGradDY<T>());
+    }
   }
 };
 

@@ -45,7 +45,7 @@ void DeformableCol2imCPUKernel(
     const int channel_per_deformable_group, const int batch_size,
     const int deformable_group, const int height_col, const int width_col,
     T* grad_im) {
-  for (size_t thread = 0; thread < num_kernels; thread++) {
+  for (int thread = 0; thread < num_kernels; thread++) {
     const int j = (thread / width_col / height_col / batch_size) % kernel_w;
     const int i =
         (thread / width_col / height_col / batch_size / kernel_w) % kernel_h;
@@ -124,7 +124,7 @@ void DeformableCol2imCoordCPUKernel(
     const int dilation_w, const int channel_per_deformable_group,
     const int batch_size, const int offset_channels, const int deformable_group,
     const int height_col, const int width_col, T* grad_offset) {
-  for (size_t i = 0; i < num_kernels; i++) {
+  for (int i = 0; i < num_kernels; i++) {
     T val = 0, mval = 0;
     const int w = i % width_col;
     const int h = (i / width_col) % height_col;
@@ -218,7 +218,7 @@ void DeformableIm2colCPUKernel(
     const int channel_per_deformable_group, const int batch_size,
     const int num_channels, const int deformable_group, const int height_col,
     const int width_col, T* data_col) {
-  for (size_t i = 0; i < num_kernels; i++) {
+  for (int i = 0; i < num_kernels; i++) {
     const int w_col = i % width_col;
     const int h_col = (i / width_col) % height_col;
     const int b_col = (i / width_col) / height_col % batch_size;

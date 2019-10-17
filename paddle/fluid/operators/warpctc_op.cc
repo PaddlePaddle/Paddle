@@ -52,7 +52,7 @@ class WarpCTCOp : public framework::OperatorWithKernel {
                    sequence_width);
 
     // TODO(liuyiqun): it is tricky to set the wrong dimension here.
-    ctx->SetOutputDim("Loss", {logits_dims[0], 1});
+    ctx->SetOutputDim("Loss", {-1, 1});
   }
 
  protected:

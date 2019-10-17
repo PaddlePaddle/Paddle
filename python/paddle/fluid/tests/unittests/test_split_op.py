@@ -22,13 +22,17 @@ from op_test import OpTest
 class TestSplitOp(OpTest):
     def setUp(self):
         self._set_op_type()
+        self.dtype = self.get_dtype()
         axis = 1
-        x = np.random.random((4, 5, 6)).astype('float32')
+        x = np.random.random((4, 5, 6)).astype(self.dtype)
         out = np.split(x, [2, 3], axis)
         self.inputs = {'X': x}
         self.attrs = {'axis': axis, 'sections': [2, 1, 2]}
         self.outputs = {'Out': [('out%d' % i, out[i]) \
             for i in range(len(out))]}
+
+    def get_dtype(self):
+        return "float32"
 
     def _set_op_type(self):
         self.op_type = "split"
@@ -44,6 +48,24 @@ class TestSplitByrefOp(OpTest):
     def _set_op_type(self):
         self.op_type = "split_byref"
 
+
+#----------------Split Fp16----------------
+
+
+def create_test_fp16(parent):
+    class TestSplitFp16(parent):
+        def get_dtype(self):
+            return np.float16
+
+        def test_check_grad(self):
+            pass
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    TestSplitFp16.__name__ = cls_name
+    globals()[cls_name] = TestSplitFp16
+
+
+create_test_fp16(TestSplitOp)
 
 if __name__ == '__main__':
     unittest.main()

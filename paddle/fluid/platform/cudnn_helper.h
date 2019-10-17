@@ -72,6 +72,7 @@ enum class DataLayout {  // Not use
   kNHWC,
   kNCHW,
   kNCDHW,
+  kNDHWC,  // add, liyamei
   kNCHW_VECT_C,
 };
 
@@ -212,6 +213,8 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
       return CUDNN_TENSOR_NCHW;
     case DataLayout::kNCDHW:
       return CUDNN_TENSOR_NCHW;  // NOTE: cudnn treat NdTensor as the same
+    case DataLayout::kNDHWC:
+      return CUDNN_TENSOR_NHWC;  // add, liyamei
     default:
       PADDLE_THROW("Unknown cudnn equivalent for order");
   }
@@ -238,14 +241,31 @@ class ScopedTensorDescriptor {
       strides[i] = dims[i + 1] * strides[i + 1];
     }
     // Update tensor descriptor dims setting if groups > 1
-    // NOTE: Assume using NCHW or NCDHW order
-    std::vector<int> dims_with_group(dims.begin(), dims.end());  // copy
+    // NOTE: Here, Assume using NCHW or NCDHW order
+    std::vector<int> dims_with_group(dims.begin(), dims.end());
     if (groups > 1) {
       dims_with_group[1] = dims_with_group[1] / groups;
     }
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
-        desc_, type, dims_with_group.size(), dims_with_group.data(),
-        strides.data()));
+
+    if (dims.size() == 4) {
+      if (format == CUDNN_TENSOR_NCHW) {
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
+            desc_, type, dims_with_group.size(), dims_with_group.data(),
+            strides.data()));
+      } else {  // CUDNN_TENSOR_NHWC
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensor4dDescriptor(
+            desc_, format, type, dims[0], dims[3], dims[1], dims[2]));
+      }
+    } else if (dims.size() == 5) {
+      if (format == CUDNN_TENSOR_NCHW) {
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptor(
+            desc_, type, dims_with_group.size(), dims_with_group.data(),
+            strides.data()));
+      } else {  // CUDNN_TENSOR_NHWC
+        PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptorEx(
+            desc_, format, type, dims.size(), dims.data()));
+      }
+    }
     return desc_;
   }
 
