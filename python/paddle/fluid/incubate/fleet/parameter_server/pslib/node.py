@@ -296,24 +296,34 @@ class DownpourWorker(Worker):
         self.window = window
         self._worker = pslib.DownpourTrainerParameter()
 
-    def add_sparse_table(self, table_id, slot_key_vars, slot_value_vars):
+    def add_sparse_table(self, table_id, slot_key_vars, slot_value_vars,
+                         slot_value_grads=None):
         """
         Args:
             table_id(int): id of sparse params table
-            slot_key_vars(string): slot key id 
-            slot_value_var(string): slot key value after embedding
+            slot_key_vars(list): slot key id
+            slot_value_var(list): slot key value after embedding
+            slot_value_grads(list): grad of all params, default is None
+
         Returns:
             return None 
         """
+        if slot_value_grads is None:
+            slot_value_grad_names = [var.name + "@GRAD" for var in slot_value_vars]
+        else:
+            slot_value_grad_names = []
+            all_grad_names = [var.name for var in slot_value_grads]
+            for var in slot_value_vars:
+                if var.name + "@GRAD" in all_grad_names:
+                    slot_value_grad_names.append(var.name + "@GRAD")
         for table in self._worker.sparse_table:
             if table.table_id == table_id:
                 if [var.name for var in slot_key_vars
                     ] == self._worker.sparse_table[table_id].slot_key:
                     if [var.name for var in slot_value_vars
                         ] == self._worker.sparse_table[table_id].slot_value:
-                        if [
-                                var.name + "@GRAD" for var in slot_value_vars
-                        ] == self._worker.sparse_table[table_id].slot_gradient:
+                        if slot_value_grad_names == \
+                                self._worker.sparse_table[table_id].slot_gradient:
                             return
                         else:
                             raise ValueError(
@@ -331,8 +341,7 @@ class DownpourWorker(Worker):
         table.table_id = table_id
         table.slot_key.extend([var.name for var in slot_key_vars])
         table.slot_value.extend([var.name for var in slot_value_vars])
-        table.slot_gradient.extend(
-            [var.name + "@GRAD" for var in slot_value_vars])
+        table.slot_gradient.extend(slot_value_grad_names)
 
     def add_dense_table(self, table_id, learning_rate, param_vars, grad_vars,
                         dense_start_table_id, sparse_table_names):

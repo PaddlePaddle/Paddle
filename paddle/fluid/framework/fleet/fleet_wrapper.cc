@@ -337,7 +337,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     t.resize(emb_dim + offset + slot_offset);
   }
   uint64_t fea_idx = 0u;
-  for (size_t i = 0; i < sparse_key_names.size(); ++i) {
+  for (size_t i = 0; i < sparse_key_names.size()
+       && i < sparse_grad_names.size(); ++i) {
     Variable* var = scope.FindVar(sparse_key_names[i]);
     if (var == nullptr) {
       continue;
@@ -396,8 +397,31 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       fea_idx++;
     }
   }
-  CHECK(fea_idx == fea_keys.size()) << "fea_idx: " << fea_idx
-                                    << "features size: " << fea_keys.size();
+
+  uint64_t no_grad_fea_num = 0u;
+  for (size_t i = sparse_grad_names.size(); i < sparse_key_names.size(); ++i) {
+    Variable* var = scope.FindVar(sparse_key_names[i]);
+    if (var == nullptr) {
+      continue;
+    }
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    if (tensor == nullptr) {
+      LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
+      exit(-1);
+    }
+    int len = tensor->numel();
+    int64_t* ids = tensor->data<int64_t>();
+    for (auto id_idx = 0u; id_idx < len; ++id_idx) {
+      if (ids[id_idx] == 0) {
+        continue;
+      }
+      ++no_grad_fea_num;
+    }
+  }
+
+  CHECK(fea_idx + no_grad_fea_num == fea_keys.size()) << "fea_idx: "
+      << fea_idx << " no_grad_fea_num: " << no_grad_fea_num
+      << " features size: " << fea_keys.size();
   std::vector<float*> push_g_vec;
   for (auto i = 0u; i < fea_keys.size(); ++i) {
     push_g_vec.push_back((*push_values)[i].data());
