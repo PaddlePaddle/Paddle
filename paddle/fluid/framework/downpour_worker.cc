@@ -188,6 +188,13 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
     LoDTensor* tensor = fea_var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var "
                              << sparse_key_names_[table_id][i] << " is null";
+
+    // skip slots which do not have embedding
+    Variable* emb_var = thread_scope_->FindVar(sparse_value_names_[table_id][i]);
+    if (emb_var == nullptr) {
+      continue;
+    }
+
     int64_t* ids = tensor->data<int64_t>();
     size_t fea_idx = 0;
     // tensor->lod()[0].size() == batch_size + 1
@@ -424,7 +431,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
       timeline.Start();
       fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
                                      sparse_key_names_[tid], &features_[tid],
-                                     &feature_values_[tid], table.fea_dim());
+                                     &feature_values_[tid], table.fea_dim(),
+                                     sparse_value_names_[tid]);
       timeline.Pause();
       pull_sparse_time += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
@@ -632,7 +640,8 @@ void DownpourWorker::TrainFiles() {
       }
       fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
                                      sparse_key_names_[tid], &features_[tid],
-                                     &feature_values_[tid], table.fea_dim());
+                                     &feature_values_[tid], table.fea_dim(),
+                                     sparse_value_names_[tid]);
       CollectLabelInfo(i);
       FillSparseValue(i);
       auto nid_iter = std::find(sparse_value_names_[tid].begin(),

@@ -159,14 +159,16 @@ void FleetWrapper::CreateClient2ClientConnection() {
 void FleetWrapper::PullSparseVarsSync(
     const Scope& scope, const uint64_t table_id,
     const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
-    std::vector<std::vector<float>>* fea_values, int fea_value_dim) {
+    std::vector<std::vector<float>>* fea_values, int fea_value_dim,
+    const std::vector<std::string>& var_emb_names) {
 #ifdef PADDLE_WITH_PSLIB
   std::vector<::std::future<int32_t>> pull_sparse_status;
   pull_sparse_status.resize(0);
   fea_keys->clear();
   fea_keys->resize(0);
   fea_keys->reserve(MAX_FEASIGN_NUM);
-  for (auto name : var_names) {
+  for (size_t var_index = 0; var_index < var_names.size(); ++var_index) {
+    const std::string& name = var_names[var_index];
     Variable* var = scope.FindVar(name);
     if (var == nullptr) {
       continue;
@@ -175,6 +177,14 @@ void FleetWrapper::PullSparseVarsSync(
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
+
+    // skip slots which do not have embedding
+    const std::string& emb_name = var_emb_names[var_index];
+    Variable* emb_var = scope.FindVar(emb_name);
+    if (emb_var == nullptr) {
+      continue;
+    }
+
     for (auto i = 0u; i < len; ++i) {
       if (ids[i] == 0u) {
         continue;
@@ -337,8 +347,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     t.resize(emb_dim + offset + slot_offset);
   }
   uint64_t fea_idx = 0u;
-  for (size_t i = 0; i < sparse_key_names.size()
-       && i < sparse_grad_names.size(); ++i) {
+  for (size_t i = 0;
+       i < sparse_key_names.size() && i < sparse_grad_names.size(); ++i) {
     Variable* var = scope.FindVar(sparse_key_names[i]);
     if (var == nullptr) {
       continue;
@@ -419,8 +429,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     }
   }
 
-  CHECK(fea_idx + no_grad_fea_num == fea_keys.size()) << "fea_idx: "
-      << fea_idx << " no_grad_fea_num: " << no_grad_fea_num
+  CHECK(fea_idx + no_grad_fea_num == fea_keys.size())
+      << "fea_idx: " << fea_idx << " no_grad_fea_num: " << no_grad_fea_num
       << " features size: " << fea_keys.size();
   std::vector<float*> push_g_vec;
   for (auto i = 0u; i < fea_keys.size(); ++i) {

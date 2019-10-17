@@ -77,7 +77,8 @@ class FleetWrapper {
                           const std::vector<std::string>& var_names,
                           std::vector<uint64_t>* fea_keys,
                           std::vector<std::vector<float>>* fea_values,
-                          int fea_dim);
+                          int fea_dim,
+                          const std::vector<std::string>& var_emb_names);
 
   void PullDenseVarsSync(const Scope& scope, const uint64_t table_id,
                          const std::vector<std::string>& var_names);

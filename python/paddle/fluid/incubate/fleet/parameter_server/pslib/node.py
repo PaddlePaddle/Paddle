@@ -10,13 +10,15 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
+"""Defination of Server and Worker."""
 
 from . import ps_pb2 as pslib
 
 
 class Server(object):
     """
-        A Server basic class.
+        A Server basic class
+        it's a base class, does not have implementation
     """
 
     def __init__(self):
@@ -26,6 +28,7 @@ class Server(object):
 class Worker(object):
     """
         A Worker basic class.
+        it's a base class, does not have implementation
     """
 
     def __init__(self):
@@ -169,7 +172,10 @@ class DownpourServer(Server):
         """
         Args:
             table_id(int): id of sparse params table
-            strategy(dict): the dense config dict.
+            param_var(list): param vars
+            grad_var(list): param grad vars
+            strategy(dict): the dense config dict
+            sparse_table_names(list): sparse table names
         Returns:
             return None 
         """
@@ -230,7 +236,11 @@ class DownpourServer(Server):
         """
         Args:
             table_id(int): id of datanorm table
-            strategy(dict): the datanorm config dict.
+            learning_rate(float): the learning rate used to update parameters
+            param_var(list): param vars
+            grad_var(list): param grad vars
+            strategy(dict): the datanorm config dict
+            sparse_table_names(list): sparse table names
         Returns:
             return None 
         """
@@ -296,8 +306,8 @@ class DownpourWorker(Worker):
         self.window = window
         self._worker = pslib.DownpourTrainerParameter()
 
-    def add_sparse_table(self, table_id, slot_key_vars, slot_value_vars,
-                         slot_value_grads=None):
+    def add_sparse_table(self, table_id, slot_key_vars,
+                         slot_value_vars, slot_value_grads=None):
         """
         Args:
             table_id(int): id of sparse params table
@@ -352,6 +362,8 @@ class DownpourWorker(Worker):
                 Can be a float value
             param_var(list): all dense param. it is a list.
             grad_var(list): all dense grad parm it is a list.
+            dense_start_table_id(int): dense table start index
+            sparse_table_names(list): sparse table names
         Returns:
             return None 
         """

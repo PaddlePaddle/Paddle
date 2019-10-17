@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Optimizer Factory."""
 
 __all__ = ["DistributedAdam"]
 import paddle.fluid as fluid
@@ -23,6 +24,11 @@ from . import ps_pb2 as pslib
 
 
 class DistributedOptimizerImplBase(object):
+    """
+    DistributedOptimizerImplBase
+    base class of optimizers
+    """
+
     def __init__(self, optimizer):
         self._optimizer = optimizer
         self._learning_rate = optimizer._learning_rate
@@ -33,10 +39,22 @@ class DistributedOptimizerImplBase(object):
                  startup_program=None,
                  parameter_list=None,
                  no_grad_set=None):
+        """
+        Args:
+            loss(Variable): loss variable defined by user
+            startup_program(Program): startup program that defined by user
+            parameter_list(str list): parameter names defined by users
+            no_grad_set(set): a set of variables that is defined by users
+                so that these variables do not need gradient computation
+        """
         pass
 
 
 class DistributedAdam(DistributedOptimizerImplBase):
+    """
+    DistributedAdam
+    adam optimizer in distributed training
+    """
     def __init__(self, optimizer):
         # todo(guru4elephant): add more optimizers here as argument
         # todo(guru4elephant): make learning_rate as a variable
