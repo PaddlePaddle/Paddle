@@ -16,7 +16,8 @@ fi
 
 
 echo "before run ${name}"
-netstat -an
+ps -aux
+netstat -anlp
 
 # rm flag file
 rm -f ${name}_*.log
@@ -33,7 +34,8 @@ fi
 echo "${name} faild with ${exit_code}"
 
 echo "after run ${name}"
-netstat -an
+ps -aux
+netstat -anlp
 
 # paddle log
 echo "${name} log"
