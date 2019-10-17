@@ -129,6 +129,7 @@ class PRROIPoolGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
                       "The gradient of X should not be null.");
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->SetOutputDim(framework::GradVarName("ROIs"), ctx->GetInputDim("ROIs"));
   }
 
  protected:
@@ -148,9 +149,11 @@ class PRROIPoolGradDescMaker : public framework::SingleGradOpDescMaker {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
     op->SetType("prroi_pool_grad");
     op->SetInput("X", Input("X"));
+    op->SetInput("Out", Output("Out"));
     op->SetInput("ROIs", Input("ROIs"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("ROIs"), InputGrad("ROIs"));
     op->SetAttrMap(Attrs());
     return op;
   }

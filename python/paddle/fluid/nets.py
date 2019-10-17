@@ -363,67 +363,67 @@ def scaled_dot_product_attention(queries,
                                  num_heads=1,
                                  dropout_rate=0.):
     """
-    The dot-product attention.
-
+    This interface Multi-Head Attention using scaled dot product.
     Attention mechanism can be seen as mapping a query and a set of key-value
-    pairs to an output. The output is computed as a weighted sum of the values,
-    where the weight assigned to each value is computed by a compatibility
-    function (dot-product here) of the query with the corresponding key.
+    pairs to an output. Multi-Head Attention performs attention using multi-head
+    parallel, and the inputs of attention would be transformed by linear projection.
+    The formula is as follows:
 
-    The dot-product attention can be implemented through (batch) matrix
-    multipication as follows:
+    .. math::
 
-        .. math::
+        MultiHead(Q, K, V ) & = Concat(head_1, ..., head_h)
 
-            Attention(Q, K, V)= softmax(QK^\mathrm{T})V
+        where \  head_i & = Attention(QW_i^Q , KW_i^K , VW_i^V )
 
-    Refer to `Attention Is All You Need
-    <https://arxiv.org/pdf/1706.03762.pdf>`_.
+        Attention(Q, K, V) & = softmax (\\frac{QK^\mathrm{T}}{\sqrt{d_k}}) V
+
+    For more details, please refer to `Attention Is All You Need
+    <https://arxiv.org/pdf/1706.03762.pdf>`_ .
+
+    Note that the implementation is adapted to batch, and all matrix multiplication
+    in :math:`Attention(Q, K, V)` is batched matrix multiplication. Refer to
+    :ref:`api_fluid_layers_matmul` .
 
     Args:
-        queries (Variable): The input variable which should be a 3-D Tensor.
-        keys (Variable): The input variable which should be a 3-D Tensor.
-        values (Variable): The input variable which should be a 3-D Tensor.
-        num_heads (int): Head number to compute the scaled dot product
-            attention. Default: 1.
-        dropout_rate (float): The dropout rate to drop the attention weight.
-            Default: 0.0.
+        queries (Variable): A 3-D Tensor with shape :math:`[N, L_q, d_k \\times h]` ,
+            where :math:`N` stands for batch size, :math:`L_q` for the sequence length
+            of query, :math:`d_k \\times h` for the feature size of query, :math:`h` for
+            head number. The data type should be float32 or float64.
+        keys (Variable): A 3-D Tensor with shape :math:`[N, L_k, d_k \\times h]` ,
+            where :math:`N` stands for batch size, :math:`L_k` for the sequence length
+            of key, :math:`d_k \\times h` for the feature size of key, :math:`h` for head
+            number. The data type should be the same as ``queries`` .
+        values (Variable): A 3-D Tensor with shape :math:`[N, L_k, d_v \\times h]` ,
+            where :math:`N` stands for batch size, :math:`L_k` for the sequence length
+            of key, :math:`d_v \\times h` for the feature size of value, :math:`h` for head
+            number. The data type should be the same as ``queries`` .
+        num_heads (int, optional): Indicate the number of head. If the numher
+            is 1, linear projection would not be performed on inputs. Default: 1.
+        dropout_rate (float, optional): The rate to drop the attention weight.
+            Default: 0.0, which means no dropout.
 
     Returns:
-        Variable: A 3-D Tensor computed by multi-head scaled dot product\
-            attention.
+        Variable: A 3-D Tensor with shape :math:`[N, L_q, d_v \\times h]` , \
+            where :math:`N` stands for batch size, :math:`L_q` for the sequence \
+            length of query, :math:`d_v \\times h` for the feature size of value. \
+            It has the same data type with inputs, representing the output of \
+            Multi-Head Attention.
 
     Raises:
-        ValueError: If input queries, keys, values are not 3-D Tensors.
-
-    NOTES:
-        1. When num_heads > 1, three linear projections are learned respectively
-           to map input queries, keys and values into queries', keys' and values'.
-           queries', keys' and values' have the same shapes with queries, keys
-           and values.
-        2. When num_heads == 1, scaled_dot_product_attention has no learnable
-           parameters.
+        ValueError: Inputs quries, keys and values should all be 3-D tensors.
+        ValueError: The hidden size of queries and keys should be the same.
+        ValueError: The max sequence length in query batch and in key batch should be the same.
+        ValueError: he hidden size of keys must be divisible by the number of attention heads.
+        ValueError: he hidden size of values must be divisible by the number of attention heads.
 
     Examples:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            queries = fluid.layers.data(name="queries",
-                                        shape=[3, 5, 9],
-                                        dtype="float32",
-                                        append_batch_size=False)
-            queries.stop_gradient = False
-            keys = fluid.layers.data(name="keys",
-                                     shape=[3, 6, 9],
-                                     dtype="float32",
-                                     append_batch_size=False)
-            keys.stop_gradient = False
-            values = fluid.layers.data(name="values",
-                                       shape=[3, 6, 10],
-                                       dtype="float32",
-                                       append_batch_size=False)
-            values.stop_gradient = False
+            queries = fluid.data(name="queries", shape=[3, 5, 9], dtype="float32")
+            keys = fluid.data(name="keys", shape=[3, 6, 9], dtype="float32")
+            values = fluid.data(name="values", shape=[3, 6, 10], dtype="float32")
             contexts = fluid.nets.scaled_dot_product_attention(queries, keys, values)
             contexts.shape  # [3, 5, 10]
     """

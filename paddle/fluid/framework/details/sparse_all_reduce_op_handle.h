@@ -36,6 +36,8 @@ class SparseAllReduceOpHandle : public AllReduceOpHandle {
                           bool is_encoded = false, int nranks = -1);
   std::string Name() const override;
 
+  void WaitInputVarGenerated() override;
+
  protected:
   void RunImpl() override;
   int GetKValue(const std::string &grad_name);

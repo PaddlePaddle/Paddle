@@ -5,6 +5,8 @@ set(dist_ENVS http_proxy="" https_proxy="")
 
 file(GLOB DIST_TEST_OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "test_dist_*.py")
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_mnist)
+list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
