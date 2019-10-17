@@ -453,7 +453,7 @@ class TestNearestAPI(OpTest):
         else:
             place = core.CPUPlace()
         exe = fluid.Executor(place)
-        # exe.run(fluid.default_startup_program())
+        exe.run(fluid.default_startup_program())
         results = exe.run(fluid.default_main_program(),
                           feed={
                               "x": x_data,
