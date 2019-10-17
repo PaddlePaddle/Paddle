@@ -67,7 +67,7 @@ class HierarchicalSigmoidOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true, "Input(W) should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       "Output(Out) should not be null.");
-    PADDLE_ENFORCi_EQ(ctx->HasOutput("PreOut"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("PreOut"), true,
                       "Output(PreOut) should not be null.");
     auto with_prefetch = ctx->Attrs().Get<bool>("remote_prefetch");
     if (with_prefetch) {
