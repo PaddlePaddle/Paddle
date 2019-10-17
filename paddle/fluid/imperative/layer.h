@@ -384,8 +384,8 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
     return grad_pending_ops_;
   }
 
-  void SetGradPendingOps(std::vector<OpBase*>* vec_temp) {
-    grad_pending_ops_.swap(*vec_temp);
+  void SetGradPendingOps(std::vector<OpBase*> vec_temp) {
+    grad_pending_ops_.swap(vec_temp);
   }
 
   void InsertGradPendingOps(OpBase* op) { grad_pending_ops_.emplace_back(op); }
@@ -426,11 +426,11 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
   void SetType(const std::string& type) { type_ = type; }
   void SetInput(const std::string& name,
                 std::vector<std::shared_ptr<VarBase>> vec_var_base) {
-    ins_.emplace(name, vec_var_base);
+    ins_[name] = std::move(vec_var_base);
   }
   void SetOutput(const std::string& name,
                  std::vector<std::shared_ptr<VarBase>> vec_var_base) {
-    outs_.emplace(name, vec_var_base);
+    outs_[name] = std::move(vec_var_base);
   }
   void SetAttrMap(const framework::AttributeMap& attrs) { attrs_ = attrs; }
   void SetAttr(const std::string& name, const framework::Attribute& v) {

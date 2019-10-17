@@ -94,14 +94,14 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
   size_t grad_op_num = grad_op_bases_.size();
 
   std::set<VarBase*> set_input_vars;
-  for (auto& grad_in_it : ins) {
-    for (auto& var_base_it : grad_in_it.second) {
+  for (auto& fwd_in_it : ins) {
+    for (auto& var_base_it : fwd_in_it.second) {
       set_input_vars.insert(var_base_it.get());
     }
   }
 
-  for (auto& grad_out_it : outs) {
-    for (auto& var_base_it : grad_out_it.second) {
+  for (auto& fwd_out_it : outs) {
+    for (auto& var_base_it : fwd_out_it.second) {
       set_input_vars.insert(var_base_it.get());
     }
   }
@@ -148,7 +148,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
     std::vector<OpBase*> vec_preceding_ops(visited_preceding_ops.begin(),
                                            visited_preceding_ops.end());
 
-    grad_op->SetGradPendingOps(&vec_preceding_ops);
+    grad_op->SetGradPendingOps(std::move(vec_preceding_ops));
 
     // this OpBase* is just used to manage op's life time
     engine_->InsertOp(grad_op.get(), grad_op);

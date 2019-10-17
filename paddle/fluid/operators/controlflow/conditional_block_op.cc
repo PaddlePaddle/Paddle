@@ -204,7 +204,6 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conditional_block, ops::ConditionalBlockOp,
                   ops::ConditionalBlockOpProtoMaker,
-                  ops::ConditionalBlockGradMaker<paddle::framework::OpDesc>,
-                  ops::ConditionalBlockGradMaker<paddle::imperative::OpBase>);
+                  ops::ConditionalBlockGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(conditional_block_grad, ops::ConditionalBlockGradOp,
                   ops::ConditionalBlockGradInferShape);

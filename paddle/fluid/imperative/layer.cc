@@ -264,8 +264,7 @@ void OpBase::CreateOperatorBase() {
   auto input_name_map = CreateVarNameMap(info, type_, ins_, true);
   auto output_name_map = CreateVarNameMap(info, type_, outs_, false);
   op_ = framework::OpRegistry::CreateOp(type_, std::move(input_name_map),
-                                        std::move(output_name_map),
-                                        std::move(attrs_));
+                                        std::move(output_name_map), attrs_);
 }
 
 void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
