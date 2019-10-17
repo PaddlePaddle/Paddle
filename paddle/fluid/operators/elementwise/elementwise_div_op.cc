@@ -38,7 +38,7 @@ struct SameDimsElemwiseDiv<
 template <typename T>
 struct SameDimsElemwiseDiv<
     platform::CPUDeviceContext, T,
-    typename std::enable_if<std::is_integral<T>::value>::type> {
+    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
   void operator()(const framework::ExecutionContext &ctx,
                   const framework::Tensor *x, const framework::Tensor *y,
                   framework::Tensor *z) {
