@@ -46,24 +46,6 @@ struct SameDimsElemwiseDiv<
   }
 };
 
-/*
-template <typename T>
-struct SameDimsElemwiseDiv<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
-    eigen_z.device(place) = eigen_x / eigen_y;
-  }
-};
-*/
-
 class ElementwiseDivOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Div"; }
