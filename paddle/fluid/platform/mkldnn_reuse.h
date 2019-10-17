@@ -420,8 +420,7 @@ class ActivationMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, algorithm, fmt, alpha, beta,
-                                unique_name)) {
+            platform::CreateKey(dims, unique_name)) {
     auto md = mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
 
     this->AcquireForwardPrimitiveDescriptor(
@@ -441,8 +440,7 @@ class ActivationMKLDNNHandler
       : platform::MKLDNNHandlerT<T, mkldnn::eltwise_forward,
                                  mkldnn::eltwise_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, algorithm, fmt, alpha, beta,
-                                unique_name)) {
+            platform::CreateKey(dims, unique_name)) {
     auto diff_dst_md = platform::MKLDNNMemDesc(
         dims, platform::MKLDNNGetDataType<T>(), diff_fmt);
     auto src_md =
@@ -473,7 +471,7 @@ class LRNMKLDNNHandler
 
       : platform::MKLDNNHandlerT<T, mkldnn::lrn_forward, mkldnn::lrn_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, n, alpha, beta, k, fmt, unique_name)) {
+            platform::CreateKey(dims, unique_name)) {
     auto src_md =
         mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
     this->AcquireForwardPrimitiveDescriptor(
@@ -491,7 +489,7 @@ class LRNMKLDNNHandler
 
       : platform::MKLDNNHandlerT<T, mkldnn::lrn_forward, mkldnn::lrn_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(dims, n, alpha, beta, k, fmt, unique_name)) {
+            platform::CreateKey(dims, unique_name)) {
     auto src_md =
         mkldnn::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
     auto diff_md =
@@ -533,8 +531,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
       : platform::MKLDNNHandlerT<T, mkldnn::pooling_forward,
                                  mkldnn::pooling_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(src_dims, pooling_type, ksize, strides,
-                                paddings, dt, fmt, unique_name)) {
+            platform::CreateKey(src_dims, dt, unique_name)) {
     auto src_md = mkldnn::memory::desc(src_dims, dt, fmt);
     /* create memory descriptor for pooling without specified format
      * ('any') which lets a primitive (pooling in this case) choose
@@ -574,8 +571,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
       : platform::MKLDNNHandlerT<T, mkldnn::pooling_forward,
                                  mkldnn::pooling_backward>(
             dev_ctx, dev_ctx.GetEngine(), cpu_place,
-            platform::CreateKey(diff_src_dims, pooling_type, ksize, strides,
-                                paddings, dt, fmt, unique_name)) {
+            platform::CreateKey(diff_src_dims, dt, unique_name)) {
     auto diff_dst_md = mkldnn::memory::desc(
         diff_dst_dims, platform::MKLDNNGetDataType<T>(), diff_dst_fmt);
     auto diff_src_md =
