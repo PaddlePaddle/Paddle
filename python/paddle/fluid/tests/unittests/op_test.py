@@ -874,7 +874,6 @@ class OpTest(unittest.TestCase):
                 for item in sub_out:
                     sub_out_name, expect = item[0], item[1]
                     if check_dygraph:
-                        #imperative_actual = dygraph_outs[sub_out_name][0]
                         imperative_actual = find_imperative_actual(
                             sub_out_name, dygraph_outs, place)
                         imperative_actual_t = np.array(
@@ -912,7 +911,6 @@ class OpTest(unittest.TestCase):
                                 " in dygraph mode")
             else:
                 if check_dygraph:
-                    #imperative_actual = dygraph_outs[out_name][0]
                     imperative_actual = find_imperative_actual(
                         out_name, dygraph_outs, place)
                     imperative_actual_t = np.array(
@@ -1046,7 +1044,6 @@ class OpTest(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               check_dygraph=True):
-        #check_dygraph = False  ##delete
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -1264,7 +1261,7 @@ class OpTest(unittest.TestCase):
             outputs_valid = {}
             for output_name in output_names:
                 outputs_valid[output_name] = self._find_var_in_dygraph(
-                    outputs, output_name)  #outputs[output_name]
+                    outputs, output_name)
 
             if len(outputs_valid) == 1:
                 loss = block.create_var(
@@ -1298,7 +1295,7 @@ class OpTest(unittest.TestCase):
                     type=core.VarDesc.VarType.LOD_TENSOR,
                     persistable=False,
                     stop_gradient=False,
-                    shape=[1])  ###
+                    shape=[1])
                 block.append_op(
                     type='sum',
                     inputs={"X": avg_sum},
