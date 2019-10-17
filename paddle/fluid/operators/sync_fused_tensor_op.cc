@@ -33,8 +33,15 @@ class SyncFusedTensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<LoDTensor>) The input tensors of sync_tensor operator.");
+             "(vector<LoDTensor>) The input tensors of sync_tensor operator.")
+        .AsDuplicable();
     AddOutput("Out", "(LoDTensor) The ouput tensor of sync_tensor operator.");
+    AddAttr<bool>(
+        "out_hold",
+        "Whether to overwrite the output data with input data. "
+        "If out_hold is true, the operator just copy and overwrite data slices "
+        "on different deveices. The default velue is true.")
+        .SetDefault(true);
     AddComment(R"DOC(
 SyncFusedTensor Operator.
 
