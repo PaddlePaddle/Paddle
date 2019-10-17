@@ -15,10 +15,6 @@ if [[ ${TEST_TIMEOUT}"x" == "x" ]]; then
 fi
 
 
-echo "before run ${name}"
-ps -aux
-netstat -anlp
-
 # rm flag file
 rm -f ${name}_*.log
 
