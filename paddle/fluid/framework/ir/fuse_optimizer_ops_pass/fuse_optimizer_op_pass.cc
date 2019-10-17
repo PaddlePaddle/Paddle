@@ -350,8 +350,9 @@ ir::Node *FuseOptimizerOpPass::CreateSyncTensorOpNode(
     BlockDesc *target_block, ir::Graph *result) const {
   auto op_desc = target_block->AppendOp();
   op_desc->SetType("sync_fused_tensor");
-  op_desc->SetInput("X", in_args);
-  op_desc->SetOutput("Out", {fused_out_arg});
+  op_desc->SetInput("Input", in_args);
+  op_desc->SetInput("FusedInput", {fused_out_arg});
+  op_desc->SetOutput("FusedOutput", {fused_out_arg});
   // NOTE: multi_devices_pass requires that every op should have a role.
   op_desc->SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
                    static_cast<int>(OpRole::kBackward));

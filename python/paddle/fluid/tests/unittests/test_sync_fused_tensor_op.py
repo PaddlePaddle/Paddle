@@ -26,10 +26,11 @@ class TestSyncFusedTensorOp(OpTest):
     def setUp(self):
         self.op_type = "sync_fused_tensor"
         self.dtype = np.float32
-        self.X = self.init_input()
-        self.Out = self.init_output(self.X)
-        self.inputs = {"X": self.X}
-        self.outputs = {"Out": self.Out}
+        self.Input = self.init_input()
+        self.FusedInput = self.init_fused_inout(self.Input)
+        self.FusedOutput = self.init_fused_inout(self.Input)
+        self.inputs = {"Input": self.Input, "FusedInput": self.FusedInput}
+        self.outputs = {"FusedOutput": self.FusedOutput}
 
     def init_input(self):
         inputs = []
@@ -41,12 +42,12 @@ class TestSyncFusedTensorOp(OpTest):
         inputs.append(("x6", np.random.random([1]).astype(self.dtype)))
         return inputs
 
-    def init_output(self, input_list):
+    def init_fused_inout(self, input_list):
         inputs = []
         for input in input_list:
             length = len(input[1].flatten())
             aligned_len = (length + alignment) / alignment * alignment
-            out = np.zeros(int(aligned_len))
+            out = np.zeros(int(aligned_len)).astype(self.dtype)
             out[0:length] = input[1].flatten()
             inputs.append(out)
         coalesce_tensor_var = np.concatenate([input for input in inputs])
@@ -54,8 +55,10 @@ class TestSyncFusedTensorOp(OpTest):
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
-            self.attrs = {"out_hold": False}
-            self.check_output_with_place(place=core.CUDAPlace(0), atol=1e-5)
+            self.check_output_with_place(
+                place=core.CUDAPlace(0),
+                no_check_set=["FusedOutput"],
+                atol=1e-5)
 
 
 if __name__ == '__main__':

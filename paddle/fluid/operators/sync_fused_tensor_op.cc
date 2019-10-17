@@ -22,26 +22,29 @@ class SyncFusedTensorOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
-                      "Input(X) of SyncFusedTensorOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of SyncFusedTensorOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("Input"), true,
+                      "Input(Input) of SyncFusedTensorOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("FusedInput"), true,
+        "Input(FusedInput) of SyncFusedTensorOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("FusedOutput"), true,
+        "Output(FusedOutput) of SyncFusedTensorOp should not be null.");
   }
 };
 
 class SyncFusedTensorOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(vector<LoDTensor>) The input tensors of sync_tensor operator.")
+    AddInput(
+        "Input",
+        "(vector<LoDTensor>) The input tensors of SyncFusedTensor operator.")
         .AsDuplicable();
-    AddOutput("Out", "(LoDTensor) The ouput tensor of sync_tensor operator.");
-    AddAttr<bool>(
-        "out_hold",
-        "Whether to overwrite the output data with input data. "
-        "If out_hold is true, the operator just copy and overwrite data slices "
-        "on different deveices. The default velue is true.")
-        .SetDefault(true);
+    AddInput("FusedInput",
+             "(LoDTensor) The fuesd input tensor of SyncFusedTensor operator.");
+    AddOutput(
+        "FusedOutput",
+        "(LoDTensor) The fused ouput tensor of SyncFusedTensor operator.");
     AddComment(R"DOC(
 SyncFusedTensor Operator.
 
