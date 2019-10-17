@@ -14,6 +14,10 @@ if [[ ${TEST_TIMEOUT}"x" == "x" ]]; then
     exit 1
 fi
 
+
+echo "before run ${name}"
+netstat -an
+
 # rm flag file
 rm -f ${name}_*.log
 
@@ -28,6 +32,7 @@ fi
 
 echo "${name} faild with ${exit_code}"
 
+echo "after run ${name}"
 netstat -an
 
 # paddle log

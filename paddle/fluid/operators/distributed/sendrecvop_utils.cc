@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/variable_response.h"
 #include "paddle/fluid/platform/port.h"
 
-DEFINE_bool(rpc_disable_reuse_port, false, "Disable SO_REUSEPORT or not.");
+DEFINE_bool(rpc_disable_reuse_port, true, "Disable SO_REUSEPORT or not.");
 DEFINE_int32(rpc_retry_bind_port, 3,
              "Retry to bind the address if address is already used.");
 
