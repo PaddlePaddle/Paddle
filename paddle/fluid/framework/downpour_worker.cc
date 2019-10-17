@@ -481,9 +481,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
       if (tensor == nullptr) {
         continue;
       }
-      PADDLE_ENFORCE(!framework::TensorContainsInf(*tensor),
+      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
                      "Tensor %s contains Inf", var_name);
-      PADDLE_ENFORCE(!framework::TensorContainsNAN(*tensor),
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
                      "Tensor %s contains NAN", var_name);
     }
 
@@ -684,9 +684,9 @@ void DownpourWorker::TrainFiles() {
       if (tensor == nullptr) {
         continue;
       }
-      PADDLE_ENFORCE(!framework::TensorContainsInf(*tensor),
+      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
                      "Tensor %s contains Inf", var_name);
-      PADDLE_ENFORCE(!framework::TensorContainsNAN(*tensor),
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
                      "Tensor %s contains NAN", var_name);
     }
 
