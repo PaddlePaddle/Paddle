@@ -21,6 +21,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
+#include "paddle/fluid/inference/capi/c_api_internal.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
@@ -56,16 +57,15 @@ void PD_run() {
   PD_SetPaddleTensorData(input, buf);
 
   PD_Tensor* out_data = PD_NewPaddleTensor();
-  int* out_size;
-  PD_PredictorRun(config, input, 1, out_data, &out_size, 1);
-  LOG(INFO) << *out_size;
+  int out_size;
+  PD_PredictorRun(config, input, 1, &out_data, &out_size, 1);
+  LOG(INFO) << out_size;
   LOG(INFO) << PD_GetPaddleTensorName(out_data);
   LOG(INFO) << PD_GetPaddleTensorDType(out_data);
   PD_PaddleBuf* b = PD_GetPaddleTensorData(out_data);
-  LOG(INFO) << PD_PaddleBufLength(b);
+  LOG(INFO) << PD_PaddleBufLength(b) / sizeof(float);
   float* result = static_cast<float*>(PD_PaddleBufData(b));
   LOG(INFO) << *result;
-  PD_PaddleBufResize(b, 500);
   PD_DeletePaddleTensor(input);
   int* size;
   PD_GetPaddleTensorShape(out_data, &size);
@@ -132,16 +132,15 @@ void buffer_run() {
   PD_SetPaddleTensorData(input, buf);
 
   PD_Tensor* out_data = PD_NewPaddleTensor();
-  int* out_size;
-  PD_PredictorRun(config, input, 1, out_data, &out_size, 1);
-  LOG(INFO) << *out_size;
+  int out_size;
+  PD_PredictorRun(config, input, 1, &out_data, &out_size, 1);
+  LOG(INFO) << out_size;
   LOG(INFO) << PD_GetPaddleTensorName(out_data);
   LOG(INFO) << PD_GetPaddleTensorDType(out_data);
   PD_PaddleBuf* b = PD_GetPaddleTensorData(out_data);
-  LOG(INFO) << PD_PaddleBufLength(b);
+  LOG(INFO) << PD_PaddleBufLength(b) / sizeof(float);
   float* result = static_cast<float*>(PD_PaddleBufData(b));
   LOG(INFO) << *result;
-  PD_PaddleBufResize(b, 500);
   PD_DeletePaddleTensor(input);
   PD_DeletePaddleBuf(buf);
 }
