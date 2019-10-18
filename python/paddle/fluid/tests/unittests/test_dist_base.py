@@ -291,6 +291,10 @@ class TestDistRunnerBase(object):
             build_stra.num_trainers = 1
             build_stra.trainer_id = 0
 
+        if args.use_dgc:
+            # fuse_all_reduce_ops require that gradients should not be sparse types
+            build_stra.fuse_all_reduce_ops = False
+
         print_to_err(type(self).__name__, "begin to compile with data parallel")
         binary = compiler.CompiledProgram(trainer_prog).with_data_parallel(
             loss_name=avg_cost.name,
@@ -525,7 +529,11 @@ class TestDistBase(unittest.TestCase):
                 self._port_set.add(port)
                 return port
 
-    def start_pserver(self, model_file, check_error_log, required_envs):
+    def start_pserver(self,
+                      model_file,
+                      check_error_log,
+                      required_envs,
+                      log_name=""):
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
         ps_cmd = "%s"
 
@@ -548,8 +556,8 @@ class TestDistBase(unittest.TestCase):
 
         print(ps0_cmd)
         print(ps1_cmd)
-        ps0_pipe = open("/tmp/ps0_err.log", "wb")
-        ps1_pipe = open("/tmp/ps1_err.log", "wb")
+        ps0_pipe = open(log_name + "_ps0_err.log", "wb")
+        ps1_pipe = open(log_name + "_ps1_err.log", "wb")
 
         print_to_err(type(self).__name__, "going to start pserver process 0")
         ps0_proc = subprocess.Popen(
@@ -572,7 +580,8 @@ class TestDistBase(unittest.TestCase):
                    check_error_log=False,
                    batch_size=DEFAULT_BATCH_SIZE,
                    batch_merge_repeat=1,
-                   log_name=""):
+                   log_name="",
+                   gpus="0"):
 
         cmd = self._python_interp
 
@@ -592,12 +601,16 @@ class TestDistBase(unittest.TestCase):
         if self.__use_cuda:
             cmd += " --use_cuda"
             env_local = {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": gpus,
                 "PADDLE_TRAINERS_NUM": "1",
                 "PADDLE_TRAINER_ID": "0"
             }
         else:
             env_local = {'CPU_NUM': '1'}
+
+        # not use dgc in single card
+        if len(gpus) > 1 and self._use_dgc:
+            cmd += " --use_dgc"
 
         env_local.update(envs)
         print("local_cmd: {}, env: {}".format(cmd, env_local))
@@ -628,8 +641,8 @@ class TestDistBase(unittest.TestCase):
 
     def _run_cluster(self, model, envs, check_error_log, log_name):
         # Run dist train to compare with local results
-        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model,
-                                                          check_error_log, envs)
+        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(
+            model, check_error_log, envs, log_name=log_name)
 
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
 
@@ -825,12 +838,7 @@ class TestDistBase(unittest.TestCase):
             print("outs[1]:", outs[1])
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={},
-                         log_name=""):
+    def _get_required_envs(self, check_error_log=False, need_envs={}):
         # TODO(typhoonzero): should auto adapt GPU count on the machine.
         required_envs = {
             "PATH": os.getenv("PATH", ""),
@@ -838,18 +846,31 @@ class TestDistBase(unittest.TestCase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
+            "FLAGS_rpc_retry_bind_port": "50",
             "FLAGS_cudnn_deterministic": "1",
+            "FLAGS_rpc_disable_reuse_port": "1",
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
             "NCCL_SHM_DISABLE": "1"
         }
 
-        required_envs.update(need_envs)
-
         if check_error_log:
             required_envs["GLOG_vmodule"] = \
-                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10,alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10"
+                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
+                "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
+                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10"
             required_envs["GLOG_logtostderr"] = "1"
+
+        required_envs.update(need_envs)
+        return required_envs
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={},
+                         log_name=""):
+        required_envs = self._get_required_envs(check_error_log, need_envs)
 
         local_losses \
             = self._run_local(model_file, required_envs,
@@ -881,3 +902,38 @@ class TestDistBase(unittest.TestCase):
             dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
             print("=======", local_loss, ":", dist_loss[0], "=======")
             self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)
+
+    def check_with_place_multi_cards(self,
+                                     model_file,
+                                     delta=1e-3,
+                                     check_error_log=False,
+                                     need_envs={},
+                                     log_name=""):
+        # need open p2p or shm otherwise multi cards mode will hang
+        need_envs.update({"NCCL_P2P_DISABLE": "0", "NCCL_SHM_DISABLE": "0"})
+
+        required_envs = self._get_required_envs(check_error_log, need_envs)
+
+        if self._use_dgc:
+            multi_cards_losses = self._run_local(
+                model_file,
+                required_envs,
+                check_error_log,
+                log_name=log_name + "_dgc_2cards",
+                gpus="0,1")
+
+            self._use_dgc = False
+            base_losses = self._run_local(
+                model_file,
+                required_envs,
+                check_error_log,
+                log_name=log_name + "_base_2cards",
+                gpus="0,1")
+
+            self._use_dgc = True
+
+            for step_id in range(RUN_STEP):
+                base_loss = base_losses[step_id]
+                multi_cards_loss = multi_cards_losses[step_id]
+                print("=======", base_loss, ":", multi_cards_loss, "=======")
+                self.assertAlmostEqual(base_loss, multi_cards_loss, delta=delta)
