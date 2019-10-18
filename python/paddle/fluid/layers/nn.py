@@ -2801,7 +2801,10 @@ def conv2d(input,
             "data_format": data_format,
         })
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    if data_format == 'NCHW':
+        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    else:
+        pre_act = helper.append_bias_op(pre_bias, dim_start=3, dim_end=4)
 
     return helper.append_activation(pre_act)
 
@@ -3049,7 +3052,10 @@ def conv3d(input,
             "data_format": data_format,
         })
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    if data_format == 'NCDHW':
+        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    else:
+        pre_act = helper.append_bias_op(pre_bias, dim_start=4, dim_end=5)
 
     return helper.append_activation(pre_act)
 
@@ -5167,7 +5173,10 @@ def conv2d_transpose(input,
             'data_format': data_format
         })
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    if data_format == 'NCHW':
+        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    else:
+        pre_act = helper.append_bias_op(pre_bias, dim_start=3, dim_end=4)
     out = helper.append_activation(pre_act)
     return out
 
@@ -5442,7 +5451,10 @@ def conv3d_transpose(input,
             'data_format': data_format
         })
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    if data_format == 'NCHW':
+        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    else:
+        pre_act = helper.append_bias_op(pre_bias, dim_start=4, dim_end=5)
     out = helper.append_activation(pre_act)
     return out
 

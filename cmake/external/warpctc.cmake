@@ -29,6 +29,7 @@ ELSE()
     SET(USE_OMP ON)
 ENDIF()
 
+# TODO: Use the official github address instead of private branch
 SET(WARPCTC_REPOSITORY "https://github.com/wopeizl/warp-ctc.git")
 
 ExternalProject_Add(
