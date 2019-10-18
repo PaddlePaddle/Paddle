@@ -95,8 +95,7 @@ class TestFusionGRUOp(OpTest):
     def test_check_output(self):
         for use_seq in {True, False}:
             self.attrs['use_seq'] = use_seq
-            # TODO(wangzhongpu): support lod in dygraph mode
-            self.check_output(check_dygraph=False)
+            self.check_output()
 
 
 class TestFusionGRUOpNoInitial(TestFusionGRUOp):

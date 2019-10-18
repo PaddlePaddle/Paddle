@@ -188,20 +188,16 @@ class TestLstmOp(OpTest):
         }
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support lod in dygraph mode
-        self.check_output(check_dygraph=False, atol=1e-8)
+        self.check_output(atol=1e-8)
 
     def test_check_grad(self):
-        # TODO(wangzhongpu): support lod in dygraph mode
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
         N = len(self.lod[0])
         self.outputs['BatchGate'] = np.zeros((N, 4 * self.D)).astype('float64')
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
         self.check_grad(
-            ['Input', 'Weight', 'Bias'], ['Hidden'],
-            max_relative_error=5e-4,
-            check_dygraph=False)
+            ['Input', 'Weight', 'Bias'], ['Hidden'], max_relative_error=5e-4)
 
 
 class TestLstmOpCase1(TestLstmOp):

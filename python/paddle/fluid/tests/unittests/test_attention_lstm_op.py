@@ -152,8 +152,7 @@ class TestAttentionLSTMOp(OpTest):
         }
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support lod in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestAttentionOpNonInit(TestAttentionLSTMOp):
