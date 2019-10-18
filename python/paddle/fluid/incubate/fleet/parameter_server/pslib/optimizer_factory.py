@@ -215,7 +215,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 text_format.Merge(f.read(), ps_param)
             server.get_desc().CopyFrom(ps_param.server_param)
             for k in program_id_to_worker:
-               program_id_to_worker[k].get_desc().CopyFrom(ps_param.trainer_param)
+                program_id_to_worker[k].get_desc().CopyFrom(ps_param.trainer_param)
 
         # ServerParameter add all sparse tables
         for tn in sparse_table_to_index:
