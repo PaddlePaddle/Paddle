@@ -27,7 +27,8 @@ static void StridedSliceOutDims(
     const std::vector<int>& starts, const std::vector<int>& ends,
     const std::vector<int>& strides, const std::vector<int>& axes,
     const std::vector<int>& infer_flags, const framework::DDim in_dims,
-    int* out_dims_vector, const size_t size, bool infer_shape) {
+    const std::vector<int>& decrease_axis, int* out_dims_vector,
+    const size_t size, bool infer_shape) {
   for (int i = 0; i < in_dims.size(); i++) {
     out_dims_vector[i] = in_dims[i];
   }
@@ -48,6 +49,13 @@ static void StridedSliceOutDims(
       continue;
     }
 
+    if (start_index == -1 && end_index == 0 && infer_flags[i] == -1) {
+      auto ret = std::find(decrease_axis.begin(), decrease_axis.end(), axes[i]);
+      if (ret != decrease_axis.end()) {
+        end_index = 10000000;
+      }
+    }
+
     if (start_index < 0) {
       start_index = start_index + axis_size;
     }
@@ -63,6 +71,9 @@ static void StridedSliceOutDims(
     bool zero_dim_condition =
         ((stride_index < 0 && (start_index <= end_index)) ||
          (stride_index > 0 && (start_index >= end_index)));
+    if (zero_dim_condition) {
+      VLOG(0) << "start:" << start_index << "end:" << end_index;
+    }
     PADDLE_ENFORCE_EQ(zero_dim_condition, false,
                       "starts and end must meet requirement in different "
                       "stride conditiont");
@@ -151,6 +162,7 @@ class StridedSliceKernel : public framework::OpKernel<T> {
     auto strides = context.Attr<std::vector<int>>("strides");
     auto axes = context.Attr<std::vector<int>>("axes");
     auto infer_flags = context.Attr<std::vector<int>>("infer_flags");
+    auto decrease_axis = context.Attr<std::vector<int>>("decrease_axis");
 
     auto starts_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
     auto ends_indices = Eigen::DSizes<Eigen::DenseIndex, D>();
@@ -187,7 +199,8 @@ class StridedSliceKernel : public framework::OpKernel<T> {
 
     std::vector<int> out_dims_vector(in_dims.size(), -1);
     StridedSliceOutDims(starts, ends, strides, axes, infer_flags, in_dims,
-                        out_dims_vector.data(), axes.size(), false);
+                        decrease_axis, out_dims_vector.data(), axes.size(),
+                        false);
     framework::DDim out_dims(framework::make_ddim(out_dims_vector));
 
     std::vector<int> reverse_vector(starts.size(), 0);
@@ -206,6 +219,31 @@ class StridedSliceKernel : public framework::OpKernel<T> {
       ends_indices[axis_index] = ends[axis];
       strides_indices[axis_index] = strides[axis];
       reverse_axis[axis_index] = (reverse_vector[axis] == 1) ? true : false;
+    }
+
+    // resize out_dims
+    if (decrease_axis.size() > 0) {
+      if (decrease_axis.size() == (size_t)in_dims.size()) {
+        std::vector<int> vec_origin_out_shape(decrease_axis.size(), 1);
+        out->Resize(framework::make_ddim(vec_origin_out_shape));
+      } else {
+        std::vector<int> vec_origin_out_shape(
+            out_dims.size() + decrease_axis.size(), -1);
+
+        for (size_t i = 0; i < decrease_axis.size(); ++i) {
+          vec_origin_out_shape[decrease_axis[i]] = 1;
+        }
+
+        int index = 0;
+        for (size_t i = 0; i < vec_origin_out_shape.size(); ++i) {
+          if (vec_origin_out_shape[i] == -1) {
+            vec_origin_out_shape[i] = out_dims[index];
+            ++index;
+          }
+        }
+
+        out->Resize(framework::make_ddim(vec_origin_out_shape));
+      }
     }
 
     framework::Tensor tmp;
@@ -276,6 +314,7 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
     auto ends = context.Attr<std::vector<int>>("ends");
     auto strides = context.Attr<std::vector<int>>("strides");
     auto axes = context.Attr<std::vector<int>>("axes");
+    auto decrease_axis = context.Attr<std::vector<int>>("decrease_axis");
 
     auto list_new_ends_tensor =
         context.MultiInput<framework::Tensor>("EndsTensorList");
@@ -328,6 +367,30 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
       reverse_axis[axis_index] = (reverse_vector[axis] == 1) ? true : false;
     }
 
+    if (decrease_axis.size() > 0) {
+      if (decrease_axis.size() == (size_t)in_dims.size()) {
+        // all dims decrease
+        std::vector<int> vec_origin_out_shape(decrease_axis.size(), 1);
+        out_dims = framework::make_ddim(vec_origin_out_shape);
+      } else {
+        std::vector<int> vec_origin_out_shape(
+            out_dims.size() + decrease_axis.size(), -1);
+
+        for (size_t i = 0; i < decrease_axis.size(); ++i) {
+          vec_origin_out_shape[decrease_axis[i]] = 1;
+        }
+
+        int index = 0;
+        for (size_t i = 0; i < vec_origin_out_shape.size(); ++i) {
+          if (vec_origin_out_shape[i] == -1) {
+            vec_origin_out_shape[i] = out_dims[index];
+            ++index;
+          }
+        }
+
+        out_dims = framework::make_ddim(vec_origin_out_shape);
+      }
+    }
     framework::Tensor reverse_input;
     reverse_input.mutable_data<T>(in_dims, context.GetPlace());
 

@@ -1414,9 +1414,10 @@ class Variable(object):
         slice_axis = []
         slice_start = []
         slice_end = []
-        reverse_axis = []
+        slice_step = []
+        use_strided_slice = False
 
-        def fill_constant(shape, dtype, value, force_cpu=False, out=None):
+        def fill_constant(shape, value, force_cpu=False, out=None):
             self.block.append_op(
                 type='fill_constant',
                 inputs={},
@@ -1425,7 +1426,7 @@ class Variable(object):
                     'shape': shape,
                     'dtype': out.dtype,
                     'value': float(value),
-                    'force_cpu': force_cpu or force_init_on_cpu()
+                    'force_cpu': force_cpu
                 },
                 stop_gradient=True)
             out.stop_gradient = True
@@ -1435,15 +1436,13 @@ class Variable(object):
             if isinstance(slice_item, slice):
                 start = slice_item.start
                 end = slice_item.stop
-                step = slice_item.step if slice_item.step else 1
+                if slice_item.step:
+                    step = slice_item.step
+                    use_strided_slice = True
+                else:
+                    step = None
 
-                assert (step == 1 or step == -1)
-
-                if step == -1:
-                    reverse_axis.append(dim)
-                    assert (start is None and end is None)
-
-                if start is None and end is None:
+                if start is None and end is None and step is None:
                     continue
 
                 if start is None:
@@ -1452,16 +1451,23 @@ class Variable(object):
                 if end is None:
                     end = 10000000
 
+                if step is None:
+                    step = 1
+
                 slice_axis.append(dim)
                 slice_start.append(start)
                 slice_end.append(end)
+                slice_step.append(step)
             else:
                 decrease_axis.append(dim)
                 slice_axis.append(dim)
                 slice_start.append(slice_item)
+                slice_step.append(1)
                 if isinstance(slice_item, Variable):
                     temp_1 = self.block.create_var(dtype='int32')
-                    fill_constant([1], 'int32', 1, force_cpu=True, out=temp_1)
+                    #temp_2 = self.block.create_var(dtype='int32')
+                    #fill_constant([1], -1, force_cpu=True, out=temp_2)
+                    fill_constant([1], 1, force_cpu=True, out=temp_1)
                     temp_end = self.block.create_var(dtype='int32')
                     self.block.append_op(
                         type='elementwise_add',
@@ -1489,20 +1495,16 @@ class Variable(object):
                 else:
                     assert (isinstance(dim, int))
                     temp_out = self.block.create_var(dtype='int32')
-                    fill_constant(
-                        [1], 'int32', dim, force_cpu=True, out=temp_out)
+                    fill_constant([1], dim, force_cpu=True, out=temp_out)
                     new_list_tensor.append(temp_out)
             return new_list_tensor
 
         inputs = {'Input': [self]}
-        attrs = {
-            'axes': slice_axis,
-            'starts': [],
-            'ends': [],
-            'decrease_axis': decrease_axis
-        }
+        attrs = {'axes': slice_axis, 'starts': [], 'ends': []}
+        if (use_strided_slice == True):
+            attrs['strides'] = []
+        attrs['decrease_axis'] = decrease_axis
         infer_flags = list(1 for i in range(len(slice_axis)))
-
         # starts
         if not contain_var(slice_start):
             attrs['starts'] = slice_start
@@ -1525,11 +1527,23 @@ class Variable(object):
                     infer_flags[i] = -1
                 else:
                     attrs['ends'].append(dim)
+        # strides
+        if use_strided_slice == True:
+            if not contain_var(slice_step):
+                attrs['strides'] = slice_step
+            else:
+                inputs['StridesTensorList'] = get_new_list_tensor(slice_step)
+                for i, dim in enumerate(slice_step):
+                    if isinstance(dim, Variable):
+                        attrs['strides'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['strides'].append(dim)
         # infer_flags
         attrs['infer_flags'] = infer_flags
 
         out = self
-        if len(slice_axis) > 0:
+        if use_strided_slice == False:
             # append slice_op here
             slice_out_var = self.block.create_var(
                 name=unique_name.generate_with_ignorable_key(self.name +
@@ -1543,19 +1557,18 @@ class Variable(object):
                 attrs=attrs)
 
             out = slice_out_var
-
-        if len(reverse_axis) > 0:
-            reverse_out_var = self.block.create_var(
+        else:
+            strided_slice_out_var = self.block.create_var(
                 name=unique_name.generate_with_ignorable_key(self.name +
-                                                             "_slice_reverse"),
+                                                             "_strided_slice"),
                 dtype=self.dtype)
             self.block.append_op(
-                type="reverse",
-                inputs={'X': out},
-                outputs={'Out': [reverse_out_var]},
-                attrs={'axis': reverse_axis})
+                type="strided_slice",
+                inputs=inputs,
+                outputs={'Out': [strided_slice_out_var]},
+                attrs=attrs)
 
-            out = reverse_out_var
+            out = strided_slice_out_var
 
         return out
 
