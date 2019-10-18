@@ -1437,10 +1437,10 @@ def cudnn_gru(input,
     Returns:
         rnn_out(Tensor),last_h(Tensor):
 
-                        Three tensors, rnn_out, last_h:
+                        Two tensors, rnn_out, last_h:
 
                         - rnn_out is result of GRU hidden, shape is (seq_len x batch_size x hidden_size) \
-                          if is_bidirec set to True, shape will be ( seq_len x batch_sze x hidden_size*2)
+                          if is_bidirec set to True, shape will be ( seq_len x batch_size x hidden_size*2)
                         - last_h is the hidden state of the last step of GRU \
                           shape is ( num_layers x batch_size x hidden_size ) \
                           if is_bidirec set to True, shape will be ( num_layers*2 x batch_size x hidden_size)
@@ -1454,10 +1454,10 @@ def cudnn_gru(input,
             emb_dim = 128 
             vocab_size = 10000
             data = fluid.data(name='x', shape=[None, 100, 1],
-                         dtype='int32')
+                         dtype='int64')
             emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
             batch_size = 20
-            max_len = 100
+            max_len = 256 
             dropout_prob = 0.2
             hidden_size = 256
             num_layers = 1
@@ -1467,8 +1467,8 @@ def cudnn_gru(input,
             rnn_out, last_h, = layers.cudnn_gru( emb, init_h,\
                     max_len, hidden_size, num_layers, \
                     dropout_prob=dropout_prob)
-            rnn_out.shape  # (-1, 100, 256)
-            last_h.shape  # (1, 20, 256)
+            # rnn_out.shape = (-1, 100, 256)
+            # last_h.shape  = (1, 20, 256)
     """
 
     helper = LayerHelper('cudnn_gru', **locals())
