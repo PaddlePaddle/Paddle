@@ -23,8 +23,8 @@ class MaskedSelectOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<framework::Tensor>("input");
-    auto* mask = ctx.Input<framework::Tensor>("mask") auto* output =
-        ctx.Output<framework::Tensor>("Out");
+    auto* mask = ctx.Input<framework::Tensor>("mask");
+    auto* output = ctx.Output<framework::Tensor>("Out");
 
     // input.flatten_to_1d(input->numel());
     const T* input_data = input->data<T>();
