@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -105,7 +106,8 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   size_t in_numel = 0;
   size_t out_numel = 0;
   PADDLE_ENFORCE(nranks_ > 1);
-  std::vector<std::function<void()>> all_reduce_calls;
+  std::vector<std::function<void()>> all_gather_calls;
+  std::vector<std::function<void()>> sparse_reduce_calls;
 
   std::vector<memory::AllocationPtr> allocations;
 
@@ -141,15 +143,45 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
              << ", nranks:" << nranks_ << ", gather_buf size:" << buf_size
              << ", k:" << k << ", place:" << place << ", dtype:" << dtype;
 
-    all_reduce_calls.emplace_back([=] {
-      PADDLE_ENFORCE(paddle::communication::dgc::sparseAllGReduce(
-          in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel, comm,
-          stream));
+    all_gather_calls.emplace_back([=] {
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
+          in_tensor_buf, gather_buff, 2 * k, static_cast<ncclDataType_t>(dtype),
+          comm, stream));
+    });
+
+    sparse_reduce_calls.emplace_back([=] {
+      platform::CUDADeviceGuard guard(dev_id);
+      PADDLE_ENFORCE_EQ(paddle::communication::dgc::sparseReduce(
+                            gather_buff, k, out_tensor_buf,
+                            static_cast<int>(out_numel), nranks_, stream),
+                        true);
     });
   }
 
   WaitInputVarGenerated();
-  NCCLAllReduceFunc(all_reduce_calls);
+  SparseAllReduceFunc(all_gather_calls, sparse_reduce_calls);
+}
+
+void SparseAllReduceOpHandle::SparseAllReduceFunc(
+    const std::vector<std::function<void()>> &all_gather_calls,
+    const std::vector<std::function<void()>> &sparse_reduce_calls) {
+  this->RunAndRecordEvent([&] {
+    if (all_gather_calls.size() == 1UL) {
+      // Do not use NCCLGroup when manage NCCL by per thread per device
+      all_gather_calls[0]();
+    } else {
+      platform::NCCLGroupGuard guard;
+      for (auto &call : all_gather_calls) {
+        call();
+      }
+    }
+
+    for (auto &call : sparse_reduce_calls) {
+      call();
+    }
+  });
+
+  SyncNCCLAllReduce();
 }
 
 int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {
