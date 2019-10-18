@@ -230,6 +230,8 @@ class DownpourWorker : public HogwildWorker {
   // adjust ins weight
   AdjustInsWeightConfig adjust_ins_weight_config_;
   std::vector<float> nid_show_;
+  // check nan and inf during training
+  std::vector<std::string> check_nan_var_names_;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
