@@ -505,15 +505,17 @@ class MultivariateNormalDiag(Distribution):
     A multivariate normal (also called Gaussian) distribution parameterized by a mean vector
     and a covariance matrix.
 
-    The probability density function (pdf) is,
+    The probability density function (pdf) is:
 
     .. math::
 
-        pdf(x; loc, scale) = \frac{e^{-\frac{||y||^2}{2}}}{Z}
+        pdf(x; loc, scale) = \\frac{e^{-\\frac{||y||^2}{2}}}{Z}
+
+    where:
+    .. math::
 
         y = inv(scale) @ (x - loc)
-
-        Z = (2\pi )^{0.5k} |det(scale)|
+        Z = (2\\pi)^{0.5k} |det(scale)|
 
 
     In the above equation:
