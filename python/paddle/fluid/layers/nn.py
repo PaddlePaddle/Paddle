@@ -1389,7 +1389,13 @@ def cudnn_gru(input,
               default_initializer=None,
               seed=-1):
     """
-    **CUDNN Gated Recurrent Unit (GRU) Layer, input is Tensor**
+    This OP implements Gated Recurrent Unit (GRU) operation, and use cudnn to speedup compute.
+
+    **Notes: this OP only support running on GPU.
+
+    The formula used is from paper
+    `Learning Phrase Representations using RNN Encoder Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_ .
 
     .. math::
 
@@ -1401,25 +1407,20 @@ def cudnn_gru(input,
 
         h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \\tilde{h_t}
 
-    - $W$ terms denote weight matrices (e.g. $W_{ux}$ is the matrix
-      of weights from the input gate to the input)
-    - The b terms denote bias vectors.
-    - sigmoid is the logistic sigmoid function.
-    - $u_t$ and $r_t$ are the update gate, reset gate,
-    - The :math:`\odot` is the element-wise product of the vectors.
-    - :math:`tanh` is the activation functions.
-    - :math:`\\tilde{c_t}` is also called candidate hidden state,
-      which is computed based on the current input and the previous hidden state.
 
-    Where sigmoid is the sigmoid operator: :math:`sigmoid(x) = 1 / (1 + e^{-x})` , * represents a point-wise multiplication,
-    X represensts a matrix multiplication
-
+    :math:`x_t` is the input of current time step.
+    :math:`h_{t-1}` is the hidden state from previous time step. 
+    :math:`u_t` , :math:`r_t` , :math:`\\tilde{h_t}` and :math:`h_t` stand for
+    update gate, reset gate, candidate hidden and hidden output separately.
+    :math:`W_{uh}, b_u` , :math:`W_{rh}, b_r` and :math:`W_{ch}, b_c` stand for
+    the weight matrix and bias used in update gate, reset gate, candidate hidden
+    calculations.
 
     Args:
         input (Variable): GRU input tensor, shape MUST be ( seq_len x batch_size x input_size )
         init_h(Variable): The initial hidden state of the GRU
-                       This is a tensor with shape ( num_layers x batch_size x hidden_size)
-                       if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
+                          This is a tensor with shape ( num_layers x batch_size x hidden_size)
+                          if is_bidirec = True, shape should be ( num_layers*2 x batch_size x hidden_size)
         max_len (int): max length of GRU. the first dim of input tensor CAN NOT greater than max_len
         hidden_size (int): hidden size of the GRU
         num_layers (int): total layers number of the GRU
@@ -1450,21 +1451,24 @@ def cudnn_gru(input,
             import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
-            emb_dim = 256
+            emb_dim = 128 
             vocab_size = 10000
-            data = fluid.layers.data(name='x', shape=[-1, 100, 1],
+            data = fluid.data(name='x', shape=[None, 100, 1],
                          dtype='int32')
             emb = fluid.layers.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
             batch_size = 20
             max_len = 100
             dropout_prob = 0.2
-            input_size = 100
-            hidden_size = 150
+            hidden_size = 256
             num_layers = 1
             init_h = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
+            #transpose to seq_len x batch_size x input_size
+            emb = layers.transpose(emb, [1, 0 ,2])
             rnn_out, last_h, = layers.cudnn_gru( emb, init_h,\
                     max_len, hidden_size, num_layers, \
                     dropout_prob=dropout_prob)
+            rnn_out.shape  # (-1, 100, 256)
+            last_h.shape  # (1, 20, 256)
     """
 
     helper = LayerHelper('cudnn_gru', **locals())
@@ -1523,7 +1527,7 @@ def cudnn_gru(input,
             'num_layers': num_layers,
             'is_test': is_test,
             'dropout_prob': dropout_prob,
-            'seed': seed,
+            'seed': seed
         })
     return out, last_h
 

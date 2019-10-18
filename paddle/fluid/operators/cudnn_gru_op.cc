@@ -40,7 +40,11 @@ class CudnnGRUOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(in_dims.size(), 3, "Input(X)'s rank must be 3.");
 
-    ctx->SetOutputDim("Out", ctx->GetInputDim("Input"));
+    auto out_dims = in_dims;
+    auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
+    out_dims[2] = hidden_size;
+
+    ctx->SetOutputDim("Out", out_dims);
     ctx->SetOutputDim("last_h", ctx->GetInputDim("InitH"));
   }
 };
@@ -100,35 +104,32 @@ class CudnnGRUOpMaker : public framework::OpProtoAndCheckerMaker {
                   "if it is bidirection rnn"
                   "The will affect the shape of the Out, last_h, and last_c")
         .SetDefault(false);
-    AddAttr<int>("input_size", "input size ot the Input Tensor").SetDefault(10);
-    AddAttr<int>("hidden_size", "hidden size of the GRU").SetDefault(100);
+    AddAttr<int>("input_size", "input size ot the Input Tensor").SetDefault(32);
+    AddAttr<int>("hidden_size", "hidden size of the GRU").SetDefault(64);
     AddAttr<int>("num_layers", "the total layer number of the GRU")
         .SetDefault(1);
     AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<int>("seed", "seed to used if fix_seed is True").SetDefault(-1);
     AddComment(R"DOC(
-CUDNN GRU implementation
+CUDNN GRU implements a three-gate recurrent network with cudnn.
 
-A four-gate Long Short-Term Memory network with no peephole connections.
-In the forward pass the output ht and cell output ct for a given iteration can be computed from the recurrent input ht-1,
-the cell input ct-1 and the previous layer input xt given matrices W, R and biases bW, bR from the following equations:
 $$
 update\_gate: u_t = sigmoid(W_{ux}x_{t} + W_{uh}h_{t-1} + bx_u + bh_u) \\
 reset\_gate: r_t = sigmoid(W_{rx}x_{t} + W_{rh}h_{t-1} + bx_r + bh_r)  \\
-output\_candidate: {h}_t = tanh(W_{cx}x_{t} + W_{ch} * dot(r_t, (W_{ch}h_{t-1} + bx_c)) + bh_c) \\
-output: h_t = dot(u_t, h_{t-1}) + dot((1 - u_t), {h}_t)
+output\_candidate: \\tilde{h_t} = tanh(W_{cx}x_{t} + W_{ch} * dot(r_t, (W_{ch}h_{t-1} + bx_c)) + bh_c) \\
+output: h_t = dot(u_t, h_{t-1}) + dot((1 - u_t), \\tilde{h_t})
 $$
 
 - W terms denote weight matrices (e.g. $W_{ix}$ is the matrix
   of weights from the input gate to the input)
 - The b terms denote bias vectors ($bx_i$ and $bh_i$ are the input gate bias vector).
 - sigmoid is the logistic sigmoid function.
-- $i, f, o$ and $c$ are the input gate, forget gate, output gate,
+- $u, r$ and $c$ are the update gate, reset gate.
   and cell activation vectors, respectively, all of which have the same size as
   the cell output activation vector $h$.
 - The $\odot$ is the element-wise product of the vectors.
 - `tanh` is the activation functions.
-- $\tilde{c_t}$ is also called candidate hidden state,
+- $\tilde{h_t}$ is also called candidate hidden state,
   which is computed based on the current input and the previous hidden state.
 
 Where sigmoid is the sigmoid operator: sigmoid(x) = 1 / (1 + e^-x), * represents a point-wise multiplication,
@@ -172,8 +173,7 @@ template <typename T>
 class NotImpleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW(
-        "CPU is not support for this kernel now. Will be add in the future");
+    PADDLE_THROW("CPU is not support for this kernel now.");
   }
 };
 
