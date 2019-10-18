@@ -155,8 +155,22 @@ set(COMMON_FLAGS
     -Wno-error=terminate  # Warning in PADDLE_ENFORCE
     -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
     -Wimplicit-fallthrough=0 # Warning in tinyformat.h
+    -Wno-error=maybe-uninitialized # Warning in boost gcc 7.2
     ${fsanitize}
 )
+
+if(NOT APPLE)
+    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
+        set(COMMON_FLAGS
+                ${COMMON_FLAGS}
+                -Wno-format-truncation # Warning in boost gcc 8.2
+                -Wno-error=cast-function-type # Warning in boost gcc 8.2
+                -Wno-error=parentheses # Warning in boost gcc 8.2
+                -Wno-error=catch-value # Warning in boost gcc 8.2
+                -Wno-ignored-qualifiers # Warning in boost gcc 8.2
+                )
+    endif()
+endif(NOT APPLE)
 
 set(GPU_COMMON_FLAGS
     -fPIC
