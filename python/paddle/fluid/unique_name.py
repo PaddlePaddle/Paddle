@@ -93,7 +93,7 @@ def generate(key):
 # mode. Therefore, we keep the variable name of Parameter currently.
 # 
 # Please fix me if a better method is found.        
-def generate_with_ignorable_key(key):
+def generate_with_ignorable_key(key=None):
     from .framework import in_dygraph_mode
     if in_dygraph_mode():
         key = "tmp"

@@ -19,11 +19,12 @@ from six.moves import reduce
 from .. import core
 from ..layers import utils
 from . import layers
-from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter
+from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _current_expected_place, _var_base_to_np, default_main_program
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
 import logging
+from .. import unique_name
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'FC', 'BatchNorm', 'Embedding', 'GRUUnit',
@@ -1496,6 +1497,20 @@ class Embedding(layers.Layer):
         self._w = value
 
     def forward(self, input):
+        attrs = {
+            'is_sparse': self._is_sparse,
+            'is_distributed': self._is_distributed,
+            'remote_prefetch': self._remote_prefetch,
+            'padding_idx': self._padding_idx
+        }
+        trace_backward = _dygraph_tracer()._train_mode
+        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        outs = core.ops.lookup_table(
+            _dygraph_tracer(), {'Ids': [input],
+                                'W': [self._w]}, attrs,
+            _current_expected_place(), out_names, trace_backward)
+        return outs['Out'][0]
+
         out = self._helper.create_variable_for_type_inference(self._dtype)
         self._helper.append_op(
             type='lookup_table',

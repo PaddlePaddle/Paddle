@@ -137,6 +137,7 @@ def guard(place=None):
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
             with framework._dygraph_guard(tracer):
+                tracer.place = place
                 with framework._dygraph_place_guard(place):
                     yield
 
@@ -202,9 +203,11 @@ def to_variable(value, block=None, name=None):
         if value.dtype == np.float16:
             value = value.view(np.uint16)
         tensor.set(value, framework._current_expected_place())
-        return py_var
+        #return py_var
+        return py_var._ivar
     elif isinstance(value, framework.Variable):
-        return value
+        #return value
+        return value._ivar
     else:
         raise TypeError(
             "to_variable only accepts 'ndarray' and 'Variable' as value's input")

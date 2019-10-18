@@ -51,6 +51,8 @@ __all__ = [
     'Variable',
     'load_op_library',
     'require_version',
+    '_var_base_to_np',
+    'add_backward_for_VarBase',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -2409,6 +2411,7 @@ class Block(object):
             else:
                 initializer(param, self)
         param.stop_gradient = False
+
         return param
 
     def append_op(self, *args, **kwargs):
@@ -4769,3 +4772,55 @@ def load_op_library(lib_filename):
     """
     core.load_op_library(lib_filename)
     OpProtoHolder.instance().update_op_proto()
+
+
+@dygraph_only
+def var_base_backward(self, backward_strategy=None):
+    """
+    **Notes**:
+        **This API is ONLY avaliable in Dygraph mode**
+
+    Run backward of current Graph which starts from current Variable
+
+    Args:
+        backward_strategy( :ref:`api_fluid_dygraph_BackwardStrategy` ): The Backward Strategy to run backward
+
+    Returns:
+        NoneType: None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            x = np.ones([2, 2], np.float32)
+            with fluid.dygraph.guard():
+                inputs2 = []
+                for _ in range(10):
+                    tmp = fluid.dygraph.base.to_variable(x)
+                    # if we don't set tmp's stop_gradient as False then, all path to loss will has no gradient since
+                    # there is no one need gradient on it.
+                    tmp.stop_gradient=False
+                    inputs2.append(tmp)
+                ret2 = fluid.layers.sums(inputs2)
+                loss2 = fluid.layers.reduce_sum(ret2)
+                backward_strategy = fluid.dygraph.BackwardStrategy()
+                backward_strategy.sort_sum_gradient = True
+                loss2.backward(backward_strategy)
+
+    """
+    if in_dygraph_mode():
+        from .dygraph import BackwardStrategy
+        if backward_strategy is None:
+            backward_strategy = BackwardStrategy()
+            backward_strategy.sort_sum_gradient = False
+
+        self._run_backward(backward_strategy, _dygraph_tracer())
+    else:
+        raise ValueError(
+            "Variable.backward() is only avaliable in DyGraph mode")
+
+
+def add_backward_for_VarBase():
+    setattr(core.VarBase, "backward", var_base_backward)

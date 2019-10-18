@@ -33,6 +33,8 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
+#include "paddle/fluid/pybind/op_function.h"
+
 namespace paddle {
 namespace pybind {
 
@@ -177,6 +179,8 @@ static std::string GetTypeName(const imperative::VarBase &var) {
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
 
+  BindOpFunctions(&m);
+
   py::class_<imperative::detail::BackwardStrategy> backward_strategy(
       m, "BackwardStrategy", R"DOC(
 
@@ -248,6 +252,14 @@ void BindImperative(py::module *m_ptr) {
                    self.MutableVar()->GetMutable<framework::LoDTensor>();
                tensor->Resize(framework::make_ddim(dims));
              }
+           })
+      .def("__str__",
+           [](imperative::VarBase &self) {
+             auto tensor =
+                 self.MutableVar()->GetMutable<framework::LoDTensor>();
+             std::stringstream ostr;
+             ostr << *tensor;
+             return ostr.str();
            })
       .def("_run_backward",
            [](imperative::VarBase &self,

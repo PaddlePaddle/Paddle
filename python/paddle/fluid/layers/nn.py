@@ -24,7 +24,7 @@ import os
 import inspect
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant, NumpyArrayInitializer
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, _dygraph_tracer, _current_expected_place, _var_base_to_np, default_main_program
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
@@ -601,6 +601,29 @@ def embedding(input,
               trainable=True)
           emb_2 = fluid.layers.embedding(input=data, size=(128, 100), param_attr=w_param_attrs, dtype='float32')   
     """
+    if in_dygraph_mode():
+        remote_prefetch = is_sparse and (not is_distributed)
+        if remote_prefetch:
+            assert is_sparse is True and is_distributed is False
+        w = helper.create_parameter(
+            attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
+        tmp = helper.create_variable_for_type_inference(dtype)
+        padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+            size[0] + padding_idx)
+
+        attrs = {
+            'is_sparse': is_sparse,
+            'is_distributed': is_distributed,
+            'remote_prefetch': remote_prefetch,
+            'padding_idx': padding_idx
+        }
+        trace_backward = _dygraph_tracer()._train_mode
+        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        outs = core.ops.lookup_table(
+            _dygraph_tracer(), {'Ids': [input],
+                                'W': [w]}, attrs,
+            _current_expected_place(), out_names, trace_backward)
+        return outs['Out'][0]
 
     helper = LayerHelper('embedding', **locals())
     if not isinstance(input, Variable):
@@ -1799,6 +1822,24 @@ def dropout(x,
             x = fluid.data(name="data", shape=[None, 32, 32], dtype="float32")
             droped = fluid.layers.dropout(x, dropout_prob=0.5)
     """
+
+    if in_dygraph_mode():
+        if (seed is None or
+                seed == 0) and default_main_program().random_seed != 0:
+            seed = default_main_program().random_seed
+        attrs = {
+            'dropout_prob': dropout_prob,
+            'is_test': is_test,
+            'fix_seed': seed is not None,
+            'seed': seed if seed is not None else 0,
+            'dropout_implementation': dropout_implementation,
+        }
+        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        trace_backward = _dygraph_tracer()._train_mode
+        outs = core.ops.dropout(_dygraph_tracer(), {'X': [x]}, attrs,
+                                _current_expected_place(), out_names,
+                                trace_backward)
+        return outs['Out'][0]
 
     helper = LayerHelper('dropout', **locals())
 
@@ -6264,6 +6305,21 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_sum(y, dim=[0, 1]) # [16, 20]
 
     """
+    if in_dygraph_mode():
+        if dim is not None and not isinstance(dim, list):
+            dim = [dim]
+        attrs = {
+            'dim': dim if dim != None else [0],
+            'keep_dim': keep_dim,
+            'reduce_all': True if dim == None else False
+        }
+        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        trace_backward = _dygraph_tracer()._train_mode
+        outs = core.ops.reduce_sum(_dygraph_tracer(), {'X': [input]}, attrs,
+                                   _current_expected_place(), out_names,
+                                   trace_backward)
+        return outs['Out'][0]
+
     helper = LayerHelper('reduce_sum', **locals())
     if not isinstance(input, Variable):
         raise TypeError(
@@ -6338,6 +6394,21 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(y, dim=[1, 2]) # [2.5, 6.5]
             fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
     """
+    if in_dygraph_mode():
+        if dim is not None and not isinstance(dim, list):
+            dim = [dim]
+        attrs = {
+            'dim': dim if dim != None else [0],
+            'keep_dim': keep_dim,
+            'reduce_all': True if dim == None else False
+        }
+        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        trace_backward = _dygraph_tracer()._train_mode
+        outs = core.ops.reduce_mean(_dygraph_tracer(), {'X': [input]}, attrs,
+                                    _current_expected_place(), out_names,
+                                    trace_backward)
+        return outs['Out'][0]
+
     helper = LayerHelper('reduce_mean', **locals())
     if not isinstance(input, Variable):
         raise TypeError(
@@ -6938,6 +7009,21 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
             out = fluid.layers.matmul(x, y, True, True)
     """
+    if in_dygraph_mode():
+        attrs = {
+            'transpose_X': transpose_x,
+            'transpose_Y': transpose_y,
+            'alpha': float(alpha),
+        }
+        x = x if isinstance(x, list) else [x]
+        y = y if isinstance(y, list) else [y]
+        trace_backward = _dygraph_tracer()._train_mode
+        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        outs = core.ops.matmul(_dygraph_tracer(), {'X': x,
+                                                   'Y': y}, attrs,
+                               _current_expected_place(), out_names,
+                               trace_backward)
+        return outs['Out'][0]
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
@@ -7992,6 +8078,18 @@ def transpose(x, perm, name=None):
             #(3L, 2L, 4L)
 
     """
+    if in_dygraph_mode():
+        attrs = {'axis': perm}
+        trace_backward = _dygraph_tracer()._train_mode
+        out_names = {
+            'Out': [unique_name.generate_with_ignorable_key()],
+            'XShape': [unique_name.generate_with_ignorable_key()]
+        }
+        outs = core.ops.transpose2(_dygraph_tracer(), {'X': [x]}, attrs,
+                                   _current_expected_place(), out_names,
+                                   trace_backward)
+        return outs['Out'][0]
+
     if not isinstance(x, Variable):
         raise TypeError(
             "The type of Input(x) in transpose must be Variable, but received %s"
@@ -8383,6 +8481,28 @@ def softmax_with_cross_entropy(logits,
             out = fluid.layers.softmax_with_cross_entropy(
                 logits=fc, label=label)
     """
+
+    if in_dygraph_mode():
+        attrs = {
+            'soft_label': soft_label,
+            'ignore_index': ignore_index,
+            'numeric_stable_mode': numeric_stable_mode,
+            'axis': axis
+        }
+        trace_backward = _dygraph_tracer()._train_mode
+        out_names = {
+            'Softmax': [unique_name.generate_with_ignorable_key()],
+            'Loss': [unique_name.generate_with_ignorable_key()],
+        }
+        outs = core.ops.softmax_with_cross_entropy(
+            _dygraph_tracer(), {'Logits': [logits],
+                                'Label': [label]}, attrs,
+            _current_expected_place(), out_names, trace_backward)
+        if return_softmax:
+            return outs['Loss'], outs['Softmax']
+        else:
+            return outs['Loss']
+
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
     loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
@@ -8847,6 +8967,23 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             reshaped_2 = fluid.layers.reshape(data_2, shape=[dim, 10])
             # the shape of reshaped_2 is [5,10].
     """
+
+    if in_dygraph_mode():
+        inputs = {'X': x}
+        attrs = {'shape': shape}
+
+        trace_backward = _dygraph_tracer()._train_mode
+        out_names = {
+            'Out': [unique_name.generate_with_ignorable_key()],
+            'XShape': [unique_name.generate_with_ignorable_key()]
+        }
+        outs = core.ops.reshape2(
+            _dygraph_tracer(), {'X': x if isinstance(x, list) else [x]}, attrs,
+            _current_expected_place(), out_names, trace_backward)
+
+        return outs['Out'][0]
+        # TODO(cql): refine append_activation
+
     if not isinstance(x, Variable):
         raise TypeError(
             "The type of 'x' in reshape must be Variable, but received %s." %
@@ -11230,6 +11367,15 @@ def relu(x, name=None):
                 # [[0.  0. ]
                 #  [1.  2.6]]
 """
+    if in_dygraph_mode():
+        attrs = {}
+        trace_backward = _dygraph_tracer()._train_mode
+        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        outs = core.ops.relu(_dygraph_tracer(), {'X': [x]}, attrs,
+                             _current_expected_place(), out_names,
+                             trace_backward)
+        return outs['Out'][0]
+
     helper = LayerHelper('relu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
@@ -13507,15 +13653,6 @@ def slice(input, axes, starts, ends):
             # sliced_2 is input[0:3, 0:2, 2:4].
     """
 
-    if not isinstance(starts, (list, tuple, Variable)):
-        raise ValueError(
-            "Input starts must be an Variable, python list or tuple.")
-    if not isinstance(ends, (list, tuple, Variable)):
-        raise ValueError(
-            "Input ends must be an Variable, python list or tuple.")
-
-    helper = LayerHelper('slice', **locals())
-
     def contain_var(one_list):
         for ele in one_list:
             if isinstance(ele, Variable):
@@ -13547,7 +13684,24 @@ def slice(input, axes, starts, ends):
             'ends': ends,
             'infer_flags': infer_flags
         }
+
+        trace_backward = _dygraph_tracer()._train_mode
+        input = input if isinstance(input, list) else [input]
+        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        outs = core.ops.slice(_dygraph_tracer(), {'Input': input}, attrs,
+                              _current_expected_place(), out_names,
+                              trace_backward)
+        return outs['Out'][0]
+
     else:
+        if not isinstance(starts, (list, tuple, Variable)):
+            raise ValueError(
+                "Input starts must be an Variable, python list or tuple.")
+        if not isinstance(ends, (list, tuple, Variable)):
+            raise ValueError(
+                "Input ends must be an Variable, python list or tuple.")
+
+        helper = LayerHelper('slice', **locals())
         # starts
         if isinstance(starts, Variable):
             starts.stop_gradient = True
@@ -13585,12 +13739,11 @@ def slice(input, axes, starts, ends):
                         attrs['ends'].append(dim)
         # infer_flags
         attrs['infer_flags'] = infer_flags
-    out = helper.create_variable_for_type_inference(
-        dtype=helper.input_dtype('input'))
-    helper.append_op(
-        type='slice', inputs=inputs, attrs=attrs, outputs={'Out': out})
-
-    return out
+        out = helper.create_variable_for_type_inference(
+            dtype=helper.input_dtype('input'))
+        helper.append_op(
+            type='slice', inputs=inputs, attrs=attrs, outputs={'Out': out})
+        return out
 
 
 @templatedoc()
@@ -14079,6 +14232,19 @@ Examples:
         print(z_value) # z.shape=[2,3,4,5]
 
     """
+    if in_dygraph_mode():
+        attrs = {
+            'axis': axis,
+            'use_mkldnn': False  # TODO(cql): change this 
+        }
+        trace_backward = _dygraph_tracer()._train_mode
+        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        outs = core.ops.elementwise_add(
+            _dygraph_tracer(), {'X': [x],
+                                'Y': [y]}, attrs,
+            _current_expected_place(), out_names, trace_backward)
+        return outs['Out'][0]
+        # TODO(cql): activation
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
@@ -14310,6 +14476,19 @@ Examples:
         print(z_value) # z.shape=[2,3,4,5]
  
     """
+    if in_dygraph_mode():
+        attrs = {
+            'axis': axis,
+            'use_mkldnn': False  # TODO(cql): change this 
+        }
+        trace_backward = _dygraph_tracer()._train_mode
+        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        outs = core.ops.elementwise_mul(
+            _dygraph_tracer(), {'X': [x],
+                                'Y': [y]}, attrs,
+            _current_expected_place(), out_names, trace_backward)
+        return outs['Out'][0]
+        # TODO(cql): activation
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 

@@ -23,6 +23,8 @@ from ..proto import framework_pb2
 from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_
 from ..layer_helper import LayerHelper
 from ..data_feeder import convert_dtype
+from ..framework import in_dygraph_mode, _dygraph_tracer, _current_expected_place, _var_base_to_np
+from .. import unique_name
 
 __all__ = [
     'deprecated', 'generate_layer_fn', 'generate_activation_fn', 'autodoc',
@@ -250,6 +252,15 @@ def generate_activation_fn(op_type):
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
     def func(x, name=None):
+        if in_dygraph_mode():
+            attrs = {}
+            trace_backward = _dygraph_tracer()._train_mode
+            op = getattr(core.ops, op_type)
+            out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+            outs = op(_dygraph_tracer(), {'X': [x]}, attrs,
+                      _current_expected_place(), out_names, trace_backward)
+            return outs['Out'][0]
+
         helper = LayerHelper(op_type, **locals())
         if not isinstance(x, Variable):
             raise TypeError(

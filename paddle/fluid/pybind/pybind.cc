@@ -85,7 +85,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/fluid/pybind/communicator_py.h"
 #endif
-#include "paddle/fluid/pybind/op_function.h"
 
 #include "pybind11/stl.h"
 
@@ -397,8 +396,6 @@ PYBIND11_MODULE(core_noavx, m) {
                py::capsule([]() { ScopePool::Instance().Clear(); }));
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
-
-  BindOpFunctions(&m);
 
   BindImperative(&m);
 

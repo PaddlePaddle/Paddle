@@ -17,14 +17,17 @@ from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
+from ..framework import Variable, OpProtoHolder, in_dygraph_mode, _dygraph_tracer, _current_expected_place, _var_base_to_np
 from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
+from .. import core
 from .layer_function_generator import templatedoc
 from ..data_feeder import convert_dtype
 import numpy
 import warnings
 from ..data_feeder import convert_dtype
+from .. import unique_name
 
 __all__ = [
     'create_tensor', 'create_parameter', 'create_global_var', 'cast',
@@ -259,6 +262,15 @@ def concat(input, axis=0, name=None):
                 #  [11 12 13]
                 #  [14 15 16]]
     """
+    if in_dygraph_mode():
+        attrs = {'axis': axis}
+        trace_backward = _dygraph_tracer()._train_mode
+        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        outs = core.ops.concat(_dygraph_tracer(), {'X': input}, attrs,
+                               _current_expected_place(), out_names,
+                               trace_backward)
+        return outs['Out'][0]
+
     helper = LayerHelper('concat', **locals())
     if not isinstance(input, list):
         warnings.warn(

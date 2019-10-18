@@ -14,12 +14,17 @@
 
 #pragma once
 
+#include <pybind11/chrono.h>
+#include <pybind11/complex.h>
+#include <pybind11/functional.h>
+#include <pybind11/stl.h>
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
-#include "pybind11/pybind11.h"
+
+#include "paddle/fluid/pybind/imperative.h"
 
 // This include must be the last line
 #include "paddle/fluid/pybind/op_function_impl.h"

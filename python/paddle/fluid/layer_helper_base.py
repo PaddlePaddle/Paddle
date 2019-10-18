@@ -68,9 +68,11 @@ class LayerHelperBase(object):
             var = py_var._ivar.value()
             tensor = var.get_tensor()
             tensor.set(value, _current_expected_place())
-            return py_var
+            #return py_var
+            return py_var._ivar
         elif isinstance(value, Variable):
-            return value
+            #return value
+            return value._ivar
 
     def _create_weight_normalize(self, attr, shape, dtype):
         from .layers import elementwise_mul, elementwise_div, reshape
