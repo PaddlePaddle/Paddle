@@ -167,21 +167,53 @@ void FleetWrapper::SetLocalSparseTable(const std::vector<uint64_t>& fea_keys, in
     }
 }
 void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<uint64_t>& fea_keys, int fea_value_dim) {
+    std::cout << "FleetWrapper Start pull sparse to local" << std::endl;
     SetLocalSparseTable(fea_keys, fea_value_dim);
-    std::vector<float*> pull_result_ptr;
-    for (auto& t : fea_keys) {
-        pull_result_ptr.push_back(local_table_[t].data());
+    std::vector<::std::future<int32_t>> pull_sparse_status;
+    size_t one_body_size = 8000;
+    size_t total_body_size = fea_keys.size();
+    std::vector<std::vector<float*>> pull_result_ptr;
+    size_t length = size_t(total_body_size / one_body_size) + 1;
+    pull_result_ptr.resize(length);
+    for (auto& p : pull_result_ptr) {
+        p.reserve(one_body_size);    
     }
-    auto status = pslib_ptr_->_worker_ptr->pull_sparse(
-            pull_result_ptr.data(), table_id, fea_keys.data(), fea_keys.size());
-
+    size_t index = 0;
+    for (size_t i = 0; i < total_body_size; i += one_body_size) {
+        
+        size_t j = 0;
+        for (; j < one_body_size && i + j < total_body_size; j++) {
+            pull_result_ptr[index].push_back(local_table_[fea_keys[i+j]].data());
+        }
+        auto tt = pslib_ptr_->_worker_ptr->pull_sparse(
+            pull_result_ptr[index].data(), table_id, &fea_keys[i], pull_result_ptr[index].size());
+        pull_sparse_status.push_back(std::move(tt));
+        index += 1;
+    }
+    index = 0;
+    for (auto& t : pull_sparse_status) {
+        t.wait();
+        auto status = t.get();
+        if (status != 0) {
+        std::cout << "fleet pull sparse failed, status" << std::endl;
+        LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+        sleep(sleep_seconds_before_fail_exit_);
+        exit(-1);
+        } //else {
+        // std::cout << "FleetWrapper Pull sparse to local done with table size: " << pull_result_ptr[index].size() << std::endl;    
+        //}
+        index += 1;
+    }
 }
 
 void FleetWrapper::PullSparseVarsFromLocal(
     const Scope& scope, const uint64_t table_id,
-    const std::vector<std::string>& var_names,
+    const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
     std::vector<std::vector<float>>* fea_values, int fea_value_dim) {
 #ifdef PADDLE_WITH_PSLIB
+  fea_keys->clear();
+  fea_keys->resize(0);
+  fea_keys->reserve(MAX_FEASIGN_NUM);
   for (auto name : var_names) {
     Variable* var = scope.FindVar(name);
     if (var == nullptr) {
@@ -195,10 +227,15 @@ void FleetWrapper::PullSparseVarsFromLocal(
       if (ids[i] == 0u) {
         continue;
       }
-      // fea_keys->push_back(static_cast<uint64_t>(ids[i]));
-      fea_values->emplace_back(local_table_[static_cast<uint64_t>(ids[i])]);
+      fea_keys->push_back(static_cast<uint64_t>(ids[i]));
+      auto it = local_table_.find(fea_keys->back());
+      if (it == local_table_.end()) {
+        std::cout << "WARNING: no embedding in local table" << std::endl;    
+      }
+      fea_values->emplace_back(it->second);
     }
   }
+  // std::cout << "Pull sparse from local done with fea value size: " << fea_values->size() << std::endl;
 #endif
 
 }

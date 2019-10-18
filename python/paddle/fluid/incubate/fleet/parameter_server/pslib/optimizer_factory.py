@@ -247,6 +247,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["worker_skipped_ops"] = worker_skipped_ops
         opt_info["use_cvm"] = strategy.get("use_cvm", False)
         opt_info["stat_var_names"] = strategy.get("stat_var_names", [])
+        opt_info["local_tables"] = strategy.get("local_tables", [])
+        print opt_info["local_tables"]
         opt_info["scale_datanorm"] = strategy.get("scale_datanorm", -1)
         opt_info["dump_slot"] = False
         opt_info["dump_converter"] = ""

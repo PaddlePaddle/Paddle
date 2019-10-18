@@ -76,12 +76,11 @@ class DownpourServer(Server):
                     'sparse_weight_bounds', 'sparse_embedx_dim', 'sparse_embedx_threshold', 'sparse_nonclk_coeff', \
                     'sparse_click_coeff', 'sparse_base_threshold', 'sparse_delta_threshold', 'sparse_delta_keep_days', \
                     'sparse_delete_after_unseen_days', 'sparse_show_click_decay_rate', 'sparse_delete_threshold', \
-                    'sparse_converter', 'sparse_deconverter']
+                    'sparse_converter', 'sparse_deconverter', 'sparse_is_local']
 
         for key in strategy:
             if key not in support_sparse_key_list:
                 raise ValueError("strategy key '%s' not support" % (key))
-
         support_table_calss = ['DownpourSparseTable']
         if strategy.get('sparse_table_class') is not None:
             table_class = strategy.get('sparse_table_class')
@@ -114,6 +113,7 @@ class DownpourServer(Server):
             table.accessor.accessor_class = accessor_class
 
             if accessor_class == 'DownpourFeatureValueAccessor' or accessor_class == 'DownpourCtrAccessor':
+                
                 table.accessor.sparse_sgd_param.learning_rate = strategy.get(
                     'sparse_learning_rate', 0.05)
                 table.accessor.sparse_sgd_param.initial_g2sum = strategy.get(

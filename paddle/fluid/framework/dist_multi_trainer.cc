@@ -138,6 +138,7 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
 }
 
 void DistMultiTrainer::Run() {
+  PullSparseTableToLocal(0, 11);
   for (int thidx = 0; thidx < thread_num_; ++thidx) {
     if (!debug_) {
       threads_.push_back(

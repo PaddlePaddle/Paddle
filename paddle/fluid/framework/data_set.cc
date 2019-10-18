@@ -667,7 +667,7 @@ void MultiSlotDataset::GenerateUniqueFeasign() {
   }
   local_feasigns_.reserve(local_feasigns_set.size() + 1);
   local_feasigns_.assign(local_feasigns_set.begin(), local_feasigns_set.end());
-  auto fleet_ptr = FleetWrapper::GetInstance();
+  std::cout << "local feasigns stat finish with size: " << local_feasigns_.size() << std::endl;
   local_feasigns_set.clear();
 }
 

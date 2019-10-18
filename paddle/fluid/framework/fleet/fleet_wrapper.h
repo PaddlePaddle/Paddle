@@ -109,7 +109,7 @@ class FleetWrapper {
 
   void PullSparseVarsFromLocal(
       const Scope& scope, const uint64_t table_id,
-      const std::vector<std::string>& var_names,
+      const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
       std::vector<std::vector<float>>* fea_values, int fea_value_dim);
   void ClearLocalTable() {local_table_.clear();};
 

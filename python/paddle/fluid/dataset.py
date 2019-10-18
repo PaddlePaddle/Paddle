@@ -293,6 +293,7 @@ class InMemoryDataset(DatasetBase):
         self.parse_ins_id = False
         self.parse_content = False
         self.merge_by_lineid = False
+        self.gen_uni_feasigns = False
         self.fleet_send_sleep_seconds = None
 
     def _prepare_to_run(self):
@@ -442,6 +443,10 @@ class InMemoryDataset(DatasetBase):
                                          min_merge_size, keep_unmerged_ins)
         self.merge_by_lineid = True
 
+    def set_generate_unique_feasigns(self, generate_uni_feasigns):
+        self.dataset.set_generate_unique_feasigns(generate_uni_feasigns)
+        self.gen_uni_feasigns = generate_uni_feasigns
+
     def load_into_memory(self):
         """
         Load data into memory
@@ -559,6 +564,8 @@ class InMemoryDataset(DatasetBase):
             self.dataset.merge_by_lineid()
         if fleet is not None:
             fleet._role_maker._barrier_worker()
+        if self.gen_uni_feasigns:
+            self.dataset.generate_unique_feasigns()
 
     def release_memory(self):
         """
