@@ -30,8 +30,10 @@ class SyncFusedTensorOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto &in_var_names = context.Inputs("Input");
     auto &fused_in_var_name = context.Inputs("FusedInput");
+    auto &fused_out_var_name = context.Outputs("FusedOutput");
     auto &in_vars = context.MultiInputVar("Input");
     auto *fused_in_var = context.InputVar("FusedInput");
+    auto *fused_out_var = context.OutputVar("FusedOutput");
 
     // Variable init and type check
     for (size_t i = 0; i < in_var_names.size(); ++i) {
@@ -42,10 +44,11 @@ class SyncFusedTensorOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(in_vars[i]->IsType<framework::LoDTensor>(), true,
                         "SyncFusedTensorOp only support LoDTensor input.");
     }
-    // PADDLE_ENFORCE_EQ(fused_in_var, fused_out_var,
-    //   "The FusedInput(%s) and FusedOutout(%s) in SyncFusedTensorOp should be
-    //   the same variable.", fused_in_var_name.front(),
-    //   fused_out_var_name.front());
+    PADDLE_ENFORCE_EQ(
+        fused_in_var, fused_out_var,
+        "The FusedInput(%s) and FusedOutout(%s) in SyncFusedTensorOp should be "
+        "the same variable.",
+        fused_in_var_name.front(), fused_out_var_name.front());
     PADDLE_ENFORCE_EQ(fused_in_var->IsInitialized(), true,
                       "The Input Variable FusedInput(%s) of SyncFusedTensorOp "
                       "is not initialized.",
@@ -75,18 +78,13 @@ class SyncFusedTensorOpKernel : public framework::OpKernel<T> {
     size_t offset = 0;
     for (size_t i = 0; i < in_tensors.size(); ++i) {
       size_t len = static_cast<size_t>(in_tensors[i]->numel());
-      auto sub_tensor = fused_in_tensor->Slice(
+      auto sub_tensor = fused_out_tensor->Slice(
           static_cast<int64_t>(offset), static_cast<int64_t>(offset + len));
       if (!IsSameTensor(*in_tensors[i], sub_tensor)) {
         framework::TensorCopy(*in_tensors[i], context.GetPlace(), &sub_tensor);
       }
       offset += platform::Alignment(len * size_of_dtype, context.GetPlace()) /
                 size_of_dtype;
-    }
-
-    // Set output, for unit test
-    if (!fused_out_tensor->IsInitialized()) {
-      fused_out_tensor->ShareDataWith(*fused_in_tensor);
     }
   }
 
