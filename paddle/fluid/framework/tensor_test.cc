@@ -36,7 +36,7 @@ TEST(Tensor, DataAssert) {
   bool caught = false;
   try {
     src_tensor.data<double>();
-  } catch (platform::EnforceNotMet err) {
+  } catch (platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
     EXPECT_TRUE(ex_msg.find("holder_ should not be null\nTensor holds no "
@@ -151,7 +151,7 @@ TEST(Tensor, ShareDataWith) {
     bool caught = false;
     try {
       dst_tensor.ShareDataWith(src_tensor);
-    } catch (paddle::platform::EnforceNotMet err) {
+    } catch (paddle::platform::EnforceNotMet& err) {
       caught = true;
       std::string ex_msg = err.what();
       EXPECT_TRUE(ex_msg.find("holder_ should not be null\nTensor holds no "
