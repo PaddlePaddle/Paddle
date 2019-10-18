@@ -570,8 +570,8 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
 
 class TestTrilinearInterpAPI(OpTest):
     def test_case(self):
-        x = fluid.data(name="x", shape=[1, 3, 6, 9, 4], dtype="float32")
-        y = fluid.data(name="y", shape=[1, 6, 9, 4, 3], dtype="float32")
+        x = fluid.data(name="x", shape=[2, 3, 6, 9, 4], dtype="float32")
+        y = fluid.data(name="y", shape=[2, 6, 9, 4, 3], dtype="float32")
 
         dim = fluid.data(name="dim", shape=[1], dtype="int32")
         shape_tensor = fluid.data(name="shape_tensor", shape=[3], dtype="int32")
@@ -587,7 +587,7 @@ class TestTrilinearInterpAPI(OpTest):
             x, out_shape=[4, 4, 8], actual_shape=actual_size)
         out5 = fluid.layers.resize_trilinear(x, scale=scale_tensor)
 
-        x_data = np.random.random((1, 3, 6, 9, 4)).astype("float32")
+        x_data = np.random.random((2, 3, 6, 9, 4)).astype("float32")
         dim_data = np.array([18]).astype("int32")
         shape_data = np.array([12, 18, 8]).astype("int32")
         actual_size_data = np.array([12, 18, 8]).astype("int32")
@@ -621,7 +621,7 @@ class TestTrilinearInterpAPI(OpTest):
 
 class TestTrilinearInterpOpException(OpTest):
     def test_exception(self):
-        input = fluid.data(name="input", shape=[1, 3, 6, 9, 4], dtype="float32")
+        input = fluid.data(name="input", shape=[2, 3, 6, 9, 4], dtype="float32")
 
         def attr_data_format():
             # for 5-D input, data_format only can be NCDHW or NDHWC
