@@ -14322,6 +14322,20 @@ Examples:
         print(z_value) # z.shape=[2,3,4,5]
 
     """
+    if in_dygraph_mode():
+        attrs = {
+            'axis': axis,
+            'use_mkldnn': False  # TODO(cql): change this 
+        }
+        trace_backward = _dygraph_tracer()._train_mode
+        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        x = x._ivar if isinstance(x, Variable) else x
+        y = y._ivar if isinstance(y, Variable) else y
+        outs = core.ops.elementwise_div(
+            _dygraph_tracer(), {'X': [x],
+                                'Y': [y]}, attrs,
+            _current_expected_place(), out_names, trace_backward)
+        return outs['Out'][0]
     return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
@@ -14483,6 +14497,8 @@ Examples:
         }
         trace_backward = _dygraph_tracer()._train_mode
         out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        x = x._ivar if isinstance(x, Variable) else x
+        y = y._ivar if isinstance(y, Variable) else y
         outs = core.ops.elementwise_mul(
             _dygraph_tracer(), {'X': [x],
                                 'Y': [y]}, attrs,
@@ -14543,6 +14559,20 @@ Examples:
         print(z_value)#[[[[1., 1., 1., 1., 1.] .... [1., 1., 1., 1., 1.]]]]
 
     """
+    if in_dygraph_mode():
+        attrs = {
+            'axis': axis,
+            'use_mkldnn': False  # TODO(cql): change this 
+        }
+        trace_backward = _dygraph_tracer()._train_mode
+        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        x = x._ivar if isinstance(x, Variable) else x
+        y = y._ivar if isinstance(y, Variable) else y
+        outs = core.ops.elementwise_max(
+            _dygraph_tracer(), {'X': [x],
+                                'Y': [y]}, attrs,
+            _current_expected_place(), out_names, trace_backward)
+        return outs['Out'][0]
     return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 

@@ -26,6 +26,7 @@ from . import unique_name
 from .backward import append_backward, _some_in_set_, _append_grad_suffix_
 from .clip import append_gradient_clip_ops, error_clip_callback
 from .framework import program_guard
+from .framework import Variable, OpProtoHolder, in_dygraph_mode, _dygraph_tracer, _current_expected_place, _var_base_to_np, default_main_program
 from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
@@ -531,7 +532,8 @@ class Optimizer(object):
                 if param._ivar._grad_ivar() is not None:
                     # create gradient variable
                     grad_var = Variable(
-                        block=loss.block,
+                        #block=loss.block,
+                        block=param.block,
                         name=param._ivar._grad_name(),
                         stop_gradient=True,
                         ivar=param._ivar._grad_ivar())
@@ -629,7 +631,8 @@ class Optimizer(object):
         else:
             assert "no_grad_set should be a set, but the passed type is {}".format(
                 type(no_grad_set))
-        parameters = loss.block.program.global_block().all_parameters()
+        #parameters = loss.block.program.global_block().all_parameters()
+        parameters = default_main_program().global_block().all_parameters()
         param_no_trainable = set(
             [param.name for param in parameters if param.trainable is False])
         # If the parameter is no trainable, it should not have a gradient.
@@ -670,7 +673,7 @@ class Optimizer(object):
         Examples:
             Please refer to the example of current Optimizer.
         """
-        assert isinstance(loss, Variable), "The loss should be an Variable."
+        #assert isinstance(loss, Variable), "The loss should be an Variable."
         params_grads = self.backward(
             loss,
             startup_program=startup_program,
@@ -743,6 +746,30 @@ class SGDOptimizer(Optimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+
+        if framework.in_dygraph_mode():
+            attrs = {}
+            trace_backward = False
+            inputs = {
+                "Param": [
+                    param_and_grad[0]._ivar
+                    if isinstance(param_and_grad[0], Variable) else
+                    param_and_grad[0]
+                ],
+                "Grad": [
+                    param_and_grad[1]._ivar
+                    if isinstance(param_and_grad[1], Variable) else
+                    param_and_grad[1]
+                ],
+                "LearningRate": [self._create_param_lr(param_and_grad)._ivar]
+            }
+            out_names = {'ParamOut': [param_and_grad[0].name]}
+            outs = core.ops.sgd(_dygraph_tracer(), inputs, attrs,
+                                _current_expected_place(), out_names,
+                                trace_backward)
+            param_and_grad[0]._ivar = outs['ParamOut'][0]
+            return outs['ParamOut'][0]
+            # TODO(cql): activation
 
         # create the optimize op
         sgd_op = block.append_op(

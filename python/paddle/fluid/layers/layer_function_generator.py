@@ -256,6 +256,7 @@ def generate_activation_fn(op_type):
             attrs = {}
             trace_backward = _dygraph_tracer()._train_mode
             op = getattr(core.ops, op_type)
+            x = x._ivar if isinstance(x, Variable) else x
             out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
             outs = op(_dygraph_tracer(), {'X': [x]}, attrs,
                       _current_expected_place(), out_names, trace_backward)

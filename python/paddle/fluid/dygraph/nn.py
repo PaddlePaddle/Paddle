@@ -1507,7 +1507,7 @@ class Embedding(layers.Layer):
         out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
         outs = core.ops.lookup_table(
             _dygraph_tracer(), {'Ids': [input],
-                                'W': [self._w]}, attrs,
+                                'W': [self._w._ivar]}, attrs,
             _current_expected_place(), out_names, trace_backward)
         return outs['Out'][0]
 

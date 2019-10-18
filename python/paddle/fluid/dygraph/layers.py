@@ -99,7 +99,7 @@ class Layer(core.Layer):
         elif isinstance(attr, six.string_types):
             attr = ".".join([self._full_name, attr])
         return self._helper.create_parameter(attr, shape, dtype, is_bias,
-                                             default_initializer)._ivar
+                                             default_initializer)
 
     # TODO: Add more parameter list when we need them
     def create_variable(self,
@@ -223,7 +223,7 @@ class Layer(core.Layer):
         Returns:
             Parameter: the parameter passed in.
         """
-        #assert isinstance(parameter, framework.Parameter)
+        assert isinstance(parameter, framework.Parameter)
 
         if len(self._loaddict_holder) > 0:
             assert parameter.name in self._loaddict_holder, "Parameter not found, Can't not find [ {} ] in stat_dict".format(
