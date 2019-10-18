@@ -19,6 +19,7 @@ from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_inputs
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table_outputs
 from google.protobuf import text_format
+from collections import OrderedDict
 from .node import DownpourWorker, DownpourServer
 from . import ps_pb2 as pslib
 
@@ -66,85 +67,60 @@ class DistributedAdam(DistributedOptimizerImplBase):
             ".batch_size@GRAD", ".batch_square_sum@GRAD", ".batch_sum@GRAD"
         ]
 
-    def _find_distributed_lookup_table_inputs(self, programs, table_names):
+    def _find_distributed_lookup_table_inputs(self, program, table_names):
         """
         Find input variable of distribute lookup table in program.
         We could support multi-distribute table now.
         Args:
-            programs(Program|list): given program, locate distributed lookup table
+            program(Program): given program, locate distributed lookup table
             table_name(str): given table names that is found beforehand
         Returns:
             inputs
         """
-        if not isinstance(programs, list):
-            programs = [programs]
+        local_vars = program.current_block().vars
         inputs_dict = dict()
-        inputs_name_dict = dict()
         for table_name in table_names:
             inputs_dict[table_name] = []
-            inputs_name_dict[table_name] = dict()
 
-        for program in programs:
-            local_vars = program.current_block().vars
-            for op in program.global_block().ops:
-                if op.type == "lookup_table" and op.input("W")[0] in table_names:
-                    input_list = inputs_dict[op.input("W")[0]]
-                    input_names = inputs_name_dict[op.input("W")[0]]
-                    for name in op.input("Ids"):
-                        if name not in input_names:
-                            input_list.append(local_vars[name])
-                            input_names[name] = 0
+        for op in program.global_block().ops:
+            if op.type == "lookup_table":
+                if op.input("W")[0] in table_names:
+                    inputs_dict[op.input("W")[0]].extend(
+                        [local_vars[name] for name in op.input("Ids")])
         return inputs_dict
 
-    def _find_distributed_lookup_table_outputs(self, programs, table_names):
+    def _find_distributed_lookup_table_outputs(self, program, table_names):
         """
         Find output variable of distribute lookup table in program.
         We could support multi-distribute table now.
         Args:
-            programs(Program|list): given program, locate distributed lookup table
+            programs(Program): given program, locate distributed lookup table
             table_name(str): given table name that is found beforehand
         Returns:
             outputs
         """
-        if not isinstance(programs, list):
-            programs = [programs]
+        local_vars = program.current_block().vars
         outputs_dict = dict()
-        outputs_name_dict = dict()
         for table_name in table_names:
             outputs_dict[table_name] = []
-            outputs_name_dict[table_name] = dict()
 
-        for program in programs:
-            local_vars = program.current_block().vars
-            for op in program.global_block().ops:
-                if op.type == "lookup_table" and op.input("W")[0] in table_names:
-                    output_list = outputs_dict[op.input("W")[0]]
-                    output_names = outputs_name_dict[op.input("W")[0]]
-                    for name in op.output("Out"):
-                        if name not in output_names:
-                            output_list.append(local_vars[name])
-                            output_names[name] = 0
+        for op in program.global_block().ops:
+            if op.type == "lookup_table":
+                if op.input("W")[0] in table_names:
+                    outputs_dict[op.input("W")[0]].extend(
+                        [local_vars[name] for name in op.output("Out")])
         return outputs_dict
 
-    def _find_distributed_lookup_table_grads(self, programs, table_names):
-        if not isinstance(programs, list):
-            programs = [programs]
+    def _find_distributed_lookup_table_grads(self, program, table_names):
+        local_vars = program.current_block().vars
         grads_dict = dict()
-        grads_name_dict = dict()
         for table_name in table_names:
             grads_dict[table_name] = []
-            grads_name_dict[table_name] = dict()
 
-        for program in programs:
-            local_vars = program.current_block().vars
-            for op in program.global_block().ops:
-                if op.type == "lookup_table_grad" and op.input("W")[0] in table_names:
-                    grad_list = grads_dict[op.input("W")[0]]
-                    grad_names = grads_name_dict[op.input("W")[0]]
-                    for name in op.input("Out@GRAD"):
-                        if name not in grad_names:
-                            grad_list.append(local_vars[name])
-                            grad_names[name] = 0
+        for op in program.global_block().ops:
+            if op.type == "lookup_table_grad" and op.input("W")[0] in table_names:
+                grads_dict[op.input("W")[0]].extend(
+                    [local_vars[name] for name in op.input("Out@GRAD")])
         return grads_dict
 
     def _find_multi_distributed_lookup_table(self, losses):
@@ -180,17 +156,56 @@ class DistributedAdam(DistributedOptimizerImplBase):
         Returns:
             [optimize_ops, grads_and_weights]
         """
-
-        sparse_table_names = self._find_multi_distributed_lookup_table(losses)
-        inputs_dict = self._find_distributed_lookup_table_inputs(
-            [i.block.program for i in losses], sparse_table_names)
-
-        outputs_dict = self._find_distributed_lookup_table_outputs(
-            [i.block.program for i in losses], sparse_table_names)
-
+        # sparse table names of each program
+        prog_id_to_sparse_table = OrderedDict()
+        # inputs_dict and outputs_dict of sparse tables of each program
+        prog_id_to_inputs_dict = OrderedDict()
+        prog_id_to_outputs_dict = OrderedDict()
+        # related to PSParameter
         ps_param = pslib.PSParameter()
+        # related to ServerParameter
         server = DownpourServer()
-        worker = DownpourWorker(self._window)
+        # program to worker (related to DownpourTrainerParameter)
+        prog_id_to_worker = OrderedDict()
+        # param_grads of each program
+        prog_id_to_param_grads = OrderedDict()
+        # sparse_grads of each program
+        prog_id_to_sparse_grads = OrderedDict()
+
+        sparse_table_to_index = OrderedDict()
+        sparse_table_index = 0
+        for loss in losses:
+            sparse_table = self._find_multi_distributed_lookup_table([loss])
+            prog_id = str(id(loss.block.program))
+            prog_id_to_sparse_table[prog_id] = sparse_table
+
+            # get sparse_table_to_index
+            for tn in sparse_table:
+                if sparse_table_to_index.get(tn) is None:
+                    sparse_table_to_index[tn] = sparse_table_index
+                    sparse_table_index += 1
+
+            # get inputs_dict
+            inputs_dict = self._find_distributed_lookup_table_inputs(
+                loss.block.program, sparse_table)
+            prog_id_to_inputs_dict[prog_id] = inputs_dict
+            # get outputs_dict
+            outputs_dict = self._find_distributed_lookup_table_outputs(
+                loss.block.program, sparse_table)
+            prog_id_to_outputs_dict[prog_id] = outputs_dict
+
+            prog_id_to_worker[prog_id] = DownpourWorker(self._window)
+
+            # param_grads of program
+            params_grads = sorted(
+                fluid.backward.append_backward(loss, parameter_list, no_grad_set),
+                key=lambda x: x[0].name)
+            prog_id_to_param_grads[prog_id] = params_grads
+
+            grads_dict = self._find_distributed_lookup_table_grads(
+                loss.block.program, sparse_table)
+            prog_id_to_sparse_grads[prog_id] = grads_dict
+
         # if user specify a fleet_desc.prototxt file, then load the file
         # instead of creating default fleet_desc.prototxt.
         # user can specify server_param or trainer_param or fs_client_param.
@@ -199,48 +214,48 @@ class DistributedAdam(DistributedOptimizerImplBase):
             with open(fleet_desc_file) as f:
                 text_format.Merge(f.read(), ps_param)
             server.get_desc().CopyFrom(ps_param.server_param)
-            worker.get_desc().CopyFrom(ps_param.trainer_param)
+            for k in program_id_to_worker:
+               program_id_to_worker[k].get_desc().CopyFrom(ps_param.trainer_param)
 
-        param_grads_list = []
-        for loss_index in range(len(losses)):
-            cur_params_grads = sorted(
-                fluid.backward.append_backward(losses[loss_index],
-                                               parameter_list, no_grad_set),
-                key=lambda x: x[0].name)
-            param_grads_list.append(cur_params_grads)
-
-        grads_dict = self._find_distributed_lookup_table_grads(
-            [i.block.program for i in losses], sparse_table_names)
-
-        sparse_table_index = 0
-        sparse_table_name2index = {}
-        for tn in sparse_table_names:
+        # ServerParameter add all sparse tables
+        for tn in sparse_table_to_index:
+            sparse_table_index = sparse_table_to_index[tn]
             if strategy.get(tn) is not None:
                 server.add_sparse_table(sparse_table_index, strategy[tn])
             else:
                 server.add_sparse_table(sparse_table_index, None)
-            worker.add_sparse_table(sparse_table_index, inputs_dict[tn],
-                                    outputs_dict[tn], grads_dict[tn])
-            sparse_table_name2index[tn] = sparse_table_index
-            sparse_table_index += 1
 
-        dense_start_table_id = sparse_table_index
-        dense_table_index = sparse_table_index
+        # each DownpourTrainerParameter add its own sparse tables
+        for loss in losses:
+            prog_id = str(id(loss.block.program))
+            worker = prog_id_to_worker[prog_id]
+            inputs_dict = prog_id_to_inputs_dict[prog_id]
+            outputs_dict = prog_id_to_outputs_dict[prog_id]
+            for tn in prog_id_to_sparse_table[prog_id]:
+                sparse_table_index = sparse_table_to_index[tn]
+                grads_dict = prog_id_to_sparse_grads[prog_id]
+                worker.add_sparse_table(sparse_table_index, inputs_dict[tn],
+                                        outputs_dict[tn], grads_dict[tn])
+
+        dense_start_table_id = len(sparse_table_to_index)
+        dense_table_index = len(sparse_table_to_index)
         program_configs = {}
-
+        # ServerParameter add all dense tables
+        # each DownpourTrainerParameter add its own dense tables
         for loss_index in range(len(losses)):
-            cur_sparse = self._find_multi_distributed_lookup_table(
-                [losses[loss_index]])
-            cur_sparse_index = [sparse_table_name2index[i] for i in cur_sparse]
             program_id = str(id(losses[loss_index].block.program))
+            worker = prog_id_to_worker[program_id]
+            sparse_table_names = prog_id_to_sparse_table[program_id]
+            sparse_table_index = [sparse_table_to_index[i] for i in sparse_table_names]
+
             program_configs[program_id] = {
                 "pull_sparse":
-                [t_index for t_index in cur_sparse_index],
+                [t_index for t_index in sparse_table_index],
                 "push_sparse":
-                [t_index for t_index in cur_sparse_index]
+                [t_index for t_index in sparse_table_index]
             }
 
-            params_grads = param_grads_list[loss_index]
+            params_grads = prog_id_to_param_grads[program_id]
             params = []
             grads = []
             data_norm_params = []
@@ -296,15 +311,17 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 program_configs[program_id]["push_dense"].extend(
                     [dense_table_index])
             dense_table_index += 1
+
+            # Todo(guru4elephant): figure out how to support more sparse parameters
+            # currently only support lookup_table
+            worker_skipped_ops = ["lookup_table", "lookup_table_grad"]
+            if len(worker.get_desc().skip_op) == 0:
+                worker.get_desc().skip_op.extend(worker_skipped_ops)
+
         ps_param.server_param.CopyFrom(server.get_desc())
-        ps_param.trainer_param.CopyFrom(worker.get_desc())
-        # Todo(guru4elephant): figure out how to support more sparse parameters
-        # currently only support lookup_table
-        worker_skipped_ops = ["lookup_table", "lookup_table_grad"]
-        if len(ps_param.trainer_param.skip_op) == 0:
-            ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
 
         opt_info = {}
+        opt_info["program_id_to_worker"] = prog_id_to_worker
         opt_info["program_configs"] = program_configs
         opt_info["trainer"] = "DistMultiTrainer"
         opt_info["device_worker"] = "DownpourSGD"
@@ -327,4 +344,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         for loss in losses:
             loss.block.program._fleet_opt = opt_info
 
-        return None, param_grads_list[0], opt_info
+        param_grads_list = []
+        for loss in losses:
+            prog_id = str(id(loss.block.program))
+            param_grads_list.append(prog_id_to_param_grads[prog_id])
+        return None, param_grads_list, opt_info

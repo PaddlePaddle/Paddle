@@ -306,8 +306,11 @@ class DownpourWorker(Worker):
         self.window = window
         self._worker = pslib.DownpourTrainerParameter()
 
-    def add_sparse_table(self, table_id, slot_key_vars,
-                         slot_value_vars, slot_value_grads=None):
+    def add_sparse_table(self,
+                         table_id,
+                         slot_key_vars,
+                         slot_value_vars,
+                         slot_value_grads=None):
         """
         Args:
             table_id(int): id of sparse params table
@@ -319,7 +322,8 @@ class DownpourWorker(Worker):
             return None 
         """
         if slot_value_grads is None:
-            slot_value_grad_names = [var.name + "@GRAD" for var in slot_value_vars]
+            slot_value_grad_names = \
+                [var.name + "@GRAD" for var in slot_value_vars]
         else:
             slot_value_grad_names = []
             all_grad_names = [var.name for var in slot_value_grads]
