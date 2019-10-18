@@ -143,11 +143,64 @@ def inject_test(dim_x, dim_y, trans_x, trans_y):
     })
 
 
+# Negative dimension generation
+def negative_dims_list(in_shape):
+    from itertools import combinations
+    size = len(in_shape)
+    indexs = list()
+    shapes = list()
+    for i in range(size):
+        indexs.extend(list(combinations([j for j in range(size)], i + 1)))
+    for idx in indexs:
+        shapes.append(
+            [in_shape[i] if i not in idx else -1 for i in range(size)])
+    return shapes
+
+
+class ModelTestGenerator(object):
+    def test_negative_dims(self):
+        for shape_x in negative_dims_list(self.shape_X):
+            for shape_y in negative_dims_list(self.shape_Y):
+                X = np.random.random(self.shape_X).astype("float32")
+                Y = np.random.random(self.shape_Y).astype("float32")
+                Ref = reference_matmul(X, Y, self.transpose_X, self.transpose_Y)
+                with program_guard(Program(), Program()):
+                    x = fluid.data(name='x', shape=shape_x, dtype='float32')
+                    y = fluid.data(name='y', shape=shape_y, dtype='float32')
+                    output = fluid.layers.matmul(x, y, self.transpose_X,
+                                                 self.transpose_Y)
+                    self.assertEqual(len(Ref.shape), len(output.shape))
+                    for idx in range(len(Ref.shape)):
+                        if output.shape[idx] != -1:
+                            self.assertEqual(Ref.shape[idx], output.shape[idx])
+                    exe = fluid.Executor(fluid.CPUPlace())
+                    res, = exe.run(fluid.default_main_program(),
+                                   feed={'x': X,
+                                         'y': Y},
+                                   fetch_list=[output])
+                    np.testing.assert_array_almost_equal(res, Ref, decimal=3)
+
+
+# Generate test cases for all possibilities
+def model_test(dim_x, dim_y, trans_x, trans_y):
+    test_name = ('TestMatMulModel_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
+        dim_x, dim_y, trans_x, trans_y))
+    shape_x, shape_y = generate_compatible_shapes(dim_x, dim_y, trans_x,
+                                                  trans_y)
+    globals()[test_name] = type(test_name, (ModelTestGenerator, OpTest), {
+        'shape_X': shape_x,
+        'shape_Y': shape_y,
+        'transpose_X': trans_x,
+        'transpose_Y': trans_y,
+    })
+
+
 for dim_X in (1, 2, 3):
     for dim_Y in (1, 2, 3):
-        for transose_x in (False, True):
-            for transose_y in (False, True):
-                inject_test(dim_X, dim_Y, transose_x, transose_y)
+        for transpose_x in (False, True):
+            for transpose_y in (False, True):
+                inject_test(dim_X, dim_Y, transpose_x, transpose_y)
+                model_test(dim_X, dim_Y, transpose_x, transpose_y)
 
 
 # Test case n-dim
