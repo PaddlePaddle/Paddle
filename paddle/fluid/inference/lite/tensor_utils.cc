@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <map>
-#include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/inference/lite/tensor_utils.h"
+#include <map>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/inference/lite/engine.h"
 
 namespace paddle {
 namespace inference {
@@ -40,7 +40,20 @@ platform::Place GetNativePlace(const TargetType& type) {
   }
 }
 
-framework::proto::VarType::Type GetNativePrecisionType(const PrecisionType& type) {
+PrecisionType GetLitePrecisionType(framework::proto::VarType::Type type) {
+  switch (type) {
+    case framework::proto::VarType_Type_FP32:
+      return PrecisionType::kFloat;
+    case framework::proto::VarType_Type_INT8:
+      return PrecisionType::kInt8;
+    default:
+      LOG(FATAL) << "Error precision type.";
+      return PrecisionType::kUnk;
+  }
+}
+
+framework::proto::VarType::Type GetNativePrecisionType(
+    const PrecisionType& type) {
   switch (type) {
     case PrecisionType::kFloat:
       return framework::proto::VarType_Type_FP32;
@@ -63,7 +76,8 @@ framework::DataLayout GetNativeLayoutType(const DataLayoutType& type) {
 }
 
 void MemoryCopy(const platform::Place& dst_place, void* dst_data,
-    const platform::Place& src_place, const void* src_data, const size_t size) {
+                const platform::Place& src_place, const void* src_data,
+                const size_t size) {
   const platform::CPUPlace cpu_place;
   const platform::CUDAPlace gpu_place;
   if (platform::is_cpu_place(dst_place) && platform::is_cpu_place(src_place)) {
@@ -71,14 +85,18 @@ void MemoryCopy(const platform::Place& dst_place, void* dst_data,
   } else {
 #ifdef PADDLE_WITH_CUDA
     // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &ctx = *pool.Get(platform::CUDAPlace());
-    auto stream = reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    if (platform::is_cpu_place(dst_place) && platform::is_gpu_place(src_place)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& ctx = *pool.Get(platform::CUDAPlace());
+    auto stream =
+        reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
+    if (platform::is_cpu_place(dst_place) &&
+        platform::is_gpu_place(src_place)) {
       memory::Copy(cpu_place, dst_data, gpu_place, src_data, size, stream);
-    } else if (platform::is_gpu_place(dst_place) && platform::is_cpu_place(src_place)) {
+    } else if (platform::is_gpu_place(dst_place) &&
+               platform::is_cpu_place(src_place)) {
       memory::Copy(gpu_place, dst_data, cpu_place, src_data, size, stream);
-    } else if (platform::is_gpu_place(dst_place) && platform::is_gpu_place(src_place)) {
+    } else if (platform::is_gpu_place(dst_place) &&
+               platform::is_gpu_place(src_place)) {
       memory::Copy(gpu_place, dst_data, gpu_place, src_data, size, stream);
     }
 #else
@@ -87,9 +105,14 @@ void MemoryCopy(const platform::Place& dst_place, void* dst_data,
   }
 }
 
-} // namespace
+}  // namespace
 
-template<>
+void InitLiteTensorType(paddle::lite::Tensor* lite,
+                        const framework::LoDTensor& fluid) {
+  lite->set_precision(GetLitePrecisionType(fluid.type()));
+}
+
+template <>
 void TensorCopy(paddle::lite::Tensor* dst, const framework::LoDTensor& src) {
   const platform::Place& src_place = src.place();
   const platform::Place& dst_place = GetNativePlace(dst->target());
@@ -98,10 +121,11 @@ void TensorCopy(paddle::lite::Tensor* dst, const framework::LoDTensor& src) {
   dst->Resize(framework::vectorize(src.dims()));
   const void* src_data = src.data<void>();
   void* dst_data = dst->mutable_data(size);
-  MemoryCopy(dst_place, dst_data, src_place, src_data, size);
+  MemoryCopy(dst_place, dst_data, src_place, src_data,
+             size * framework::SizeOfType(src.type()));
 }
 
-template<>
+template <>
 void TensorCopy(framework::LoDTensor* dst, const paddle::lite::Tensor& src) {
   const platform::Place& src_place = GetNativePlace(src.target());
   const platform::Place& dst_place = dst->place();
@@ -110,7 +134,8 @@ void TensorCopy(framework::LoDTensor* dst, const paddle::lite::Tensor& src) {
   const size_t size = static_cast<size_t>(src.numel());
   const void* src_data = src.raw_data();
   void* dst_data = dst->mutable_data(dst_place, dst->type());
-  MemoryCopy(dst_place, dst_data, src_place, src_data, size);
+  MemoryCopy(dst_place, dst_data, src_place, src_data,
+             size * framework::SizeOfType(dst->type()));
 }
 
 }  // namespace lite

@@ -15,8 +15,10 @@
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "lite/api/cxx_api.h"
 
@@ -31,7 +33,7 @@ struct EngineConfig {
   std::vector<paddle::lite::Place> valid_places;
   std::vector<std::string> neglected_passes;
   lite_api::LiteModelType model_type{lite_api::LiteModelType::kProtobuf};
-  bool memory_from_memory{true};
+  bool model_from_memory{true};
 };
 
 class EngineManager {
@@ -39,10 +41,13 @@ class EngineManager {
   bool Empty() const;
   bool Has(const std::string& name) const;
   paddle::lite::Predictor* Get(const std::string& name) const;
-  paddle::lite::Predictor* Create(const std::string& name, const EngineConfig& cfg);
+  paddle::lite::Predictor* Create(const std::string& name,
+                                  const EngineConfig& cfg);
   void DeleteAll();
+
  private:
-  std::unordered_map<std::string, std::unique_ptr<paddle::lite::Predictor>> engines_;
+  std::unordered_map<std::string, std::unique_ptr<paddle::lite::Predictor>>
+      engines_;
 };
 
 }  // namespace lite
