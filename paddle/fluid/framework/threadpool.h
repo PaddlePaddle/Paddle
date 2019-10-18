@@ -17,9 +17,11 @@ limitations under the License. */
 #include <condition_variable>  // NOLINT
 #include <functional>
 #include <future>  // NOLINT
-#include <mutex>   // NOLINT
+#include <memory>
+#include <mutex>  // NOLINT
 #include <queue>
 #include <thread>  // NOLINT
+#include <utility>
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -72,7 +74,7 @@ class ThreadPool {
     Task task([fn]() -> std::unique_ptr<platform::EnforceNotMet> {
       try {
         fn();
-      } catch (platform::EnforceNotMet ex) {
+      } catch (platform::EnforceNotMet& ex) {
         return std::unique_ptr<platform::EnforceNotMet>(
             new platform::EnforceNotMet(ex));
       } catch (const std::exception& e) {
