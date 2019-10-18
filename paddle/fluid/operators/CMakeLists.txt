@@ -52,6 +52,7 @@ SET(OP_ONLY_MKL "")
 if (NOT WITH_MKL OR NOT WITH_AVX)
     SET(OP_ONLY_MKL ${OP_ONLY_MKL} match_matrix_tensor_op)
     SET(OP_ONLY_MKL ${OP_ONLY_MKL} var_conv_2d_op)
+    SET(OP_ONLY_MKL ${OP_ONLY_MKL} pyramid_hash_op)
 endif()
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op pyramid_hash_op
