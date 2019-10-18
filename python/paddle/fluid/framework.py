@@ -4427,11 +4427,14 @@ class Parameter(Variable):
             be applied on this parameter.
     """
 
-    def __init__(self, block, shape, dtype, **kwargs):
+    def __init__(self, block, shape, dtype, type, **kwargs):
         if shape is None:
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
             raise ValueError("The dtype of Parameter should not be None")
+
+        if type is None:
+            type = core.VarDesc.VarType.LOD_TENSOR
 
         if len(shape) == 0:
             raise ValueError(
@@ -4444,7 +4447,13 @@ class Parameter(Variable):
                     % list(shape))
 
         Variable.__init__(
-            self, block, persistable=True, shape=shape, dtype=dtype, **kwargs)
+            self,
+            block,
+            persistable=True,
+            shape=shape,
+            dtype=dtype,
+            type=type,
+            **kwargs)
         self.trainable = kwargs.get('trainable', True)
 
         self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
