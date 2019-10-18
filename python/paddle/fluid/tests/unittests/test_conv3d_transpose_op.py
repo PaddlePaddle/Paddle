@@ -385,7 +385,7 @@ class TestCUDNNWithAsymmetricPad(TestWithAsymmetricPad):
         self.stride = [1, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 1
-        self.input_size = [2, 3, 4, 4, 4]  # NCDHW
+        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 3, 3, 3]
 
