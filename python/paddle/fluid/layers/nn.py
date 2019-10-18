@@ -4109,14 +4109,13 @@ def batch_norm(input,
                param_attr=None,
                bias_attr=None,
                data_layout='NCHW',
-               in_place=False,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
                do_model_average_for_mean_and_var=True,
                fuse_with_relu=False,
                use_global_stats=False,
-               fuse_alpha=1.0):
+               act_alpha=1.0):
     """
     **Batch Normalization Layer**
 
@@ -4189,7 +4188,6 @@ def batch_norm(input,
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
 	     Default: None.
         data_layout(str, default NCHW): the data_layout of input, is NCHW or NHWC.
-        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. 
             Usually name is no need to set and None by default. 
         moving_mean_name(str, Default None): The name of moving_mean which store the global Mean. If it 
@@ -4206,7 +4204,9 @@ def batch_norm(input,
             or is_test to true, and the behavior is equivalent.
             In train mode, when setting use_global_stats True, the global mean
             and variance are also used during train period.
-        fuse_alpha(float, Default 1.0): when fuse activation(elu|leakyrelu) for inplace_abn, give the alpha parameter.
+        act_alpha(float, Default 1.0): when enable_inpalce is set in build strategy and activation is in 
+            ['elu', 'leaky_relu'], inplace activative batch normalization will be used, and alpha 
+            parameter for activation can be given by this parameter.
     Returns:
         A Variable holding Tensor which is the result after applying batch normalization on the input, 
         has same shape and data type with input. 
@@ -4291,11 +4291,10 @@ def batch_norm(input,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
 
-    use_mkldnn = False
-    if act in ['identity', 'elu', 'leakyrelu']:
+    if act in ['elu', 'leaky_relu'] and \
+            convert_dtype(input.dtype) in ['float32', 'float64']:
         op_type = "inplace_abn"
         # use fused-activation by default and disable mkldnn
-        use_mkldnn = False
         fuse_with_relu = False
         use_fused_act = True
     else:
@@ -4310,13 +4309,13 @@ def batch_norm(input,
         "epsilon": epsilon,
         "is_test": is_test,
         "data_layout": data_layout,
-        "use_mkldnn": use_mkldnn,
+        "use_mkldnn": False,
         "fuse_with_relu": fuse_with_relu,
         "use_global_stats": use_global_stats
     }
 
     if use_fused_act:
-        attrs.update({"activation": act, "alpha": fuse_alpha})
+        attrs.update({"activation": act, "alpha": act_alpha})
 
     helper.append_op(
         type=op_type,

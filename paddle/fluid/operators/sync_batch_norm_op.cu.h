@@ -186,11 +186,13 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
 
 #ifndef WIN32
     auto *comm = dev_ctx.nccl_comm();
-    int dtype = platform::ToNCCLDataType(mean_out->type());
-    // In-place operation
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
-        stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
-        comm, stream));
+    if (comm) {
+      int dtype = platform::ToNCCLDataType(mean_out->type());
+      // In-place operation
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+          stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
+          comm, stream));
+    }
 #endif
 
     auto *est_mean_data =
@@ -314,8 +316,7 @@ static __global__ void KeBNRestoreData(T *x, const BatchNormParamType<T> *scale,
   for (int i = gid; i < num; i += stride) {
     const int c = layout == framework::DataLayout::kNCHW ? (i / M) % C : i % C;
     auto y_i = static_cast<BatchNormParamType<T>>(y[i]);
-    auto x_i =
-        (y_i - bias[c]) / scale[c] * sqrt(variance[c] + epsilon) + mean[c];
+    auto x_i = (y_i - bias[c]) / scale[c] / sv_inv[c] + mean[c];
     x[i] = static_cast<T>(x_i);
   }
 }
@@ -338,8 +339,8 @@ static __global__ void KeBNBackwardData(
     auto inv_var = inv_variance[c];
     auto s_d = gamma[c];
     auto gvar =
-        -((g_sum_dy_prod[c] / dev_num) * s_d * inv_var * (inv_var * inv_var));
-    auto gmean = -((g_sum_dy[c] / dev_num) * s_d * inv_var);
+        -(g_sum_dy_prod[c] / dev_num) * s_d * inv_var * (inv_var * inv_var);
+    auto gmean = -(g_sum_dy[c] / dev_num) * s_d * inv_var;
 
     auto x_i = static_cast<BatchNormParamType<T>>(x[i]);
     auto dy_i = static_cast<BatchNormParamType<T>>(dy[i]);
@@ -440,11 +441,13 @@ void SyncBatchNormGradFunctor(
 
 #ifndef WIN32
   auto *comm = dev_ctx.nccl_comm();
-  int dtype = platform::ToNCCLDataType(scale->type());
-  // In-place operation
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
-      stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
-      comm, stream));
+  if (comm) {
+    int dtype = platform::ToNCCLDataType(scale->type());
+    // In-place operation
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
+        stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
+        comm, stream));
+  }
 #endif
 
   if (layout == framework::DataLayout::kNCHW) {

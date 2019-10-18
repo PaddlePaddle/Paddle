@@ -687,8 +687,7 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker,
-                  ops::BatchNormOpInference);
+                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker);
 REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
 
 REGISTER_OP_CPU_KERNEL(
