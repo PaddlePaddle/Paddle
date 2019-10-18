@@ -92,6 +92,7 @@ class FuseOptimizerOpPass : public ir::Pass {
 
   void InsertSyncTensorOpToGraph(const std::vector<ir::Node *> &in_var_nodes,
                                  ir::Node *sync_tensor_op_node,
+                                 ir::Node *fused_opt_node,
                                  ir::Graph *result) const;
 
   void InsertSyncOpBeforeFusedOptimizer(

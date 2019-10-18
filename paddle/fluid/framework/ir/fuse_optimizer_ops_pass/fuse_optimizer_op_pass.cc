@@ -377,18 +377,16 @@ std::vector<ir::Node *> FuseOptimizerOpPass::GetVarNodesByName(
 
 void FuseOptimizerOpPass::InsertSyncTensorOpToGraph(
     const std::vector<ir::Node *> &in_var_nodes, ir::Node *sync_tensor_op_node,
-    ir::Graph *result) const {
+    ir::Node *fused_opt_node, ir::Graph *result) const {
   for (auto in_var_node : in_var_nodes) {
     // set outpus
-    for (auto out_op_node : in_var_node->outputs) {
-      ir::Node *dep_var = result->CreateControlDepVar();
-      VLOG(6) << "Insert dep_var between " << sync_tensor_op_node->Op()->Type()
-              << " and " << out_op_node->Op()->Type();
-      sync_tensor_op_node->outputs.emplace_back(dep_var);
-      out_op_node->inputs.emplace_back(dep_var);
-      dep_var->inputs.emplace_back(sync_tensor_op_node);
-      dep_var->outputs.emplace_back(out_op_node);
-    }
+    ir::Node *dep_var = result->CreateControlDepVar();
+    VLOG(6) << "Insert dep_var between " << sync_tensor_op_node->Op()->Type()
+            << " and " << fused_opt_node->Op()->Type();
+    sync_tensor_op_node->outputs.emplace_back(dep_var);
+    fused_opt_node->inputs.emplace_back(dep_var);
+    dep_var->inputs.emplace_back(sync_tensor_op_node);
+    dep_var->outputs.emplace_back(fused_opt_node);
     // set inputs
     in_var_node->outputs.emplace_back(sync_tensor_op_node);
     sync_tensor_op_node->inputs.emplace_back(in_var_node);
@@ -404,7 +402,8 @@ void FuseOptimizerOpPass::InsertSyncOpBeforeFusedOptimizer(
   auto *sync_tensor_op_node =
       CreateSyncTensorOpNode(grads_name, fused_var_name, current_block, result);
   auto grad_var_nodes = GetVarNodesByName(grads_name, vars_info);
-  InsertSyncTensorOpToGraph(grad_var_nodes, sync_tensor_op_node, result);
+  InsertSyncTensorOpToGraph(grad_var_nodes, sync_tensor_op_node, fused_opt_node,
+                            result);
 }
 
 void FuseOptimizerOpPass::InitFusedVarsAndAllocSpaceForVars(
