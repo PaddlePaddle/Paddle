@@ -21,41 +21,46 @@ namespace framework {
 namespace ir {
 
 OperationExpression::OperationExpression(std::vector<int> input_ids,
-                                         int output_id,
-                                         std::string search_operation) {
+                                         int output_id, std::string op) {
   input_ids_ = input_ids;
   output_id_ = output_id;
-  search_operation_ = search_operation;
+  op_ = op;
 }
 
+std::string OperationExpression::GetRHSTemplate() {
+  std::stringstream ret;
+  std::string rhs_end = ";";
+  auto rhs = support_table[op_];
+  for (size_t i = 0; i < input_ids_.size(); i++) {
+    auto replaced_str = replaced_element_in_order[i];
+    auto pos = rhs.find(replaced_str);
+    auto index = input_ids_[i];
+    rhs.replace(pos, replaced_str.length(), std::to_string(index) + R"([idx])");
+  }
+  ret << rhs << rhs_end;
+  return ret.str();
+}
+
+std::string OperationExpression::GetLHSTemplate() {
+  std::stringstream ret;
+  ret << "var" << output_id_ << R"([idx] = )";
+  return ret.str();
+}
+
+bool OperationExpression::SupportState() {
+  return (support_table.find(op_) == support_table.end());
+}
 // we Traverse the graph and get the group , all input id and output id is
 // unique for the node which belong the group
 std::string OperationExpression::GetExpression() {
   std::stringstream ret;
-  if (operator_cuda_table.find(search_operation_) ==
-      operator_cuda_table.end()) {
-    std::cerr << "Not supportted operation, " << search_operation_ << std::endl;
-  } else {
-    auto rhs = operator_cuda_table[search_operation_];
-    std::string replaced_str = "$";
-    int count = 0;
-    auto pos = rhs.find(replaced_str);
-    while (pos != -1) {
-      auto index = input_ids_[count];
-      rhs.replace(pos, replaced_str.length(),
-                  std::to_string(index) + R"([offset])");
-      pos = rhs.find(replaced_str);
-      count++;
-    }
-    auto lhs = std::string(indentation) + "var" + std::to_string(output_id_) +
-               R"([offset])";
-    auto equal_split = R"( = )";
-    auto semicolon = R"(;)";
-    ret << lhs << equal_split << rhs << semicolon << std::endl;
+  if (!SupportState()) {
+    ret << GetLHSTemplate() << GetRHSTemplate();
   }
 
   return ret.str();
 }
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

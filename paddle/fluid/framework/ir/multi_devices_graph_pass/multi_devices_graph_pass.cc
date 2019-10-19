@@ -242,7 +242,7 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
               InsertCollectiveOp(&result, p_name, g_name);
             }
           }
-        } catch (boost::bad_get e) {
+        } catch (boost::bad_get &e) {
         }
       }
     }
@@ -465,8 +465,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
           new details::SparseAllReduceOpHandle(
               result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
               scopes, places, multi_nccl_ctxs_, is_encoded,
-              static_cast<int>(strategy_.trainers_endpoints_.size()) *
-                  places_.size()));
+              strategy_.num_trainers_ * places_.size()));
     } else {
       result->Get<GraphOps>(kGraphOps).emplace_back(
           new details::AllReduceOpHandle(
@@ -699,7 +698,7 @@ bool ReduceSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
 
 void ReduceSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   if (UseGPU()) {
-    if (strategy_.fuse_broadcast_ops_) {
+    if (strategy_.fuse_broadcast_ops_ == true) {
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
       for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {
@@ -778,7 +777,7 @@ std::vector<ir::Node *> ReduceSSAGraphBuilder::SortForReduceMode(
         backward_vars =
             boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
                 OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-      } catch (boost::bad_get e) {
+      } catch (boost::bad_get &e) {
       }
       PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
 
@@ -1068,7 +1067,7 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
         strategy_.reduce_ == details::BuildStrategy::ReduceStrategy::kReduce) {
       return;
     }
-    if (strategy_.fuse_broadcast_ops_) {
+    if (strategy_.fuse_broadcast_ops_ == true) {
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
       for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {

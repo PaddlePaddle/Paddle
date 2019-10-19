@@ -37,6 +37,7 @@ Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   void* ptr;
   auto status = cudaMalloc(&ptr, size);
   if (UNLIKELY(status != cudaSuccess)) {
+    PADDLE_ENFORCE_NE(cudaGetLastError(), cudaSuccess);
     PADDLE_THROW_BAD_ALLOC("Cannot allocate %d on GPU %d, cuda status %d, %s",
                            size, place_.device, status,
                            cudaGetErrorString(status));

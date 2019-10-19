@@ -126,7 +126,8 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   __macro(cudnnRNNBackwardWeights);                       \
   __macro(cudnnRNNForwardInference);                      \
   __macro(cudnnDestroyDropoutDescriptor);                 \
-  __macro(cudnnDestroyRNNDescriptor);
+  __macro(cudnnDestroyRNNDescriptor);                     \
+  __macro(cudnnSetTensorNdDescriptorEx);
 
 CUDNN_DNN_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 

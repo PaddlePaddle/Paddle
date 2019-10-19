@@ -740,7 +740,7 @@ wlist_inneed = [
     "DistributeTranspilerConfig.min_block_size",
     "ExecutionStrategy.allow_op_delay", "load", "Accuracy.update",
     "ChunkEvaluator.update", "ExecutionStrategy.num_iteration_per_drop_scope",
-    "ExecutionStrategy.num_threads", "CompiledProgram.with_inference_optimize",
+    "ExecutionStrategy.num_threads", "CompiledProgram._with_inference_optimize",
     "CompositeMetric.add_metric", "CompositeMetric.update",
     "CompositeMetric.eval", "DetectionMAP.get_map_var", "MetricBase",
     "MetricBase.reset", "MetricBase.get_config", "MetricBase.update",

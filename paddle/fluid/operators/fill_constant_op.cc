@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fill_constant_op.h"
-
+#include <string>
 namespace paddle {
 namespace operators {
 
@@ -22,9 +22,22 @@ class FillConstantOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FillConstantOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of FillConstantOp should not be null.");
+
     auto& shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+
+    if (shape.empty() && ctx->HasInput("ShapeTensor")) {
+      auto shape_dims = ctx->GetInputDim("ShapeTensor");
+      int num_ele = 1;
+      for (int i = 0; i < shape_dims.size(); ++i) {
+        num_ele *= shape_dims[i];
+      }
+      auto vec_dims = std::vector<int>(num_ele, -1);
+      ctx->SetOutputDim("Out", framework::make_ddim(vec_dims));
+
+      return;
+    }
     ctx->SetOutputDim("Out", framework::make_ddim(shape));
   }
 
@@ -34,6 +47,16 @@ class FillConstantOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "ShapeTensor" || var_name == "ShapeTensorList") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -55,7 +78,18 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
                  "Output data type")
         .SetDefault(framework::proto::VarType::FP32);
     AddAttr<std::vector<int64_t>>("shape",
-                                  "(vector<int64_t>) The shape of the output");
+                                  "(vector<int64_t>) The shape of the output")
+        .SetDefault({});
+    AddInput("ShapeTensor",
+             "(Tensor<int>), optional). The shape of the output."
+             "It has a higher priority than Attr(shape).")
+        .AsDispensable();
+    AddInput("ShapeTensorList",
+             "(vector<Tensor<int>>, optional). The shape of the output. "
+             "It has a higher priority than Attr(shape)."
+             "The shape of the element in vector must be [1].")
+        .AsDuplicable()
+        .AsDispensable();
     AddAttr<float>("value", "(float, default 0) The value to be filled")
         .SetDefault(0.0f);
     AddAttr<bool>("force_cpu",
@@ -87,4 +121,5 @@ REGISTER_OP_CPU_KERNEL(fill_constant, ops::FillConstantKernel<float>,
                        ops::FillConstantKernel<double>,
                        ops::FillConstantKernel<int64_t>,
                        ops::FillConstantKernel<int>,
+                       ops::FillConstantKernel<bool>,
                        ops::FillConstantKernel<paddle::platform::float16>);

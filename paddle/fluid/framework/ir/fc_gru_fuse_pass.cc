@@ -33,7 +33,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   PDNode* x =
       pattern->NewNode(patterns::UniqueKey("x"))->assert_var_not_persistable();
 
-  auto* fc_out = fc_pattern(x, with_fc_bias);
+  auto* fc_out = fc_pattern(x, with_fc_bias, /* with_relu */ false);
   fc_out->AsIntermediate();  // fc_out is a tmp var, will be removed after fuse.
   gru_pattern(fc_out);
 
@@ -116,7 +116,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     auto* x_n = subgraph.at(x);
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(fc_out, Out, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_out, elementwise_add_out, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(Weight, Weight, gru_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gru, gru, gru_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(Bias, Bias, gru_pattern);

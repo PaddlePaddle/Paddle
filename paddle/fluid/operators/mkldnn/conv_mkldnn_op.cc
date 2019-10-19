@@ -190,9 +190,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto dst_tz = paddle::framework::vectorize<int>(output->dims());
 
     // Get unique name for storing MKLDNN primitives
-    const std::string key = platform::ConvMKLDNNHandler::GetHash(
-        src_tz, weights_tz, fuse_activation, strides, paddings, dilations,
-        groups, ctx.op().Input("Input") + ctx.op().Input("Filter"));
+    const std::string key = platform::CreateKey(
+        src_tz, ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
     std::vector<primitive> pipeline;
 
@@ -269,8 +268,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto residual_param = ctx.Input<Tensor>("ResidualData");
       auto residual_param_data = residual_param->data<T>();
 
-      PADDLE_ENFORCE(
-          residual_param_data != nullptr,
+      PADDLE_ENFORCE_NE(
+          residual_param_data, nullptr,
           "Provide data if you want MKLDNN conv+elementwise_add fusion");
       PADDLE_ENFORCE_EQ(output->dims(), residual_param->dims(),
                         "Output and elementwise parameter need to have the "
@@ -400,7 +399,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             : dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
         "dilation in convolution is not implemented yet");
 
-    PADDLE_ENFORCE(is_conv3d != true, "int8 does not support conv3d currently");
+    PADDLE_ENFORCE_NE(is_conv3d, true,
+                      "int8 does not support conv3d currently");
 
     const T* input_data = input->data<T>();
 
@@ -414,13 +414,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
 
-    // Get unique name for storing MKLDNN primitives
-    std::string key;
-    key.reserve(MaxKeyLength);
-    platform::ConvMKLDNNHandler::CreateKey(
-        &key, src_tz, weights_tz, strides, paddings, dilations, groups, src_dt,
-        input->format(), fuse_activation, fuse_residual_conn,
-        ctx.op().Input("Input") + ctx.op().Input("Filter"));
+    std::string key = platform::CreateKey(
+        src_tz, src_dt, ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
     const std::string key_conv_pd = key + "@conv_pd";
 
@@ -715,9 +710,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // Get an unique name from "argument" name of "input" and "Filter" variable
     // as well as attributes of primitive to be created
     // This name will be used as key when saving info into device context
-    const std::string key = platform::ConvMKLDNNHandler::GetHash(
-        src_tz, weights_tz, "", strides, paddings, dilations, groups,
-        ctx.op().Input("Input") + ctx.op().Input("Filter"));
+    const std::string key = platform::CreateKey(
+        src_tz, ctx.op().Input("Input") + ctx.op().Input("Filter"));
 
     const std::string key_conv_pd = key + "@conv_pd";
     std::vector<primitive> pipeline;
@@ -762,8 +756,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto conv_pd =
         std::static_pointer_cast<mkldnn::convolution_forward::primitive_desc>(
             dev_ctx.GetBlob(key_conv_pd));
-    PADDLE_ENFORCE(conv_pd != nullptr,
-                   "Fail to find conv_pd in device context");
+    PADDLE_ENFORCE_NE(conv_pd, nullptr,
+                      "Fail to find conv_pd in device context");
 
     // create backward convolution weights primitive descriptor
     auto conv_bwd_weights_desc = mkldnn::convolution_backward_weights::desc(

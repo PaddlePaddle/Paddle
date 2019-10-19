@@ -107,6 +107,9 @@ class SequenceReverseOpKernel : public framework::OpKernel<T> {
     auto &x = *ctx.Input<LoDTensor>("X");
     auto *y = ctx.Output<LoDTensor>("Y");
 
+    PADDLE_ENFORCE_EQ(x.lod().empty(), false,
+                      "Input(X) Tensor of SequenceReverseOp does not contain "
+                      "LoD information.");
     PADDLE_ENFORCE_EQ(x.lod().size(), 1,
                       "SequenceReverse Op only support one level lod.");
 

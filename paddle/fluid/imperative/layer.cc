@@ -178,11 +178,6 @@ void VarBase::AddGradOps(const std::weak_ptr<OpBase>& op) {
 
 void VarBase::ClearGradient() {
   if (grad_var_) {
-    if (grad_var_->var_.IsInitialized()) {
-      PADDLE_ENFORCE_EQ(grad_var_->var_.IsType<framework::LoDTensor>(), true,
-                        "Grad variable for variable %s must be type LodTensor",
-                        name_);
-    }
     auto* grad_t = grad_var_->var_.GetMutable<framework::LoDTensor>();
     if (grad_t->IsInitialized()) {
       auto* dev_ctx =
@@ -269,11 +264,11 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   VLOG(3) << "Running Op " << Type();
   VLOG(5) << LayerDebugString(Type(), ins, outs);
   auto runtime_ctx = PrepareRuntimeContext(ins, outs);
-  auto runtime_place = PreparedOp::GetExpectedPlace(place(), ins);
 
-  auto prepared_op =
-      PreparedOp::Prepare(runtime_ctx, *op_kernel, runtime_place);
+  VLOG(6) << "start preparing op: " << Type();
+  auto prepared_op = PreparedOp::Prepare(runtime_ctx, *op_kernel, place(), ins);
 
+  VLOG(6) << "finish preparing op: " << Type();
   prepared_op.Run();
 
   VLOG(4) << LayerDebugString(Type(), ins, outs);

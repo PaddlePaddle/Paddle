@@ -151,7 +151,12 @@ class CPUWorkerBase : public DeviceWorker {
 class HogwildWorker : public CPUWorkerBase {
  public:
   HogwildWorker() {}
-  virtual ~HogwildWorker() {}
+  virtual ~HogwildWorker() {
+    for (OperatorBase* op : ops_) {
+      delete op;
+    }
+    std::vector<OperatorBase*>().swap(ops_);
+  }
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
@@ -225,6 +230,8 @@ class DownpourWorker : public HogwildWorker {
   // adjust ins weight
   AdjustInsWeightConfig adjust_ins_weight_config_;
   std::vector<float> nid_show_;
+  // check nan and inf during training
+  std::vector<std::string> check_nan_var_names_;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)

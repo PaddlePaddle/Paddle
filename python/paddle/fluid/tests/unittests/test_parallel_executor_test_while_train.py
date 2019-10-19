@@ -84,8 +84,6 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy)
 
-    # FIXME(zcd): This unit test random failed.
-    @unittest.skip("should fix this later.")
     def test_parallel_testing_with_new_strategy_gpu(self):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce

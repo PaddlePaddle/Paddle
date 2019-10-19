@@ -50,7 +50,7 @@ else(WITH_NGRAPH)
   cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 endif(WITH_NGRAPH)
 cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS paddle_inference_api zero_copy_tensor
-  reset_tensor_array analysis_config paddle_pass_builder ir_pass_manager ${inference_deps})
+  reset_tensor_array analysis_config paddle_pass_builder ir_pass_manager op_compatible_info ${inference_deps})
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS
            lod_tensor scope paddle_pass_builder reset_tensor_array analysis_config
            paddle_pass_builder zero_copy_tensor
@@ -70,9 +70,9 @@ cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_
 if(ANAKIN_FOUND)
   # Do not turn warnings into errors.
   set_source_files_properties(api.cc api_anakin_engine.cc PROPERTIES COMPILE_FLAGS "-Wno-error")
-  cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS boost xxhash)
+  cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS boost xxhash framework_proto eigen3)
   target_link_libraries(inference_anakin_api anakin anakin_saber_common)
-  cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS boost xxhash)
+  cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS boost xxhash framework_proto eigen3)
   target_link_libraries(inference_anakin_api_shared anakin anakin_saber_common)
   function(anakin_target target_name)
     target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})

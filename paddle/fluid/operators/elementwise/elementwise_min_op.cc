@@ -24,6 +24,23 @@ class ElementwiseMinOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Min"; }
   std::string GetEquation() const override { return "Out = min(X, Y)"; }
+
+  void AddInputX() override {
+    AddInput(
+        "X",
+        "(Variable), The first tensor holding the elements to be compared.");
+  }
+
+  void AddInputY() override {
+    AddInput(
+        "Y",
+        "(Variable), The second tensor holding the elements to be compared.");
+  }
+
+  std::string GetOpFuntionality() const override {
+    return "Compare two tensors and returns a new tensor containing the "
+           "element-wise minima.";
+  }
 };
 
 class ElementwiseMinGradOpDescMaker : public framework::SingleGradOpDescMaker {

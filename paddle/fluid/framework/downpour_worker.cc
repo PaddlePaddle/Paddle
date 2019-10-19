@@ -81,6 +81,9 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     dump_fields_[i] = desc.dump_fields(i);
   }
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
+  for (int i = 0; i < desc.check_nan_var_names_size(); ++i) {
+    check_nan_var_names_.push_back(desc.check_nan_var_names(i));
+  }
 }
 
 void DownpourWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
@@ -468,6 +471,22 @@ void DownpourWorker::TrainFilesWithProfiler() {
       }
     }
 
+    // check inf and nan
+    for (std::string& var_name : check_nan_var_names_) {
+      Variable* var = thread_scope_->FindVar(var_name);
+      if (var == nullptr) {
+        continue;
+      }
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (tensor == nullptr) {
+        continue;
+      }
+      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
+                        "Tensor %s contains Inf", var_name);
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
+                        "Tensor %s contains NAN", var_name);
+    }
+
     if (need_to_push_sparse_) {
       for (int i = 0; i < param_.program_config(0).push_sparse_table_id_size();
            ++i) {
@@ -655,6 +674,22 @@ void DownpourWorker::TrainFiles() {
       }
     }
 
+    // check inf and nan
+    for (std::string& var_name : check_nan_var_names_) {
+      Variable* var = thread_scope_->FindVar(var_name);
+      if (var == nullptr) {
+        continue;
+      }
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (tensor == nullptr) {
+        continue;
+      }
+      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
+                        "Tensor %s contains Inf", var_name);
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
+                        "Tensor %s contains NAN", var_name);
+    }
+
     if (need_to_push_sparse_) {
       // push gradients here
       for (int i = 0; i < param_.program_config(0).push_sparse_table_id_size();
@@ -685,7 +720,6 @@ void DownpourWorker::TrainFiles() {
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
             scale_datanorm_, cur_batch);
       }
-
       VLOG(3) << "push dense gradient done.";
 
       // the following code should be more precise and clean

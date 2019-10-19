@@ -404,7 +404,8 @@ struct ConvBN : public PatternBase {
   ConvBN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_bn") {}
 
-  PDNode* operator()(PDNode* conv_input, bool with_eltwise_add);
+  PDNode* operator()(PDNode* conv_input, const std::string& conv_type,
+                     bool with_eltwise_add);
 
   // declare operator node's name
   PATTERN_DECL_NODE(conv);
@@ -487,17 +488,19 @@ struct FC : public PatternBase {
   FC(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fc") {}
 
-  PDNode* operator()(PDNode* x, bool with_bias);
+  PDNode* operator()(PDNode* x, bool with_bias, bool with_relu);
 
   // declare operator node's name
   PATTERN_DECL_NODE(fc);
   PATTERN_DECL_NODE(mul);
   PATTERN_DECL_NODE(elementwise_add);
+  PATTERN_DECL_NODE(relu);
   // declare variable node's name
   PATTERN_DECL_NODE(w);
   PATTERN_DECL_NODE(mul_out);  // (x,w) -> mul_out
   PATTERN_DECL_NODE(bias);
-  PATTERN_DECL_NODE(Out);
+  PATTERN_DECL_NODE(elementwise_add_out);
+  PATTERN_DECL_NODE(relu_out);
 };
 
 // MKL-DNN's FC with bias

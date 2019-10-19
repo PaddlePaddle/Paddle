@@ -65,7 +65,8 @@ static void AddSkipVars(const OpVariant &op, const Container &skip_vars) {
 // Find all ops and grad ops with given type name. The ops and grad ops
 // may locate in different blocks so we should traverse all blocks in the
 // program and find them out
-static void FindAllOpAndGradOp(OpAndGradOpPair *op_and_grad_op,
+static void FindAllOpAndGradOp(const framework::ProgramDesc &program,
+                               OpAndGradOpPair *op_and_grad_op,
                                const std::string &type_name,
                                const std::string &backward_type_name) {
   OpVariantSet &ops = op_and_grad_op->first;
@@ -74,14 +75,8 @@ static void FindAllOpAndGradOp(OpAndGradOpPair *op_and_grad_op,
   PADDLE_ENFORCE_GE(ops.size(), grad_ops.size(),
                     "There are extra grad ops in the graph or program");
 
-  if (ops.empty()) return;
-
-  const auto *program =
-      ops.begin()
-          ->Attr<framework::BlockDesc *>(RecurrentBase::kStepBlock)
-          ->Program();
-  for (size_t i = 1; i < program->Size(); ++i) {
-    auto &block = program->Block(i);
+  for (size_t i = 1; i < program.Size(); ++i) {
+    auto &block = program.Block(i);
     for (size_t j = 0; j < block.OpSize(); ++j) {
       auto *op = block.Op(j);
       if (op->Type() == type_name) {
@@ -201,7 +196,7 @@ static void SetRecurrentOpAndRecurrentGradOpSkipVarAttr(
 }
 
 void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-    int block_id,
+    const framework::ProgramDesc &program, int block_id,
     const std::vector<std::unique_ptr<paddle::framework::OperatorBase>>
         &all_ops) {
   // If block_id is not 0, returns
@@ -224,13 +219,13 @@ void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
       op_pair.second.emplace(op.get());
     }
   }
-  PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(&op_pair);
+  PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(program, &op_pair);
 }
 
 void PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-    OpAndGradOpPair *op_pair) {
+    const framework::ProgramDesc &program, OpAndGradOpPair *op_pair) {
   // Find all ops and grad ops at all blocks
-  FindAllOpAndGradOp(op_pair, "recurrent", "recurrent_grad");
+  FindAllOpAndGradOp(program, op_pair, "recurrent", "recurrent_grad");
 
   OpVariantSet &recurrent_ops = op_pair->first;
   OpVariantSet &recurrent_grad_ops = op_pair->second;

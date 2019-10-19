@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/operators/deformable_conv_op.h"
+#include <memory>
 #include "paddle/fluid/operators/conv_op.h"
 
 namespace paddle {
@@ -173,30 +175,40 @@ class DeformableConvOp : public framework::OperatorWithKernel {
 
     std::vector<int64_t> output_shape({in_dims[0], filter_dims[0]});
     for (size_t i = 0; i < strides.size(); ++i) {
-      output_shape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
-                                            dilations[i], paddings[i],
-                                            strides[i]));
+      if ((!ctx->IsRuntime()) &&
+          (in_dims[i + 2] <= 0 || filter_dims[i + 2] <= 0)) {
+        output_shape.push_back(-1);
+      } else {
+        output_shape.push_back(ConvOutputSize(in_dims[i + 2],
+                                              filter_dims[i + 2], dilations[i],
+                                              paddings[i], strides[i]));
+      }
     }
+
     PADDLE_ENFORCE_EQ(output_shape[1] % deformable_groups, 0U,
                       "output num_filter must divide deformable group size.");
-    PADDLE_ENFORCE_EQ(output_shape[2], offset_dims[2],
-                      "output height must equal to offset map height.");
-    PADDLE_ENFORCE_EQ(output_shape[3], offset_dims[3],
-                      "output width must equal to offset map width.");
-    PADDLE_ENFORCE_EQ(offset_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
-                      "offset filter must divide deformable group size.");
-    PADDLE_ENFORCE_EQ(offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
-                      deformable_groups,
-                      "offset filter must divide deformable group size.");
-    PADDLE_ENFORCE_EQ(output_shape[2], mask_dims[2],
-                      "output height must equal to mask map height.");
-    PADDLE_ENFORCE_EQ(output_shape[3], mask_dims[3],
-                      "output width must equal to mask map width.");
-    PADDLE_ENFORCE_EQ(mask_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
-                      "mask filter must divide deformable group size.");
-    PADDLE_ENFORCE_EQ(mask_dims[1] / (filter_dims[2] * filter_dims[3]),
-                      deformable_groups,
-                      "mask filter must divide deformable group size.");
+
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(output_shape[2], offset_dims[2],
+                        "output height must equal to offset map height.");
+      PADDLE_ENFORCE_EQ(output_shape[3], offset_dims[3],
+                        "output width must equal to offset map width.");
+      PADDLE_ENFORCE_EQ(offset_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
+                        "offset filter must divide deformable group size.");
+      PADDLE_ENFORCE_EQ(offset_dims[1] / (2 * filter_dims[2] * filter_dims[3]),
+                        deformable_groups,
+                        "offset filter must divide deformable group size.");
+      PADDLE_ENFORCE_EQ(output_shape[2], mask_dims[2],
+                        "output height must equal to mask map height.");
+      PADDLE_ENFORCE_EQ(output_shape[3], mask_dims[3],
+                        "output width must equal to mask map width.");
+
+      PADDLE_ENFORCE_EQ(mask_dims[1] % (filter_dims[2] * filter_dims[3]), 0U,
+                        "mask filter must divide deformable group size.");
+      PADDLE_ENFORCE_EQ(mask_dims[1] / (filter_dims[2] * filter_dims[3]),
+                        deformable_groups,
+                        "mask filter must divide deformable group size.");
+    }
 
     ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
   }
@@ -274,5 +286,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(deformable_conv, ops::DeformableConvOp,
                   ops::DeformableConvOpMaker,
                   ops::DeformableConvGradOpDescMaker);
-
 REGISTER_OPERATOR(deformable_conv_grad, ops::DeformableConvGradOp);
+
+REGISTER_OP_CPU_KERNEL(deformable_conv, ops::DeformableConvCPUKernel<float>,
+                       ops::DeformableConvCPUKernel<double>);
+REGISTER_OP_CPU_KERNEL(deformable_conv_grad,
+                       ops::DeformableConvGradCPUKernel<float>,
+                       ops::DeformableConvGradCPUKernel<double>);

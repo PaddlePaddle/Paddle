@@ -131,7 +131,7 @@ class AllReduceDepsPass : public ir::Pass {
            auto right_in_vars =
                details::DynamicCast<details::VarHandle>(right->Inputs());
            PADDLE_ENFORCE_GT(left_in_vars.size(), 0);
-           PADDLE_ENFORCE_EQ(left_in_vars.size(), right_in_vars.size());
+           PADDLE_ENFORCE_GT(right_in_vars.size(), 0);
            return left_in_vars[0]->Name() > right_in_vars[0]->Name();
          });
 
