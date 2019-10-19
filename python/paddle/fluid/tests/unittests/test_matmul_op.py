@@ -178,7 +178,7 @@ class ModelTestGenerator(object):
                                    feed={'x': X,
                                          'y': Y},
                                    fetch_list=[output])
-                    np.testing.assert_array_almost_equal(res, Ref, decimal=3)
+                    np.allclose(res, Ref, atol=1e-5)
 
 
 # Generate test cases for all possibilities
