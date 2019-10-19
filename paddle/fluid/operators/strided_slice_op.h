@@ -35,25 +35,29 @@ static void StridedSliceOutDims(
   int stride_index, start_index, end_index;
   for (size_t i = 0; i < size; i++) {
     int axes_index = axes[i];
+    start_index = starts[i];
+    end_index = ends[i];
+    stride_index = strides[i];
+    bool decrease_axis_affect = false;
+    if (start_index == -1 && end_index == 0 && infer_flags[i] == -1) {
+      auto ret = std::find(decrease_axis.begin(), decrease_axis.end(), axes[i]);
+      if (ret != decrease_axis.end()) {
+        decrease_axis_affect = true;
+      }
+    }
+    if (decrease_axis_affect) {
+      out_dims_vector[axes_index] = 1;
+      continue;
+    }
     if (infer_shape && infer_flags[i] == -1) {
       out_dims_vector[axes_index] = -1;
       continue;
     }
 
-    PADDLE_ENFORCE_NE(strides[i], 0, "stride must not to be zero");
-    start_index = starts[i];
-    end_index = ends[i];
-    stride_index = strides[i];
+    PADDLE_ENFORCE_NE(stride_index, 0, "stride must not to be zero");
     int axis_size = in_dims[axes_index];
     if (axis_size < 0) {
       continue;
-    }
-
-    if (start_index == -1 && end_index == 0 && infer_flags[i] == -1) {
-      auto ret = std::find(decrease_axis.begin(), decrease_axis.end(), axes[i]);
-      if (ret != decrease_axis.end()) {
-        end_index = 10000000;
-      }
     }
 
     if (start_index < 0) {
@@ -71,9 +75,6 @@ static void StridedSliceOutDims(
     bool zero_dim_condition =
         ((stride_index < 0 && (start_index <= end_index)) ||
          (stride_index > 0 && (start_index >= end_index)));
-    if (zero_dim_condition) {
-      VLOG(0) << "start:" << start_index << "end:" << end_index;
-    }
     PADDLE_ENFORCE_EQ(zero_dim_condition, false,
                       "starts and end must meet requirement in different "
                       "stride conditiont");
@@ -88,6 +89,8 @@ static void StridedSliceOutDims(
 
 static void StridedSliceFunctor(int* starts, int* ends, int* strides, int* axes,
                                 int* reverse_axis, const framework::DDim dims,
+                                const std::vector<int>& infer_flags,
+                                const std::vector<int>& decrease_axis,
                                 const size_t size) {
   for (size_t axis = 0; axis < size; axis++) {
     int axis_size = dims[axes[axis]];
@@ -97,6 +100,15 @@ static void StridedSliceFunctor(int* starts, int* ends, int* strides, int* axes,
       ends[axis_index] = 1;
       strides[axis_index] = 1;
     }
+    bool decrease_axis_affect = false;
+    if (starts[axis_index] == -1 && ends[axis_index] == 0 &&
+        infer_flags[axis_index] == -1) {
+      auto ret = std::find(decrease_axis.begin(), decrease_axis.end(),
+                           axes[axis_index]);
+      if (ret != decrease_axis.end()) {
+        decrease_axis_affect = true;
+      }
+    }
     // stride must not be zero
     if (starts[axis_index] < 0) {
       starts[axis_index] = starts[axis_index] + axis_size;
@@ -104,6 +116,13 @@ static void StridedSliceFunctor(int* starts, int* ends, int* strides, int* axes,
 
     if (ends[axis_index] < 0) {
       ends[axis_index] = ends[axis_index] + axis_size;
+    }
+    if (decrease_axis_affect) {
+      if (strides[axis_index] < 0) {
+        ends[axis_index] = starts[axis_index] - 1;
+      } else {
+        ends[axis_index] = starts[axis_index] + 1;
+      }
     }
     if (strides[axis_index] < 0) {
       reverse_axis[axis_index] = 1;
@@ -205,7 +224,8 @@ class StridedSliceKernel : public framework::OpKernel<T> {
 
     std::vector<int> reverse_vector(starts.size(), 0);
     StridedSliceFunctor(starts.data(), ends.data(), strides.data(), axes.data(),
-                        reverse_vector.data(), in_dims, starts.size());
+                        reverse_vector.data(), in_dims, infer_flags,
+                        decrease_axis, starts.size());
 
     for (size_t axis = 0; axis < D; axis++) {
       starts_indices[axis] = 0;
@@ -221,11 +241,34 @@ class StridedSliceKernel : public framework::OpKernel<T> {
       reverse_axis[axis_index] = (reverse_vector[axis] == 1) ? true : false;
     }
 
+    framework::Tensor tmp;
+
+    auto out_dims_origin = out_dims;
+    if (decrease_axis.size() > 0) {
+      std::vector<int> new_out_shape;
+      for (size_t i = 0; i < decrease_axis.size(); ++i) {
+        PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
+                          "decrease dim should be 1");
+        out_dims_origin[decrease_axis[i]] = 0;
+      }
+
+      for (int i = 0; i < out_dims_origin.size(); ++i) {
+        if (out_dims_origin[i] != 0) {
+          new_out_shape.push_back(out_dims_origin[i]);
+        }
+      }
+      if (new_out_shape.size() == 0) {
+        new_out_shape.push_back(1);
+      }
+      out_dims_origin = framework::make_ddim(new_out_shape);
+    }
+
     // resize out_dims
     if (decrease_axis.size() > 0) {
       if (decrease_axis.size() == (size_t)in_dims.size()) {
         std::vector<int> vec_origin_out_shape(decrease_axis.size(), 1);
         out->Resize(framework::make_ddim(vec_origin_out_shape));
+        tmp.Resize(framework::make_ddim(vec_origin_out_shape));
       } else {
         std::vector<int> vec_origin_out_shape(
             out_dims.size() + decrease_axis.size(), -1);
@@ -243,12 +286,11 @@ class StridedSliceKernel : public framework::OpKernel<T> {
         }
 
         out->Resize(framework::make_ddim(vec_origin_out_shape));
+        tmp.Resize(framework::make_ddim(vec_origin_out_shape));
       }
     }
 
-    framework::Tensor tmp;
     tmp.mutable_data<T>(out_dims, context.GetPlace());
-
     out->Resize(out_dims);
     out->mutable_data<T>(context.GetPlace());
     auto in_t =
@@ -263,6 +305,9 @@ class StridedSliceKernel : public framework::OpKernel<T> {
     tmp_t.device(place) =
         in_t.stridedSlice(starts_indices, ends_indices, strides_indices);
     out_t.device(place) = tmp_t.reverse(reverse_axis);
+    if (decrease_axis.size() > 0) {
+      out->Resize(out_dims_origin);
+    }
   }
 };
 
@@ -314,6 +359,7 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
     auto ends = context.Attr<std::vector<int>>("ends");
     auto strides = context.Attr<std::vector<int>>("strides");
     auto axes = context.Attr<std::vector<int>>("axes");
+    auto infer_flags = context.Attr<std::vector<int>>("infer_flags");
     auto decrease_axis = context.Attr<std::vector<int>>("decrease_axis");
 
     auto list_new_ends_tensor =
@@ -352,7 +398,8 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
     std::vector<int> reverse_vector(starts.size(), 0);
 
     StridedSliceFunctor(starts.data(), ends.data(), strides.data(), axes.data(),
-                        reverse_vector.data(), out_dims, starts.size());
+                        reverse_vector.data(), out_dims, infer_flags,
+                        decrease_axis, starts.size());
 
     for (size_t axis = 0; axis < D; axis++) {
       starts_indices[axis] = 0;

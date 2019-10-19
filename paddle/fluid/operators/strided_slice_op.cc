@@ -95,7 +95,6 @@ class StridedSliceOp : public framework::OperatorWithKernel {
                           true);
     }
     framework::DDim out_dims(framework::make_ddim(out_dims_vector));
-
     // generate new shape
     if (decrease_axis.size() > 0) {
       std::vector<int> new_out_shape;

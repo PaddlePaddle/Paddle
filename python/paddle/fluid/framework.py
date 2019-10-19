@@ -1465,8 +1465,6 @@ class Variable(object):
                 slice_step.append(1)
                 if isinstance(slice_item, Variable):
                     temp_1 = self.block.create_var(dtype='int32')
-                    #temp_2 = self.block.create_var(dtype='int32')
-                    #fill_constant([1], -1, force_cpu=True, out=temp_2)
                     fill_constant([1], 1, force_cpu=True, out=temp_1)
                     temp_end = self.block.create_var(dtype='int32')
                     self.block.append_op(
@@ -1500,10 +1498,14 @@ class Variable(object):
             return new_list_tensor
 
         inputs = {'Input': [self]}
-        attrs = {'axes': slice_axis, 'starts': [], 'ends': []}
+        attrs = {
+            'axes': slice_axis,
+            'starts': [],
+            'ends': [],
+            'decrease_axis': decrease_axis
+        }
         if (use_strided_slice == True):
             attrs['strides'] = []
-        attrs['decrease_axis'] = decrease_axis
         infer_flags = list(1 for i in range(len(slice_axis)))
         # starts
         if not contain_var(slice_start):
