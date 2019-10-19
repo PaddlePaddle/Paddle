@@ -56,6 +56,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
     DistributedAdam
     adam optimizer in distributed training
     """
+
     def __init__(self, optimizer):
         # todo(guru4elephant): add more optimizers here as argument
         # todo(guru4elephant): make learning_rate as a variable
@@ -118,7 +119,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
             grads_dict[table_name] = []
 
         for op in program.global_block().ops:
-            if op.type == "lookup_table_grad" and op.input("W")[0] in table_names:
+            if op.type == "lookup_table_grad" and op.input("W")[
+                    0] in table_names:
                 grads_dict[op.input("W")[0]].extend(
                     [local_vars[name] for name in op.input("Out@GRAD")])
         return grads_dict
@@ -198,7 +200,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
 
             # param_grads of program
             params_grads = sorted(
-                fluid.backward.append_backward(loss, parameter_list, no_grad_set),
+                fluid.backward.append_backward(loss, parameter_list,
+                                               no_grad_set),
                 key=lambda x: x[0].name)
             prog_id_to_param_grads[prog_id] = params_grads
 
@@ -215,7 +218,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 text_format.Merge(f.read(), ps_param)
             server.get_desc().CopyFrom(ps_param.server_param)
             for k in program_id_to_worker:
-                program_id_to_worker[k].get_desc().CopyFrom(ps_param.trainer_param)
+                program_id_to_worker[k].get_desc().CopyFrom(
+                    ps_param.trainer_param)
 
         # ServerParameter add all sparse tables
         for tn in sparse_table_to_index:
@@ -246,7 +250,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
             program_id = str(id(losses[loss_index].block.program))
             worker = prog_id_to_worker[program_id]
             sparse_table_names = prog_id_to_sparse_table[program_id]
-            sparse_table_index = [sparse_table_to_index[i] for i in sparse_table_names]
+            sparse_table_index = \
+                [sparse_table_to_index[i] for i in sparse_table_names]
 
             program_configs[program_id] = {
                 "pull_sparse":
