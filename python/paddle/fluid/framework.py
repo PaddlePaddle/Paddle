@@ -2114,6 +2114,7 @@ class Block(object):
         self.ops = list()  # operator list
         self.program = program
         self.removed_vars = collections.OrderedDict()
+        self.var_inited_by = collections.OrderedDict()
 
     def __str__(self):
         return self.to_string(True)
@@ -2346,25 +2347,24 @@ class Block(object):
         self.desc._remove_var(cpt.to_bytes(name))
         del self.vars[name]
 
+    def _update_var_inited_by(self, op):
+        # In startup_program, "c_broadcast" and "c_sync_comm_stream"
+        # are treated as initialization ops that cause error. 
+        # Think of "c_broadcast" and "c_sync_comm_stream" as a special case here.
+        if op.type not in ["c_broadcast", "c_sync_comm_stream"]:
+            for n in op.output_arg_names:
+                if n not in self.var_inited_by:
+                    self.var_inited_by[n] = []
+                self.var_inited_by[n].append(op.type)
+
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = Parameter(global_block, *args, **kwargs)
         if 'initializer' in kwargs:
-
-            def _is_inited_by(block, var):
-                init_ops = []
-                for op in block.ops:
-                    if var.name in op.output_arg_names:
-                        # In startup_program, "c_broadcast" and "c_sync_comm_stream"
-                        # are treated as initialization ops that cause error. 
-                        # Think of "c_broadcast" and "c_sync_comm_stream" as a special case here.
-                        if op.type in ["c_broadcast", "c_sync_comm_stream"]:
-                            continue
-                        init_ops.append(op)
-                return init_ops
-
             initializer = kwargs['initializer']
-            init_ops = _is_inited_by(global_block, param)
+            init_ops = []
+            if param.name in self.var_inited_by:
+                init_ops = self.var_inited_by[param.name]
             init_ops_len = len(init_ops)
             if init_ops_len > 1:
                 raise RuntimeError("param " + param.name +
@@ -2426,6 +2426,7 @@ class Block(object):
                 attrs=kwargs.get("attrs", None))
 
             self.ops.append(op)
+            self._update_var_inited_by(op)
 
         return op
 
@@ -2443,6 +2444,7 @@ class Block(object):
         op_desc = self.desc._insert_op(index)
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
         self.ops.insert(index, op)
+        self._update_var_inited_by(op)
         return op
 
     def _remove_op(self, index):
@@ -2494,6 +2496,7 @@ class Block(object):
                 outputs=kwargs.get("outputs", None),
                 attrs=kwargs.get("attrs", None))
             self.ops.insert(0, op)
+            self._update_var_inited_by(op)
 
         return op
 
