@@ -477,7 +477,7 @@ class TestStridedSliceAPI(OpTest):
             x, axes=[0, 1, 2], starts=starts, ends=ends, strides=strides)
 
         out_5 = x[-3:3, 0:100:2, -1:2:-1]
-        out_6 = x[minus_3:3:1, 0:100:2, :, minus_1:2:-1]
+        out_6 = x[minus_3:3:1, 0:100:2, :, minus_1:2:minus_1]
         out_7 = x[minus_1, 0:100:2, :, -1:2:-1]
 
         exe = fluid.Executor(place=fluid.CPUPlace())
