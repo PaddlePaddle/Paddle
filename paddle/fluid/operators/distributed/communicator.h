@@ -141,8 +141,10 @@ inline void MergeVars(const std::string& var_name,
       auto in = EigenVector<float>::Flatten(in_t);
       result.device(*cpu_ctx.eigen_device()) = result + in;
     }
-    result.device(*cpu_ctx.eigen_device()) =
-        result / static_cast<float>(vars.size());
+    if (!FLAGS_communicator_is_sgd_optimizer) {
+      result.device(*cpu_ctx.eigen_device()) =
+          result / static_cast<float>(vars.size());
+    }
   } else if (var0->IsType<framework::SelectedRows>()) {
     auto& slr0 = var0->Get<framework::SelectedRows>();
     auto* out_slr = out_var->GetMutable<framework::SelectedRows>();

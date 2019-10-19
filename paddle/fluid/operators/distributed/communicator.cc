@@ -45,9 +45,6 @@ DEFINE_bool(communicator_merge_sparse_grad, true,
             "merge sparse gradient before sending");
 DEFINE_int32(communicator_merge_sparse_bucket, 2000,
              "number of threads for sparse var");
-DEFINE_bool(communicator_is_sgd_optimizer, true,
-            "gradient sent to the server is the sum of the gradients "
-            "calculated by each thread if optimizer is sgd");
 
 namespace paddle {
 namespace operators {
