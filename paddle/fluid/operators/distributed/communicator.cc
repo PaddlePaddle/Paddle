@@ -45,6 +45,9 @@ DEFINE_bool(communicator_merge_sparse_grad, true,
             "merge sparse gradient before sending");
 DEFINE_int32(communicator_merge_sparse_bucket, 2000,
              "number of threads for sparse var");
+DEFINE_bool(communicator_is_sgd_optimizer, true,
+            "gradient sent to the server is the sum of the gradients "
+            "calculated by each thread if optimizer is sgd");
 
 namespace paddle {
 namespace operators {
@@ -89,6 +92,8 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   VLOG(0) << "communicator_fake_rpc: " << FLAGS_communicator_fake_rpc;
   VLOG(0) << "communicator_merge_sparse_grad: "
           << FLAGS_communicator_merge_sparse_grad;
+  VLOG(0) << "communicator_is_sgd_optimizer: "
+          << FLAGS_communicator_is_sgd_optimizer;
 
   if (send_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be send, will not start send_thread";
