@@ -1416,6 +1416,7 @@ class Variable(object):
         slice_end = []
         slice_step = []
         use_strided_slice = False
+        reverse_axis = []
 
         def fill_constant(shape, value, force_cpu=False, out=None):
             self.block.append_op(
@@ -1445,6 +1446,14 @@ class Variable(object):
 
                 if start is None and end is None and step is None:
                     continue
+
+                if step == -1:
+                    reverse_axis.append(dim)
+                    assert (start is None and end is None)
+                    continue
+
+                if start is None and end is None:
+                    start_end_none = True
 
                 if start is None:
                     start = 0
@@ -1546,7 +1555,7 @@ class Variable(object):
         attrs['infer_flags'] = infer_flags
 
         out = self
-        if use_strided_slice == False:
+        if use_strided_slice == False and len(slice_axis) > 0:
             # append slice_op here
             slice_out_var = self.block.create_var(
                 name=unique_name.generate_with_ignorable_key(self.name +
@@ -1560,7 +1569,7 @@ class Variable(object):
                 attrs=attrs)
 
             out = slice_out_var
-        else:
+        elif use_strided_slice == True and len(slice_axis) > 0:
             strided_slice_out_var = self.block.create_var(
                 name=unique_name.generate_with_ignorable_key(self.name +
                                                              "_strided_slice"),
@@ -1572,6 +1581,19 @@ class Variable(object):
                 attrs=attrs)
 
             out = strided_slice_out_var
+
+        if len(reverse_axis) > 0:
+            reverse_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name +
+                                                             "_slice_reverse"),
+                dtype=self.dtype)
+            self.block.append_op(
+                type="reverse",
+                inputs={'X': out},
+                outputs={'Out': [reverse_out_var]},
+                attrs={'axis': reverse_axis})
+
+            out = reverse_out_var
 
         return out
 
