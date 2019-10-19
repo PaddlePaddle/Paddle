@@ -25,10 +25,12 @@ limitations under the License. */
 #include <random>
 #include <string>
 #include <vector>
+#include <ThreadPool.h>
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
+
 
 namespace paddle {
 namespace framework {
@@ -224,6 +226,8 @@ class FleetWrapper {
   int client2client_request_timeout_ms_;
   int client2client_connect_timeout_ms_;
   int client2client_max_retry_;
+  std::unique_ptr<::ThreadPool> local_pull_pool_{nullptr};
+  int local_table_shard_num_;
   DISABLE_COPY_AND_ASSIGN(FleetWrapper);
 };
 

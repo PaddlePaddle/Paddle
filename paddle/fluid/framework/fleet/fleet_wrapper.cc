@@ -168,6 +168,9 @@ void FleetWrapper::SetLocalSparseTable(const std::vector<uint64_t>& fea_keys, in
 }
 void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<uint64_t>& fea_keys, int fea_value_dim) {
     //std::cout << "FleetWrapper Start pull sparse to local" << std::endl;
+    if (fea_keys.size() == 0) {
+      return;    
+    }
     double set_local_table_time = 0.0;
     double pull_to_local_time = 0.0;
     platform::Timer timeline;
@@ -213,6 +216,10 @@ void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<
     }
     timeline.Pause();
     pull_to_local_time = timeline.ElapsedSec();
+    // local_pull_pool_ = new ::ThreadPool(240);
+    local_pull_pool_.reset(
+            new ::ThreadPool(240));
+    local_table_shard_num_ = 1000;
     std::cout << "Pull sparse to local done, set local table time: " <<
     set_local_table_time << "pull to local time: " << pull_to_local_time <<
     std::endl;
@@ -247,9 +254,24 @@ void FleetWrapper::PullSparseVarsFromLocal(
   for (auto& t : *fea_values) {
     t.resize(fea_value_dim);
   }
-  for(size_t i = 0; i < fea_keys->size(); i++) {
-    uint64_t key = (*fea_keys)[i];
-    std::memcpy((*fea_values)[i].data(), local_table_[key].data(), fea_value_dim * sizeof(float));    
+  int local_step = 100;
+  int key_length = fea_keys->size();
+  std::vector<std::future<void>> task_futures;
+  task_futures.reserve(key_length/local_step + 1);
+  for(size_t i = 0; i < key_length; i += local_step) {
+    // uint64_t key = (*fea_keys)[i];
+    size_t end = i + local_step < key_length ? i+local_step : key_length;
+    auto pull_local_task = [this, i, end, &fea_values, &fea_keys, &fea_value_dim] {
+        for (int j = i; j < end; j++) {
+            std::memcpy((*fea_values)[j].data(), local_table_[(*fea_keys)[j]].data(), fea_value_dim * sizeof(float));  
+        }    
+    };
+    task_futures.emplace_back(local_pull_pool_->enqueue(std::move(pull_local_task)));
+    // std::memcpy((*fea_values)[i].data(), local_table_[(*fea_keys)[i]].data(), fea_value_dim * sizeof(float));
+    // (*fea_values)[i] = local_table_[(*fea_keys)[i]]
+  }
+  for (auto &tf : task_futures) {
+    tf.wait();
   }
   
    
