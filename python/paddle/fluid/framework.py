@@ -1438,7 +1438,8 @@ class Variable(object):
                 end = slice_item.stop
                 if slice_item.step:
                     step = slice_item.step
-                    use_strided_slice = True
+                    if step != 1:
+                        use_strided_slice = True
                 else:
                     step = None
 

@@ -263,33 +263,6 @@ class StridedSliceKernel : public framework::OpKernel<T> {
       out_dims_origin = framework::make_ddim(new_out_shape);
     }
 
-    // resize out_dims
-    if (decrease_axis.size() > 0) {
-      if (decrease_axis.size() == (size_t)in_dims.size()) {
-        std::vector<int> vec_origin_out_shape(decrease_axis.size(), 1);
-        out->Resize(framework::make_ddim(vec_origin_out_shape));
-        tmp.Resize(framework::make_ddim(vec_origin_out_shape));
-      } else {
-        std::vector<int> vec_origin_out_shape(
-            out_dims.size() + decrease_axis.size(), -1);
-
-        for (size_t i = 0; i < decrease_axis.size(); ++i) {
-          vec_origin_out_shape[decrease_axis[i]] = 1;
-        }
-
-        int index = 0;
-        for (size_t i = 0; i < vec_origin_out_shape.size(); ++i) {
-          if (vec_origin_out_shape[i] == -1) {
-            vec_origin_out_shape[i] = out_dims[index];
-            ++index;
-          }
-        }
-
-        out->Resize(framework::make_ddim(vec_origin_out_shape));
-        tmp.Resize(framework::make_ddim(vec_origin_out_shape));
-      }
-    }
-
     tmp.mutable_data<T>(out_dims, context.GetPlace());
     out->Resize(out_dims);
     out->mutable_data<T>(context.GetPlace());
@@ -305,6 +278,7 @@ class StridedSliceKernel : public framework::OpKernel<T> {
     tmp_t.device(place) =
         in_t.stridedSlice(starts_indices, ends_indices, strides_indices);
     out_t.device(place) = tmp_t.reverse(reverse_axis);
+
     if (decrease_axis.size() > 0) {
       out->Resize(out_dims_origin);
     }
@@ -414,30 +388,6 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
       reverse_axis[axis_index] = (reverse_vector[axis] == 1) ? true : false;
     }
 
-    if (decrease_axis.size() > 0) {
-      if (decrease_axis.size() == (size_t)in_dims.size()) {
-        // all dims decrease
-        std::vector<int> vec_origin_out_shape(decrease_axis.size(), 1);
-        out_dims = framework::make_ddim(vec_origin_out_shape);
-      } else {
-        std::vector<int> vec_origin_out_shape(
-            out_dims.size() + decrease_axis.size(), -1);
-
-        for (size_t i = 0; i < decrease_axis.size(); ++i) {
-          vec_origin_out_shape[decrease_axis[i]] = 1;
-        }
-
-        int index = 0;
-        for (size_t i = 0; i < vec_origin_out_shape.size(); ++i) {
-          if (vec_origin_out_shape[i] == -1) {
-            vec_origin_out_shape[i] = out_dims[index];
-            ++index;
-          }
-        }
-
-        out_dims = framework::make_ddim(vec_origin_out_shape);
-      }
-    }
     framework::Tensor reverse_input;
     reverse_input.mutable_data<T>(in_dims, context.GetPlace());
 
