@@ -393,6 +393,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
   double total_time = 0.0;
   double read_time = 0.0;
   double pull_sparse_time = 0.0;
+  double pull_sparse_local_time = 0.0;
   double adjust_ins_weight_time = 0.0;
   double collect_label_time = 0.0;
   double fill_sparse_time = 0.0;
@@ -419,12 +420,30 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
       }
       timeline.Start();
-      fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
-                                     sparse_key_names_[tid], &features_[tid],
-                                     &feature_values_[tid], table.fea_dim());
-      timeline.Pause();
-      pull_sparse_time += timeline.ElapsedSec();
-      total_time += timeline.ElapsedSec();
+      // fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
+      //                               sparse_key_names_[tid], &features_[tid],
+      //                               &feature_values_[tid], table.fea_dim());
+      
+      if (!table.is_local()) {
+        timeline.Start();
+        fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
+                                       sparse_key_names_[tid], &features_[tid],
+                                       &feature_values_[tid], table.fea_dim());
+        timeline.Pause();
+        pull_sparse_time += timeline.ElapsedSec();
+        total_time += timeline.ElapsedSec();
+        // std::cout << "local sparse table with fea dim: " << table.fea_dim() << std::endl;
+      } else {
+        timeline.Start();
+        fleet_ptr_->PullSparseVarsFromLocal(*thread_scope_, tid,
+                                            sparse_key_names_[tid], &features_[tid],
+                                            &feature_values_[tid], table.fea_dim());
+        timeline.Pause();
+        pull_sparse_local_time += timeline.ElapsedSec();
+        total_time += timeline.ElapsedSec();
+      }
+      
+      
       timeline.Start();
       CollectLabelInfo(i);
       timeline.Pause();
@@ -561,22 +580,26 @@ void DownpourWorker::TrainFilesWithProfiler() {
         double op_sum_time = 0;
         std::unordered_map<std::string, double> op_to_time;
         for (size_t i = 0; i < op_total_time.size(); ++i) {
-          fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
-                  op_name[i].c_str(), op_total_time[i] / batch_cnt);
+          //fprintf(stderr, "op_name:[%zu][%s], op_mean_time:[%fs]\n", i,
+          //       op_name[i].c_str(), op_total_time[i] / batch_cnt);
           if (op_to_time.find(op_name[i]) == op_to_time.end()) {
             op_to_time[op_name[i]] = 0.0;
           }
           op_to_time[op_name[i]] += op_total_time[i];
           op_sum_time += op_total_time[i];
         }
+        /*
         for (auto& i : op_to_time) {
           fprintf(stderr, "op [%s] run total time: [%f]ms\n", i.first.c_str(),
                   i.second / batch_cnt);
         }
+        */
         fprintf(stderr, "op run total time: %fs\n", op_sum_time / batch_cnt);
         fprintf(stderr, "train total time: %fs\n", total_time / batch_cnt);
         fprintf(stderr, "pull sparse time: %fs\n",
                 pull_sparse_time / batch_cnt);
+        fprintf(stderr, "pull sparse local time: %fs\n",
+                pull_sparse_local_time / batch_cnt);
         fprintf(stderr, "fill sparse time: %fs\n",
                 fill_sparse_time / batch_cnt);
         fprintf(stderr, "push sparse time: %fs\n",
@@ -591,6 +614,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
         fprintf(stderr, "op run percent: %f\n", op_sum_time / total_time * 100);
         fprintf(stderr, "pull sparse time percent: %f\n",
                 pull_sparse_time / total_time * 100);
+        fprintf(stderr, "pull sparse local time percent: %f\n",
+                pull_sparse_local_time / total_time * 100);
         fprintf(stderr, "adjust ins weight time percent: %f\n",
                 adjust_ins_weight_time / total_time * 100);
         fprintf(stderr, "collect label time percent: %f\n",

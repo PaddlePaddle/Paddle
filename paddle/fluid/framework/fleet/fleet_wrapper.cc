@@ -32,7 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/scope.h"
-
+#include "paddle/fluid/platform/timer.h"
 namespace paddle {
 namespace framework {
 
@@ -167,10 +167,17 @@ void FleetWrapper::SetLocalSparseTable(const std::vector<uint64_t>& fea_keys, in
     }
 }
 void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<uint64_t>& fea_keys, int fea_value_dim) {
-    std::cout << "FleetWrapper Start pull sparse to local" << std::endl;
+    //std::cout << "FleetWrapper Start pull sparse to local" << std::endl;
+    double set_local_table_time = 0.0;
+    double pull_to_local_time = 0.0;
+    platform::Timer timeline;
+    timeline.Start();
     SetLocalSparseTable(fea_keys, fea_value_dim);
+    timeline.Pause();
+    set_local_table_time = timeline.ElapsedSec();
+    timeline.Start();
     std::vector<::std::future<int32_t>> pull_sparse_status;
-    size_t one_body_size = 8000;
+    size_t one_body_size = 8000000;
     size_t total_body_size = fea_keys.size();
     std::vector<std::vector<float*>> pull_result_ptr;
     size_t length = size_t(total_body_size / one_body_size) + 1;
@@ -199,11 +206,16 @@ void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<
         LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
         sleep(sleep_seconds_before_fail_exit_);
         exit(-1);
-        } //else {
-        // std::cout << "FleetWrapper Pull sparse to local done with table size: " << pull_result_ptr[index].size() << std::endl;    
+        }// else {
+         //std::cout << "FleetWrapper Pull sparse to local done with table size: " << pull_result_ptr[index].size() << std::endl;    
         //}
         index += 1;
     }
+    timeline.Pause();
+    pull_to_local_time = timeline.ElapsedSec();
+    std::cout << "Pull sparse to local done, set local table time: " <<
+    set_local_table_time << "pull to local time: " << pull_to_local_time <<
+    std::endl;
 }
 
 void FleetWrapper::PullSparseVarsFromLocal(
@@ -228,13 +240,19 @@ void FleetWrapper::PullSparseVarsFromLocal(
         continue;
       }
       fea_keys->push_back(static_cast<uint64_t>(ids[i]));
-      auto it = local_table_.find(fea_keys->back());
-      if (it == local_table_.end()) {
-        std::cout << "WARNING: no embedding in local table" << std::endl;    
-      }
-      fea_values->emplace_back(it->second);
     }
+    
   }
+  fea_values->resize(fea_keys->size() + 1);
+  for (auto& t : *fea_values) {
+    t.resize(fea_value_dim);
+  }
+  for(size_t i = 0; i < fea_keys->size(); i++) {
+    uint64_t key = (*fea_keys)[i];
+    std::memcpy((*fea_values)[i].data(), local_table_[key].data(), fea_value_dim * sizeof(float));    
+  }
+  
+   
   // std::cout << "Pull sparse from local done with fea value size: " << fea_values->size() << std::endl;
 #endif
 

@@ -16,6 +16,7 @@
 from paddle.fluid.proto import data_feed_pb2
 from google.protobuf import text_format
 from . import core
+import time
 __all__ = ['DatasetFactory', 'InMemoryDataset', 'QueueDataset']
 
 
@@ -564,9 +565,11 @@ class InMemoryDataset(DatasetBase):
             self.dataset.merge_by_lineid()
         if fleet is not None:
             fleet._role_maker._barrier_worker()
+        start = time.time()
         if self.gen_uni_feasigns:
             self.dataset.generate_unique_feasigns()
-
+        end = time.time()
+        print "gen uni feasigns time: ", end - start
     def release_memory(self):
         """
         Release InMemoryDataset memory data, when data will not be used again.
