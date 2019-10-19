@@ -58,6 +58,7 @@ class Executor {
 
   explicit Executor(const platform::Place& place);
 
+  ~Executor();
   /*
    * Close this Executor.
    * Calling this method will send complete messages to all pserver instances.
