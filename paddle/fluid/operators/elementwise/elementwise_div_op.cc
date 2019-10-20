@@ -32,6 +32,8 @@ struct SameDimsElemwiseDiv<
   }
 };
 
+// use default div function for int32/int64 type because of divison zero
+// checking.
 template <typename T>
 struct SameDimsElemwiseDiv<
     platform::CPUDeviceContext, T,
@@ -39,12 +41,7 @@ struct SameDimsElemwiseDiv<
   void operator()(const framework::ExecutionContext &ctx,
                   const framework::Tensor *x, const framework::Tensor *y,
                   framework::Tensor *z) {
-    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
-    eigen_z.device(place) = eigen_x / eigen_y;
+    default_elementwise_div<platform::CPUDeviceContext, T>(ctx, x, y, z);
   }
 };
 
