@@ -265,7 +265,7 @@ class LayerHelperBase(object):
                          attr,
                          shape,
                          dtype,
-                         type,
+                         type=core.VarDesc.VarType.LOD_TENSOR,
                          is_bias=False,
                          default_initializer=None,
                          stop_gradient=False):
