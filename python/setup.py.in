@@ -283,6 +283,7 @@ headers = (
     list(find_files('*', '${BOOST_INCLUDE_DIR}/boost')) + # boost
     list(find_files('*', '${XXHASH_INSTALL_DIR}/include')) + # xxhash
     list(find_files('*', '${PROTOBUF_INCLUDE_DIR}')) + # protobuf
+    list(find_files('*', '${DLPACK_INCLUDE_DIR}')) + # dlpack 
     list(find_files('*.h', '${THREADPOOL_INCLUDE_DIR}'))) # threadpool
 
 
@@ -329,6 +330,7 @@ class InstallHeaders(Command):
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
             install_dir = re.sub('src/extern_eigen3/', '', install_dir)
             install_dir = re.sub('src/extern_boost/', '', install_dir)
+            install_dir = re.sub('src/extern_dlpack/', '', install_dir)
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
         if not os.path.exists(install_dir):
             self.mkpath(install_dir)
