@@ -155,16 +155,20 @@ class TestElementwiseDivOp_INT(OpTest):
     def setUp(self):
         self.op_type = "elementwise_div"
         self.dtype = np.int32
+        self.init_dtype()
         self.inputs = {
             'X': np.random.randint(
-                1, 5, size=[2, 3]).astype("int32"),
+                1, 5, size=[2, 3]).astype(self.dtype),
             'Y': np.random.randint(
-                1, 5, size=[2, 3]).astype("int32")
+                1, 5, size=[2, 3]).astype(self.dtype)
         }
         self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
         self.check_output()
+
+    def init_dtype(self):
+        pass
 
 
 class TestElementwiseDivOpFp16(ElementwiseDivOp):
