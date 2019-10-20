@@ -162,7 +162,7 @@ class TestElementwiseDivOp_INT(OpTest):
             'Y': np.random.randint(
                 1, 5, size=[2, 3]).astype(self.dtype)
         }
-        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
+        self.outputs = {'Out': self.inputs['X'] // self.inputs['Y']}
 
     def test_check_output(self):
         self.check_output()
