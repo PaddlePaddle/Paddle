@@ -978,11 +978,18 @@ class DistributeTranspiler(object):
                     type=origin_param_var.type,
                     dtype=origin_param_var.dtype,
                     shape=origin_param_var.shape)
-            startup_program.global_block().append_op(
-                type="concat",
-                inputs={"X": splited_var},
-                outputs={"Out": [orig_param]},
-                attrs={"axis": 0})
+
+            if orig_param.type == core.VarDesc.VarType.SELECTED_ROWS:
+                startup_program.global_block().append_op(
+                    type="merge_sparse_lookup_table",
+                    inputs={"X": splited_var},
+                    outputs={"Out": [orig_param]})
+            else:
+                startup_program.global_block().append_op(
+                    type="concat",
+                    inputs={"X": splited_var},
+                    outputs={"Out": [orig_param]},
+                    attrs={"axis": 0})
 
         return startup_program
 
@@ -1344,7 +1351,7 @@ class DistributeTranspiler(object):
             # do not append startup op if var is not on this pserver
             op_on_pserver = False
             # TODO(gongwb): remove this line.
-            if op.type not in ["recv", "fetch_barrier", "concat"]:
+            if op.type not in ["recv", "fetch_barrier", "concat", "merge_sparse_lookup_table"]:
                 for key in op.output_names:
                     newname, _ = _get_splited_name_and_shape(op.output(key)[0])
                     if newname:
@@ -2170,6 +2177,7 @@ class DistributeTranspiler(object):
                 tmpvar = pserver_block.create_var(
                     name=param_block.name,
                     persistable=True,
+                    type=param_block.type,
                     dtype=param_block.dtype,
                     shape=param_block.shape)
                 new_inputs[key] = tmpvar
