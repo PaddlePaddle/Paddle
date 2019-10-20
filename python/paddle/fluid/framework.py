@@ -1451,9 +1451,6 @@ class Variable(object):
                     reverse_axis.append(dim)
                     continue
 
-                if start is None and end is None:
-                    start_end_none = True
-
                 if start is None:
                     start = 0
 
