@@ -413,11 +413,18 @@ def _save_distributed_persistables(executor, dirname, main_program):
                         "varnames": slice_var_names,
                         "sync_mode": True
                     })
-                block.append_op(
-                    type='concat',
-                    inputs={'X': slice_vars},
-                    outputs={'Out': origin_var},
-                    attrs={})
+                if origin_var.type == core.VarDesc.VarType.SELECTED_ROWS:
+                    block.append_op(
+                        type='merge_sparse_lookup_table',
+                        inputs={'X': slice_vars},
+                        outputs={'Out': origin_var},
+                        attrs={})
+                else:
+                    block.append_op(
+                        type='concat',
+                        inputs={'X': slice_vars},
+                        outputs={'Out': origin_var},
+                        attrs={})
             else:
                 block.append_op(
                     type='recv',
