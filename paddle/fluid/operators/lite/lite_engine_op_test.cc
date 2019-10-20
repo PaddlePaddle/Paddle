@@ -37,7 +37,11 @@ void CreateTensor(framework::Scope* scope, const std::string& name,
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   auto dims = framework::make_ddim(shape);
   tensor->Resize(dims);
+#ifdef PADDLE_WITH_CUDA
+  platform::CUDAPlace place;
+#else
   platform::CPUPlace place;
+#endif
   inference::lite::RandomizeTensor(tensor, place);
 }
 
@@ -74,7 +78,6 @@ TEST(LiteEngineOp, manual) {
   fetch->SetInput("X", std::vector<std::string>({"z"}));
   fetch->SetOutput("Out", std::vector<std::string>({"out"}));
   fetch->SetAttr("col", 0);
-
   // Set inputs' variable shape in BlockDesc
   AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4}), true);
   AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({2, 4}), true);
@@ -85,8 +88,13 @@ TEST(LiteEngineOp, manual) {
   *block_->add_ops() = *fetch->Proto();
 
   framework::Scope scope;
+#ifdef PADDLE_WITH_CUDA
+  platform::CUDAPlace place;
+  platform::CUDADeviceContext ctx(place);
+#else
   platform::CPUPlace place;
   platform::CPUDeviceContext ctx(place);
+#endif
   // Prepare variables.
   CreateTensor(&scope, "x", std::vector<int64_t>({2, 4}));
   CreateTensor(&scope, "y", std::vector<int64_t>({2, 4}));
@@ -98,7 +106,12 @@ TEST(LiteEngineOp, manual) {
   auto serialize_params = [](std::string* str, framework::Scope* scope,
                              const std::vector<std::string>& params) {
     std::ostringstream os;
+#ifdef PADDLE_WITH_CUDA
+    platform::CUDAPlace place;
+    platform::CUDADeviceContext ctx(place);
+#else
     platform::CPUDeviceContext ctx;
+#endif
     for (const auto& param : params) {
       PADDLE_ENFORCE_NOT_NULL(scope->FindVar(param),
                               "Block should already have a '%s' variable",
@@ -110,7 +123,13 @@ TEST(LiteEngineOp, manual) {
   };
   std::vector<std::string> repetitive_params{"x", "y"};
   inference::lite::EngineConfig config;
-  config.prefer_place = {TARGET(kX86), PRECISION(kFloat)};
+  config.prefer_place = {
+#ifdef PADDLE_WITH_CUDA
+      TARGET(kCUDA), PRECISION(kFloat),
+#else
+      TARGET(kX86), PRECISION(kFloat)
+#endif
+  };
   config.valid_places = {
       paddle::lite::Place({TARGET(kHost), PRECISION(kAny)}),
       paddle::lite::Place({TARGET(kX86), PRECISION(kFloat)}),
