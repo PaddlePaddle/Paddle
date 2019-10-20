@@ -165,6 +165,14 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
           << FLAGS_communicator_send_wait_times;
   VLOG(0) << "communicator_max_merge_var_num: "
           << FLAGS_communicator_max_merge_var_num;
+<<<<<<< HEAD
+=======
+  VLOG(0) << "communicator_fake_rpc: " << FLAGS_communicator_fake_rpc;
+  VLOG(0) << "communicator_merge_sparse_grad: "
+          << FLAGS_communicator_merge_sparse_grad;
+  VLOG(0) << "communicator_is_sgd_optimizer: "
+          << FLAGS_communicator_is_sgd_optimizer;
+>>>>>>> 95e90aa102... test=develop, add communicator_is_sgd_optimizer flag (#20677)
 
   if (send_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be send, will not start send_thread";

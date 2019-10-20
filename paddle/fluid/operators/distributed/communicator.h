@@ -24,6 +24,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "gflags/gflags.h"
 
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
@@ -36,6 +37,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
+
+DECLARE_bool(communicator_is_sgd_optimizer);
 
 namespace paddle {
 namespace operators {
@@ -139,12 +142,19 @@ inline void MergeVars(const std::string& var_name,
       result.device(*cpu_ctx.eigen_device()) = result + in;
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
     //result.device(*cpu_ctx.eigen_device()) =
     //    result / static_cast<float>(vars.size());
 =======
     result.device(*cpu_ctx.eigen_device()) =
         result / static_cast<float>(vars.size());
 >>>>>>> 9c8ab43838... add half_async flga
+=======
+    if (!FLAGS_communicator_is_sgd_optimizer) {
+      result.device(*cpu_ctx.eigen_device()) =
+          result / static_cast<float>(vars.size());
+    }
+>>>>>>> 95e90aa102... test=develop, add communicator_is_sgd_optimizer flag (#20677)
   } else if (var0->IsType<framework::SelectedRows>()) {
     auto& slr0 = var0->Get<framework::SelectedRows>();
     auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
@@ -156,6 +166,7 @@ inline void MergeVars(const std::string& var_name,
       inputs.push_back(&var->Get<framework::SelectedRows>());
     }
     auto dev_ctx = paddle::platform::CPUDeviceContext();
+<<<<<<< HEAD
 <<<<<<< HEAD
     //math::scatter::MergeAverage<paddle::platform::CPUDeviceContext, float>
     //    merge_average;
@@ -170,6 +181,18 @@ inline void MergeVars(const std::string& var_name,
    merge_add;
    merge_add(dev_ctx, inputs, out_slr);
    
+=======
+    if (FLAGS_communicator_is_sgd_optimizer) {
+      math::scatter::MergeAdd<paddle::platform::CPUDeviceContext, float>
+          merge_add;
+      merge_add(dev_ctx, inputs, out_slr);
+    } else {
+      math::scatter::MergeAverage<paddle::platform::CPUDeviceContext, float>
+          merge_average;
+      merge_average(dev_ctx, inputs, out_slr);
+    }
+
+>>>>>>> 95e90aa102... test=develop, add communicator_is_sgd_optimizer flag (#20677)
     VLOG(3) << "merge " << var_name << " SelectedRows height: " << slr0.height()
             << " dims: " << slr0.value().dims();
   } else {

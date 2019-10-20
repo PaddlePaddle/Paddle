@@ -82,6 +82,13 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     auto abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
 
     auto &send_rows = send_slr.rows();
+    if (send_rows.size() == 0) {
+      LOG(WARNING) << "WARNING: The variable sent to pserver is empty, which "
+                      "may cause an unknown error. Please check the state of "
+                      "use_double_buffer in pyreader async mode, you need to "
+                      "turn it false.";
+    }
+
     std::vector<std::vector<size_t>> outs_rows_idx;
     std::vector<std::vector<size_t>> outs_dense_idx;
 
