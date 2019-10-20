@@ -283,6 +283,7 @@ headers = (
     list(find_files('*', '${BOOST_INCLUDE_DIR}/boost')) + # boost
     list(find_files('*', '${XXHASH_INSTALL_DIR}/include')) + # xxhash
     list(find_files('*', '${PROTOBUF_INCLUDE_DIR}')) + # protobuf
+    list(find_files('*.h', '${DLPACK_INCLUDE_DIR}/include')) + # dlpack 
     list(find_files('*.h', '${THREADPOOL_INCLUDE_DIR}'))) # threadpool
 
 
