@@ -18,6 +18,7 @@ from test_dist_base import TestDistBase
 
 import os
 flag_name = os.path.splitext(__file__)[0]
+begin_port = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
 
 def skip_ci(func):
@@ -35,6 +36,7 @@ class TestDistSeResneXt2x2Async(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._use_reader_alloc = False
+        self._begin_port = begin_port
 
     @skip_ci
     def test_dist_train(self):

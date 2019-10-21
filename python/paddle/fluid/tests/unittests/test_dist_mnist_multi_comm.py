@@ -18,6 +18,7 @@ from test_dist_base import TestDistBase
 
 import os
 flag_name = os.path.splitext(__file__)[0]
+begin_port = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
 
 class TestDistMnistNCCL2MultiNCCLComm(TestDistBase):
@@ -27,6 +28,7 @@ class TestDistMnistNCCL2MultiNCCLComm(TestDistBase):
         self._use_reader_alloc = False
         self._nccl2_mode = True
         self._nccl_comm_num = 3
+        self._begin_port = begin_port
 
     def test_dist_train(self):
         import paddle.fluid as fluid

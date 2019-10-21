@@ -19,6 +19,7 @@ import os
 
 import os
 flag_name = os.path.splitext(__file__)[0]
+begin_port = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
 
 def skip_ci(func):
@@ -37,6 +38,7 @@ class TestDistSeResneXtNCCL(TestDistBase):
         self._sync_mode = True
         self._use_reader_alloc = False
         self._nccl2_mode = True
+        self._begin_port = begin_port
 
     @skip_ci
     def test_dist_train(self):
@@ -55,6 +57,7 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
         self._use_reader_alloc = False
         self._nccl2_mode = True
         self._mp_mode = True
+        self._begin_port = begin_port + 4
 
     @skip_ci
     def test_dist_train(self):

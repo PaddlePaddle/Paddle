@@ -18,12 +18,14 @@ from test_dist_base import TestDistBase
 
 import os
 flag_name = os.path.splitext(__file__)[0]
+begin_port = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
 
 class TestDistMnist2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
+        self._begin_port = begin_port
 
     def test_dist_train(self):
         self.check_with_place(
@@ -37,6 +39,7 @@ class TestDistMnist2x2WithMemopt(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
         self._mem_opt = True
+        self._begin_port = begin_port + 4
 
     def test_dist_train(self):
         self.check_with_place(
@@ -50,6 +53,7 @@ class TestDistMnistAsync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._use_reduce = False
+        self._begin_port = begin_port + 8
 
     def test_dist_train(self):
         self.check_with_place(
@@ -63,6 +67,7 @@ class TestDistMnistDcAsgd(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._dc_asgd = True
+        self._begin_port = begin_port + 12
 
     def test_se_resnext(self):
         self.check_with_place(

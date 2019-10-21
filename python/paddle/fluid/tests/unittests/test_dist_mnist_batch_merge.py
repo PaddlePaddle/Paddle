@@ -18,12 +18,14 @@ from test_dist_base import TestDistBase
 import os
 
 flag_name = os.path.splitext(__file__)[0]
+begin_port = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
 
 class TestDistMnist2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
+        self._begin_port = begin_port
 
     def test_dist_train(self):
         self.check_with_place("dist_mnist_batch_merge.py", delta=1e-5)

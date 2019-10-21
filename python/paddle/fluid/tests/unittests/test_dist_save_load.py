@@ -24,12 +24,14 @@ from test_dist_base import TestDistBase, RUN_STEP
 
 import os
 flag_name = os.path.splitext(__file__)[0]
+begin_port = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
 
 class TestDistSaveLoadDense2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
         self._enforce_place = "CPU"
+        self._begin_port = begin_port
 
     def check_with_place(self,
                          model_file,
@@ -95,6 +97,7 @@ class TestDistSaveLoadWithPServerStateDense2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
         self._enforce_place = "CPU"
+        self._begin_port = begin_port + 4
 
     def check_with_place(self,
                          model_file,

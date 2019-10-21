@@ -16,6 +16,10 @@ from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 
+import os
+flag_name = os.path.splitext(__file__)[0]
+begin_port = int(os.getenv("PADDLE_DIST_UT_PORT"))
+
 
 class TestDistMnistLocalSGDFleetApi(TestDistBase):
     def _setup_config(self):
@@ -25,11 +29,16 @@ class TestDistMnistLocalSGDFleetApi(TestDistBase):
         self._nccl2_mode = True
         self._gpu_fleet_api = True
         self._use_local_sgd = True
+        self._begin_port = begin_port
 
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("dist_mnist.py", delta=1e-5)
+            self.check_with_place(
+                "dist_mnist.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
 
 
 class TestDistMnistGradAllReduceFleetApi(TestDistBase):
@@ -40,11 +49,16 @@ class TestDistMnistGradAllReduceFleetApi(TestDistBase):
         self._nccl2_mode = True
         self._gpu_fleet_api = True
         self._ut4grad_allreduce = True
+        self._begin_port = begin_port + 4
 
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("dist_mnist.py", delta=1e-5)
+            self.check_with_place(
+                "dist_mnist.py",
+                delta=1e-5,
+                check_error_log=True,
+                log_name=flag_name)
 
 
 if __name__ == "__main__":

@@ -486,8 +486,6 @@ class TestDistBase(unittest.TestCase):
         self._trainers = 2
         self._pservers = 2
         self._port_set = set()
-        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-            self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
         self._sync_mode = True
         self._hogwild_mode = False
@@ -511,7 +509,18 @@ class TestDistBase(unittest.TestCase):
         self._use_local_sgd = False
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
+        self._begin_port = None
+        if self._begin_port:
+            print("set begin_port:", begin_port)
         self._setup_config()
+
+        if self._begin_port is None:
+            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+                self._find_free_port(), self._find_free_port())
+        else:
+            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+                self._begin_port, self._begin_port + 1)
+
         self._after_setup_config()
 
     def _find_free_port(self):
@@ -790,8 +799,14 @@ class TestDistBase(unittest.TestCase):
                            check_error_log, log_name):
         if self._use_hallreduce:
             self._ps_endpoints = ""
-            for i in range(0, 4):
-                self._ps_endpoints += "127.0.0.1:%s," % (self._find_free_port())
+            if self._begin_port is None:
+                for i in range(0, 4):
+                    self._ps_endpoints += "127.0.0.1:%s," % (
+                        self._find_free_port())
+            else:
+                for i in range(0, 4):
+                    self._ps_endpoints += "127.0.0.1:%s," % (
+                        self._begin_port + i)
             self._ps_endpoints = self._ps_endpoints[:-1]
 
         # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
@@ -858,7 +873,7 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_vmodule"] = \
                 "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
-                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10"
+                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,nccl_helper=10,grpc_client=10,grpc_server=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         required_envs.update(need_envs)
