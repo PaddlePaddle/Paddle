@@ -310,6 +310,59 @@ PYBIND11_MODULE(core_noavx, m) {
     return map_output;
   });
 
+  m.def("_load_np_dict", [](const std::string &str_file_name) {
+    std::map<std::string, std::shared_ptr<Tensor>> map_load_tensor;
+    LoadTensorFromDisk(str_file_name, &map_load_tensor);
+
+    std::unordered_map<std::string, pybind11::array> map_output;
+    for (auto &load_tensor : map_load_tensor) {
+      const auto &dims = load_tensor.second->dims();
+      auto dtype = load_tensor.second->type();
+      auto str_dtype = details::TensorDTypeToPyDTypeStr(dtype);
+      std::vector<size_t> shape(dims.size());
+      std::vector<size_t> strides(dims.size());
+
+      size_t element_size = framework::SizeOfType(dtype);
+      size_t offset = 1;
+      for (int i = dims.size() - 1; i >= 0; i--) {
+        shape[i] = dims[i];
+        strides[i] = element_size * offset;
+        offset *= dims[i];
+      }
+
+      auto np_type = py::dtype::of<float>();
+      switch (dtype) {
+        case proto::VarType::BOOL:
+          np_type = py::dtype::of<bool>();
+          break;
+        case proto::VarType::INT16:
+          np_type = py::dtype::of<int16_t>();
+          break;
+        case proto::VarType::INT32:
+          np_type = py::dtype::of<int32_t>();
+          break;
+        case proto::VarType::INT64:
+          np_type = py::dtype::of<int64_t>();
+          break;
+        case proto::VarType::FP16:
+          np_type = py::dtype("e");
+          break;
+        case proto::VarType::FP32:
+          np_type = py::dtype::of<float>();
+          break;
+        case proto::VarType::FP64:
+          np_type = py::dtype::of<double>();
+          break;
+        default:
+          PADDLE_THROW("Not support type %d", dtype);
+      }
+      map_output.emplace(
+          load_tensor.first,
+          pybind11::array(np_type, shape, load_tensor.second->data<void>()));
+    }
+    return map_output;
+  });
+
   m.def("save_op_compatible_info", [](framework::ProgramDesc &desc) {
     framework::OpCompatibleMap op_compatible_map;
     op_compatible_map.InitOpCompatibleMap();
