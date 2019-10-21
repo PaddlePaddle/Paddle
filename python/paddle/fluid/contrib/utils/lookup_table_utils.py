@@ -19,6 +19,8 @@ import os
 import time
 import logging
 
+import numpy as np
+
 import paddle
 from paddle.fluid import core
 from paddle.fluid import io
@@ -80,6 +82,47 @@ def __get_prefetch_op_tuples(main_program):
                                       merge_ids_outputs, need_delete_vars)
                 break
     return prefetch_op_tuples
+
+
+def convert_selected_rows_to_plain(executor, param_path, output_path):
+    program = Program()
+    block = program.global_block()
+
+    param_var = program.global_block().create_var(
+        name="__emb__",
+        shape=(10, 10),  # tmp init
+        dtype='float32',
+        type=core.VarDesc.VarType.SELECTED_ROWS,
+        persistable=True)
+
+    block.append_op(
+        type='load',
+        inputs={},
+        outputs={'Out': [param_var]},
+        attrs={'file_path': os.path.join(param_path)})
+
+    executor.run(program)
+    emb = paddle.fluid.global_scope().find_var("__emb__")
+    emb = emb.get_selected_rows()
+
+    rows = emb.rows()
+    tensors = np.array(emb.get_tensor())
+
+    if len(rows) != tensors.shape[0]:
+        raise ValueError("param {} rows do not equal tensor shape[0]".format(
+            param_path))
+
+    plain_text = []
+
+    for i in range(len(rows)):
+        id = rows[i]
+        tensor = tensors[i]
+        plain_text.append(
+            str(id) + "\t" + np.array2string(
+                tensor, separator=','))
+
+    with open(output_path, "w") as wb:
+        wb.writelines(plain_text)
 
 
 def convert_dist_to_sparse_program(program):
