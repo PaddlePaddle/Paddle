@@ -272,93 +272,52 @@ class OpTest(unittest.TestCase):
         else:
             return fluid.dygraph.base.to_variable(value)
 
-    def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
-        with fluid.dygraph.base.guard(place=place):
-            block = fluid.default_main_program().global_block()
-
-            # prepare input variable
-            inputs = defaultdict(list)
-            op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
-            for input_ in op_proto.inputs:
-                name = input_.name
-                if name not in self.inputs:
-                    if input_.dispensable:
-                        continue
-                    else:
-                        assert input_.intermediate, "{} not found".format(name)
-                        v = block.create_var(
-                            dtype='float32',
-                            type=core.VarDesc.VarType.LOD_TENSOR)
-                        inputs[name].append(v)
+    def append_input_output_for_dygraph(self, op_proto, np_list, is_input,
+                                        if_return_inputs_grad_dict, block):
+        # prepare variable for input or output
+        var_dict = defaultdict(list)
+        if if_return_inputs_grad_dict:
+            inputs_grad_dict = defaultdict()
+        proto_list = op_proto.inputs if is_input else op_proto.outputs
+        for var_proto in proto_list:
+            name = var_proto.name
+            if name not in np_list:
+                if var_proto.dispensable:
                     continue
-                if input_.duplicable:
-                    assert isinstance(
-                        self.inputs[name],
-                        list), "Duplicable {} should be set as list".format(
-                            name)
-                    var_list = []
-                    slot_name = name
-                    for (name, np_value) in self.inputs[name]:
-                        if isinstance(np_value, tuple):
+                else:
+                    assert var_proto.intermediate, "{} not found".format(name)
+                    v = block.create_var(
+                        dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR)
+                    var_dict[name].append(v)
+                    if if_return_inputs_grad_dict:
+                        inputs_grad_dict[name] = v
+                continue
+            if var_proto.duplicable:
+                assert isinstance(
+                    np_list[name],
+                    list), "Duplicable {} should be set as list".format(name)
+                var_list = []
+                slot_name = name
+                for (name, np_value) in np_list[name]:
+                    if isinstance(np_value, tuple):
+                        if is_input:
                             v = self._create_var_from_numpy(np_value[0])
+                            if if_return_inputs_grad_dict:
+                                v.stop_gradient = False
                             v._ivar.value().get_tensor(
                             ).set_recursive_sequence_lengths(np_value[1])
                         else:
-                            v = self._create_var_from_numpy(np_value)
-                        var_list.append(v)
-                    inputs[slot_name] = var_list
-                else:
-                    np_value = self.inputs[name]
-                    if isinstance(self.inputs[name], list):
-                        slot_name = name
-                        for name, np_value in self.inputs[name]:
-                            if isinstance(np_value, tuple):
-                                v = self._create_var_from_numpy(np_value[0])
-                                v._ivar.value().get_tensor(
-                                ).set_recursive_sequence_lengths(np_value[1])
-                            else:
-                                v = self._create_var_from_numpy(np_value)
-                            inputs[slot_name].append(v)
-                    else:
-                        if isinstance(self.inputs[name], tuple):
-                            v = self._create_var_from_numpy(self.inputs[name][
-                                0])
-                            v._ivar.value().get_tensor(
-                            ).set_recursive_sequence_lengths(self.inputs[name][
-                                1])
-                        else:
-                            v = self._create_var_from_numpy(self.inputs[name])
-                        inputs[name].append(v)
-            # prepare output variable
-            outputs = defaultdict(list)
-            op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
-            for output in op_proto.outputs:
-                name = output.name
-                if name not in self.outputs:
-                    if output.dispensable:
-                        continue
-                    else:
-                        assert output.intermediate, "{} not found".format(name)
-                        v = block.create_var(
-                            dtype='float32',
-                            type=core.VarDesc.VarType.LOD_TENSOR)
-                        outputs[name].append(v)
-                    continue
-                if output.duplicable:
-                    assert isinstance(
-                        self.outputs[name],
-                        list), "Duplicable {} should be set as list".format(
-                            name)
-                    var_list = []
-                    slot_name = name
-                    for (name, np_value) in self.outputs[name]:
-                        if isinstance(np_value, tuple):
                             v = block.create_var(
                                 name=name,
                                 dtype=np_value[0].dtype,
                                 type=core.VarDesc.VarType.LOD_TENSOR,
                                 persistable=False,
                                 stop_gradient=False)
+                    else:
+                        if is_input:
+                            v = self._create_var_from_numpy(np_value)
+                            if if_return_inputs_grad_dict:
+                                v.stop_gradient = False
                         else:
                             v = block.create_var(
                                 name=name,
@@ -366,20 +325,34 @@ class OpTest(unittest.TestCase):
                                 type=core.VarDesc.VarType.LOD_TENSOR,
                                 persistable=False,
                                 stop_gradient=False)
-                        var_list.append(v)
-                    outputs[slot_name] = var_list
-                else:
-                    np_value = self.outputs[name]
-                    if isinstance(self.outputs[name], list):
-                        slot_name = name
-                        for name, np_value in self.outputs[name]:
-                            if isinstance(np_value, tuple):
+                    var_list.append(v)
+                    if if_return_inputs_grad_dict:
+                        inputs_grad_dict[name] = v
+                var_dict[slot_name] = var_list
+            else:
+                np_value = np_list[name]
+                if isinstance(np_list[name], list):
+                    slot_name = name
+                    for name, np_value in np_list[name]:
+                        if isinstance(np_value, tuple):
+                            if is_input:
+                                v = self._create_var_from_numpy(np_value[0])
+                                if if_return_inputs_grad_dict:
+                                    v.stop_gradient = False
+                                v._ivar.value().get_tensor(
+                                ).set_recursive_sequence_lengths(np_value[1])
+                            else:
                                 v = block.create_var(
                                     name=name,
                                     dtype=np_value[0].dtype,
                                     type=core.VarDesc.VarType.LOD_TENSOR,
                                     persistable=False,
                                     stop_gradient=False)
+                        else:
+                            if is_input:
+                                v = self._create_var_from_numpy(np_value)
+                                if if_return_inputs_grad_dict:
+                                    v.stop_gradient = False
                             else:
                                 v = block.create_var(
                                     name=name,
@@ -387,23 +360,60 @@ class OpTest(unittest.TestCase):
                                     type=core.VarDesc.VarType.LOD_TENSOR,
                                     persistable=False,
                                     stop_gradient=False)
-                            outputs[slot_name].append(v)
-                    else:
-                        if isinstance(self.outputs[name], tuple):
-                            v = block.create_var(
-                                name=unique_name.generate("%s_out" % (name)),
-                                dtype=self.outputs[name][0].dtype,
-                                type=core.VarDesc.VarType.LOD_TENSOR,
-                                persistable=False,
-                                stop_gradient=False)
+                        var_dict[slot_name].append(v)
+                        if if_return_inputs_grad_dict:
+                            inputs_grad_dict[name] = v
+                else:
+                    if isinstance(np_list[name], tuple):
+                        if is_input:
+                            v = self._create_var_from_numpy(np_list[name][0])
+                            if if_return_inputs_grad_dict:
+                                v.stop_gradient = False
+                            v._ivar.value().get_tensor(
+                            ).set_recursive_sequence_lengths(np_list[name][1])
                         else:
                             v = block.create_var(
                                 name=unique_name.generate("%s_out" % (name)),
-                                dtype=self.outputs[name].dtype,
+                                dtype=np_list[name][0].dtype,
                                 type=core.VarDesc.VarType.LOD_TENSOR,
                                 persistable=False,
                                 stop_gradient=False)
-                        outputs[name].append(v)
+                    else:
+                        if is_input:
+                            v = self._create_var_from_numpy(np_list[name])
+                            if if_return_inputs_grad_dict:
+                                v.stop_gradient = False
+                        else:
+                            v = block.create_var(
+                                name=unique_name.generate("%s_out" % (name)),
+                                dtype=np_list[name].dtype,
+                                type=core.VarDesc.VarType.LOD_TENSOR,
+                                persistable=False,
+                                stop_gradient=False)
+                    var_dict[name].append(v)
+                    if if_return_inputs_grad_dict:
+                        inputs_grad_dict[name] = v
+
+        if if_return_inputs_grad_dict:
+            return var_dict, inputs_grad_dict
+        else:
+            return var_dict
+
+    def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
+        with fluid.dygraph.base.guard(place=place):
+            block = fluid.default_main_program().global_block()
+
+            op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
+
+            # prepare input variable
+            inputs = self.append_input_output_for_dygraph(op_proto, self.inputs,
+                                                          True, False, block)
+
+            # prepare output variable
+            outputs = self.append_input_output_for_dygraph(
+                op_proto, self.outputs, False, False, block)
+
+            # prepare attrbutes
             attrs_outputs = {}
             if hasattr(self, "attrs"):
                 for attrs_name in self.attrs:
@@ -1107,146 +1117,17 @@ class OpTest(unittest.TestCase):
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
-            # prepare input variable
-            inputs = defaultdict(list)
-            inputs_grad_dict = defaultdict()
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
-            for input_ in op_proto.inputs:
-                name = input_.name
-                if name not in self.inputs:
-                    if input_.dispensable:
-                        continue
-                    else:
-                        assert input_.intermediate, "{} not found".format(name)
-                        v = block.create_var(
-                            dtype='float32',
-                            type=core.VarDesc.VarType.LOD_TENSOR)
-                        inputs[name].append(v)
-                        inputs_grad_dict[name] = v
-                    continue
-                if input_.duplicable:
-                    assert isinstance(
-                        self.inputs[name],
-                        list), "Duplicable {} should be set as list".format(
-                            name)
-                    var_list = []
-                    slot_name = name
-                    for (name, np_value) in self.inputs[name]:
-                        if isinstance(np_value, tuple):
-                            v = self._create_var_from_numpy(np_value[0])
-                            v.stop_gradient = False
-                            v._ivar.value().get_tensor(
-                            ).set_recursive_sequence_lengths(np_value[1])
-                        else:
-                            v = self._create_var_from_numpy(np_value)
-                            v.stop_gradient = False
-                        var_list.append(v)
-                        inputs_grad_dict[name] = v
-                    inputs[slot_name] = var_list
-                else:
-                    np_value = self.inputs[name]
-                    if isinstance(self.inputs[name], list):
-                        slot_name = name
-                        for name, np_value in self.inputs[name]:
-                            if isinstance(np_value, tuple):
-                                v = self._create_var_from_numpy(np_value[0])
-                                v.stop_gradient = False
-                                v._ivar.value().get_tensor(
-                                ).set_recursive_sequence_lengths(np_value[1])
-                            else:
-                                v = self._create_var_from_numpy(np_value)
-                                v.stop_gradient = False
-                            inputs[slot_name].append(v)
-                            inputs_grad_dict[name] = v
-                    else:
-                        if isinstance(self.inputs[name], tuple):
-                            v = self._create_var_from_numpy(self.inputs[name][
-                                0])
-                            v.stop_gradient = False
-                            v._ivar.value().get_tensor(
-                            ).set_recursive_sequence_lengths(self.inputs[name][
-                                1])
-                        else:
-                            v = self._create_var_from_numpy(self.inputs[name])
-                            v.stop_gradient = False
-                        inputs[name].append(v)
-                        inputs_grad_dict[name] = v
-            # prepare output variable
-            outputs = defaultdict(list)
-            op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
-            for output in op_proto.outputs:
-                name = output.name
-                if name not in self.outputs:
-                    if output.dispensable:
-                        continue
-                    else:
-                        assert output.intermediate, "{} not found".format(name)
-                        v = block.create_var(
-                            dtype='float32',
-                            type=core.VarDesc.VarType.LOD_TENSOR)
-                        outputs[name].append(v)
-                    continue
-                if output.duplicable:
-                    assert isinstance(
-                        self.outputs[name],
-                        list), "Duplicable {} should be set as list".format(
-                            name)
-                    var_list = []
-                    slot_name = name
-                    for (name, np_value) in self.outputs[name]:
-                        if isinstance(np_value, tuple):
-                            v = block.create_var(
-                                name=name,
-                                dtype=np_value[0].dtype,
-                                type=core.VarDesc.VarType.LOD_TENSOR,
-                                persistable=False,
-                                stop_gradient=False)
-                        else:
-                            v = block.create_var(
-                                name=name,
-                                dtype=np_value.dtype,
-                                type=core.VarDesc.VarType.LOD_TENSOR,
-                                persistable=False,
-                                stop_gradient=False)
-                        var_list.append(v)
-                    outputs[slot_name] = var_list
-                else:
-                    np_value = self.outputs[name]
-                    if isinstance(self.outputs[name], list):
-                        slot_name = name
-                        for name, np_value in self.outputs[name]:
-                            if isinstance(np_value, tuple):
-                                v = block.create_var(
-                                    name=name,
-                                    dtype=np_value[0].dtype,
-                                    type=core.VarDesc.VarType.LOD_TENSOR,
-                                    persistable=False,
-                                    stop_gradient=False)
-                            else:
-                                v = block.create_var(
-                                    name=name,
-                                    dtype=np_value.dtype,
-                                    type=core.VarDesc.VarType.LOD_TENSOR,
-                                    persistable=False,
-                                    stop_gradient=False)
-                            outputs[slot_name].append(v)
-                    else:
-                        if isinstance(self.outputs[name], tuple):
-                            v = block.create_var(
-                                name=unique_name.generate("%s_out" % (name)),
-                                dtype=self.outputs[name][0].dtype,
-                                type=core.VarDesc.VarType.LOD_TENSOR,
-                                persistable=False,
-                                stop_gradient=False)
-                        else:
-                            v = block.create_var(
-                                name=unique_name.generate("%s_out" % (name)),
-                                dtype=self.outputs[name].dtype,
-                                type=core.VarDesc.VarType.LOD_TENSOR,
-                                persistable=False,
-                                stop_gradient=False)
-                        outputs[name].append(v)
 
+            # prepare input variable
+            inputs, inputs_grad_dict = self.append_input_output_for_dygraph(
+                op_proto, self.inputs, True, True, block)
+
+            # prepare output variable
+            outputs = self.append_input_output_for_dygraph(
+                op_proto, self.outputs, False, False, block)
+
+            # prepare attrbutes
             attrs_outputs = {}
             if hasattr(self, "attrs"):
                 for attrs_name in self.attrs:
