@@ -18,12 +18,14 @@ from test_dist_base import TestDistBase
 
 import os
 flag_name = os.path.splitext(__file__)[0]
+begin_port = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
 
 class TestDistW2V2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
         self._enforce_place = "CPU"
+        self._begin_port = begin_port
 
     def test_dist_train(self):
         self.check_with_place(
@@ -38,6 +40,7 @@ class TestDistW2V2x2WithMemOpt(TestDistBase):
         self._sync_mode = True
         self._mem_opt = True
         self._enforce_place = "CPU"
+        self._begin_port = begin_port + 4
 
     def test_dist_train(self):
         self.check_with_place(
@@ -51,6 +54,7 @@ class TestDistW2V2x2Async(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._enforce_place = "CPU"
+        self._begin_port = begin_port + 8
 
     def test_dist_train(self):
         self.check_with_place(

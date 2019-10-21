@@ -510,9 +510,10 @@ class TestDistBase(unittest.TestCase):
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
         self._begin_port = None
-        if self._begin_port:
-            print("set begin_port:", begin_port)
         self._setup_config()
+
+        if self._begin_port:
+            print("set begin_port:", self._begin_port)
 
         if self._begin_port is None:
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
