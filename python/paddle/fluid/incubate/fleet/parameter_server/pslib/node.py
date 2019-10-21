@@ -340,7 +340,8 @@ class DownpourWorker(Worker):
                     and target_names[:len_k] == key_names):
                     pass
                 else:
-                    raise ValueError("sparse table %s slot_key error" % table_id)
+                    raise ValueError("sparse table %s slot_key error"
+                                     % table_id)
 
                 value_names = [var.name for var in slot_value_vars]
                 len_v = len(value_names)

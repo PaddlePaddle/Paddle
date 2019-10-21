@@ -10,6 +10,7 @@
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
+"""Defination of PSLib."""
 
 import os
 import sys
@@ -25,6 +26,7 @@ from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 
 class PSLib(Fleet):
+    """PSLib class."""
     def __init__(self):
         super(PSLib, self).__init__(Mode.PSLIB)
         self._opt_info = None
@@ -247,7 +249,9 @@ class PSLib(Fleet):
                            3 means save batch model.
 
         Example:
-            >>> fleet.save_persistables(dirname="/you/path/to/model", mode = 0)
+            .. code-block:: python
+
+              fleet.save_persistables(dirname="/you/path/to/model", mode = 0)
 
         """
         mode = kwargs.get("mode", 0)
@@ -263,15 +267,20 @@ class PSLib(Fleet):
         when using fleet, it will save sparse cache table
 
         Args:
+            executor(Executor): fluid executor
             dirname(str): save path. It can be hdfs/afs path or local path
             main_program(Program): fluid program, default None
             kwargs: use define property, current support following
                 mode(int): define for feature extension in the future,
                            currently no use, will pass a default value 0 
 
+        Returns:
+            feasign_num(int): cache feasign num
+
         Example:
             .. code-block:: python
-            >>> fleet.save_cache_model(None, dirname="/you/path/to/model", mode = 0)
+
+              fleet.save_cache_model(None, dirname="/you/path/to/model", mode = 0)
 
         """
         mode = kwargs.get("mode", 0)
@@ -350,8 +359,7 @@ class PSLib(Fleet):
                     if skip:
                         continue
                     self._fleet_ptr.shrink_dense_table(i.table_id, scope,
-                                                       var_list, decay,
-                                                       emb_dim)
+                                                       var_list, decay, emb_dim)
         self._role_maker._barrier_worker()
 
     def clear_model(self):
@@ -498,8 +506,8 @@ class PSLib(Fleet):
                     if skip:
                         continue
                     self._fleet_ptr.load_from_paddle_model(
-                        scope, table_id, var_names, model_path, model_proto_file,
-                        table_var_names, load_combine)
+                        scope, table_id, var_names, model_path,
+                        model_proto_file, table_var_names, load_combine)
         self._role_maker._barrier_worker()
 
     def _set_opt_info(self, opt_info):
