@@ -53,8 +53,9 @@ static std::vector<std::vector<int64_t>> SplitIds(
   std::vector<std::vector<int64_t>> splited_ids;
   splited_ids.resize(height_section.size() + 1);
   for (auto& id : all_ids) {
-    auto section_index = GetSectionIndex(id, abs_sections);
-    splited_ids[section_index].push_back(id - abs_sections[section_index]);
+    //    auto section_index = GetSectionIndex(id, abs_sections);
+    auto section_index = GetHashIndex(id, height_section.size());
+    splited_ids[section_index].push_back(id);
   }
   return splited_ids;
 }
@@ -188,7 +189,8 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   auto vec_dim_1 = 0;
 
   if (var->IsType<framework::SelectedRows>()) {
-    vec_dim_1 =var->GetMutable<framework::SelectedRows>()->mutable_value()->dims()[1];
+    vec_dim_1 =
+        var->GetMutable<framework::SelectedRows>()->mutable_value()->dims()[1];
   } else if (var->IsType<framework::LoDTensor>()) {
     vec_dim_1 = var->GetMutable<framework::LoDTensor>()->dims()[1];
   }
@@ -262,16 +264,15 @@ void prefetchs(const std::vector<std::string>& id_var_names,
 
   if (backfill) {
     VLOG(3) << "backfill persistable var's id with vecs";
-//
-//    auto* reconstruct_d = reconstruct_var->data<float>();
-//    for (auto& id : ids_union) {
-//      std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
-//                reconstruct_d + id * vec_dim_1);
-//    }
+    //
+    //    auto* reconstruct_d = reconstruct_var->data<float>();
+    //    for (auto& id : ids_union) {
+    //      std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
+    //                reconstruct_d + id * vec_dim_1);
+    //    }
   }
 }
 
 };  // namespace distributed
 };  // namespace operators
 };  // namespace paddle
-

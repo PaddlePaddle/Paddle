@@ -69,5 +69,7 @@ inline size_t GetSectionIndex(int64_t id,
   return abs_sections.size() - 1;
 }
 
+inline size_t GetHashIndex(int64_t id, int pservers) { return id % pservers; }
+
 }  // namespace operators
 }  // namespace paddle
