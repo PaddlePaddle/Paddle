@@ -318,16 +318,10 @@ PYBIND11_MODULE(core_noavx, m) {
     for (auto &load_tensor : map_load_tensor) {
       const auto &dims = load_tensor.second->dims();
       auto dtype = load_tensor.second->type();
-      auto str_dtype = details::TensorDTypeToPyDTypeStr(dtype);
       std::vector<size_t> shape(dims.size());
-      std::vector<size_t> strides(dims.size());
 
-      size_t element_size = framework::SizeOfType(dtype);
-      size_t offset = 1;
       for (int i = dims.size() - 1; i >= 0; i--) {
         shape[i] = dims[i];
-        strides[i] = element_size * offset;
-        offset *= dims[i];
       }
 
       auto np_type = py::dtype::of<float>();
