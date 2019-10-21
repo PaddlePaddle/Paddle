@@ -217,9 +217,21 @@ class DistributedAdam(DistributedOptimizerImplBase):
             with open(fleet_desc_file) as f:
                 text_format.Merge(f.read(), ps_param)
             server.get_desc().CopyFrom(ps_param.server_param)
-            for k in program_id_to_worker:
-                program_id_to_worker[k].get_desc().CopyFrom(
-                    ps_param.trainer_param)
+            if len(ps_param.trainer_param) == 1:
+                for k in prog_id_to_worker:
+                    prog_id_to_worker[k].get_desc().CopyFrom(
+                        ps_param.trainer_param[0])
+            else:
+                if len(ps_param.trainer_param) != len(prog_id_to_worker):
+                    raise ValueError(
+                        "trainer param size != program size, %s vs %s" %
+                        (len(ps_param.trainer_param), len(prog_id_to_worker)))
+                idx = 0
+                # prog_id_to_worker is OrderedDict
+                for k in prog_id_to_worker:
+                    prog_id_to_worker[k].get_desc().CopyFrom(
+                        ps_param.trainer_param[idx])
+                    idx += 1
 
         # ServerParameter add all sparse tables
         for tn in sparse_table_to_index:
@@ -322,6 +334,11 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 worker.get_desc().skip_op.extend(worker_skipped_ops)
 
         ps_param.server_param.CopyFrom(server.get_desc())
+        # prog_id_to_worker is OrderedDict
+        if len(ps_param.trainer_param) == 0:
+            for k in prog_id_to_worker:
+                tp = ps_param.trainer_param.add()
+                tp.CopyFrom(prog_id_to_worker[k].get_desc())
 
         opt_info = {}
         opt_info["program_id_to_worker"] = prog_id_to_worker

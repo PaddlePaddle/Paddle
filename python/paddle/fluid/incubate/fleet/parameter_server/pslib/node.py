@@ -332,23 +332,35 @@ class DownpourWorker(Worker):
                     slot_value_grad_names.append(var.name + "@GRAD")
         for table in self._worker.sparse_table:
             if table.table_id == table_id:
-                if [var.name for var in slot_key_vars
-                    ] == self._worker.sparse_table[table_id].slot_key:
-                    if [var.name for var in slot_value_vars
-                        ] == self._worker.sparse_table[table_id].slot_value:
-                        if slot_value_grad_names == \
-                                self._worker.sparse_table[table_id].slot_gradient:
-                            return
-                        else:
-                            raise ValueError(
-                                "sparse table %s slot_gradient error" %
-                                table_id)
-
-                    else:
-                        raise ValueError("sparse table %s slot_value error" %
-                                         table_id)
+                key_names = [var.name for var in slot_key_vars]
+                len_k = len(key_names)
+                target_names = self._worker.sparse_table[table_id].slot_key
+                len_t = len(target_names)
+                if key_names == target_names or (len_k < len_t \
+                    and target_names[:len_k] == key_names):
+                    pass
                 else:
-                    raise ValueError("sparse table %s slot_key error" %
+                    raise ValueError("sparse table %s slot_key error" % table_id)
+
+                value_names = [var.name for var in slot_value_vars]
+                len_v = len(value_names)
+                target_names = self._worker.sparse_table[table_id].slot_value
+                len_t = len(target_names)
+                if value_names == target_names or (len_v < len_t \
+                    and target_names[:len_v] == value_names):
+                    pass
+                else:
+                    raise ValueError("sparse table %s slot_value error" %
+                                     table_id)
+
+                len_g = len(slot_value_grad_names)
+                target_names = self._worker.sparse_table[table_id].slot_gradient
+                len_t = len(target_names)
+                if slot_value_grad_names == target_names or (len_g < len_t \
+                    and target_names[:len_g] == slot_value_grad_names):
+                    pass
+                else:
+                    raise ValueError("sparse table %s slot_gradient error" %
                                      table_id)
 
         table = self._worker.sparse_table.add()
@@ -390,14 +402,11 @@ class DownpourWorker(Worker):
 
         for table in self._worker.dense_table:
             if table.table_id == table_id:
-                desc_dense_param_name = list(self._worker.dense_table[
-                    table_id - dense_start_table_id].dense_variable_name)
+                desc_dense_param_name = list(table.dense_variable_name)
                 desc_dense_param_name.sort()
 
                 if dense_param_name == desc_dense_param_name:
-                    desc_dense_grad_name = list(self._worker.dense_table[
-                        table_id - dense_start_table_id]
-                                                .dense_gradient_variable_name)
+                    desc_dense_grad_name = list(table.dense_gradient_variable_name)
                     desc_dense_grad_name.sort()
                     if dense_grad_name == desc_dense_grad_name:
                         return

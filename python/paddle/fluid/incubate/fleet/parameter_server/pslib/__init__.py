@@ -89,7 +89,10 @@ class PSLib(Fleet):
             # barrier for init model
             self._role_maker._barrier_worker()
             if self._role_maker.is_first_worker():
-                tables = self._dist_desc.trainer_param.dense_table
+                tables = []
+                for tp in self._dist_desc.trainer_param:
+                    for i in tp.dense_table:
+                        tables.append(i)
                 for prog, scope in zip(self._main_programs, self._scopes):
                     prog_id = str(id(prog))
                     prog_conf = self._opt_info['program_configs'][prog_id]
@@ -304,8 +307,12 @@ class PSLib(Fleet):
         """
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
-            for i in self._opt_info["fleet_desc"].trainer_param.sparse_table:
-                self._fleet_ptr.shrink_sparse_table(i.table_id)
+            tables = []
+            for tp in self._opt_info["fleet_desc"].trainer_param:
+                for i in tp.sparse_table:
+                    tables.append(i.table_id)
+            for i in list(set(tables)):
+                self._fleet_ptr.shrink_sparse_table(i)
         self._role_maker._barrier_worker()
 
     def shrink_dense_table(self, decay, emb_dim=11, scope=None, table_id=None):
@@ -330,19 +337,21 @@ class PSLib(Fleet):
             scope = fluid.global_scope()
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
-            for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
-                if table_id is not None and table_id != i.table_id:
-                    continue
-                var_list = [var for var in i.dense_variable_name]
-                skip = False
-                for var in var_list:
-                    if scope.find_var(var) is None:
-                        skip = True
-                        break
-                if skip:
-                    continue
-                self._fleet_ptr.shrink_dense_table(i.table_id, scope, var_list,
-                                                   decay, emb_dim)
+            for tp in self._opt_info["fleet_desc"].trainer_param:
+                for i in tp.dense_table:
+                    if table_id is not None and table_id != i.table_id:
+                        continue
+                    var_list = [var for var in i.dense_variable_name]
+                    skip = False
+                    for var in var_list:
+                        if scope.find_var(var) is None:
+                            skip = True
+                            break
+                    if skip:
+                        continue
+                    self._fleet_ptr.shrink_dense_table(i.table_id, scope,
+                                                       var_list, decay,
+                                                       emb_dim)
         self._role_maker._barrier_worker()
 
     def clear_model(self):
@@ -476,20 +485,21 @@ class PSLib(Fleet):
                 if ret != 0:
                     raise RuntimeError("download model proto file failed")
                 model_proto_file = dest
-            for i in self._opt_info["fleet_desc"].trainer_param.dense_table:
-                if table_id is not None and table_id != i.table_id:
-                    continue
-                table_var_names = [var for var in i.dense_variable_name]
-                skip = False
-                for var in table_var_names:
-                    if scope.find_var(var) is None:
-                        skip = True
-                        break
-                if skip:
-                    continue
-                self._fleet_ptr.load_from_paddle_model(
-                    scope, table_id, var_names, model_path, model_proto_file,
-                    table_var_names, load_combine)
+            for tp in self._opt_info["fleet_desc"].trainer_param:
+                for i in tp.dense_table:
+                    if table_id is not None and table_id != i.table_id:
+                        continue
+                    table_var_names = [var for var in i.dense_variable_name]
+                    skip = False
+                    for var in table_var_names:
+                        if scope.find_var(var) is None:
+                            skip = True
+                            break
+                    if skip:
+                        continue
+                    self._fleet_ptr.load_from_paddle_model(
+                        scope, table_id, var_names, model_path, model_proto_file,
+                        table_var_names, load_combine)
         self._role_maker._barrier_worker()
 
     def _set_opt_info(self, opt_info):
