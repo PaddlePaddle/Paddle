@@ -1,5 +1,6 @@
 #!/bin/bash
 unset https_proxy http_proxy
+export FLAGS_rpc_disable_reuse_port=1
 
 name=${TEST_TARGET_NAME}
 TEST_TIMEOUT=${TEST_TIMEOUT}
@@ -13,6 +14,7 @@ if [[ ${TEST_TIMEOUT}"x" == "x" ]]; then
     echo "can't find ${TEST_TIMEOUT}, please set ${TEST_TIMEOUT} first"
     exit 1
 fi
+
 
 # rm flag file
 rm -f ${name}_*.log
@@ -28,7 +30,9 @@ fi
 
 echo "${name} faild with ${exit_code}"
 
-netstat -an
+echo "after run ${name}"
+ps -aux
+netstat -anlp
 
 # paddle log
 echo "${name} log"

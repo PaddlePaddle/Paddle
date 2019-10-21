@@ -281,12 +281,15 @@ TEST(TensorFromDLPack, Tensor) {
     // Copy to GPUTensor
     gpu_tensor.Resize(paddle::framework::make_ddim({3, 3}));
     paddle::platform::CUDAPlace gpu_place;
-    paddle::platform::CUDADeviceContext gpu_ctx(gpu_place);
+    auto& gpu_ctx =
+        *paddle::platform::DeviceContextPool::Instance().GetByPlace(gpu_place);
     paddle::framework::TensorFromVector<int>(src_vec, gpu_ctx, &gpu_tensor);
+    gpu_ctx.Wait();
 
     paddle::framework::DLPackTensor dlpack_tensor(gpu_tensor, 1);
-
     paddle::framework::TensorFromDLPack(dlpack_tensor, &gpu_tensor_from_dlpack);
+    gpu_ctx.Wait();
+
     // Copy from GPU to CPU tensor for comparison
     paddle::framework::TensorCopy(gpu_tensor_from_dlpack, cpu_place, gpu_ctx,
                                   &dst_tensor);

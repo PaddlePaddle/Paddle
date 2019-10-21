@@ -373,8 +373,8 @@ def cuda_pinned_places(device_count=None):
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_count is None:
-        device_count = _cpu_num()
-    return [core.cuda_pinned_places()] * device_count
+        device_count = len(_cuda_ids())
+    return [core.CUDAPinnedPlace()] * device_count
 
 
 class NameScope(object):
@@ -1756,9 +1756,12 @@ class Operator(object):
                             elif isinstance(arg, Variable):
                                 in_arg_names.append(cpt.to_text(arg.name))
                             else:
-                                raise ValueError(
-                                    "not suprt args type , should be[ string_type, binary_type, Varibale]"
-                                )
+                                raise TypeError(
+                                    "The type of '%s' in operator %s should be "
+                                    "one of [basestring(), str, Varibale] in python2, "
+                                    "or one of [str, bytes, Variable] in python3."
+                                    "but received : " % (in_proto.name, type),
+                                    arg)
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])

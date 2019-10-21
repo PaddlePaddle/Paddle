@@ -248,6 +248,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["use_cvm"] = strategy.get("use_cvm", False)
         opt_info["stat_var_names"] = strategy.get("stat_var_names", [])
         opt_info["scale_datanorm"] = strategy.get("scale_datanorm", -1)
+        opt_info["check_nan_var_names"] = strategy.get("check_nan_var_names",
+                                                       [])
         opt_info["dump_slot"] = False
         opt_info["dump_converter"] = ""
         opt_info["dump_fields"] = strategy.get("dump_fields", [])

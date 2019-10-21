@@ -1251,7 +1251,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
             op_desc = _create_op_desc_("fill_constant",
                                        {"ShapeTensor": [target_shape.name]},
                                        {"Out": [grad_name]}, {
-                                           "shape": [],
+                                           "shape": target.shape,
                                            "value": 1.0,
                                            "dtype": target.dtype,
                                        })
