@@ -36,9 +36,7 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2
-DIST_UT_PORT = None
-if os.getenv("PADDLE_DIST_UT_PORT"):
-    DIST_UT_PORT = os.getenv("PADDLE_DIST_UT_PORT")
+DIST_UT_PORT = 0
 
 
 def print_to_out(out_losses):
@@ -514,10 +512,14 @@ class TestDistBase(unittest.TestCase):
         self._use_hallreduce = False
         self._setup_config()
 
+        global DIST_UT_PORT
+        if DIST_UT_PORT == 0 and os.getenv("PADDLE_DIST_UT_PORT"):
+            DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
+
         if DIST_UT_PORT:
             print("set begin_port:", DIST_UT_PORT)
 
-        if DIST_UT_PORT is None:
+        if DIST_UT_PORT == 0:
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
                 self._find_free_port(), self._find_free_port())
         else:
@@ -803,7 +805,9 @@ class TestDistBase(unittest.TestCase):
                            check_error_log, log_name):
         if self._use_hallreduce:
             self._ps_endpoints = ""
-            if DIST_UT_PORT is None:
+
+            global DIST_UT_PORT
+            if DIST_UT_PORT == 0:
                 for i in range(0, 4):
                     self._ps_endpoints += "127.0.0.1:%s," % (
                         self._find_free_port())
