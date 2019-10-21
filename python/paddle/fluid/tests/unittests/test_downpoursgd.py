@@ -33,6 +33,7 @@ import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
 
 class TestListenAndServOp(OpTest):
     """TestListenAndServOp."""
+
     def setUp(self):
         pass
 
@@ -83,9 +84,7 @@ class TestListenAndServOp(OpTest):
             opt_info["stat_var_names"] = []
             worker = DownpourWorker(None)
             worker.get_desc().CopyFrom(ps_param.trainer_param[0])
-            opt_info["program_id_to_worker"] = {
-                program_id: worker
-            }
+            opt_info["program_id_to_worker"] = {program_id: worker}
 
             main_program._fleet_opt = opt_info
             trainer = DistMultiTrainer()
@@ -145,9 +144,7 @@ class TestListenAndServOp(OpTest):
             opt_info["stat_var_names"] = []
             worker = DownpourWorker(None)
             worker.get_desc().CopyFrom(ps_param.trainer_param[0])
-            opt_info["program_id_to_worker"] = {
-                program_id: worker
-            }
+            opt_info["program_id_to_worker"] = {program_id: worker}
 
             main_program._fleet_opt = opt_info
             trainer = DistMultiTrainer()

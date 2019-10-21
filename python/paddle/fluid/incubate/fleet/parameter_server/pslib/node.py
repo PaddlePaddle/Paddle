@@ -418,8 +418,7 @@ class DownpourWorker(Worker):
                             "error" % table_id)
                 else:
                     raise ValueError(
-                        "dense table %s dense_variable_name error" %
-                        table_id)
+                        "dense table %s dense_variable_name error" % table_id)
 
         table = self._worker.dense_table.add()
         table.table_id = table_id
