@@ -50,7 +50,7 @@ class TestDistCTRWithL2Decay2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
         self._enforce_place = "CPU"
-        self._begin_port = begin_port + 2
+        self._begin_port = begin_port + 4
 
     def test_dist_ctr(self):
         need_envs = {"USE_L2_DECAY": "1"}
@@ -67,7 +67,7 @@ class TestDistCTR2x2_ASYNC(TestDistBase):
         self._sync_mode = False
         self._hogwild_mode = True
         self._enforce_place = "CPU"
-        self._begin_port = begin_port + 2
+        self._begin_port = begin_port + 8
 
     def test_dist_ctr(self):
         need_envs = {
@@ -89,7 +89,7 @@ class TestDistCTR2x2_ASYNCWithLRDecay2x2(TestDistBase):
         self._sync_mode = False
         self._hogwild_mode = True
         self._enforce_place = "CPU"
-        self._begin_port = begin_port + 2
+        self._begin_port = begin_port + 12
 
     def test_dist_ctr(self):
         need_envs = {
@@ -112,7 +112,7 @@ class TestDistCTR2x2_ASYNC2(TestDistBase):
         self._sync_mode = False
         self._hogwild_mode = True
         self._enforce_place = "CPU"
-        self._begin_port = begin_port + 2
+        self._begin_port = begin_port + 16
 
     def test_dist_ctr(self):
         need_envs = {
