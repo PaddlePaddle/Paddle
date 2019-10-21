@@ -50,8 +50,6 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     return vec_new_data;
   } else {
     PADDLE_THROW("The dtype of shape tensor must be int32 or int64.");
-    std::vector<int64_t> vec_new_data;
-    return vec_new_data;
   }
 }
 
