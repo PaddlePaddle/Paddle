@@ -37,52 +37,6 @@ class MomentumOpInferVarType : public framework::VarTypeInference {
   }
 };
 
-class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("Param",
-             "(Tensor, default Tensor<float>) "
-             "Input parameter that has to be updated");
-    AddInput("Grad",
-             "(Tensor, default Tensor<float>) "
-             "Input gradient of the parameter");
-    AddInput("Velocity",
-             "(Tensor, default Tensor<float>) "
-             "Input velocity (corresponding to the parameter) "
-             "that has to be updated");
-    AddInput("LearningRate",
-             "(Tensor, default Tensor<float>) "
-             "Input learning rate");
-
-    AddOutput("ParamOut",
-              "(Tensor) This output is updated parameter. "
-              "It shared memory with Input(Param).");
-    AddOutput("VelocityOut",
-              "(Tensor) This output is updated velocity. "
-              "It shared memory with Input(Velocity).");
-
-    AddAttr<float>("mu", "(float) Momentum coefficient");
-    AddAttr<bool>("use_nesterov",
-                  "(bool, default false) "
-                  "Use Nesterov Momentum")
-        .SetDefault(false);
-    AddComment(R"DOC(
-Momentum Optimizer.
-
-This optimizer has a flag for Nestrov Momentum.
-The update equations are as follows:
-
-$$
-velocity = mu * velocity + gradient \\
-if (use\_nesterov):   \\
-  param = param - (gradient + mu * velocity) * learning\_rate \\
-else:   \\
-  param = param - learning\_rate * velocity. \\
-$$
-
-)DOC");
-  }
-};
 }  // namespace operators
 }  // namespace paddle
 

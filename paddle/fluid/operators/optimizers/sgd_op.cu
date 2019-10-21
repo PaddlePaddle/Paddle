@@ -53,7 +53,8 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
 }  // namespace
 
 template <typename T>
-class SGDOpCUDAKernel : public framework::OpKernel<T> {
+class SGDOpKernel<platform::CUDADeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
@@ -123,6 +124,7 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(sgd, ops::SGDOpCUDAKernel<float>,
-                        ops::SGDOpCUDAKernel<double>,
-                        ops::SGDOpCUDAKernel<plat::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    sgd, ops::SGDOpKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SGDOpKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SGDOpKernel<paddle::platform::CUDADeviceContext, plat::float16>);
