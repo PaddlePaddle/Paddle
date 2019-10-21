@@ -320,7 +320,7 @@ PYBIND11_MODULE(core_noavx, m) {
       auto dtype = load_tensor.second->type();
       std::vector<size_t> shape(dims.size());
 
-      for (int i = dims.size() - 1; i >= 0; i--) {
+      for (int i = 0; i < dims.size(); i++) {
         shape[i] = dims[i];
       }
 
