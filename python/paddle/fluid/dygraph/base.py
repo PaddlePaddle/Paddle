@@ -45,21 +45,12 @@ def _switch_tracer_mode_guard_(is_train=True):
         yield
 
 
-def _dygraph_not_support_(func):
-    def __impl__(*args, **kwargs):
-        assert not framework.in_dygraph_mode(
-        ), "We don't support %s in Dygraph mode" % func.__name__
-        return func(*args, **kwargs)
-
-    return __impl__
-
-
 def _no_grad_(func):
     """
     This Decorator will avoid the func being decorated creating backward network in dygraph mode
 
-    Args:
-        func: the func don't need grad
+    Parameter:
+        - **func** (python func): the func don't need grad
 
     Examples:
 
@@ -92,16 +83,16 @@ def _no_grad_(func):
 no_grad = wrap_decorator(_no_grad_)
 # for fluidDoc
 no_grad.__doc__ = _no_grad_.__doc__
-_not_support = wrap_decorator(_dygraph_not_support_)
 
 
 @signature_safe_contextmanager
 def guard(place=None):
     """
-    This context will create a dygraph context for dygraph to run
+    This context will create a dygraph context for dygraph to run, using python ``with`` statement.
 
-    Args:
-        place(fluid.CPUPlace|fluid.CUDAPlace|None): Place to run
+    Parameters:
+        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph. 
+            If None, the running place will be determined according to the way of paddle compilation. Default: None
 
     return:
         None
@@ -157,17 +148,18 @@ def _print_debug_msg(limit=5, is_test=False):
         return unique_name_size, tracer_var_size, alive_cpp_var_size
 
 
+@framework.dygraph_only
 def to_variable(value, block=None, name=None):
     """
-    This function will create a variable from ndarray
+    The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 
-    Args:
-        value(ndarray): the numpy value need to be convert
-        block(fluid.Block|None): which block this variable will be in
-        name(str|None): Name of Variable
+    Parameters:
+        value(ndarray): The numpy\.ndarray object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
+        block(fluid.Block, optional): Which block this variable will be in. Default: None.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
-    return:
-        Variable: The variable created from given numpy
+    Returns:
+        Variable: ``Tensor`` created from the specified numpy\.ndarray object, data type and shape is the same as ``value`` .
 
     Examples:
 

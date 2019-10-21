@@ -48,7 +48,7 @@ class TestPRROIPoolOp(OpTest):
         self.x_dim = [self.batch_size, self.channels, self.height, self.width]
 
         self.spatial_scale = 1.0 / 4.0
-        self.output_channels = 3
+        self.output_channels = self.channels
         self.pooled_height = 2
         self.pooled_width = 2
 
@@ -60,15 +60,15 @@ class TestPRROIPoolOp(OpTest):
         for bno in range(self.batch_size):
             self.rois_lod[0].append(bno + 1)
             for i in range(bno + 1):
-                x1 = np.random.random_integers(
+                x1 = np.random.uniform(
                     0, self.width // self.spatial_scale - self.pooled_width)
-                y1 = np.random.random_integers(
+                y1 = np.random.uniform(
                     0, self.height // self.spatial_scale - self.pooled_height)
 
-                x2 = np.random.random_integers(x1 + self.pooled_width,
-                                               self.width // self.spatial_scale)
-                y2 = np.random.random_integers(
-                    y1 + self.pooled_height, self.height // self.spatial_scale)
+                x2 = np.random.uniform(x1 + self.pooled_width,
+                                       self.width // self.spatial_scale)
+                y2 = np.random.uniform(y1 + self.pooled_height,
+                                       self.height // self.spatial_scale)
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
         self.rois_num = len(rois)
@@ -93,8 +93,7 @@ class TestPRROIPoolOp(OpTest):
                 dtype="float32")
             rois = fluid.layers.data(
                 name="ROIs", shape=[4], dtype="float32", lod_level=1)
-            output = fluid.layers.prroi_pool(x, rois, self.output_channels,
-                                             0.25, 2, 2)
+            output = fluid.layers.prroi_pool(x, rois, 0.25, 2, 2)
             loss = fluid.layers.mean(output)
             optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
             optimizer.minimize(loss)
@@ -120,18 +119,15 @@ class TestPRROIPoolOp(OpTest):
                 name="x", shape=[245, 30, 30], dtype="float32")
             rois = fluid.layers.data(
                 name="rois", shape=[4], dtype="float32", lod_level=1)
-            # channel must be int type
-            self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 0.5,
-                              0.25, 7, 7)
             # spatial_scale must be float type
-            self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 5, 2,
-                              7, 7)
+            self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 2, 7,
+                              7)
             # pooled_height must be int type
-            self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 5,
-                              0.25, 0.7, 7)
+            self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 0.25,
+                              0.7, 7)
             # pooled_width must be int type
-            self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 5,
-                              0.25, 7, 0.7)
+            self.assertRaises(TypeError, fluid.layers.prroi_pool, x, rois, 0.25,
+                              7, 0.7)
 
 
 if __name__ == '__main__':

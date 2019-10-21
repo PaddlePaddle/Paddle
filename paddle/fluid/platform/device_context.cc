@@ -18,10 +18,38 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/rw_lock.h"
+#include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
 #include "glog/logging.h"
+
+namespace paddle {
+namespace memory {
+
+AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
+  auto place = dev_ctx.GetPlace();
+#ifdef PADDLE_WITH_CUDA
+  if (size == 0 || !platform::is_gpu_place(place)) {
+    return Alloc(place, size);
+  }
+  auto* default_dev_ctx = static_cast<platform::CUDADeviceContext*>(
+      platform::DeviceContextPool::Instance().Get(place));
+  auto& desired_dev_ctx =
+      static_cast<const platform::CUDADeviceContext&>(dev_ctx);
+  if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
+    return Alloc(place, size);
+  } else {
+    return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
+        desired_dev_ctx, size);
+  }
+#else
+  return Alloc(place, size);
+#endif
+}
+
+}  // namespace memory
+}  // namespace paddle
 
 namespace paddle {
 namespace platform {
@@ -173,6 +201,15 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   mutable std::mutex mtx_;  // to protect allocations_
   mutable std::unordered_map<void*, memory::AllocationPtr> allocations_;
 };
+
+void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
+  if (required_workspace_bytes <= WorkspaceSize()) {
+    return;
+  }
+  // reset allocation first before re-allocate to save memory
+  allocation_.reset();
+  allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
+}
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   CUDADeviceGuard guard(place_.device);

@@ -41,7 +41,8 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   };
 
   SubGraphFuser fuser(graph, teller,
-                      Get<int>("min_subgraph_size") /*min subgraph size*/);
+                      Get<int>("min_subgraph_size") /*min subgraph size*/,
+                      "tensorrt_engine");
   fuser();
 
   std::vector<std::string> graph_param_names =
@@ -200,13 +201,12 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
 
   op_desc->SetBlockAttr("sub_block", new_block);
-  SetAttr(op_desc->Proto(), "subgraph",
-          block_desc.Proto()->SerializeAsString());
-  SetAttr(op_desc->Proto(), "max_batch_size", Get<int>("max_batch_size"));
-  SetAttr(op_desc->Proto(), "workspace_size", Get<int>("workspace_size"));
-  SetAttr(op_desc->Proto(), "gpu_id", Get<int>("gpu_device_id"));
-  SetAttr(op_desc->Proto(), "output_name_mapping", output_mapping);
-  SetAttr(op_desc->Proto(), "parameters", params);
+  op_desc->SetAttr("subgraph", block_desc.Proto()->SerializeAsString());
+  op_desc->SetAttr("max_batch_size", Get<int>("max_batch_size"));
+  op_desc->SetAttr("workspace_size", Get<int>("workspace_size"));
+  op_desc->SetAttr("gpu_id", Get<int>("gpu_device_id"));
+  op_desc->SetAttr("output_name_mapping", output_mapping);
+  op_desc->SetAttr("parameters", params);
 
   // we record all inputs' shapes in attr to check if they are consistent
   // with the real inputs' shapes retrieved from scope when trt runs.
@@ -232,16 +232,16 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     calibration_data = GetTrtCalibTableData(
         Get<std::string>("model_opt_cache_dir"), engine_key, enable_int8);
   }
-  SetAttr(op_desc->Proto(), "calibration_data", calibration_data);
+  op_desc->SetAttr("calibration_data", calibration_data);
+  op_desc->SetAttr("enable_int8", enable_int8);
+  op_desc->SetAttr("enable_fp16", enable_fp16);
+  op_desc->SetAttr("use_calib_mode", use_calib_mode);
+  op_desc->SetAttr("engine_key", engine_key);
+  op_desc->SetAttr("predictor_id", predictor_id);
 
-  SetAttr(op_desc->Proto(), "enable_int8", enable_int8);
-  SetAttr(op_desc->Proto(), "enable_fp16", enable_fp16);
-  SetAttr(op_desc->Proto(), "use_calib_mode", use_calib_mode);
-  SetAttr(op_desc->Proto(), "engine_key", engine_key);
-  SetAttr(op_desc->Proto(), "predictor_id", predictor_id);
   std::string trt_engine_serialized_data = "";
-  SetAttr(op_desc->Proto(), "engine_serialized_data",
-          trt_engine_serialized_data);
+  op_desc->SetAttr("engine_serialized_data", trt_engine_serialized_data);
+  op_desc->Flush();
 
   std::unique_ptr<tensorrt::TRTInt8Calibrator> calibrator;
   if (enable_int8 && calibration_data.size() != 0) {

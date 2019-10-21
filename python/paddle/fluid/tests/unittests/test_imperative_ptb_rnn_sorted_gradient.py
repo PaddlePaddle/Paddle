@@ -84,6 +84,10 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                     for param in ptb_model.parameters():
                         dy_param_updated[param.name] = param.numpy()
 
+            dy_loss_value = dy_loss.numpy()
+            dy_last_cell_value = last_cell.numpy()
+            dy_last_hidden_value = last_hidden.numpy()
+
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -150,11 +154,11 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     3]] = out[k]
 
-        self.assertTrue(np.array_equal(static_loss_value, dy_loss.numpy()))
+        self.assertTrue(np.array_equal(static_loss_value, dy_loss_value))
         self.assertTrue(
-            np.array_equal(static_last_cell_value, last_cell.numpy()))
+            np.array_equal(static_last_cell_value, dy_last_cell_value))
         self.assertTrue(
-            np.array_equal(static_last_hidden_value, last_hidden.numpy()))
+            np.array_equal(static_last_hidden_value, dy_last_hidden_value))
         for key, value in six.iteritems(static_param_init):
             self.assertTrue(np.array_equal(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):

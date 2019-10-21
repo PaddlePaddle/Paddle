@@ -43,3 +43,7 @@ class TestNameScope(unittest.TestCase):
                 self.assertEqual(op.desc.attr("op_namescope"), '/s4/')
             elif op.type == 'pow':
                 self.assertEqual(op.desc.attr("op_namescope"), '/s1_1/')
+
+
+if __name__ == "__main__":
+    unittest.main()

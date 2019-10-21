@@ -15,6 +15,7 @@
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import unittest
+
 from test_imperative_base import new_program_scope
 
 
@@ -30,7 +31,7 @@ class TestTracerMode(unittest.TestCase):
         self.assertEqual(self.tracer._train_mode, False)
         return a
 
-    @fluid.dygraph.base._not_support
+    @framework.dygraph_not_support
     def not_support_func(self):
         return True
 

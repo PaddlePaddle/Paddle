@@ -38,6 +38,15 @@ class ElementwisePowOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Pow"; }
   std::string GetEquation() const override { return "Out = X ^ Y"; }
+
+  void AddInputX() override { AddInput("X", "(Variable), The Base."); }
+
+  void AddInputY() override { AddInput("Y", "(Variable), The exponents."); }
+
+  std::string GetOpFuntionality() const override {
+    return "First tensor elements raised to powers from the second tensor, "
+           "element-wise.";
+  }
 };
 }  // namespace operators
 }  // namespace paddle

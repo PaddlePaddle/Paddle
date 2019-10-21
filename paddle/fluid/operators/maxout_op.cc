@@ -25,11 +25,13 @@ class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "X",
-        "(Tensor) The input tensor of maxout operator. "
-        "The format of input tensor is NCHW. Where N is batch size, C is the "
-        "number of channels, H and W is the height and width of feature.");
+        "(Tensor) The input tensor of maxout operator with data type of "
+        "float32. The format of input tensor is NCHW. Where N is batch size,"
+        " C is the number of channels, H and W is the height and width of "
+        "feature.");
     AddOutput("Out",
               "(Tensor) The output tensor of maxout operator."
+              "The data type is float32."
               "The format of output tensor is also NCHW."
               "Where N is batch size, C is "
               "the number of channels, H and W is the height and "

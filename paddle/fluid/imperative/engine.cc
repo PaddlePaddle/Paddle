@@ -44,8 +44,9 @@ void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
   const std::vector<OpBase*> ops = var->GradVarBase()->GradOps();
   var->ClearGradOps();
 
-  if (ops.empty()) {
-    VLOG(3) << "Skip auto grad since there is no grad op for var: "
+  if (ops.empty() || var->OverridedStopGradient()) {
+    VLOG(3) << "Skip auto grad since there is no grad op for var or loss is "
+               "stop_gradient=True: "
             << var->Name();
     return;
   } else {
