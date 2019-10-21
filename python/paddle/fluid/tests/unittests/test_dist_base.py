@@ -516,13 +516,11 @@ class TestDistBase(unittest.TestCase):
         if DIST_UT_PORT == 0 and os.getenv("PADDLE_DIST_UT_PORT"):
             DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
-        if DIST_UT_PORT:
-            print("set begin_port:", DIST_UT_PORT)
-
         if DIST_UT_PORT == 0:
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
                 self._find_free_port(), self._find_free_port())
         else:
+            print("set begin_port:", DIST_UT_PORT)
             self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
                 DIST_UT_PORT, DIST_UT_PORT + 1)
             DIST_UT_PORT += 2
