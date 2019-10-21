@@ -84,6 +84,20 @@ def __get_prefetch_op_tuples(main_program):
     return prefetch_op_tuples
 
 
+def convert_program_from_dense_to_sparse(dirname, embedding):
+    load_dirname = os.path.normpath(dirname)
+    if not os.path.isdir(load_dirname):
+        raise ValueError("There is no directory named '%s'", dirname)
+
+    model_filename = "__model__"
+    model_filename = os.path.join(load_dirname, model_filename)
+
+    with open(model_filename, "rb") as f:
+        program_desc_str = f.read()
+
+    program = Program.parse_from_string(program_desc_str)
+
+
 def convert_selected_rows_to_plain(executor, param_path, output_path):
     program = Program()
     block = program.global_block()
