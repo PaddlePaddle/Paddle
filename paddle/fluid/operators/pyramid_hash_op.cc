@@ -323,7 +323,7 @@ class PyramidHashOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true, "Input(W) should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("DropPos"), true,
                       "Input(DropPos) should not be null.");
-    PADDLE_ENFORCE_ER(
+    PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")), true,
         "Input(Out@GRAD) of PyramidHashGradOp should not be null.");
   }
