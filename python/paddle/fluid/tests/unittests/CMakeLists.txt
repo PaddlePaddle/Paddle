@@ -71,6 +71,7 @@ endif()
 if(NOT WITH_MKL)
   list(REMOVE_ITEM TEST_OPS test_match_matrix_tensor_op)
   list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
+  list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
 endif(NOT WITH_MKL)
 
 if(WITH_GPU OR NOT WITH_MKLML)

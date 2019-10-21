@@ -80,11 +80,12 @@ class PyramidHashOP : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "X(Input) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("W"), "W(Input) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Out(Output) should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("DropPos"),
-                   "DropPos(TMP Output) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "X(Input) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true, "W(Input) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Out(Output) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("DropPos"), true,
+                      "DropPos(TMP Output) should not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, "The rank of X(Input) should be 2.");
@@ -105,8 +106,8 @@ class PyramidHashOP : public framework::OperatorWithKernel {
 
     int white_list_len = ctx->Attrs().Get<int>("white_list_len");
     if (white_list_len > 0) {
-      PADDLE_ENFORCE(
-          ctx->HasInput("WhiteList"),
+      PADDLE_ENFORCE_EQ(
+          ctx->HasInput("WhiteList"), true,
           "WhiteList(Input) should not be null when white_list_len > 0");
       auto wl_dims = ctx->GetInputDim("WhiteList");
       PADDLE_ENFORCE_EQ(wl_dims.size(), 2, "WhiteList should be 2-D tensor");
@@ -117,8 +118,8 @@ class PyramidHashOP : public framework::OperatorWithKernel {
 
     int black_list_len = ctx->Attrs().Get<int>("black_list_len");
     if (black_list_len > 0) {
-      PADDLE_ENFORCE(
-          ctx->HasInput("BlackList"),
+      PADDLE_ENFORCE_EQ(
+          ctx->HasInput("BlackList"), true,
           "BlackList(Input) should not be null when black_list_len > 0");
       auto bl_dims = ctx->GetInputDim("BlackList");
       PADDLE_ENFORCE_EQ(bl_dims.size(), 2, "BlackList should be 2-D tensor");
@@ -318,12 +319,13 @@ class PyramidHashOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("DropPos"),
-                   "Input(DropPos) should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) of PyramidHashGradOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true, "Input(W) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("DropPos"), true,
+                      "Input(DropPos) should not be null.");
+    PADDLE_ENFORCE_ER(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        "Input(Out@GRAD) of PyramidHashGradOp should not be null.");
   }
 
  protected:
