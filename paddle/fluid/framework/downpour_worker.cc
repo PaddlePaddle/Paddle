@@ -826,16 +826,16 @@ void DownpourWorker::TrainFiles() {
         }
         writer_ << ars[i];
       }
-    }
-    if (need_dump_param_ && thread_id_ == 0) {
-      DumpParam();
+      if (need_dump_param_ && thread_id_ == 0) {
+        DumpParam();
+      }
     }
 
     PrintFetchVars();
     thread_scope_->DropKids();
     ++batch_cnt;
   }
-  if (need_dump_field_ || need_dump_param_) {
+  if (need_dump_field_) {
     writer_.Flush();
   }
 }
