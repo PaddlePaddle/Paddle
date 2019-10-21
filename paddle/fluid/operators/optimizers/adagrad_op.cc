@@ -147,7 +147,37 @@ struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
                   const framework::SelectedRows& grad,
                   const framework::Tensor& learning_rate, T epsilon,
                   framework::SelectedRows* moment,
-                  framework::SelectedRows* param) {}
+                  framework::SelectedRows* param) {
+    // 1. g_m.rows = set(g.rows)
+    auto grad_width = grad.value().dims()[1];
+    math::scatter::MergeAdd<platform::CPUDeviceContext, T> merge_func;
+    auto grad_merge = merge_func(context, grad);
+    auto& merge_rows = grad_merge.rows();
+    auto* grad_merge_data = grad_merge.mutable_value()->template data<T>();
+
+    // 2. m += g_m * g_m
+    auto grad_square =
+        SquareSelectedRows<platform::CPUDeviceContext, T>(context, grad_merge);
+
+    math::SelectedRowsAdd<platform::CPUDeviceContext, T> functor;
+    functor(context, grad_square, *moment, moment);
+
+    // 3. update parameter
+    auto* lr = learning_rate.data<T>();
+
+    auto* param_data = param->mutable_value()->data<T>();
+    auto* moment_data = moment->mutable_value()->data<T>();
+
+    for (size_t i = 0; i < merge_rows.size(); i++) {
+      for (int64_t j = 0; j < grad_width; j++) {
+        auto param_val_idx = param->Index(merge_rows[i]);
+        auto moment_val_idx = moment->AutoGrownIndex(merge_rows[i], true);
+        param_data[merge_rows[i] * grad_width + j] -=
+            lr[0] * grad_merge_data[i * grad_width + j] /
+            (std::sqrt(moment_data[merge_rows[i] * grad_width + j]) + epsilon);
+      }
+    }
+  }
 };
 
 template struct SparseAdagradFunctor<platform::CPUDeviceContext, float>;
