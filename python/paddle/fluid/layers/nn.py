@@ -6675,8 +6675,8 @@ def split(input, num_or_sections, dim=-1, name=None):
             is a list of integers, the length of list indicates the number of
             sub-Tensors and the integers indicate the sizes of sub-Tensors'
             :attr:`dim` dimension orderly. The the length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
-        dim (int): The dimension along which to split. If :math:`dim < 0`, the
-            dimension to split along is :math:`rank(input) + dim`.
+        dim (int32|Varible, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``.The dimension along which to split. If :math:`dim < 0`, the
+            dimension to split along is :math:`rank(input) + dim`. Default is -1.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
@@ -6701,30 +6701,40 @@ def split(input, num_or_sections, dim=-1, name=None):
             # x1.shape [-1, 3, 3, 5]
             # x2.shape [-1, 3, 4, 5]
     """
+    if not isinstance(dim, (int, Variable)):
+        raise TypeError(
+            "The type of 'dim' in split must be int or Variable, but "
+            "received %s." % (type(dim)))
+
     helper = LayerHelper('split', **locals())
     input_shape = input.shape
-    dim = (len(input_shape) + dim) if dim < 0 else dim
+    inputs = {'X': input}
+    attrs = {
+        'num': num_or_sections if isinstance(num_or_sections, int) else 0,
+        'sections': num_or_sections
+        if isinstance(num_or_sections, list) else [],
+    }
+    if isinstance(dim, Variable):
+        dim.stop_gradient = True
+        inputs['AxisTensor'] = dim
+    else:
+        dim = (len(input_shape) + dim) if dim < 0 else dim
+        attrs['axis'] = dim
+
     if isinstance(num_or_sections, int):
         assert num_or_sections > 1, 'num_or_sections must be more than 1.'
         num = num_or_sections
     else:
-        assert len(num_or_sections) <= input_shape[
-            dim], 'len(num_or_sections) must not be more than input.shape[dim].'
+        if isinstance(dim, int) and input_shape[dim] > 0:
+            assert len(num_or_sections) <= input_shape[
+                dim], 'len(num_or_sections) must not be more than input.shape[dim].'
         num = len(num_or_sections)
     outs = [
         helper.create_variable_for_type_inference(dtype=helper.input_dtype())
         for i in range(num)
     ]
     helper.append_op(
-        type='split',
-        inputs={'X': input},
-        outputs={'Out': outs},
-        attrs={
-            'num': num_or_sections if isinstance(num_or_sections, int) else 0,
-            'sections': num_or_sections
-            if isinstance(num_or_sections, list) else [],
-            'axis': dim
-        })
+        type='split', inputs=inputs, outputs={'Out': outs}, attrs=attrs)
     return outs
 
 

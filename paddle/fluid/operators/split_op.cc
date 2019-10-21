@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/split_op.h"
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -23,8 +24,8 @@ class SplitOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SplitOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of SplitOp should not be null.");
     PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
                       "Outputs(Out) of SplitOp should not be empty.");
     auto in_dims = ctx->GetInputDim("X");
@@ -34,38 +35,23 @@ class SplitOp : public framework::OperatorWithKernel {
     std::vector<int> sections = static_cast<std::vector<int>>(
         ctx->Attrs().Get<std::vector<int>>("sections"));
     const size_t outs_number = outs_names.size();
-    std::vector<framework::DDim> outs_dims;
-    outs_dims.reserve(outs_number);
 
-    if (num > 0) {
-      int64_t in_axis_dim = in_dims[axis];
-      if (ctx->IsRuntime() || in_axis_dim > 0) {
-        PADDLE_ENFORCE_EQ(in_axis_dim % num, 0,
-                          "tensor split does not result"
-                          " in an equal division");
-        size_t out_axis_dim = in_axis_dim / num;
-        for (size_t i = 0; i < outs_number; ++i) {
-          auto dim = in_dims;
-          dim[axis] = out_axis_dim;
-          outs_dims.push_back(dim);
-        }
-      } else {
-        for (size_t i = 0; i < outs_number; ++i) {
-          auto dim = in_dims;
-          dim[axis] = -1;
-          outs_dims.push_back(dim);
-        }
-      }
-    } else if (sections.size() > 0) {
+    if (sections.size() > 0) {
       PADDLE_ENFORCE_EQ(sections.size(), outs_number,
                         "tensor split sections size"
                         "should be equal to output size.");
-      for (size_t i = 0; i < outs_number; ++i) {
-        auto dim = in_dims;
-        dim[axis] = sections[i];
-        outs_dims.push_back(dim);
-      }
     }
+
+    std::vector<framework::DDim> outs_dims(outs_number, in_dims);
+    if (ctx->HasInput("AxisTensor")) {
+      ctx->SetOutputsDim("Out", outs_dims);
+      for (size_t i = 0; i < outs_number; ++i) {
+        ctx->ShareLoD("X", "Out", 0, i);
+      }
+      return;
+    }
+    outs_dims = UpdateOutsDims(ctx->IsRuntime(), in_dims, num, sections, axis,
+                               outs_number);
     ctx->SetOutputsDim("Out", outs_dims);
     if (axis != 0) {
       // Only pass LoD when not spliting along the first dim.
@@ -74,12 +60,34 @@ class SplitOp : public framework::OperatorWithKernel {
       }
     }
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
+                                   ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "AxisTensor") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) Input tensor of the split operator.");
+    AddInput("AxisTensor",
+             "(Tensor) The axis which the input will be splited on. "
+             "It has higher priority than Attr(axis). "
+             "The shape of AxisTensor must be [1]")
+        .AsDispensable();
     AddOutput("Out", "(Tensor) Output tensors of the split operator.")
         .AsDuplicable();
     AddComment(R"DOC(

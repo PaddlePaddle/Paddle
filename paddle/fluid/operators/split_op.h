@@ -15,21 +15,68 @@ limitations under the License. */
 #pragma once
 
 #include <chrono>  // NOLINT
+#include <memory>
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
+static inline std::vector<framework::DDim> UpdateOutsDims(
+    const bool is_runtime, const framework::DDim in_dims, const size_t num,
+    const std::vector<int>& sections, const size_t axis,
+    const int outs_number) {
+  std::vector<framework::DDim> outs_dims(outs_number, in_dims);
+  if (num > 0) {
+    int64_t in_axis_dim = in_dims[axis];
+    if (is_runtime || in_axis_dim > 0) {
+      PADDLE_ENFORCE_EQ(in_axis_dim % num, 0,
+                        "tensor split does not result"
+                        " in an equal division");
+      size_t out_axis_dim = in_axis_dim / num;
 
+      for (auto& out_dim : outs_dims) {
+        out_dim[axis] = out_axis_dim;
+      }
+    } else {
+      for (auto& out_dim : outs_dims) {
+        out_dim[axis] = -1;
+      }
+    }
+  } else if (sections.size() > 0) {
+    for (size_t i = 0; i < outs_number; ++i) {
+      outs_dims[i][axis] = sections[i];
+    }
+  }
+
+  return outs_dims;
+}
 template <typename DeviceContext, typename T>
 class SplitOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in = ctx.Input<framework::Tensor>("X");
     auto outs = ctx.MultiOutput<framework::Tensor>("Out");
+    int num = ctx.Attr<int>("num");
+    std::vector<int> sections = ctx.Attr<std::vector<int>>("sections");
     int axis = ctx.Attr<int>("axis");
+
+    auto in_dims = in->dims();
+    auto outs_number = outs.size();
+
+    if (ctx.HasInput("AxisTensor")) {
+      std::vector<framework::DDim> outs_dims(outs_number, in_dims);
+      axis = GetDataFromTensor<int>(ctx, "AxisTensor");
+      outs_dims =
+          UpdateOutsDims(true, in_dims, num, sections, axis, outs_number);
+
+      for (size_t j = 0; j < outs.size(); ++j) {
+        outs[j]->Resize(outs_dims[j]);
+      }
+    }
     auto place = ctx.GetPlace();
 
     std::vector<const framework::Tensor*> shape_refer;
@@ -58,6 +105,7 @@ class SplitGradMaker : public framework::SingleGradOpDescMaker {
     auto op = new framework::OpDesc();
     op->SetType("concat");
     op->SetInput("X", OutputGrad("Out"));
+    op->SetInput("AxisTensor", Input("AxisTensor"));
     op->SetOutput("Out", InputGrad("X"));
     op->SetAttrMap(Attrs());
     return std::unique_ptr<framework::OpDesc>(op);
