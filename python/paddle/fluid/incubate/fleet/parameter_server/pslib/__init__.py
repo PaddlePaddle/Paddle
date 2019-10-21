@@ -27,6 +27,7 @@ from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 
 class PSLib(Fleet):
     """PSLib class."""
+
     def __init__(self):
         super(PSLib, self).__init__(Mode.PSLIB)
         self._opt_info = None

@@ -340,8 +340,8 @@ class DownpourWorker(Worker):
                     and target_names[:len_k] == key_names):
                     pass
                 else:
-                    raise ValueError("sparse table %s slot_key error"
-                                     % table_id)
+                    raise ValueError("sparse table %s slot_key error" %
+                                     table_id)
 
                 value_names = [var.name for var in slot_value_vars]
                 len_v = len(value_names)
@@ -407,17 +407,19 @@ class DownpourWorker(Worker):
                 desc_dense_param_name.sort()
 
                 if dense_param_name == desc_dense_param_name:
-                    desc_dense_grad_name = list(table.dense_gradient_variable_name)
+                    desc_dense_grad_name = list(
+                        table.dense_gradient_variable_name)
                     desc_dense_grad_name.sort()
                     if dense_grad_name == desc_dense_grad_name:
                         return
                     else:
                         raise ValueError(
-                            "dense table %s dense_gradient_variable_name error"
-                            % table_id)
+                            "dense table %s dense_gradient_variable_name "
+                            "error" % table_id)
                 else:
                     raise ValueError(
-                        "dense table %s dense_variable_name error" % table_id)
+                        "dense table %s dense_variable_name error" %
+                        table_id)
 
         table = self._worker.dense_table.add()
         table.table_id = table_id

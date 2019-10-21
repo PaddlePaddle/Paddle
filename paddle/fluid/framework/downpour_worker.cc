@@ -44,6 +44,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
       sparse_grad_names_[table_id][j] = table.sparse_grad_name(j);
     }
     label_var_name_[table_id] = table.label_var_name();
+    sparse_push_keys_[table_id] = std::vector<uint64_t>();
   }
 
   for (int i = 0; i < param_.dense_table_size(); ++i) {
@@ -496,7 +497,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_);
+            dump_slot_, &sparse_push_keys_[tid]);
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
@@ -683,7 +684,7 @@ void DownpourWorker::TrainFiles() {
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_);
+            dump_slot_, &sparse_push_keys_[tid]);
       }
     }
 

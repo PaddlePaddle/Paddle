@@ -324,7 +324,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     const std::vector<std::string>& sparse_grad_names, const int emb_dim,
     std::vector<std::vector<float>>* push_values,
     std::vector<::std::future<int32_t>>* push_sparse_status,
-    const int batch_size, const bool use_cvm, const bool dump_slot) {
+    const int batch_size, const bool use_cvm, const bool dump_slot,
+    std::vector<uint64_t>* sparse_push_keys) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
   int slot_offset = 0;
@@ -342,6 +343,8 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   }
   CHECK_GE(grad_dim, 0);
 
+  sparse_push_keys->clear();
+  sparse_push_keys->reserve(fea_keys.size() + 1);
   push_values->resize(fea_keys.size() + 1);
   for (auto& t : *push_values) {
     t.resize(emb_dim + offset + slot_offset);
@@ -387,6 +390,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
         g += emb_dim;
         continue;
       }
+      sparse_push_keys->push_back(ids[id_idx]);
       CHECK(fea_idx < (*push_values).size());
       CHECK(fea_idx < fea_labels.size());
 
@@ -432,15 +436,18 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   CHECK(fea_idx + no_grad_fea_num == fea_keys.size())
       << "fea_idx: " << fea_idx << " no_grad_fea_num: " << no_grad_fea_num
       << " features size: " << fea_keys.size();
+  CHECK(fea_idx == sparse_push_keys->size());
+  if (fea_idx == 0) {
+    return;
+  }
   std::vector<float*> push_g_vec;
-  for (auto i = 0u; i < fea_keys.size(); ++i) {
+  for (auto i = 0u; i < sparse_push_keys->size(); ++i) {
     push_g_vec.push_back((*push_values)[i].data());
   }
   auto status = pslib_ptr_->_worker_ptr->push_sparse(
-      table_id, fea_keys.data(), (const float**)push_g_vec.data(),
-      fea_keys.size());
+      table_id, sparse_push_keys->data(), (const float**)push_g_vec.data(),
+      sparse_push_keys->size());
   push_sparse_status->push_back(std::move(status));
-
 #endif
 }
 
