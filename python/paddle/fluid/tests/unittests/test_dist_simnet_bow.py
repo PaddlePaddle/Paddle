@@ -109,7 +109,7 @@ class TestDistSimnetBow2x2LookupTableSync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
         self._enforce_place = "CPU"
-        self._begin_port = begin_port + 24
+        self._begin_port = begin_port + 16
 
     def test_simnet_bow(self):
         need_envs = {
@@ -129,7 +129,7 @@ class TestDistSimnetBow2x2LookupTableAsync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
         self._enforce_place = "CPU"
-        self._begin_port = begin_port + 28
+        self._begin_port = begin_port + 20
 
     def test_simnet_bow(self):
         need_envs = {
@@ -149,7 +149,7 @@ class TestDistSimnetBow2x2LookupTableNotContainLRSync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
         self._enforce_place = "CPU"
-        self._begin_port = begin_port + 32
+        self._begin_port = begin_port + 24
 
     def test_simnet_bow(self):
         need_envs = {
