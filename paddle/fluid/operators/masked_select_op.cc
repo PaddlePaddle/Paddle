@@ -36,18 +36,17 @@ class MaskedSelectOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE(input_dims[i] == mask_dims[i],
                      "The input shape and the mask shape must be equal.");
     }
-    
+
     std::vector<int64_t> out_dims(1);
-    //out_dims[0] = input_dims[0];
-    //out_dims[1] = 1;
-    out_dims[0] = -1;
+    out_dims[0] = 1;
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
   }
+
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("input"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return framework::OpKernelType(
+        ctx.Input<framework::Tensor>("input")->type(), ctx.device_context());
   }
 };
 
@@ -80,8 +79,9 @@ class MaskedSelectGradMaker : public framework::SingleGradOpDescMaker {
     auto* op = new framework::OpDesc();
     op->SetType("masked_select_grad");
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("mask", Input("mask"));
     op->SetOutput(framework::GradVarName("input"), InputGrad("input"));
-    op->SetOutput(framework::GradVarName("mask"), InputGrad("mask"));
+    // op->SetOutput(framework::GradVarName("mask"), InputGrad("mask"));
 
     return std::unique_ptr<framework::OpDesc>(op);
   }
@@ -96,21 +96,18 @@ class MaskedSelectGradOp : public framework::OperatorWithKernel {
                    "Input(Out@Grad) should not be null");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("input")),
                    "Output(input@Grad) should not be null");
-    //PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("mask")),
-    //               "Output(mask@Grad) should not be null");
 
-    auto do_dims = ctx->GetInputDim(framework::GradVarName("Out"));
+    auto mask_dims = ctx->GetInputDim("mask");
 
-    // check dim??
-
-    ctx->SetOutputDim(framework::GradVarName("input"), do_dims);
-    //ctx->SetOutputDim(framework::GradVarName("mask"), do_dims);
+    ctx->SetOutputDim(framework::GradVarName("input"), mask_dims);
   }
+
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("input"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return framework::OpKernelType(
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.device_context());
   }
 };
 
