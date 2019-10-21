@@ -142,6 +142,12 @@ struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
       }
     }
   }
+
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::SelectedRows& grad,
+                  const framework::Tensor& learning_rate, T epsilon,
+                  framework::SelectedRows* moment,
+                  framework::SelectedRows* param) {}
 };
 
 template struct SparseAdagradFunctor<platform::CPUDeviceContext, float>;

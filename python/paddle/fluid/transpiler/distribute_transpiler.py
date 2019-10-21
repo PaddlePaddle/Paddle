@@ -1351,7 +1351,10 @@ class DistributeTranspiler(object):
             # do not append startup op if var is not on this pserver
             op_on_pserver = False
             # TODO(gongwb): remove this line.
-            if op.type not in ["recv", "fetch_barrier", "concat", "merge_sparse_lookup_table"]:
+            if op.type not in [
+                    "recv", "fetch_barrier", "concat",
+                    "merge_sparse_lookup_table"
+            ]:
                 for key in op.output_names:
                     newname, _ = _get_splited_name_and_shape(op.output(key)[0])
                     if newname:
@@ -2207,6 +2210,7 @@ class DistributeTranspiler(object):
                 opt_op.type, key, var.shape, param_var.shape)
             tmpvar = pserver_block.create_var(
                 name=var.name,
+                type=param_var.type,
                 persistable=var.persistable,
                 dtype=var.dtype,
                 shape=new_shape)

@@ -26,6 +26,12 @@ struct SparseAdagradFunctor {
                   const framework::SelectedRows &grad,
                   const framework::Tensor &learning_rate, T epsilon,
                   framework::Tensor *moment, framework::Tensor *param);
+
+  void operator()(const DeviceContext &context,
+                  const framework::SelectedRows &grad,
+                  const framework::Tensor &learning_rate, T epsilon,
+                  framework::SelectedRows *moment,
+                  framework::SelectedRows *param);
 };
 
 template <typename DeviceContext, typename T>
@@ -47,60 +53,70 @@ class AdagradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
-                   "but the received is %s",
-                   ctx.Inputs("Param").front(),
-                   framework::ToTypeName(param_var->Type()));
 
-    auto *param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
-    auto *moment_out_tensor = ctx.Output<framework::Tensor>("MomentOut");
+    if (param_var->IsType<framework::LoDTensor>()) {
+      auto *param_out_tensor = ctx.Output<framework::Tensor>("ParamOut");
+      auto *moment_out_tensor = ctx.Output<framework::Tensor>("MomentOut");
 
-    param_out_tensor->mutable_data<T>(ctx.GetPlace());
-    moment_out_tensor->mutable_data<T>(ctx.GetPlace());
+      param_out_tensor->mutable_data<T>(ctx.GetPlace());
+      moment_out_tensor->mutable_data<T>(ctx.GetPlace());
 
-    T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
+      T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
 
-    auto *grad_var = ctx.InputVar("Grad");
-    if (grad_var->IsType<framework::LoDTensor>()) {
-      auto param = framework::EigenVector<T>::Flatten(
-          *ctx.Input<framework::Tensor>("Param"));
-      auto grad = framework::EigenVector<T>::Flatten(
-          *ctx.Input<framework::Tensor>("Grad"));
-      auto moment = framework::EigenVector<T>::Flatten(
-          *ctx.Input<framework::Tensor>("Moment"));
-      auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+      auto *grad_var = ctx.InputVar("Grad");
+      if (grad_var->IsType<framework::LoDTensor>()) {
+        auto param = framework::EigenVector<T>::Flatten(
+            *ctx.Input<framework::Tensor>("Param"));
+        auto grad = framework::EigenVector<T>::Flatten(
+            *ctx.Input<framework::Tensor>("Grad"));
+        auto moment = framework::EigenVector<T>::Flatten(
+            *ctx.Input<framework::Tensor>("Moment"));
+        auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");
 
-      auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
-      auto moment_out = framework::EigenVector<T>::Flatten(*moment_out_tensor);
-      auto *place = ctx.template device_context<DeviceContext>().eigen_device();
+        auto param_out = framework::EigenVector<T>::Flatten(*param_out_tensor);
+        auto moment_out =
+            framework::EigenVector<T>::Flatten(*moment_out_tensor);
+        auto *place =
+            ctx.template device_context<DeviceContext>().eigen_device();
 
-      moment_out.device(*place) = moment + grad * grad;
-      Eigen::DSizes<int, 1> m_dsize(moment_out_tensor->numel());
-      if (platform::is_cpu_place(ctx.GetPlace())) {
-        auto *lr = learning_rate->data<T>();
-        param_out.device(*place) =
-            param - lr[0] * grad / (moment_out.sqrt() + epsilon);
+        moment_out.device(*place) = moment + grad * grad;
+        Eigen::DSizes<int, 1> m_dsize(moment_out_tensor->numel());
+        if (platform::is_cpu_place(ctx.GetPlace())) {
+          auto *lr = learning_rate->data<T>();
+          param_out.device(*place) =
+              param - lr[0] * grad / (moment_out.sqrt() + epsilon);
+        } else {
+          auto lr = framework::EigenVector<T>::Flatten(*learning_rate);
+          param_out.device(*place) =
+              param -
+              lr.broadcast(m_dsize) * grad / (moment_out.sqrt() + epsilon);
+        }
+      } else if (grad_var->IsType<framework::SelectedRows>()) {
+        auto *param_tensor = ctx.Input<framework::Tensor>("Param");
+        PADDLE_ENFORCE_EQ(param_tensor, param_out_tensor);
+
+        auto *moment_tensor = ctx.Input<framework::Tensor>("Moment");
+        PADDLE_ENFORCE_EQ(moment_tensor, moment_out_tensor);
+
+        SparseAdagradFunctor<DeviceContext, T> functor;
+        functor(ctx.template device_context<DeviceContext>(),
+                *ctx.Input<framework::SelectedRows>("Grad"),
+                *ctx.Input<framework::Tensor>("LearningRate"), epsilon,
+                moment_out_tensor, param_out_tensor);
       } else {
-        auto lr = framework::EigenVector<T>::Flatten(*learning_rate);
-        param_out.device(*place) =
-            param -
-            lr.broadcast(m_dsize) * grad / (moment_out.sqrt() + epsilon);
+        PADDLE_THROW("Unsupported Variable Type of Grad");
       }
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto *param_tensor = ctx.Input<framework::Tensor>("Param");
-      PADDLE_ENFORCE_EQ(param_tensor, param_out_tensor);
+    } else {
+      auto *param_out = ctx.Output<framework::SelectedRows>("ParamOut");
+      auto *moment_out = ctx.Output<framework::SelectedRows>("MomentOut");
 
-      auto *moment_tensor = ctx.Input<framework::Tensor>("Moment");
-      PADDLE_ENFORCE_EQ(moment_tensor, moment_out_tensor);
+      T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
 
       SparseAdagradFunctor<DeviceContext, T> functor;
       functor(ctx.template device_context<DeviceContext>(),
               *ctx.Input<framework::SelectedRows>("Grad"),
               *ctx.Input<framework::Tensor>("LearningRate"), epsilon,
-              moment_out_tensor, param_out_tensor);
-    } else {
-      PADDLE_THROW("Unsupported Variable Type of Grad");
+              moment_out, param_out);
     }
   }
 };
