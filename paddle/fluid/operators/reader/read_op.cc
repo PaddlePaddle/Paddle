@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -93,6 +93,16 @@ class ReadOp : public framework::OperatorBase {
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
+      auto in_dims = ins[i].dims();
+      auto out_dims = out->dims();
+      PADDLE_ENFORCE_EQ(out_dims, in_dims,
+                        "The feeded Variable %s should have dimensions = %d, "
+                        "shape = %s, but received feeded shape %s",
+                        out_arg_names[i], out_dims.size(), out_dims, in_dims);
+      PADDLE_ENFORCE_EQ(
+          out->type(), ins[i].type(),
+          "The data type of feeded Variable %s must %s, but received %s",
+          out->type(), ins[i].type());
       out->ShareDataWith(ins[i]);
       out->set_lod(ins[i].lod());
     }
