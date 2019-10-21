@@ -132,7 +132,6 @@ void prefetch_core(
 
   PADDLE_ENFORCE_EQ(out_var_names.size(), height_sections.size(), "");
 
-  auto abs_sections = ToAbsoluteSection(height_sections);
   for (size_t section_idx = 0; section_idx < out_var_names.size();
        ++section_idx) {
     auto& ids_in_this_section = splited_ids[section_idx];
@@ -148,8 +147,7 @@ void prefetch_core(
       auto row_numel = dims[1];
 
       for (int64_t i = 0; i < dims[0]; ++i) {
-        auto id = ids_in_this_section[i];
-        auto origin_id = id + abs_sections[section_idx];
+        auto origin_id = ids_in_this_section[i];
         std::vector<float> vecs(row_numel);
         std::copy_n(out_var_data + i * row_numel, row_numel, vecs.begin());
         (*recved_vec_map)[origin_id] = vecs;
