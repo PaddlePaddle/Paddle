@@ -64,8 +64,8 @@ class AdagradOp : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Param")->type(),
-                                   ctx.GetPlace());
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -167,16 +167,36 @@ struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
 
     auto* param_data = param->mutable_value()->data<T>();
     auto* moment_data = moment->mutable_value()->data<T>();
+    auto* grad_data = grad_square.value().template data<T>();
 
     for (size_t i = 0; i < merge_rows.size(); i++) {
       for (int64_t j = 0; j < grad_width; j++) {
         auto param_val_idx = param->Index(merge_rows[i]);
+        auto grad_val_idx = grad_square.Index(merge_rows[i]);
         auto moment_val_idx = moment->AutoGrownIndex(merge_rows[i], true);
-        param_data[merge_rows[i] * grad_width + j] -=
+
+        moment_data[moment_val_idx * grad_width + j] +=
+            grad_data[i * grad_width + j];
+
+        param_data[param_val_idx * grad_width + j] -=
             lr[0] * grad_merge_data[i * grad_width + j] /
-            (std::sqrt(moment_data[merge_rows[i] * grad_width + j]) + epsilon);
+            (std::sqrt(moment_data[moment_val_idx * grad_width + j]) + epsilon);
       }
     }
+
+    //    for (size_t i = 0; i < merge_rows.size(); i++) {
+    //      for (int64_t j = 0; j < grad_width; j++) {
+    //        auto param_val_idx = param->Index(merge_rows[i]);
+    //        auto moment_val_idx = moment->AutoGrownIndex(merge_rows[i], true);
+    //
+    //        moment_data[merge_rows[i] * grad_width + j]
+    //
+    //        param_data[merge_rows[i] * grad_width + j] -=
+    //            lr[0] * grad_merge_data[i * grad_width + j] /
+    //            (std::sqrt(moment_data[merge_rows[i] * grad_width + j]) +
+    //            epsilon);
+    //      }
+    //    }
   }
 };
 
