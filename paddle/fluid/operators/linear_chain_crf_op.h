@@ -80,7 +80,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     int64_t tag_num;
     const int64_t* length_data = nullptr;
     framework::LoD in_lod;
-    if (ctx.InputVar("Length") != nullptr) {
+    if (ctx.HasInput("Length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("Length");
       length_data = label_length->data<int64_t>();
       seq_num = label_length->numel();
@@ -133,7 +133,7 @@ class LinearChainCRFOpKernel : public framework::OpKernel<T> {
     for (int64_t i = 0; i < seq_num; ++i) {
       int64_t start_pos = 0;
       int64_t end_pos = 0;
-      if (ctx.InputVar("Length") != nullptr) {
+      if (ctx.HasInput("Length")) {
         start_pos = i * emission_dims[1];
         end_pos = start_pos + length_data[i];
       } else {
@@ -240,7 +240,7 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     int64_t seq_num = 0;
     framework::LoD in_lod;
     const int64_t* length_data = nullptr;
-    if (ctx.InputVar("Length") != nullptr) {
+    if (ctx.HasInput("Length")) {
       const Tensor* label_length = ctx.Input<framework::Tensor>("Length");
       length_data = label_length->data<int64_t>();
       seq_num = label_length->numel();
@@ -275,14 +275,14 @@ class LinearChainCRFGradOpKernel : public framework::OpKernel<T> {
     // at position i.
     Tensor beta;
     beta.mutable_data<T>(emission_dims, platform::CPUPlace());
-    if (ctx.InputVar("Length") != nullptr) {
+    if (ctx.HasInput("Length")) {
       beta.Resize({emission_dims[0] * emission_dims[1], emission_dims[2]});
     }
 
     for (int64_t i = 0; i < seq_num; ++i) {
       int64_t start_pos = 0;
       int64_t end_pos = 0;
-      if (ctx.InputVar("Length") != nullptr) {
+      if (ctx.HasInput("Length")) {
         start_pos = i * emission_dims[1];
         end_pos = start_pos + length_data[i];
       } else {

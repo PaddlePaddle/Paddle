@@ -45,8 +45,7 @@ class TestOneHotOp(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support lod in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestOneHotOp_attr(OpTest):
@@ -69,8 +68,7 @@ class TestOneHotOp_attr(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support lod in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestOneHotOp_default_dtype(OpTest):
@@ -94,8 +92,7 @@ class TestOneHotOp_default_dtype(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support lod in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestOneHotOp_default_dtype_attr(OpTest):
@@ -118,8 +115,7 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support lod in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestOneHotOp_out_of_range(OpTest):
@@ -138,8 +134,7 @@ class TestOneHotOp_out_of_range(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support lod in dygraph mode
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class TestOneHotOp_exception(OpTest):

@@ -30,7 +30,7 @@ using framework::Tensor;
 static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   std::vector<int> res;
   int rank = ctx.Input<Tensor>("X")->dims().size();
-  if (ctx.InputVar("Offsets") != nullptr) {
+  if (ctx.HasInput("Offsets")) {
     PADDLE_ENFORCE_EQ(
         ctx.Attr<std::vector<int>>("offsets").empty(), true,
         "Input 'Offsets' and attribute 'offsets' should not be used "

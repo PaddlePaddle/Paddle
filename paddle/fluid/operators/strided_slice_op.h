@@ -166,21 +166,21 @@ class StridedSliceKernel : public framework::OpKernel<T> {
 
     if (list_new_starts_tensor.size() > 0) {
       starts = get_new_data_from_tensorlist(list_new_starts_tensor);
-    } else if (context.InputVar("StartsTensor") != nullptr) {
+    } else if (context.HasInput("StartsTensor")) {
       auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
       starts = get_new_data_from_tensor(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
       ends = get_new_data_from_tensorlist(list_new_ends_tensor);
-    } else if (context.InputVar("EndsTensor") != nullptr) {
+    } else if (context.HasInput("EndsTensor")) {
       auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
       ends = get_new_data_from_tensor(ends_tensor);
     }
 
     if (list_new_strides_tensor.size() > 0) {
       strides = get_new_data_from_tensorlist(list_new_strides_tensor);
-    } else if (context.InputVar("StridesTensor") != nullptr) {
+    } else if (context.HasInput("StridesTensor")) {
       auto* strides_tensor = context.Input<framework::Tensor>("StridesTensor");
       strides = get_new_data_from_tensor(strides_tensor);
     }
@@ -286,21 +286,21 @@ class StridedSliceGradKernel : public framework::OpKernel<T> {
 
     if (list_new_starts_tensor.size() > 0) {
       starts = get_new_data_from_tensorlist(list_new_starts_tensor);
-    } else if (context.InputVar("StartsTensor") != nullptr) {
+    } else if (context.HasInput("StartsTensor")) {
       auto* starts_tensor = context.Input<framework::Tensor>("StartsTensor");
       starts = get_new_data_from_tensor(starts_tensor);
     }
 
     if (list_new_ends_tensor.size() > 0) {
       ends = get_new_data_from_tensorlist(list_new_ends_tensor);
-    } else if (context.InputVar("EndsTensor") != nullptr) {
+    } else if (context.HasInput("EndsTensor")) {
       auto* ends_tensor = context.Input<framework::Tensor>("EndsTensor");
       ends = get_new_data_from_tensor(ends_tensor);
     }
 
     if (list_new_strides_tensor.size() > 0) {
       strides = get_new_data_from_tensorlist(list_new_strides_tensor);
-    } else if (context.InputVar("StridesTensor") != nullptr) {
+    } else if (context.HasInput("StridesTensor")) {
       auto* strides_tensor = context.Input<framework::Tensor>("StridesTensor");
       strides = get_new_data_from_tensor(strides_tensor);
     }

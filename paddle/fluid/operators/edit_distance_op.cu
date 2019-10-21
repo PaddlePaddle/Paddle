@@ -87,7 +87,7 @@ class EditDistanceGPUKernel : public framework::OpKernel<T> {
     framework::Vector<size_t> hyp_lod(batch_size + 1);
     framework::Vector<size_t> ref_lod(batch_size + 1);
 
-    bool use_length = ctx.InputVar("HypsLength") != nullptr;
+    bool use_length = ctx.HasInput("HypsLength");
 
     if (use_length) {
       // build lod when using padding

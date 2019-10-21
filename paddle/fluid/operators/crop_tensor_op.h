@@ -92,7 +92,7 @@ static std::vector<int> GetShape(const framework::ExecutionContext& ctx) {
     return res;
   }
 
-  auto* shape_tensor = ctx.InputVar("Shape") != nullptr
+  auto* shape_tensor = ctx.HasInput("Shape")
                            ? ctx.Input<framework::LoDTensor>("Shape")
                            : nullptr;
   if (shape_tensor) {
@@ -120,7 +120,7 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
     return res;
   }
 
-  if (ctx.InputVar("Offsets") != nullptr) {
+  if (ctx.HasInput("Offsets")) {
     PADDLE_ENFORCE_EQ(
         ctx.Attr<std::vector<int>>("offsets").empty(), true,
         "Input 'Offsets' and attribute 'offsets' should not be used "
