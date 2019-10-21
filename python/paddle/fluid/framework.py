@@ -1445,7 +1445,8 @@ class Variable(object):
                 if step is None:
                     step = 1
 
-                if step == -1 and start is None and end is None:
+                if start is None and end is None:
+                    assert (step == -1)
                     reverse_axis.append(dim)
                     continue
 
