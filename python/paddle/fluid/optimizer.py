@@ -763,10 +763,12 @@ class SGDOptimizer(Optimizer):
                 ],
                 "LearningRate": [self._create_param_lr(param_and_grad)._ivar]
             }
+            out = param_and_grad[0]._ivar if isinstance(
+                param_and_grad[0], Variable) else param_and_grad[0]
             out_names = {'ParamOut': [param_and_grad[0].name]}
             outs = core.ops.sgd(_dygraph_tracer(), inputs, attrs,
-                                _current_expected_place(), out_names,
-                                trace_backward)
+                                _current_expected_place(), {}, trace_backward,
+                                {'ParamOut': [out]})
             param_and_grad[0]._ivar = outs['ParamOut'][0]
             return outs['ParamOut'][0]
             # TODO(cql): activation

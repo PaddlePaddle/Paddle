@@ -1505,10 +1505,11 @@ class Embedding(layers.Layer):
         }
         trace_backward = _dygraph_tracer()._train_mode
         out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
+        w = self._w._ivar if isinstance(self._w, Variable) else self._w
         outs = core.ops.lookup_table(
             _dygraph_tracer(), {'Ids': [input],
-                                'W': [self._w._ivar]}, attrs,
-            _current_expected_place(), out_names, trace_backward)
+                                'W': [w]}, attrs,
+            _current_expected_place(), out_names, trace_backward, {})
         return outs['Out'][0]
 
         out = self._helper.create_variable_for_type_inference(self._dtype)

@@ -631,7 +631,7 @@ class Variable(object):
         if in_dygraph_mode():
             # record vars in tracer rather than blocks
             self._ivar = kwargs.get("ivar", None)
-            self.stop_gradient_ = kwargs.get("stop_gradient", True)
+            #self.stop_gradient_ = kwargs.get("stop_gradient", True)
             if not self._ivar:
                 self._ivar = core.VarBase(
                     name, type

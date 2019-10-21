@@ -268,7 +268,7 @@ def concat(input, axis=0, name=None):
         out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
         outs = core.ops.concat(_dygraph_tracer(), {'X': input}, attrs,
                                _current_expected_place(), out_names,
-                               trace_backward)
+                               trace_backward, {})
         return outs['Out'][0]
 
     helper = LayerHelper('concat', **locals())

@@ -622,7 +622,7 @@ def embedding(input,
         outs = core.ops.lookup_table(
             _dygraph_tracer(), {'Ids': [input],
                                 'W': [w]}, attrs,
-            _current_expected_place(), out_names, trace_backward)
+            _current_expected_place(), out_names, trace_backward, {})
         return outs['Out'][0]
 
     helper = LayerHelper('embedding', **locals())
@@ -1838,7 +1838,7 @@ def dropout(x,
         trace_backward = _dygraph_tracer()._train_mode
         outs = core.ops.dropout(_dygraph_tracer(), {'X': [x]}, attrs,
                                 _current_expected_place(), out_names,
-                                trace_backward)
+                                trace_backward, {})
         return outs['Out'][0]
 
     helper = LayerHelper('dropout', **locals())
@@ -6317,7 +6317,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
         trace_backward = _dygraph_tracer()._train_mode
         outs = core.ops.reduce_sum(_dygraph_tracer(), {'X': [input]}, attrs,
                                    _current_expected_place(), out_names,
-                                   trace_backward)
+                                   trace_backward, {})
         return outs['Out'][0]
 
     helper = LayerHelper('reduce_sum', **locals())
@@ -6406,7 +6406,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
         trace_backward = _dygraph_tracer()._train_mode
         outs = core.ops.reduce_mean(_dygraph_tracer(), {'X': [input]}, attrs,
                                     _current_expected_place(), out_names,
-                                    trace_backward)
+                                    trace_backward, {})
         return outs['Out'][0]
 
     helper = LayerHelper('reduce_mean', **locals())
@@ -6781,6 +6781,32 @@ def split(input, num_or_sections, dim=-1, name=None):
             # x1.shape [3, 3, 5]
             # x2.shape [3, 4, 5]
     """
+    if in_dygraph_mode():
+        input_shape = input.shape
+        dim = (len(input_shape) + dim) if dim < 0 else dim
+        if isinstance(num_or_sections, int):
+            assert num_or_sections > 1, 'num_or_sections must be more than 1.'
+            num = num_or_sections
+        else:
+            assert len(num_or_sections) <= input_shape[
+                dim], 'len(num_or_sections) must not be more than input.shape[dim].'
+            num = len(num_or_sections)
+        attrs = {
+            'num': num_or_sections if isinstance(num_or_sections, int) else 0,
+            'sections': num_or_sections
+            if isinstance(num_or_sections, list) else [],
+            'axis': dim
+        }
+        out_names = {
+            'Out':
+            [unique_name.generate_with_ignorable_key() for i in range(num)]
+        }
+        trace_backward = _dygraph_tracer()._train_mode
+        outs = core.ops.split(_dygraph_tracer(), {'X': [input]}, attrs,
+                              _current_expected_place(), out_names,
+                              trace_backward, {})
+        return outs['Out']
+
     if not isinstance(num_or_sections, (int, list, tuple)):
         raise TypeError(
             "The type of 'num_or_sections' in split must be int, list or "
@@ -7022,7 +7048,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         outs = core.ops.matmul(_dygraph_tracer(), {'X': x,
                                                    'Y': y}, attrs,
                                _current_expected_place(), out_names,
-                               trace_backward)
+                               trace_backward, {})
         return outs['Out'][0]
 
     def __check_input(x, y):
@@ -8087,7 +8113,7 @@ def transpose(x, perm, name=None):
         }
         outs = core.ops.transpose2(_dygraph_tracer(), {'X': [x]}, attrs,
                                    _current_expected_place(), out_names,
-                                   trace_backward)
+                                   trace_backward, {})
         return outs['Out'][0]
 
     if not isinstance(x, Variable):
@@ -8497,7 +8523,7 @@ def softmax_with_cross_entropy(logits,
         outs = core.ops.softmax_with_cross_entropy(
             _dygraph_tracer(), {'Logits': [logits],
                                 'Label': [label]}, attrs,
-            _current_expected_place(), out_names, trace_backward)
+            _current_expected_place(), out_names, trace_backward, {})
         if return_softmax:
             return outs['Loss'], outs['Softmax']
         else:
@@ -8979,7 +9005,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         }
         outs = core.ops.reshape2(
             _dygraph_tracer(), {'X': x if isinstance(x, list) else [x]}, attrs,
-            _current_expected_place(), out_names, trace_backward)
+            _current_expected_place(), out_names, trace_backward, {})
 
         return outs['Out'][0]
         # TODO(cql): refine append_activation
@@ -11373,7 +11399,7 @@ def relu(x, name=None):
         out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
         outs = core.ops.relu(_dygraph_tracer(), {'X': [x]}, attrs,
                              _current_expected_place(), out_names,
-                             trace_backward)
+                             trace_backward, {})
         return outs['Out'][0]
 
     helper = LayerHelper('relu', **locals())
@@ -13690,7 +13716,7 @@ def slice(input, axes, starts, ends):
         out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
         outs = core.ops.slice(_dygraph_tracer(), {'Input': input}, attrs,
                               _current_expected_place(), out_names,
-                              trace_backward)
+                              trace_backward, {})
         return outs['Out'][0]
 
     else:
@@ -14242,7 +14268,7 @@ Examples:
         outs = core.ops.elementwise_add(
             _dygraph_tracer(), {'X': [x],
                                 'Y': [y]}, attrs,
-            _current_expected_place(), out_names, trace_backward)
+            _current_expected_place(), out_names, trace_backward, {})
         return outs['Out'][0]
         # TODO(cql): activation
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
@@ -14334,7 +14360,7 @@ Examples:
         outs = core.ops.elementwise_div(
             _dygraph_tracer(), {'X': [x],
                                 'Y': [y]}, attrs,
-            _current_expected_place(), out_names, trace_backward)
+            _current_expected_place(), out_names, trace_backward, {})
         return outs['Out'][0]
     return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
@@ -14502,7 +14528,7 @@ Examples:
         outs = core.ops.elementwise_mul(
             _dygraph_tracer(), {'X': [x],
                                 'Y': [y]}, attrs,
-            _current_expected_place(), out_names, trace_backward)
+            _current_expected_place(), out_names, trace_backward, {})
         return outs['Out'][0]
         # TODO(cql): activation
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
@@ -14571,7 +14597,7 @@ Examples:
         outs = core.ops.elementwise_max(
             _dygraph_tracer(), {'X': [x],
                                 'Y': [y]}, attrs,
-            _current_expected_place(), out_names, trace_backward)
+            _current_expected_place(), out_names, trace_backward, {})
         return outs['Out'][0]
     return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 

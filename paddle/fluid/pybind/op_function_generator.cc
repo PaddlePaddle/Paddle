@@ -36,7 +36,10 @@ const char* UNIQUE_NAME_GENERATOR = R"(std::string UniqueName(std::string key){
 const char* TRACER_TYPE = R"(imperative::Tracer)";
 const char* INPUT_TYPE = R"(imperative::NameVarBaseMap)";
 const char* ARGS_TYPE = R"(framework::AttributeMap)";
-const char* PLACE_TYPE = R"(platform::CUDAPlace)";
+
+const char* CUDA_PLACE_TYPE = R"(platform::CUDAPlace)";
+const char* CPU_PLACE_TYPE = R"(platform::CPUPlace)";
+
 const char* OUT_VAR_NUM_TYPE = R"(std::map<std::string, int>)";
 const char* RETURN_TYPE = R"(imperative::NameVarBaseMap)";
 
@@ -51,11 +54,11 @@ const char* OUT_INITIALIZER_TEMPLATE =
 // })";
 
 const char* OP_FUNCTION_TEMPLATE =
-    R"([](%s &tracer, %s &ins, %s &attrs, %s place, const std::map<std::string, std::vector<std::string>> &out_names={}, bool trace_backward=true) -> %s
+    R"([](%s &tracer, %s &ins, %s &attrs, %s place, const std::map<std::string, std::vector<std::string>> &out_names={}, bool trace_backward=true, %s outs={}) -> %s
 {
   std::string op_type = "%s";
-  %s outs = {};
-  if (out_names.size() != 0) {
+
+  if (outs.size() == 0 && out_names.size() != 0) {
     // unlikely update outs accroding to given out_var_num
     for (auto &pair : out_names) {
       for (auto &name : pair.second) {
@@ -64,6 +67,7 @@ const char* OP_FUNCTION_TEMPLATE =
       }
     }
   }
+  
    
   {
     py::gil_scoped_release release;
@@ -95,7 +99,7 @@ static std::string RefineName(std::string name) {
 }
 
 static std::vector<std::string> GenerateOpFunctions(
-    const std::string& module_name) {
+    const std::string& module_name, const char* place_type) {
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
 
   std::vector<std::string> op_function_list;
@@ -126,8 +130,8 @@ static std::vector<std::string> GenerateOpFunctions(
     // generate op funtcion body
     char op_function_buf[BUFFER_SIZE];
     snprintf(op_function_buf, BUFFER_SIZE, OP_FUNCTION_TEMPLATE, TRACER_TYPE,
-             INPUT_TYPE, ARGS_TYPE, PLACE_TYPE, RETURN_TYPE, op_type.c_str(),
-             RETURN_TYPE, outs_initializer.c_str());
+             INPUT_TYPE, ARGS_TYPE, place_type, RETURN_TYPE, RETURN_TYPE,
+             op_type.c_str(), outs_initializer.c_str());
 
     // generate pybind line
     char pybind_buf[BUFFER_SIZE];
@@ -168,9 +172,11 @@ int main(int argc, char* argv[]) {
       << "  auto m = module->def_submodule(\"ops\");\n\n";
 
   // all op functions
-  auto op_funcs = GenerateOpFunctions("m");
+  auto op_funcs1 = GenerateOpFunctions("m", CUDA_PLACE_TYPE);
+  auto op_funcs2 = GenerateOpFunctions("m", CPU_PLACE_TYPE);
 
-  out << paddle::string::join_strings(op_funcs, '\n');
+  out << paddle::string::join_strings(op_funcs1, '\n');
+  out << paddle::string::join_strings(op_funcs2, '\n');
 
   out << "}\n\n"
       << "} // namespace pybind\n"

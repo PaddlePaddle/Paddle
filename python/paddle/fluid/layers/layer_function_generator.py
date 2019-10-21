@@ -259,7 +259,7 @@ def generate_activation_fn(op_type):
             x = x._ivar if isinstance(x, Variable) else x
             out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
             outs = op(_dygraph_tracer(), {'X': [x]}, attrs,
-                      _current_expected_place(), out_names, trace_backward)
+                      _current_expected_place(), out_names, trace_backward, {})
             return outs['Out'][0]
 
         helper = LayerHelper(op_type, **locals())
