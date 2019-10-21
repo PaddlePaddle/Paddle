@@ -65,12 +65,12 @@ Notes:
 
 | Model        | Fake QAT Original Throughput(images/s) | INT8 Throughput(images/s) | Ratio(INT8/FP32)|
 | :-----------:| :-------------------------:            | :------------:            | :------------:  |
-| MobileNet-V1 |    13.66                               | 114.98                    |   8.42          |
-| MobileNet-V2 |    10.22                               |  79.78                    |   7.81          |
-| ResNet101    |    2.65                                |  18.97                    |   7.16          |
-| ResNet50     |    4.58                                |  35.09                    |   7.66          |
-| VGG16        |    2.38                                |  9.93                     |   4.17          |
-| VGG19        |    2.03                                |  8.53                     |   4.20          |
+| MobileNet-V1 |    12.86                               | 118.05                    |   9.18          |
+| MobileNet-V2 |    9.76                                |  85.89                    |   8.80          |
+| ResNet101    |    2.55                                |  19.40                    |   7.61          |
+| ResNet50     |    4.39                                |  35.78                    |   8.15          |
+| VGG16        |    2.26                                |  9.89                     |   4.38          |
+| VGG19        |    1.96                                |  8.41                     |   4.29          |
 
 ## 3. How to reproduce the results
 Three steps to reproduce the above-mentioned accuracy results, and we take ResNet50 benchmark as an example:
@@ -95,7 +95,7 @@ cd /PATH/TO/DOWNLOAD/MODEL/
 wget http://paddle-inference-dist.bj.bcebos.com/int8/${MODEL_FILE_NAME}
 ```
 
-To download and verify all the 7 models, you need to set `MODEL_NAME` to one of the following values in command line:
+Unzip the downloaded model to the folder.To verify all the 7 models, you need to set `MODEL_NAME` to one of the following values in command line:
 ```text
 QAT MKL-DNN 1.0
 MODEL_NAME=ResNet50, ResNet101, GoogleNet, MobileNetV1, MobileNetV2, VGG16, VGG19
