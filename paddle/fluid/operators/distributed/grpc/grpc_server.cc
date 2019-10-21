@@ -466,6 +466,7 @@ void AsyncGRPCServer::StartServer() {
     if (FLAGS_rpc_disable_reuse_port) {
       builder.SetOption(
           std::unique_ptr<::grpc::ServerBuilderOption>(new NoReusePortOption));
+      LOG(INFO) << "set FLAGS_rpc_disable_reuse_port";
     }
     builder.RegisterService(service.get());
 

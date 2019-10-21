@@ -158,9 +158,9 @@ void murmurhash3_x64_128(const void *key, const int len, const uint32_t seed,
   h2 += h1;
 
   //  ((uint64_t *)out)[0] = h1;
-  reinterpret_cast<uint64_t *>(out)[0] = h1;
+  static_cast<uint64_t *>(out)[0] = h1;
   //  ((uint64_t *)out)[1] = h2;
-  reinterpret_cast<uint64_t *>(out)[1] = h2;
+  static_cast<uint64_t *>(out)[1] = h2;
 }
 
 int bloomfilter_check(struct bloomfilter *filter) {

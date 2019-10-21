@@ -702,7 +702,7 @@ void OpDesc::InferShape(const BlockDesc &block) const {
       VLOG(10) << sout.str();
     }
     infer_shape(&ctx);
-  } catch (platform::EnforceNotMet exception) {
+  } catch (platform::EnforceNotMet &exception) {
     framework::InsertCallStackInfo(Type(), attrs_, &exception);
     throw std::move(exception);
   } catch (...) {
