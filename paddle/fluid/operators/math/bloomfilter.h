@@ -20,7 +20,13 @@ limitations under the License. */
 
 #include <stdio.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <io.h>
+#include <process.h>
+#else
 #include <unistd.h>
+#endif
 
 namespace paddle {
 namespace operators {
