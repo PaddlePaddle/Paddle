@@ -136,7 +136,6 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
   } else if (send_var->IsType<framework::SelectedRows>()) {
     auto &send_slr = send_var->Get<framework::SelectedRows>();
-    auto abs_sections = ToAbsoluteSection(rpc_ctx.height_sections);
 
     auto &send_rows = send_slr.rows();
     std::vector<std::vector<size_t>> outs_rows_idx;
@@ -160,7 +159,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
     // split rows index into output sparse vars
     for (size_t i = 0; i < send_rows.size(); ++i) {
-      auto ep_idx = GetSectionIndex(send_rows[i], abs_sections);
+      auto ep_idx = GetHashIndex(send_rows[i], table_pairs.size());
       auto table_idx = send_rows[i] % multi_parts;
       auto out_idx = ep_idx * multi_parts + table_idx;
       outs_rows_idx[out_idx].push_back(send_rows[i]);
@@ -183,7 +182,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
         if (rows_idx.size() > 0) {
           for (auto idx : rows_idx) {
-            outs[out_idx]->mutable_rows()->push_back(idx - abs_sections[ctx]);
+            outs[out_idx]->mutable_rows()->push_back(idx);
           }
           auto dst = outs[out_idx]->mutable_value()->mutable_data<T>(place);
           for (size_t j = 0; j < rows_idx.size(); j++) {
