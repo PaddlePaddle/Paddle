@@ -27,11 +27,12 @@ namespace analysis {
 
 class LiteSubgraphPass : public framework::ir::FusePassBase {
  public:
-  void ApplyImpl(framework::ir::Graph *graph) const override;
+  void ApplyImpl(framework::ir::Graph* graph) const override;
 
  private:
-  void BuildOperator(framework::ir::Node *merged_node, framework::ProgramDesc* global_program,
-                     std::vector<std::string> *repetitive_params) const;
+  void BuildOperator(framework::ir::Node* merged_node,
+                     framework::ProgramDesc* global_program,
+                     std::vector<std::string>* repetitive_params) const;
 
   void SetUpEngine(framework::ProgramDesc* program,
                    const std::vector<std::string>& repetitive_params,

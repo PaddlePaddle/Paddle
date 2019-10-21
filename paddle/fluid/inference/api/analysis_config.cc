@@ -468,9 +468,10 @@ void AnalysisConfig::EnableAnakinEngine(
   Update();
 }
 
-void AnalysisConfig::EnableLiteEngine(AnalysisConfig::Precision precision_mode,
-     const std::vector<std::string>& passes_filter,
-     const std::vector<std::string>& ops_filter) {
+void AnalysisConfig::EnableLiteEngine(
+    AnalysisConfig::Precision precision_mode,
+    const std::vector<std::string> &passes_filter,
+    const std::vector<std::string> &ops_filter) {
   use_lite_ = true;
   lite_precision_mode_ = precision_mode;
   lite_passes_filter_ = passes_filter;

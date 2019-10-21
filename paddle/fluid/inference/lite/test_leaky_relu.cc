@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include <gflags/gflags.h>
-#include <gtest/gtest.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <vector>
 #include "lite/api/paddle_api.h"
 #include "lite/api/paddle_place.h"
@@ -27,9 +27,8 @@ namespace lite {
 using paddle::lite_api::Place;
 
 void TestModel(const std::vector<Place>& valid_places,
-               const Place& preferred_place,
-               bool use_npu = false) {
-  lite_api::CxxConfig cfg; 
+               const Place& preferred_place, bool use_npu = false) {
+  lite_api::CxxConfig cfg;
   // cfg.set_model_dir("/shixiaowei02/Paddle_lite/xingzhaolong/leaky_relu_model");
   cfg.set_model_dir("/shixiaowei02/models/tmp");
   cfg.set_preferred_place(preferred_place);
@@ -40,8 +39,9 @@ void TestModel(const std::vector<Place>& valid_places,
   input_tensor->Resize(std::vector<int64_t>({1, 1, 3, 3}));
   auto* data = input_tensor->mutable_data<float>();
 
-  auto input_shape = input_tensor->shape(); 
-  int item_size = std::accumulate(input_shape.begin(), input_shape.end(), 1, std::multiplies<int64_t>()); 
+  auto input_shape = input_tensor->shape();
+  int item_size = std::accumulate(input_shape.begin(), input_shape.end(), 1,
+                                  std::multiplies<int64_t>());
   for (int i = 0; i < item_size; i++) {
     data[i] = -1.;
   }

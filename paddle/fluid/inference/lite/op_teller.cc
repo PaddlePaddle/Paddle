@@ -131,25 +131,25 @@ struct SimpleOpTeller : public Teller {
   }
 
  private:
-  std::unordered_set<std::string> ops_ {};
+  std::unordered_set<std::string> ops_{};
 };
 
 struct SingleBlockOpTeller : public Teller {
-  SingleBlockOpTeller() {
-    ops_.insert("while");
-  }
+  SingleBlockOpTeller() { ops_.insert("while"); }
 
   bool operator()(const std::string& op_type,
                   const framework::OpDesc& op_desc) override {
     if (ops_.count(op_type)) {
       SimpleOpTeller supported;
       const int id = op_desc.GetBlockAttrId("sub_block");
-      const framework::BlockDesc& block_desc = op_desc.Block()->Program()->Block(id);
-      const std::vector<framework::OpDesc *>& ops_sub_block = block_desc.AllOps();
-      for (auto* op: ops_sub_block) {
+      const framework::BlockDesc& block_desc =
+          op_desc.Block()->Program()->Block(id);
+      const std::vector<framework::OpDesc*>& ops_sub_block =
+          block_desc.AllOps();
+      for (auto* op : ops_sub_block) {
         if (!supported(op->Type(), *op) && !this->operator()(op->Type(), *op)) {
           return false;
-        };
+        }
       }
       return true;
     }
@@ -159,7 +159,6 @@ struct SingleBlockOpTeller : public Teller {
  private:
   std::unordered_set<std::string> ops_;
 };
-
 
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {
   for (auto& teller : tellers_) {
@@ -176,5 +175,3 @@ OpTeller::OpTeller() {
 }  // namespace lite
 }  // namespace inference
 }  // namespace paddle
-
-

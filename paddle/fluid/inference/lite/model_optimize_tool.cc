@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "lite/api/paddle_api.h"
-//extern paddle::lite::Predictor;
+// extern paddle::lite::Predictor;
 
 namespace paddle {
 namespace lite {
@@ -23,7 +23,7 @@ void Main() {
   auto predictor = std::move(lite_api::CreatePaddlePredictor(config));
 }
 
-}  // namespace lite_api
+}  // namespace lite
 }  // namespace paddle
 
 int main(int argc, char** argv) {

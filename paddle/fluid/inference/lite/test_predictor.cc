@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ios>
 #include <fstream>
+#include <ios>
 
 #include "lite/api/paddle_use_kernels.h"
 #include "lite/api/paddle_use_ops.h"
 #include "lite/api/paddle_use_passes.h"
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/platform/enforce.h"
 
 int main() {
   LOG(INFO) << "Hello World!";
