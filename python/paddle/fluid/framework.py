@@ -1437,15 +1437,13 @@ class Variable(object):
             if isinstance(slice_item, slice):
                 start = slice_item.start
                 end = slice_item.stop
-                if slice_item.step:
-                    step = slice_item.step
-                    if step != 1:
-                        use_strided_slice = True
-                else:
-                    step = None
+                step = slice_item.step
 
                 if start is None and end is None and step is None:
                     continue
+
+                if step is None:
+                    step = 1
 
                 if step == -1 and start is None and end is None:
                     reverse_axis.append(dim)
@@ -1457,8 +1455,8 @@ class Variable(object):
                 if end is None:
                     end = 10000000
 
-                if step is None:
-                    step = 1
+                if step != 1:
+                    use_strided_slice = True
 
                 slice_axis.append(dim)
                 slice_start.append(start)
