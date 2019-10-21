@@ -29,10 +29,7 @@ class TestDistMnist2x2(TestDistBase):
 
     def test_dist_train(self):
         self.check_with_place(
-            "dist_mnist_batch_merge.py",
-            delta=1e-5,
-            check_error_log=True,
-            log_name=flag_name)
+            "dist_mnist_batch_merge.py", delta=1e-5, check_error_log=True)
 
     def check_with_place(self,
                          model_file,
