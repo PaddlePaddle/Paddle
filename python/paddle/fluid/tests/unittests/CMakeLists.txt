@@ -74,6 +74,9 @@ if(NOT WITH_MKL OR NOT WITH_AVX)
   list(REMOVE_ITEM TEST_OPS test_match_matrix_tensor_op)
   list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
 endif()
+if(NOT WITH_MKL OR WIN32)
+  list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
+endif()
 
 if(WITH_GPU OR NOT WITH_MKLML)
     # matmul with multiple heads need MKL support
