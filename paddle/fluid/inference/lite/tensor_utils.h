@@ -14,9 +14,9 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/tensor.h"
 #include "lite/api/paddle_place.h"
 #include "lite/core/tensor.h"
+#include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
 namespace inference {
@@ -24,6 +24,9 @@ namespace lite {
 
 template <typename DstTensor, typename SrcTensor>
 void TensorCopy(DstTensor* dst, const SrcTensor& src);
+
+void InitLiteTensorType(paddle::lite::Tensor* lite,
+                        const framework::LoDTensor& fluid);
 
 }  // namespace lite
 }  // namespace inference

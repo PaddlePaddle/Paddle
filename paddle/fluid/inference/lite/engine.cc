@@ -15,20 +15,16 @@
 #define LITE_WITH_CUDA 1
 
 #include "paddle/fluid/inference/lite/engine.h"
-#include "lite/core/context.h"
-#include "lite/core/device_info.h"
 
 namespace paddle {
 namespace inference {
 namespace lite {
 
-bool EngineManager::Empty() const {
-    return engines_.size() == 0;
-}
+bool EngineManager::Empty() const { return engines_.size() == 0; }
 
 bool EngineManager::Has(const std::string& name) const {
   if (engines_.count(name) == 0) {
-     return false;
+    return false;
   }
   return engines_.at(name).get() != nullptr;
 }
@@ -37,12 +33,12 @@ paddle::lite::Predictor* EngineManager::Get(const std::string& name) const {
   return engines_.at(name).get();
 }
 
-paddle::lite::Predictor* EngineManager::Create(
-  const std::string& name, const EngineConfig& cfg) {
-  paddle::lite::Env<TARGET(kCUDA)>::Init();
+paddle::lite::Predictor* EngineManager::Create(const std::string& name,
+                                               const EngineConfig& cfg) {
   auto* p = new paddle::lite::Predictor();
-  p->Build("", cfg.model, cfg.param, cfg.prefer_place, cfg.valid_places, cfg.neglected_passes,
-    cfg.model_type, cfg.memory_from_memory);
+  paddle::lite::Env<TARGET(kCUDA)>::Init();
+  p->Build("", cfg.model, cfg.param, cfg.prefer_place, cfg.valid_places,
+           cfg.neglected_passes, cfg.model_type, cfg.model_from_memory);
   engines_[name].reset(p);
   return p;
 }

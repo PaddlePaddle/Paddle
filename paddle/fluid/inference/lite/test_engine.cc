@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <ios>
-#include <fstream>
 #include <gtest/gtest.h>
+#include <fstream>
+#include <ios>
 
 #include "lite/api/paddle_use_kernels.h"
 #include "lite/api/paddle_use_ops.h"
@@ -23,44 +23,88 @@
 #include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
+#include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
+
 namespace paddle {
 namespace lite {
 
 namespace {
 
-std::string read_file(const std::string &file) {
-  std::ifstream ifs(file.c_str(), std::ios::in | std::ios::binary | std::ios::ate);
-  std::ifstream::pos_type file_size = ifs.tellg();
-  ifs.seekg(0, std::ios::beg);
-  std::vector<char> bytes(file_size);
-  ifs.read(bytes.data(), file_size);
-  return std::string(bytes.data(), file_size);
+void AddTensorToBlockDesc(framework::proto::BlockDesc* block,
+                          const std::string& name,
+                          const std::vector<int64_t>& shape) {
+  using framework::proto::VarType;
+  auto* var = block->add_vars();
+  framework::VarDesc desc(name);
+  desc.SetType(VarType::LOD_TENSOR);
+  desc.SetDataType(VarType::FP32);
+  desc.SetShape(shape);
+  *var = *desc.Proto();
 }
 
-} // namespace
+void make_fake_model(std::string* model, std::string* param) {
+  framework::ProgramDesc program;
+  auto* block_ = program.Proto()->mutable_blocks(0);
+  LOG(INFO) << "create block desc";
+  framework::BlockDesc block_desc(&program, block_);
+  LOG(INFO) << "create feed op";
+  auto* feed0 = block_desc.AppendOp();
+  feed0->SetType("feed");
+  feed0->SetInput("X", {"feed"});
+  feed0->SetOutput("Out", {"x"});
+  feed0->SetAttr("col", 1);
+  AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4, 1, 1}));
+  *block_->add_ops() = *feed0->Proto();
+  ASSERT_EQ(block_->ops_size(), 1);
+  framework::Scope scope;
+  platform::CPUPlace place;
+  platform::CPUDeviceContext ctx(place);
+  *model = program.Proto()->SerializeAsString();
+}
 
+}  // namespace
 
-TEST(EngineManager, Create) {
-  const std::string unique_key("engine_0");
-  const std::string model_dir = "/shixiaowei02/models/tmp/__model__";
+TEST(EngineManager, manual) {
+  ASSERT_EQ(
+      inference::Singleton<inference::lite::EngineManager>::Global().Empty(),
+      true);
 
   inference::lite::EngineConfig config;
-  config.model = read_file(model_dir);
-  config.param = "";
-  config.prefer_place = {TARGET(kCUDA), PRECISION(kFloat)};
+  make_fake_model(&(config.model), &(config.param));
+
+  const std::string unique_key("engine_0");
+  config.model_from_memory = true;
+  config.prefer_place = {TARGET(kX86), PRECISION(kFloat)};
   config.valid_places = {
-    paddle::lite::Place({TARGET(kHost), PRECISION(kFloat)}),
+      paddle::lite::Place({TARGET(kX86), PRECISION(kFloat)}),
+      paddle::lite::Place({TARGET(kHost), PRECISION(kAny)}),
 #ifdef PADDLE_WITH_CUDA
-    paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)}),
+      paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)}),
 #endif
   };
 
-  inference::Singleton<inference::lite::EngineManager>::Global()
-    .Create(unique_key, config);
-  /*
-  paddle::lite::Predictor* engine = inference::Singleton<inference::lite::EngineManager>::Global()
-          .Get(Attr<std::string>(unique_key));
-  */
+  LOG(INFO) << "Create EngineManager";
+  inference::Singleton<inference::lite::EngineManager>::Global().Create(
+      unique_key, config);
+  LOG(INFO) << "Create EngineManager done";
+  ASSERT_EQ(
+      inference::Singleton<inference::lite::EngineManager>::Global().Empty(),
+      false);
+  ASSERT_EQ(inference::Singleton<inference::lite::EngineManager>::Global().Has(
+                unique_key),
+            true);
+  paddle::lite::Predictor* engine_0 =
+      inference::Singleton<inference::lite::EngineManager>::Global().Get(
+          unique_key);
+
+  CHECK_NOTNULL(engine_0);
+  inference::Singleton<inference::lite::EngineManager>::Global().DeleteAll();
+  CHECK(inference::Singleton<inference::lite::EngineManager>::Global().Get(
+            unique_key) == nullptr)
+      << "the engine_0 should be nullptr";
 }
 
 }  // namespace lite
