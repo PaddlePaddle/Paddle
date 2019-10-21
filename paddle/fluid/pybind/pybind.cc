@@ -314,45 +314,10 @@ PYBIND11_MODULE(core_noavx, m) {
     std::map<std::string, std::shared_ptr<Tensor>> map_load_tensor;
     LoadTensorFromDisk(str_file_name, &map_load_tensor);
 
-    std::unordered_map<std::string, pybind11::array> map_output;
+    std::unordered_map<std::string, py::array> map_output;
     for (auto &load_tensor : map_load_tensor) {
-      const auto &dims = load_tensor.second->dims();
-      auto dtype = load_tensor.second->type();
-      std::vector<size_t> shape(dims.size());
-
-      for (int i = 0; i < dims.size(); i++) {
-        shape[i] = dims[i];
-      }
-
-      auto np_type = py::dtype::of<float>();
-      switch (dtype) {
-        case proto::VarType::BOOL:
-          np_type = py::dtype::of<bool>();
-          break;
-        case proto::VarType::INT16:
-          np_type = py::dtype::of<int16_t>();
-          break;
-        case proto::VarType::INT32:
-          np_type = py::dtype::of<int32_t>();
-          break;
-        case proto::VarType::INT64:
-          np_type = py::dtype::of<int64_t>();
-          break;
-        case proto::VarType::FP16:
-          np_type = py::dtype("e");
-          break;
-        case proto::VarType::FP32:
-          np_type = py::dtype::of<float>();
-          break;
-        case proto::VarType::FP64:
-          np_type = py::dtype::of<double>();
-          break;
-        default:
-          PADDLE_THROW("Not support type %d", dtype);
-      }
-      map_output.emplace(
-          load_tensor.first,
-          pybind11::array(np_type, shape, load_tensor.second->data<void>()));
+      map_output.emplace(load_tensor.first,
+                         TensorToPyArray(*load_tensor.second));
     }
     return map_output;
   });
