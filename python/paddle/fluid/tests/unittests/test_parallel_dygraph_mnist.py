@@ -19,6 +19,7 @@ import paddle.fluid as fluid
 
 import os
 flag_name = os.path.splitext(__file__)[0]
+begin_port = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
 
 class TestParallelDygraphMnist(TestDistBase):
@@ -26,6 +27,7 @@ class TestParallelDygraphMnist(TestDistBase):
         self._sync_mode = False
         self._nccl2_mode = True
         self._dygraph = True
+        self._begin_port = begin_port
 
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
