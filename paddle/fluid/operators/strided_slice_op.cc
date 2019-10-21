@@ -237,10 +237,12 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "StartsTensor" || var_name == "EndsTensor") {
+    if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
+        var_name == "StridesTensor") {
       return expected_kernel_type;
     }
-    if (var_name == "StartsTensorList" || var_name == "EndsTensorList") {
+    if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
+        var_name == "StridesTensorList") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
