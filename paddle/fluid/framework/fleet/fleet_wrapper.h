@@ -105,15 +105,14 @@ class FleetWrapper {
                          const std::vector<std::string>& var_names);
 
   //Pull sparse to local table if set local sparse table
-  std::unordered_map<uint64_t, std::vector<float>>  local_table_;
-  void SetLocalSparseTable(const std::vector<uint64_t>& fea_keys, int fea_value_dim);
-  void PullSparseToLocal(const uint64_t table_id, const std::vector<uint64_t>& fea_keys, int fea_value_dim);
+  std::vector< std::unordered_map<uint64_t, std::vector<float>> > local_tables_;
+  void PullSparseToLocal(const uint64_t table_id, const std::vector<std::unordered_set<uint64_t>>& fea_keys, int fea_value_dim);
 
   void PullSparseVarsFromLocal(
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
       std::vector<std::vector<float>>* fea_values, int fea_value_dim);
-  void ClearLocalTable() {local_table_.clear();};
+  void ClearLocalTable() {std::vector<std::unordered_map<uint64_t, std::vector<float>>>().swap(local_tables_);};
 
   // Push sparse variables with labels to server in Async mode
   // This is specially designed for click/show stats in server
@@ -227,6 +226,7 @@ class FleetWrapper {
   int client2client_connect_timeout_ms_;
   int client2client_max_retry_;
   std::unique_ptr<::ThreadPool> local_pull_pool_{nullptr};
+  std::unique_ptr<::ThreadPool> pull_to_local_pool_{nullptr};
   int local_table_shard_num_;
   DISABLE_COPY_AND_ASSIGN(FleetWrapper);
 };

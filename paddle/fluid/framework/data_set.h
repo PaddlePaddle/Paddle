@@ -22,6 +22,7 @@
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
+#include <unordered_set>
 
 #include "paddle/fluid/framework/data_feed.h"
 
@@ -117,11 +118,13 @@ class Dataset {
   // merge by ins id
   virtual void MergeByInsId() = 0;
   // generate unique feasigns
-  virtual void GenerateUniqueFeasign() = 0;
+  virtual void GenerateUniqueFeasign(int shard_num) = 0;
   // get unique feasigns
   virtual const std::vector<uint64_t>& GetUniqueFeasigns() = 0;
+  virtual const std::vector<std::unordered_set<uint64_t>>& GetLocalTables() = 0;
   // clear unique feasigns
   virtual void ClearUniqueFeasigns() = 0;
+  virtual void ClearLocalTables() = 0;
   // create preload readers
   virtual void CreatePreLoadReaders() = 0;
   // destroy preload readers after prelaod done
@@ -191,9 +194,11 @@ class DatasetImpl : public Dataset {
   virtual int64_t GetMemoryDataSize();
   virtual int64_t GetShuffleDataSize();
   virtual void MergeByInsId() {}
-  virtual void GenerateUniqueFeasign() {}
+  virtual void GenerateUniqueFeasign(int shard_num) {}
   virtual const std::vector<uint64_t>& GetUniqueFeasigns() {return *(std::vector<uint64_t>*)NULL;};
+  virtual const std::vector<std::unordered_set<uint64_t>>& GetLocalTables() {return *(std::vector<std::unordered_set<uint64_t>>*)NULL;};
   virtual void ClearUniqueFeasigns() {};
+  virtual void ClearLocalTables() {};
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
   virtual void SetPreLoadThreadNum(int thread_num);
@@ -211,6 +216,7 @@ class DatasetImpl : public Dataset {
   std::vector<paddle::framework::Channel<T>> multi_output_channel_;
   std::vector<paddle::framework::Channel<T>> multi_consume_channel_;
   std::vector<uint64_t> local_feasigns_;
+  std::vector<std::unordered_set<uint64_t>> local_tables_;
   // when read ins, we put ins from one channel to the other,
   // and when finish reading, we set cur_channel = 1 - cur_channel,
   // so if cur_channel=0, all data are in output_channel, else consume_channel
@@ -238,6 +244,8 @@ class DatasetImpl : public Dataset {
   std::vector<std::string> merge_slots_list_;
   bool slots_shuffle_fea_eval_ = false;
   bool gen_uni_feasigns_ = false;
+  int local_table_shard_num_;
+  std::vector<std::unique_ptr<std::mutex>> local_shard_mutex_;
   int preload_thread_num_;
   std::mutex global_index_mutex_;
   int64_t global_index_ = 0;
@@ -248,9 +256,11 @@ class MultiSlotDataset : public DatasetImpl<Record> {
  public:
   MultiSlotDataset() {}
   virtual void MergeByInsId();
-  virtual void GenerateUniqueFeasign();
+  virtual void GenerateUniqueFeasign(int shard_num);
   virtual const std::vector<uint64_t>& GetUniqueFeasigns() {return local_feasigns_;}
+  virtual const std::vector<std::unordered_set<uint64_t>>& GetLocalTables() {return local_tables_;}
   virtual void ClearUniqueFeasigns() {local_feasigns_.clear();}
+  virtual void ClearLocalTables() {std::vector<std::unordered_set<uint64_t>>().swap(local_tables_);}
 
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace);
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,

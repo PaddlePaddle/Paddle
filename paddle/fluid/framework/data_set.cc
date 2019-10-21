@@ -642,13 +642,46 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
 // explicit instantiation
 template class DatasetImpl<Record>;
 
-void MultiSlotDataset::GenerateUniqueFeasign() {
+void MultiSlotDataset::GenerateUniqueFeasign(int shard_num) {
   VLOG(3) << "MultiSlotDataset::GenerateUniqueFeasign begin";
   if (!gen_uni_feasigns_) {
     VLOG(3) << "generate_unique_feasign_=false, will not GenerateUniqueFeasign";
     return;
   }
+  
   CHECK(multi_output_channel_.size() != 0);  // NOLINT
+  local_shard_mutex_.resize(shard_num);
+  for (int i = 0; i < shard_num; i++) {
+    local_shard_mutex_[i].reset(new std::mutex); 
+  }
+  // std::vector<std::unordered_set<uint64_t>> local_tables;
+  local_tables_.resize(shard_num);
+  std::vector<std::thread> threads(multi_output_channel_.size());
+  auto gen_func = [this, &shard_num] (int i) {
+    std::vector<Record> vec_data;
+    this->multi_output_channel_[i]->Close();
+    this->multi_output_channel_[i]->ReadAll(vec_data);
+      for (size_t j = 0; j < vec_data.size(); j++) {
+          for (auto& feature : vec_data[j].uint64_feasigns_){
+              int shard = feature.sign().uint64_feasign_ % shard_num; 
+              local_shard_mutex_[shard]->lock();
+              this->local_tables_[shard].insert(feature.sign().uint64_feasign_);
+              local_shard_mutex_[shard]->unlock();
+          }
+
+      }
+      multi_output_channel_[i]->Open();
+      multi_output_channel_[i]->Write(std::move(vec_data));
+      vec_data.clear();
+      vec_data.shrink_to_fit();  
+  };
+  for (size_t i = 0; i < threads.size(); i++) {
+    threads[i] = std::thread(gen_func, i);    
+  }
+  for (std::thread& t : threads) {
+    t.join();
+  }
+  /*
   std::unordered_set<uint64_t> local_feasigns_set;
   for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
       std::vector<Record> vec_data;
@@ -669,6 +702,7 @@ void MultiSlotDataset::GenerateUniqueFeasign() {
   local_feasigns_.assign(local_feasigns_set.begin(), local_feasigns_set.end());
   std::cout << "local feasigns stat finish with size: " << local_feasigns_.size() << std::endl;
   local_feasigns_set.clear();
+  */
 }
 
 void MultiSlotDataset::MergeByInsId() {
