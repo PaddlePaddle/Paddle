@@ -30,7 +30,7 @@ class AllReduceOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X") ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
