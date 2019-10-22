@@ -264,7 +264,13 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   virtual const std::vector<uint64_t>& GetUniqueFeasigns() {return local_feasigns_;}
   virtual const std::vector<std::unordered_set<uint64_t>>& GetLocalTables() {return local_tables_;}
   virtual void ClearUniqueFeasigns() {local_feasigns_.clear();}
-  virtual void ClearLocalTables() {std::vector<std::unordered_set<uint64_t>>().swap(local_tables_);}
+  virtual void ClearLocalTables() {
+    for (auto& t : local_tables_) {
+      t.clear();
+      std::unordered_set<uint64_t>().swap(t);
+    }
+    std::vector<std::unordered_set<uint64_t>>().swap(local_tables_);
+  }
 
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace);
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,

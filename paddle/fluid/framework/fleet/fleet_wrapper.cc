@@ -180,7 +180,6 @@ void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<
       std::vector<uint64_t> keys_vec(keys.begin(), keys.end());
       std::vector<float*> pull_result_ptr;
       pull_result_ptr.reserve(key_size);
-      std::vector<std::vector<float>> local_fea_values(fea_keys.size(), std::vector<float>(fea_value_dim, 0));
       for (int j = 0; j < key_size; j++) {
         //std::memcpy(local_tables_[i][keys_vec[j]].data(), zeros.data(), fea_value_dim);
         local_tables_[i][keys_vec[j]] = std::vector<float>(fea_value_dim, 0);
@@ -197,6 +196,7 @@ void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<
         sleep(sleep_seconds_before_fail_exit_);
         exit(-1);
       }else {
+         std::vector<uint64_t>().swap(keys_vec);
          // std::cout << "FleetWrapper Pull sparse to local done with table size: " << pull_result_ptr.size() << std::endl;    
          VLOG(3) << "FleetWrapper Pull sparse to local done with table size: " << pull_result_ptr.size(); 
       }
@@ -249,7 +249,7 @@ void FleetWrapper::PullSparseVarsFromLocal(
   }
   int key_length = fea_keys->size();
   // std::cout << "fleet eraper one request key num: " << key_length << std::endl;
-  int local_step = key_length / 25;
+  int local_step = key_length / 25 + 1;
   std::vector<std::future<void>> task_futures;
   task_futures.reserve(key_length/local_step + 1);
   for(size_t i = 0; i < key_length; i += local_step) {
@@ -275,6 +275,13 @@ void FleetWrapper::PullSparseVarsFromLocal(
 
 }
 
+void FleetWrapper::ClearLocalTable() {
+  for (auto& t : local_tables_) {
+    t.clear();
+    std::unordered_map<uint64_t, std::vector<float>>().swap(t);
+  }
+  std::vector<std::unordered_map<uint64_t, std::vector<float>>>().swap(local_tables_);
+}
 
 void FleetWrapper::PullSparseVarsSync(
     const Scope& scope, const uint64_t table_id,
