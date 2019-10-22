@@ -120,8 +120,8 @@ __device__ void bilinear_interpolate(const T* in_data, const int channels,
                                      int out_idx, int* out2in_idx,
                                      T* out2in_w) {
   // Deal with cases that source coords are out of feature map boundary
-  if (GT_E<T>(-0.5, in_w) || GT_E<T>(in_w, width - 0.5) || GT_E<T>(-0.5, in_h) ||
-      GT_E<T>(in_h, height - 0.5)) {
+  if (GT_E<T>(-0.5, in_w) || GT_E<T>(in_w, width - 0.5) ||
+      GT_E<T>(-0.5, in_h) || GT_E<T>(in_h, height - 0.5)) {
     val[0] = 0.0;
     return;
   }
@@ -317,8 +317,10 @@ __global__ void RoiTransformKernel(const float* input_data,
     get_source_coords<T>(matrix, out_w, out_h, &in_w, &in_h);
 
     if (in_quad<T>(in_w, in_h, roi_x, roi_y)) {
-      if (GT_E<T>(-0.5, in_w) || GT_E<T>(in_w, static_cast<T>(in_width - 0.5)) ||
-          GT_E<T>(-0.5, in_h) || GT_E<T>(in_h, static_cast<T>(in_height - 0.5))) {
+      if (GT_E<T>(-0.5, in_w) ||
+          GT_E<T>(in_w, static_cast<T>(in_width - 0.5)) ||
+          GT_E<T>(-0.5, in_h) ||
+          GT_E<T>(in_h, static_cast<T>(in_height - 0.5))) {
         // Skip if source coords is not in input image
         output_data[index] = 0.0;
         mask[(n * transformed_height + out_h) * transformed_width + out_w] = 0;

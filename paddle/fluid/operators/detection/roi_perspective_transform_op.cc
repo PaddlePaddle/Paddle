@@ -187,8 +187,8 @@ void bilinear_interpolate(const T* in_data, const int channels, const int width,
                           const int height, int in_n, int in_c, T in_w, T in_h,
                           T* val) {
   // Deal with cases that source coords are out of feature map boundary
-  if (GT_E<T>(-0.5, in_w) || GT_E<T>(in_w, width - 0.5) || GT_E<T>(-0.5, in_h) ||
-      GT_E<T>(in_h, height - 0.5)) {
+  if (GT_E<T>(-0.5, in_w) || GT_E<T>(in_w, width - 0.5) ||
+      GT_E<T>(-0.5, in_h) || GT_E<T>(in_h, height - 0.5)) {
     // empty
     val[0] = 0.0;
     return;
