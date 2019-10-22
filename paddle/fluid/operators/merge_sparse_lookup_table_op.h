@@ -44,31 +44,20 @@ class MergeSparseLookupTableKernel : public framework::OpKernel<T> {
     T* out_data = out->mutable_value()->mutable_data<T>({ids_num, width},
                                                         platform::CPUPlace());
 
-    memset(out_data, 0, sizeof(T) * out->value().numel());
     out->set_height(height);
-
     std::vector<int64_t> all_ids;
+    all_ids.resize(ids_num);
     for (auto& in : inputs) {
-      auto& id_to_index = in->rows();
-      for (auto& iter : id_to_index) {
-        all_ids.push_back(iter);
-      }
+      all_id.insert(all_ids.end(), in.begin(), in.end());
     }
-
     out->set_rows(all_ids);
 
     auto cnt = 0;
 
     for (auto& in : inputs) {
-      auto& id_to_index = in->rows();
       const T* in_data = in->value().data<T>();
-      for (auto& iter : id_to_index) {
-        // memcpy(out_data + out->GetIdToIndex().at(iter.first) * width, in_data
-        // + iter.second * width, sizeof(T) * width);
-        memcpy(out_data + cnt * width, in_data + in->Index(iter) * width,
-               sizeof(T) * width);
-        cnt++;
-      }
+      memcpy(out_data + cnt * width, in_data, in->value().numel() * sizeof(T));
+      cnt + in->value().numel();
     }
   }
 };
