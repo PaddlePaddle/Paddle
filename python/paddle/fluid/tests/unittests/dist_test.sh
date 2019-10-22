@@ -44,8 +44,9 @@ done
 
 #display system context
 for i in {1..2}; do 
-    sleep 2 
-    ps -ef | grep -E "(test_|_test)"
+    sleep 3
+    ps -aux
+    netstat -anlp
 
     if hash "nvidia-smi" > /dev/null; then
         nvidia-smi
