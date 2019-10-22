@@ -136,8 +136,8 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
                       "Input(Y@Grad) and Input(Y) should have the same rank.");
 
     bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(label_dims) <= 0)) {
+    if ((!ctx->IsRuntime()) &&
+        (framework::product(x_dims) <= 0 || framework::product(dy_dims) <= 0)) {
       check = false;
     }
 
