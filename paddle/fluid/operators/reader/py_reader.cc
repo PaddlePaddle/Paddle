@@ -19,8 +19,9 @@ namespace paddle {
 namespace operators {
 namespace reader {
 
-PyReader::PyReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue)
-    : framework::FileReader() {
+PyReader::PyReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,
+                   const std::vector<framework::DDim>& dims)
+    : framework::FileReader(dims) {
   PADDLE_ENFORCE(queue != nullptr, "LoDTensorBlockingQueue must not be null");
   queue_ = queue;
 }

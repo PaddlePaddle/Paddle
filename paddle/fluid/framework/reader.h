@@ -28,6 +28,8 @@ namespace framework {
 
 class ReaderBase {
  public:
+  explicit ReaderBase(const std::vector<DDim>& shapes) : shapes_(shapes) {}
+
   virtual void ReadNext(std::vector<LoDTensor>* out);
 
   virtual void Shutdown();
@@ -37,6 +39,9 @@ class ReaderBase {
   // Return the readers which are the end of decorating chain. Basically
   // they are readers just before read op.
   std::unordered_set<ReaderBase*> GetEndPoints();
+
+  // Returns the shapes of the feeded variables
+  std::vector<DDim> Shapes() const { return shapes_; }
 
   virtual ~ReaderBase();
 
@@ -53,6 +58,8 @@ class ReaderBase {
 
   mutable std::mutex mu_;
 
+  std::vector<DDim> shapes_;
+
  private:
   friend class DecoratedReader;
   // These methods can be only invoked inside DecoratedReader to record the
@@ -67,7 +74,7 @@ class DecoratedReader : public ReaderBase,
                         public std::enable_shared_from_this<DecoratedReader> {
  public:
   explicit DecoratedReader(const std::shared_ptr<ReaderBase>& reader)
-      : ReaderBase(), reader_(reader) {
+      : ReaderBase(reader->Shapes()), reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
 
@@ -89,7 +96,10 @@ class DecoratedReader : public ReaderBase,
 };
 
 // FileReader is just a conceptual class.
-class FileReader : public ReaderBase {};
+class FileReader : public ReaderBase {
+ public:
+  explicit FileReader(const std::vector<DDim>& shapes) : ReaderBase(shapes) {}
+};
 
 // The ReaderHolder is used as reader' unified wrapper,
 // making it easier to access different type reader in Variables.
@@ -133,6 +143,8 @@ class ReaderHolder {
     PADDLE_ENFORCE_NOT_NULL(reader_);
     reader_->Start();
   }
+
+  std::vector<DDim> Shapes() const { return reader_->Shapes(); }
 
   operator const std::shared_ptr<ReaderBase>&() const { return this->reader_; }
 

@@ -342,12 +342,15 @@ class GeneratorLoader(DataLoaderBase):
         self._wait_thread_ends()
         if in_dygraph_mode():
             self._var_names = []
+            self._shapes = []
         else:
             self._var_names = [v.name for v in self._feed_list]
+            self._shapes = [v.shape for v in self._feed_list]
         self._queue = core.init_lod_tensor_blocking_queue(core.Variable(),
                                                           self._capacity)
-        self._reader = core.create_py_reader(
-            self.queue, self._var_names, self._places, self._use_double_buffer)
+        self._reader = core.create_py_reader(self.queue, self._var_names,
+                                             self._shapes, self._places,
+                                             self._use_double_buffer)
 
     def _init_non_iterable(self):
         lod_levels = []

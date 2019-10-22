@@ -26,7 +26,8 @@ namespace reader {
 
 class PyReader : public framework::FileReader {
  public:
-  explicit PyReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue);
+  explicit PyReader(const std::shared_ptr<LoDTensorBlockingQueue>& queue,
+                    const std::vector<framework::DDim>& dims);
 
   void ReadNext(std::vector<framework::LoDTensor>* out) override;
 

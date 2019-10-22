@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/reader.h"
 #include <memory>
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/ddim.h"
 
 class StubDecoratedReader : public paddle::framework::DecoratedReader {
  public:
@@ -26,11 +27,15 @@ class StubDecoratedReader : public paddle::framework::DecoratedReader {
 
 class StubRootReader : public paddle::framework::ReaderBase {
  public:
+  explicit StubRootReader(const std::vector<paddle::framework::DDim> &dims)
+      : paddle::framework::ReaderBase(dims) {}
   void ReadNextImpl(std::vector<paddle::framework::LoDTensor> *out) override {}
 };
 
 TEST(READER, decorate_chain) {
-  auto root = std::make_shared<StubRootReader>();
+  paddle::framework::DDim dim = paddle::framework::make_ddim({5, 7});
+  std::vector<paddle::framework::DDim> init_dims(4, dim);
+  auto root = std::make_shared<StubRootReader>(init_dims);
   auto end_point1 =
       paddle::framework::MakeDecoratedReader<StubDecoratedReader>(root);
   auto end_point2 =
@@ -49,4 +54,12 @@ TEST(READER, decorate_chain) {
     ASSERT_EQ(root->GetEndPoints().size(), 3U);
   }
   { ASSERT_EQ(root->GetEndPoints().size(), 2U); }
+
+  {
+    std::vector<paddle::framework::DDim> shapes = end_point1->Shapes();
+    ASSERT_EQ(shapes.size(), 4U);
+    for (auto shape : shapes) {
+      ASSERT_EQ(shape, dim);
+    }
+  }
 }

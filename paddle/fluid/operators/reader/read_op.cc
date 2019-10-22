@@ -20,6 +20,26 @@
 namespace paddle {
 namespace operators {
 
+// Returns true if the two dimensions are compatible.
+// A dimension is compatible with the other if:
+// 1. The length of the dimensions are same.
+// 2. Each non-negative number of the two dimentions are same.
+// 3. For negative number in a dimention, it means unknown so it is compatible
+//    with any number.
+bool DimensionIsCompatibleWith(const framework::DDim& first,
+                               const framework::DDim& second) {
+  int dim_size = first.size();
+  if (dim_size != second.size()) {
+    return false;
+  }
+  for (int i = 0; i < dim_size; ++i) {
+    if (first[i] >= 0 && second[i] >= 0 && first[i] != second[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 class ReadInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {
@@ -89,20 +109,23 @@ class ReadOp : public framework::OperatorBase {
       VLOG(3) << "throw_eof_exp";
       PADDLE_THROW_EOF();
     }
-    PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size());
+    PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size(),
+                      "input data and output size of reader op do not match");
+
+    std::vector<framework::DDim> shapes = reader->Shapes();
+    PADDLE_ENFORCE_EQ(
+        out_arg_names.size(), shapes.size(),
+        "number of outputs and number of shapes of reader do not match");
+
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
       auto in_dims = ins[i].dims();
-      auto out_dims = out->dims();
-      PADDLE_ENFORCE_EQ(out_dims, in_dims,
+      auto out_dims = shapes[i];
+      PADDLE_ENFORCE_EQ(DimensionIsCompatibleWith(out_dims, in_dims), true,
                         "The feeded Variable %s should have dimensions = %d, "
-                        "shape = %s, but received feeded shape %s",
+                        "shape = [%s], but received feeded shape [%s]",
                         out_arg_names[i], out_dims.size(), out_dims, in_dims);
-      PADDLE_ENFORCE_EQ(
-          out->type(), ins[i].type(),
-          "The data type of feeded Variable %s must %s, but received %s",
-          out->type(), ins[i].type());
       out->ShareDataWith(ins[i]);
       out->set_lod(ins[i].lod());
     }
