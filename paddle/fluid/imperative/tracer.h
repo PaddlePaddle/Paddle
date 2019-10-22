@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,46 +14,48 @@
 
 #pragma once
 
-#include <map>
-#include <set>
+#include <atomic>
+#include <future>  // NOLINT
+#include <memory>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
-
-#include "paddle/fluid/framework/op_desc.h"
-#include "paddle/fluid/framework/op_registry.h"
+#include "ThreadPool.h"
 #include "paddle/fluid/imperative/engine.h"
 #include "paddle/fluid/imperative/layer.h"
-#include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace imperative {
 
-void CreateGradOp(const framework::OpDesc& op_desc,
-                  const std::unordered_set<std::string>& no_grad_set,
-                  const std::vector<framework::BlockDesc*>& grad_sub_block,
-                  framework::OpDesc** grad_op_desc,
-                  std::unordered_map<std::string, std::string>* grad_to_var);
-
-platform::Place GetExpectedPlace(platform::Place place, VarBasePtrMap inputs);
-
 class Tracer {
+  DISABLE_COPY_AND_ASSIGN(Tracer);
+
  public:
-  explicit Tracer(framework::BlockDesc* root_block);
+  Tracer() : engine_(new BasicEngine()) {}
 
-  virtual ~Tracer() {}
+  ~Tracer() = default;
 
-  void Trace(OpBase* op, const VarBasePtrMap& inputs,
-             VarBasePtrMap* outputs,  // NOLINT
-             framework::AttributeMap attrs_map,
-             const platform::Place expected_place,
-             const bool stop_gradient = false);
+  void TraceOp(const std::string& type, const NameVarBaseMap& ins,
+               const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const platform::Place& place, bool trace_bacward);
+
+  bool ComputeRequiredGrad(const NameVarBaseMap& ins,
+                           const NameVarBaseMap& outs, bool trace_backward);
+
+  void TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
+                     const framework::OpDesc& fwd_op_desc,
+                     const NameVarBaseMap& ins, const NameVarBaseMap& outs);
+  Engine* GetDefaultEngine() const { return engine_.get(); }
 
  private:
-  platform::Place GetPlace(const VarBasePtrMap& inputs);
+  static size_t GenerateUniqueId() {
+    static std::atomic<size_t> id{0};
+    return id.fetch_add(1);
+  }
 
-  framework::BlockDesc* root_block_;
+ private:
+  std::unique_ptr<Engine> engine_;
 };
 
 }  // namespace imperative

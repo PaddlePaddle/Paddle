@@ -23,18 +23,16 @@ class BinaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     OpComment comment;
-    AddInput("X",
-             string::Sprintf("(LoDTensor) Left hand operand of %s operator",
-                             comment.type));
-    AddInput("Y",
-             string::Sprintf("(LoDTensor) Right hand operand of %s operator",
-                             comment.type));
-    AddOutput("Out", string::Sprintf(
-                         "(LoDTensor) n-dim bool tensor. Each element is %s",
-                         comment.equation));
+    AddInput("X", string::Sprintf("Left hand operand of %s operator. Must be "
+                                  "a LoDTensor or Tensor of type bool.",
+                                  comment.type));
+    AddInput("Y", string::Sprintf("Right hand operand of %s operator. Must be "
+                                  "a LoDTensor or Tensor of type bool.",
+                                  comment.type));
+    AddOutput("Out", string::Sprintf("n-dim bool LoDTensor or Tensor"));
     AddComment(string::Sprintf(R"DOC(%s Operator
 
-It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean tensors.
+It operates element-wise on X and Y, and returns the Out. X, Y and Out are N-dim boolean LoDTensor or Tensor.
 Each element of Out is calculated by %s
 )DOC",
                                comment.type, comment.equation));
@@ -46,14 +44,13 @@ class UnaryLogicalOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     OpComment comment;
-    AddInput("X", string::Sprintf("(LoDTensor) Operand of %s operator",
+    AddInput("X", string::Sprintf("Operand of %s operator. Must be "
+                                  "a LoDTensor or Tensor of type bool.",
                                   comment.type));
-    AddOutput("Out", string::Sprintf(
-                         "(LoDTensor) n-dim bool tensor. Each element is %s",
-                         comment.equation));
+    AddOutput("Out", string::Sprintf("n-dim bool LoDTensor or Tensor."));
     AddComment(string::Sprintf(R"DOC(%s Operator
 
-It operates element-wise on X, and returns the Out. X and Out are N-dim boolean tensors.
+It operates element-wise on X, and returns the Out. X and Out are N-dim boolean LoDTensor or Tensor.
 Each element of Out is calculated by %s
 )DOC",
                                comment.type, comment.equation));
@@ -65,10 +62,10 @@ class BinaryLogicalOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     OpComment comment;
-    PADDLE_ENFORCE(context->HasInput("X"),
-                   "Input(X) of %s operator must not be null", comment.type);
-    PADDLE_ENFORCE(context->HasInput("Y"),
-                   "Input(Y) of %s operator must not be null", comment.type);
+    PADDLE_ENFORCE_EQ(context->HasInput("X"), true,
+                      "Input(X) of %s operator must not be null", comment.type);
+    PADDLE_ENFORCE_EQ(context->HasInput("Y"), true,
+                      "Input(Y) of %s operator must not be null", comment.type);
     auto dim_x = context->GetInputDim("X");
     auto dim_y = context->GetInputDim("Y");
 
@@ -92,8 +89,8 @@ class UnaryLogicalOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     OpComment comment;
-    PADDLE_ENFORCE(context->HasInput("X"),
-                   "Input(X) of %s operator must not be null", comment.type);
+    PADDLE_ENFORCE_EQ(context->HasInput("X"), true,
+                      "Input(X) of %s operator must not be null", comment.type);
     context->SetOutputDim("Out", context->GetInputDim("X"));
     context->ShareLoD("X", "Out");
   }

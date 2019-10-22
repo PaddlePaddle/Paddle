@@ -66,6 +66,14 @@ paddle::ps::Archive<AR>& operator>>(paddle::ps::Archive<AR>& ar,
 std::shared_ptr<paddle::distributed::PSlib> FleetWrapper::pslib_ptr_ = NULL;
 #endif
 
+void FleetWrapper::SetClient2ClientConfig(int request_timeout_ms,
+                                          int connect_timeout_ms,
+                                          int max_retry) {
+  client2client_request_timeout_ms_ = request_timeout_ms;
+  client2client_connect_timeout_ms_ = connect_timeout_ms;
+  client2client_max_retry_ = max_retry;
+}
+
 void FleetWrapper::InitServer(const std::string& dist_desc, int index) {
 #ifdef PADDLE_WITH_PSLIB
   if (!is_initialized_) {
@@ -142,7 +150,9 @@ std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
 void FleetWrapper::CreateClient2ClientConnection() {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Going to create client2client connection";
-  pslib_ptr_->create_client2client_connection();
+  pslib_ptr_->create_client2client_connection(client2client_request_timeout_ms_,
+                                              client2client_connect_timeout_ms_,
+                                              client2client_max_retry_);
 #endif
 }
 
@@ -188,6 +198,7 @@ void FleetWrapper::PullSparseVarsSync(
     auto status = t.get();
     if (status != 0) {
       LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+      sleep(sleep_seconds_before_fail_exit_);
       exit(-1);
     }
   }
@@ -343,7 +354,9 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       slot = boost::lexical_cast<int>(sparse_key_names[i]);
     }
     Variable* g_var = scope.FindVar(sparse_grad_names[i]);
-    CHECK(g_var != nullptr) << "var[" << sparse_grad_names[i] << "] not found";
+    if (g_var == nullptr) {
+      continue;
+    }
     LoDTensor* g_tensor = g_var->GetMutable<LoDTensor>();
     if (g_tensor == nullptr) {
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
@@ -401,7 +414,9 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
                                        std::vector<std::string> var_list,
                                        std::string model_path,
                                        std::string model_proto_file,
+                                       std::vector<std::string> table_var_list,
                                        bool load_combine) {
+#ifdef PADDLE_WITH_PSLIB
   // load ProgramDesc from model file
   auto read_proto_func = [](const std::string& filename) -> ProgramDesc {
     std::string contents;
@@ -467,7 +482,8 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
     }
   }
   delete old_scope;
-  PushDenseParamSync(scope, table_id, old_param_list);
+  PushDenseParamSync(scope, table_id, table_var_list);
+#endif
 }
 
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {
@@ -476,6 +492,7 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
+    sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
   }
 #else
@@ -505,10 +522,65 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
     LOG(ERROR) << "save model failed";
+    sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
   }
 #else
   VLOG(0) << "FleetWrapper::SaveModel does nothing when no pslib";
+#endif
+}
+
+double FleetWrapper::GetCacheThreshold() {
+#ifdef PADDLE_WITH_PSLIB
+  double cache_threshold = 0.0;
+  auto ret = pslib_ptr_->_worker_ptr->flush();
+  ret.wait();
+  ret = pslib_ptr_->_worker_ptr->get_cache_threshold(0, cache_threshold);
+  ret.wait();
+  if (cache_threshold < 0) {
+    LOG(ERROR) << "get cache threshold failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+  return cache_threshold;
+#else
+  VLOG(0) << "FleetWrapper::GetCacheThreshold does nothing when no pslib";
+  return 0.0;
+#endif
+}
+
+void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
+                                const int mode, const double cache_threshold) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->cache_shuffle(
+      0, path, std::to_string(mode), std::to_string(cache_threshold));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "cache shuffle failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+#else
+  VLOG(0) << "FleetWrapper::CacheShuffle does nothing when no pslib";
+#endif
+}
+
+int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
+                                const int mode) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->save_cache(0, path, std::to_string(mode));
+  ret.wait();
+  int32_t feasign_cnt = ret.get();
+  if (feasign_cnt == -1) {
+    LOG(ERROR) << "table save cache failed";
+    sleep(sleep_seconds_before_fail_exit_);
+    exit(-1);
+  }
+  return feasign_cnt;
+#else
+  VLOG(0) << "FleetWrapper::SaveCache does nothing when no pslib";
+  return -1;
 #endif
 }
 
@@ -572,6 +644,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
   auto status = push_status.get();
   if (status != 0) {
     LOG(FATAL) << "push shrink dense param failed, status[" << status << "]";
+    sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
   }
 #else

@@ -32,12 +32,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
-#if defined(PADDLE_WITH_DGC)
-#include "dgc/dgc.h"
-#endif
 
-DEFINE_int32(paddle_num_threads, 1,
-             "Number of threads for each paddle instance.");
+DECLARE_int32(paddle_num_threads);
 DEFINE_int32(multiple_of_cupti_buffer_size, 1,
              "Multiple of the CUPTI device buffer size. If the timestamps have "
              "been dropped when you are profiling, try increasing this value.");
@@ -45,12 +41,12 @@ DEFINE_int32(multiple_of_cupti_buffer_size, 1,
 namespace paddle {
 namespace framework {
 
+#ifdef _WIN32
+#define strdup _strdup
+#endif
+
 std::once_flag gflags_init_flag;
 std::once_flag p2p_init_flag;
-
-#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-std::once_flag dgc_init_flag;
-#endif
 
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
@@ -150,7 +146,6 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   }
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
-  platform::DeviceTemporaryAllocator::Init();
 
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
@@ -204,9 +199,10 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 }
 
 #ifndef _WIN32
-static void SignalHandle(const char *data, int size) {
+void SignalHandle(const char *data, int size) {
   auto file_path = string::Sprintf("/tmp/paddle.%d.dump_info", ::getpid());
   try {
+    LOG(WARNING) << std::string(data, size);
     std::ofstream dump_info;
     dump_info.open(file_path, std::ios::app);
     dump_info << std::string(data, size);
@@ -225,16 +221,6 @@ void InitGLOG(const std::string &prog_name) {
   google::InstallFailureWriter(&SignalHandle);
 #endif
 }
-
-#if defined(PADDLE_WITH_DGC)
-void InitDGC() {
-  std::call_once(dgc_init_flag, []() {
-    PADDLE_ENFORCE(paddle::communication::dgc::dynloadNcclLib());
-  });
-}
-#else
-void InitDGC() {}
-#endif
 
 }  // namespace framework
 }  // namespace paddle

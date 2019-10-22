@@ -40,7 +40,7 @@ class ChannelObject {
 
   // capacity can be zero
   explicit ChannelObject(size_t capacity) {
-    capacity_ = std::min(MaxCapacity(), capacity);
+    capacity_ = (std::min)(MaxCapacity(), capacity);
   }
 
   void Clear() {
@@ -192,7 +192,7 @@ class ChannelObject {
   std::condition_variable full_cond_;
 
   static constexpr size_t MaxCapacity() {
-    return std::numeric_limits<size_t>::max() / 2;
+    return (std::numeric_limits<size_t>::max)() / 2;
   }
 
   void Notify() {
@@ -289,7 +289,7 @@ template <class T>
 using Channel = std::shared_ptr<ChannelObject<T>>;
 
 template <class T>
-Channel<T> MakeChannel(size_t capacity = std::numeric_limits<size_t>::max()) {
+Channel<T> MakeChannel(size_t capacity = (std::numeric_limits<size_t>::max)()) {
   return std::make_shared<ChannelObject<T>>(capacity);
 }
 
@@ -370,7 +370,7 @@ class ChannelWriter {
 
   void Reset(ChannelObject<T>* channel) {
     CHECK(buffer_.empty()) << "Forgot to flush";
-    CHECK(channel != nullptr) << "Channel can not be nullptr";
+    //    CHECK(channel != nullptr) << "Channel can not be nullptr";
     channel_ = channel;
     buffer_.clear();
     failed_ = !channel;

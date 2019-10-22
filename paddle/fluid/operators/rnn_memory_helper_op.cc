@@ -107,7 +107,7 @@ class RNNMemoryHelperGradOp : public framework::OperatorBase {
 
       framework::AttributeMap attrs;
       attrs["dtype"] = in_var_tensor.type();
-      attrs["shape"] = framework::vectorize2int(in_var_tensor.dims());
+      attrs["shape"] = framework::vectorize<int>(in_var_tensor.dims());
       attrs["value"] = 0.0f;
 
       auto zero_op = framework::OpRegistry::CreateOp(

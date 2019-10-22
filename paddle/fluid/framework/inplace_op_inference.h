@@ -43,15 +43,23 @@ class SingleOpInplaceInToOut : public InplaceOpInference {
  public:
   std::unordered_map<std::string, std::string> operator()(
       const OpDesc& op_desc, bool use_cuda) const override {
-    PADDLE_ENFORCE_EQ(op_desc.InputNames().size(), 1,
-                      "Op inputs must be unique");
-    PADDLE_ENFORCE_EQ(op_desc.OutputNames().size(), 1,
-                      "Op outputs must be unique");
-    auto x_name = op_desc.InputNames().at(0);
-    auto out_name = op_desc.OutputNames().at(0);
-    return std::unordered_map<std::string, std::string>{{x_name, out_name}};
+    auto inputs = op_desc.InputNames();
+    auto outputs = op_desc.OutputNames();
+    PADDLE_ENFORCE_EQ(inputs.size(), 1, "Op inputs must be unique");
+    PADDLE_ENFORCE_EQ(outputs.size(), 1, "Op outputs must be unique");
+    return {{inputs[0], outputs[0]}};
   }
 };
+
+#define DECLARE_INPLACE_OP_INFERER(class_name, ...)                         \
+  class class_name final : public ::paddle::framework::InplaceOpInference { \
+   public:                                                                  \
+    std::unordered_map<std::string, std::string> operator()(                \
+        const ::paddle::framework::OpDesc& op_desc,                         \
+        bool use_cuda) const final {                                        \
+      return {__VA_ARGS__};                                                 \
+    }                                                                       \
+  }
 
 }  // namespace framework
 }  // namespace paddle

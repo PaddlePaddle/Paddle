@@ -159,6 +159,19 @@ set(COMMON_FLAGS
     ${fsanitize}
 )
 
+if(NOT APPLE)
+    if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
+        set(COMMON_FLAGS
+                ${COMMON_FLAGS}
+                -Wno-format-truncation # Warning in boost gcc 8.2
+                -Wno-error=cast-function-type # Warning in boost gcc 8.2
+                -Wno-error=parentheses # Warning in boost gcc 8.2
+                -Wno-error=catch-value # Warning in boost gcc 8.2
+                -Wno-ignored-qualifiers # Warning in boost gcc 8.2
+                )
+    endif()
+endif(NOT APPLE)
+
 set(GPU_COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
@@ -204,7 +217,7 @@ foreach(flag ${GPU_COMMON_FLAGS})
     safe_set_nvflag(${flag})
 endforeach()
 
-if(WIN32)
+if(WIN32 AND MSVC_STATIC_CRT)
 # windows build turn off warnings.
 safe_set_static_flag()
     foreach(flag_var
@@ -215,4 +228,4 @@ safe_set_static_flag()
         string(REGEX REPLACE "(^| )/W[0-9]( |$)" " " ${flag_var} "${${flag_var}}")
         set(flag_var "${flag_var} /w")
     endforeach(flag_var)
-endif(WIN32)
+endif()

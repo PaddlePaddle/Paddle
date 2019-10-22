@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""HDFS Utils"""
+"""HDFS Utils."""
 
 import os
 import sys
@@ -24,9 +24,19 @@ import copy
 import errno
 
 import logging
-from paddle.fluid.log_helper import get_logger
 
 __all__ = ["HDFSClient"]
+
+
+def get_logger(name, level, fmt):
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    handler = logging.FileHandler('hdfs.log', mode='w')
+    formatter = logging.Formatter(fmt=fmt)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger
+
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -84,13 +94,35 @@ class HDFSClient(object):
             ret_code, ret_out, ret_err = proc.returncode, output, errors
 
             _logger.info(
-                'Times: %d, Running command: %s. Return code: %d, Error: %s' %
+                'Times: %d, Running command: %s. Return code: %d, Msg: %s' %
                 (x, whole_commands, proc.returncode, errors))
 
             if ret_code == 0:
                 break
 
         return ret_code, ret_out, ret_err
+
+    def cat(self, hdfs_path=None):
+        """
+        cat hdfs file
+        Args:
+            hdfs_path(str): the hdfs file path
+        Returns:
+            file content
+        """
+        if self.is_file(hdfs_path):
+            exist_cmd = ['-cat', hdfs_path]
+            returncode, output, errors = self.__run_hdfs_cmd(
+                exist_cmd, retry_times=1)
+            if returncode != 0:
+                _logger.error("HDFS cat HDFS path: {} failed".format(hdfs_path))
+                return ""
+            else:
+                _logger.info("HDFS cat HDFS path: {} succeed".format(hdfs_path))
+                return output.strip()
+
+        else:
+            return ""
 
     def is_exist(self, hdfs_path=None):
         """
@@ -141,6 +173,32 @@ class HDFSClient(object):
                 hdfs_path))
             return True
 
+    def is_file(self, hdfs_path=None):
+        """
+        whether the remote HDFS path is file
+
+        Args:
+            hdfs_path(str): the hdfs file path
+
+        Returns:
+            True or False
+        """
+
+        if not self.is_exist(hdfs_path):
+            return False
+
+        dir_cmd = ['-test', '-d', hdfs_path]
+        returncode, output, errors = self.__run_hdfs_cmd(dir_cmd, retry_times=1)
+
+        if returncode == 0:
+            _logger.error("HDFS path: {} failed is not a file".format(
+                hdfs_path))
+            return False
+        else:
+            _logger.info("HDFS path: {} successfully is a file".format(
+                hdfs_path))
+            return True
+
     def delete(self, hdfs_path):
         """
         Remove a file or directory from HDFS.
@@ -148,7 +206,7 @@ class HDFSClient(object):
         whether the remote HDFS path exists
 
         Args:
-        hdfs_path: HDFS path.
+            hdfs_path(str): HDFS path.
 
         Returns:
             True or False
@@ -182,9 +240,10 @@ class HDFSClient(object):
         Move a file or folder on HDFS.
 
         Args:
-        hdfs_path(str): HDFS path.
-        overwrite(bool|False): If the path already exists and overwrite is False, will return False.
-
+            hdfs_src_path(str): HDFS path
+            hdfs_dst_path(str): HDFS path
+            overwrite(bool|False): If the path already exists and overwrite is
+                                   False, will return False.
         Returns:
             True or False
         """
@@ -214,8 +273,9 @@ class HDFSClient(object):
     def make_local_dirs(local_path):
         """
         create a directiory local, is same to mkdir
+
         Args:
-            local_path: local path that wants to create a directiory.
+            local_path(str): local path that wants to create a directiory.
         """
         try:
             os.makedirs(local_path)
@@ -228,7 +288,8 @@ class HDFSClient(object):
         Create a remote directory, recursively if necessary.
 
         Args:
-        hdfs_path(str): Remote path. Intermediate directories will be created appropriately.
+            hdfs_path(str): Remote path. Intermediate directories will be
+                            created appropriately.
 
         Returns:
             True or False
@@ -248,7 +309,7 @@ class HDFSClient(object):
             _logger.error("HDFS mkdir path: {} failed".format(hdfs_path))
             return False
         else:
-            _logger.error("HDFS mkdir path: {} successfully".format(hdfs_path))
+            _logger.info("HDFS mkdir path: {} successfully".format(hdfs_path))
             return True
 
     def ls(self, hdfs_path):
@@ -256,7 +317,7 @@ class HDFSClient(object):
         ls directory contents about HDFS hdfs_path
 
         Args:
-        hdfs_path(str): Remote HDFS path will be ls.
+            hdfs_path(str): Remote HDFS path will be ls.
 
         Returns:
             List: a contents list about hdfs_path.
@@ -290,9 +351,8 @@ class HDFSClient(object):
         list directory contents about HDFS hdfs_path recursively
 
         Args:
-        hdfs_path(str): Remote HDFS path.
-        only_file(bool|True): will discard folders.
-        sort(bool|True): will be sorted by create time.
+            hdfs_path(str): Remote HDFS path.
+            excludes(list): excludes
 
         Returns:
             List: a contents list about hdfs_path.
@@ -331,7 +391,18 @@ class HDFSClient(object):
             return ret_lines
 
     @staticmethod
-    def split_flies(files, trainer_id, trainers):
+    def split_files(files, trainer_id, trainers):
+        """
+        split file list
+
+        Args:
+            files(list): file list
+            trainer_id(int): trainer mpi rank id
+            trainers(int): all trainers num
+
+        Returns:
+            fileist(list): file list of current trainer
+        """
         remainder = len(files) % trainers
         blocksize = len(files) / trainers
 
@@ -360,6 +431,8 @@ class HDFSClient(object):
             hdfs_path(str): path on hdfs
             local_path(str): path on local
             multi_processes(int|5): the download data process at the same time, default=5
+            overwrite(bool): is overwrite
+            retry_times(int): retry times
 
         Returns:
             List:
@@ -398,7 +471,7 @@ class HDFSClient(object):
 
         procs = []
         for i in range(multi_processes):
-            process_datas = HDFSClient.split_flies(all_files, i,
+            process_datas = HDFSClient.split_files(all_files, i,
                                                    multi_processes)
             p = multiprocessing.Process(
                 target=__subprocess_download,
@@ -436,7 +509,7 @@ class HDFSClient(object):
             local_path(str): path on local
             multi_processes(int|5): the upload data process at the same time, default=5
             overwrite(bool|False): will overwrite file on HDFS or not
-            sync(bool|True): upload files sync or not.
+            retry_times(int): upload file max retry time.
 
         Returns:
             None
@@ -455,6 +528,15 @@ class HDFSClient(object):
             return True
 
         def get_local_files(path):
+            """
+            get local files
+
+            Args:
+                path(str): local path
+
+            Returns:
+                list of local files
+            """
             rlist = []
 
             if not os.path.exists(path):
@@ -479,7 +561,7 @@ class HDFSClient(object):
 
         procs = []
         for i in range(multi_processes):
-            process_datas = HDFSClient.split_flies(all_files, i,
+            process_datas = HDFSClient.split_files(all_files, i,
                                                    multi_processes)
             p = multiprocessing.Process(
                 target=__subprocess_upload, args=(
@@ -494,6 +576,32 @@ class HDFSClient(object):
 
         _logger.info("Finish upload datas from {} to {}".format(local_path,
                                                                 hdfs_path))
+
+    def upload_dir(self, dest_dir, local_dir, overwrite=False):
+        """
+        upload dir to hdfs
+        Args:
+            dest_dir(str): hdfs dest dir
+            local_dir(str): hdfs local dir
+            overwrite(bool): is overwrite
+        Returns:
+            return code
+        """
+        local_dir = local_dir.rstrip("/")
+        dest_dir = dest_dir.rstrip("/")
+        local_basename = os.path.basename(local_dir)
+        if self.is_exist(dest_dir + "/" + local_basename) and overwrite:
+            self.delete(dest_dir + "/" + local_basename)
+        if not self.is_exist(dest_dir):
+            self.makedirs(dest_dir)
+        put_command = ["-put", local_dir, dest_dir]
+        returncode, output, errors = self.__run_hdfs_cmd(put_command,
+                                                         retry_times)
+        if returncode != 0:
+            _logger.error("Put local dir: {} to HDFS dir: {} failed".format(
+                local_dir, dest_dir))
+            return False
+        return True
 
 
 if __name__ == "__main__":

@@ -13,11 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/reader_py.h"
+#include <exception>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include "Python.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
@@ -26,6 +28,8 @@
 
 namespace paddle {
 namespace pybind {
+
+namespace py = pybind11;
 
 class MultiDeviceFeedReader {
  public:
@@ -62,16 +66,12 @@ class MultiDeviceFeedReader {
 
     futures_.resize(dst_places.size());
     ret_.resize(dst_places.size());
+    exceptions_.assign(dst_places.size(), nullptr);
     ReadAsync();
   }
 
   ResultDictList ReadNext() {
-    bool success = WaitFutures();
-
-    if (!success) {
-      return {};
-    }
-
+    CheckNextStatus();
     ResultDictList result(ret_.size());
     for (size_t i = 0; i < ret_.size(); ++i) {
       for (size_t j = 0; j < names_.size(); ++j) {
@@ -83,11 +83,7 @@ class MultiDeviceFeedReader {
   }
 
   ResultList ReadNextList() {
-    bool success = WaitFutures();
-    if (!success) {
-      return {};
-    }
-
+    CheckNextStatus();
     ResultList result;
     result.reserve(ret_.size());
     for (size_t i = 0; i < ret_.size(); ++i) {
@@ -109,12 +105,32 @@ class MultiDeviceFeedReader {
   }
 
  private:
-  bool WaitFutures() {
-    bool success = true;
-    for (auto &f : futures_) {
-      success &= f.get();
+  enum Status {
+    kSuccess = 0,   // Read next data successfully
+    kEOF = 1,       // Reach EOF
+    kException = 2  // Exception raises when reading
+  };
+
+  Status WaitFutures(std::exception_ptr *excep) {
+    bool is_success = true;
+    *excep = nullptr;
+    for (size_t i = 0; i < futures_.size(); ++i) {
+      auto each_status = futures_[i].get();
+      if (UNLIKELY(each_status != Status::kSuccess)) {
+        is_success = false;
+        if (UNLIKELY(each_status == Status::kException)) {
+          PADDLE_ENFORCE_NOT_NULL(exceptions_[i]);
+          *excep = exceptions_[i];
+          exceptions_[i] = nullptr;
+        }
+      }
     }
-    return success;
+
+    if (UNLIKELY(*excep)) {
+      return Status::kException;
+    } else {
+      return is_success ? Status::kSuccess : Status::kEOF;
+    }
   }
 
   void Shutdown() {
@@ -128,10 +144,33 @@ class MultiDeviceFeedReader {
   void ReadAsync() {
     for (size_t i = 0; i < readers_.size(); ++i) {
       futures_[i] = pool_->enqueue([this, i] {
-        readers_[i]->ReadNext(&ret_[i]);
-        return !ret_[i].empty();
+        try {
+          readers_[i]->ReadNext(&ret_[i]);
+          return ret_[i].empty() ? Status::kEOF : Status::kSuccess;
+        } catch (...) {
+          exceptions_[i] = std::current_exception();
+          return Status::kException;
+        }
       });
     }
+  }
+
+  void CheckNextStatus() {
+    std::exception_ptr excep;
+    Status status = WaitFutures(&excep);
+
+    if (UNLIKELY(excep)) {
+      PADDLE_ENFORCE_EQ(status, Status::kException);
+      std::rethrow_exception(excep);
+    }
+
+    if (UNLIKELY(status == Status::kEOF)) {
+      VLOG(2) << "Raise StopIteration Exception in Python";
+      py::gil_scoped_acquire guard;
+      throw py::stop_iteration();
+    }
+
+    PADDLE_ENFORCE_EQ(status, Status::kSuccess);
   }
 
   std::shared_ptr<operators::reader::LoDTensorBlockingQueue> queue_;
@@ -140,11 +179,11 @@ class MultiDeviceFeedReader {
 
   std::vector<std::unique_ptr<framework::ReaderHolder>> readers_;
 
-  std::vector<std::future<bool>> futures_;
+  std::vector<std::future<Status>> futures_;
+  std::vector<std::exception_ptr> exceptions_;
+
   std::vector<std::vector<framework::LoDTensor>> ret_;
 };
-
-namespace py = pybind11;
 
 void BindReader(py::module *module) {
   auto &m = *module;

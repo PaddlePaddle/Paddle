@@ -35,10 +35,10 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
 
     int nranks = ctx.Attr<int>("nranks");
     int rid = ctx.Attr<int>("ring_id");
-    auto comm = platform::NCCLCommContext::Instance().Get(rid);
+    auto place = ctx.GetPlace();
+    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     PADDLE_ENFORCE_EQ(nranks, comm->nranks());
 
-    auto place = ctx.GetPlace();
     framework::DDim out_dims = in->dims();
     out_dims[0] *= nranks;
     out->mutable_data<T>(out_dims, place);
@@ -55,7 +55,7 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    PADDLE_ENFORCE(platform::dynload::ncclAllGather(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
         send_buff, recv_buff, send_numel, static_cast<ncclDataType_t>(dtype),
         comm->comm(), stream));
 #else

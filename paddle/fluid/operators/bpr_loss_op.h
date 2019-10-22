@@ -28,7 +28,7 @@ using Tensor = framework::Tensor;
 template <typename T>
 struct TolerableValue {
   HOSTDEVICE T operator()(const T& x) const {
-    PADDLE_ASSERT(std::is_floating_point<T>::value);
+    PADDLE_ENFORCE_EQ(std::is_floating_point<T>::value, true);
     const T kApproInf = 1e20;
     if (x == INFINITY) return kApproInf;
     if (x == -INFINITY) return -kApproInf;

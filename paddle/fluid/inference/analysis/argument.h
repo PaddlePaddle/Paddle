@@ -62,6 +62,9 @@ struct Argument {
   using anakin_max_shape_t = std::map<std::string, std::vector<int>>;
 
   bool Has(const std::string& key) const { return valid_fields_.count(key); }
+  // If we set the model using config.SetModelBuffer,
+  // the model and parameter will occupy additional CPU resources.
+  // Use this interface to release these resources.
   void PartiallyRelease() {
     if (Has("model_program_path")) {
       if (Has("model_from_memory") && model_from_memory()) {
@@ -130,6 +133,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
+  DECL_ARGUMENT_FIELD(enable_analysis_optim, EnableAnalysisOptim, bool);
 
   // The overall graph to work on.
   DECL_ARGUMENT_UNIQUE_FIELD(main_graph, MainGraph, framework::ir::Graph);
@@ -192,9 +196,7 @@ struct Argument {
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);
-  DECL_ARGUMENT_FIELD(static_memory_optim, StaticMemoryOptim, bool);
-  DECL_ARGUMENT_FIELD(static_memory_optim_force_update,
-                      StaticMemoryOptimForceUpdate, bool);
+
   // Indicate which kind of sort algorithm is used for operators, the memory
   // optimization relays on the sort algorithm.
   DECL_ARGUMENT_FIELD(memory_optim_sort_kind, MemoryOptimSortKind, int);

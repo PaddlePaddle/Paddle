@@ -27,7 +27,7 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) must exist");
 
     int maxlen = ctx->Attrs().Get<int>("maxlen");
-    auto dim = framework::vectorize2int(ctx->GetInputDim("X"));
+    auto dim = framework::vectorize<int>(ctx->GetInputDim("X"));
 
     if (ctx->HasInputs("MaxLenTensor")) {
       dim.push_back(-1);

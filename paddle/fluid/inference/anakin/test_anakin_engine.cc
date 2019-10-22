@@ -78,6 +78,7 @@ TEST_F(TestAnakinEngine, Execute) {
   std::map<std::string, framework::LoDTensor *> outputs = {{"y", &y}};
 
   cudaStream_t stream;
+  cudaStreamCreate(&stream);
 
   engine_->Execute(inputs, outputs, stream);
   auto *y_data_gpu = y_data;

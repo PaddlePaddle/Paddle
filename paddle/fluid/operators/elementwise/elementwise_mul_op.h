@@ -14,16 +14,12 @@ limitations under the License. */
 
 #pragma once
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct MulFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a * b; }
-};
 
 template <typename DeviceContext, typename T>
 void default_elementwise_mul(const framework::ExecutionContext& ctx,
@@ -33,32 +29,12 @@ void default_elementwise_mul(const framework::ExecutionContext& ctx,
   ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
                                                         MulFunctor<T>(), z);
 }
-
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_floating_point<T>::value &&
-    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_mul_same_dims(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y, framework::Tensor* z) {
-  auto blas = math::GetBlas<DeviceContext, T>(ctx);
-  blas.VMUL(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
-}
-
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    !std::is_floating_point<T>::value ||
-    !std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_mul_same_dims(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y, framework::Tensor* z) {
-  auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-  auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-  auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-
-  auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-  eigen_z.device(place) = eigen_x * eigen_y;
-}
+template <typename DeviceContext, typename T, class Enable = void>
+struct SameDimsElemwiseMul {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* y,
+                  framework::Tensor* z);
+};
 
 template <typename DeviceContext, typename T>
 class ElementwiseMulKernel : public framework::OpKernel<T> {
@@ -92,7 +68,8 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
 
     z->mutable_data<T>(ctx.GetPlace());
     if (x.numel() == y->numel()) {
-      elementwise_mul_same_dims<DeviceContext, T>(ctx, &x, y, z);
+      SameDimsElemwiseMul<DeviceContext, T> same_dims_mul;
+      same_dims_mul(ctx, &x, y, z);
     } else {
       default_elementwise_mul<DeviceContext, T>(ctx, &x, y, z);
     }
@@ -110,6 +87,31 @@ struct MulGradDY {
 };
 
 template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+elementwise_mul_grad(const framework::ExecutionContext& ctx,
+                     const framework::Tensor* x, const framework::Tensor* y,
+                     const framework::Tensor* out,
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy) {
+  int axis = ctx.Attr<int>("axis");
+  ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
+      ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
+}
+
+#ifdef PADDLE_WITH_CUDA
+// cuda definition
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+elementwise_mul_grad(const framework::ExecutionContext& ctx,
+                     const framework::Tensor* x, const framework::Tensor* y,
+                     const framework::Tensor* out,
+                     const framework::Tensor* dout, framework::Tensor* dx,
+                     framework::Tensor* dy);
+#endif
+
+template <typename DeviceContext, typename T>
 class ElementwiseMulGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -123,8 +125,13 @@ class ElementwiseMulGradKernel : public ElemwiseGradKernel<T> {
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
-    ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
-        ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(), MulGradDY<T>());
+    if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
+      elementwise_mul_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
+    } else {
+      ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
+          ctx, *x, *y, *out, *dout, axis, dx, dy, MulGradDX<T>(),
+          MulGradDY<T>());
+    }
   }
 };
 
@@ -146,37 +153,47 @@ class ElementwiseMulDoubleGradKernel : public framework::OpKernel<T> {
 
     if (ddout) ddout->mutable_data<T>(ctx.GetPlace());
 
-    // dx = dout * ddy
-    // dy = dout * ddx
     Tensor ddx_safe, ddy_safe;
     GetDoubleGradSafeTensor<DeviceContext, T>(ctx, x, ddx, &ddx_safe);
     GetDoubleGradSafeTensor<DeviceContext, T>(ctx, y, ddy, &ddy_safe);
-    int axis = ctx.Attr<int>("axis");
-    ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
-        ctx, ddx_safe, ddy_safe, *dout, *dout, axis, dx, dy, MulGradDX<T>(),
-        MulGradDY<T>());
 
+    // dx = dout * ddy
+    // dy = dout * ddx
     // ddout = ddx * y + x * ddy
+    // change computation sequence to save memory, so ddout can inplace ddx and
+    // dx can be used as 'tmp' tensor
+    // (1) dx = x * ddy
+    // (2) dy = dout * ddx
+    // (3) ddout = ddx * y
+    // (4) ddout = ddout + dx
+    // (5) dx = dout *ddy
     if (ddout) {
-      if (ddx && ddy) {
-        Tensor ddout_tmp;
-        ddout_tmp.mutable_data<T>(ddout->dims(), ctx.GetPlace());
+      // use dx to save memory, other than alloc tmp tensor
+      Tensor* ddout_tmp = dx;
 
-        default_elementwise_mul<DeviceContext, T>(ctx, ddx, y, ddout);
-        default_elementwise_mul<DeviceContext, T>(ctx, x, ddy, &ddout_tmp);
+      default_elementwise_mul<DeviceContext, T>(ctx, x, &ddy_safe, ddout_tmp);
+      int axis = ctx.Attr<int>("axis");
+      // NOTE: in the following ElemwiseGradCompute, for the
+      // first output tensor is nullptr, the branch to calculate first
+      // output tensor will not be activated, DivGradDx function will not
+      // be called and can be ignored, the first branch has little effect
+      // on running speed.
+      ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
+          ctx, ddx_safe, ddy_safe, *dout, *dout, axis, nullptr, dy,
+          MulGradDX<T>(), MulGradDY<T>());
+      default_elementwise_mul<DeviceContext, T>(ctx, &ddx_safe, y, ddout);
 
-        auto& place =
-            *ctx.template device_context<DeviceContext>().eigen_device();
-        auto ddout_t = framework::EigenVector<T>::Flatten(*ddout);
-        auto ddout_tmp_t = framework::EigenVector<T>::Flatten(ddout_tmp);
-        ddout_t.device(place) = ddout_t + ddout_tmp_t;
-      } else {
-        if (ddx) default_elementwise_mul<DeviceContext, T>(ctx, ddx, y, ddout);
-        if (ddy) default_elementwise_mul<DeviceContext, T>(ctx, x, ddy, ddout);
-      }
+      auto& place =
+          *ctx.template device_context<DeviceContext>().eigen_device();
+      auto ddout_t = framework::EigenVector<T>::Flatten(*ddout);
+      auto ddout_tmp_t = framework::EigenVector<T>::Flatten(*ddout_tmp);
+      ddout_t.device(place) = ddout_t + ddout_tmp_t;
+      default_elementwise_mul<DeviceContext, T>(ctx, dout, &ddy_safe, dx);
     }
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(ElementwiseMulDoubleGradOpInplace, {"DDX", "DDOut"});
 
 }  // namespace operators
 }  // namespace paddle

@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
@@ -31,9 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
-DEFINE_bool(check_nan_inf, false,
-            "Checking whether operator produce NAN/INF or not. It will be "
-            "extremely slow so please use this flag wisely.");
+DECLARE_bool(check_nan_inf);
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
 DEFINE_bool(fast_check_nan_inf, false,
             "Fast checking NAN/INF after each operation. It will be a little"
@@ -68,9 +67,6 @@ static DDim GetDimsDebug(const Scope& scope, const std::string& name,
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
-      return DDim({-1});
-    }
     return tensor.dims();
   } else if (var->IsType<SelectedRows>()) {
     if (get_actual_dim) {
@@ -136,9 +132,6 @@ static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
-      return default_lod;
-    }
     return tensor.lod();
   } else {
     return default_lod;
@@ -186,28 +179,9 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     } else {
       RunImpl(scope, place);
     }
-
     VLOG(3) << place << " " << DebugStringEx(&scope);
-  } catch (platform::EnforceNotMet exception) {
-    if (Attrs().count("sub_block") != 0) {
-      throw std::move(exception);
-    }
-
-    auto& callstack = Attr<std::vector<std::string>>(
-        OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
-
-    if (callstack.empty()) {
-      throw std::move(exception);
-    }
-    std::ostringstream sout;
-    sout << "Invoke operator " << Type() << " error.\n";
-    sout << "Python Callstacks: \n";
-    for (auto& line : callstack) {
-      sout << line;
-    }
-    sout << "C++ Callstacks: \n";
-    sout << exception.err_str_;
-    exception.err_str_ = sout.str();
+  } catch (platform::EnforceNotMet& exception) {
+    framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
   } catch (...) {
     std::rethrow_exception(std::current_exception());
@@ -261,8 +235,16 @@ const std::vector<std::string>& OperatorBase::Outputs(
 std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
+
+  std::unordered_set<std::string> no_need_buffer_vars;
+  if (info_ && info_->NoNeedBufferVarsInferer()) {
+    no_need_buffer_vars =
+        Info().NoNeedBufferVarsInferer()(Inputs(), Outputs(), Attrs());
+  }
+
   for (auto it = inputs_.begin(); it != inputs_.end();) {
     auto& input = *it;
+    bool is_no_need_buffer_var = (no_need_buffer_vars.count(input.first) > 0);
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
       auto var_name = input.second[i];
@@ -275,7 +257,9 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           if (row_size >= 0) {
             ss << "[row_size=" << row_size << "]";
           }
-          std::string dtype = GetDtype(*scope, var_name);
+          std::string dtype = is_no_need_buffer_var
+                                  ? "unknown_dtype"
+                                  : GetDtype(*scope, var_name);
           ss << ":" << dtype;
           ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
           ss << "(" << GetLoDDebug(*scope, var_name) << ")";
@@ -671,7 +655,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     Variable* out_var = out_it->second.at(j);
     PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
                    "The %d-th output of Output(%s) must be LoDTensor.", j, out);
-    auto in_tensor = in_var->Get<LoDTensor>();
+    auto& in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
 
@@ -1161,40 +1145,65 @@ Scope* OperatorWithKernel::PrepareData(
   return new_scope;
 }
 
+void OperatorWithKernel::ParseInputDataType(
+    const ExecutionContext& ctx, const std::string& name,
+    proto::VarType::Type* data_type) const {
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  const std::vector<const Variable*> vars = ctx.MultiInputVar(name);
+  for (size_t i = 0; i < vars.size(); ++i) {
+    const Variable* var = vars[i];
+    if (var != nullptr) {
+      const Tensor* t = nullptr;
+      if (var->IsType<Tensor>()) {
+        t = &var->Get<Tensor>();
+      } else if (var->IsType<LoDTensor>()) {
+        t = &var->Get<LoDTensor>();
+      } else if (var->IsType<SelectedRows>()) {
+        t = &(var->Get<SelectedRows>().value());
+      }
+      if (t != nullptr) {
+        PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                          "The Tensor in the %s Op's Input Variable %s(%s) is "
+                          "not initialized.",
+                          Type(), name, ctx.Inputs(name).at(i));
+        proto::VarType::Type tmp = t->type();
+        PADDLE_ENFORCE(tmp == *data_type || *data_type == dafault_data_type,
+                       "The DataType of %s Op's duplicable Variable %s must be "
+                       "consistent. The current variable type is (%s), but the "
+                       "previous variable type is (%s).",
+                       Type(), name, DataTypeToString(tmp),
+                       DataTypeToString(*data_type));
+        *data_type = tmp;
+      }
+    }
+  }
+}
+
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
   for (auto& input : this->inputs_) {
-    const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
-    for (size_t i = 0; i < vars.size(); ++i) {
-      const Variable* var = vars[i];
-      if (var != nullptr) {
-        const Tensor* t = nullptr;
-        if (var->IsType<Tensor>()) {
-          t = &var->Get<Tensor>();
-        } else if (var->IsType<LoDTensor>()) {
-          t = &var->Get<LoDTensor>();
-        } else if (var->IsType<SelectedRows>()) {
-          t = &(var->Get<SelectedRows>().value());
-        }
-        if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu) is not initialized",
-                         input.first, i);
-          proto::VarType::Type tmp = t->type();
-          PADDLE_ENFORCE(
-              tmp == data_type || data_type == dafault_data_type,
-              "DataType of Paddle Op %s %s must be the same. Get (%s) != (%s)",
-              Type(), input.first, DataTypeToString(data_type),
-              DataTypeToString(tmp));
-          data_type = tmp;
-        }
-      }
-    }
+    ParseInputDataType(ctx, input.first, &data_type);
   }
-  PADDLE_ENFORCE(data_type != dafault_data_type,
-                 "DataType should be indicated by input");
+  PADDLE_ENFORCE_NE(data_type, dafault_data_type,
+                    "DataType should be indicated by input Variable.");
+  return data_type;
+}
+
+proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
+    const ExecutionContext& ctx, const std::string& name) const {
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  proto::VarType::Type data_type = dafault_data_type;
+  ParseInputDataType(ctx, name, &data_type);
+  PADDLE_ENFORCE_NE(
+      data_type, dafault_data_type,
+      "The Input Variable(%s) of %s Op used to determine kernel data type "
+      "is empty or not LoDTensor or SelectedRows.",
+      name, Type());
   return data_type;
 }
 

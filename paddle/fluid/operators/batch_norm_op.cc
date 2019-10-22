@@ -58,8 +58,18 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
-  PADDLE_ENFORCE(x_dims.size() >= 2 && x_dims.size() <= 5,
-                 "Input X must have 2 to 5 dimensions.");
+  PADDLE_ENFORCE_GE(
+      x_dims.size(), 2,
+      "ShapeError: the dimension of input X must greater than or equal to 2."
+      "But received: the shape of input X = [%s], the dimension of input X ="
+      "[%d]",
+      x_dims, x_dims.size());
+  PADDLE_ENFORCE_LE(
+      x_dims.size(), 5,
+      "ShapeError: the dimension of input X must smaller than or equal to 5."
+      "But received: the shape of input X = [%s], the dimension of input X ="
+      "[%d]",
+      x_dims, x_dims.size());
 
   const int64_t C =
       (data_layout == DataLayout::kNCHW ? x_dims[1]
@@ -68,8 +78,16 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   auto scale_dim = ctx->GetInputDim("Scale");
   auto bias_dim = ctx->GetInputDim("Bias");
 
-  PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL);
-  PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL);
+  PADDLE_ENFORCE_EQ(scale_dim.size(), 1UL,
+                    "ShapeError: the dimension of scale must equal to 1."
+                    "But received: the shape of scale is [%s], the dimension "
+                    "of scale is [%d]",
+                    scale_dim, scale_dim.size());
+  PADDLE_ENFORCE_EQ(
+      bias_dim.size(), 1UL,
+      "ShapeError: the dimension of bias must equal to 1."
+      "But received: the shape of bias is [%s],the dimension of bias is [%d]",
+      bias_dim, bias_dim.size());
 
   bool check = true;
   if ((!ctx->IsRuntime()) && (framework::product(scale_dim) <= 0 ||
@@ -78,8 +96,14 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   }
 
   if (check) {
-    PADDLE_ENFORCE_EQ(scale_dim[0], C);
-    PADDLE_ENFORCE_EQ(scale_dim[0], C);
+    PADDLE_ENFORCE_EQ(scale_dim[0], C,
+                      "ShapeError: the shape of scale must equal to [%d]"
+                      "But received: the shape of scale is [%d]",
+                      C, scale_dim[0]);
+    PADDLE_ENFORCE_EQ(bias_dim[0], C,
+                      "ShapeError: the shape of bias must equal to [%d]"
+                      "But received: the shape of bias is [%d]",
+                      C, bias_dim[0]);
   }
   ctx->SetOutputDim("Y", x_dims);
   ctx->SetOutputDim("MeanOut", {C});
@@ -245,8 +269,8 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
           variance_out->mutable_data<T>(ctx.GetPlace()), C);
 
       if ((N * sample_size) == 1) {
-        LOG(WARNING) << "Only 1 element in normalization dimension, "
-                     << "we skip the batch norm calculation, let y = x.";
+        // Only 1 element in normalization dimension,
+        // we skip the batch norm calculation, let y = x.
         framework::TensorCopy(*x, ctx.GetPlace(), y);
         return;
       }
@@ -496,6 +520,21 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     int scale_coefff = use_global_stats ? 1 : N * sample_size;
     const auto scale_inv_var_nhw = scale_arr * inv_var_arr / scale_coefff;
 
+    Tensor dy_sum;
+    dy_sum.Resize({C});
+    dy_sum.mutable_data<T>(ctx.GetPlace());
+    EigenVectorArrayMap<T> dy_sum_arr(dy_sum.mutable_data<T>(ctx.GetPlace()),
+                                      C);
+
+    Tensor dy_mul_x_sub_mean_mul_invstd_sum;
+    dy_mul_x_sub_mean_mul_invstd_sum.Resize({C});
+    dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace());
+    EigenVectorArrayMap<T> dy_mul_x_sub_mean_mul_invstd_sum_arr(
+        dy_mul_x_sub_mean_mul_invstd_sum.mutable_data<T>(ctx.GetPlace()), C);
+
+    dy_sum_arr.setZero();
+    dy_mul_x_sub_mean_mul_invstd_sum_arr.setZero();
+
     switch (data_layout) {
       case DataLayout::kNCHW: {
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
@@ -504,23 +543,27 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                                  sample_size, N * C);
         d_x_arr.setZero();
 
-        if (d_scale && d_bias) {
-          for (int nc = 0; nc < N * C; ++nc) {
-            int c = nc % C;
-            d_bias_arr(c) += d_y_arr.col(nc).sum();
-            d_scale_arr(c) += ((x_arr.col(nc) - mean_arr(c)) * inv_var_arr(c) *
-                               d_y_arr.col(nc))
-                                  .sum();
-          }
+        for (int nc = 0; nc < N * C; ++nc) {
+          int c = nc % C;
+          dy_sum_arr(c) += d_y_arr.col(nc).sum();
+          dy_mul_x_sub_mean_mul_invstd_sum_arr(c) +=
+              ((x_arr.col(nc) - mean_arr(c)) * inv_var_arr(c) * d_y_arr.col(nc))
+                  .sum();
         }
+
+        if (d_scale && d_bias) {
+          d_bias_arr = dy_sum_arr;
+          d_scale_arr = dy_mul_x_sub_mean_mul_invstd_sum_arr;
+        }
+
         if (!use_global_stats) {
           for (int nc = 0; nc < N * C; ++nc) {
             int c = nc % C;
             d_x_arr.col(nc) +=
                 scale_inv_var_nhw(c) *
-                (d_y_arr.col(nc) * N * sample_size - d_bias_arr(c) -
-                 (x_arr.col(nc) - mean_arr[c]) * d_scale_arr(c) *
-                     inv_var_arr(c));
+                (d_y_arr.col(nc) * N * sample_size - dy_sum_arr(c) -
+                 (x_arr.col(nc) - mean_arr[c]) *
+                     dy_mul_x_sub_mean_mul_invstd_sum_arr(c) * inv_var_arr(c));
           }
         } else {
           for (int nc = 0; nc < N * C; ++nc) {
@@ -537,27 +580,24 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
                                  N * sample_size);
         d_x_arr.setZero();
 
-        const auto d_y_row_sum = d_y_arr.rowwise().sum();
-        const auto x_minus_mean = x_arr.colwise() - mean_arr;
-        const auto d_y_mul_x_minus_mean_row_sum =
-            (d_y_arr * x_minus_mean).rowwise().sum();
-        const auto inv_var_sqr = inv_var_arr * inv_var_arr;
+        for (int nhw = 0; nhw < N * sample_size; ++nhw) {
+          dy_sum_arr += d_y_arr.col(nhw);
+          dy_mul_x_sub_mean_mul_invstd_sum_arr +=
+              (x_arr.col(nhw) - mean_arr) * inv_var_arr * d_y_arr.col(nhw);
+        }
 
         if (d_scale && d_bias) {
-          for (int nhw = 0; nhw < N * sample_size; ++nhw) {
-            d_bias_arr += d_y_arr.col(nhw);
-            d_scale_arr +=
-                (x_arr.col(nhw) - mean_arr) * inv_var_arr * d_y_arr.col(nhw);
-          }
+          d_bias_arr = dy_sum_arr;
+          d_scale_arr = dy_mul_x_sub_mean_mul_invstd_sum_arr;
         }
 
         if (!use_global_stats) {
           for (int nhw = 0; nhw < N * sample_size; ++nhw) {
             d_x_arr.col(nhw) +=
                 scale_inv_var_nhw *
-                (d_y_arr.col(nhw) * N * sample_size - d_y_row_sum -
-                 x_minus_mean.col(nhw) * inv_var_sqr *
-                     d_y_mul_x_minus_mean_row_sum);
+                (d_y_arr.col(nhw) * N * sample_size - dy_sum_arr -
+                 (x_arr.col(nhw) - mean_arr) *
+                     dy_mul_x_sub_mean_mul_invstd_sum_arr * inv_var_arr);
           }
         } else {
           for (int nhw = 0; nhw < N * sample_size; ++nhw) {
@@ -598,36 +638,13 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
   return std::unique_ptr<framework::OpDesc>(op);
 }
 
-class BatchNormInplaceInToOut : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc, bool use_cuda) const override {
-    return {{"Mean", "MeanOut"}, {"Variance", "VarianceOut"}, {"X", "Y"}};
-  }
-};
-
-class BatchNormGradInplaceInToOut : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc, bool use_cuda) const override {
-    // Scale, Bias, SavedMean, SavedVariance shape is [batch_size, C]
-    return {
-        {framework::GradVarName("Y"), framework::GradVarName("X")},
-        {"SavedMean", framework::GradVarName("Scale")},
-        {"SavedVariance", framework::GradVarName("Bias")},
-    };
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker)
-// ops::BatchNormInplaceInToOut);
-REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp)
-//                  ops::BatchNormGradInplaceInToOut);
+                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker);
+REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
 
 REGISTER_OP_CPU_KERNEL(
     batch_norm, ops::BatchNormKernel<paddle::platform::CPUDeviceContext, float>,

@@ -64,7 +64,8 @@ class DistillationStrategy(Strategy):
             var.stop_gradient = True
         graph = context.train_graph.clone()
         graph.merge(teacher)
-        graph.out_nodes['student_loss'] = graph.out_nodes['loss']
+        if 'loss' in graph.out_nodes:
+            graph.out_nodes['student_loss'] = graph.out_nodes['loss']
 
         # step 2
         for distiller in self.distillers:
