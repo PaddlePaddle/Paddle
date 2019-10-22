@@ -173,7 +173,7 @@ class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("ShapeTensor",
              "(Tensor<int64_t> or Tensor<int32_t>, optional) . If provided, "
-             "uniform_ranodom "
+             "uniform_random "
              "according to "
              "this given shape. It means that it has a higher priority than "
              "the shape attribute, while the shape attribute still should be "
@@ -181,11 +181,9 @@ class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddInput("ShapeTensorList",
              "(vector<Tensor<int64_t>> or vector<Tensor<int32_t>>, optional). "
-             "If provided, uniform_random "
-             "use this."
-             "The shape of the tensor in vector MUST BE [1],"
-             "it has the highest priority compare with Input(ShapeTensor) and "
-             "attr(shape).")
+             "If provided, uniform_random use this. The shape of the tensor "
+             "must be [1], it has the highest priority comparing with "
+             "Input(ShapeTensor) and attr(shape).")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("Out", "The output tensor of uniform random op");
