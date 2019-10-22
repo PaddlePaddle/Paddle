@@ -73,36 +73,16 @@ void call_gemm_batched(const framework::ExecutionContext& ctx,
   }
 }
 
-#ifndef TYPE_USE_FLOAT
-#define TYPE_USE_FLOAT
-#endif
-#ifndef USE_SSE
-#define USE_SSE
-#endif
-
-#if defined(TYPE_USE_FLOAT)
-
 #define __m256x __m256
-#define __m128x __m128
 
 static const unsigned int AVX_STEP_SIZE = 8;
-static const unsigned int SSE_STEP_SIZE = 4;
 static const unsigned int AVX_CUT_LEN_MASK = 7U;
-static const unsigned int SSE_CUT_LEN_MASK = 3U;
 
 #define _mm256_mul_px _mm256_mul_ps
 #define _mm256_add_px _mm256_add_ps
 #define _mm256_load_px _mm256_loadu_ps
 #define _mm256_store_px _mm256_storeu_ps
 #define _mm256_broadcast_sx _mm256_broadcast_ss
-
-#define _mm_add_px _mm_add_ps
-#define _mm_mul_px _mm_mul_ps
-#define _mm_load_px _mm_loadu_ps
-#define _mm_store_px _mm_storeu_ps
-#define _mm_load1_px _mm_load1_ps
-
-#endif
 
 template <typename T>
 inline void sse_axpy(const T* x, T* y, size_t len, const T alpha) {
