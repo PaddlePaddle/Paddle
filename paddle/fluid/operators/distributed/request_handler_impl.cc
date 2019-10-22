@@ -220,16 +220,16 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
   VLOG(4) << "RequestPrefetchHandler " << varname;
 
   if (table_name.empty()) {
-
-    VLOG(3) << "RequestPrefetchHandler: " << "table name is empty";
+    VLOG(3) << "RequestPrefetchHandler: "
+            << "table name is empty";
 
     auto var_desc = program_->Block(0).FindVar(out_var_name);
     InitializeVariable(*outvar, var_desc->GetType());
     executor_->RunPreparedContext(
         (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
   } else {
-
-    VLOG(3) << "RequestPrefetchHandler: " << "table name is " << table_name;
+    VLOG(3) << "RequestPrefetchHandler: "
+            << "table name is " << table_name;
 
     (*outvar)->GetMutable<framework::LoDTensor>();
     auto lookup_table_op =
