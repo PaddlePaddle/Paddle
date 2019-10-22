@@ -27,7 +27,7 @@ from paddle.fluid.layers.io import Recv
 from paddle.fluid.layers.io import Send
 import paddle.fluid.layers.ops as ops
 
-from paddle.fluid.transpiler.details import delete_ops
+from paddle.fluid.transpiler.details import program_to_code
 
 
 class TestProgram2Code(unittest.TestCase):
