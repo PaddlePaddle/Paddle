@@ -42,6 +42,7 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
     auto axes = ctx->Attrs().Get<std::vector<int>>("axes");
     auto infer_flags = ctx->Attrs().Get<std::vector<int>>("infer_flags");
+    auto decrease_axis = ctx->Attrs().Get<std::vector<int>>("decrease_axis");
 
     auto starts_size = starts.size();
     auto ends_size = ends.size();
@@ -90,10 +91,32 @@ class StridedSliceOp : public framework::OperatorWithKernel {
     std::vector<int> out_dims_vector(in_dims.size(), -1);
     if (!tensor_input) {
       StridedSliceOutDims(starts, ends, strides, axes, infer_flags, in_dims,
-                          out_dims_vector.data(), axes.size(), true);
+                          decrease_axis, out_dims_vector.data(), axes.size(),
+                          true);
     }
     framework::DDim out_dims(framework::make_ddim(out_dims_vector));
+    // generate new shape
+    if (decrease_axis.size() > 0) {
+      std::vector<int> new_out_shape;
+      for (size_t i = 0; i < decrease_axis.size(); ++i) {
+        if (ctx->IsRuntime() && infer_flags[i] != -1) {
+          PADDLE_ENFORCE_EQ(out_dims[decrease_axis[i]], 1,
+                            "decrease dim should be 1");
+        }
+        out_dims[decrease_axis[i]] = 0;
+      }
 
+      for (int i = 0; i < out_dims.size(); ++i) {
+        if (out_dims[i] != 0) {
+          new_out_shape.push_back(out_dims[i]);
+        }
+      }
+      if (new_out_shape.size() == 0) {
+        new_out_shape.push_back(1);
+      }
+
+      out_dims = framework::make_ddim(new_out_shape);
+    }
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("Input", /*->*/ "Out");
   }
@@ -177,6 +200,8 @@ class StridedSliceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>(
         "infer_flags", "(list<int>) Flags of inferring dims in attributes.")
         .SetDefault({});
+    AddAttr<std::vector<int>>("decrease_axis", "(list<int>) decrease_axis")
+        .SetDefault({});
     AddComment(R"DOC(
 Strided Slice Operator.
 Instead of calling this op directly most users will want to use the
@@ -212,10 +237,12 @@ class StridedSliceOpGrad : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "StartsTensor" || var_name == "EndsTensor") {
+    if (var_name == "StartsTensor" || var_name == "EndsTensor" ||
+        var_name == "StridesTensor") {
       return expected_kernel_type;
     }
-    if (var_name == "StartsTensorList" || var_name == "EndsTensorList") {
+    if (var_name == "StartsTensorList" || var_name == "EndsTensorList" ||
+        var_name == "StridesTensorList") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
