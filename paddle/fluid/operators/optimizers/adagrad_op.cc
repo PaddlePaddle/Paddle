@@ -187,8 +187,9 @@ struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
         auto grad_val_idx = grad_square.Index(merge_rows[i]);
         auto moment_val_idx = moment->AutoGrownIndex(merge_rows[i], true);
 
-        moment_data[moment_val_idx * grad_width + j] +=
-            grad_data[grad_val_idx * grad_width + j];
+        auto g_m = grad_data[grad_val_idx * grad_width + j] *
+                   grad_data[grad_val_idx * grad_width + j];
+        moment_data[moment_val_idx * grad_width + j] += g_m;
 
         param_data[param_val_idx * grad_width + j] -=
             lr[0] * grad_merge_data[i * grad_width + j] /
