@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/code_generator.h"
+#include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include <set>
 #include <sstream>
-#include "paddle/fluid/framework/ir/code_generator_helper.h"
+#include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 
 namespace paddle {
 namespace framework {

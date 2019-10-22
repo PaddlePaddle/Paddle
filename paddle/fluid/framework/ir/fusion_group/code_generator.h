@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/ir/code_generator_helper.h"
+#include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 
 namespace paddle {
 namespace framework {

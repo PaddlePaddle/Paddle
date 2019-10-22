@@ -12,12 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/code_generator.h"
+#include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include <gtest/gtest.h>
 #include <cmath>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/ir/code_generator_helper.h"
+#include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device_code.h"

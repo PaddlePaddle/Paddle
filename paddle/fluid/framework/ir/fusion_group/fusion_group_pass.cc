@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/fusion_group_pass.h"
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
