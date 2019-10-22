@@ -268,6 +268,10 @@ if(WITH_DISTRIBUTE)
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transformer")
     list(REMOVE_ITEM DIST_TEST_OPS "test_dist_transpiler")
 
+    #not need
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_base")
+    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_base")
+
     py_test_modules(test_lookup_remote_table_op MODULES test_lookup_remote_table_op ENVS ${dist_ENVS})
     py_test_modules(test_hsigmoid_remote_table_op MODULES test_hsigmoid_remote_table_op ENVS ${dist_ENVS})
     py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
@@ -287,8 +291,11 @@ if(WITH_DISTRIBUTE)
 	set_tests_properties(test_dist_fleet_pserver PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 =======
 
+        set(dist_ut_port 1000)
         foreach(TEST_OP ${DIST_TEST_OPS})
-            bash_test_modules(${TEST_OP} MODULES dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE")
+            message(STATUS "set dist_ut_port=${dist_ut_port} on ${TEST_OP}")
+            bash_test_modules(${TEST_OP} MODULES dist_test.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}")
+            MATH(EXPR dist_ut_port "${dist_ut_port}+50")
         endforeach(TEST_OP)
 >>>>>>> 483d0512cea86609c4e3aa11ca1a8f05108b68e9
     endif(NOT APPLE)

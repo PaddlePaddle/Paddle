@@ -438,7 +438,7 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
 
 
 # Test python API
-class TestSliceAPI(OpTest):
+class TestStridedSliceAPI(OpTest):
     def test_1(self):
         input = np.random.random([3, 4, 5, 6]).astype("float32")
         minus_1 = fluid.layers.fill_constant([1], "int32", -1)
@@ -455,7 +455,6 @@ class TestSliceAPI(OpTest):
             shape=[3, 4, 5, 6],
             append_batch_size=False,
             dtype="float32")
-
         out_1 = fluid.layers.strided_slice(
             x,
             axes=[0, 1, 2],
@@ -477,9 +476,9 @@ class TestSliceAPI(OpTest):
         out_4 = fluid.layers.strided_slice(
             x, axes=[0, 1, 2], starts=starts, ends=ends, strides=strides)
 
-        out_5 = x[-3:3, 0:100, 2:-1]
-        out_6 = x[minus_3:3, 0:100, :, 2:-1]
-        out_7 = x[minus_1, 0:100, :, 2:minus_1]
+        out_5 = x[-3:3, 0:100:2, -1:2:-1]
+        out_6 = x[minus_3:3:1, 0:100:2, :, minus_1:2:minus_1]
+        out_7 = x[minus_1, 0:100:2, :, -1:2:-1]
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
@@ -491,14 +490,13 @@ class TestSliceAPI(OpTest):
                 'strides': np.array([1, 1, 1]).astype("int32")
             },
             fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7])
-
         assert np.array_equal(res_1, input[-3:3, 0:100, 2:-1, :])
         assert np.array_equal(res_2, input[-3:3, 0:100, :, 2:-1])
         assert np.array_equal(res_3, input[-3:3, 0:100, :, 2:-1])
         assert np.array_equal(res_4, input[-3:3, 0:100, 2:-1, :])
-        assert np.array_equal(res_5, input[-3:3, 0:100, 2:-1, :])
-        assert np.array_equal(res_6, input[-3:3, 0:100, :, 2:-1])
-        assert np.array_equal(res_7, input[-1, 0:100, :, 2:-1])
+        assert np.array_equal(res_5, input[-3:3, 0:100:2, -1:2:-1, :])
+        assert np.array_equal(res_6, input[-3:3, 0:100:2, :, -1:2:-1])
+        assert np.array_equal(res_7, input[-1, 0:100:2, :, -1:2:-1])
 
 
 if __name__ == "__main__":
