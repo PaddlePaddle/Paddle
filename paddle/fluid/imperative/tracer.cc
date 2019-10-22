@@ -51,6 +51,10 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   auto op = OpBase::Create(op_id, type, ins, outs, std::move(attrs), place);
   op->Run(ins, outs);
 
+  if (enable_program_desc_tracing_) {
+    program_desc_tracer_->InsertOp(type, ins, outs, op->Attrs());
+  }
+
   if (ComputeRequiredGrad(ins, outs, trace_backward)) {
     TraceBackward(op, framework::OpDesc(op->Type(), op->InputNameMap(),
                                         op->OutputNameMap(), op->Attrs()),

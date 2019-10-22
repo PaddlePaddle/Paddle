@@ -26,6 +26,8 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
+import paddle.fluid.dygraph.jit as jit
+from utils import is_equal_program, load_dygraph_vars_to_scope, run_static_graph
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -118,6 +120,8 @@ class TestImperativeMnist(unittest.TestCase):
         batch_size = 128
         batch_num = 50
 
+        program = None
+
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -144,7 +148,37 @@ class TestImperativeMnist(unittest.TestCase):
                     label = data[1]
                     label.stop_gradient = True
 
-                    cost = mnist(img)
+                    if batch_id % 10 == 0:
+                        cost, _program = jit.trace(
+                            mnist,
+                            img,
+                            feed_names=['image'],
+                            fetch_names=['cost'])
+                        if program is not None:
+                            self.assertTrue(is_equal_program(program, _program))
+
+                            model_save_path = "paddle_mnist_imperative_test_{}".format(
+                                batch_id)
+                            fluid.save_dygraph(mnist.state_dict(),
+                                               model_save_path)
+                            scope = fluid.Scope()
+                            place = fluid.CUDAPlace(
+                                0) if fluid.is_compiled_with_cuda(
+                                ) else fluid.CPUPlace()
+                            load_dygraph_vars_to_scope(model_save_path, scope,
+                                                       place)
+                            cost2, = run_static_graph(
+                                _program,
+                                scope,
+                                place,
+                                feed={'image': img.numpy()},
+                                fetch=['cost'])
+                            self.assertTrue(np.array_equal(cost.numpy(), cost2))
+
+                        program = _program
+                    else:
+                        cost = mnist(img)
+
                     loss = fluid.layers.cross_entropy(cost, label)
                     avg_loss = fluid.layers.mean(loss)
 
