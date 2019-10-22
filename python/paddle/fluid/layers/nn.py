@@ -8952,6 +8952,8 @@ def squeeze(input, axes, name=None):
             y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
     """
+    assert not in_dygraph_mode(), (
+        "squeeze layer is not supported in dygraph mode yet.")
     helper = LayerHelper("squeeze", **locals())
 
     if not isinstance(input, Variable):

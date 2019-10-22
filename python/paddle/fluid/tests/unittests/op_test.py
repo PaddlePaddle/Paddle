@@ -937,16 +937,21 @@ class OpTest(unittest.TestCase):
                     "\nExpect " + str(expect_t) + "\n" + "But Got" +
                     str(actual_t) + " in class " + self.__class__.__name__)
                 if check_dygraph:
-                    self.assertTrue(
-                        np.allclose(
-                            imperative_actual_t,
-                            expect_t,
-                            atol=atol,
-                            equal_nan=equal_nan),
-                        "Output (" + out_name + ") has diff at " + str(place) +
-                        "\nExpect " + str(expect_t) + "\n" + "But Got" +
-                        str(imperative_actual_t) + " in class " +
-                        self.__class__.__name__)
+                    if reduce(lambda x, y: x * y,
+                              imperative_actual_t.shape) == 0 and reduce(
+                                  lambda x, y: x * y, expect_t.shape) == 0:
+                        pass
+                    else:
+                        self.assertTrue(
+                            np.allclose(
+                                imperative_actual_t,
+                                expect_t,
+                                atol=atol,
+                                equal_nan=equal_nan),
+                            "Output (" + out_name + ") has diff at " +
+                            str(place) + "\nExpect " + str(expect_t) + "\n" +
+                            "But Got" + str(imperative_actual_t) + " in class "
+                            + self.__class__.__name__)
                 if isinstance(expect, tuple):
                     self.assertListEqual(actual.recursive_sequence_lengths(),
                                          expect[1], "Output (" + out_name +

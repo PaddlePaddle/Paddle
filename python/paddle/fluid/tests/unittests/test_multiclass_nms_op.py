@@ -430,10 +430,6 @@ class TestMulticlassNMS2OpNoOutput(TestMulticlassNMS2Op):
         # In practical use, 0.0 < score_threshold < 1.0
         self.score_threshold = 2.0
 
-    def test_check_output(self):
-        # in static mode and dygraph mode, when Out's shape is 0, the Out's return value have different forms.
-        self.check_output(check_dygraph=False)
-
 
 class TestMulticlassNMS2LoDInput(TestMulticlassNMSLoDInput):
     def setUp(self):
@@ -501,10 +497,6 @@ class TestMulticlassNMS2LoDNoOutput(TestMulticlassNMS2LoDInput):
         # Here set 2.0 to test the case there is no outputs.
         # In practical use, 0.0 < score_threshold < 1.0
         self.score_threshold = 2.0
-
-    def test_check_output(self):
-        # in static mode and dygraph mode, when Out's shape is 0, the Out's return value have different forms.
-        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':
