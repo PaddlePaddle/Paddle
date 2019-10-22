@@ -33,10 +33,7 @@ class TestDistMnistNCCL2DGC(TestDistBase):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_mnist.py",
-                # FIXME(wangxi): DGC may need a new unit test because its algo flow 
-                # is quite different from Momentum, and there is a big diff on 
-                # the single step result
-                delta=1e-2,
+                delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)
 
@@ -44,6 +41,10 @@ class TestDistMnistNCCL2DGC(TestDistBase):
         # Used to determine if sparse communication is used
         cmd = 'grep -E "sparse_all_reduce.*in_numel" test_dist_mnist_dgc_nccl_tr0_err.log' \
               ' | wc -l'
+        # fix CI: ResourceWarning: unclosed file <_io.TextIOWrapper name=10 encoding='UTF-8'
+        # make sure file is closed
+        with open('test_dist_mnist_dgc_nccl_tr0_err.log', 'rb') as f:
+            data = f.read()
         result = os.popen(cmd).read()
         # only 1 layer use dgc now, run_step=5, rampup_begin_step=2, so 1 * (5 - 2) = 3
         self.assertEqual(result, '3\n')
@@ -62,7 +63,7 @@ class TestDistMnistNCCL2DGCMultiCards(TestDistBase):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place_multi_cards(
                 "dist_mnist.py",
-                delta=1e-2,
+                delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name)
 
@@ -70,6 +71,8 @@ class TestDistMnistNCCL2DGCMultiCards(TestDistBase):
         # Used to determine if sparse communication is used
         cmd = 'grep -E "sparse_all_reduce.*in_numel" test_dist_mnist_dgc_nccl_dgc_2cards_local.log' \
               ' | wc -l'
+        with open('test_dist_mnist_dgc_nccl_dgc_2cards_local.log', 'rb') as f:
+            data = f.read()
         result = os.popen(cmd).read()
         # same as above, but use two cards
         self.assertEqual(result, '6\n')
