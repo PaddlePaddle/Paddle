@@ -38,10 +38,11 @@ class MergeSparseLookupTableKernel : public framework::OpKernel<T> {
 
     for (auto& in : inputs) {
       ids_num += in->rows().size();
-      height += inputs[0]->height();
+      height += in->height();
     }
 
-    T* out_data = out->mutable_value()->mutable_data<T>({ids_num, width}, platform::CPUPlace());
+    T* out_data = out->mutable_value()->mutable_data<T>({ids_num, width},
+                                                        platform::CPUPlace());
 
     memset(out_data, 0, sizeof(T) * out->value().numel());
     out->set_height(height);
@@ -53,18 +54,20 @@ class MergeSparseLookupTableKernel : public framework::OpKernel<T> {
         all_ids.push_back(iter);
       }
     }
- 
+
     out->set_rows(all_ids);
 
-    auto cnt =0;
+    auto cnt = 0;
 
     for (auto& in : inputs) {
       auto& id_to_index = in->rows();
       const T* in_data = in->value().data<T>();
       for (auto& iter : id_to_index) {
-        //memcpy(out_data + out->GetIdToIndex().at(iter.first) * width, in_data + iter.second * width, sizeof(T) * width);
-        memcpy(out_data + cnt * width, in_data + in->Index(iter) * width, sizeof(T) * width);
-        cnt ++;
+        // memcpy(out_data + out->GetIdToIndex().at(iter.first) * width, in_data
+        // + iter.second * width, sizeof(T) * width);
+        memcpy(out_data + cnt * width, in_data + in->Index(iter) * width,
+               sizeof(T) * width);
+        cnt++;
       }
     }
   }

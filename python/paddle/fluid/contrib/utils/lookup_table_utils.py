@@ -26,6 +26,7 @@ from paddle.fluid import core
 from paddle.fluid import io
 from paddle.fluid import Program
 from paddle.fluid.log_helper import get_logger
+from paddle.fluid.transpiler.details import delete_ops
 
 __all__ = [
     "load_persistables_for_increment", "load_persistables_for_inference",
@@ -96,6 +97,16 @@ def convert_program_from_dense_to_sparse(dirname, embedding):
         program_desc_str = f.read()
 
     program = Program.parse_from_string(program_desc_str)
+
+    lookup_table_type = "lookup_table"
+
+    emb = program.global_block().vars[embedding]
+    lookup_table_idx = []
+
+    for i in range(len(program.global_block().ops)):
+        op = program.global_block().ops[i]
+        if op.type == lookup_table_type and op.attr('is_sparse') is True:
+            lookup_table_idx.append(i)
 
 
 def convert_selected_rows_to_plain(executor, param_path, output_path):
