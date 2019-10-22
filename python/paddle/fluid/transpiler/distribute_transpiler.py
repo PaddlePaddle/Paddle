@@ -1147,10 +1147,35 @@ class DistributeTranspiler(object):
                 pserver_program.num_blocks - 1)
             optimize_blocks.append(lr_decay_block)
             for _, op in enumerate(lr_ops):
-                cloned_op = self._append_pserver_non_opt_ops(lr_decay_block, op)
-                # append sub blocks to pserver_program in lr_decay_op
-                __clone_lr_op_sub_block__(cloned_op, pserver_program,
-                                          lr_decay_block)
+                if op.type == 'increment':
+                    inputs = self._get_input_map_from_op(
+                        self.origin_program.global_block().vars, op)
+                    outputs = self._get_output_map_from_op(
+                        self.origin_program.global_block().vars, op)
+                    for key in outputs:
+                        counter_var = outputs[key]
+                    pserver_side_counter_inputs = [
+                        pserver_program.global_block().create_var(
+                            name="%s.trainer_%d" % (counter_var.name, index),
+                            type=counter_var.type,
+                            shape=counter_var.shape,
+                            dtype=counter_var.dtype,
+                            persistable=counter_var.persistable)
+                        for index in range(self.trainer_num)
+                    ]
+                    op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
+                    )
+                    lr_decay_block.append_op(
+                        type='sum',
+                        inputs={'X': pserver_side_counter_inputs},
+                        outputs=outputs,
+                        attrs={op_role_attr_name: LR_SCHED_OP_ROLE_ATTR_VALUE})
+                else:
+                    cloned_op = self._append_pserver_non_opt_ops(lr_decay_block,
+                                                                 op)
+                    # append sub blocks to pserver_program in lr_decay_op
+                    __clone_lr_op_sub_block__(cloned_op, pserver_program,
+                                              lr_decay_block)
             lr_decay_block_id = lr_decay_block.idx
 
         # append op to the current block
