@@ -171,9 +171,6 @@ struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
     auto grad_square =
         SquareSelectedRows<platform::CPUDeviceContext, T>(context, grad_merge);
 
-    // math::SelectedRowsAdd<platform::CPUDeviceContext, T> functor;
-    // functor(context, grad_square, *moment, moment);
-
     // 3. update parameter
     auto* lr = learning_rate.data<T>();
 
@@ -182,13 +179,12 @@ struct SparseAdagradFunctor<platform::CPUDeviceContext, T> {
     auto* grad_data = grad_square.value().template data<T>();
 
     for (size_t i = 0; i < merge_rows.size(); i++) {
-      auto param_val_idx = param->Index(merge_rows[i]);
-      auto grad_val_idx = grad_square.Index(merge_rows[i]);
+      auto param_val_idx = param->AutoGrownIndex(merge_rows[i], false);
       auto moment_val_idx = moment->AutoGrownIndex(merge_rows[i], true);
 
       for (int64_t j = 0; j < grad_width; j++) {
         moment_data[moment_val_idx * grad_width + j] +=
-            grad_data[grad_val_idx * grad_width + j];
+            grad_data[i * grad_width + j];
 
         param_data[param_val_idx * grad_width + j] -=
             lr[0] * grad_merge_data[i * grad_width + j] /
