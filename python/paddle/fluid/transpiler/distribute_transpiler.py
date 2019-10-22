@@ -41,7 +41,7 @@ import logging
 import numpy as np
 
 from .ps_dispatcher import RoundRobin, PSDispatcher
-from .. import core, framework, unique_name
+from .. import core, framework, unique_name, initializer
 from ..framework import Program, default_main_program, \
     default_startup_program, Block, Parameter, grad_var_name
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
@@ -1147,35 +1147,10 @@ class DistributeTranspiler(object):
                 pserver_program.num_blocks - 1)
             optimize_blocks.append(lr_decay_block)
             for _, op in enumerate(lr_ops):
-                if op.type == 'increment':
-                    inputs = self._get_input_map_from_op(
-                        self.origin_program.global_block().vars, op)
-                    outputs = self._get_output_map_from_op(
-                        self.origin_program.global_block().vars, op)
-                    for key in outputs:
-                        counter_var = outputs[key]
-                    pserver_side_counter_inputs = [
-                        pserver_program.global_block().create_var(
-                            name="%s.trainer_%d" % (counter_var.name, index),
-                            type=counter_var.type,
-                            shape=counter_var.shape,
-                            dtype=counter_var.dtype,
-                            persistable=counter_var.persistable)
-                        for index in range(self.trainer_num)
-                    ]
-                    op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
-                    )
-                    lr_decay_block.append_op(
-                        type='sum',
-                        inputs={'X': pserver_side_counter_inputs},
-                        outputs=outputs,
-                        attrs={op_role_attr_name: LR_SCHED_OP_ROLE_ATTR_VALUE})
-                else:
-                    cloned_op = self._append_pserver_non_opt_ops(lr_decay_block,
-                                                                 op)
-                    # append sub blocks to pserver_program in lr_decay_op
-                    __clone_lr_op_sub_block__(cloned_op, pserver_program,
-                                              lr_decay_block)
+                cloned_op = self._append_pserver_non_opt_ops(lr_decay_block, op)
+                # append sub blocks to pserver_program in lr_decay_op
+                __clone_lr_op_sub_block__(cloned_op, pserver_program,
+                                          lr_decay_block)
             lr_decay_block_id = lr_decay_block.idx
 
         # append op to the current block
@@ -2405,11 +2380,44 @@ class DistributeTranspiler(object):
     def _get_lr_ops(self):
         lr_ops = []
         block = self.origin_program.global_block()
-        for op in block.ops:
+        for index, op in enumerate(block.ops):
             role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
             if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
                 role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
                     int(OPT_OP_ROLE_ATTR_VALUE):
+                if self.sync_mode == False and op.type == 'increment':
+                    inputs = self._get_input_map_from_op(
+                        self.origin_program.global_block().vars, op)
+                    outputs = self._get_output_map_from_op(
+                        self.origin_program.global_block().vars, op)
+                    for key in outputs:
+                        counter_var = outputs[key]
+                    all_trainer_counter_inputs = [
+                        self.origin_program.global_block().create_var(
+                            name="%s.trainer_%d" % (counter_var.name, id_),
+                            type=counter_var.type,
+                            shape=counter_var.shape,
+                            dtype=counter_var.dtype,
+                            persistable=counter_var.persistable)
+                        for id_ in range(self.trainer_num)
+                    ]
+                    for var in all_trainer_counter_inputs:
+                        self.startup_program.global_block().create_var(
+                            name=var.name,
+                            type=var.type,
+                            dtype=var.dtype,
+                            shape=var.shape,
+                            persistable=var.persistable,
+                            initializer=initializer.Constant(1))
+                    op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
+                    )
+                    block._remove_op(index)
+                    op = block._insert_op(
+                        index,
+                        type='sum',
+                        inputs={'X': all_trainer_counter_inputs},
+                        outputs=outputs,
+                        attrs={op_role_attr_name: LR_SCHED_OP_ROLE_ATTR_VALUE})
                 lr_ops.append(op)
                 log("append lr op: ", op.type)
         return lr_ops
