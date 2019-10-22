@@ -40,6 +40,14 @@ class TestDistMnistNCCL2DGC(TestDistBase):
                 check_error_log=True,
                 log_name=flag_name)
 
+    def tearDown(self):
+        # Used to determine if sparse communication is used
+        cmd = 'grep -E "sparse_all_reduce.*in_numel" test_dist_mnist_dgc_nccl_tr0_err.log' \
+              ' | wc -l'
+        result = os.popen(cmd).read()
+        # only 1 layer use dgc now, run_step=5, rampup_begin_step=2, so 1 * (5 - 2) = 3
+        self.assertEqual(result, '3\n')
+
 
 class TestDistMnistNCCL2DGCMultiCards(TestDistBase):
     def _setup_config(self):
@@ -57,6 +65,14 @@ class TestDistMnistNCCL2DGCMultiCards(TestDistBase):
                 delta=1e-2,
                 check_error_log=True,
                 log_name=flag_name)
+
+    def tearDown(self):
+        # Used to determine if sparse communication is used
+        cmd = 'grep -E "sparse_all_reduce.*in_numel" test_dist_mnist_dgc_nccl_dgc_2cards_local.log' \
+              ' | wc -l'
+        result = os.popen(cmd).read()
+        # same as above, but use two cards
+        self.assertEqual(result, '6\n')
 
 
 if __name__ == "__main__":
