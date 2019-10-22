@@ -25,8 +25,8 @@ class DGCMomentumOp : public MomentumOp {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("current_step"),
-                   "current_step should be set.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("current_step"), true,
+                      "current_step should be set.");
     return MomentumOp::InferShape(ctx);
   }
 
