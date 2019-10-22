@@ -265,6 +265,16 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     algo = search::Find<T>(args, exhaustive_search, false, 0, ctx);
     workspace_size = search::GetWorkspaceSize(args, algo);
 
+#if CUDNN_VERSION_MIN(7, 0, 1)
+    // when groups > 1, SearchAlgorithm find algo is CUDNN_CONVOLUTION_\
+    // FWD_ALGO_WINOGRAD_NONFUSED, but this kind of algorithm is unstable
+    // in forward computation, so change the algorithm to CUDNN_CONVOLUTION_\
+    // FWD_ALGO_IMPLICIT_GEMM manually.
+    if (ctx.Attr<int>("groups") > 1) {
+      algo = static_cast<cudnnConvolutionFwdAlgo_t>(0);
+    }
+#endif
+
     // ------------------- cudnn conv forward ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     for (int i = 0; i < groups; i++) {
@@ -540,23 +550,25 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
             workspace_size);
       }
 
-      std::vector<int> starts(transformed_input_channel.dims().size(), 0);
-      std::vector<int> axes(transformed_input_channel.dims().size(), 0);
+      if (!is_sys_pad) {
+        std::vector<int> starts(transformed_input_channel.dims().size(), 0);
+        std::vector<int> axes(transformed_input_channel.dims().size(), 0);
 
-      for (size_t i = 0; i < transformed_input_channel.dims().size(); ++i) {
-        starts[i] = input_pad[2 * i];
-        axes[i] = i;
-      }
+        for (size_t i = 0; i < transformed_input_channel.dims().size(); ++i) {
+          starts[i] = input_pad[2 * i];
+          axes[i] = i;
+        }
 
-      transformed_input_grad_channel.mutable_data(ctx.GetPlace());
-      if (transformed_input_channel.dims().size() == 4) {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
-            ctx, &transformed_input_grad, &transformed_input_grad_channel,
-            starts, axes);
-      } else {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
-            ctx, &transformed_input_grad, &transformed_input_grad_channel,
-            starts, axes);
+        transformed_input_grad_channel.mutable_data(ctx.GetPlace());
+        if (transformed_input_channel.dims().size() == 4) {
+          Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
+              ctx, &transformed_input_grad, &transformed_input_grad_channel,
+              starts, axes);
+        } else {
+          Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
+              ctx, &transformed_input_grad, &transformed_input_grad_channel,
+              starts, axes);
+        }
       }
 
       if (channel_last) {
@@ -609,6 +621,8 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     auto dX = ctx.Output<Tensor>("DInput");
     if (ddO) {
       ddO->mutable_data<T>(ctx.GetPlace());
+      math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+      set_zero(dev_ctx, ddO, static_cast<T>(0));
     }
     if (dW) {
       dW->mutable_data<T>(ctx.GetPlace());
@@ -646,7 +660,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     // transform Tensors to channel first-----------
     Tensor transformed_X_channel(X->type());
     Tensor transformed_dO_channel(dO->type());
-    Tensor transformed_ddX_channel(ddX->type());
+    Tensor transformed_ddX_channel(X->type());
 
     Tensor transformed_ddO_channel(dO->type());
     Tensor transformed_dX_channel(X->type());
@@ -662,10 +676,12 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       TransToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, dO, &transformed_dO_channel);
 
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(
-          ctx, ddX, &transformed_ddX_channel);
-      TransToChannelFirst<platform::CUDADeviceContext, T>(
-          ctx, ddX, &transformed_ddX_channel);
+      if (ddX) {
+        ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+            ctx, ddX, &transformed_ddX_channel);
+        TransToChannelFirst<platform::CUDADeviceContext, T>(
+            ctx, ddX, &transformed_ddX_channel);
+      }
 
       if (ddO) {
         ResizeToChannelFirst<platform::CUDADeviceContext, T>(
@@ -680,7 +696,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     } else {
       transformed_X_channel = *X;
       transformed_dO_channel = *dO;
-      transformed_ddX_channel = *ddX;
+      if (ddX) {
+        transformed_ddX_channel = *ddX;
+      }
       if (ddO) {
         transformed_ddO_channel.ShareDataWith(*ddO);
       }
@@ -729,15 +747,15 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       transformed_X.Resize(new_input_shape);
       transformed_ddX.Resize(new_input_shape);
       transformed_dX.Resize(new_input_shape);
-      auto& dev_ctx =
-          ctx.template device_context<paddle::platform::CUDADeviceContext>();
 
       transformed_X =
           ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
               new_input_shape, dev_ctx);
-      transformed_ddX =
-          ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
-              new_input_shape, dev_ctx);
+      if (ddX) {
+        transformed_ddX =
+            ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
+                new_input_shape, dev_ctx);
+      }
       if (dX) {
         transformed_dX =
             ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
@@ -751,16 +769,20 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
         case 4: {
           math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
               ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-              ctx, input_pad, transformed_ddX_channel, pad_value,
-              &transformed_ddX);
+          if (ddX) {
+            math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+                ctx, input_pad, transformed_ddX_channel, pad_value,
+                &transformed_ddX);
+          }
         } break;
         case 5: {
           math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
               ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-              ctx, input_pad, transformed_ddX_channel, pad_value,
-              &transformed_ddX);
+          if (ddX) {
+            math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+                ctx, input_pad, transformed_ddX_channel, pad_value,
+                &transformed_ddX);
+          }
         } break;
         default:
           PADDLE_THROW("ConvOp only support tensors with 4 or 5 dimensions.");
@@ -768,7 +790,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
 
     } else {
       transformed_X.ShareDataWith(transformed_X_channel);
-      transformed_ddX.ShareDataWith(transformed_ddX_channel);
+      if (ddX) {
+        transformed_ddX.ShareDataWith(transformed_ddX_channel);
+      }
       if (dX) {
         transformed_dX.ShareDataWith(transformed_dX_channel);
       }
@@ -791,6 +815,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
 #if CUDNN_VERSION_MIN(7, 0, 1)
     iwo_group = 1;
     c_group = groups;
+    groups = 1;
 #endif
     auto dtype = platform::CudnnDataType<T>::type;
 
@@ -936,10 +961,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
             ctx, &transformed_ddO_channel, ddO);
       }
     }
-    T* transformed_dy_channel = nullptr;
+    T* transformed_dy_channel = transformed_dO_channel.data<T>();
     if (dW && ddX) {
       ddx = transformed_ddX.data<T>();
-      transformed_dy_channel = transformed_dO_channel.data<T>();
       for (int i = 0; i < groups; i++) {
         wkspace_handle.RunFunc(
             [&](void* workspace_ptr) {
@@ -971,20 +995,22 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
             workspace_size);
       }
 
-      // reverse padded input
-      std::vector<int> starts(X->dims().size(), 0);
-      std::vector<int> axes(X->dims().size(), 0);
+      if (!is_sys_pad) {
+        // reverse padded input
+        std::vector<int> starts(X->dims().size(), 0);
+        std::vector<int> axes(X->dims().size(), 0);
 
-      for (size_t i = 0; i < X->dims().size(); ++i) {
-        starts[i] = input_pad[2 * i];
-        axes[i] = i;
-      }
-      if (X->dims().size() == 4) {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
-            ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
-      } else {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
-            ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
+        for (size_t i = 0; i < X->dims().size(); ++i) {
+          starts[i] = input_pad[2 * i];
+          axes[i] = i;
+        }
+        if (X->dims().size() == 4) {
+          Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
+              ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
+        } else {
+          Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
+              ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
+        }
       }
       if (channel_last) {
         TransToChannelLast<paddle::platform::CUDADeviceContext, T>(

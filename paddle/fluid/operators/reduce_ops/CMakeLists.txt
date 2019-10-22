@@ -22,3 +22,7 @@ if(WITH_GPU)
         endif()
     endforeach()
 endif()
+
+if(WITH_GPU)
+    nv_test(check_reduce_rank_test SRCS check_reduce_rank_test.cu DEPS tensor cub)
+endif()

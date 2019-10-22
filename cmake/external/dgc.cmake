@@ -23,8 +23,8 @@ INCLUDE_DIRECTORIES(${DGC_INCLUDE_DIR})
 ExternalProject_Add(
     extern_dgc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    URL "http://fleet.bj.bcebos.com/collective.tgz"
-    URL_MD5  "015d565156c3de4e30fe25473f47e7a9"
+    URL "http://fleet.bj.bcebos.com/collective_ef2216a.tgz"
+    URL_MD5  "2f67549fd5f1262383d83289abc4f88f"
     SOURCE_DIR "${DGC_SOURCES_DIR}"
     CONFIGURE_COMMAND ""
     BUILD_COMMAND make -j
