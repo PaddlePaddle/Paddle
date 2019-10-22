@@ -937,9 +937,10 @@ class OpTest(unittest.TestCase):
                     "\nExpect " + str(expect_t) + "\n" + "But Got" +
                     str(actual_t) + " in class " + self.__class__.__name__)
                 if check_dygraph:
-                    if reduce(lambda x, y: x * y,
-                              imperative_actual_t.shape) == 0 and reduce(
-                                  lambda x, y: x * y, expect_t.shape) == 0:
+                    if six.moves.reduce(
+                            lambda x, y: x * y, imperative_actual_t.shape,
+                            1) == 0 and six.moves.reduce(
+                                lambda x, y: x * y, expect_t.shape, 1) == 0:
                         pass
                     else:
                         self.assertTrue(
