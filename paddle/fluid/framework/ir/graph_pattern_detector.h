@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1043,6 +1043,39 @@ struct DeleteQuantDequantOpPattern : public PatternBase {
   PATTERN_DECL_NODE(quant_dequant_op_outscale);
   PATTERN_DECL_NODE(quant_dequant_op_out);
   PATTERN_DECL_NODE(any_op2);
+};
+
+struct MultiheadMatmulCPUFuse : public PatternBase {
+  MultiheadMatmulCPUFuse(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "multihead_matmul_cpu_fuse") {}
+  PDNode* operator()(PDNode* x, bool inverse, bool with_scale);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(reshape2);
+  PATTERN_DECL_NODE(transpose2);
+  PATTERN_DECL_NODE(matmul);
+  PATTERN_DECL_NODE(scale);
+  // declare matmul input
+  PATTERN_DECL_NODE(matmal_y);
+  // declare operators' outputs
+  PATTERN_DECL_NODE(reshape2_out);
+  PATTERN_DECL_NODE(transpose2_out);
+  PATTERN_DECL_NODE(matmul_out);
+  PATTERN_DECL_NODE(scale_out);
+};
+
+struct MultiheadStackRemove : public PatternBase {
+  MultiheadStackRemove(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "multihead_stack_cpu_remove") {}
+  PDNode* operator()(PDNode* x);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(stack);
+  PATTERN_DECL_NODE(cast);
+  PATTERN_DECL_NODE(elementwise_add);
+  // declare operators' outputs
+  PATTERN_DECL_NODE(stack_out);
+  PATTERN_DECL_NODE(cast_out);
 };
 
 }  // namespace patterns
