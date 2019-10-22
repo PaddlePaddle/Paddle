@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/framework/trainer.h"
+#include "channel.h"
 
 namespace paddle {
 namespace framework {
@@ -138,7 +139,6 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
 }
 
 void DistMultiTrainer::Run() {
-  PullSparseTableToLocal(0, 11);
   for (int thidx = 0; thidx < thread_num_; ++thidx) {
     if (!debug_) {
       threads_.push_back(
@@ -158,6 +158,13 @@ void DistMultiTrainer::Finalize() {
   for (auto &th : threads_) {
     th.join();
   }
+  auto fleet_ptr_ = FleetWrapper::GetInstance();
+  std::cout << "clear fleet wrapperlocal table with local table size: " << fleet_ptr_->GetLocalTable().size() << " capacity: " << fleet_ptr_->GetLocalTable().capacity() <<  std::endl;
+  int pid = getpid();
+  std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS"); 
+  fleet_ptr_->ClearLocalTable();
+  std::cout << "clear fleet local table done with local table size: " << fleet_ptr_->GetLocalTable().size() << " capacity: " << fleet_ptr_->GetLocalTable().capacity() << std::endl;
+  std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS");
   for (int i = 0; i < need_merge_var_names_.size(); i++) {
     Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
@@ -196,7 +203,7 @@ void DistMultiTrainer::Finalize() {
   root_scope_->DropKids();
 
   // flush local client push queue
-  auto fleet_ptr_ = FleetWrapper::GetInstance();
+  // auto fleet_ptr_ = FleetWrapper::GetInstance();
   fleet_ptr_->ClientFlush();
 }
 

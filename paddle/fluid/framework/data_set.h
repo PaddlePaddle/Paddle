@@ -119,6 +119,8 @@ class Dataset {
   virtual void MergeByInsId() = 0;
   // generate unique feasigns
   virtual void GenerateUniqueFeasign(int shard_num) = 0;
+  // generate local tables in fleet wrapoer
+  virtual void GenerateLocalTables(int table_id, int feadim) = 0;
   // get unique feasigns
   virtual const std::vector<uint64_t>& GetUniqueFeasigns() = 0;
   virtual const std::vector<std::unordered_set<uint64_t>>& GetLocalTables() = 0;
@@ -195,6 +197,7 @@ class DatasetImpl : public Dataset {
   virtual int64_t GetShuffleDataSize();
   virtual void MergeByInsId() {}
   virtual void GenerateUniqueFeasign(int shard_num) {}
+  virtual void GenerateLocalTables(int table_id, int feadim) {}
   virtual const std::vector<uint64_t>& GetUniqueFeasigns() {return *(std::vector<uint64_t>*)NULL;};
   virtual const std::vector<std::unordered_set<uint64_t>>& GetLocalTables() {return *(std::vector<std::unordered_set<uint64_t>>*)NULL;};
   virtual void ClearUniqueFeasigns() {};
@@ -257,6 +260,7 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   MultiSlotDataset() {}
   virtual void MergeByInsId();
   virtual void GenerateUniqueFeasign(int shard_num);
+  virtual void GenerateLocalTables(int table_id, int feadim);
   virtual const std::vector<uint64_t>& GetUniqueFeasigns() {return local_feasigns_;}
   virtual const std::vector<std::unordered_set<uint64_t>>& GetLocalTables() {return local_tables_;}
   virtual void ClearUniqueFeasigns() {local_feasigns_.clear();}

@@ -576,7 +576,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
 
     if (thread_id_ == 0) {
       // should be configured here
-      if (batch_cnt > 0 && batch_cnt % 100 == 0) {
+      if (batch_cnt > 0 && batch_cnt % 1 == 0) {
         double op_sum_time = 0;
         std::unordered_map<std::string, double> op_to_time;
         for (size_t i = 0; i < op_total_time.size(); ++i) {
@@ -652,7 +652,7 @@ void DownpourWorker::TrainFiles() {
           break;
         }
       }
-      std::cout << "Debug TrainFiles current tid: " << tid << " is local: " << table.is_local() <<  std::endl;
+      // std::cout << "Debug TrainFiles current tid: " << tid << " is local: " << table.is_local() <<  std::endl;
       if (!table.is_local()) {
         fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
                                        sparse_key_names_[tid], &features_[tid],
@@ -689,7 +689,6 @@ void DownpourWorker::TrainFiles() {
     }
 
     if (need_to_push_sparse_) {
-      std::cout << "Downpour worker>>>start to push sparse" << std::endl;
       // push gradients here
       for (int i = 0; i < param_.program_config(0).push_sparse_table_id_size();
            ++i) {
@@ -702,7 +701,6 @@ void DownpourWorker::TrainFiles() {
             break;
           }
         }
-        std::cout << "Downpour worker>>> push sparse with table id: " << tid << std::endl;
         fleet_ptr_->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),

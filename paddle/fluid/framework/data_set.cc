@@ -680,29 +680,20 @@ void MultiSlotDataset::GenerateUniqueFeasign(int shard_num) {
   }
   for (std::thread& t : threads) {
     t.join();
-  }
-  /*
-  std::unordered_set<uint64_t> local_feasigns_set;
-  for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
-      std::vector<Record> vec_data;
-      multi_output_channel_[i]->Close();
-      multi_output_channel_[i]->ReadAll(vec_data);
-      for (size_t j = 0; j < vec_data.size(); j++) {
-          for (auto& feature : vec_data[j].uint64_feasigns_){
-              local_feasigns_set.insert(feature.sign().uint64_feasign_);
-          }
+  } 
+  std::cout << "dataset>>> generate lcoal_tables done with local shard: " << local_tables_.size() << std::endl;
+}
 
-      }
-      multi_output_channel_[i]->Open();
-      multi_output_channel_[i]->Write(std::move(vec_data));
-      vec_data.clear();
-      vec_data.shrink_to_fit();
+void MultiSlotDataset::GenerateLocalTables(int table_id, int feadim) {
+  VLOG(3) << "MultiSlotDataset::Generate Local tables begin";
+  if (local_tables_.size() <= 0) {
+    VLOG(3) << "no feasigns to generate local tables, please run GenerateUniqueFeasigns first";
+    return;
   }
-  local_feasigns_.reserve(local_feasigns_set.size() + 1);
-  local_feasigns_.assign(local_feasigns_set.begin(), local_feasigns_set.end());
-  std::cout << "local feasigns stat finish with size: " << local_feasigns_.size() << std::endl;
-  local_feasigns_set.clear();
-  */
+  auto fleet_ptr_ = FleetWrapper::GetInstance();
+  fleet_ptr_->PullSparseToLocal(table_id, local_tables_, feadim);
+
+  ClearLocalTables();
 }
 
 void MultiSlotDataset::MergeByInsId() {

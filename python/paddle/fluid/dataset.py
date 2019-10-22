@@ -295,6 +295,7 @@ class InMemoryDataset(DatasetBase):
         self.parse_content = False
         self.merge_by_lineid = False
         self.gen_uni_feasigns = False
+        self.local_shard_num = 100
         self.fleet_send_sleep_seconds = None
 
     def _prepare_to_run(self):
@@ -444,10 +445,14 @@ class InMemoryDataset(DatasetBase):
                                          min_merge_size, keep_unmerged_ins)
         self.merge_by_lineid = True
 
-    def set_generate_unique_feasigns(self, generate_uni_feasigns):
+    def set_generate_unique_feasigns(self, generate_uni_feasigns, shard_num):
         self.dataset.set_generate_unique_feasigns(generate_uni_feasigns)
         self.gen_uni_feasigns = generate_uni_feasigns
+        self.local_shard_num = shard_num;
 
+    def generate_local_tables(self, table_id, fea_dim):
+        self.dataset.generate_local_tables(table_id, fea_dim)
+    
     def load_into_memory(self):
         """
         Load data into memory
@@ -567,7 +572,7 @@ class InMemoryDataset(DatasetBase):
             fleet._role_maker._barrier_worker()
         start = time.time()
         if self.gen_uni_feasigns:
-            self.dataset.generate_unique_feasigns()
+            self.dataset.generate_unique_feasigns(self.local_shard_num)
         end = time.time()
         print "gen uni feasigns time: ", end - start
     def release_memory(self):
