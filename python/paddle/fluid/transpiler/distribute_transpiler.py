@@ -631,6 +631,28 @@ class DistributeTranspiler(object):
             np.random.shuffle(grad_var_mapping_items)
 
         self.grad_name_to_send_dummy_out = dict()
+
+        if not self.sync_mode:
+            lr_ops = self._get_lr_ops()
+            if len(lr_ops) > 0:
+                decay_dummy_output = program.global_block().create_var(
+                    name=framework.generate_control_dev_var_name())
+                decay_send_varnames = []
+                decay_sections = []
+                for _ in pserver_endpoints:
+                    decay_send_varnames.append(self.counter_var.name)
+                    decay_sections.append(0)
+                program.global_block()._prepend_op(
+                    type="send",
+                    inputs={"X": self.counter_var},
+                    outputs={"Out": decay_dummy_output},
+                    attrs={
+                        "epmap": pserver_endpoints,
+                        "sections": decay_sections,
+                        "send_varnames": decay_send_varnames,
+                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                    })
+
         for grad_varname, splited_vars in grad_var_mapping_items:
             eplist = ps_dispatcher.dispatch(splited_vars)
 
@@ -2402,6 +2424,9 @@ class DistributeTranspiler(object):
                         for id_ in range(self.trainer_num)
                     ]
                     for var in all_trainer_counter_inputs:
+                        if var.name == "%s.trainer_%d" % (counter_var.name,
+                                                          self.trainer_id):
+                            self.counter_var = var
                         self.startup_program.global_block().create_var(
                             name=var.name,
                             type=var.type,
