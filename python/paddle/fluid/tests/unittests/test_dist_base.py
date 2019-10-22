@@ -250,7 +250,7 @@ class TestDistRunnerBase(object):
             print_to_err(type(self).__name__, "use main program done.")
 
         # FIXME(gongwb):wait pserver initialization.
-        time.sleep(3)
+        time.sleep(1)
 
         if args.use_cuda:
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
