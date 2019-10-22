@@ -110,12 +110,12 @@ class ReadOp : public framework::OperatorBase {
       PADDLE_THROW_EOF();
     }
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size(),
-                      "input data and output size of reader op do not match");
+                      "input size and output size of read_op do not match");
 
     std::vector<framework::DDim> shapes = reader->Shapes();
     PADDLE_ENFORCE_EQ(
         out_arg_names.size(), shapes.size(),
-        "number of outputs and number of shapes of reader do not match");
+        "output size of read_op and number of shapes do not match");
 
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =

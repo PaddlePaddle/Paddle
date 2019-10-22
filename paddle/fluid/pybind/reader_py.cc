@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/pybind/reader_py.h"
 #include <exception>
 #include <memory>
 #include <string>
@@ -21,10 +21,10 @@
 #include <vector>
 #include "Python.h"
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/pybind/reader_py.h"
 #include "pybind11/stl.h"
 
 namespace paddle {
