@@ -85,7 +85,7 @@ static const unsigned int AVX_CUT_LEN_MASK = 7U;
 #define _mm256_broadcast_sx _mm256_broadcast_ss
 
 template <typename T>
-inline void sse_axpy(const T* x, T* y, size_t len, const T alpha) {
+inline void avx_axpy(const T* x, T* y, size_t len, const T alpha) {
   unsigned int jjj, lll;
   jjj = lll = 0;
 
