@@ -130,7 +130,7 @@ class TestMatmulOpError(OpTest):
 
 
 # Negative dimension generation
-def negative_shapes_list(in_shape):
+def generate_negative_dims(in_shape):
     from itertools import combinations
     size = len(in_shape)
     indexs = list()
@@ -144,9 +144,9 @@ def negative_shapes_list(in_shape):
 
 
 # Build program with inputs sizes that contain negative numbers
-def test_negative_program(obj):
-    for shape_x in negative_shapes_list(obj.shape_X):
-        for shape_y in negative_shapes_list(obj.shape_Y):
+def test_negative_dims_program(obj):
+    for shape_x in generate_negative_dims(obj.shape_X):
+        for shape_y in generate_negative_dims(obj.shape_Y):
             X = np.random.random(obj.shape_X).astype("float32")
             Y = np.random.random(obj.shape_Y).astype("float32")
             Ref = reference_matmul(X, Y, obj.transpose_X, obj.transpose_Y)
@@ -178,7 +178,7 @@ def api_test(dim_x, dim_y, trans_x, trans_y):
         'shape_Y': shape_y,
         'transpose_X': trans_x,
         'transpose_Y': trans_y,
-        'test_propram': test_negative_program,
+        'test_propram': test_negative_dims_program,
     })
 
 
