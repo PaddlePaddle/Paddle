@@ -68,10 +68,10 @@ if(NOT WITH_MKLML)
     list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
 endif()
 
-if(NOT WITH_MKL)
+if(NOT WITH_MKL OR NOT WITH_AVX)
   list(REMOVE_ITEM TEST_OPS test_match_matrix_tensor_op)
   list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
-endif(NOT WITH_MKL)
+endif()
 
 if(WITH_GPU OR NOT WITH_MKLML)
     # matmul with multiple heads need MKL support
