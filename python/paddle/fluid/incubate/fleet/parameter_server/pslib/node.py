@@ -325,40 +325,57 @@ class DownpourWorker(Worker):
             slot_value_grad_names = \
                 [var.name + "@GRAD" for var in slot_value_vars]
         else:
+            value_to_key = {}
+            for i in range(len(slot_key_vars)):
+                value_to_key[slot_value_vars[i].name] = slot_key_vars[i]
             slot_value_grad_names = []
             all_grad_names = [var.name for var in slot_value_grads]
             for var in slot_value_vars:
                 if var.name + "@GRAD" in all_grad_names:
                     slot_value_grad_names.append(var.name + "@GRAD")
+            sorted_slot_value_vars = [i for i in slot_value_vars if \
+                i.name + "@GRAD" in slot_value_grad_names]
+            sorted_slot_value_vars += [i for i in slot_value_vars if \
+                i.name + "@GRAD" not in slot_value_grad_names]
+            sorted_slot_key_vars = \
+                [value_to_key[v.name] for v in sorted_slot_value_vars]
+
         for table in self._worker.sparse_table:
             if table.table_id == table_id:
-                key_names = [var.name for var in slot_key_vars]
+                keys = self._worker.sparse_table[table_id].slot_key
+                values = self._worker.sparse_table[table_id].slot_value
+                grads = self._worker.sparse_table[table_id].slot_gradient
+                value_to_key = {}
+                for i in range(len(keys)):
+                    value_to_key[values[i]] = keys[i]
+                target_values = [i for i in values if i + "@GRAD" in grads]
+                target_values += [i for i in values if i + "@GRAD" not in grads]
+                target_keys = [value_to_key[v] for v in target_values]
+
+                key_names = [var.name for var in sorted_slot_key_vars]
                 len_k = len(key_names)
-                target_names = self._worker.sparse_table[table_id].slot_key
-                len_t = len(target_names)
-                if key_names == target_names or (len_k < len_t \
-                    and target_names[:len_k] == key_names):
+                len_t = len(target_keys)
+                if key_names == target_keys or (len_k < len_t \
+                    and target_keys[:len_k] == key_names):
                     pass
                 else:
                     raise ValueError("sparse table %s slot_key error" %
                                      table_id)
 
-                value_names = [var.name for var in slot_value_vars]
+                value_names = [var.name for var in sorted_slot_value_vars]
                 len_v = len(value_names)
-                target_names = self._worker.sparse_table[table_id].slot_value
-                len_t = len(target_names)
-                if value_names == target_names or (len_v < len_t \
-                    and target_names[:len_v] == value_names):
+                len_t = len(target_values)
+                if value_names == target_values or (len_v < len_t \
+                    and target_values[:len_v] == value_names):
                     pass
                 else:
                     raise ValueError("sparse table %s slot_value error" %
                                      table_id)
 
                 len_g = len(slot_value_grad_names)
-                target_names = self._worker.sparse_table[table_id].slot_gradient
-                len_t = len(target_names)
-                if slot_value_grad_names == target_names or (len_g < len_t \
-                    and target_names[:len_g] == slot_value_grad_names):
+                len_t = len(grads)
+                if slot_value_grad_names == grads or (len_g < len_t \
+                    and grads[:len_g] == slot_value_grad_names):
                     pass
                 else:
                     raise ValueError("sparse table %s slot_gradient error" %
@@ -366,8 +383,8 @@ class DownpourWorker(Worker):
 
         table = self._worker.sparse_table.add()
         table.table_id = table_id
-        table.slot_key.extend([var.name for var in slot_key_vars])
-        table.slot_value.extend([var.name for var in slot_value_vars])
+        table.slot_key.extend([var.name for var in sorted_slot_key_vars])
+        table.slot_value.extend([var.name for var in sorted_slot_value_vars])
         table.slot_gradient.extend(slot_value_grad_names)
 
     def add_dense_table(self, table_id, learning_rate, param_vars, grad_vars,
