@@ -332,10 +332,11 @@ void BindImperative(py::module *m_ptr) {
   py::class_<imperative::Tracer>(m, "Tracer", "")
       .def("__init__",
            [](imperative::Tracer &self) { new (&self) imperative::Tracer(); })
-      .def_property("enable_program_desc_tracing",
+      .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
-      .def("get_program_desc_tracer", &imperative::Tracer::GetProgramDescTracer,
+      .def("_get_program_desc_tracer",
+           &imperative::Tracer::GetProgramDescTracer,
            py::return_value_policy::reference)
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,

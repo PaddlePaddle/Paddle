@@ -31,11 +31,11 @@ __all__ = [
 def program_desc_tracing_guard(enable):
     tracer = framework._dygraph_tracer()
     if tracer:
-        original_val = tracer.enable_program_desc_tracing
-        tracer.enable_program_desc_tracing = enable
+        original_val = tracer._enable_program_desc_tracing
+        tracer._enable_program_desc_tracing = enable
     yield
     if tracer:
-        tracer.enable_program_desc_tracing = original_val
+        tracer._enable_program_desc_tracing = original_val
 
 
 # This function should be removed in V1.6, because it can easily lead to cyclic dependencies.

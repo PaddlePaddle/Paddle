@@ -26,8 +26,7 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
-import paddle.fluid.dygraph.jit as jit
-from utils import is_equal_program, load_dygraph_vars_to_scope, run_static_graph
+from utils import DyGraphProgramDescTracerTestHelper
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -120,8 +119,6 @@ class TestImperativeMnist(unittest.TestCase):
         batch_size = 128
         batch_num = 50
 
-        program = None
-
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -139,6 +136,9 @@ class TestImperativeMnist(unittest.TestCase):
 
             mnist.train()
             dy_param_init_value = {}
+
+            helper = DyGraphProgramDescTracerTestHelper(mnist, self)
+
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(batch_py_reader()):
                     if batch_id >= batch_num:
@@ -149,33 +149,10 @@ class TestImperativeMnist(unittest.TestCase):
                     label.stop_gradient = True
 
                     if batch_id % 10 == 0:
-                        cost, _program = jit.trace(
-                            mnist,
-                            img,
-                            feed_names=['image'],
-                            fetch_names=['cost'])
-                        if program is not None:
-                            self.assertTrue(is_equal_program(program, _program))
-
-                            model_save_path = "paddle_mnist_imperative_test_{}".format(
-                                batch_id)
-                            fluid.save_dygraph(mnist.state_dict(),
-                                               model_save_path)
-                            scope = fluid.Scope()
-                            place = fluid.CUDAPlace(
-                                0) if fluid.is_compiled_with_cuda(
-                                ) else fluid.CPUPlace()
-                            load_dygraph_vars_to_scope(model_save_path, scope,
-                                                       place)
-                            cost2, = run_static_graph(
-                                _program,
-                                scope,
-                                place,
-                                feed={'image': img.numpy()},
-                                fetch=['cost'])
-                            self.assertTrue(np.array_equal(cost.numpy(), cost2))
-
-                        program = _program
+                        cost, cost_static = helper.run(inputs=img,
+                                                       feed_names=['image'],
+                                                       fetch_names=['cost'])
+                        helper.assertEachVar(cost, cost_static)
                     else:
                         cost = mnist(img)
 

@@ -28,6 +28,21 @@ def create_program_from_desc(program_desc):
     return program
 
 
+def _extract_vars(inputs, result_list):
+    if isinstance(inputs, Variable):
+        result_list.append(inputs._ivar)
+
+    if isinstance(inputs, (list, tuple)):
+        for var in inputs:
+            _extract_vars(var, result_list)
+
+
+def extract_vars(inputs):
+    result_list = []
+    _extract_vars(inputs, result_list)
+    return result_list
+
+
 @dygraph_only
 def trace(module, inputs, feed_names=None, fetch_names=None):
     assert isinstance(module, Layer)
@@ -41,13 +56,9 @@ def trace(module, inputs, feed_names=None, fetch_names=None):
     if fetch_names is None:
         fetch_names = []
 
-    tracer = _dygraph_tracer().get_program_desc_tracer()
+    tracer = _dygraph_tracer()._get_program_desc_tracer()
 
-    var_list = []
-    for each_in in inputs:
-        if isinstance(each_in, Variable):
-            var_list.append(each_in._ivar)
-
+    var_list = extract_vars(inputs)
     tracer.set_feed_vars(var_list, feed_names)
 
     with program_desc_tracing_guard(True):
