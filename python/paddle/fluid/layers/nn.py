@@ -11542,6 +11542,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
     if isinstance(offsets, Variable):
         offsets.stop_gradient = True
         ipts['Offsets'] = offsets
+        attrs['offsets'] = [-1] * len(x.shape)
     elif _contain_var(offsets):
         new_offsets_tensor = []
         offsets_attr = []
