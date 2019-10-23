@@ -48,7 +48,7 @@ class MergeSparseLookupTableKernel : public framework::OpKernel<T> {
     std::vector<int64_t> all_ids;
     all_ids.resize(ids_num);
     for (auto& in : inputs) {
-      all_ids.insert(all_ids.end(), in->rows.begin(), in->rows.end());
+      all_ids.insert(all_ids.end(), in->rows().begin(), in->rows().end());
     }
     out->set_rows(all_ids);
 
