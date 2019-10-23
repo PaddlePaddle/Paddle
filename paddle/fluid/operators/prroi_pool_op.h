@@ -262,7 +262,6 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     auto pooled_height = ctx.Attr<int>("pooled_height");
     auto pooled_width = ctx.Attr<int>("pooled_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
-
     auto in_dims = in->dims();
     int batch_size = in_dims[0];
     int input_channels = in_dims[1];
@@ -280,14 +279,18 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     rois_batch_id_list.Resize({rois_num});
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
-
-    bool has_batch_index = ctx.HasInput("Batch_index");
-    if (has_batch_index) {
-      auto* BatchIndex = ctx.Input<framework::Tensor>("Batch_index");
+    bool has_batch_index = ctx.HasInput("BatchRoINums");
+    bool has_lod = rois->lod().empty();
+    if (has_batch_index || has_lod) {
+      auto* BatchIndex = ctx.Input<framework::Tensor>("BatchRoINums");
       auto* batch_index = BatchIndex->data<int64_t>();
       int rois_batch_size = BatchIndex->dims()[0];
+      size_t c = 0;
       for (int n = 0; n < rois_batch_size; ++n) {
-        rois_batch_id_data[n] = batch_index[n];
+        for (int64_t k = 0; k < batch_index[n]; ++k) {
+          rois_batch_id_data[c] = n;
+          c = c + 1;
+        }
       }
     } else {
       auto rois_lod = rois->lod().back();
@@ -309,7 +312,6 @@ class CPUPRROIPoolOpKernel : public framework::OpKernel<T> {
 
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
     const T* input_rois = rois->data<T>();
-
     // calculate prroipooling, parallel processing can be implemented per ROI
     for (int n = 0; n < rois_num; ++n) {
       // set roi batch id
@@ -416,14 +418,18 @@ class CPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       rois_batch_id_list.Resize({rois_num});
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
-
-      bool has_batch_index = ctx.HasInput("Batch_index");
-      if (has_batch_index || rois->lod().empty()) {
-        auto* BatchIndex = ctx.Input<framework::Tensor>("Batch_index");
+      bool has_lod = rois->lod().empty();
+      bool has_batch_index = ctx.HasInput("BatchRoINums");
+      if (has_batch_index || has_lod) {
+        auto* BatchIndex = ctx.Input<framework::Tensor>("BatchRoINums");
         auto* batch_index = BatchIndex->data<int64_t>();
         int rois_batch_size = BatchIndex->dims()[0];
+        size_t c = 0;
         for (int n = 0; n < rois_batch_size; ++n) {
-          rois_batch_id_data[n] = batch_index[n];
+          for (int64_t k = 0; k < batch_index[n]; ++k) {
+            rois_batch_id_data[c] = n;
+            c = c + 1;
+          }
         }
       } else {
         auto rois_lod = rois->lod().back();

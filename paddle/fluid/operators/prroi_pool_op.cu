@@ -220,18 +220,22 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
 
-    bool has_batch_index = ctx.HasInput("Batch_index");
-    if (has_batch_index) {
-      auto* BatchIndex = ctx.Input<Tensor>("Batch_index");
+    bool has_batch_index = ctx.HasInput("BatchRoINums");
+    bool has_lod = rois->lod().empty();
+    if (has_batch_index || has_lod) {
+      auto* BatchIndex = ctx.Input<Tensor>("BatchRoINums");
       framework::Tensor batch_index_cpu;
       framework::TensorCopy(*BatchIndex, platform::CPUPlace(),
                             &batch_index_cpu);
 
-      // auto* batch_index = BatchIndex->data<int64_t>();
       int rois_batch_size = BatchIndex->dims()[0];
-      // rois_batch_id_data = batch_index;
+      auto* batch_index = batch_index_cpu.data<int64_t>();
+      size_t c = 0;
       for (int n = 0; n < rois_batch_size; ++n) {
-        rois_batch_id_data[n] = batch_index_cpu.data<int64_t>()[n];
+        for (int64_t k = 0; k < batch_index[n]; ++k) {
+          rois_batch_id_data[c] = n;
+          c = c + 1;
+        }
       }
 
     } else {
@@ -299,16 +303,22 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
 
-      bool has_batch_index = ctx.HasInput("Batch_index");
-      if (has_batch_index) {
-        auto* BatchIndex = ctx.Input<Tensor>("Batch_index");
+      bool has_batch_index = ctx.HasInput("BatchRoINums");
+      bool has_lod = rois->lod().empty();
+      if (has_batch_index || has_lod) {
+        auto* BatchIndex = ctx.Input<Tensor>("BatchRoINums");
         framework::Tensor batch_index_cpu;
         framework::TensorCopy(*BatchIndex, platform::CPUPlace(),
                               &batch_index_cpu);
 
         int rois_batch_size = BatchIndex->dims()[0];
+        auto* batch_index = batch_index_cpu.data<int64_t>();
+        size_t c = 0;
         for (int n = 0; n < rois_batch_size; ++n) {
-          rois_batch_id_data[n] = batch_index_cpu.data<int64_t>()[n];
+          for (int64_t k = 0; k < batch_index[n]; ++k) {
+            rois_batch_id_data[c] = n;
+            c = c + 1;
+          }
         }
       } else {
         auto rois_lod = rois->lod().back();

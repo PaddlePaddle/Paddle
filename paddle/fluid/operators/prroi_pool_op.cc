@@ -39,10 +39,10 @@ class PRROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "where (x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates. "
              "The roi batch index can be calculated from LoD.");
-    AddInput("Batch_index",
+    AddInput("BatchRoINums",
              "(Tensor), "
-             "the batchindex data for rois, its shape is [num_rois]"
-             "where num_roi is the number of ROIs")
+             "1-D tensor with shape [N], the number of"
+             " rois for each img in batch, where N is the batch size")
         .AsDispensable();
     AddOutput("Out",
               "(Tensor), "
@@ -96,7 +96,6 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(rois_dims[1], 4,
                       "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
                       "given as [(x1, y1, x2, y2), ...]");
-
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
@@ -113,12 +112,12 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
     out_dims[1] = input_dims[1];
     out_dims[2] = pooled_height;
     out_dims[3] = pooled_width;
-    bool has_batch_index = ctx->HasInput("Batch_index");
+    bool has_batch_index = ctx->HasInput("BatchRoINums");
     if (has_batch_index) {
-      auto rois_batch_index = ctx->GetInputDim("Batch_index");
-      PADDLE_ENFORCE_EQ(rois_batch_index[0], rois_dims[0],
-                        "The length of batch_index should equal to  "
-                        "first dim of ROI");
+      auto rois_batch_index = ctx->GetInputDim("BatchRoINums");
+      PADDLE_ENFORCE_EQ(rois_batch_index[0], input_dims[0],
+                        "The length of BatchRoINums should equal to  "
+                        "first dim of inputs(X)");
     }
     ctx->SetOutputDim("Out", out_dims);
   }
@@ -163,7 +162,7 @@ class PRROIPoolGradDescMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("X", Input("X"));
     op->SetInput("Out", Output("Out"));
     op->SetInput("ROIs", Input("ROIs"));
-    op->SetInput("Batch_index", Input("Batch_index"));
+    op->SetInput("BatchRoINums", Input("BatchRoINums"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
     op->SetOutput(framework::GradVarName("ROIs"), InputGrad("ROIs"));
@@ -181,8 +180,10 @@ REGISTER_OPERATOR(prroi_pool_grad, ops::PRROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     prroi_pool,
     ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUPRROIPoolOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     prroi_pool_grad,
     ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::CPUPRROIPoolGradOpKernel<paddle::platform::CPUDeviceContext, int64_t>);

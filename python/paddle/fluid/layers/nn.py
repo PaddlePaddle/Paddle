@@ -16188,7 +16188,7 @@ def prroi_pool(input,
                spatial_scale=1.0,
                pooled_height=1,
                pooled_width=1,
-               batch_index=None,
+               batch_roi_nums=None,
                name=None):
     """
     The precise roi pooling implementation for paddle?https://arxiv.org/pdf/1807.11590.pdf
@@ -16209,9 +16209,10 @@ def prroi_pool(input,
                              Equals the reciprocal of total stride in convolutional layers, Default: 1.0.
         pooled_height (integer): The pooled output height. Default: 1.
         pooled_width (integer): The pooled output width. Default: 1.
-        batch_index (Variable): The batch index informatioin for each roi in rois. It 
-                         shoule be 1-D Tensor, with shape [num_rois] and dtype int64, 
-                         where num_rois is the number of rois. Default: None.
+        batch_roi_nums (Variable): The number of roi for each image in batch. It 
+                         shoule be 1-D Tensor, with shape [N] and dtype int64, 
+                         where N is the batch size. Default: None. Be note: The lod of input shoule be
+                         empty when batch_roi_nums has values;
         name (str, default None): The name of this operation.
 
     Returns:
@@ -16219,11 +16220,20 @@ def prroi_pool(input,
 
     Examples:
         .. code-block:: python
-
+            ## example one
             import paddle.fluid as fluid
-            x = fluid.layers.data(name='x', shape=[490, 28, 28], dtype='float32')
-            rois = fluid.layers.data(name='rois', shape=[4], lod_level=1, dtype='float32')
+            x = fluid.data(name='x', shape=[None, 490, 28, 28], dtype='float32')
+            rois = fluid.data(name='rois', shape=[None, 4], lod_level=1, dtype='float32')
             pool_out = fluid.layers.prroi_pool(x, rois, 1.0, 7, 7)
+            
+            ## example two
+            batchsize=4
+            x = fluid.data(name='x, shape=[batchsize, 490, 28, 28], dtype='float32)
+            rois = fluid.data(name='rois', shape=[batchsize], dtype='float32')
+            batch_rois_num = fluid.data(name='rois_nums', shape=[batchsize], dtype='int64)
+            pool_out = fluid.layers.prroi_pool(x, rois, 1.0, 7, 7, batch_roi_nums=batch_rois_num)
+
+
     """
     helper = LayerHelper('prroi_pool', **locals())
     # check attrs
@@ -16236,8 +16246,8 @@ def prroi_pool(input,
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
     inputs_op = {'X': input, 'ROIs': rois}
-    if batch_index is not None:
-        inputs_op['Batch_index'] = batch_index
+    if batch_roi_nums is not None:
+        inputs_op['BatchRoINums'] = batch_roi_nums
     helper.append_op(
         type='prroi_pool',
         inputs=inputs_op,

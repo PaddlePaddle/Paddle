@@ -131,7 +131,7 @@ class TestPRROIPoolOp(OpTest):
                               7, 0.7)
 
 
-class TestPRROIPoolOpTensorR(OpTest):
+class TestPRROIPoolOpTensorRoIs(OpTest):
     def set_data(self):
         self.init_test_case()
         self.make_rois()
@@ -140,12 +140,11 @@ class TestPRROIPoolOpTensorR(OpTest):
             self.x, self.rois, self.output_channels, self.spatial_scale,
             self.pooled_height, self.pooled_width).astype('float32')
 
-        self.rois_index = np.array(self.rois[:, 0]).reshape(
-            [-1]).astype(np.int64)
+        self.rois_index = np.array(self.rois_lod).reshape([-1]).astype(np.int64)
         self.inputs = {
             'X': self.x,
             'ROIs': self.rois[:, 1:5],
-            'Batch_index': self.rois_index
+            'BatchRoINums': self.rois_index
         }
         self.attrs = {
             'output_channels': self.output_channels,
@@ -172,9 +171,9 @@ class TestPRROIPoolOpTensorR(OpTest):
 
     def make_rois(self):
         rois = []
-        self.rois_lod = [[]]
+        self.rois_lod = []
         for bno in range(self.batch_size):
-            self.rois_lod[0].append(bno + 1)
+            self.rois_lod.append(bno + 1)
             for i in range(bno + 1):
                 x1 = np.random.uniform(
                     0, self.width // self.spatial_scale - self.pooled_width)
@@ -211,7 +210,7 @@ class TestPRROIPoolOpTensorR(OpTest):
             rois_index = fluid.layers.data(
                 name='rois_idx', shape=[], dtype="int64")
             output = fluid.layers.prroi_pool(
-                x, rois, 0.25, 2, 2, batch_index=rois_index)
+                x, rois, 0.25, 2, 2, batch_roi_nums=rois_index)
             loss = fluid.layers.mean(output)
             optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
             optimizer.minimize(loss)
