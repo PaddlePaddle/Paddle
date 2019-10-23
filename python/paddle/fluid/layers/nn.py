@@ -6914,11 +6914,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if transpose_y:
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
-            raise ValueError(
-                "After performing an optional transpose, Input X's width should be "
-                "equal to Y's width for multiplication "
-                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %
-                (x_shape, y_shape))
+            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
+                "After performing an optional transpose, Input X's width should be "   \
+                "equal to Y's width for multiplication "                               \
+                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
+                (x_shape, y_shape)
 
         if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
@@ -8952,8 +8952,6 @@ def squeeze(input, axes, name=None):
             y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
     """
-    assert not in_dygraph_mode(), (
-        "squeeze layer is not supported in dygraph mode yet.")
     helper = LayerHelper("squeeze", **locals())
 
     if not isinstance(input, Variable):
