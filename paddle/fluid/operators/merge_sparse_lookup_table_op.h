@@ -56,7 +56,9 @@ class MergeSparseLookupTableKernel : public framework::OpKernel<T> {
 
     for (auto& in : inputs) {
       const T* in_data = in->value().data<T>();
-      memcpy(out_data + cnt * width, in_data, in->value().numel() * sizeof(T));
+      std::copy_n(in_data, in->value().numel(), out_data + cnt);
+      //      memcpy(out_data + cnt * width, in_data, in->value().numel() *
+      //      sizeof(T));
       cnt += in->value().numel();
     }
   }
