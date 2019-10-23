@@ -733,6 +733,8 @@ def load_vars(executor,
         for each_var in vars:
             if not isinstance(each_var, Parameter):
                 continue
+            if each_var.type == core.VarDesc.VarType.SELECTED_ROWS:
+                continue
             var_temp = paddle.fluid.global_scope().find_var(each_var.name)
             assert var_temp != None, "can't not find var: " + each_var.name
             new_shape = (np.array(var_temp.get_tensor())).shape
