@@ -252,8 +252,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return the current number of worker
         """
         if self._check_role_generation():
-            if self.is_worker():
-                return self._get_size() / self._proc_per_node
+            return self._get_size() / self._proc_per_node
         return 0
 
     def _server_num(self):
