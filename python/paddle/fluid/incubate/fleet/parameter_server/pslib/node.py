@@ -340,47 +340,21 @@ class DownpourWorker(Worker):
             sorted_slot_key_vars = \
                 [value_to_key[v.name] for v in sorted_slot_value_vars]
 
+        target_table = None
         for table in self._worker.sparse_table:
             if table.table_id == table_id:
                 keys = self._worker.sparse_table[table_id].slot_key
-                values = self._worker.sparse_table[table_id].slot_value
-                grads = self._worker.sparse_table[table_id].slot_gradient
-                value_to_key = {}
-                for i in range(len(keys)):
-                    value_to_key[values[i]] = keys[i]
-                target_values = [i for i in values if i + "@GRAD" in grads]
-                target_values += [i for i in values if i + "@GRAD" not in grads]
-                target_keys = [value_to_key[v] for v in target_values]
-
                 key_names = [var.name for var in sorted_slot_key_vars]
-                len_k = len(key_names)
-                len_t = len(target_keys)
-                if key_names == target_keys or (len_k < len_t \
-                    and target_keys[:len_k] == key_names):
-                    pass
-                else:
-                    raise ValueError("sparse table %s slot_key error" %
-                                     table_id)
+                for key_name in key_names:
+                    if key_name not in keys:
+                       raise ValueError("sparse table %s slot_key error" %
+                                        table_id)
+                target_table = table
+                break
 
-                value_names = [var.name for var in sorted_slot_value_vars]
-                len_v = len(value_names)
-                len_t = len(target_values)
-                if value_names == target_values or (len_v < len_t \
-                    and target_values[:len_v] == value_names):
-                    pass
-                else:
-                    raise ValueError("sparse table %s slot_value error" %
-                                     table_id)
-
-                len_g = len(slot_value_grad_names)
-                len_t = len(grads)
-                if slot_value_grad_names == grads or (len_g < len_t \
-                    and grads[:len_g] == slot_value_grad_names):
-                    pass
-                else:
-                    raise ValueError("sparse table %s slot_gradient error" %
-                                     table_id)
-
+        table = target_table
+        if table is not None:
+            self._worker.sparse_table.remove(table)
         table = self._worker.sparse_table.add()
         table.table_id = table_id
         table.slot_key.extend([var.name for var in sorted_slot_key_vars])
