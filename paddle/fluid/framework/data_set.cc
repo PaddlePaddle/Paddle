@@ -642,7 +642,7 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
 // explicit instantiation
 template class DatasetImpl<Record>;
 
-void MultiSlotDataset::GenerateLocalTablesUnlock(int read_thread_num, int consume_thread_num, int shard_num) {
+void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim, int read_thread_num, int consume_thread_num, int shard_num, int send_freq) {
   VLOG(3) << "MultiSlotDataset::GenerateUniqueFeasign begin";
   if (!gen_uni_feasigns_) {
     VLOG(3) << "generate_unique_feasign_=false, will not GenerateUniqueFeasign";
@@ -663,8 +663,17 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int read_thread_num, int consum
   for (int i = 0; i < consume_task_pool_.size(); i++) {
     consume_task_pool_[i].reset(new ::ThreadPool(1));
   }
-  int send_freq = 10;
-  auto gen_func = [this, &shard_num, &local_map_tables, send_freq] (int i) {
+  // std::vector<std::vector<std::future<void>>> task_futures(shard_num);
+  // auto consume_func = [&local_map_tables]
+  auto consume_func =  [&local_map_tables] (int shard_id, std::vector<uint64_t>& keys) {
+    for (auto k : keys) {
+              
+              if (local_map_tables[shard_id].find(k) == local_map_tables[shard_id].end()) {
+                local_map_tables[shard_id][k] = std::vector<float>(11, 0);        
+              }
+            } 
+  };
+  auto gen_func = [this, &shard_num, &local_map_tables, &consume_func] (int i) {
     std::vector<Record> vec_data;
     std::vector<std::vector<uint64_t>> task_keys(shard_num);
     std::vector<std::future<void>> task_futures;
@@ -676,32 +685,24 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int read_thread_num, int consum
               task_keys[shard].push_back(feature.sign().uint64_feasign_);
               //this->local_tables_[shard].insert(feature.sign().uint64_feasign_);
           }
-          if (j % send_freq == 0) {
-            for (size_t shard_id = 0; shard_id < shard_num; shard_id++) {
-              std::vector<uint64_t>& tk = task_keys[shard_id];
-              task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
-                [this, tk, &shard_id, &local_map_tables] (){
-                  for (auto& k : tk) {
-                    if (local_map_tables[shard_id].find(k) == local_map_tables[shard_id].end()) {
-                        local_map_tables[shard_id][k] = std::vector<float>(11, 0);
-                       }
-                  }
-                }              
-              ));
-            } 
-          }
-        for (auto& tk : task_keys) {
-          tk.clear();
-        }
-        task_keys.clear();
       }
+      
+      for (size_t shard_id = 0; shard_id < shard_num; shard_id++) {
+        task_futures.emplace_back(consume_task_pool_[shard_id]->enqueue(
+          consume_func, shard_id, task_keys[shard_id]
+          ));
+      } 
+      
       multi_output_channel_[i]->Open();
       multi_output_channel_[i]->Write(std::move(vec_data));
       vec_data.clear();
       vec_data.shrink_to_fit();
+       
       for (auto &tf : task_futures) {
         tf.wait();    
       }
+      
+      
   };
   for (size_t i = 0; i < threads.size(); i++) {
     threads[i] = std::thread(gen_func, i);    
@@ -709,7 +710,7 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int read_thread_num, int consum
   for (std::thread& t : threads) {
     t.join();
   }
-  
+  fleet_ptr_->PullSparseToLocalV2(table_id, feadim);
 } 
 
 void MultiSlotDataset::GenerateUniqueFeasign(int shard_num) {
@@ -750,7 +751,8 @@ void MultiSlotDataset::GenerateUniqueFeasign(int shard_num) {
   }
   for (std::thread& t : threads) {
     t.join();
-  } 
+  }
+
   std::cout << "dataset>>> generate lcoal_tables done with local shard: " << local_tables_.size() << std::endl;
 }
 

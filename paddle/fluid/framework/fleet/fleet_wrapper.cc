@@ -158,9 +158,9 @@ void FleetWrapper::CreateClient2ClientConnection() {
 #endif
 }
 
-void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<std::unordered_set<uint64_t>>& fea_keys, int fea_value_dim) {
+void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id, int fea_value_dim) {
     //std::cout << "FleetWrapper Start pull sparse to local" << std::endl;
-    size_t fea_keys_size = fea_keys.size();
+    size_t fea_keys_size = local_tables_.size();
     if (fea_keys_size == 0) {
       return;    
     }
@@ -168,12 +168,67 @@ void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<
     std::cout << "fleet wrapper puul to local table with local table size: " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<  std::endl;
   std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS");
     local_table_shard_num_ = fea_keys_size;
+    double set_local_table_time = 0.0;
+    platform::Timer timeline;
+    std::vector<std::thread> threads(fea_keys_size);
+    auto ptl_func = [this, &table_id] (int i) {
+      size_t key_size = this->local_tables_[i].size();
+      // std::cout << "start ptl thread with key size: " << key_size << "with i: " << i << std::endl;
+      std::vector<uint64_t> keys;
+      keys.reserve(key_size);
+      std::vector<float*> pull_result_ptr;
+      pull_result_ptr.reserve(key_size);
+
+      for (auto& kv : this->local_tables_[i]) {
+        keys.emplace_back(kv.first);
+        pull_result_ptr.emplace_back(kv.second.data());
+      } 
+      //std::cout << "debug finish set local table" << std::endl;
+      auto tt = pslib_ptr_->_worker_ptr->pull_sparse(
+            pull_result_ptr.data(), table_id, keys.data(), key_size);
+      tt.wait();
+      auto status = tt.get();
+      if (status != 0) {
+        LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+        sleep(sleep_seconds_before_fail_exit_);
+        exit(-1);
+      }else {
+         // std::cout << "FleetWrapper Pull sparse to local done with table size: " << pull_result_ptr.size() << std::endl;    
+         VLOG(3) << "FleetWrapper Pull sparse to local done with table size: " << pull_result_ptr.size(); 
+      }
+    };
+    timeline.Start();
+    for (size_t i = 0; i < threads.size(); i++) {
+      threads[i] = std::thread(ptl_func, i);    
+    }
+    for (std::thread& t : threads) {
+      t.join();
+    }
+    local_pull_pool_.reset(
+                new ::ThreadPool(25));
+    timeline.Pause();
+    set_local_table_time = timeline.ElapsedSec();
+    std::cout << "Done fleet wrapper puul to local table with local table size: " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<  std::endl;
+  std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS");
+    std::cout << "Pull sparse to local done, set local table time: " <<
+    set_local_table_time << std::endl;
+}
+
+void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<std::unordered_set<uint64_t>>& fea_keys, int fea_value_dim) {
+    //std::cout << "FleetWrapper Start pull sparse to local" << std::endl;
+    size_t fea_keys_size = fea_keys.size();
+    if (fea_keys_size == 0) {
+      return;    
+    }
+    // int pid = getpid();
+    // std::cout << "fleet wrapper puul to local table with local table size: " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<  std::endl;
+    // std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS");
+    local_table_shard_num_ = fea_keys_size;
     local_tables_.resize(fea_keys_size);
     double set_local_table_time = 0.0;
     platform::Timer timeline;
     std::vector<std::thread> threads(fea_keys_size);
-    std::vector<float> zeros(fea_value_dim, 0);
-    auto ptl_func = [this, &fea_keys, &fea_value_dim, &table_id, &zeros] (int i) {
+    auto ptl_func = [this, &fea_keys, &fea_value_dim, &table_id] (int i) {
       const std::unordered_set<uint64_t>& keys = fea_keys[i];
       size_t key_size = keys.size();
       // std::cout << "start ptl thread with key size: " << key_size << "with i: " << i << std::endl;
@@ -181,7 +236,6 @@ void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<
       std::vector<float*> pull_result_ptr;
       pull_result_ptr.reserve(key_size);
       for (int j = 0; j < key_size; j++) {
-        //std::memcpy(local_tables_[i][keys_vec[j]].data(), zeros.data(), fea_value_dim);
         local_tables_[i][keys_vec[j]] = std::vector<float>(fea_value_dim, 0);
         pull_result_ptr.push_back(local_tables_[i][keys_vec[j]].data());
         //std::cout << "cur loop with j: " << j << std::endl;
@@ -209,11 +263,11 @@ void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<
       t.join();
     }
     local_pull_pool_.reset(
-                new ::ThreadPool(25));
+                new ::ThreadPool(100));
     timeline.Pause();
     set_local_table_time = timeline.ElapsedSec();
-    std::cout << "Done fleet wrapper puul to local table with local table size: " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<  std::endl;
-  std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS");
+    // std::cout << "Done fleet wrapper puul to local table with local table size: " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<  std::endl;
+    // std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS");
     std::cout << "Pull sparse to local done, set local table time: " <<
     set_local_table_time << std::endl;
 }
@@ -249,7 +303,7 @@ void FleetWrapper::PullSparseVarsFromLocal(
   }
   int key_length = fea_keys->size();
   // std::cout << "fleet eraper one request key num: " << key_length << std::endl;
-  int local_step = key_length / 25 + 1;
+  int local_step = key_length / 100 + 1;
   std::vector<std::future<void>> task_futures;
   task_futures.reserve(key_length/local_step + 1);
   for(size_t i = 0; i < key_length; i += local_step) {

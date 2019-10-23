@@ -252,6 +252,8 @@ void BindDataset(py::module *m) {
       .def("generate_unique_feasigns", &framework::Dataset::GenerateUniqueFeasign,
            py::call_guard<py::gil_scoped_release>())
       .def("generate_local_tables", &framework::Dataset::GenerateLocalTables,
+           py::call_guard<py::gil_scoped_release>())
+      .def("generate_local_tables_unlock", &framework::Dataset::GenerateLocalTablesUnlock,        
            py::call_guard<py::gil_scoped_release>())  
       .def("slots_shuffle", &framework::Dataset::SlotsShuffle,
            py::call_guard<py::gil_scoped_release>())

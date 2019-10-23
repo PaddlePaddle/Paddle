@@ -111,7 +111,7 @@ class FleetWrapper {
   //Pull sparse to local table if set local sparse table
   std::vector< std::unordered_map<uint64_t, std::vector<float>> > local_tables_;
   void PullSparseToLocal(const uint64_t table_id, const std::vector<std::unordered_set<uint64_t>>& fea_keys, int fea_value_dim);
-
+  void PullSparseToLocalV2(const uint64_t table_id, int fea_value_dim);
   void PullSparseVarsFromLocal(
       const Scope& scope, const uint64_t table_id,
       const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,

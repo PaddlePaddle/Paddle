@@ -405,7 +405,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
   uint64_t total_inst = 0;
   std::future<int32_t> pull_async_status;
   uint64_t async_tid = 0;
-  int async_index = 0;
+  int async_index = -1;
   for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
          ++i) {
       uint64_t tid = static_cast<uint64_t>(
@@ -509,7 +509,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
       }
       if (!need_skip) {
-        if (run_op_idx == op_count && op->Type() == "sequence_pool") {
+        if (async_index >= 0 && run_op_idx == op_count && op->Type() == "sequence_pool") {
           // std::cout << "Wait Async Pull with tid: " << async_tid << std::endl;
           timeline.Start();
           pull_async_status.wait();
@@ -645,7 +645,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
 
     if (thread_id_ == 0) {
       // should be configured here
-      if (batch_cnt > 0 && batch_cnt % 1 == 0) {
+      if (batch_cnt > 0 && batch_cnt % 100 == 0) {
         double op_sum_time = 0;
         std::unordered_map<std::string, double> op_to_time;
         for (size_t i = 0; i < op_total_time.size(); ++i) {
@@ -714,7 +714,7 @@ void DownpourWorker::TrainFiles() {
   int cur_batch;
   std::future<int32_t> pull_async_status;
   uint64_t async_tid = 0;
-  int async_index = 0;
+  int async_index = -1;
   for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
          ++i) {
       uint64_t tid = static_cast<uint64_t>(
@@ -786,7 +786,7 @@ void DownpourWorker::TrainFiles() {
         }
       }
       if (!need_skip) {
-        if (run_op_idx == op_count && op->Type() == "sequence_pool") {
+        if (async_index >= 0 && run_op_idx == op_count && op->Type() == "sequence_pool") {
           // std::cout << "Wait Async Pull with tid: " << async_tid << std::endl;
           pull_async_status.wait();
           auto status = pull_async_status.get();
