@@ -30,7 +30,7 @@ from functools import reduce
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
     'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
-    'array_read', 'array_length', 'IfElse', 'DynamicRNN', 'StaticRNN',
+    'array_read', 'array_length', 'Cond', 'IfElse', 'DynamicRNN', 'StaticRNN',
     'reorder_lod_tensor_by_rank', 'Print', 'is_empty'
 ]
 
@@ -1779,6 +1779,76 @@ class Switch(object):
         """
         set flag that now is inside switch.block {}
         :return:
+        """
+        self.inside_scope = True
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.inside_scope = False
+        if exc_type is not None:
+            return False  # re-raise exception
+
+        return True
+
+
+class Cond(object):
+    # if_case_num is set to a negative number when else_case is called
+    HAS_CALLED_ELSE = -1
+
+    def __init__(self, name=None):
+        self.helper = LayerHelper('cond', name=name)
+        self.inside_scope = False
+        self.if_case_num = 0
+
+    def if_case(self, condition):
+        if not self.inside_scope:
+            raise ValueError(
+                "if_case should be called in 'with layers.Cond() as ... :'")
+        if self.if_case_num > 0:
+            raise ValueError(
+                "You can only have one if_case in a Cond, were you trying to add elif_case?"
+            )
+        if self.if_case_num == Cond.HAS_CALLED_ELSE:
+            raise ValueError("You can not call if_case after else_case")
+
+        cond_block = ConditionalBlock([condition], is_scalar_condition=True)
+        self.if_case_num += 1
+        self.else_condition = logical_not(condition)
+        return ConditionalBlockGuard(cond_block)
+
+    def elif_case(self, condition):
+        if not self.inside_scope:
+            raise ValueError(
+                "elif_case should be called in 'with layers.Cond() as ... :'")
+        if self.if_case_num == 0:
+            raise ValueError("You should call if_case before elif_case")
+        if self.if_case_num == Cond.HAS_CALLED_ELSE:
+            raise ValueError("You can not call elif_case after else_case")
+
+        cond_block = ConditionalBlock(
+            [logical_and(self.else_condition, condition)],
+            is_scalar_condition=True)
+        self.else_condition = logical_and(self.else_condition,
+                                          logical_not(condition))
+        return ConditionalBlockGuard(cond_block)
+
+    def else_case(self):
+        if not self.inside_scope:
+            raise ValueError(
+                "else_case should be called in 'with layers.Cond() as ... :'")
+        if self.if_case_num == 0:
+            raise ValueError("You should call if_case before else_case")
+        if self.if_case_num == Cond.HAS_CALLED_ELSE:
+            raise ValueError("You can not call else_case after else_case")
+
+        cond_block = ConditionalBlock(
+            [self.else_condition], is_scalar_condition=True)
+        self.if_case_num = Cond.HAS_CALLED_ELSE
+        return ConditionalBlockGuard(cond_block)
+
+    def __enter__(self):
+        """
+        set flag when it is inside Cond block
         """
         self.inside_scope = True
         return self
