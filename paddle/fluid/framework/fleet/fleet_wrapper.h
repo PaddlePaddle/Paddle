@@ -80,7 +80,11 @@ class FleetWrapper {
                           std::vector<uint64_t>* fea_keys,
                           std::vector<std::vector<float>>* fea_values,
                           int fea_dim);
-
+  std::future<int32_t> PullSparseVarsAsync(const Scope& scope, const uint64_t table_id,
+                          const std::vector<std::string>& var_names,
+                          std::vector<uint64_t>* fea_keys,
+                          std::vector<std::vector<float>>* fea_values,
+                          int fea_dim);
   void PullDenseVarsSync(const Scope& scope, const uint64_t table_id,
                          const std::vector<std::string>& var_names);
 
