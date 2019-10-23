@@ -146,7 +146,8 @@ bool AnalysisPredictor::PrepareProgram(
     // So in both case, create persistable variables at first.
     if (!CheckOperatorCompatible()) {
       LOG(WARNING) << "WARNING: Results may be DIFF! "
-                      "Using same versions between model and lib.";
+                      "Please use the corresponding version of the model and "
+                      "prediction library, and do not use the develop branch.";
     }
     executor_->CreateVariables(*inference_program_, 0, true, sub_scope_);
 
@@ -858,8 +859,10 @@ bool AnalysisPredictor::CheckOperatorCompatible() {
     auto compatible_type =
         op_compatible_map_.IsRequireMiniVersion(type, version);
     if (compatible_type != framework::OpCompatibleType::compatible) {
-      LOG(WARNING) << " - Version incompatible ("
-                   << static_cast<int>(compatible_type) << ") " << type;
+      if (!framework::kCurProgramVersion) {
+        LOG(WARNING) << " - Version incompatible ("
+                     << static_cast<int>(compatible_type) << ") " << type;
+      }
       res = false;
     }
   }
