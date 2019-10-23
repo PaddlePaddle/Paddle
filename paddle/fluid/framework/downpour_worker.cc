@@ -394,6 +394,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
   double read_time = 0.0;
   double pull_sparse_time = 0.0;
   double pull_sparse_local_time = 0.0;
+  double pull_sparse_async_time = 0.0;
   double adjust_ins_weight_time = 0.0;
   double collect_label_time = 0.0;
   double fill_sparse_time = 0.0;
@@ -422,7 +423,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
       }
   }
   // pre-defined for the first op run with async-pulled embedding
-  int op_count = 100;
+  int op_count = 929;
   timeline.Start();
   while ((cur_batch = device_reader_->Next()) > 0) {
     timeline.Pause();
@@ -451,13 +452,18 @@ void DownpourWorker::TrainFilesWithProfiler() {
                                        sparse_key_names_[tid], &features_[tid],
                                        &feature_values_[tid], table.fea_dim());
         timeline.Pause();
-        pull_sparse_time += timeline.ElapsedSec();
+        pull_sparse_local_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
         // std::cout << "local sparse table with fea dim: " << table.fea_dim() << std::endl;
       } else if (table.is_async()) {
+        // std::cout << "Async pull with tid: " << tid << std::endl;
+        timeline.Start();
         pull_async_status = fleet_ptr_->PullSparseVarsAsync(*thread_scope_, tid,
                                             sparse_key_names_[tid], &features_[tid],
                                             &feature_values_[tid], table.fea_dim());
+        timeline.Pause();
+        pull_sparse_async_time += timeline.ElapsedSec();
+        total_time += timeline.ElapsedSec();
         continue; 
       } else {
         timeline.Start();
@@ -465,7 +471,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
                                             sparse_key_names_[tid], &features_[tid],
                                             &feature_values_[tid], table.fea_dim());
         timeline.Pause();
-        pull_sparse_local_time += timeline.ElapsedSec();
+        pull_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
       }
       
@@ -503,23 +509,40 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
       }
       if (!need_skip) {
-        std::cout << run_op_idx <<"th op: " << op->Type() << std::endl;
         if (run_op_idx == op_count && op->Type() == "sequence_pool") {
+          // std::cout << "Wait Async Pull with tid: " << async_tid << std::endl;
+          timeline.Start();
           pull_async_status.wait();
           auto status = pull_async_status.get();
+          timeline.Pause();
+          pull_sparse_async_time += timeline.ElapsedSec();
+          total_time += timeline.ElapsedSec();  
           if (status != 0) {
             LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
             sleep(1);
             exit(-1);
           } else {
+            // std::cout << "Done Async Pull with tid: " << async_tid << std::endl;
+            timeline.Start();
             CollectLabelInfo(async_index);
+            timeline.Pause();
+            collect_label_time += timeline.ElapsedSec();
+            total_time += timeline.ElapsedSec();
+            timeline.Start();
             FillSparseValue(async_index);
+            timeline.Pause();
+            fill_sparse_time += timeline.ElapsedSec();
+            total_time += timeline.ElapsedSec();
+            timeline.Start();
             auto nid_iter = std::find(sparse_value_names_[async_tid].begin(),
-                                      sparse_value_names_[async_tid].end(),
-                                      adjust_ins_weight_config_.nid_slot());
+                                sparse_value_names_[async_tid].end(),
+                                adjust_ins_weight_config_.nid_slot());
             if (nid_iter != sparse_value_names_[async_tid].end()) {
               AdjustInsWeight();
-             }          
+            }
+            timeline.Pause();
+            adjust_ins_weight_time += timeline.ElapsedSec();
+            total_time += timeline.ElapsedSec(); 
           }
 
         }
@@ -646,6 +669,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
                 pull_sparse_time / batch_cnt);
         fprintf(stderr, "pull sparse local time: %fs\n",
                 pull_sparse_local_time / batch_cnt);
+        fprintf(stderr, "pull sparse async time: %fs\n",
+                pull_sparse_async_time / batch_cnt);
         fprintf(stderr, "fill sparse time: %fs\n",
                 fill_sparse_time / batch_cnt);
         fprintf(stderr, "push sparse time: %fs\n",
@@ -662,6 +687,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
                 pull_sparse_time / total_time * 100);
         fprintf(stderr, "pull sparse local time percent: %f\n",
                 pull_sparse_local_time / total_time * 100);
+        fprintf(stderr, "pull sparse async time percent: %f\n",
+                pull_sparse_async_time / total_time * 100);
         fprintf(stderr, "adjust ins weight time percent: %f\n",
                 adjust_ins_weight_time / total_time * 100);
         fprintf(stderr, "collect label time percent: %f\n",
@@ -705,7 +732,7 @@ void DownpourWorker::TrainFiles() {
       }
   }
   // pre-defined for the first op run with async-pulled embedding
-  int op_count = 100;
+  int op_count = 929;
   while ((cur_batch = device_reader_->Next()) > 0) {
     // pull sparse here
     for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
@@ -749,12 +776,7 @@ void DownpourWorker::TrainFiles() {
     VLOG(3) << "fill sparse value for all sparse table done.";
 
     // do computation here
-    std::cout << "skip ops: ";
-    for (auto& o:skip_ops_) {
-      std::cout << o << " ";
-    }
-    std::cout << " " << std::endl;
-    int c = 0;
+    int run_op_idx = 0;
     for (auto& op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
@@ -764,8 +786,8 @@ void DownpourWorker::TrainFiles() {
         }
       }
       if (!need_skip) {
-        std::cout << c <<"th op: " << op->Type() << std::endl;
-        if (c == op_count && op->Type() == "sequence_pool") {
+        if (run_op_idx == op_count && op->Type() == "sequence_pool") {
+          // std::cout << "Wait Async Pull with tid: " << async_tid << std::endl;
           pull_async_status.wait();
           auto status = pull_async_status.get();
           if (status != 0) {
@@ -773,6 +795,7 @@ void DownpourWorker::TrainFiles() {
             sleep(1);
             exit(-1);
           } else {
+            // std::cout << "Done Async Pull with tid: " << async_tid << std::endl;  
             CollectLabelInfo(async_index);
             FillSparseValue(async_index);
             auto nid_iter = std::find(sparse_value_names_[async_tid].begin(),
@@ -785,10 +808,10 @@ void DownpourWorker::TrainFiles() {
 
         } 
         op->Run(*thread_scope_, place_);
-        c++;
+        run_op_idx++;
       }
     }
-    std::cout << "END OP RUN" << std::endl;
+    // std::cout << "END OP RUN" << std::endl;
     if (need_to_push_sparse_) {
       // push gradients here
       for (int i = 0; i < param_.program_config(0).push_sparse_table_id_size();

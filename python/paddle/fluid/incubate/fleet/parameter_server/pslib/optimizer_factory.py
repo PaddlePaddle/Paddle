@@ -249,7 +249,6 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["stat_var_names"] = strategy.get("stat_var_names", [])
         opt_info["local_tables"] = strategy.get("local_tables", [])
         opt_info["async_tables"] = strategy.get("async_tables", [])
-        print "async_tables: ", opt_info["local_tables"]
         opt_info["scale_datanorm"] = strategy.get("scale_datanorm", -1)
         opt_info["dump_slot"] = False
         opt_info["dump_converter"] = ""
