@@ -171,8 +171,8 @@ class DownpourSGD(DeviceWorker):
             sparse_table.label_var_name = "click"
             if sparse_table.table_id in opt_info["local_tables"]:
                 sparse_table.is_local = True
-            if sparse_table.table_id in opt_info["pull_async_tables"]:
-                sparse_table.is_pull_async = True
+            if sparse_table.table_id in opt_info["async_tables"]:
+                sparse_table.is_async = True
         if opt_info["stat_var_names"]:
             for i in opt_info["stat_var_names"]:
                 downpour.stat_var_names.extend([i])
