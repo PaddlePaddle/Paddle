@@ -493,6 +493,7 @@ def embedding(input,
               is_sparse=False,
               is_distributed=False,
               padding_idx=None,
+              is_test=False,
               param_attr=None,
               dtype='float32'):
     """
@@ -618,40 +619,64 @@ def embedding(input,
         raise TypeError(
             "The 'dtype' of layers.embedding must be float16, float32 or float64, but received %s."
             % (convert_dtype(dtype)))
-    remote_prefetch = is_sparse and (not is_distributed)
-    if remote_prefetch:
+
+    if not is_test:
+        remote_prefetch = is_sparse and (not is_distributed)
+        if remote_prefetch:
+            assert is_sparse is True and is_distributed is False
+
+        if is_sparse:
+            w = helper.create_parameter(
+                attr=helper.param_attr,
+                shape=size,
+                dtype=dtype,
+                type=core.VarDesc.VarType.SELECTED_ROWS,
+                is_bias=False)
+        else:
+            w = helper.create_parameter(
+                attr=helper.param_attr,
+                shape=size,
+                dtype=dtype,
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                is_bias=False)
+
+        tmp = helper.create_variable_for_type_inference(dtype)
+        padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+            size[0] + padding_idx)
+        helper.append_op(
+            type='lookup_table',
+            inputs={'Ids': input,
+                    'W': w},
+            outputs={'Out': tmp},
+            attrs={
+                'is_sparse': is_sparse,
+                'is_distributed': is_distributed,
+                'remote_prefetch': remote_prefetch,
+                'padding_idx': padding_idx
+            })
+        return tmp
+    else:
         assert is_sparse is True and is_distributed is False
 
-    if is_sparse:
         w = helper.create_parameter(
             attr=helper.param_attr,
             shape=size,
             dtype=dtype,
             type=core.VarDesc.VarType.SELECTED_ROWS,
             is_bias=False)
-    else:
-        w = helper.create_parameter(
-            attr=helper.param_attr,
-            shape=size,
-            dtype=dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            is_bias=False)
 
-    tmp = helper.create_variable_for_type_inference(dtype)
-    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
-        size[0] + padding_idx)
-    helper.append_op(
-        type='lookup_table',
-        inputs={'Ids': input,
-                'W': w},
-        outputs={'Out': tmp},
-        attrs={
-            'is_sparse': is_sparse,
-            'is_distributed': is_distributed,
-            'remote_prefetch': remote_prefetch,
-            'padding_idx': padding_idx
-        })
-    return tmp
+        tmp = helper.create_variable_for_type_inference(dtype)
+        padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+            size[0] + padding_idx)
+
+        helper.append_op(
+            type='lookup_sparse_table',
+            inputs={'Ids': input,
+                    'W': w},
+            outputs={'Out': tmp},
+            attrs={'is_test': True,
+                   'padding_idx': padding_idx})
+        return tmp
 
 
 def _pull_box_sparse(input, size, dtype='float32'):
