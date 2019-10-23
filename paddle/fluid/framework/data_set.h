@@ -24,6 +24,7 @@
 #include <vector>
 #include <unordered_set>
 
+#include <ThreadPool.h>
 #include "paddle/fluid/framework/data_feed.h"
 
 namespace paddle {
@@ -121,6 +122,7 @@ class Dataset {
   virtual void GenerateUniqueFeasign(int shard_num) = 0;
   // generate local tables in fleet wrapoer
   virtual void GenerateLocalTables(int table_id, int feadim) = 0;
+  virtual void GenerateLocalTablesUnlock(int read_thread_num, int consume_thread_num, int shard_num) = 0;
   // get unique feasigns
   virtual const std::vector<uint64_t>& GetUniqueFeasigns() = 0;
   virtual const std::vector<std::unordered_set<uint64_t>>& GetLocalTables() = 0;
@@ -198,6 +200,7 @@ class DatasetImpl : public Dataset {
   virtual void MergeByInsId() {}
   virtual void GenerateUniqueFeasign(int shard_num) {}
   virtual void GenerateLocalTables(int table_id, int feadim) {}
+  virtual void GenerateLocalTablesUnlock(int read_thread_num, int consume_thread_num, int shard_num) {}
   virtual const std::vector<uint64_t>& GetUniqueFeasigns() {return *(std::vector<uint64_t>*)NULL;};
   virtual const std::vector<std::unordered_set<uint64_t>>& GetLocalTables() {return *(std::vector<std::unordered_set<uint64_t>>*)NULL;};
   virtual void ClearUniqueFeasigns() {};
@@ -252,6 +255,7 @@ class DatasetImpl : public Dataset {
   int preload_thread_num_;
   std::mutex global_index_mutex_;
   int64_t global_index_ = 0;
+  std::vector<std::shared_ptr<::ThreadPool>> consume_task_pool_;
 };
 
 // use std::vector<MultiSlotType> or Record as data type
@@ -261,6 +265,7 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   virtual void MergeByInsId();
   virtual void GenerateUniqueFeasign(int shard_num);
   virtual void GenerateLocalTables(int table_id, int feadim);
+  virtual void GenerateLocalTablesUnlock(int read_thread_num, int consume_thread_num, int shard_num);
   virtual const std::vector<uint64_t>& GetUniqueFeasigns() {return local_feasigns_;}
   virtual const std::vector<std::unordered_set<uint64_t>>& GetLocalTables() {return local_tables_;}
   virtual void ClearUniqueFeasigns() {local_feasigns_.clear();}

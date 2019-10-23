@@ -675,6 +675,11 @@ void DownpourWorker::TrainFiles() {
     VLOG(3) << "fill sparse value for all sparse table done.";
 
     // do computation here
+    std::cout << "skip ops: ";
+    for (auto& o:skip_ops_) {
+      std::cout << o << " ";
+    }
+    std::cout << " " << std::endl;
     for (auto& op : ops_) {
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
@@ -684,10 +689,11 @@ void DownpourWorker::TrainFiles() {
         }
       }
       if (!need_skip) {
+        std::cout << "op: " << op->Type() << std::endl;
         op->Run(*thread_scope_, place_);
       }
     }
-
+    std::cout << "END OP RUN" << std::endl;
     if (need_to_push_sparse_) {
       // push gradients here
       for (int i = 0; i < param_.program_config(0).push_sparse_table_id_size();

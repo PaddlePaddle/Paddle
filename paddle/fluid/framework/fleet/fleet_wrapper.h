@@ -113,7 +113,7 @@ class FleetWrapper {
       const std::vector<std::string>& var_names, std::vector<uint64_t>* fea_keys,
       std::vector<std::vector<float>>* fea_values, int fea_value_dim);
   void ClearLocalTable();
-  const std::vector<std::unordered_map<uint64_t, std::vector<float>>>& GetLocalTable() {return local_tables_;};
+  std::vector<std::unordered_map<uint64_t, std::vector<float>>>& GetLocalTable() {return local_tables_;};
   // Push sparse variables with labels to server in Async mode
   // This is specially designed for click/show stats in server
   // Param<in>: scope, table_id, var_grad_names,
