@@ -2801,7 +2801,10 @@ def conv2d(input,
             "data_format": data_format,
         })
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    if data_format == 'NCHW':
+        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    else:
+        pre_act = helper.append_bias_op(pre_bias, dim_start=3, dim_end=4)
 
     return helper.append_activation(pre_act)
 
@@ -3049,7 +3052,10 @@ def conv3d(input,
             "data_format": data_format,
         })
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    if data_format == 'NCDHW':
+        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    else:
+        pre_act = helper.append_bias_op(pre_bias, dim_start=4, dim_end=5)
 
     return helper.append_activation(pre_act)
 
@@ -5148,7 +5154,10 @@ def conv2d_transpose(input,
             'data_format': data_format
         })
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    if data_format == 'NCHW':
+        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    else:
+        pre_act = helper.append_bias_op(pre_bias, dim_start=3, dim_end=4)
     out = helper.append_activation(pre_act)
     return out
 
@@ -5423,7 +5432,10 @@ def conv3d_transpose(input,
             'data_format': data_format
         })
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    if data_format == 'NCHW':
+        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    else:
+        pre_act = helper.append_bias_op(pre_bias, dim_start=4, dim_end=5)
     out = helper.append_activation(pre_act)
     return out
 
@@ -6902,11 +6914,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if transpose_y:
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
-            raise ValueError(
-                "After performing an optional transpose, Input X's width should be "
-                "equal to Y's width for multiplication "
-                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %
-                (x_shape, y_shape))
+            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
+                "After performing an optional transpose, Input X's width should be "   \
+                "equal to Y's width for multiplication "                               \
+                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
+                (x_shape, y_shape)
 
         if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
@@ -8940,8 +8952,6 @@ def squeeze(input, axes, name=None):
             y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
     """
-    assert not in_dygraph_mode(), (
-        "squeeze layer is not supported in dygraph mode yet.")
     helper = LayerHelper("squeeze", **locals())
 
     if not isinstance(input, Variable):
@@ -14320,10 +14330,60 @@ Examples:
 
 
 def elementwise_mod(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    ..  code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([10, 15, 8]).astype('int32'),
+                "y": np.array([3, 6, 5]).astype('int32')
+            }
+
+        x = fluid.data(name="x", shape=[3], dtype='int32')
+        y = fluid.data(name="y", shape=[3], dtype='int32')
+        z = fluid.layers.elementwise_mod(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[1, 3, 3]
+    """
     return _elementwise_op(LayerHelper('elementwise_mod', **locals()))
 
 
 def elementwise_floordiv(x, y, axis=-1, act=None, name=None):
+    """
+Examples:
+
+    ..  code-block:: python
+
+        import paddle.fluid as fluid
+        import numpy as np
+
+        def gen_data():
+            return {
+                "x": np.array([10, 15, 8]).astype('int32'),
+                "y": np.array([3, 7, 5]).astype('int32')
+            }
+
+        x = fluid.data(name="x", shape=[3], dtype='int32')
+        y = fluid.data(name="y", shape=[3], dtype='int32')
+        z = fluid.layers.elementwise_floordiv(x, y)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        z_value = exe.run(feed=gen_data(),
+                            fetch_list=[z.name])
+
+        print(z_value) #[3, 2, 1]
+    """
     return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
 
 
@@ -14335,6 +14395,8 @@ for func in [
         elementwise_max,
         elementwise_pow,
         elementwise_min,
+        elementwise_mod,
+        elementwise_floordiv,
 ]:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
@@ -14352,10 +14414,7 @@ for func in [
         skip_attrs_set={"x_data_format", "y_data_format", "axis"
                         }) + """\n""" + str(func.__doc__)
 
-for func in [
-        elementwise_mod,
-        elementwise_floordiv,
-]:
+for func in []:
     op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
     func.__doc__ = _generate_doc_string_(
         op_proto,

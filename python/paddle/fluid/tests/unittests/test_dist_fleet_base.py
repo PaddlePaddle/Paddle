@@ -40,6 +40,7 @@ from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerCo
 
 RUN_STEP = 5
 LEARNING_RATE = 0.01
+DIST_UT_PORT = 0
 
 
 class FleetDistRunnerBase(object):
@@ -123,8 +124,20 @@ class TestFleetBase(unittest.TestCase):
         self._trainers = 2
         self._pservers = 2
         self._port_set = set()
-        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-            self._find_free_port(), self._find_free_port())
+
+        global DIST_UT_PORT
+        if DIST_UT_PORT == 0 and os.getenv("PADDLE_DIST_UT_PORT"):
+            DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
+
+        if DIST_UT_PORT:
+            print("set begin_port:", DIST_UT_PORT)
+            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+                DIST_UT_PORT, DIST_UT_PORT + 1)
+            DIST_UT_PORT += 2
+        else:
+            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+                self._find_free_port(), self._find_free_port())
+
         self._python_interp = sys.executable
         self._geo_sgd = False
         self._geo_sgd_need_push_nums = 5
