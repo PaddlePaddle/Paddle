@@ -93,8 +93,8 @@ class TestDGCMomentumOp1(unittest.TestCase):
             "Output (" + out_name + ") has diff at " + str(place) + "\nExpect "
             + str(expect_t) + "\n" + "But Got" + str(actual_t))
 
-    def test_momentum_step(self):
-        self.setup(place=core.CUDAPlace(0))
+    def check_momentum_step(self, place):
+        self.setup(place=place)
 
         dgc_momentum_op = Operator(self.op_type, **self.kwargs)
         dgc_momentum_op.run(self.scope, self.place)
@@ -107,8 +107,8 @@ class TestDGCMomentumOp1(unittest.TestCase):
             np.array(self.velocity_tensor), self.outputs['VelocityOut'],
             self.place, self.velocity_name)
 
-    def test_sgd_step(self):
-        self.setup(place=core.CUDAPlace(0), step=15.0)
+    def check_sgd_step(self, place):
+        self.setup(place=place, step=15.0)
 
         dgc_momentum_op = Operator(self.op_type, **self.kwargs)
         dgc_momentum_op.run(self.scope, self.place)
@@ -116,6 +116,16 @@ class TestDGCMomentumOp1(unittest.TestCase):
         self.check(
             np.array(self.param_tensor), self.outputs['SGDOut'], self.place,
             self.param_name)
+
+    def test_cuda_place(self):
+        place = core.CUDAPlace(0)
+        self.check_momentum_step(place)
+        self.check_sgd_step(place)
+
+    def test_cpu_place(self):
+        place = core.CPUPlace()
+        self.check_momentum_step(place)
+        self.check_sgd_step(place)
 
 
 if __name__ == "__main__":

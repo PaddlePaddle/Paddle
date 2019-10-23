@@ -17,6 +17,7 @@ import unittest
 from test_dist_base import TestDistBase
 
 import os
+import subprocess
 flag_name = os.path.splitext(__file__)[0]
 
 
@@ -39,13 +40,10 @@ class TestDistMnistNCCL2DGC(TestDistBase):
 
     def tearDown(self):
         # Used to determine if sparse communication is used
-        cmd = 'grep -E "sparse_all_reduce.*in_numel" test_dist_mnist_dgc_nccl_tr0_err.log' \
-              ' | wc -l'
-        # fix CI: ResourceWarning: unclosed file <_io.TextIOWrapper name=10 encoding='UTF-8'
-        # make sure file is closed
-        with open('test_dist_mnist_dgc_nccl_tr0_err.log', 'rb') as f:
-            data = f.read()
-        result = os.popen(cmd).read()
+        cmd = 'grep sparse_all_reduce test_dist_mnist_dgc_nccl_tr0_err.log' \
+              ' | grep in_numel | wc -l'
+        child = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+        result = child.communicate()[0]
         # only 1 layer use dgc now, run_step=5, rampup_begin_step=2, so 1 * (5 - 2) = 3
         self.assertEqual(result, '3\n')
 
@@ -69,11 +67,10 @@ class TestDistMnistNCCL2DGCMultiCards(TestDistBase):
 
     def tearDown(self):
         # Used to determine if sparse communication is used
-        cmd = 'grep -E "sparse_all_reduce.*in_numel" test_dist_mnist_dgc_nccl_dgc_2cards_local.log' \
-              ' | wc -l'
-        with open('test_dist_mnist_dgc_nccl_dgc_2cards_local.log', 'rb') as f:
-            data = f.read()
-        result = os.popen(cmd).read()
+        cmd = 'grep sparse_all_reduce test_dist_mnist_dgc_nccl_dgc_2cards_local.log' \
+              ' | grep in_numel | wc -l'
+        child = subprocess.Popen(cmd, stdout=subprocess.PIPE, shell=True)
+        result = child.communicate()[0]
         # same as above, but use two cards
         self.assertEqual(result, '6\n')
 
