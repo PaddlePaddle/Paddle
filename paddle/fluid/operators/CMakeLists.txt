@@ -51,10 +51,13 @@ endif()
 SET(OP_ONLY_MKL "")
 if (NOT WITH_MKL OR NOT WITH_AVX)
     SET(OP_ONLY_MKL ${OP_ONLY_MKL} match_matrix_tensor_op)
-    SET(OP_ONLY_MKL ${OP_ONLY_MKL} var_conv_2d_op)
+    SET(OP_ONLY_MKL ${OP_ONLY_MKL} var_conv_2d_op pyramid_hash_op)
+endif()
+if(WIN32)
+    SET(OP_ONLY_MKL ${OP_ONLY_MKL} pyramid_hash_op)
 endif()
 
-register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op pyramid_hash_op
+register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op
 	sync_batch_norm_op multihead_matmul_op ${OP_ONLY_MKL} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
@@ -88,10 +91,12 @@ if (WITH_DGC)
 endif()
 
 if (WITH_MKL)
-    cc_library(pyramid_hash_op SRCS pyramid_hash_op.cc DEPS xxhash
-            framework_proto)
-    file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(pyramid_hash);\n")
-    set(OP_LIBRARY pyramid_hash_op ${OP_LIBRARY} CACHE INTERNAL "op libs")
+    if(NOT WIN32)
+        cc_library(pyramid_hash_op SRCS pyramid_hash_op.cc DEPS xxhash
+                framework_proto)
+        file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(pyramid_hash);\n")
+        set(OP_LIBRARY pyramid_hash_op ${OP_LIBRARY} CACHE INTERNAL "op libs")
+    endif()
 endif()
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor)
