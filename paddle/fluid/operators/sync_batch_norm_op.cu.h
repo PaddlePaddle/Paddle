@@ -308,7 +308,7 @@ template <typename T, framework::DataLayout layout>
 static __global__ void KeBNRestoreData(T *x, const BatchNormParamType<T> *scale,
                                        const BatchNormParamType<T> *bias,
                                        const BatchNormParamType<T> *mean,
-                                       const BatchNormParamType<T> *variance,
+                                       const BatchNormParamType<T> *sv_inv,
                                        const double epsilon, int C, int M,
                                        int num, const T *y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
