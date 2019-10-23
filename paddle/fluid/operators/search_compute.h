@@ -108,7 +108,6 @@ inline void sse_axpy(const T* x, T* y, size_t len, const T alpha) {
   unsigned int jjj, lll;
   jjj = lll = 0;
 
-#if defined(USE_AVX)
   lll = len & ~AVX_CUT_LEN_MASK;
   __m256x mm_alpha = _mm256_broadcast_sx(&alpha);
   for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE) {
@@ -118,16 +117,6 @@ inline void sse_axpy(const T* x, T* y, size_t len, const T alpha) {
                       _mm256_mul_px(mm_alpha, _mm256_load_px(x + jjj))));
   }
 
-#elif defined(USE_SSE)
-  lll = len & ~SSE_CUT_LEN_MASK;
-  __m128x mm_alpha = _mm_load1_px(&alpha);
-  for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
-    _mm_store_px(y + jjj,
-                 _mm_add_px(_mm_load_px(y + jjj),
-                            _mm_mul_px(mm_alpha, _mm_load_px(x + jjj))));
-  }
-
-#endif
   for (; jjj < len; jjj++) {
     y[jjj] += alpha * x[jjj];
   }
@@ -138,21 +127,12 @@ inline void sse_axpy_noadd(const T* x, T* y, size_t len, const T alpha) {
   unsigned int jjj, lll;
   jjj = lll = 0;
 
-#if defined(USE_AVX)
   lll = len & ~AVX_CUT_LEN_MASK;
   __m256x mm_alpha = _mm256_broadcast_sx(&alpha);
   for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE) {
     _mm256_store_px(y + jjj, _mm256_mul_px(mm_alpha, _mm256_load_px(x + jjj)));
   }
 
-#elif defined(USE_SSE)
-  lll = len & ~SSE_CUT_LEN_MASK;
-  __m128x mm_alpha = _mm_load1_px(&alpha);
-  for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
-    _mm_store_px(y + jjj, _mm_mul_px(mm_alpha, _mm_load_px(x + jjj)));
-  }
-
-#endif
   for (; jjj < len; jjj++) {
     y[jjj] = alpha * x[jjj];
   }
