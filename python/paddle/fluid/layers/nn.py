@@ -16288,7 +16288,7 @@ def prroi_pool(input,
             ## example two
             batchsize=4
             x2 = fluid.data(name='x2', shape=[batchsize, 490, 28, 28], dtype='float32')
-            rois2 = fluid.data(name='rois2', shape=[batchsize], dtype='float32')
+            rois2 = fluid.data(name='rois2', shape=[batchsize, 4], dtype='float32')
             batch_rois_num = fluid.data(name='rois_nums', shape=[batchsize], dtype='int64')
             pool_out2 = fluid.layers.prroi_pool(x2, rois2, 1.0, 7, 7, batch_roi_nums=batch_rois_num)
 
