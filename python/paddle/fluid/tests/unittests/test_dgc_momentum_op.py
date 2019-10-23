@@ -118,6 +118,8 @@ class TestDGCMomentumOp1(unittest.TestCase):
             self.param_name)
 
     def test_cuda_place(self):
+        if not core.is_compiled_with_cuda():
+            return
         place = core.CUDAPlace(0)
         self.check_momentum_step(place)
         self.check_sgd_step(place)
