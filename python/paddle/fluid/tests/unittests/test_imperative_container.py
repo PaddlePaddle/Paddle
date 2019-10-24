@@ -19,7 +19,7 @@ import paddle.fluid as fluid
 import numpy as np
 
 
-class TestImperativeContainerSequential(unittest.TestCase):
+class TestImperativeContainer(unittest.TestCase):
     def test_sequential(self):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
@@ -29,6 +29,7 @@ class TestImperativeContainerSequential(unittest.TestCase):
                                               fluid.FC('fc2', 2))
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 2])
+            self.assertTrue('fc1' in model1[0]._full_name)
             model1[1] = fluid.FC('fc2_new', 3)
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 3])
@@ -44,9 +45,15 @@ class TestImperativeContainerSequential(unittest.TestCase):
             self.assertTrue('l1' in model2.l1.full_name())
             self.assertListEqual(res2.shape, res1.shape)
             self.assertEqual(len(model1.parameters()), len(model2.parameters()))
-            del model2.l2
+            del model2['l2']
+            self.assertEqual(len(model2), 1)
             res2 = model2(data)
             self.assertListEqual(res2.shape, [5, 1])
+            model2.add_sublayer('l3', fluid.FC('l3', 3))
+            model2.add_sublayer('l4', fluid.FC('l4', 4))
+            self.assertEqual(len(model2), 3)
+            res2 = model2(data)
+            self.assertListEqual(res2.shape, [5, 4])
 
             loss2 = fluid.layers.reduce_mean(res2)
             loss2.backward()
