@@ -226,7 +226,11 @@ void LiteSubgraphPass::SetUpEngine(
   paddle::lite_api::PrecisionType precision_type =
       enable_int8 ? PRECISION(kInt8) : PRECISION(kFloat);
   paddle::lite::Place prefer_place = {target_type, precision_type};
-
+  std::set<std::string> param_names_set(repetitive_params.begin(),
+                                        repetitive_params.end());
+  const_cast<std::vector<std::string>&>(repetitive_params)
+      .assign(param_names_set.begin(), param_names_set.end());
+  serialize_params(&config.param, scope, repetitive_params);
   serialize_params(&config.param, scope, repetitive_params);
   config.model = program->Proto()->SerializeAsString();
   config.prefer_place = prefer_place;
