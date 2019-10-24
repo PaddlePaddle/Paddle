@@ -117,6 +117,10 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
         "parameter server)"
         "in the order of input variables for mapping")
         .SetDefault({});
+    AddAttr<bool>("is_test",
+                  "In test mode, lookup_table will "
+                  "return a 0 for unknown id when use selected rows")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Lookup Table Operator.
