@@ -53,6 +53,9 @@ if (NOT WITH_MKL OR NOT WITH_AVX)
     SET(OP_ONLY_MKL ${OP_ONLY_MKL} match_matrix_tensor_op)
     SET(OP_ONLY_MKL ${OP_ONLY_MKL} var_conv_2d_op)
 endif()
+if(NOT WITH_MKL OR WIN32)
+    SET(OP_ONLY_MKL ${OP_ONLY_MKL} pyramid_hash_op)
+endif()
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op
 	sync_batch_norm_op multihead_matmul_op ${OP_ONLY_MKL} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
@@ -86,6 +89,7 @@ if (WITH_DGC)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(dgc);\n")
     set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dgc)
 endif()
+
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
