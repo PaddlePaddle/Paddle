@@ -959,6 +959,47 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         super(DGCMomentumOptimizer, self).__init__(
             learning_rate, momentum, use_nesterov, regularization, name)
 
+    def _is_use_dgc(self, param_var, grad_var):
+        var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
+        if var_numel < 16384 or \
+           param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
+           grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
+               param_var.dtype != core.VarDesc.VarType.FP32 :
+            return False
+        return True
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        if not self._is_use_dgc(param_and_grad[0], param_and_grad[1]):
+            return super(DGCMomentumOptimizer, self)._append_optimize_op(
+                block, param_and_grad)
+
+        velocity_acc = self._get_accumulator(self._velocity_acc_str,
+                                             param_and_grad[0])
+        # create the dgc momentum optimize op
+        dgc_momentum_op = block.append_op(
+            type="dgc_momentum",
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Velocity": velocity_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+                "current_step": self._global_step_var,
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "VelocityOut": velocity_acc
+            },
+            attrs={
+                "mu": self._momentum,
+                "use_nesterov": self._use_nesterov,
+                "rampup_begin_step": float(self._rampup_begin_step)
+            },
+            stop_gradient=True)
+
+        return dgc_momentum_op
+
     def _add_auto_increment_var(self, counter_name, begin, step=1):
         helper = LayerHelper('global_step_counter')
         counter, is_new_var = helper.create_or_get_global_variable(
@@ -997,11 +1038,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             force_cpu=True)
 
         for param_var, grad_var in param_and_grads:
-            var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
-            if var_numel < 16384 or \
-                param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
-                grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
-                    param_var.dtype != core.VarDesc.VarType.FP32 :
+            if not self._is_use_dgc(param_var, grad_var):
                 continue
 
             u_var = tensor.create_global_var(
