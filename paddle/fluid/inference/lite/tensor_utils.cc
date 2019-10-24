@@ -46,6 +46,8 @@ PrecisionType GetLitePrecisionType(framework::proto::VarType::Type type) {
       return PrecisionType::kFloat;
     case framework::proto::VarType_Type_INT8:
       return PrecisionType::kInt8;
+    case framework::proto::VarType_Type_INT32:
+      return PrecisionType::kInt32;
     default:
       LOG(FATAL) << "Error precision type.";
       return PrecisionType::kUnk;
@@ -59,6 +61,8 @@ framework::proto::VarType::Type GetNativePrecisionType(
       return framework::proto::VarType_Type_FP32;
     case PrecisionType::kInt8:
       return framework::proto::VarType_Type_INT8;
+    case PrecisionType::kInt32:
+      return framework::proto::VarType_Type_INT32;
     default:
       LOG(FATAL) << "Error precision type.";
       return static_cast<framework::proto::VarType::Type>(-1);
