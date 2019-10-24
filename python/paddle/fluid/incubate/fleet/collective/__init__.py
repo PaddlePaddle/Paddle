@@ -18,6 +18,7 @@ import paddle.fluid.io as io
 import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
 from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
+from paddle.fluid.compiler import CompiledProgram
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
@@ -87,28 +88,18 @@ class Collective(Fleet):
         inference, and then save it and all related parameters to given
         `dirname` by the `executor`.
         """
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "In fleet.save_inference_model() function, executor must be as"
-                " Executor type, but ParallelExecutor is given.")
+        assert isinstance(executor, Executor), \
+            "In fleet.save_inference_model() function, executor must be as" \
+            " Executor type."
 
-        if not isinstance(executor, Executor):
-            raise TypeError(
-                "In fleet.save_inference_model() function, executor must be as"
-                " Executor type.")
-
-        if main_program is not None:
-            if isinstance(main_program, CompiledProgram):
-                raise TypeError(
-                    "In fleet.save_inference_model() function, main_program "
-                    "must be as Program type, but CompiledProgram is given.")
-            io.save_inference_model(dirname, feeded_var_names, target_vars,
-                                    executor, main_program, None, None,
-                                    export_for_deployment)
-        else:
-            io.save_inference_model(dirname, feeded_var_names, target_vars,
-                                    executor, self._origin_program, None, None,
-                                    export_for_deployment)
+        if main_program is None:
+            main_program = self._origin_program
+        assert isinstance(main_program, Program), \
+            "In fleet.save_inference_model() function, main_program " \
+            "must be as Program type, but CompiledProgram is given."
+        io.save_inference_model(dirname, feeded_var_names, target_vars,
+                                executor, main_program, None, None,
+                                export_for_deployment)
 
     def save_persistables(self, executor, dirname, main_program=None):
         """
@@ -121,23 +112,16 @@ class Collective(Fleet):
         files, set `filename` None; if you would like to save all variables in a
         single file, use `filename` to specify the file name.
         """
-        if isinstance(executor, ParallelExecutor):
-            raise TypeError(
-                "In fleet.save_persistables() function, executor must be as"
-                " Executor type, but ParallelExecutor is given.")
-
-        if not isinstance(executor, Executor):
-            raise TypeError(
-                "In fleet.save_persistables() function, executor must be as"
-                " Executor type.")
+        assert isinstance(executor, Executor), \
+            "In fleet.save_inference_model() function, executor must be as" \
+            " Executor type."
 
         if main_program is None:
             main_program = self._origin_program
 
-        if isinstance(main_program, CompiledProgram):
-            raise TypeError(
-                "In fleet.save_persistables() function, main_program must be as"
-                " Program type, but given CompiledProgram.")
+        assert isinstance(main_program, Program), \
+            "In fleet.save_inference_model() function, main_program " \
+            "must be as Program type, but CompiledProgram is given."
 
         io.save_persistables(executor, dirname, main_program, None)
 
