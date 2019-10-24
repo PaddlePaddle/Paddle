@@ -35,35 +35,84 @@ class DistributedNotifyOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    std::vector<std::string> epmap = Attr<std::vector<std::string>>("epmap");
-    std::string type = Attr<std::string>("type");
-    int trainer_id = Attr<int>("trainer_id");
+    auto ins = Inputs("X");
 
-    distributed::RPCClient* rpc_client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
-    for (size_t i = 0; i < epmap.size(); i++) {
-      //  rpc_client->AsyncDistributeNotify(epmap[i], type);
-      VLOG(4) << "distribute notify sending : " << type << " to " << epmap[i];
+    auto epmap = Attr<std::vector<std::string>>("epmap");
+    auto trainer_id = Attr<int>("trainer_id");
+
+    auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
+    auto height_sections = Attr<std::vector<int64_t>>("sections");
+
+    if (send_varnames.size() > 0) {
+      if (ins.size() > 1) {
+        distributed::Communicator::GetInstance()->Send(ins, send_varnames,
+                                                       scope);
+      } else {
+        distributed::Communicator::GetInstance()->Send(ins[0], scope);
+      }
+    } else {
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      auto& ctx = *pool.Get(place);
+
+      distributed::RPCClient* rpc_client =
+          distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
+
+      std::vector<distributed::VarHandlePtr> rets;
+      for (size_t i = 0; i < ins.size(); i++) {
+        if (NeedSend(scope, ins[i])) {
+          VLOG(3) << "notifying " << ins[i] << " to " << epmap[i];
+          rets.push_back(
+              rpc_client->AsyncDistributeNotify(epmap[i], ctx, scope, ins[i]));
+        } else {
+          VLOG(3) << "don't notify no-initialied variable: " << ins[i];
+        }
+      }
+      // don't need to wait
     }
-    PADDLE_ENFORCE_EQ(rpc_client->Wait(), true, "internal error in RPCClient");
   }
 };
 
 class DistributedNotifyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
-    AddAttr<std::vector<std::string>>("epmap",
-                                      "(string vector, default  127.0.0.1:6164)"
-                                      "Parameter Server endpoints in the order")
-        .SetDefault({"127.0.0.1:6164"});
-    AddAttr<std::string>("type",
-                         "(string, default '') indicate the action type");
+    AddInput("X", "(Tensor, SelectedRows) Input variables to be sent")
+        .AsDuplicable();
+    AddOutput("Out", "(Any) Dummy outputs, used for control dependency")
+        .AsDuplicable();
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<std::vector<std::string>>("epmap",
+                                      "(string vector, default 127.0.0.1:6164)"
+                                      "Server endpoints in the order of input "
+                                      "variables for mapping")
+        .SetDefault({"127.0.0.1:6164"});
+    AddAttr<std::vector<int64_t>>("sections",
+                                  "(vector<int>) "
+                                  "the length of each output along the "
+                                  "specified axis.")
+        .SetDefault(std::vector<int64_t>{});
+    AddAttr<std::vector<std::string>>(
+        "send_varnames",
+        "(vector<string>) "
+        "the splited output varnames to send to pserver")
+        .SetDefault(std::vector<std::string>{});
+    AddAttr<int>("num",
+                 "(int, default 0)"
+                 "Number of sub-tensors. This must evenly divide "
+                 "Input.dims()[axis]")
+        .SetDefault(0);
+    AddAttr<bool>("merge_add",
+                  "(bool, default 0)"
+                  "merge method, true represent add, false represent average")
+        .SetDefault(false);
+    AddAttr<bool>("send_handler",
+                  "(bool, default True)"
+                  "send_handler or notify handler")
+        .SetDefault(true);
     AddComment(R"DOC(
 DistributeNotify operator
 
-This operator will send a signal to listen_and_serve op at
-the parameter server.
+This operator will send variables to listen_and_serve op at the parameter server. it's basic function is same as send op.
 )DOC");
   }
 };

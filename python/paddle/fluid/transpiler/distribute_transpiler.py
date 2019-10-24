@@ -637,14 +637,21 @@ class DistributeTranspiler(object):
             if len(lr_ops) > 0:
                 decay_dummy_output = program.global_block().create_var(
                     name=framework.generate_control_dev_var_name())
+                if self.config.runtime_split_send_recv:
+                    ## async mode, using communicator to merge and send
+                    send_varnames = [self.counter_var.name]
+                    sections = [1]
+                else:
+                    send_varnames = []
+                    sections = []
                 program.global_block()._prepend_op(
-                    type="send",
+                    type="distributed_notify",
                     inputs={"X": self.counter_var},
                     outputs={"Out": decay_dummy_output},
                     attrs={
                         "epmap": pserver_endpoints,
-                        "sections": [1],
-                        "send_varnames": [self.counter_var.name],
+                        "sections": sections,
+                        "send_varnames": send_varnames,
                         "merge_add": True,
                         "send_handler": False,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -839,19 +846,6 @@ class DistributeTranspiler(object):
                             "axis": 0,
                             RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
                         })
-
-    #  if not self.sync_mode:
-    #      lr_ops = self._get_lr_ops()
-    #      if len(lr_ops) > 0:
-    #          program.global_block().append_op(
-    #              type="distributed_notify",
-    #              inputs={},
-    #              outputs={},
-    #              attrs={
-    #                  "epmap": pserver_endpoints,
-    #                  "trainer_id": self.trainer_id,
-    #                  "type": "LRDECAY@RECV"
-    #              })
 
         self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
 
