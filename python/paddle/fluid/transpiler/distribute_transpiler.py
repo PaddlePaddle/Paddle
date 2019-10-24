@@ -2415,6 +2415,16 @@ class DistributeTranspiler(object):
                             persistable=counter_var.persistable)
                         for id_ in range(self.trainer_num)
                     ]
+                    for i, op in enumerate(self.startup_program.global_block()
+                                           .ops):
+                        if op.type == 'fill_constant':
+                            for key in op.output_names:
+                                if len(op.output(key)) == 1 and op.output(key)[
+                                        0] == counter_var.name:
+                                    self.startup_program.global_block().ops[
+                                        i]._set_attr(
+                                            'value',
+                                            float(0.0 - self.trainer_num))
                     if len(all_trainer_counter_inputs) >= 1:
                         self.trainer_program_delete_vars.append(
                             counter_var.name)
