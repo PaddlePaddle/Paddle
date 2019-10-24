@@ -43,6 +43,10 @@ class ReaderBase {
   // Returns the shapes of the feeded variables
   std::vector<DDim> Shapes() const { return shapes_; }
 
+  // For Backward compatibility, old fluid.layers.data doesn't check shape.
+  // This function returns whether you have the check shape for this Reader.
+  bool NeedCheckShape() const { return !shapes_.empty(); }
+
   virtual ~ReaderBase();
 
  protected:
@@ -58,6 +62,10 @@ class ReaderBase {
 
   mutable std::mutex mu_;
 
+  // The shapes of the feeded variables. It is used to check the shapes of the
+  // input data and the shapes of feeded variablesare matched. However, for
+  // Backward compatibility, old fluid.layers.data doesn't check shape. Empty
+  // shapes_ means it doesn't have to check shapes of the feeded variables
   std::vector<DDim> shapes_;
 
  private:
@@ -145,6 +153,8 @@ class ReaderHolder {
   }
 
   std::vector<DDim> Shapes() const { return reader_->Shapes(); }
+
+  bool NeedCheckShape() const { return reader_->NeedCheckShape(); }
 
   operator const std::shared_ptr<ReaderBase>&() const { return this->reader_; }
 

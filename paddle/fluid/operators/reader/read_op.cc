@@ -112,20 +112,25 @@ class ReadOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size(),
                       "input size and output size of read_op do not match");
 
-    std::vector<framework::DDim> shapes = reader->Shapes();
-    PADDLE_ENFORCE_EQ(
-        out_arg_names.size(), shapes.size(),
-        "output size of read_op and number of shapes do not match");
+    std::vector<framework::DDim> shapes;
+    if (reader->NeedCheckShape()) {
+      shapes = reader->Shapes();
+      PADDLE_ENFORCE_EQ(
+          out_arg_names.size(), shapes.size(),
+          "output size of read_op and number of shapes do not match");
+    }
 
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
-      auto in_dims = ins[i].dims();
-      auto out_dims = shapes[i];
-      PADDLE_ENFORCE_EQ(DimensionIsCompatibleWith(out_dims, in_dims), true,
-                        "The feeded Variable %s should have dimensions = %d, "
-                        "shape = [%s], but received feeded shape [%s]",
-                        out_arg_names[i], out_dims.size(), out_dims, in_dims);
+      if (reader->NeedCheckShape()) {
+        auto in_dims = ins[i].dims();
+        auto out_dims = shapes[i];
+        PADDLE_ENFORCE_EQ(DimensionIsCompatibleWith(out_dims, in_dims), true,
+                          "The feeded Variable %s should have dimensions = %d, "
+                          "shape = [%s], but received feeded shape [%s]",
+                          out_arg_names[i], out_dims.size(), out_dims, in_dims);
+      }
       out->ShareDataWith(ins[i]);
       out->set_lod(ins[i].lod());
     }

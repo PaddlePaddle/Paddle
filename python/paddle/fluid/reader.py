@@ -331,7 +331,7 @@ class GeneratorLoader(DataLoaderBase):
             self._init_non_iterable()
 
     def _wait_thread_ends(self):
-        # Get self._thread first to prevent data race, because __thread_main__ 
+        # Get self._thread first to prevent data race, because __thread_main__
         # would set self._thread be None at the end
         thread = self._thread
         if thread is not None and self._iterable:
@@ -346,6 +346,13 @@ class GeneratorLoader(DataLoaderBase):
         else:
             self._var_names = [v.name for v in self._feed_list]
             self._shapes = [v.shape for v in self._feed_list]
+            # For Backward compatibility, old fluid.layers.data doesn't check
+            # shape. The empty shape of create_py_reader means it won't check
+            # shape during reading
+            for v in self._feed_list:
+                if not v.desc.need_check_feed():
+                    self._shapes = []
+                    break
         self._queue = core.init_lod_tensor_blocking_queue(core.Variable(),
                                                           self._capacity)
         self._reader = core.create_py_reader(self.queue, self._var_names,
