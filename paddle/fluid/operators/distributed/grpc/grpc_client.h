@@ -176,15 +176,18 @@ class CheckpointNotifyProcessor : public BaseProcessor {
 class DistributeNotifyProcessor : public BaseProcessor {
  public:
   explicit DistributeNotifyProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor() {
-    stub_ = sendrecv::SendRecvService::NewStub(ch);
-  }
+      : BaseProcessor(), stub_g_(ch) {}
 
   virtual ~DistributeNotifyProcessor() {}
 
-  void ProcessImpl() override {}
-  sendrecv::VoidMessage reply_;
-  std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
+  void ProcessImpl() override {
+    if (response_call_back_) {
+      response_call_back_(*var_h_.get(), reply_);
+    }
+  }
+  ::grpc::ByteBuffer reply_;
+  ::grpc::GenericStub stub_g_;
+  RequestSendCallBack response_call_back_ = nullptr;
 };
 
 class GRPCClient : public RPCClient {
@@ -240,7 +243,8 @@ class GRPCClient : public RPCClient {
       int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncDistributeNotify(
-      const std::string& ep, const std::string& type,
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
       int64_t time_out = FLAGS_rpc_deadline) override;
 
   VarHandlePtr AsyncSendComplete(

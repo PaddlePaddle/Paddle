@@ -637,19 +637,16 @@ class DistributeTranspiler(object):
             if len(lr_ops) > 0:
                 decay_dummy_output = program.global_block().create_var(
                     name=framework.generate_control_dev_var_name())
-                decay_send_varnames = []
-                decay_sections = []
-                for _ in pserver_endpoints:
-                    decay_send_varnames.append(self.counter_var.name)
-                    decay_sections.append(0)
                 program.global_block()._prepend_op(
                     type="send",
                     inputs={"X": self.counter_var},
                     outputs={"Out": decay_dummy_output},
                     attrs={
                         "epmap": pserver_endpoints,
-                        "sections": decay_sections,
-                        "send_varnames": decay_send_varnames,
+                        "sections": [1],
+                        "send_varnames": [self.counter_var.name],
+                        "merge_add": True,
+                        "send_handler": False,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                     })
 
@@ -843,18 +840,18 @@ class DistributeTranspiler(object):
                             RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
                         })
 
-        if not self.sync_mode:
-            lr_ops = self._get_lr_ops()
-            if len(lr_ops) > 0:
-                program.global_block().append_op(
-                    type="distributed_notify",
-                    inputs={},
-                    outputs={},
-                    attrs={
-                        "epmap": pserver_endpoints,
-                        "trainer_id": self.trainer_id,
-                        "type": "LRDECAY@RECV"
-                    })
+    #  if not self.sync_mode:
+    #      lr_ops = self._get_lr_ops()
+    #      if len(lr_ops) > 0:
+    #          program.global_block().append_op(
+    #              type="distributed_notify",
+    #              inputs={},
+    #              outputs={},
+    #              attrs={
+    #                  "epmap": pserver_endpoints,
+    #                  "trainer_id": self.trainer_id,
+    #                  "type": "LRDECAY@RECV"
+    #              })
 
         self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
 

@@ -42,7 +42,7 @@ class DistributedNotifyOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
     for (size_t i = 0; i < epmap.size(); i++) {
-      rpc_client->AsyncDistributeNotify(epmap[i], type);
+      //  rpc_client->AsyncDistributeNotify(epmap[i], type);
       VLOG(4) << "distribute notify sending : " << type << " to " << epmap[i];
     }
     PADDLE_ENFORCE_EQ(rpc_client->Wait(), true, "internal error in RPCClient");

@@ -113,6 +113,14 @@ This operator will send variables to listen_and_serve op at the parameter server
                  "Number of sub-tensors. This must evenly divide "
                  "Input.dims()[axis]")
         .SetDefault(0);
+    AddAttr<bool>("merge_add",
+                  "(bool, default 0)"
+                  "merge method, true represent add, false represent average")
+        .SetDefault(false);
+    AddAttr<bool>("send_handler",
+                  "(bool, default True)"
+                  "send_handler or notify handler")
+        .SetDefault(true);
   }
 };
 

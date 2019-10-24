@@ -89,7 +89,30 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
   auto *send_var = scope.FindVar(rpc_ctx.var_name);
 
-  if (send_var->IsType<framework::LoDTensor>()) {
+  if (!rpc_ctx.send_handler) {
+    for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+      framework::Tensor *out = local_scope->Var(rpc_ctx.splited_var_names[i])
+                                   ->GetMutable<framework::LoDTensor>();
+      *out = send_var->Get<framework::LoDTensor>();
+      for (size_t j = 0; j < rpc_ctx.epmap.size(); j++) {
+        auto &send_var_name = rpc_ctx.splited_var_names[i];
+        VLOG(4) << "notify var name: " << send_var_name;
+        auto &endpoint = rpc_ctx.epmap[j];
+        VLOG(4) << "notify var endpoint: " << endpoint;
+        VLOG(4) << "need notify: "
+                << NeedSend(*local_scope.get(), send_var_name);
+        if (NeedSend(*local_scope.get(), send_var_name)) {
+          VLOG(3) << "notifying " << send_var_name << " to " << endpoint;
+          rets.push_back(rpc_client->AsyncDistributeNotify(
+              endpoint, cpu_ctx, *local_scope.get(), send_var_name));
+          VLOG(4) << "notify var " << send_var_name << " async handle done";
+        } else {
+          VLOG(3) << "don't notify non-initialized variable: "
+                  << rpc_ctx.splited_var_names[i];
+        }
+      }
+    }
+  } else if (send_var->IsType<framework::LoDTensor>()) {
     size_t out_num = rpc_ctx.splited_var_names.size();
     if (out_num > 1) {
       auto &send_tensor = send_var->Get<framework::LoDTensor>();
