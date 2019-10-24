@@ -1,7 +1,3 @@
-if(NOT WITH_GPU)
-  return()
-endif()
-
 include(ExternalProject)
 
 set(CUB_SOURCE_DIR ${THIRD_PARTY_PATH}/cub)

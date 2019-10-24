@@ -12,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_PSLIB_BRPC})
-  return()
-ENDIF(NOT ${WITH_PSLIB_BRPC})
-
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
-        "Windows or Mac is not supported with PSLIB_BRPC in Paddle yet."
-        "Force WITH_PSLIB_BRPC=OFF")
-    SET(WITH_PSLIB_BRPC OFF CACHE STRING "Disable PSLIB_BRPC package in Windows and MacOS" FORCE)
-    return()
-ENDIF()
-
 INCLUDE(ExternalProject)
 
 SET(PSLIB_BRPC_PROJECT       "extern_pslib_brpc")

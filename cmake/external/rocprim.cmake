@@ -1,7 +1,3 @@
-if (NOT WITH_AMD_GPU)
-    return()
-endif()
-
 # rocprim is "ROCm Parallel Primitives" for short.
 # It is a header-only library providing HIP and HC parallel primitives
 # for developing performant GPU-accelerated code on AMD ROCm platform.

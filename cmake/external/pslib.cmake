@@ -12,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_PSLIB})
-  return()
-ENDIF(NOT ${WITH_PSLIB})
-
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
-        "Windows or Mac is not supported with PSLIB in Paddle yet."
-        "Force WITH_PSLIB=OFF")
-    SET(WITH_PSLIB OFF CACHE STRING "Disable PSLIB package in Windows and MacOS" FORCE)
-    return()
-ENDIF()
-
 INCLUDE(ExternalProject)
 
 SET(PSLIB_PROJECT       "extern_pslib")
