@@ -33,18 +33,6 @@ class DoubleCheckOperator {
       return;
     }
 
-    // AttributeMap attrs;
-    /*
-    if (type == "dropout") {
-      AttributeMap attrs = base_op_.Attrs();
-      attrs["is_test"] = true;
-      // set random seed in attrs.
-      auto dropout_op = paddle::framework::OpRegistry::CreateOp(
-          type, base_op_.Inputs(), base_op_.Outputs(), attrs);
-      dropout_op->RunImpl(scope, place);
-    }
-    */
-
     VariableNameMap inputs;
     VariableNameMap outputs;
 
@@ -106,6 +94,7 @@ class DoubleCheckOperator {
                          tensor_b->data<float>());
     platform::ForRange<platform::DeviceContext> for_range(*dev_ctx,
                                                           tensor_a->numel());
+    for_range(functor);
   }
 
   void PrepareNameMap(Scope* scope, const platform::Place& place,
