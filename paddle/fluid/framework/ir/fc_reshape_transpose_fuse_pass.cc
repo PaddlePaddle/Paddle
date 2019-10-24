@@ -44,8 +44,6 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       Node* eltadd1_b, Node* eltadd2_b, Node* reshape2, Node* reshape2_out,
       Node* transpose2, Node* transpose2_out, Node* transpose2_1_out,
       Node* transpose2_2_out, Node* scale, Node* scale_out) {
-    PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-
     auto* w0_var = scope->FindVar(mul0_w->Name());
     auto* w0_tensor = w0_var->GetMutable<framework::LoDTensor>();
 

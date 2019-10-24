@@ -130,6 +130,7 @@ cc_test(test_simplify_with_basic_ops_pass SRCS simplify_with_basic_ops_pass_test
 cc_test(test_fc_elementwise_layernorm_fuse_pass SRCS fc_elementwise_layernorm_fuse_pass_tester.cc DEPS fc_elementwise_layernorm_fuse_pass)
 cc_test(test_multihead_matmul_fuse_pass SRCS multihead_matmul_fuse_pass_tester.cc DEPS multihead_matmul_fuse_pass)
 cc_test(test_conv_bn_fuse_pass SRCS conv_bn_fuse_pass_tester.cc DEPS conv_bn_fuse_pass)
+cc_test(test_fc_reshape_transpose_fuse_pass SRCS fc_reshape_transpose_fuse_pass_tester.cc DEPS fc_reshape_transpose_fuse_pass)
 if(WITH_GPU)
     cc_test(test_cudnn_placement_pass SRCS cudnn_placement_pass_tester.cc DEPS cudnn_placement_pass)
 endif()
