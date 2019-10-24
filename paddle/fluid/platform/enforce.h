@@ -362,7 +362,7 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
 #define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                 \
   do {                                                      \
     if (UNLIKELY(nullptr == (__VAL))) {                     \
-      PADDLE_THROW("%s\n  [" #__VAL " should not be null]", \
+      PADDLE_THROW(#__VAL " should not be null\n%s",        \
                    ::paddle::string::Sprintf(__VA_ARGS__)); \
     }                                                       \
   } while (0)
@@ -460,13 +460,14 @@ struct BinaryCompareMessageConverter<false> {
       constexpr bool __kCanToString__ =                                        \
           ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&       \
           ::paddle::platform::details::CanToString<__TYPE2__>::kValue;         \
-      PADDLE_THROW("%s\n  [Expected %s " #__CMP                                \
-                   " %s, but received %s " #__INV_CMP " %s]",                  \
-                   ::paddle::string::Sprintf(__VA_ARGS__), #__VAL1, #__VAL2,   \
+      PADDLE_THROW("Expected %s " #__CMP " %s, but received %s " #__INV_CMP    \
+                   " %s.\n%s",                                                 \
+                   #__VAL1, #__VAL2,                                           \
                    ::paddle::platform::details::BinaryCompareMessageConverter< \
                        __kCanToString__>::Convert(#__VAL1, __val1),            \
                    ::paddle::platform::details::BinaryCompareMessageConverter< \
-                       __kCanToString__>::Convert(#__VAL2, __val2));           \
+                       __kCanToString__>::Convert(#__VAL2, __val2),            \
+                   ::paddle::string::Sprintf(__VA_ARGS__));                    \
     }                                                                          \
   } while (0)
 
