@@ -72,7 +72,11 @@ class DistributedNotifyOp : public framework::OperatorBase {
           VLOG(3) << "don't notify no-initialied variable: " << ins[i];
         }
       }
-      // don't need to wait
+      for (size_t i = 0; i < rets.size(); i++) {
+        VLOG(7) << "before sync_notify " << ins[i] << "from " << epmap[i];
+        PADDLE_ENFORCE_NE(rets[i]->Wait(), 0U, "internal error in RPCClient");
+        VLOG(7) << "after sync_notify " << ins[i] << "from " << epmap[i];
+      }
     }
   }
 };

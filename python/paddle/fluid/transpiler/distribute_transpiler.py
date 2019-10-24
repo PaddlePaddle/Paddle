@@ -45,7 +45,7 @@ from .. import core, framework, unique_name, initializer
 from ..framework import Program, default_main_program, \
     default_startup_program, Block, Parameter, grad_var_name
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
-from .details import delete_ops, find_op_by_output_arg
+from .details import delete_ops, find_op_by_output_arg, delete_vars
 from ..distribute_lookup_table import find_distributed_lookup_table
 from . import collective
 
@@ -304,6 +304,7 @@ class DistributeTranspiler(object):
             PRINT_LOG = True
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
+        self.trainer_program_delete_vars = []
 
     def _transpile_nccl2(self,
                          trainer_id,
@@ -640,10 +641,9 @@ class DistributeTranspiler(object):
                 if self.config.runtime_split_send_recv:
                     ## async mode, using communicator to merge and send
                     send_varnames = [self.counter_var.name]
-                    sections = [1]
                 else:
                     send_varnames = []
-                    sections = []
+                sections = []
                 program.global_block()._prepend_op(
                     type="distributed_notify",
                     inputs={"X": self.counter_var},
@@ -889,6 +889,8 @@ class DistributeTranspiler(object):
         lr_ops = self._get_lr_ops()
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         delete_ops(self.origin_program.global_block(), lr_ops)
+        #delete_vars(self.origin_program.global_block(), self.trainer_program_delete_vars)
+        print(self.trainer_program_delete_vars)
 
         # delete table init op
         if self.has_distributed_lookup_table:
@@ -2413,10 +2415,15 @@ class DistributeTranspiler(object):
                             persistable=counter_var.persistable)
                         for id_ in range(self.trainer_num)
                     ]
+                    if len(all_trainer_counter_inputs) >= 1:
+                        self.trainer_program_delete_vars.append(
+                            counter_var.name)
                     for var in all_trainer_counter_inputs:
                         if var.name == "%s.trainer_%d" % (counter_var.name,
                                                           self.trainer_id):
                             self.counter_var = var
+                        else:
+                            self.trainer_program_delete_vars.append(var.name)
                         self.startup_program.global_block().create_var(
                             name=var.name,
                             type=var.type,

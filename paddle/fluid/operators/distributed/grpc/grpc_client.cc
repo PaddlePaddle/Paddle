@@ -449,7 +449,7 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
   const auto ch = GetChannel(ep_val);
   const std::string method = kRequestNotify;
 
-  SendProcessor* s = new SendProcessor(ch);
+  DistributeNotifyProcessor* s = new SendProcessor(ch);
   VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
@@ -472,8 +472,12 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
     call->StartCall();
     call->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   });
-
   req_count_++;
+
+  if (UNLIKELY(platform::IsProfileEnabled())) {
+    h->Wait();
+  }
+
   return h;
 }
 

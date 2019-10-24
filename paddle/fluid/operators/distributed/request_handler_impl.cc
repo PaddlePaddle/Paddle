@@ -264,9 +264,14 @@ bool RequestNotifyHandler::Handle(const std::string& varname,
                                   const std::string& table_name) {
   VLOG(4) << "RequestNotifyHandler: " << varname;
   VLOG(3) << "async process var: " << varname << ", trainer_id: " << trainer_id;
-  string::Piece decay_piece("@LR_DECAY_COUNTER@");
-  string::Piece var_name_piece = string::Piece(varname);
-  if (string::Contains(var_name_piece, decay_piece)) {
+
+  std::string decay_counter_name =
+      LEARNING_RATE_DECAY_COUNTER + ".trainer_" + std::to_string(trainer_id);
+  if (varname == decay_counter_name) {
+    VLOG(3) << "LearningRate Decay Counter Update";
+    PADDLE_ENFORCE_NE(
+        lr_decay_block_id, -1,
+        "when lr_decay_block_id = -1, there should be no RPC invoke.");
     auto* origin_var = scope_->FindVar(varname);
     auto origin_var_tensor = origin_var->Get<framework::LoDTensor>();
     auto* send_var = scope->FindVar(varname);
@@ -276,9 +281,6 @@ bool RequestNotifyHandler::Handle(const std::string& varname,
     int64_t* send_value =
         send_var_tensor.mutable_data<int64_t>(send_var_tensor.place());
     origin_value[0] += send_value[0];
-    PADDLE_ENFORCE_NE(
-        lr_decay_block_id, -1,
-        "when lr_decay_block_id = -1, there should be no RPC invoke.");
     executor_->RunPreparedContext(lr_decay_prepared_ctx_.get(), scope_);
   }
   return true;
