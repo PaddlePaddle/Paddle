@@ -249,6 +249,9 @@ class TestDistRunnerBase(object):
             trainer_prog = fluid.default_main_program()
             print_to_err(type(self).__name__, "use main program done.")
 
+        # FIXME(gongwb):wait pserver initialization.
+        time.sleep(1)
+
         if args.use_cuda:
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
             place = fluid.CUDAPlace(device_id)
@@ -879,7 +882,7 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_vmodule"] = \
                 "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
-                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,nccl_helper=10,grpc_client=10,grpc_server=10"
+                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,nccl_helper=10,grpc_client=10,grpc_server=10,request_handler_impl=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         required_envs.update(need_envs)
