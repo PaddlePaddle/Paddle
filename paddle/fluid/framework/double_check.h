@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
@@ -33,6 +34,7 @@ class DoubleCheckOperator {
     }
 
     // AttributeMap attrs;
+    /*
     if (type == "dropout") {
       AttributeMap attrs = base_op_.Attrs();
       attrs["is_test"] = true;
@@ -41,6 +43,7 @@ class DoubleCheckOperator {
           type, base_op_.Inputs(), base_op_.Outputs(), attrs);
       dropout_op->RunImpl(scope, place);
     }
+    */
 
     VariableNameMap inputs;
     VariableNameMap outputs;

@@ -21,7 +21,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/data_transform.h"
-#include "paddle/fluid/framework/double_check.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_call_stack.h"
@@ -34,7 +33,6 @@ limitations under the License. */
 
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
-DEFINE_bool(fp16_double_check, false, "Use double check for fp16 or not");
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
 DEFINE_bool(fast_check_nan_inf, false,
             "Fast checking NAN/INF after each operation. It will be a little"
@@ -159,12 +157,6 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
   }
 }
 
-static void DoubleCheck(const Scope& scope, const platform::Place& place,
-                        const OperatorBase& base_op) {
-  framework::DoubleCheckOperator check_op(base_op);
-  check_op.Run(scope, place);
-}
-
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   try {
     VLOG(4) << place << " " << DebugStringEx(&scope);
@@ -189,9 +181,6 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     VLOG(3) << place << " " << DebugStringEx(&scope);
-    if (FLAGS_fp16_double_check) {
-      DoubleCheck(scope, place, *this);
-    }
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
