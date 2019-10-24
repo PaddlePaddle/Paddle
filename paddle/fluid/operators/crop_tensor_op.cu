@@ -17,8 +17,12 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     crop_tensor,
     ops::CropTensorKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CropTensorKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::CropTensorKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::CropTensorKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::CropTensorKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     crop_tensor_grad,
     ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::CropTensorGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
