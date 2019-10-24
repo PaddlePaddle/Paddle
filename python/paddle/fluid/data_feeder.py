@@ -52,9 +52,11 @@ def convert_dtype(dtype):
                 'int32', 'int64', 'uint8', u'bool', u'float16', u'float32',
                 u'float64', u'int8', u'int16', u'int32', u'int64', u'uint8'
         ]:
-            # this code is a little bit dangerous, since error could happen when cast no-ascii
-            # code to str in python2.
+            # this code is a little bit dangerous, since error could happen
+            # when casting no-asci code to str in python2.
             # but since the set itself is limited, so currently, it is good.
+            # however, jointly supporting python2 and python3, (as well as python4 maybe)
+            # may still be a long-lasting problem.
             return str(dtype)
 
     raise ValueError(
