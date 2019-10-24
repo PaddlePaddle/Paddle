@@ -15,12 +15,16 @@ limitations under the License. */
 #include <future>  // NOLINT
 #include <ostream>
 
+#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/distributed/communicator.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/distributed/parameter_send.h"
+#include "paddle/fluid/operators/distributed/rpc_common.h"
 #include "paddle/fluid/operators/distributed_ops/send_recv_util.h"
-#include "paddle/fluid/string/printf.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {

@@ -89,7 +89,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
   auto *send_var = scope.FindVar(rpc_ctx.var_name);
 
-  if (!rpc_ctx.send_handler) {
+  if (!rpc_ctx.use_send_handler) {
     for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
       framework::Tensor *out = local_scope->Var(rpc_ctx.splited_var_names[i])
                                    ->GetMutable<framework::LoDTensor>();

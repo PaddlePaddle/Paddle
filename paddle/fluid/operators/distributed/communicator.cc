@@ -218,7 +218,6 @@ void AsyncCommunicator::SendThread() {
           }
           auto before_merge = GetCurrentUS();
           auto &ctx = send_varname_to_ctx_.at(var_name);
-          VLOG(3) << vars[0].dtype;
           if (ctx.use_send_handler) {
             MergeVars<float>(var_name, vars, send_scope_.get(), ctx.merge_add);
           } else {
