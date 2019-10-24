@@ -126,6 +126,8 @@ class Executor {
       Scope* scope, Dataset* dataset);
   void RunFromDataset(std::shared_ptr<TrainerBase> trainer);
 
+  const platform::Place GetPlace() const { return place_; }
+
  private:
   const platform::Place place_;
 };

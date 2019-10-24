@@ -40,9 +40,19 @@ from .. import compat as cpt
 batch = paddle.batch
 
 __all__ = [
-    'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model',
-    'batch', 'save', 'load'
+    'save_vars',
+    'save_params',
+    'save_persistables',
+    'load_vars',
+    'load_params',
+    'load_persistables',
+    'save_inference_model',
+    'load_inference_model',
+    'batch',
+    'save',
+    'load',
+    'load_program_state',
+    'set_program_state',
 ] + reader.__all__ + paddle.reader.__all__
 
 _logger = get_logger(
@@ -1527,7 +1537,7 @@ def save(program, model_path):
         f.write(program.desc.serialize_to_string())
 
 
-def load(program, model_path):
+def load(program, model_path, executor=None):
     """
     This function filter out parameters and optimizer information from program, and then get corresponding value from file.
     An exception will throw if shape or dtype of the parameters is not match between program and loaded file.
@@ -1553,13 +1563,17 @@ def load(program, model_path):
 
     """
 
+    assert executor is None or isinstance(executor, Executor)
+
     parameter_file_name = model_path + ".pdparams"
     assert os.path.exists(parameter_file_name), \
             "Parameter file [{}] not exits".format( parameter_file_name)
 
     parameter_list = list(filter(is_parameter, program.list_vars()))
     paddle.fluid.core._load_static_dict(parameter_file_name, parameter_list,
-                                        global_scope())
+                                        global_scope(),
+                                        executor._default_executor
+                                        if executor else None)
 
     optimizer_var_list = list(
         filter(is_belong_to_optimizer, program.list_vars()))
@@ -1569,7 +1583,76 @@ def load(program, model_path):
         assert os.path.exists(opt_file_name), \
                 "Optimizer file [{}] not exits".format( opt_file_name)
         paddle.fluid.core._load_static_dict(opt_file_name, optimizer_var_list,
-                                            global_scope())
+                                            global_scope(),
+                                            executor._default_executor
+                                            if executor else None)
 
 
-#def 
+def load_program_state(model_path):
+    """
+    Load program state from local file
+    """
+    parameter_file_name = model_path + ".pdparams"
+    assert os.path.exists(parameter_file_name), \
+            "Parameter file [{}] not exits".format( parameter_file_name)
+
+    para_dict = paddle.fluid.core._load_np_dict(parameter_file_name)
+
+    opt_file_name = model_path + ".pdopt"
+    if os.path.exists(opt_file_name):
+        opti_dict = paddle.fluid.core._load_np_dict(opt_file_name)
+
+        para_dict.update(opti_dict)
+
+    return para_dict
+
+
+def set_program_state(program, state_dict):
+    """
+    Set program parameter from state_dict
+    """
+    parameter_list = list(filter(is_persistable, program.list_vars()))
+
+    used_para_list = {}
+    for para in parameter_list:
+        var_temp = paddle.fluid.global_scope().find_var(para.name)
+        assert var_temp != None, \
+                "Variable [ {} ] Not found, Please make sure run startup program".format( para.name )
+        if para.name in state_dict:
+            # set value from state dict
+            orig_para_np = np.array(var_temp.get_tensor())
+            new_para_np = state_dict[para.name]
+            assert orig_para_np.shape == new_para_np.shape,  \
+                    "Shape not matching: the Program requires a parameter with a shape of ({}), " \
+                    "while the loaded parameter (namely [ {} ]) has a shape of  ({})." \
+                    .format(orig_para_np.shape, para.name, new_para_np.shape)
+            assert orig_para_np.dtype == new_para_np.dtype,  \
+                    "Dtype not matching: the Program requires a parameter with a dtype of ({}), " \
+                    "while the loaded parameter (namely [ {} ]) has a dtype of  ({})." \
+                    .format(orig_para_np.dtype, para.name, new_para_np.dtype)
+
+            ten = var_temp.get_tensor()
+            ten_place = ten._place()
+
+            assert ten_place.is_gpu_place() or ten_place.is_cpu_place(), \
+                    "Place not support, only support CPUPlace and GPUPlace, now is {}".format( str(ten_place))
+            py_place = paddle.fluid.CPUPlace()
+            if ten_place.is_cuda_pinned_place():
+                place = paddle.fluid.CUDAPinnedPlace()
+            else:
+                p = paddle.fluid.core.Place()
+                p.set_place(ten_place)
+                py_place = paddle.fluid.CUDAPlace(p.gpu_device_id())
+
+            ten.set(new_para_np, py_place)
+
+            used_para_list[para.name] = 1
+
+    unused_para_list = []
+    for k, v in state_dict.items():
+        if k not in used_para_list:
+            unused_para_list.append(k)
+    if len(unused_para_list) > 0:
+        warnings.warn(
+            "This list is not set, Because of Paramerter not found in program. There are: {}".
+            format(" ".join(unused_para_list)))
