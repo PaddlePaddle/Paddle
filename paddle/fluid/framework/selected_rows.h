@@ -82,7 +82,7 @@ class SelectedRows {
   int64_t Index(int64_t key) const {
     auto it = std::find(rows_.begin(), rows_.end(), key);
     if (it == rows_.end()) {
-      PADDLE_THROW("id %s not in table", key);
+      return -1;
     }
     return static_cast<int64_t>(std::distance(rows_.begin(), it));
   }
