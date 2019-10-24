@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/double_check.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
@@ -59,6 +60,9 @@ class ComputationOpHandle : public OpHandleBase {
   platform::Place place_;
   size_t scope_idx_;
   bool is_lock_and_record_event_free_{false};
+
+  std::unique_ptr<framework::DoubleCheckOperator> check_op_;
+  std::unique_ptr<OperatorBase> new_op_;
 };
 }  // namespace details
 }  // namespace framework

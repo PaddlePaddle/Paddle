@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include <string>
-#include "paddle/fluid/framework/double_check.h"
 
 DEFINE_bool(fp16_double_check, false, "Use double check for fp16 or not");
 
@@ -28,37 +27,40 @@ ComputationOpHandle::ComputationOpHandle(ir::Node* node, Scope* scope,
       op_(framework::OpRegistry::CreateOp(*node->Op())),
       scope_(scope),
       place_(place),
-      scope_idx_(scope_idx) {}
+      scope_idx_(scope_idx) {
+  if (FLAGS_fp16_double_check) {
+    check_op_.reset(new framework::DoubleCheckOperator(*op_.get()));
 
-static void DoubleCheck(const Scope& scope, const platform::Place& place,
-                        const OperatorBase& base_op) {
-  framework::DoubleCheckOperator check_op(base_op);
-  check_op.Run(scope, place);
+    if (op_->Type() == "dropout") {
+      framework::AttributeMap attrs;
+      for (auto& it : op_->Attrs()) {
+        attrs[it.first] = it.second;
+      }
+      attrs["is_test"] = true;
+
+      new_op_ = framework::OpRegistry::CreateOp(op_->Type(), op_->Inputs(),
+                                                op_->Outputs(), attrs);
+    }
+  }
 }
 
 void ComputationOpHandle::RunImpl() {
   WaitInputVarGenerated(place_);
 
   auto run_func = [this]() {
-    if (FLAGS_fp16_double_check) {
-      if (op_->Type() == "dropout") {
-        framework::AttributeMap attrs;
-        for (auto& it : op_->Attrs()) {
-          attrs[it.first] = it.second;
-        }
-        attrs["is_test"] = true;
-
-        auto new_op = framework::OpRegistry::CreateOp(
-            op_->Type(), op_->Inputs(), op_->Outputs(), attrs);
-        new_op->Run(*local_exec_scopes_[0], place_);
-      } else {
-        op_->Run(*local_exec_scopes_[0], place_);
-      }
-      DoubleCheck(*local_exec_scopes_[0], place_, *op_);
+    if (!FLAGS_fp16_double_check) {
+      op_->Run(*local_exec_scopes_[0], place_);
       return;
     }
 
-    op_->Run(*local_exec_scopes_[0], place_);
+    if (new_op_ != nullptr) {
+      new_op_->Run(*local_exec_scopes_[0], place_);
+    } else {
+      op_->Run(*local_exec_scopes_[0], place_);
+    }
+
+    check_op_->Run(*local_exec_scopes_[0], place_);
+    return;
   };
 
   if (is_lock_and_record_event_free_) {
