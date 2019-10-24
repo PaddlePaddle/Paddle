@@ -49,28 +49,13 @@ def convert_dtype(dtype):
     else:
         if dtype in [
                 'bool', 'float16', 'float32', 'float64', 'int8', 'int16',
-                'int32', 'int64', 'uint8'
+                'int32', 'int64', 'uint8', u'bool', u'float16', u'float32',
+                u'float64', u'int8', u'int16', u'int32', u'int64', u'uint8'
         ]:
-            return dtype
-
-        if dtype == u'bool':
-            return 'bool'
-        if dtype == u'float16':
-            return 'float16'
-        if dtype == u'float32':
-            return 'float32'
-        if dtype == u'float64':
-            return 'float64'
-        if dtype == u'int8':
-            return 'int8'
-        if dtype == u'int16':
-            return 'int16'
-        if dtype == u'int32':
-            return 'int32'
-        if dtype == u'int64':
-            return 'int64'
-        if dtype == u'uint8':
-            return 'uint8'
+            # this code is a little bit dangerous, since error could happen when cast no-ascii
+            # code to str in python2.
+            # but since the set itself is limited, so currently, it is good.
+            return str(dtype)
 
     raise ValueError(
         "dtype must be any of [bool, float16, float32, float64, int8, int16, "
