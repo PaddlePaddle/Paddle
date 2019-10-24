@@ -29,6 +29,11 @@ using framework::SelectedRows;
 struct NoNesterov;
 struct UseNesterov;
 
+class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override;
+};
+
 class MomentumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
