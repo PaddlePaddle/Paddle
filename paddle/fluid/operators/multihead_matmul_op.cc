@@ -134,7 +134,7 @@ MultiHeadMatMul Operator.
 This op is used for optimize multi head calculation in ernie model.
 Not suggest to use in other case except has same structure as ernie.
 
-Example of matrix multiplication with head_number of H
+Example of matrix multiplication with head_number of B
 - X: [B, M, K], Y: [B, K, N] => Out: [B, M, N]
 
 Both the input `Q` and `K` can carry the LoD (Level of Details) information,

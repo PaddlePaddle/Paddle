@@ -137,6 +137,22 @@ if [ ${HAS_PADDLE_ENFORCE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
+NEW_OP_ADDED=`git diff --name-only --diff-filter=A upstream/$BRANCH |grep -oE ".+_op..*" || true`
+if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    GET_KERNEL_TYPE_FUNC_CNT=`git diff -U0 --diff-filter=A upstream/$BRANCH |grep "+" |grep -czoE "GetExpectedKernelType[(][^(){}]+[)][^{]+[{][^}]+[}]" || true`
+    INDICATE_VAR_DTYPE_CNT=`git diff -U0 --diff-filter=A upstream/$BRANCH |grep "+" |grep -co "IndicateVarDataType" || true`
+    if [ ${GET_KERNEL_TYPE_FUNC_CNT} -gt ${INDICATE_VAR_DTYPE_CNT} ]; then
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 47554610 22561442`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            failed_num=`expr $failed_num + 1`
+            echo_line="If you override GetExpectedKernelType method of OperatorWithKernel, please use OperatorWithKernel::IndicateVarDataType() method to get specific input variable's dtype, which checked whether the input variable is initialized (The details in https://github.com/PaddlePaddle/FluidDoc/pull/1527). If you don't use this method to check, you must have one RD (chenwhql (Recommend) , luotao1 or lanxianghit) approval for the usage of other methods.\n"
+            echo_list=(${echo_list[@]}$failed_num "." $echo_line)
+        fi
+    fi
+fi
+
 if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e ${echo_list[@]}

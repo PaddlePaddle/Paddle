@@ -29,5 +29,8 @@ class Tracer;
 using NameVarBaseMap =
     std::map<std::string, std::vector<std::shared_ptr<VarBase>>>;
 
+using WeakNameVarBaseMap =
+    std::map<std::string, std::vector<std::weak_ptr<VarBase>>>;
+
 }  // namespace imperative
 }  // namespace paddle
