@@ -30,13 +30,13 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
     const std::vector<int>& sections, const size_t axis,
     const int outs_number) {
   std::vector<framework::DDim> outs_dims(outs_number, in_dims);
+  int64_t input_axis_dim = in_dims[axis];
   if (num > 0) {
-    int64_t in_axis_dim = in_dims[axis];
-    if (is_runtime || in_axis_dim > 0) {
-      PADDLE_ENFORCE_EQ(in_axis_dim % num, 0,
+    if (is_runtime || input_axis_dim > 0) {
+      PADDLE_ENFORCE_EQ(input_axis_dim % num, 0,
                         "tensor split does not result"
                         " in an equal division");
-      size_t out_axis_dim = in_axis_dim / num;
+      size_t out_axis_dim = input_axis_dim / num;
 
       for (auto& out_dim : outs_dims) {
         out_dim[axis] = out_axis_dim;
@@ -47,6 +47,20 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
       }
     }
   } else if (sections.size() > 0) {
+    bool all_positive = std::all_of(sections.cbegin(), sections.cend(),
+                                    [](int i) { return i > 0; });
+    if (is_runtime || (input_axis_dim > 0 && all_positive)) {
+      int sum_of_section = 0;
+      for (int section : sections) {
+        sum_of_section += section;
+      }
+      PADDLE_ENFORCE_EQ(
+          sum_of_section, input_axis_dim,
+          "Sum of Attr(num_or_sections) must be equal to the input's size "
+          "along the split dimension. But received Attr(num_or_sections)"
+          " = [%s], input(X)'s shape = [%s], Attr(dim) = %d, ",
+          framework::make_ddim(sections), in_dims, axis);
+    }
     for (size_t i = 0; i < outs_number; ++i) {
       outs_dims[i][axis] = sections[i];
     }
