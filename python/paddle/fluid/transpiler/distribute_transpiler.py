@@ -304,7 +304,6 @@ class DistributeTranspiler(object):
             PRINT_LOG = True
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
-        self.trainer_program_delete_vars = []
 
     def _transpile_nccl2(self,
                          trainer_id,
@@ -889,8 +888,6 @@ class DistributeTranspiler(object):
         lr_ops = self._get_lr_ops()
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         delete_ops(self.origin_program.global_block(), lr_ops)
-        #delete_vars(self.origin_program.global_block(), self.trainer_program_delete_vars)
-        print(self.trainer_program_delete_vars)
 
         # delete table init op
         if self.has_distributed_lookup_table:
@@ -2425,15 +2422,10 @@ class DistributeTranspiler(object):
                                         i]._set_attr(
                                             'value',
                                             float(0.0 - self.trainer_num))
-                    if len(all_trainer_counter_inputs) >= 1:
-                        self.trainer_program_delete_vars.append(
-                            counter_var.name)
                     for var in all_trainer_counter_inputs:
                         if var.name == "%s.trainer_%d" % (counter_var.name,
                                                           self.trainer_id):
                             self.counter_var = var
-                        else:
-                            self.trainer_program_delete_vars.append(var.name)
                         self.startup_program.global_block().create_var(
                             name=var.name,
                             type=var.type,

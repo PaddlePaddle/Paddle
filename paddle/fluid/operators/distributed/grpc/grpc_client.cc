@@ -449,7 +449,7 @@ VarHandlePtr GRPCClient::AsyncDistributeNotify(
   const auto ch = GetChannel(ep_val);
   const std::string method = kRequestNotify;
 
-  DistributeNotifyProcessor* s = new SendProcessor(ch);
+  DistributeNotifyProcessor* s = new DistributeNotifyProcessor(ch);
   VarHandlePtr h(new VarHandle(ep, method, var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
