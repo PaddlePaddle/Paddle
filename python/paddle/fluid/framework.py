@@ -637,8 +637,6 @@ class Variable(object):
                     if dtype else core.VarDesc.VarType.FP32,
                     list(shape) if shape else [], True
                     if persistable else False)
-            if persistable:
-                _dygraph_tracer().trace_var(name, self)
             self.op = None
         else:
             self.error_clip = error_clip

@@ -31,15 +31,7 @@ class Tracer(core.Tracer):
     def __init__(self):
         super(Tracer, self).__init__()
 
-        self._vars = defaultdict()
         self._train_mode = True
-
-    def trace_var(self, name, var):
-        self._vars[name] = var
-
-    def all_parameters(self):
-        return list((item for name, item in six.iteritems(self._vars)
-                     if isinstance(item, framework.Parameter)))
 
     def trace_op(self, type, inputs, outputs, attrs, stop_gradient=False):
         self.trace(type, inputs, outputs, attrs,

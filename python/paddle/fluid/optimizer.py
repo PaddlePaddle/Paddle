@@ -522,7 +522,7 @@ class Optimizer(object):
             if parameter_list is not None:
                 parameters = parameter_list
             else:
-                parameters = framework._dygraph_tracer().all_parameters()
+                assert False, "please feed parameters"
 
             params_grads = []
             for param in parameters:
