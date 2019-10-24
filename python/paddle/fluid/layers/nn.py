@@ -2801,7 +2801,10 @@ def conv2d(input,
             "data_format": data_format,
         })
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    if data_format == 'NCHW':
+        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    else:
+        pre_act = helper.append_bias_op(pre_bias, dim_start=3, dim_end=4)
 
     return helper.append_activation(pre_act)
 
@@ -3049,7 +3052,10 @@ def conv3d(input,
             "data_format": data_format,
         })
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    if data_format == 'NCDHW':
+        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    else:
+        pre_act = helper.append_bias_op(pre_bias, dim_start=4, dim_end=5)
 
     return helper.append_activation(pre_act)
 
@@ -5148,7 +5154,10 @@ def conv2d_transpose(input,
             'data_format': data_format
         })
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    if data_format == 'NCHW':
+        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    else:
+        pre_act = helper.append_bias_op(pre_bias, dim_start=3, dim_end=4)
     out = helper.append_activation(pre_act)
     return out
 
@@ -5423,7 +5432,10 @@ def conv3d_transpose(input,
             'data_format': data_format
         })
 
-    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    if data_format == 'NCHW':
+        pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+    else:
+        pre_act = helper.append_bias_op(pre_bias, dim_start=4, dim_end=5)
     out = helper.append_activation(pre_act)
     return out
 
@@ -6902,11 +6914,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if transpose_y:
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
-            raise ValueError(
-                "After performing an optional transpose, Input X's width should be "
-                "equal to Y's width for multiplication "
-                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %
-                (x_shape, y_shape))
+            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
+                "After performing an optional transpose, Input X's width should be "   \
+                "equal to Y's width for multiplication "                               \
+                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
+                (x_shape, y_shape)
 
         if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
@@ -8940,8 +8952,6 @@ def squeeze(input, axes, name=None):
             y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
     """
-    assert not in_dygraph_mode(), (
-        "squeeze layer is not supported in dygraph mode yet.")
     helper = LayerHelper("squeeze", **locals())
 
     if not isinstance(input, Variable):

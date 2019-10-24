@@ -313,6 +313,13 @@ class MatMulOp : public framework::OperatorWithKernel {
         math::CreateMatrixDescriptor(ColumnMatrixFromVector(dim_y), 0,
                                      context->Attrs().Get<bool>("transpose_Y"));
 
+    if (mat_dim_x.width_ == -1) {
+      mat_dim_x.width_ = mat_dim_y.height_;
+    }
+    if (mat_dim_y.height_ == -1) {
+      mat_dim_y.height_ = mat_dim_x.width_;
+    }
+
     if (context->IsRuntime()) {
       PADDLE_ENFORCE(
           mat_dim_x.batch_size_ == mat_dim_y.batch_size_ ||
@@ -323,20 +330,21 @@ class MatMulOp : public framework::OperatorWithKernel {
           DumpMatrixShape(mat_dim_x).c_str(),
           DumpMatrixShape(mat_dim_y).c_str());
     }
-    std::vector<int64_t> dim_out;
     int64_t dim_out_y = mat_dim_y.width_;
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA)
     int head_number = context->Attrs().Get<int>("head_number");
     bool split_vertical_y = (mat_dim_x.width_ != mat_dim_y.height_);
-    PADDLE_ENFORCE_LE(
-        head_number, mat_dim_x.width_,
-        "ShapeError: Unsatisfied mkl acceleration library requirements: "
-        "The number of heads "
-        "(%d) must be equal to X's width. But received X's shape: %s.",
-        head_number, DumpMatrixShape(mat_dim_x).c_str());
+    if (context->IsRuntime()) {
+      PADDLE_ENFORCE_LE(
+          head_number, mat_dim_x.width_,
+          "ShapeError: Unsatisfied mkl acceleration library requirements: "
+          "The number of heads "
+          "(%d) must be equal to X's width. But received X's shape: %s.",
+          head_number, DumpMatrixShape(mat_dim_x).c_str());
 
-    if (!split_vertical_y && head_number > 0) {
-      dim_out_y = head_number * mat_dim_y.width_;
+      if (!split_vertical_y && head_number > 0) {
+        dim_out_y = head_number * mat_dim_y.width_;
+      }
     }
 #else
     PADDLE_ENFORCE_EQ(
@@ -347,6 +355,7 @@ class MatMulOp : public framework::OperatorWithKernel {
         DumpMatrixShape(mat_dim_x).c_str(), DumpMatrixShape(mat_dim_y).c_str());
 #endif
 
+    std::vector<int64_t> dim_out;
     if (mat_dim_x.batch_size_ != 0) {
       dim_out = framework::vectorize(dim_x);
       dim_out[dim_out.size() - 2] = mat_dim_x.height_;
