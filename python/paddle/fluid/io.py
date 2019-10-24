@@ -96,7 +96,10 @@ def is_persistable(var):
 
 
 def is_belong_to_optimizer(var):
-    return var.belong_to_optimizer
+    if not isinstance(var, Parameter):
+        return is_persistable(var)
+
+    return False
 
 
 def _clone_var_in_block_(block, var):
@@ -1567,3 +1570,6 @@ def load(program, model_path):
                 "Optimizer file [{}] not exits".format( opt_file_name)
         paddle.fluid.core._load_static_dict(opt_file_name, optimizer_var_list,
                                             global_scope())
+
+
+#def 
