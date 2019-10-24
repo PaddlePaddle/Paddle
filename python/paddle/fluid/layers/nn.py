@@ -11547,7 +11547,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
 
         * Case 1 (input is a 2-D Tensor):
             Input:
-                X.shape = [3. 5]
+                X.shape = [3, 5]
                 X.data = [[0, 1, 2, 0, 0],
                           [0, 3, 4, 0, 0],
                           [0, 0, 0, 0, 0]]
@@ -11555,8 +11555,9 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
                 shape = [2, 2]
                 offsets = [0, 1]
             Output:
-                Out = [[1, 2],
-                       [3, 4]]
+                Out.shape = [2, 2]
+                Out.data = [[1, 2],
+                            [3, 4]]
         * Case 2 (input is a 3-D Tensor):
             Input:
                 X.shape = [2, 3, 4]
@@ -11567,24 +11568,23 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
                             [0, 6, 7, 8],
                             [0, 0, 0, 0]]]
             Parameters:
-                shape = [2, 2, 3]
+                shape = [2, 2, -1]
                 offsets = [0, 0, 1]
             Output:
-                Out = [[[1, 2, 3],
-                        [5, 6, 7]],
-                       [[3, 4, 5],
-                        [6, 7, 8]]]
+                Out.shape = [2, 2, 3]
+                Out.data  = [[[1, 2, 3],
+                              [5, 6, 7]],
+                             [[3, 4, 5],
+                              [6, 7, 8]]]
 
     Parameters:
-        x (Variable): 1-D to 6-D Tensor, the data type is float32 or float64.
+        x (Variable): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
         shape (list|tuple|Variable): The output shape is specified
             by `shape`. Its data type is int32. If a list/tuple, it's length must be
             the same as the dimension size of `x`. If a Variable, it shoule be a 1-D Tensor.
             When it is a list, each element can be an integer or a Tensor of shape: [1].
-            If Variable contained, it is suitable for the case that the shape may 
-            be changed each iteration. Only the first element of list/tuple can be 
-            set to -1, it means that the first dimension's size of the output is the same 
-            as the input.
+            If Variable contained, it is suitable for the case that the shape may
+            be changed each iteration.
         offsets (list|tuple|Variable, optional): Specifies the cropping
             offsets at each dimension. Its data type is int32. If a list/tuple, it's length
             must be the same as the dimension size of `x`. If a Variable, it shoule be a 1-D
@@ -11598,8 +11598,12 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
         Variable: The cropped Tensor has same data type with `x`.
 
     Raises:
-        ValueError: If shape is not a list, tuple or Variable.
-        ValueError: If offsets is not None and not a list, tuple or Variable.
+        TypeError: If the data type of `x` is not in: float32, float64, int32, int64.
+        TypeError: If `shape` is not a list, tuple or Variable.
+        TypeError: If the data type of `shape` is not int32.
+        TypeError: If `offsets` is not None and not a list, tuple or Variable.
+        TypeError: If the data type of `offsets` is not int32.
+        ValueError: If the element in `offsets` is less than zero.
 
     Examples:
 
@@ -11615,7 +11619,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
             # crop0.shape = [-1, -1, -1], it means crop0.shape[0] = x.shape[0] in runtime.
 
             # or shape is a list in which each element is a constant
-            crop1 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3])
+            crop1 = fluid.layers.crop_tensor(x, shape=[-1, -1, 3], offsets=[0, 1, 0])
             # crop1.shape = [-1, 2, 3]
 
             # or shape is a list in which each element is a constant or Variable
@@ -11637,70 +11641,98 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
     """
     helper = LayerHelper('crop_tensor', **locals())
 
+    if convert_dtype(x.dtype) not in ['float32', 'float64', 'int32', 'int64']:
+        raise TypeError(
+            "Input(x)'s dtype of Op(crop_tensor) must be float32, float64, int32 or int64, "
+            "but received %s." % (convert_dtype(x.dtype)))
+
     if not (isinstance(shape, list) or isinstance(shape, tuple) or \
             isinstance(shape, Variable)):
-        raise ValueError("The shape should be a list, tuple or Variable.")
+        raise TypeError(
+            "Attr(shape) of Op(crop_tensor) should be a list, tuple or Variable."
+        )
 
     if offsets is None:
         offsets = [0] * len(x.shape)
 
     if not (isinstance(offsets, list) or isinstance(offsets, tuple) or \
             isinstance(offsets, Variable)):
-        raise ValueError("The offsets should be a list, tuple or Variable.")
+        raise TypeError(
+            "Attr(offsets) of Op(crop_tensor) should be a list, tuple or Variable."
+        )
 
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x}
     attrs = {}
 
-    def contain_var(input_list):
+    def _contain_var(input_list):
         for ele in input_list:
             if isinstance(ele, Variable):
                 return True
         return False
 
+    def _attr_shape_check(shape_val):
+        if not isinstance(shape_val, int):
+            raise TypeError(
+                "Attr(shape)'s dtype of Op(crop_tensor) should be int32, but received: %s."
+                % type(shape_val))
+        if shape_val == 0:
+            raise ValueError(
+                "Attr(shape) of Op(crop_tensor) should not be zero, but received: %s."
+                % str(shape_val))
+        if shape_val < -1:
+            raise ValueError(
+                "When the element in Attr(shape) of Op(crop_tensor) is negative, only -1 is supported, but received: %s."
+                % str(shape_val))
+
+    def _attr_offsets_check(offset_val):
+        if not isinstance(offset_val, int):
+            raise TypeError(
+                "Attr(offsets)'s dtype of Op(crop_tensor) should be int32, but received: %s."
+                % type(offset_val))
+        if offset_val < 0:
+            raise ValueError(
+                "Attr(offsets) of Op(crop_tensor) should be greater or equal to zero, but received: %s."
+                % str(offset_val))
+
     if isinstance(offsets, Variable):
         offsets.stop_gradient = True
         ipts['Offsets'] = offsets
-    elif contain_var(offsets):
+        attrs['offsets'] = [-1] * len(x.shape)
+    elif _contain_var(offsets):
         new_offsets_tensor = []
+        offsets_attr = []
         for dim in offsets:
             if isinstance(dim, Variable):
                 dim.stop_gradient = True
                 new_offsets_tensor.append(dim)
+                offsets_attr.append(-1)
             else:
-                assert (isinstance(dim, int))
-                assert dim >= 0, ("offsets should be greater or equal to zero.")
+                _attr_offsets_check(dim)
                 temp_out = helper.create_variable_for_type_inference('int32')
                 fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
                 new_offsets_tensor.append(temp_out)
+                offsets_attr.append(dim)
         ipts['OffsetsTensor'] = new_offsets_tensor
+        attrs['offsets'] = offsets_attr
     else:
+        for offset in offsets:
+            _attr_offsets_check(offset)
         attrs['offsets'] = offsets
 
-    unk_dim_idx = -1
     if isinstance(shape, Variable):
         shape.stop_gradient = True
         ipts['Shape'] = shape
-    elif contain_var(shape):
+    elif _contain_var(shape):
         new_shape_tensor = []
         shape_attr = []
-        for dim_idx, dim_size in enumerate(shape):
+        for dim_size in shape:
             if isinstance(dim_size, Variable):
                 dim_size.stop_gradient = True
                 new_shape_tensor.append(dim_size)
-                shape_attr.append(-1)
+                shape_attr.append(0)
             else:
-                assert (isinstance(dim_size, int))
-                if dim_size == -1:
-                    assert unk_dim_idx == -1, (
-                        "Only one element in shape can be unknown.")
-                    assert dim_idx == 0, (
-                        "Only the first element in shape can be -1.")
-                    unk_dim_idx = dim_idx
-                else:
-                    assert dim_size > 0, (
-                        "Each dimension size given in shape must be greater than zero."
-                    )
+                _attr_shape_check(dim_size)
                 temp_out = helper.create_variable_for_type_inference('int32')
                 fill_constant(
                     [1], 'int32', dim_size, force_cpu=True, out=temp_out)
@@ -11709,6 +11741,8 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
         ipts['ShapeTensor'] = new_shape_tensor
         attrs['shape'] = shape_attr
     else:
+        for dim_size in shape:
+            _attr_shape_check(dim_size)
         attrs['shape'] = shape
 
     helper.append_op(
