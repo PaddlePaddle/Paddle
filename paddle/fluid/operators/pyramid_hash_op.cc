@@ -16,12 +16,8 @@ limitations under the License. */
 #include <algorithm>
 #include <cmath>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/bloomfilter.h"
 #include "paddle/fluid/operators/search_compute.h"
-
-extern "C" {
-#include "math/bloomfilter.h"
-// void* memcpy1(void* dst, void* src, uint32_t length);
-}
 
 namespace paddle {
 namespace operators {
@@ -363,7 +359,7 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
                          int _space_len) const {
     for (unsigned int j = 0; j != _num_emb; j += _rand_len) {
       unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
-      sse_axpy(top_pos + j, weights + pos, _rand_len, mlr);
+      avx_axpy(top_pos + j, weights + pos, _rand_len, mlr);
     }
   }
 

@@ -35,9 +35,9 @@ struct bloomfilter {
   uint64_t count;
   unsigned char bit_vector[1];
 };
-int bloomfilter_get(const struct bloomfilter *bloomfilter, const void *key,
-                    size_t len);
-int bloomfilter_check(struct bloomfilter *filter);
+// int bloomfilter_get(const struct bloomfilter *bloomfilter, const void *key,
+//                     size_t len);
+// int bloomfilter_check(struct bloomfilter *filter);
 
 #define bit_get(v, n) ((v)[(n) >> 3] & (0x1 << (0x7 - ((n)&0x7))))
 #define ROTL64(x, r) (((x) << (r)) | ((x) >> (64 - (r))))
