@@ -120,7 +120,16 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     gpu_alloc_size_ += size;
     return p;
   } else {
-    PADDLE_ENFORCE_NE(cudaGetLastError(), cudaSuccess);
+    if (result == cudaErrorMemoryAllocation) {
+      result = cudaSuccess;
+    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(result);
+
+    result = cudaGetLastError();
+    if (result == cudaErrorMemoryAllocation) {
+      result = cudaSuccess;
+    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(result);
 
     size_t avail, total;
     platform::GpuMemoryUsage(&avail, &total);
