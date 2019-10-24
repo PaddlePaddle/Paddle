@@ -46,7 +46,9 @@ class ConcatOp : public framework::OperatorWithKernel {
     }
 
     if (ctx->HasInput("AxisTensor")) {
-      ctx->SetOutputDim("Out", inputs_dims[0]);
+      auto out_dims =
+          framework::make_ddim(std::vector<int>(inputs_dims[0].size(), -1));
+      ctx->SetOutputDim("Out", out_dims);
       ctx->ShareLoD("X", /*->*/ "Out");
     } else {
       size_t axis =

@@ -42,16 +42,18 @@ class SplitOp : public framework::OperatorWithKernel {
                         "should be equal to output size.");
     }
 
-    std::vector<framework::DDim> outs_dims(outs_number, in_dims);
     if (ctx->HasInput("AxisTensor")) {
+      auto out_dims =
+          framework::make_ddim(std::vector<int>(in_dims.size(), -1));
+      std::vector<framework::DDim> outs_dims(outs_number, out_dims);
       ctx->SetOutputsDim("Out", outs_dims);
       for (size_t i = 0; i < outs_number; ++i) {
         ctx->ShareLoD("X", "Out", 0, i);
       }
       return;
     }
-    outs_dims = UpdateOutsDims(ctx->IsRuntime(), in_dims, num, sections, axis,
-                               outs_number);
+    auto outs_dims = UpdateOutsDims(ctx->IsRuntime(), in_dims, num, sections,
+                                    axis, outs_number);
     ctx->SetOutputsDim("Out", outs_dims);
     if (axis != 0) {
       // Only pass LoD when not spliting along the first dim.

@@ -78,7 +78,8 @@ class ConcatKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
     auto axis = ctx.Attr<int>("axis");
     if (ctx.HasInput("AxisTensor")) {
-      axis = GetDataFromTensor<int>(ctx, "AxisTensor");
+      auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
+      axis = GetDataFromTensor<int>(axis_tensor)[0];
     }
     axis = ComputeAxis(static_cast<int64_t>(axis),
                        static_cast<int64_t>(ins[0]->dims().size()));
@@ -149,7 +150,8 @@ class ConcatGradKernel : public framework::OpKernel<T> {
 
     auto axis = ctx.Attr<int>("axis");
     if (ctx.HasInput("AxisTensor")) {
-      axis = GetDataFromTensor<int>(ctx, "AxisTensor");
+      auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
+      axis = GetDataFromTensor<int>(axis_tensor)[0];
     }
     axis = ComputeAxis(static_cast<int64_t>(axis),
                        static_cast<int64_t>(ins[0]->dims().size()));

@@ -21,21 +21,15 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-inline T GetDataFromTensor(const framework::ExecutionContext& ctx,
-                           std::string attr_name) {
-  auto* attr_tensor = ctx.Input<framework::Tensor>(attr_name);
-  PADDLE_ENFORCE_EQ(attr_tensor->dims(), framework::make_ddim({1}),
-                    "ShapeError: The shape of %s must be [1]. "
-                    "But received the shape is [%s].",
-                    attr_name, attr_tensor->dims());
-  auto* attr_data = attr_tensor->data<T>();
+inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
+  auto* data = x->data<T>();
   framework::Tensor cpu_attr_tensor;
-  if (platform::is_gpu_place(attr_tensor->place())) {
-    TensorCopySync(*attr_tensor, platform::CPUPlace(), &cpu_attr_tensor);
-    attr_data = cpu_attr_tensor.data<T>();
+  if (platform::is_gpu_place(x->place())) {
+    TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
+    data = cpu_attr_tensor.data<T>();
   }
-  auto attr = std::vector<T>(attr_data, attr_data + attr_tensor->numel());
-  return attr[0];
+  auto vec_data = std::vector<T>(data, data + x->numel());
+  return vec_data;
 }
 }  // namespace operators
 }  // namespace paddle

@@ -69,10 +69,11 @@ class SplitOpKernel : public framework::OpKernel<T> {
 
     if (ctx.HasInput("AxisTensor")) {
       std::vector<framework::DDim> outs_dims(outs_number, in_dims);
-      axis = GetDataFromTensor<int>(ctx, "AxisTensor");
+      auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
+      axis = GetDataFromTensor<int>(axis_tensor)[0];
+
       outs_dims =
           UpdateOutsDims(true, in_dims, num, sections, axis, outs_number);
-
       for (size_t j = 0; j < outs.size(); ++j) {
         outs[j]->Resize(outs_dims[j]);
       }
