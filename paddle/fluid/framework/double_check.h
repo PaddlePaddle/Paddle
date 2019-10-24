@@ -39,7 +39,7 @@ class DoubleCheckOperator {
       // set random seed in attrs.
       auto dropout_op = paddle::framework::OpRegistry::CreateOp(
           type, base_op_.Inputs(), base_op_.Outputs(), attrs);
-      dropout_op->Run(scope, place);
+      dropout_op->RunImpl(scope, place);
     }
 
     VariableNameMap inputs;
