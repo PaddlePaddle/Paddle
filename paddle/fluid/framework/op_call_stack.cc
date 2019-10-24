@@ -46,19 +46,15 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
     }
   }
   // Step 2. Insert python traceback into err_str_
-  std::size_t found = exception->err_str_.rfind("PaddleCheckError:");
+  std::size_t found = exception->err_str_.rfind(
+      "\n----------------------\nError Message "
+      "Summary:\n----------------------\n");
   if (found != std::string::npos) {
     exception->err_str_.insert(found, sout_py_trace.str());
-    exception->err_str_.insert(found + sout_py_trace.str().length(),
-                               "\n----------------------\nError Message "
-                               "Summary:\n----------------------\n");
   } else {
     exception->err_str_.append(sout_py_trace.str());
   }
-  // Step 3. Construct final call stack
-  sout << "\n\n--------------------------------------------\n";
-  sout << "C++ Call Stacks (More useful to developers):";
-  sout << "\n--------------------------------------------\n";
+  // Step 3. Construct final call stack & append error op name
   sout << exception->err_str_;
   if (callstack) {
     sout << "  [operator < " << type << " > error]";

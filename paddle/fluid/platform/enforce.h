@@ -74,6 +74,9 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
   static constexpr int TRACE_STACK_LIMIT = 100;
   std::ostringstream sout;
 
+  sout << "\n\n--------------------------------------------\n";
+  sout << "C++ Call Stacks (More useful to developers):";
+  sout << "\n--------------------------------------------\n";
 #if !defined(_WIN32)
   void* call_stack[TRACE_STACK_LIMIT];
   auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
@@ -102,8 +105,10 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
   }
   free(symbols);
 #else
-  sout << "Windows not support stack backtrace yet.";
+  sout << "Windows not support stack backtrace yet.\n";
 #endif
+  sout << "\n----------------------\nError Message "
+          "Summary:\n----------------------\n";
   sout << string::Sprintf("PaddleCheckError: %s at [%s:%d]",
                           std::forward<StrType>(what), file, line)
        << std::endl;
@@ -357,7 +362,7 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
 #define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                 \
   do {                                                      \
     if (UNLIKELY(nullptr == (__VAL))) {                     \
-      PADDLE_THROW(#__VAL " should not be null\n%s",        \
+      PADDLE_THROW("%s\n  [" #__VAL " should not be null]", \
                    ::paddle::string::Sprintf(__VA_ARGS__)); \
     }                                                       \
   } while (0)
@@ -455,14 +460,13 @@ struct BinaryCompareMessageConverter<false> {
       constexpr bool __kCanToString__ =                                        \
           ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&       \
           ::paddle::platform::details::CanToString<__TYPE2__>::kValue;         \
-      PADDLE_THROW("Expected %s " #__CMP " %s, but received %s " #__INV_CMP    \
-                   " %s.\n%s",                                                 \
-                   #__VAL1, #__VAL2,                                           \
+      PADDLE_THROW("%s\n  [Expected %s " #__CMP                                \
+                   " %s, but received %s " #__INV_CMP " %s]",                  \
+                   ::paddle::string::Sprintf(__VA_ARGS__), #__VAL1, #__VAL2,   \
                    ::paddle::platform::details::BinaryCompareMessageConverter< \
                        __kCanToString__>::Convert(#__VAL1, __val1),            \
                    ::paddle::platform::details::BinaryCompareMessageConverter< \
-                       __kCanToString__>::Convert(#__VAL2, __val2),            \
-                   ::paddle::string::Sprintf(__VA_ARGS__));                    \
+                       __kCanToString__>::Convert(#__VAL2, __val2));           \
     }                                                                          \
   } while (0)
 
