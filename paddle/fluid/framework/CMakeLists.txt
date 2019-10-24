@@ -252,7 +252,7 @@ configure_file(commit.h.in commit.h)
 
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto)
 if(WIN32)
-  sep_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
+  sep_library(paddle_framework temp DEPS ${FLUID_FRAMEWORK_MODULES})
 else(WIN32)
   cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 endif(WIN32)
