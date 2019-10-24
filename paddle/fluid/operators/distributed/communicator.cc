@@ -131,13 +131,16 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
           boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
       auto merge_add = boost::get<bool>(op->GetNullableAttr("merge_add"));
-      auto send_handler = boost::get<bool>(op->GetNullableAttr("send_handler"));
       if (!merge_add) {
         merge_add = FLAGS_communicator_is_sgd_optimizer;
       }
+      bool use_send_handler = true;
+      if (op->Type() == "distributed_notify") {
+        use_send_handler = false;
+      }
       send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
           send_var_name, send_varnames, epmap, height_section, trainer_id,
-          merge_add, send_handler);
+          merge_add, use_send_handler);
       VLOG(3) << "find and init an " << op->Type()
               << " op: " << send_varname_to_ctx[send_var_name];
     } else if (op->Type() == "recv") {
@@ -215,10 +218,12 @@ void AsyncCommunicator::SendThread() {
           }
           auto before_merge = GetCurrentUS();
           auto &ctx = send_varname_to_ctx_.at(var_name);
-          if (ctx.send_handler) {
-            MergeVars<float>(var_name, vars, send_scope_.get(), ctx);
+          VLOG(3) << vars[0].dtype;
+          if (ctx.use_send_handler) {
+            MergeVars<float>(var_name, vars, send_scope_.get(), ctx.merge_add);
           } else {
-            MergeVars<int64_t>(var_name, vars, send_scope_.get(), ctx);
+            MergeVars<int64_t>(var_name, vars, send_scope_.get(),
+                               ctx.merge_add);
           }
           auto after_merge = GetCurrentUS();
           VLOG(3) << "merge " << merged_var_num << " " << var_name

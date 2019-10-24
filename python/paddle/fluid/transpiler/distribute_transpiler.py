@@ -653,7 +653,6 @@ class DistributeTranspiler(object):
                         "sections": sections,
                         "send_varnames": send_varnames,
                         "merge_add": True,
-                        "send_handler": False,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                     })
 

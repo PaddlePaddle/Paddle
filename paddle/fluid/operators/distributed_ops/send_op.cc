@@ -117,10 +117,6 @@ This operator will send variables to listen_and_serve op at the parameter server
                   "(bool, default 0)"
                   "merge method, true represent add, false represent average")
         .SetDefault(false);
-    AddAttr<bool>("send_handler",
-                  "(bool, default True)"
-                  "send_handler or notify handler")
-        .SetDefault(true);
   }
 };
 

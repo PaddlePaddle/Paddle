@@ -110,7 +110,7 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 template <typename T>
 inline void MergeVars(const std::string& var_name,
                       const std::vector<std::shared_ptr<Variable>>& vars,
-                      Scope* scope, const RpcContext& rpc_ctx) {
+                      Scope* scope, bool merge_add = true) {
   PADDLE_ENFORCE(!vars.empty(), "should have value to merge!");
   auto cpu_place = platform::CPUPlace();
   auto& var0 = vars[0];
@@ -118,8 +118,7 @@ inline void MergeVars(const std::string& var_name,
   if (var0->IsType<framework::LoDTensor>()) {
     auto dims = var0->Get<framework::LoDTensor>().dims();
     VLOG(3) << "merge " << var_name << " LoDTensor dims " << dims
-            << "; merge add: " << rpc_ctx.merge_add
-            << "; send_handler: " << rpc_ctx.send_handler;
+            << "; merge add: " << merge_add;
     // init output tensor
     auto* out_t = out_var->GetMutable<framework::LoDTensor>();
     out_t->mutable_data<T>(dims, cpu_place);
@@ -140,7 +139,7 @@ inline void MergeVars(const std::string& var_name,
       auto in = EigenVector<T>::Flatten(in_t);
       result.device(*cpu_ctx.eigen_device()) = result + in;
     }
-    if (!rpc_ctx.merge_add) {
+    if (!merge_add) {
       result.device(*cpu_ctx.eigen_device()) =
           result / static_cast<T>(vars.size());
     }
@@ -155,7 +154,7 @@ inline void MergeVars(const std::string& var_name,
       inputs.push_back(&var->Get<framework::SelectedRows>());
     }
     auto dev_ctx = paddle::platform::CPUDeviceContext();
-    if (rpc_ctx.merge_add) {
+    if (merge_add) {
       math::scatter::MergeAdd<paddle::platform::CPUDeviceContext, T> merge_add;
       merge_add(dev_ctx, inputs, out_slr);
     } else {
@@ -165,8 +164,7 @@ inline void MergeVars(const std::string& var_name,
     }
 
     VLOG(3) << "merge " << var_name << " SelectedRows height: " << slr0.height()
-            << " dims: " << slr0.value().dims()
-            << "; merge add: " << rpc_ctx.merge_add;
+            << " dims: " << slr0.value().dims() << "; merge add: " << merge_add;
   } else {
     PADDLE_THROW("unsupported var type!");
   }
