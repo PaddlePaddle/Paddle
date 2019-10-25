@@ -43,6 +43,7 @@ link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
 
 if (WIN32)
+  option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
   add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
   if (MSVC_STATIC_CRT)
     set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
@@ -59,13 +60,15 @@ else()
 endif()
 message("flags" ${CMAKE_CXX_FLAGS})
 
+set(CUDA_LIB "" CACHE STRING "CUDA Library")
 if(WITH_GPU)
   if(NOT WIN32)
     set(CUDA_LIB "/usr/local/cuda/lib64/" CACHE STRING "CUDA Library")
   else()
     if(CUDA_LIB STREQUAL "")
-      set(CUDA_LIB "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\lib\\x64")
+       set(CUDA_LIB "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v9.0\\lib\\x64")
     endif()
+
   endif(NOT WIN32)
 endif()
 
@@ -118,7 +121,11 @@ endif()
 if(WITH_STATIC_LIB)
   set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
 else()
-  set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
+  if(WIN32)
+    set(DEPS ${PADDLE_LIB}/paddle/lib/paddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX}) 
+  else()
+    set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
+  endif()
 endif()
 
 if (NOT WIN32)
@@ -128,10 +135,17 @@ if (NOT WIN32)
       glog gflags protobuf z xxhash
       ${EXTERNAL_LIB})
 else()
-  set(DEPS ${DEPS}
-      ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags_static libprotobuf zlibstatic xxhash ${EXTERNAL_LIB})
-  set(DEPS ${DEPS} libcmt shlwapi.lib)
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(DEPS ${DEPS}
+        ${MATH_LIB} ${MKLDNN_LIB}
+        glog gflags_static libprotobufd ${EXTERNAL_LIB})
+    set(DEPS ${DEPS} libcmtd shlwapi.lib)
+  else()
+    set(DEPS ${DEPS}
+        ${MATH_LIB} ${MKLDNN_LIB}
+        glog gflags_static libprotobuf ${EXTERNAL_LIB})
+    set(DEPS ${DEPS} libcmt shlwapi.lib)
+  endif()
 endif(NOT WIN32)
 
 if(WITH_GPU)
@@ -173,4 +187,8 @@ if(WIN32)
             COMMAND ${CMAKE_COMMAND} -E copy ${MATH_DLL} ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
             )
     endif()
+  #copy the dll to destination dirctory
+  add_custom_command(TARGET ${DEMO_NAME} POST_BUILD 
+    COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_fluid.dll" ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+    )
 endif()
