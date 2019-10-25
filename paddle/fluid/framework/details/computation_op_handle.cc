@@ -63,8 +63,8 @@ void ComputationOpHandle::RunImpl() {
       op_->Run(*local_exec_scopes_[0], place_);
     }
 
-    // VLOG(10) << "run check_op_";
-    // check_op_->Run(*local_exec_scopes_[0], place_);
+    VLOG(10) << "run check_op_";
+    check_op_->Run(*local_exec_scopes_[0], place_);
     VLOG(10) << "end to run check";
     return;
   };

@@ -18,8 +18,8 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/details/double_check.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
-#include "paddle/fluid/framework/double_check.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"

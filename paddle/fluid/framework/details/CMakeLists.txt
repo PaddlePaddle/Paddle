@@ -5,11 +5,14 @@ cc_library(scale_loss_grad_op_handle SRCS scale_loss_grad_op_handle.cc DEPS op_h
 cc_library(fetch_op_handle SRCS fetch_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory)
 
 cc_library(share_tensor_buffer_functor SRCS share_tensor_buffer_functor.cc DEPS framework_proto scope place operator op_registry) 
+
 if(WITH_GPU)
-    nv_library(computation_op_handle SRCS computation_op_handle.cc DEPS framework_proto scope place operator op_registry)
+    nv_library(double_check SRCS double_check.cu DEPS framework_proto scope place operator op_registry)
+    cc_library(computation_op_handle SRCS computation_op_handle.cc DEPS framework_proto scope place operator op_registry double_check)
 else()
     cc_library(computation_op_handle SRCS computation_op_handle.cc DEPS framework_proto scope place operator op_registry)
 endif() 
+
 cc_library(share_tensor_buffer_op_handle SRCS share_tensor_buffer_op_handle.cc DEPS op_handle_base scope computation_op_handle share_tensor_buffer_functor)
 cc_library(rpc_op_handle SRCS rpc_op_handle.cc DEPS framework_proto scope place operator op_registry)
 cc_library(fetch_barrier_op_handle SRCS fetch_barrier_op_handle.cc DEPS framework_proto scope place operator op_registry)
