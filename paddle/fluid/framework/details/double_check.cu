@@ -33,17 +33,17 @@ void DoubleCheckOperator::GetCastInputAndOutputs(
     const Scope& scope, const platform::Place& place,
     const OperatorBase& base_op,
     std::map<std::string, std::string>* diff_var_names) {
-  std::vector<std::string> outputs;
-  for (auto it = base_op.Outputs().begin(); it != base_op.Outputs().end();
-       it++) {
+  std::vector<std::string> inputs;
+  for (auto it = base_op.Inputs().begin(); it != base_op.Inputs().end(); it++) {
     auto& var_names = it->second;
     for (size_t i = 0; i < var_names.size(); ++i) {
-      outputs.push_back(var_names[i]);
+      inputs.push_back(var_names[i]);
     }
   }
 
-  std::vector<std::string> inputs;
-  for (auto it = base_op.Inputs().begin(); it != base_op.Inputs().end(); it++) {
+  std::vector<std::string> outputs;
+  for (auto it = base_op.Outputs().begin(); it != base_op.Outputs().end();
+       it++) {
     auto& var_names = it->second;
     for (size_t i = 0; i < var_names.size(); ++i) {
       auto var = scope.FindVar(var_names[i]);
@@ -62,29 +62,41 @@ void DoubleCheckOperator::GetCastInputAndOutputs(
         continue;
       }
 
-      inputs.push_back(var_names[i]);
+      outputs.push_back(var_names[i]);
     }
   }
 
-  if (inputs.size() < 1) {
+  if (outputs.size() < 1) {
     return;
   }
 
   PADDLE_ENFORCE_EQ(inputs.size(), 1, "inputs size:%llu", inputs.size());
   PADDLE_ENFORCE_EQ(outputs.size(), 1, "outputs size:%llu", outputs.size());
-  (*diff_var_names)[inputs[0]] = outputs[0];
+  (*diff_var_names)[outputs[0]] = inputs[0];
 }
 
 void DoubleCheckOperator::Run(const Scope& scope,
                               const platform::Place& place) {
-  VLOG(10) << "begin to double check " << base_op_.Type();
   std::string type = base_op_.Type();
+  VLOG(10) << "begin to double check " << base_op_.Type();
+
+  if (type == "fill_constant") {
+    VLOG(10) << "end double check " << type << ", no fp16 should be checked";
+    return;
+  }
+
   if (type == "cast") {
     VLOG(10) << "PrepareNameMap";
 
     std::map<std::string, std::string> diff_var_names;
     VariableNameMap outputs;
     GetCastInputAndOutputs(scope, place, base_op_, &diff_var_names);
+
+    if (diff_var_names.size() == 0) {
+      VLOG(10) << "end double check " << type << ", no fp16 should be checked";
+      return;
+    }
+
     for (auto it : diff_var_names) {
       VLOG(10) << "var_name: " << it.first << " and " << it.second;
       Diff(scope, place, it.first, it.second);
@@ -135,9 +147,8 @@ void DoubleCheckOperator::Run(const Scope& scope,
 struct RangeFunctor {
   RangeFunctor(const platform::float16* a, const float* b) : a_(a), b_(b) {}
   inline HOSTDEVICE void operator()(size_t id) const {
-    PADDLE_ENFORCE((fabs(static_cast<float>(a_[id]) - b_[id]) < 0.000001),
-                   "abs(%f - %f) > 0.000001", static_cast<float>(a_[id]),
-                   b_[id]);
+    PADDLE_ENFORCE((fabs(static_cast<float>(a_[id]) - b_[id]) < 0.01),
+                   "fabs(%f - %f) > 0.01", static_cast<float>(a_[id]), b_[id]);
   }
   const platform::float16* a_;
   const float* b_;
