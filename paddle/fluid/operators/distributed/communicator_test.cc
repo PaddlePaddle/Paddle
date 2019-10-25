@@ -47,7 +47,7 @@ TEST(communicator, merge_lod_tensors) {
   scope.reset(new framework::Scope());
   scope->Var(out_name);
   for (auto i = 0; i < 10; ++i) {
-    MergeVars(out_name, in_vars, scope.get());
+    MergeVars<float>(out_name, in_vars, scope.get());
   }
   auto &out_tensor = scope->FindVar(out_name)->Get<LoDTensor>();
   auto *out_data = out_tensor.data<float>();
@@ -86,7 +86,7 @@ TEST(communicator, merge_selected_rows) {
   scope.reset(new framework::Scope());
   scope->Var(out_name);
   for (auto i = 0; i < 10; ++i) {
-    MergeVars(out_name, in_vars, scope.get());
+    MergeVars<float>(out_name, in_vars, scope.get());
   }
   auto &out_slr = scope->FindVar(out_name)->Get<SelectedRows>();
   auto &out_t = out_slr.value();
