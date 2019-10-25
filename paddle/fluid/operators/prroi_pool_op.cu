@@ -220,9 +220,7 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
 
-    bool has_batch_index = ctx.HasInput("BatchRoINums");
-    bool has_lod = rois->lod().empty();
-    if (has_batch_index || has_lod) {
+    if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
       auto* BatchIndex = ctx.Input<Tensor>("BatchRoINums");
       framework::Tensor batch_index_cpu;
       framework::TensorCopy(*BatchIndex, platform::CPUPlace(),
@@ -303,9 +301,7 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(platform::CPUPlace());
 
-      bool has_batch_index = ctx.HasInput("BatchRoINums");
-      bool has_lod = rois->lod().empty();
-      if (has_batch_index || has_lod) {
+      if (ctx.HasInput("BatchRoINums") || rois->lod().empty()) {
         auto* BatchIndex = ctx.Input<Tensor>("BatchRoINums");
         framework::Tensor batch_index_cpu;
         framework::TensorCopy(*BatchIndex, platform::CPUPlace(),

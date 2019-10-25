@@ -112,8 +112,7 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
     out_dims[1] = input_dims[1];
     out_dims[2] = pooled_height;
     out_dims[3] = pooled_width;
-    bool has_batch_index = ctx->HasInput("BatchRoINums");
-    if (has_batch_index) {
+    if (ctx->HasInput("BatchRoINums")) {
       auto rois_batch_index = ctx->GetInputDim("BatchRoINums");
       PADDLE_ENFORCE_EQ(rois_batch_index[0], input_dims[0],
                         "The length of BatchRoINums should equal to  "

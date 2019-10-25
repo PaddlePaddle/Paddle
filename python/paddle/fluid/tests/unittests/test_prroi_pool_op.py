@@ -82,7 +82,6 @@ class TestPRROIPoolOp(OpTest):
         self.check_output()
 
     def test_backward(self):
-        #self.check_grad(['X'], 'Out')
         for place in self._get_places():
             self._get_gradient(['X'], place, ["Out"], None)
 
@@ -214,9 +213,6 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
             loss = fluid.layers.mean(output)
             optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
             optimizer.minimize(loss)
-            #input_x = fluid.create_lod_tensor(self.x, [], place)
-            #input_rois = fluid.create_lod_tensor(self.rois[:, 1:5],
-            #                                     [], place)
             exe = fluid.Executor(place)
             exe.run(fluid.default_startup_program())
             exe.run(fluid.default_main_program(), {
