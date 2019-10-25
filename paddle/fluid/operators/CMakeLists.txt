@@ -53,7 +53,7 @@ if (NOT WITH_MKL OR NOT WITH_AVX)
     SET(OP_ONLY_MKL ${OP_ONLY_MKL} match_matrix_tensor_op)
     SET(OP_ONLY_MKL ${OP_ONLY_MKL} var_conv_2d_op)
 endif()
-if(NOT WITH_MKL OR WIN32)
+if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
     SET(OP_ONLY_MKL ${OP_ONLY_MKL} pyramid_hash_op)
 endif()
 
