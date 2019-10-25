@@ -28,9 +28,10 @@ class DoubleCheckOperator {
   explicit DoubleCheckOperator(const OperatorBase& base_op)
       : base_op_(base_op) {}
   void Run(const Scope& scope, const platform::Place& place) {
+    VLOG(10) << "begin to double check " << base_op_.Type();
     std::string type = base_op_.Type();
     if (type == "cast") {
-      VLOG(10) << "begin to double check cast op";
+      VLOG(10) << "end double check " << base_op_.Type();
       return;
     }
 
@@ -41,33 +42,37 @@ class DoubleCheckOperator {
     std::map<std::string, std::string> output_diff_var_names;
 
     Scope* var_scope = const_cast<Scope*>(&scope);
-    VLOG(10) << "begin to PrepareNameMap";
+    VLOG(10) << "PrepareNameMap";
     PrepareNameMap(var_scope, place, base_op_.Inputs(), &inputs,
                    &input_diff_var_names);
     PrepareNameMap(var_scope, place, base_op_.Outputs(), &outputs,
                    &output_diff_var_names);
 
     if (input_diff_var_names.size() == 0 && output_diff_var_names.size() == 0) {
-      VLOG(10) << base_op_.Type() << " no fp16 should be checked";
+      VLOG(10) << "end double check " << base_op_.Type()
+               << ", no fp16 should be checked";
       return;
     }
 
-    VLOG(10) << "begin to check " << base_op_.Type();
+    VLOG(10) << "double check " << base_op_.Type() << " fp16 content";
     auto check_op = paddle::framework::OpRegistry::CreateOp(
         type, inputs, outputs, base_op_.Attrs());
     check_op->Run(scope, place);
 
     for (auto it : output_diff_var_names) {
-      VLOG(10) << "begin to var_name: " << it.first << " and " << it.second;
+      VLOG(10) << "var_name: " << it.first << " and " << it.second;
       Diff(scope, place, it.first, it.second);
     }
+    VLOG(10) << "end double check " << base_op_.Type();
   }
 
  private:
   struct RangeFunctor {
     RangeFunctor(const platform::float16* a, const float* b) : a_(a), b_(b) {}
     inline HOSTDEVICE void operator()(size_t id) const {
-      PADDLE_ENFORCE((fabs(static_cast<float>(a_[id]) - b_[id]) < 0.000001));
+      PADDLE_ENFORCE((fabs(static_cast<float>(a_[id]) - b_[id]) < 0.000001),
+                     "abs(%f - %f) > 0.000001", static_cast<float>(a_[id]),
+                     b_[id]);
     }
     const platform::float16* a_;
     const float* b_;
