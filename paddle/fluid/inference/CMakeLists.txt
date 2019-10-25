@@ -29,14 +29,15 @@ list(APPEND fluid_third_partys gflags glog protobuf cblas)
 endif(WIN32)
 
 # paddle_fluid_origin exclude inference api interface
+set(paddle_fluid_origin_list)
 if(WIN32)
-  sep_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
+  sep_library(paddle_fluid_origin paddle_fluid_origin_list DEPS ${fluid_modules} paddle_fluid_api)
 else(WIN32)
   cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
 endif(WIN32)
 
 add_subdirectory(api)
-add_subdirectory(capi)
+set(paddle_fluid_list)
 
 if(WITH_MKLDNN)
 	set(mkldnn_quantizer_src ${CMAKE_CURRENT_SOURCE_DIR}/api/mkldnn_quantizer.cc)
@@ -55,22 +56,31 @@ set(SHARED_INFERENCE_SRCS
     ${ANAKIN_SHARED_INFERENCE_SRCS})
 
 if(WIN32)
-  sep_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
+  sep_library(paddle_fluid paddle_fluid_list DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS} zero_copy_tensor reset_tensor_array
               analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
 else(WIN32)
   cc_library(paddle_fluid DEPS ${fluid_modules} ${STATIC_INFERENCE_APIS}
              zero_copy_tensor reset_tensor_array analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
 endif(WIN32)
 
+add_subdirectory(capi)
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.sym")
-  set_target_properties(paddle_fluid PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+  if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    foreach(v ${paddle_fluid_list})
+      set_target_properties(${v} PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+    endforeach(v ${paddle_fluid_list})
+  else()
+    set_target_properties(paddle_fluid PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+  endif()
+  
 endif()
 
 # Create shared library
+set(paddle_fluid_shared_list)
 if(WIN32)
-  sep_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
+  sep_library(paddle_fluid_shared paddle_fluid_shared_list SHARED SRCS ${SHARED_INFERENCE_SRCS}
               DEPS ${fluid_modules} paddle_fluid_api reset_tensor_array
                    analysis_config ${mkldnn_quantizer_cfg} paddle_pass_builder)
 else(WIN32)
