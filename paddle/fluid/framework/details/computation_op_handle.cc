@@ -53,12 +53,16 @@ void ComputationOpHandle::RunImpl() {
       return;
     }
 
+    VLOG(10) << "begin to run check";
     if (new_op_ != nullptr) {
+      VLOG(10) << "run new_op_";
       new_op_->Run(*local_exec_scopes_[0], place_);
     } else {
+      VLOG(10) << "run op_";
       op_->Run(*local_exec_scopes_[0], place_);
     }
 
+    VLOG(10) << "run check_op_";
     check_op_->Run(*local_exec_scopes_[0], place_);
     return;
   };

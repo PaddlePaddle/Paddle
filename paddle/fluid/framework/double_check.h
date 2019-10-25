@@ -30,6 +30,7 @@ class DoubleCheckOperator {
   void Run(const Scope& scope, const platform::Place& place) {
     std::string type = base_op_.Type();
     if (type == "cast") {
+      VLOG(10) << "begin to double check cast op";
       return;
     }
 
@@ -40,6 +41,7 @@ class DoubleCheckOperator {
     std::map<std::string, std::string> output_diff_var_names;
 
     Scope* var_scope = const_cast<Scope*>(&scope);
+    VLOG(10) << "begin to PrepareNameMap";
     PrepareNameMap(var_scope, place, base_op_.Inputs(), &inputs,
                    &input_diff_var_names);
     PrepareNameMap(var_scope, place, base_op_.Outputs(), &outputs,
@@ -89,23 +91,38 @@ class DoubleCheckOperator {
       tensor_b = &var_b->Get<framework::SelectedRows>().value();
     }
 
-    auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
     RangeFunctor functor(tensor_a->data<platform::float16>(),
                          tensor_b->data<float>());
-    platform::ForRange<platform::DeviceContext> for_range(*dev_ctx,
-                                                          tensor_a->numel());
-    for_range(functor);
+    if (platform::is_gpu_place(place)) {
+#ifdef __NVCC__
+      auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+          platform::DeviceContextPool::Instance().Get(place));
+      platform::ForRange<platform::CUDADeviceContext> for_range(
+          *dev_ctx, tensor_a->numel());
+      for_range(functor);
+#else
+      PADDLE_THROW("PaddlePaddle should compile with GPU.");
+#endif
+    } else {
+      auto* dev_ctx = reinterpret_cast<platform::CPUDeviceContext*>(
+          platform::DeviceContextPool::Instance().Get(place));
+      platform::ForRange<platform::CPUDeviceContext> for_range(
+          *dev_ctx, tensor_a->numel());
+      for_range(functor);
+    }
   }
 
   void PrepareNameMap(Scope* scope, const platform::Place& place,
                       const VariableNameMap& name_map,
                       VariableNameMap* dst_name_map,
                       std::map<std::string, std::string>* diff_var_names) {
-    for (auto it = name_map.begin(); it != name_map.end();) {
+    VLOG(10) << "name map size:" << name_map.size();
+    for (auto it = name_map.begin(); it != name_map.end(); it++) {
       std::vector<std::string>& dst_var_names = (*dst_name_map)[it->first];
       dst_var_names.reserve(it->second.size());
 
       auto& var_names = it->second;
+      VLOG(10) << "var_name vector size:" << var_names.size();
       for (size_t i = 0; i < var_names.size(); ++i) {
         auto var_name = var_names[i];
         auto var = scope->FindVar(var_name);
@@ -134,6 +151,8 @@ class DoubleCheckOperator {
           continue;
         }
 
+        VLOG(10) << "alloc new data of:" << var_name << " to " << fp32_var_name
+                 << " place:" << place;
         auto fp32_var = scope->Var(fp32_var_name);
         framework::Tensor* fp32_tensor{nullptr};
         if (var->IsType<framework::LoDTensor>()) {
@@ -144,6 +163,8 @@ class DoubleCheckOperator {
         }
         fp32_tensor->mutable_data(place, tensor_dtype, tensor->memory_size());
 
+        VLOG(10) << "cast data from:" << var_name
+                 << " to new var:" << fp32_var_name;
         framework::AttributeMap cast_op_attrs;
         cast_op_attrs["in_dtype"] = framework::proto::VarType::FP16;
         cast_op_attrs["out_dtype"] = framework::proto::VarType::FP32;
