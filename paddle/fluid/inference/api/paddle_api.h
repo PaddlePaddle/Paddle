@@ -31,7 +31,11 @@
 #if defined(_WIN32)
 #ifdef PADDLE_ON_INFERENCE
 #define PADDLE_INFENRENCE_EXPORT __declspec(dllexport)
+#else
+#define PADDLE_INFENRENCE_EXPORT __declspec(dllimport)
 #endif //PADDLE_ON_INFERENCE
+#else
+#define PADDLE_INFENRENCE_EXPORT __attribute__((visibility("default")))
 #endif //_WIN32
 
 /*! \namespace paddle
@@ -40,7 +44,7 @@ namespace paddle {
 
 /** paddle data type.
  */
-enum PaddleDType {
+enum  PaddleDType {
   FLOAT32,
   INT64,
   INT32,
@@ -147,7 +151,7 @@ struct PADDLE_INFENRENCE_EXPORT PaddleTensor {
   std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
 };
 
-enum class PADDLE_INFENRENCE_EXPORT PaddlePlace { kUNK = -1, kCPU, kGPU };
+enum class  PaddlePlace { kUNK = -1, kCPU, kGPU };
 
 /** Tensor without copy, currently only supports `AnalysisPredictor`.
  */
@@ -354,6 +358,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 struct AnalysisConfig;
 struct NativeConfig;
 struct DemoConfig;
+
 template <>
 PADDLE_INFENRENCE_EXPORT std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
     const AnalysisConfig &config);

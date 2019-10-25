@@ -297,10 +297,6 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 }
 
 template <>
-PADDLE_INFENRENCE_EXPORT  std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config);
-    
-template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
   VLOG(3) << "create NativePaddlePredictor";
@@ -335,10 +331,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   return std::move(predictor);
 #endif
 }
-
-template <>
-PADDLE_INFENRENCE_EXPORT std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<NativeConfig>( 
-    const NativeConfig &config);
 
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<NativeConfig>(

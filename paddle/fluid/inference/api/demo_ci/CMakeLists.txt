@@ -43,16 +43,14 @@ link_directories("${PADDLE_LIB_THIRD_PARTY_PATH}xxhash/lib")
 link_directories("${PADDLE_LIB}/paddle/lib")
 
 if (WIN32)
+  option(MSVC_STATIC_CRT "use static C Runtime library by default" ON)
   add_definitions("/DGOOGLE_GLOG_DLL_DECL=")
   if (MSVC_STATIC_CRT)
     set(CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} /bigobj /MTd")
     set(CMAKE_C_FLAGS_RELEASE  "${CMAKE_C_FLAGS_RELEASE} /bigobj /MT")
     set(CMAKE_CXX_FLAGS_DEBUG  "${CMAKE_CXX_FLAGS_DEBUG} /bigobj /MTd")
     set(CMAKE_CXX_FLAGS_RELEASE   "${CMAKE_CXX_FLAGS_RELEASE} /bigobj /MT")
-    if (WITH_STATIC_LIB)
-      safe_set_static_flag()
-      add_definitions(-DSTATIC_LIB)
-    endif()
+    safe_set_static_flag()
   endif()
 else()
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -118,7 +116,10 @@ endif()
 if(WITH_STATIC_LIB)
   set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
 else()
-  set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
+  if(WIN32)
+    set(DEPS ${PADDLE_LIB}/paddle/lib/paddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX}) 
+  else()
+    set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
 endif()
 
 if (NOT WIN32)
@@ -154,6 +155,12 @@ endif()
 
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
 target_link_libraries(${DEMO_NAME} ${DEPS})
+if(WIN32)  #copy the dll to destination dirctory
+  add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_fluid.dll" 
+                                      ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+        )
+endif()
 if(WIN32)
   if(USE_TENSORRT)
     add_custom_command(TARGET ${DEMO_NAME} POST_BUILD

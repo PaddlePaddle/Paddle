@@ -24,7 +24,11 @@
 #if defined(_WIN32)
 #ifdef PADDLE_ON_INFERENCE
 #define PADDLE_INFENRENCE_EXPORT __declspec(dllexport)
+#else
+#define PADDLE_INFENRENCE_EXPORT __declspec(dllimport)
 #endif //PADDLE_ON_INFERENCE
+#else
+#define PADDLE_INFENRENCE_EXPORT __attribute__((visibility("default")))
 #endif //_WIN32
 
 namespace paddle {
