@@ -74,6 +74,9 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
   static constexpr int TRACE_STACK_LIMIT = 100;
   std::ostringstream sout;
 
+  sout << "\n\n--------------------------------------------\n";
+  sout << "C++ Call Stacks (More useful to developers):";
+  sout << "\n--------------------------------------------\n";
 #if !defined(_WIN32)
   void* call_stack[TRACE_STACK_LIMIT];
   auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
@@ -102,8 +105,10 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
   }
   free(symbols);
 #else
-  sout << "Windows not support stack backtrace yet.";
+  sout << "Windows not support stack backtrace yet.\n";
 #endif
+  sout << "\n----------------------\nError Message "
+          "Summary:\n----------------------\n";
   sout << string::Sprintf("PaddleCheckError: %s at [%s:%d]",
                           std::forward<StrType>(what), file, line)
        << std::endl;
