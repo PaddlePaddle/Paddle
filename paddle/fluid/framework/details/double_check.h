@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
 namespace framework {
@@ -28,7 +29,7 @@ class DoubleCheckOperator {
       : base_op_(base_op) {}
   void Run(const Scope& scope, const platform::Place& place);
 
- private:
+ protected:
   void Diff(const Scope& scope, const platform::Place& place,
             const std::string& a, const std::string& b);
 
@@ -36,6 +37,13 @@ class DoubleCheckOperator {
                       const VariableNameMap& name_map,
                       VariableNameMap* dst_name_map,
                       std::map<std::string, std::string>* diff_var_names);
+
+  void Wait(const platform::Place& place);
+
+  void GetCastInputAndOutputs(
+      const Scope& scope, const platform::Place& place,
+      const OperatorBase& base_op,
+      std::map<std::string, std::string>* diff_var_names);
 
  private:
   const OperatorBase& base_op_;

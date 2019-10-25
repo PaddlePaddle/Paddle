@@ -17,12 +17,81 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+void DoubleCheckOperator::Wait(const platform::Place& place) {
+  if (platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+    auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+        platform::DeviceContextPool::Instance().Get(place));
+    dev_ctx->Wait();
+#else
+    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+#endif
+  }
+}
+
+void DoubleCheckOperator::GetCastInputAndOutputs(
+    const Scope& scope, const platform::Place& place,
+    const OperatorBase& base_op,
+    std::map<std::string, std::string>* diff_var_names) {
+  std::vector<std::string> outputs;
+  for (auto it = base_op.Outputs().begin(); it != base_op.Outputs().end();
+       it++) {
+    auto& var_names = it->second;
+    for (size_t i = 0; i < var_names.size(); ++i) {
+      outputs.push_back(var_names[i]);
+    }
+  }
+
+  std::vector<std::string> inputs;
+  for (auto it = base_op.Inputs().begin(); it != base_op.Inputs().end(); it++) {
+    auto& var_names = it->second;
+    for (size_t i = 0; i < var_names.size(); ++i) {
+      auto var = scope.FindVar(var_names[i]);
+
+      const framework::Tensor* tensor{nullptr};
+      if (var->IsType<framework::LoDTensor>()) {
+        tensor = &var->Get<framework::LoDTensor>();
+      } else if (var->IsType<framework::SelectedRows>()) {
+        tensor = &var->Get<framework::SelectedRows>().value();
+      } else {
+        continue;
+      }
+
+      auto tensor_dtype = tensor->type();
+      if (tensor_dtype != framework::proto::VarType::FP16) {
+        continue;
+      }
+
+      inputs.push_back(var_names[i]);
+    }
+  }
+
+  if (inputs.size() < 1) {
+    return;
+  }
+
+  PADDLE_ENFORCE_EQ(inputs.size(), 1, "inputs size:%llu", inputs.size());
+  PADDLE_ENFORCE_EQ(outputs.size(), 1, "outputs size:%llu", outputs.size());
+  (*diff_var_names)[inputs[0]] = outputs[0];
+}
+
 void DoubleCheckOperator::Run(const Scope& scope,
                               const platform::Place& place) {
   VLOG(10) << "begin to double check " << base_op_.Type();
   std::string type = base_op_.Type();
   if (type == "cast") {
-    VLOG(10) << "end double check " << base_op_.Type();
+    VLOG(10) << "PrepareNameMap";
+
+    std::map<std::string, std::string> diff_var_names;
+    VariableNameMap outputs;
+    GetCastInputAndOutputs(scope, place, base_op_, &diff_var_names);
+    for (auto it : diff_var_names) {
+      VLOG(10) << "var_name: " << it.first << " and " << it.second;
+      Diff(scope, place, it.first, it.second);
+    }
+
+    Wait(place);
+    VLOG(10) << "end double check " << type;
     return;
   }
 
@@ -31,6 +100,9 @@ void DoubleCheckOperator::Run(const Scope& scope,
 
   std::map<std::string, std::string> input_diff_var_names;
   std::map<std::string, std::string> output_diff_var_names;
+
+  // Wait var's initailization.
+  Wait(place);
 
   Scope* var_scope = const_cast<Scope*>(&scope);
   VLOG(10) << "PrepareNameMap";
@@ -54,6 +126,9 @@ void DoubleCheckOperator::Run(const Scope& scope,
     VLOG(10) << "var_name: " << it.first << " and " << it.second;
     Diff(scope, place, it.first, it.second);
   }
+
+  // Wait difference complation.
+  Wait(place);
   VLOG(10) << "end double check " << base_op_.Type();
 }
 
@@ -67,7 +142,6 @@ struct RangeFunctor {
   const platform::float16* a_;
   const float* b_;
 };
-
 void DoubleCheckOperator::Diff(const Scope& scope, const platform::Place& place,
                                const std::string& a, const std::string& b) {
   auto var_a = scope.FindVar(a);
@@ -111,16 +185,6 @@ void DoubleCheckOperator::PrepareNameMap(
     Scope* scope, const platform::Place& place, const VariableNameMap& name_map,
     VariableNameMap* dst_name_map,
     std::map<std::string, std::string>* diff_var_names) {
-  if (platform::is_gpu_place(place)) {
-#ifdef PADDLE_WITH_CUDA
-    auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
-        platform::DeviceContextPool::Instance().Get(place));
-    dev_ctx->Wait();
-#else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
-#endif
-  }
-
   VLOG(10) << "name map size:" << name_map.size();
   for (auto it = name_map.begin(); it != name_map.end(); it++) {
     std::vector<std::string>& dst_var_names = (*dst_name_map)[it->first];
@@ -143,21 +207,20 @@ void DoubleCheckOperator::PrepareNameMap(
         continue;
       }
 
+      dst_var_names.push_back(fp32_var_name);
       auto tensor_dtype = tensor->type();
       if (tensor_dtype != framework::proto::VarType::FP16) {
-        dst_var_names.push_back(fp32_var_name);
         continue;
       }
 
-      dst_var_names.push_back(fp32_var_name);
       (*diff_var_names)[var_name] = fp32_var_name;
-
       if (scope->FindVar(fp32_var_name) != nullptr) {
         continue;
       }
 
-      VLOG(10) << "alloc new data of:" << var_name << " to " << fp32_var_name
-               << " place:" << place;
+      VLOG(10) << "alloc new data and cast from:" << var_name << " to "
+               << fp32_var_name << " place:" << place
+               << ", numel:" << tensor->numel();
       auto fp32_var = scope->Var(fp32_var_name);
       framework::Tensor* fp32_tensor{nullptr};
       if (var->IsType<framework::LoDTensor>()) {
@@ -166,10 +229,10 @@ void DoubleCheckOperator::PrepareNameMap(
         fp32_tensor =
             fp32_var->GetMutable<framework::SelectedRows>()->mutable_value();
       }
-      fp32_tensor->mutable_data(place, tensor_dtype, tensor->memory_size());
+      // fp32_tensor->mutable_data(place, tensor_dtype, );
 
-      VLOG(10) << "cast data from:" << var_name
-               << " to new var:" << fp32_var_name;
+      // VLOG(10) << "cast data from:" << var_name
+      // << " to new var:" << fp32_var_name;
       framework::AttributeMap cast_op_attrs;
       cast_op_attrs["in_dtype"] = framework::proto::VarType::FP16;
       cast_op_attrs["out_dtype"] = framework::proto::VarType::FP32;
