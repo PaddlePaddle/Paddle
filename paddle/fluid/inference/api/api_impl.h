@@ -29,9 +29,15 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#if defined(_WIN32)
+#ifdef PADDLE_ON_INFERENCE
+#define PADDLE_INFENRENCE_EXPORT __declspec(dllexport)
+#endif //PADDLE_ON_INFERENCE
+#endif //_WIN32
+
 namespace paddle {
 
-class NativePaddlePredictor : public PaddlePredictor {
+class PADDLE_INFENRENCE_EXPORT NativePaddlePredictor : public PaddlePredictor {
  public:
   explicit NativePaddlePredictor(const NativeConfig &config)
       : config_(config) {}

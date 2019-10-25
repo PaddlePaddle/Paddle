@@ -23,6 +23,12 @@
 
 /*! \file */
 
+#if defined(_WIN32)
+#ifdef PADDLE_ON_INFERENCE
+#define PADDLE_INFENRENCE_EXPORT __declspec(dllexport)
+#endif //PADDLE_ON_INFERENCE
+#endif //_WIN32
+
 // Here we include some header files with relative paths, for that in deploy,
 // the abstract path of this header file will be changed.
 #include "paddle_api.h"           // NOLINT
@@ -37,7 +43,7 @@ class AnalysisPredictor;
 struct MkldnnQuantizerConfig;
 
 // NOTE WIP, not stable yet.
-struct AnalysisConfig {
+struct PADDLE_INFENRENCE_EXPORT AnalysisConfig {
   AnalysisConfig() = default;
   explicit AnalysisConfig(const AnalysisConfig& other);
   explicit AnalysisConfig(const std::string& model_dir);
