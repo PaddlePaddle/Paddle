@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/fusion_group_pass.h"
-#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -31,12 +31,12 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
 }
 
 int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
-  std::vector<std::unordered_set<Node*>> subgraphs;
+  std::vector<fusion_group::SubGraph> subgraphs;
   std::unordered_set<Node*> all_nodes = graph->Nodes();
   for (Node* n : all_nodes) {
     bool is_found = false;
     for (auto& subgraph : subgraphs) {
-      if (subgraph.find(n) != subgraph.end()) {
+      if (subgraph.nodes_set.find(n) != subgraph.nodes_set.end()) {
         is_found = true;
         break;
       }
@@ -45,18 +45,67 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
       continue;
     }
 
-    std::unordered_set<Node*> subgraph;
+    fusion_group::SubGraph subgraph;
     if (type == 0) {
-      ElementwiseGroupDetector detector;
+      fusion_group::ElementwiseGroupDetector detector;
       int num_operations = detector(n);
       if (num_operations >= 2) {
         subgraph = detector.GetSubgraph();
       }
     }
 
-    subgraphs.push_back(subgraph);
+    if (!subgraph.IsEmpty()) {
+      subgraphs.push_back(subgraph);
+    }
+  }
+
+  // TODO(liuyiqun): check whether there are intersection between subgraphs
+  for (size_t i = 0; i < subgraphs.size(); ++i) {
+    InsertFusionGroupOp(graph, subgraphs[i]);
   }
   return subgraphs.size();
+}
+
+void FusionGroupPass::InsertFusionGroupOp(
+    Graph* graph, const fusion_group::SubGraph& subgraph) const {
+  std::vector<Node*> input_vars_of_subgraph = subgraph.GetInputVarNodes();
+  std::vector<Node*> output_vars_of_subgraph = subgraph.GetOutputVarNodes();
+  std::unordered_set<Node*> external_nodes;
+
+  OpDesc op_desc;
+  op_desc.SetType("fusion_group");
+
+  std::vector<std::string> input_names;
+  for (auto* n : input_vars_of_subgraph) {
+    input_names.push_back(n->Name());
+    external_nodes.insert(n);
+  }
+  op_desc.SetInput("Xs", input_names);
+
+  std::vector<std::string> output_names;
+  for (auto* n : output_vars_of_subgraph) {
+    output_names.push_back(n->Name());
+    external_nodes.insert(n);
+  }
+  op_desc.SetOutput("Outs", output_names);
+  op_desc.SetAttr("type", subgraph.type);
+  op_desc.SetAttr("func_name", subgraph.func_name);
+
+  auto fusion_group_node = graph->CreateOpNode(&op_desc);
+  for (auto* in : input_vars_of_subgraph) {
+    IR_NODE_LINK_TO(in, fusion_group_node);
+  }
+  for (auto* out : output_vars_of_subgraph) {
+    IR_NODE_LINK_TO(fusion_group_node, out);
+  }
+
+  std::unordered_set<const Node*> internal_nodes;
+  for (auto* n : subgraph.nodes_set) {
+    if (external_nodes.find(n) == external_nodes.end()) {
+      internal_nodes.insert(n);
+    }
+  }
+  GraphSafeRemoveNodes(graph, internal_nodes);
 }
 
 }  // namespace ir

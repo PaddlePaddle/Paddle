@@ -17,17 +17,19 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/ir/fusion_group/subgraph.h"
 #include "paddle/fluid/framework/ir/node.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace fusion_group {
 
 struct ElementwiseGroupDetector {
  public:
   int operator()(Node* n);
 
-  std::unordered_set<Node*> GetSubgraph() const { return subgraph_; }
+  SubGraph GetSubgraph() const { return subgraph_; }
 
  private:
   bool IsElementwiseOp(Node* n);
@@ -40,9 +42,10 @@ struct ElementwiseGroupDetector {
  private:
   std::string name_;
   int num_operations_{0};
-  std::unordered_set<Node*> subgraph_;
+  SubGraph subgraph_;
 };
 
+}  // namespace fusion_group
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

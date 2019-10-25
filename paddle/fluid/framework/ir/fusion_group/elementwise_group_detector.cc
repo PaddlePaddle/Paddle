@@ -18,6 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace fusion_group {
 
 static std::unordered_set<std::string> binary_op_types = {
     "elementwise_add", "elementwise_sub", "elementwise_mul",
@@ -97,9 +98,9 @@ bool ElementwiseGroupDetector::IsOutputOfElementwiseOp(Node* n) {
 }
 
 void ElementwiseGroupDetector::Insert(Node* n) {
-  if (subgraph_.find(n) == subgraph_.end()) {
+  if (subgraph_.nodes_set.find(n) == subgraph_.nodes_set.end()) {
     LOG(INFO) << "Insert " << n->Name() << " to subgraph " << name_;
-    subgraph_.insert(n);
+    subgraph_.nodes_set.insert(n);
   }
 }
 
@@ -148,11 +149,13 @@ int ElementwiseGroupDetector::operator()(Node* n) {
     Insert(n);
     num_operations_ = Search(n, n->inputs);
     LOG(INFO) << "Detect elementwise subgraph begin with " << name_ << ", "
-              << num_operations_ << " operations.";
+              << num_operations_ << " operations, "
+              << GetSubgraph().GetNumNodes() << " nodes";
   }
   return num_operations_;
 }
 
+}  // namespace fusion_group
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <unordered_set>
+#include "paddle/fluid/framework/ir/fusion_group/subgraph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
@@ -27,6 +29,8 @@ class FusionGroupPass : public Pass {
 
  private:
   int DetectFusionGroup(Graph* graph, int type = 0) const;
+  void InsertFusionGroupOp(Graph* graph,
+                           const fusion_group::SubGraph& subgraph) const;
 
   const std::string name_scope_{"fusion_group"};
 };
