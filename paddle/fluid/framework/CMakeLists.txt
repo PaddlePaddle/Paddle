@@ -127,6 +127,7 @@ cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope gl
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
+cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op_registry device_context)
 
 cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)

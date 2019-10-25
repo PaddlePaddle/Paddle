@@ -286,8 +286,8 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
             auto* r_data = bottom_r_data + (offset_r[b] + j) * dim_in;
             auto* r_diff = bottom_r_diff + (offset_r[b] + j) * dim_in;
             if (diff != 0.0) {
-              sse_axpy(r_data, l_trans_diff, dim_in, diff);
-              sse_axpy(l_trans_data, r_diff, dim_in, diff);
+              avx_axpy(r_data, l_trans_diff, dim_in, diff);
+              avx_axpy(l_trans_data, r_diff, dim_in, diff);
             }
           }
         }
