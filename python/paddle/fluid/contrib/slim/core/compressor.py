@@ -55,7 +55,9 @@ def cached_reader(reader, sampled_rate, cache_path, cached_id):
     def s_reader():
         if os.path.isdir(cache_path):
             for file_name in open(os.path.join(cache_path, "list")):
-                yield np.load(os.path.join(cache_path, file_name.strip()))
+                yield np.load(
+                    os.path.join(cache_path, file_name.strip()),
+                    allow_pickle=True)
         else:
             os.makedirs(cache_path)
             list_file = open(os.path.join(cache_path, "list"), 'w')
