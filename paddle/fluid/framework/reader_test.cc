@@ -27,15 +27,23 @@ class StubDecoratedReader : public paddle::framework::DecoratedReader {
 
 class StubRootReader : public paddle::framework::ReaderBase {
  public:
-  explicit StubRootReader(const std::vector<paddle::framework::DDim> &dims)
-      : paddle::framework::ReaderBase(dims) {}
+  explicit StubRootReader(
+      const std::vector<paddle::framework::DDim> &dims,
+      const std::vector<paddle::framework::proto::VarType::Type> &var_types,
+      const std::vector<bool> &need_check_feed)
+      : paddle::framework::ReaderBase(dims, var_types, need_check_feed) {}
   void ReadNextImpl(std::vector<paddle::framework::LoDTensor> *out) override {}
 };
 
 TEST(READER, decorate_chain) {
+  paddle::framework::proto::VarType::Type dtype =
+      paddle::framework::proto::VarType::FP32;
   paddle::framework::DDim dim = paddle::framework::make_ddim({5, 7});
   std::vector<paddle::framework::DDim> init_dims(4, dim);
-  auto root = std::make_shared<StubRootReader>(init_dims);
+  std::vector<paddle::framework::proto::VarType::Type> init_types(4, dtype);
+  std::vector<bool> init_need_check(4, true);
+  auto root =
+      std::make_shared<StubRootReader>(init_dims, init_types, init_need_check);
   auto end_point1 =
       paddle::framework::MakeDecoratedReader<StubDecoratedReader>(root);
   auto end_point2 =
@@ -56,10 +64,8 @@ TEST(READER, decorate_chain) {
   { ASSERT_EQ(root->GetEndPoints().size(), 2U); }
 
   {
-    std::vector<paddle::framework::DDim> shapes = end_point1->Shapes();
-    ASSERT_EQ(shapes.size(), 4U);
-    for (auto shape : shapes) {
-      ASSERT_EQ(shape, dim);
-    }
+    ASSERT_EQ(end_point1->Shapes(), init_dims);
+    ASSERT_EQ(end_point1->VarTypes(), init_types);
+    ASSERT_EQ(end_point1->NeedCheckFeed(), init_need_check);
   }
 }

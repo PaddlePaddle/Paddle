@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -28,7 +29,19 @@ namespace framework {
 
 class ReaderBase {
  public:
-  explicit ReaderBase(const std::vector<DDim>& shapes) : shapes_(shapes) {}
+  explicit ReaderBase(const std::vector<DDim>& shapes,
+                      const std::vector<proto::VarType::Type>& var_types,
+                      const std::vector<bool>& need_check_feed)
+      : shapes_(shapes),
+        var_types_(var_types),
+        need_check_feed_(need_check_feed) {
+    PADDLE_ENFORCE_EQ(shapes_.size(), need_check_feed_.size(),
+                      "Construct ReaderBase with mismatched sizes of shapes "
+                      "and need_check_feed");
+    PADDLE_ENFORCE_EQ(var_types_.size(), need_check_feed_.size(),
+                      "Construct ReaderBase with mismatched sizes of var_types "
+                      "and need_check_feed");
+  }
 
   virtual void ReadNext(std::vector<LoDTensor>* out);
 
@@ -43,9 +56,12 @@ class ReaderBase {
   // Returns the shapes of the feeded variables
   std::vector<DDim> Shapes() const { return shapes_; }
 
+  // Returns the dtypes of the feeded variables
+  std::vector<proto::VarType::Type> VarTypes() const { return var_types_; }
+
   // For Backward compatibility, old fluid.layers.data doesn't check shape.
   // This function returns whether you have the check shape for this Reader.
-  bool NeedCheckShape() const { return !shapes_.empty(); }
+  std::vector<bool> NeedCheckFeed() const { return need_check_feed_; }
 
   virtual ~ReaderBase();
 
@@ -62,11 +78,16 @@ class ReaderBase {
 
   mutable std::mutex mu_;
 
-  // The shapes of the feeded variables. It is used to check the shapes of the
-  // input data and the shapes of feeded variablesare matched. However, for
-  // Backward compatibility, old fluid.layers.data doesn't check shape. Empty
-  // shapes_ means it doesn't have to check shapes of the feeded variables
+  // The shapes of the feeded variables.
   std::vector<DDim> shapes_;
+
+  // The dtypes of the feeded variables.
+  std::vector<proto::VarType::Type> var_types_;
+
+  // Whether to check the shape and dtype of feeded variables.
+  // For Backward compatibility, variables created by old API fluid.layers.data
+  // doesn't check shape but fluid.data checks.
+  std::vector<bool> need_check_feed_;
 
  private:
   friend class DecoratedReader;
@@ -82,7 +103,9 @@ class DecoratedReader : public ReaderBase,
                         public std::enable_shared_from_this<DecoratedReader> {
  public:
   explicit DecoratedReader(const std::shared_ptr<ReaderBase>& reader)
-      : ReaderBase(reader->Shapes()), reader_(reader) {
+      : ReaderBase(reader->Shapes(), reader->VarTypes(),
+                   reader->NeedCheckFeed()),
+        reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
 
@@ -106,7 +129,10 @@ class DecoratedReader : public ReaderBase,
 // FileReader is just a conceptual class.
 class FileReader : public ReaderBase {
  public:
-  explicit FileReader(const std::vector<DDim>& shapes) : ReaderBase(shapes) {}
+  explicit FileReader(const std::vector<DDim>& shapes,
+                      const std::vector<proto::VarType::Type>& var_types,
+                      const std::vector<bool>& need_check_feed)
+      : ReaderBase(shapes, var_types, need_check_feed) {}
 };
 
 // The ReaderHolder is used as reader' unified wrapper,
@@ -154,7 +180,11 @@ class ReaderHolder {
 
   std::vector<DDim> Shapes() const { return reader_->Shapes(); }
 
-  bool NeedCheckShape() const { return reader_->NeedCheckShape(); }
+  std::vector<proto::VarType::Type> VarTypes() const {
+    return reader_->VarTypes();
+  }
+
+  std::vector<bool> NeedCheckFeed() const { return reader_->NeedCheckFeed(); }
 
   operator const std::shared_ptr<ReaderBase>&() const { return this->reader_; }
 

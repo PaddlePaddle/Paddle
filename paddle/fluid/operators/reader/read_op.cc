@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
@@ -112,24 +113,27 @@ class ReadOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size(),
                       "input size and output size of read_op do not match");
 
-    std::vector<framework::DDim> shapes;
-    if (reader->NeedCheckShape()) {
-      shapes = reader->Shapes();
-      PADDLE_ENFORCE_EQ(
-          out_arg_names.size(), shapes.size(),
-          "output size of read_op and number of shapes do not match");
-    }
+    std::vector<framework::DDim> shapes = reader->Shapes();
+    std::vector<framework::proto::VarType::Type> var_types = reader->VarTypes();
+    std::vector<bool> need_check_feed = reader->NeedCheckFeed();
+    PADDLE_ENFORCE_EQ(out_arg_names.size(), need_check_feed.size(),
+                      "output size of read_op and the number of feeded "
+                      "variables of reader do not match");
 
     for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
-      if (reader->NeedCheckShape()) {
+      if (need_check_feed[i]) {
         auto in_dims = ins[i].dims();
-        auto out_dims = shapes[i];
-        PADDLE_ENFORCE_EQ(DimensionIsCompatibleWith(out_dims, in_dims), true,
+        PADDLE_ENFORCE_EQ(DimensionIsCompatibleWith(shapes[i], in_dims), true,
                           "The feeded Variable %s should have dimensions = %d, "
                           "shape = [%s], but received feeded shape [%s]",
-                          out_arg_names[i], out_dims.size(), out_dims, in_dims);
+                          out_arg_names[i], shapes[i].size(), shapes[i],
+                          in_dims);
+        PADDLE_ENFORCE_EQ(
+            ins[i].type(), var_types[i],
+            "The data type of feeded Variable %s must be %s, but received %s",
+            out_arg_names[i], var_types[i], ins[i].type());
       }
       out->ShareDataWith(ins[i]);
       out->set_lod(ins[i].lod());
