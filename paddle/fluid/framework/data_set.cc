@@ -697,7 +697,12 @@ void MultiSlotDataset::GenerateLocalTablesUnlock(int table_id, int feadim, int r
       multi_output_channel_[i]->Write(std::move(vec_data));
       vec_data.clear();
       vec_data.shrink_to_fit();
-       
+      for (auto& tk : task_keys) {
+        tk.clear();
+        std::vector<uint64_t>().swap(tk);
+      }
+      task_keys.clear();
+      std::vector<std::vector<uint64_t>>().swap(task_keys);
       for (auto &tf : task_futures) {
         tf.wait();    
       }

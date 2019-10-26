@@ -67,7 +67,9 @@ void BindFleetWrapper(py::module* m) {
            &framework::FleetWrapper::LoadFromPaddleModel)
       .def("load_model_one_table", &framework::FleetWrapper::LoadModelOneTable)
       .def("set_client2client_config",
-           &framework::FleetWrapper::SetClient2ClientConfig);
+           &framework::FleetWrapper::SetClient2ClientConfig)
+      .def("set_pull_local_thread_num",
+           &framework::FleetWrapper::SetPullLocalThreadNum); 
 }  // end FleetWrapper
 }  // end namespace pybind
 }  // end namespace paddle

@@ -67,11 +67,15 @@ class FleetWrapper {
     client2client_connect_timeout_ms_ = 10000;
     // pslib request max retry
     client2client_max_retry_ = 3;
+    pull_local_thread_num_ = 40;
   }
 
   void SetClient2ClientConfig(int request_timeout_ms, int connect_timeout_ms,
                               int max_retry);
 
+  void SetPullLocalThreadNum(int thread_num) {
+    pull_local_thread_num_ = thread_num;    
+  }
   // Pull sparse variables from server in Sync mode
   // Param<in>: scope, table_id, var_names, fea_keys
   // Param<out>: fea_values
@@ -230,6 +234,7 @@ class FleetWrapper {
   int client2client_connect_timeout_ms_;
   int client2client_max_retry_;
   std::unique_ptr<::ThreadPool> local_pull_pool_{nullptr};
+  int pull_local_thread_num_;
   std::unique_ptr<::ThreadPool> pull_to_local_pool_{nullptr};
   int local_table_shard_num_;
   DISABLE_COPY_AND_ASSIGN(FleetWrapper);

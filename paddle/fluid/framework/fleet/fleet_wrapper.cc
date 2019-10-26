@@ -164,9 +164,9 @@ void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id, int fea_value_di
     if (fea_keys_size == 0) {
       return;    
     }
-    int pid = getpid();
-    std::cout << "fleet wrapper puul to local table with local table size: " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<  std::endl;
-  std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS");
+    // int pid = getpid();
+    // std::cout << "fleet wrapper puul to local table with local table size: " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<  std::endl;
+    // std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS");
     local_table_shard_num_ = fea_keys_size;
     double set_local_table_time = 0.0;
     platform::Timer timeline;
@@ -205,11 +205,11 @@ void FleetWrapper::PullSparseToLocalV2(const uint64_t table_id, int fea_value_di
       t.join();
     }
     local_pull_pool_.reset(
-                new ::ThreadPool(25));
+                new ::ThreadPool(pull_local_thread_num_));
     timeline.Pause();
     set_local_table_time = timeline.ElapsedSec();
-    std::cout << "Done fleet wrapper puul to local table with local table size: " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<  std::endl;
-  std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS");
+    // std::cout << "Done fleet wrapper puul to local table with local table size: " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<  std::endl;
+    // std::cout  << shell_get_command_output(std::string("cat /proc/") + std::to_string(pid) + "/status | grep VmRSS");
     std::cout << "Pull sparse to local done, set local table time: " <<
     set_local_table_time << std::endl;
 }
@@ -263,7 +263,7 @@ void FleetWrapper::PullSparseToLocal(const uint64_t table_id, const std::vector<
       t.join();
     }
     local_pull_pool_.reset(
-                new ::ThreadPool(100));
+                new ::ThreadPool(pull_local_thread_num_));
     timeline.Pause();
     set_local_table_time = timeline.ElapsedSec();
     // std::cout << "Done fleet wrapper puul to local table with local table size: " << local_tables_.size() << " capacity: " << local_tables_.capacity() <<  std::endl;
@@ -303,7 +303,7 @@ void FleetWrapper::PullSparseVarsFromLocal(
   }
   int key_length = fea_keys->size();
   // std::cout << "fleet eraper one request key num: " << key_length << std::endl;
-  int local_step = key_length / 100 + 1;
+  int local_step = key_length / pull_local_thread_num_;
   std::vector<std::future<void>> task_futures;
   task_futures.reserve(key_length/local_step + 1);
   for(size_t i = 0; i < key_length; i += local_step) {
@@ -332,9 +332,9 @@ void FleetWrapper::PullSparseVarsFromLocal(
 void FleetWrapper::ClearLocalTable() {
   for (auto& t : local_tables_) {
     t.clear();
-    std::unordered_map<uint64_t, std::vector<float>>().swap(t);
+    // std::unordered_map<uint64_t, std::vector<float>>().swap(t);
   }
-  std::vector<std::unordered_map<uint64_t, std::vector<float>>>().swap(local_tables_);
+  // std::vector<std::unordered_map<uint64_t, std::vector<float>>>().swap(local_tables_);
 }
 
 std::future<int32_t> FleetWrapper::PullSparseVarsAsync(
