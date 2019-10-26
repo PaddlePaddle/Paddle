@@ -722,4 +722,3 @@ def search_pyramid_hash(input,
         })
 
     return res
-
