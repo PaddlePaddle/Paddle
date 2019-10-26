@@ -48,17 +48,17 @@ if (WITH_DISTRIBUTE)
     SET(OP_PREFETCH_DEPS ${OP_PREFETCH_DEPS} parameter_prefetch)
 endif()
 
-SET(OP_ONLY_MKL "")
+SET(OP_MKL_DEPS "")
 if (NOT WITH_MKL OR NOT WITH_AVX)
-    SET(OP_ONLY_MKL ${OP_ONLY_MKL} match_matrix_tensor_op)
-    SET(OP_ONLY_MKL ${OP_ONLY_MKL} var_conv_2d_op)
+    SET(OP_MKL_DEPS ${OP_MKL_DEPS} match_matrix_tensor_op)
+    SET(OP_MKL_DEPS ${OP_MKL_DEPS} var_conv_2d_op)
 endif()
-if(NOT WITH_MKL OR WIN32)
-    SET(OP_ONLY_MKL ${OP_ONLY_MKL} pyramid_hash_op)
+if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
+    SET(OP_MKL_DEPS ${OP_MKL_DEPS} pyramid_hash_op)
 endif()
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op
-	sync_batch_norm_op multihead_matmul_op ${OP_ONLY_MKL} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+	sync_batch_norm_op multihead_matmul_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above

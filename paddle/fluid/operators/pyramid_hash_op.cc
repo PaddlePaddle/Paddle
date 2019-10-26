@@ -141,8 +141,8 @@ class PyramidHashOP : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "W"), ctx.GetPlace());
   }
 };
 
@@ -308,7 +308,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
       exit(1);
     }
     if (_is_training == 0) {
-      sse_axpy_noadd(top_data, top_data, top->dims()[0] * top->dims()[1],
+      avx_axpy_noadd(top_data, top_data, top->dims()[0] * top->dims()[1],
                      _drop_out_percent);
     }
   }
@@ -331,8 +331,8 @@ class PyramidHashOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "W"), ctx.GetPlace());
   }
 };
 
@@ -363,7 +363,7 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
                          int _space_len) const {
     for (unsigned int j = 0; j != _num_emb; j += _rand_len) {
       unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
-      sse_axpy(top_pos + j, weights + pos, _rand_len, mlr);
+      avx_axpy(top_pos + j, weights + pos, _rand_len, mlr);
     }
   }
 
