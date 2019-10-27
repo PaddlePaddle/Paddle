@@ -80,8 +80,8 @@ void DoubleCheckOperator::Run(const Scope& scope,
   std::string type = base_op_.Type();
   VLOG(10) << "begin to double check " << base_op_.Type();
 
-  if (type == "fill_constant") {
-    VLOG(10) << "end double check " << type << ", no fp16 should be checked";
+  if (type == "fill_constant" || type == "reshape2") {
+    VLOG(10) << "end double check " << type << ", need not to check";
     return;
   }
 
@@ -219,6 +219,9 @@ void DoubleCheckOperator::PrepareNameMap(
       }
 
       dst_var_names.push_back(fp32_var_name);
+      VLOG(10) << "try to check from:" << var_name << " to " << fp32_var_name
+               << " place:" << place << ", numel:" << tensor->numel()
+               << ", type:" << tensor->type();
       auto tensor_dtype = tensor->type();
       if (tensor_dtype != framework::proto::VarType::FP16) {
         continue;
