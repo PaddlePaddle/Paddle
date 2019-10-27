@@ -83,7 +83,8 @@ void DoubleCheckOperator::Run(const Scope& scope,
 
   if (type == "fill_constant" || type == "reshape2" ||
       type == "reshape2_grad" || type == "reshape" || type == "reshape_grad" ||
-      type == "transpose2" || type == "transpose2_grad") {
+      type == "transpose2" || type == "transpose2_grad" || type == "dropout" ||
+      type == "dropout_grad") {
     base_op_->Run(scope, place);
     VLOG(10) << "end double check " << type << ", need not to check";
     return;
@@ -154,7 +155,7 @@ void DoubleCheckOperator::Run(const Scope& scope,
 struct RangeFunctor {
   RangeFunctor(const platform::float16* a, const float* b) : a_(a), b_(b) {}
   inline HOSTDEVICE void operator()(size_t id) const {
-    PADDLE_ENFORCE((fabs(static_cast<float>(a_[id]) - b_[id]) < 0.1),
+    PADDLE_ENFORCE((fabs(static_cast<float>(a_[id]) - b_[id] / b_[id])) < 0.001,
                    "fabs(%f - %f) > 0.1", static_cast<float>(a_[id]), b_[id]);
   }
   const platform::float16* a_;
@@ -237,6 +238,11 @@ void DoubleCheckOperator::PrepareNameMap(
 
       PADDLE_ENFORCE_NOT_NULL(var_handle, "var name should in var_handles:%s",
                               var_name);
+      if (var_handle->Node()->Var() == nullptr) {
+        dst_var_names.push_back(var_name);
+        continue;
+      }
+
       if (var_handle->Node()->Var()->GetDataType() !=
           framework::proto::VarType::FP16) {
         dst_var_names.push_back(var_name);

@@ -29,18 +29,21 @@ ComputationOpHandle::ComputationOpHandle(ir::Node* node, Scope* scope,
       place_(place),
       scope_idx_(scope_idx) {
   if (FLAGS_fp16_double_check) {
-    if (op_->Type() == "dropout") {
-      framework::AttributeMap attrs;
-      for (auto& it : base_op_->Attrs()) {
-        attrs[it.first] = it.second;
-      }
-      attrs["is_test"] = true;
-      attrs["fix_seed"] = true;
-      attrs["seed"] = 0;
-
-      op_.reset(framework::OpRegistry::CreateOp(op_->Type(), op_->Inputs(),
-                                                op_->Outputs(), attrs));
+    /*
+  if (op_->Type() == "dropout"
+          || op_->Type() == "dropout_grad") {
+    framework::AttributeMap attrs;
+    for (auto& it : op_->Attrs()) {
+      attrs[it.first] = it.second;
     }
+    attrs["is_test"] = true;
+    attrs["fix_seed"] = true;
+    attrs["seed"] = 0;
+
+    op_ = framework::OpRegistry::CreateOp(op_->Type(), op_->Inputs(),
+                                              op_->Outputs(), attrs);
+  }
+  */
 
     check_op_.reset(new DoubleCheckOperator(op_.get(), *this));
   }
