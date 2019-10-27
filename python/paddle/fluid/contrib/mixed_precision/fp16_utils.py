@@ -96,7 +96,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
             if in_var.dtype == src_dtype:
                 cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype)
                 out_var = block.vars.get(cast_name)
-                if out_var is None:
+                if out_var is None or out_var.dtype != src_dtype:
                     out_var = block.create_var(
                         name=cast_name,
                         dtype=dest_dtype,
