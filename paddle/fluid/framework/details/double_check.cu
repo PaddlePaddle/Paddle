@@ -17,6 +17,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+namespace details {
 void DoubleCheckOperator::Wait(const platform::Place& place) {
   if (platform::is_gpu_place(place)) {
 #ifdef PADDLE_WITH_CUDA
@@ -80,7 +81,9 @@ void DoubleCheckOperator::Run(const Scope& scope,
   std::string type = base_op_.Type();
   VLOG(10) << "begin to double check " << base_op_.Type();
 
-  if (type == "fill_constant" || type == "reshape2") {
+  if (type == "fill_constant" || type == "reshape2" ||
+      type == "reshape2_grad" || type == "reshape" || type == "reshape_grad" ||
+      type == "transpose2" || type == "transpose2_grad") {
     VLOG(10) << "end double check " << type << ", need not to check";
     return;
   }
@@ -119,9 +122,9 @@ void DoubleCheckOperator::Run(const Scope& scope,
   Scope* var_scope = const_cast<Scope*>(&scope);
   VLOG(10) << "PrepareNameMap";
   PrepareNameMap(var_scope, place, base_op_.Inputs(), &inputs,
-                 &input_diff_var_names);
+                 &input_diff_var_names, base_handle_.Inputs());
   PrepareNameMap(var_scope, place, base_op_.Outputs(), &outputs,
-                 &output_diff_var_names);
+                 &output_diff_var_names, base_handle_.Outputs());
 
   if (input_diff_var_names.size() == 0 && output_diff_var_names.size() == 0) {
     VLOG(10) << "end double check " << base_op_.Type()
@@ -193,9 +196,11 @@ void DoubleCheckOperator::Diff(const Scope& scope, const platform::Place& place,
 }
 
 void DoubleCheckOperator::PrepareNameMap(
-    Scope* scope, const platform::Place& place, const VariableNameMap& name_map,
-    VariableNameMap* dst_name_map,
-    std::map<std::string, std::string>* diff_var_names) {
+    Scope* scope, const platform::Place& place,
+    const framework::VariableNameMap& name_map,
+    framework::VariableNameMap* dst_name_map,
+    std::map<std::string, std::string>* diff_var_names,
+    const std::vector<VarHandleBase*>& var_handles) {
   VLOG(10) << "name map size:" << name_map.size();
   for (auto it = name_map.begin(); it != name_map.end(); it++) {
     std::vector<std::string>& dst_var_names = (*dst_name_map)[it->first];
@@ -219,11 +224,28 @@ void DoubleCheckOperator::PrepareNameMap(
       }
 
       dst_var_names.push_back(fp32_var_name);
+      /*
       VLOG(10) << "try to check from:" << var_name << " to " << fp32_var_name
                << " place:" << place << ", numel:" << tensor->numel()
                << ", type:" << tensor->type();
       auto tensor_dtype = tensor->type();
       if (tensor_dtype != framework::proto::VarType::FP16) {
+        continue;
+      }
+      */
+
+      VarHandleBase* var_handle{nullptr};
+      for (auto var_h : var_handles) {
+        if (var_h->Name() == var_name) {
+          var_handle = var_h;
+          break;
+        }
+      }
+
+      PADDLE_ENFORCE_NOT_NULL(var_handle, "var name should in var_handles:%s",
+                              var_name);
+      if (var_handle->Node()->Var()->GetDataType() !=
+          framework::proto::VarType::FP16) {
         continue;
       }
 
@@ -243,7 +265,7 @@ void DoubleCheckOperator::PrepareNameMap(
         fp32_tensor =
             fp32_var->GetMutable<framework::SelectedRows>()->mutable_value();
       }
-      fp32_tensor->mutable_data(place, tensor_dtype);
+      fp32_tensor->mutable_data(place, framework::proto::VarType::FP32);
 
       // VLOG(10) << "cast data from:" << var_name
       // << " to new var:" << fp32_var_name;
@@ -260,5 +282,6 @@ void DoubleCheckOperator::PrepareNameMap(
   return;
 }
 
+}  // namespace details
 }  // namespace framework
 }  // namespace paddle

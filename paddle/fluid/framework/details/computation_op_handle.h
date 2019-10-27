@@ -61,7 +61,7 @@ class ComputationOpHandle : public OpHandleBase {
   size_t scope_idx_;
   bool is_lock_and_record_event_free_{false};
 
-  std::unique_ptr<framework::DoubleCheckOperator> check_op_;
+  std::unique_ptr<DoubleCheckOperator> check_op_;
   std::unique_ptr<OperatorBase> new_op_;
 };
 }  // namespace details

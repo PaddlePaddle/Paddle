@@ -29,7 +29,7 @@ ComputationOpHandle::ComputationOpHandle(ir::Node* node, Scope* scope,
       place_(place),
       scope_idx_(scope_idx) {
   if (FLAGS_fp16_double_check) {
-    check_op_.reset(new framework::DoubleCheckOperator(*op_.get()));
+    check_op_.reset(new DoubleCheckOperator(*op_.get(), *this));
 
     if (op_->Type() == "dropout") {
       framework::AttributeMap attrs;
@@ -56,8 +56,7 @@ void ComputationOpHandle::RunImpl() {
     VLOG(10) << "begin to run check";
     if (new_op_ != nullptr) {
       VLOG(10) << "run new_op_";
-      // new_op_->Run(*local_exec_scopes_[0], place_);
-      op_->Run(*local_exec_scopes_[0], place_);
+      new_op_->Run(*local_exec_scopes_[0], place_);
     } else {
       VLOG(10) << "run op_";
       op_->Run(*local_exec_scopes_[0], place_);
