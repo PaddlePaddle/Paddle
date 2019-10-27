@@ -113,15 +113,6 @@ void DoubleCheckOperator::Run(const Scope& scope,
     return;
   }
 
-  if (type == "dropout") {
-    framework::AttributeMap attrs;
-    for (auto& it : base_op_->Attrs()) {
-      attrs[it.first] = it.second;
-    }
-    attrs["is_test"] = true;
-    attrs["fix_seed"] = true;
-    attrs["seed"] = 0;
-  }
   base_op_->Run(scope, place);
   // Wait var's initailization.
   Wait(place);
@@ -232,20 +223,9 @@ void DoubleCheckOperator::PrepareNameMap(
       } else if (var->IsType<framework::SelectedRows>()) {
         tensor = &var->Get<framework::SelectedRows>().value();
       } else {
-        dst_var_names.push_back(fp32_var_name);
+        dst_var_names.push_back(var_name);
         continue;
       }
-
-      dst_var_names.push_back(fp32_var_name);
-      /*
-      VLOG(10) << "try to check from:" << var_name << " to " << fp32_var_name
-               << " place:" << place << ", numel:" << tensor->numel()
-               << ", type:" << tensor->type();
-      auto tensor_dtype = tensor->type();
-      if (tensor_dtype != framework::proto::VarType::FP16) {
-        continue;
-      }
-      */
 
       VarHandleBase* var_handle{nullptr};
       for (auto var_h : var_handles) {
@@ -259,9 +239,11 @@ void DoubleCheckOperator::PrepareNameMap(
                               var_name);
       if (var_handle->Node()->Var()->GetDataType() !=
           framework::proto::VarType::FP16) {
+        dst_var_names.push_back(var_name);
         continue;
       }
 
+      dst_var_names.push_back(fp32_var_name);
       (*diff_var_names)[var_name] = fp32_var_name;
       if (scope->FindVar(fp32_var_name) != nullptr) {
         continue;
