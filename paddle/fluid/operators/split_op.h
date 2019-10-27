@@ -26,16 +26,19 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 static inline std::vector<framework::DDim> UpdateOutsDims(
-    const bool is_runtime, const framework::DDim in_dims, const size_t num,
-    const std::vector<int>& sections, const size_t axis,
-    const int outs_number) {
+    const bool is_runtime, const bool each_section_is_known,
+    const framework::DDim in_dims, const size_t num, std::vector<int> sections,
+    const size_t axis, const int outs_number) {
   std::vector<framework::DDim> outs_dims(outs_number, in_dims);
   int64_t input_axis_dim = in_dims[axis];
   if (num > 0) {
     if (is_runtime || input_axis_dim > 0) {
       PADDLE_ENFORCE_EQ(input_axis_dim % num, 0,
-                        "tensor split does not result"
-                        " in an equal division");
+                        "The input's size along the split dimension "
+                        "must be evenly divisible by Attr(num_or_sections). "
+                        "But received Attr(num_or_sections) "
+                        "= %d, input(X)'s shape = [%s], Attr(dim) = %d.",
+                        num, in_dims, axis);
       size_t out_axis_dim = input_axis_dim / num;
 
       for (auto& out_dim : outs_dims) {
@@ -47,25 +50,54 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
       }
     }
   } else if (sections.size() > 0) {
-    bool all_positive = std::all_of(sections.cbegin(), sections.cend(),
-                                    [](int i) { return i > 0; });
-    if (is_runtime || (input_axis_dim > 0 && all_positive)) {
+    if (is_runtime || input_axis_dim > 0) {
+      const int unk_dim_val = -1;
+      int unk_dim_idx = -1, num_of_unk = 0;
       int sum_of_section = 0;
-      for (int section : sections) {
-        sum_of_section += section;
+      for (size_t i = 0; i < sections.size(); ++i) {
+        if (sections[i] == unk_dim_val) {
+          num_of_unk++;
+          unk_dim_idx = i;
+        } else {
+          sum_of_section += sections[i];
+        }
       }
-      PADDLE_ENFORCE_EQ(
-          sum_of_section, input_axis_dim,
-          "Sum of Attr(num_or_sections) must be equal to the input's size "
-          "along the split dimension. But received Attr(num_or_sections)"
-          " = [%s], input(X)'s shape = [%s], Attr(dim) = %d, ",
-          framework::make_ddim(sections), in_dims, axis);
+
+      if (each_section_is_known) {
+        PADDLE_ENFORCE_LE(num_of_unk, 1,
+                          "Only one dimension value of Attr(num_or_sections) "
+                          "in SplitOp can be -1. "
+                          "But received Attr(num_or_sections) = [%s].",
+                          framework::make_ddim(sections));
+      }
+
+      if (unk_dim_idx != -1) {
+        // for example, input shape = [4 ,5], axis = 1, sections = [2, 3, -1].
+        // input_axis_dim = 5, sum_of_sections = 5.
+        // the following check will fail.
+        PADDLE_ENFORCE_LT(
+            sum_of_section, input_axis_dim,
+            "Sum of Attr(num_or_sections) other than unknown section "
+            "must be less than the input's size "
+            "along the split dimension. But received Attr(num_or_sections) "
+            "= [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
+            framework::make_ddim(sections), in_dims, axis);
+        if (each_section_is_known) {
+          sections[unk_dim_idx] = input_axis_dim - sum_of_section;
+        }
+      } else {
+        PADDLE_ENFORCE_EQ(
+            sum_of_section, input_axis_dim,
+            "Sum of Attr(num_or_sections) must be equal to the input's size "
+            "along the split dimension. But received Attr(num_or_sections)"
+            " = [%s], input(X)'s shape = [%s], Attr(dim) = %d.",
+            framework::make_ddim(sections), in_dims, axis);
+      }
     }
     for (size_t i = 0; i < outs_number; ++i) {
       outs_dims[i][axis] = sections[i];
     }
   }
-
   return outs_dims;
 }
 template <typename DeviceContext, typename T>
@@ -82,15 +114,18 @@ class SplitOpKernel : public framework::OpKernel<T> {
     auto outs_number = outs.size();
 
     if (ctx.HasInput("AxisTensor")) {
-      std::vector<framework::DDim> outs_dims(outs_number, in_dims);
       auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
       axis = GetDataFromTensor<int>(axis_tensor)[0];
-
-      outs_dims =
-          UpdateOutsDims(true, in_dims, num, sections, axis, outs_number);
-      for (size_t j = 0; j < outs.size(); ++j) {
-        outs[j]->Resize(outs_dims[j]);
-      }
+    }
+    auto sections_tensor_list =
+        ctx.MultiInput<framework::Tensor>("SectionsTensorList");
+    if (sections_tensor_list.size() > 0) {
+      sections = GetDataFromTensorList<int>(sections_tensor_list);
+    }
+    std::vector<framework::DDim> outs_dims =
+        UpdateOutsDims(true, true, in_dims, num, sections, axis, outs_number);
+    for (size_t j = 0; j < outs.size(); ++j) {
+      outs[j]->Resize(outs_dims[j]);
     }
     auto place = ctx.GetPlace();
 

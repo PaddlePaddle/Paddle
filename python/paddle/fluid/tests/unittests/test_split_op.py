@@ -46,6 +46,7 @@ class TestSplitOp(OpTest):
         self.check_grad(['X'], ['out0', 'out1', 'out2'])
 
 
+# test with attr(num)
 class TestSplitOp_2(OpTest):
     def setUp(self):
         self._set_op_type()
@@ -82,6 +83,7 @@ class TestSplitOp_2(OpTest):
         self.check_grad(['X'], ['out0', 'out1', 'out2'])
 
 
+# attr(axis) is Tensor
 class TestSplitOp_AxisTensor(OpTest):
     def setUp(self):
         self._set_op_type()
@@ -103,6 +105,88 @@ class TestSplitOp_AxisTensor(OpTest):
         self.sections = []
         self.num = 3
         self.indices_or_sections = 3
+
+    def get_dtype(self):
+        return "float32"
+
+    def _set_op_type(self):
+        self.op_type = "split"
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+
+
+# attr(sections) is list containing Tensor
+class TestSplitOp_SectionsTensor(OpTest):
+    def setUp(self):
+        self._set_op_type()
+        self.dtype = self.get_dtype()
+        self.init_data()
+        self.inputs = {'X': self.x}
+
+        sections_tensor = []
+        for index, ele in enumerate(self.sections):
+            sections_tensor.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+        self.inputs['SectionsTensorList'] = sections_tensor
+
+        self.attrs = {
+            'axis': self.axis,
+            'sections': self.sections_infer,
+            'num': self.num
+        }
+
+        out = np.split(self.x, self.indices_or_sections, self.axis)
+        self.outputs = {'Out': [('out%d' % i, out[i]) \
+                                for i in range(len(out))]}
+
+    def init_data(self):
+        self.x = np.random.random((4, 5, 6)).astype(self.dtype)
+        self.axis = 1
+        self.sections = [2, 1, 2]
+        self.sections_infer = [-1, -1, -1]
+        self.num = 0
+        self.indices_or_sections = [2, 3]
+
+    def get_dtype(self):
+        return "float32"
+
+    def _set_op_type(self):
+        self.op_type = "split"
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+
+
+class TestSplitOp_unk_section(OpTest):
+    def setUp(self):
+        self._set_op_type()
+        self.dtype = self.get_dtype()
+        self.init_data()
+        self.inputs = {'X': self.x}
+        self.attrs = {
+            'axis': self.axis,
+            'sections': self.sections,
+            'num': self.num
+        }
+
+        out = np.split(self.x, self.indices_or_sections, self.axis)
+        self.outputs = {'Out': [('out%d' % i, out[i]) \
+                                for i in range(len(out))]}
+
+    def init_data(self):
+        self.x = np.random.random((4, 5, 6)).astype(self.dtype)
+        self.axis = 2
+        self.sections = [2, 1, -1]
+        self.num = 0
+        self.indices_or_sections = [2, 3]
 
     def get_dtype(self):
         return "float32"
@@ -149,7 +233,7 @@ class TestSplitAPI(OpTest):
         x_2 = fluid.data(shape=[4, 5, None], dtype='int32', name='x_2')
 
         out_0, out_1, out_2 = fluid.layers.split(
-            input=x_1, num_or_sections=[2, 1, 2], dim=1)
+            input=x_1, num_or_sections=[2, positive_1, -1], dim=1)
         out_3, out_4, out_5 = fluid.layers.split(
             input=x_1, num_or_sections=[2, 1, 2], dim=positive_1)
         fluid.layers.split(input=x_2, num_or_sections=2, dim=2)
@@ -173,12 +257,19 @@ class TestSplitAPI(OpTest):
 class TestSplitOpError(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # The type of axis in concat_op should be int or Variable.
+            # The type of axis in split_op should be int or Variable.
             def test_axis_type():
-                x6 = fluid.layers.data(shape=[4], dtype='float16', name='x6')
+                x6 = fluid.layers.data(shape=[4], dtype='float16', name='x3')
                 fluid.layers.split(input=x6, num_or_sections=2, dim=3.2)
 
             self.assertRaises(TypeError, test_axis_type)
+
+            # The type of num_or_sections in split_op should be int, tuple or list.
+            def test_num_or_sections_type():
+                x6 = fluid.layers.data(shape=[4], dtype='float16', name='x4')
+                fluid.layers.split(input=x6, num_or_sections=2.1, dim=3)
+
+            self.assertRaises(TypeError, test_num_or_sections_type)
 
 
 if __name__ == '__main__':

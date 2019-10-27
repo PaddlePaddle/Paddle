@@ -38,7 +38,7 @@ class SplitOp : public framework::OperatorWithKernel {
 
     if (sections.size() > 0) {
       PADDLE_ENFORCE_EQ(sections.size(), outs_number,
-                        "tensor split sections size"
+                        "tensor split sections size "
                         "should be equal to output size.");
     }
 
@@ -52,8 +52,12 @@ class SplitOp : public framework::OperatorWithKernel {
       }
       return;
     }
-    auto outs_dims = UpdateOutsDims(ctx->IsRuntime(), in_dims, num, sections,
-                                    axis, outs_number);
+
+    bool each_section_is_known =
+        (sections.size() > 0 && !ctx->HasInputs("SectionsTensorList"));
+
+    auto outs_dims = UpdateOutsDims(ctx->IsRuntime(), each_section_is_known,
+                                    in_dims, num, sections, axis, outs_number);
     ctx->SetOutputsDim("Out", outs_dims);
     if (axis != 0) {
       // Only pass LoD when not spliting along the first dim.
@@ -73,7 +77,7 @@ class SplitOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
       const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "AxisTensor") {
+    if (var_name == "AxisTensor" || var_name == "SectionsTensorList") {
       return expected_kernel_type;
     }
     return framework::OpKernelType(expected_kernel_type.data_type_,
@@ -89,6 +93,13 @@ class SplitOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The axis which the input will be splited on. "
              "It has higher priority than Attr(axis). "
              "The shape of AxisTensor must be [1]")
+        .AsDispensable();
+    AddInput("SectionsTensorList",
+             "(vector<Tensor<int>>, optional). "
+             "The length of each output along the specified axis. "
+             "It has a higher priority than Attr(sections)."
+             "The shape of the element in vector must be [1].")
+        .AsDuplicable()
         .AsDispensable();
     AddOutput("Out", "(Tensor) Output tensors of the split operator.")
         .AsDuplicable();
