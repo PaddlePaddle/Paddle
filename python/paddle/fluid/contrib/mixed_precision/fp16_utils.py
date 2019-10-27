@@ -66,7 +66,7 @@ def _dtype_to_str(dtype):
         return 'fp32'
 
 
-def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
+def _insert_cast_op(block, op, idx, src_dtype, dest_dtype, forward_set):
     """
     Insert cast op and rename args of input and output.
 
@@ -94,21 +94,36 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
             if in_var.type not in valid_types:
                 continue
             if in_var.dtype == src_dtype:
-                out_var = block.create_var(
-                    name=in_var.name + \
-                            '.cast_' + _dtype_to_str(dest_dtype),
-                    dtype=dest_dtype,
-                    persistable=False,
-                    stop_gradient=False)
-                block._insert_op(
-                    idx,
-                    type="cast",
-                    inputs={"X": in_var},
-                    outputs={"Out": out_var},
-                    attrs={
-                        "in_dtype": in_var.dtype,
-                        "out_dtype": out_var.dtype
-                    })
+                cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype),
+                if cast_name not in forward_set:
+                    out_var = block.create_var(
+                        name=cast_name,
+                        dtype=dest_dtype,
+                        persistable=False,
+                        stop_gradient=False)
+
+                    block._insert_op(
+                        idx,
+                        type="cast",
+                        inputs={"X": in_var},
+                        outputs={"Out": out_var},
+                        attrs={
+                            "in_dtype": in_var.dtype,
+                            "out_dtype": out_var.dtype
+                        })
+                    forward_set.add(cast_name)
+                else:
+                    out_var = block.find_var(cast_name)
+                    """
+                    b_key = in_var.name + "__mixed_precision_forward_check_{}__".format(_dtype_to_str(dest_dtype), _dtype_to_str(src_dtype))
+
+                    if b_key in forward_set:
+                        forward_set.remove(b_key)
+
+                    assert not block.has_var(f_key), "Var name used for check is aleady exists:{}".format(f_key)
+                    forward_set.add(f_key)
+                    """
+
                 num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
             else:
@@ -155,6 +170,16 @@ def find_true_prev_op(ops, cur_op, var_name):
     return None
 
 
+def _is_in_black_varnames(op, amp_lists):
+    for in_name in op.input_arg_names:
+        if in_name in amp_lists.black_varnames:
+            return True
+
+    for out_name in op.output_arg_names:
+        if out_name in amp_lists.black_varnames:
+            return True
+
+
 def rewrite_program(main_prog, amp_lists):
     """
     Traverse all ops in current block and insert cast op according to 
@@ -180,6 +205,12 @@ def rewrite_program(main_prog, amp_lists):
     white_op_set = set()
     black_op_set = set()
     for op in ops:
+        #print("op:", op.input_names, op.input_arg_names)
+        if _is_in_black_varnames(op, amp_lists):
+            #print("in black_varnames:", op)
+            black_op_set.add(op)
+            continue
+
         if op.type in amp_lists.black_list:
             black_op_set.add(op)
         elif op.type in amp_lists.white_list:
@@ -220,17 +251,26 @@ def rewrite_program(main_prog, amp_lists):
             black_op_set.add(op)
 
     idx = 0
+    forward_set = set()
     while idx < len(ops):
         op = ops[idx]
         num_cast_ops = 0
         if op in black_op_set:
-            num_cast_ops = _insert_cast_op(block, op, idx,
-                                           core.VarDesc.VarType.FP16,
-                                           core.VarDesc.VarType.FP32)
+            num_cast_ops = _insert_cast_op(
+                block,
+                op,
+                idx,
+                core.VarDesc.VarType.FP16,
+                core.VarDesc.VarType.FP32,
+                forward_set=forward_set)
         elif op in white_op_set:
-            num_cast_ops = _insert_cast_op(block, op, idx,
-                                           core.VarDesc.VarType.FP32,
-                                           core.VarDesc.VarType.FP16)
+            num_cast_ops = _insert_cast_op(
+                block,
+                op,
+                idx,
+                core.VarDesc.VarType.FP32,
+                core.VarDesc.VarType.FP16,
+                forward_set=forward_set)
         else:
             pass
 

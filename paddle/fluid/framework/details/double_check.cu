@@ -240,7 +240,7 @@ void DoubleCheckOperator::PrepareNameMap(
         fp32_tensor =
             fp32_var->GetMutable<framework::SelectedRows>()->mutable_value();
       }
-      // fp32_tensor->mutable_data(place, tensor_dtype, );
+      fp32_tensor->mutable_data(place, tensor_dtype);
 
       // VLOG(10) << "cast data from:" << var_name
       // << " to new var:" << fp32_var_name;
