@@ -29,18 +29,7 @@ ComputationOpHandle::ComputationOpHandle(ir::Node* node, Scope* scope,
       place_(place),
       scope_idx_(scope_idx) {
   if (FLAGS_fp16_double_check) {
-    check_op_.reset(new DoubleCheckOperator(*op_.get(), *this));
-
-    if (op_->Type() == "dropout") {
-      framework::AttributeMap attrs;
-      for (auto& it : op_->Attrs()) {
-        attrs[it.first] = it.second;
-      }
-      attrs["is_test"] = true;
-
-      new_op_ = framework::OpRegistry::CreateOp(op_->Type(), op_->Inputs(),
-                                                op_->Outputs(), attrs);
-    }
+    check_op_.reset(new DoubleCheckOperator(op_.get(), *this));
   }
 }
 
@@ -53,19 +42,8 @@ void ComputationOpHandle::RunImpl() {
       return;
     }
 
-    VLOG(10) << "begin to run check";
-    if (new_op_ != nullptr) {
-      VLOG(10) << "run new_op_";
-      new_op_->Run(*local_exec_scopes_[0], place_);
-    } else {
-      VLOG(10) << "run op_";
-      op_->Run(*local_exec_scopes_[0], place_);
-    }
-
-    VLOG(10) << "run check_op_";
+    VLOG(10) << "begin to run check" << Name();
     check_op_->Run(*local_exec_scopes_[0], place_);
-    VLOG(10) << "end to run check";
-    return;
   };
 
   if (is_lock_and_record_event_free_) {

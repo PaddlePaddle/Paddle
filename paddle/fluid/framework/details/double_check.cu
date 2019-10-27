@@ -78,22 +78,26 @@ void DoubleCheckOperator::GetCastInputAndOutputs(
 
 void DoubleCheckOperator::Run(const Scope& scope,
                               const platform::Place& place) {
-  std::string type = base_op_.Type();
-  VLOG(10) << "begin to double check " << base_op_.Type();
+  std::string type = base_op_->Type();
+  VLOG(10) << "begin to double check " << base_op_->Type();
 
   if (type == "fill_constant" || type == "reshape2" ||
       type == "reshape2_grad" || type == "reshape" || type == "reshape_grad" ||
       type == "transpose2" || type == "transpose2_grad") {
+    base_op_->Run(scope, place);
     VLOG(10) << "end double check " << type << ", need not to check";
     return;
   }
 
   if (type == "cast") {
+    base_op_->Run(scope, place);
+    Wait(place);
+
     VLOG(10) << "PrepareNameMap";
 
     std::map<std::string, std::string> diff_var_names;
     VariableNameMap outputs;
-    GetCastInputAndOutputs(scope, place, base_op_, &diff_var_names);
+    GetCastInputAndOutputs(scope, place, *base_op_, &diff_var_names);
 
     if (diff_var_names.size() == 0) {
       VLOG(10) << "end double check " << type << ", no fp16 should be checked";
@@ -105,10 +109,22 @@ void DoubleCheckOperator::Run(const Scope& scope,
       Diff(scope, place, it.first, it.second);
     }
 
-    Wait(place);
     VLOG(10) << "end double check " << type;
     return;
   }
+
+  if (type == "dropout") {
+    framework::AttributeMap attrs;
+    for (auto& it : base_op_->Attrs()) {
+      attrs[it.first] = it.second;
+    }
+    attrs["is_test"] = true;
+    attrs["fix_seed"] = true;
+    attrs["seed"] = 0;
+  }
+  base_op_->Run(scope, place);
+  // Wait var's initailization.
+  Wait(place);
 
   VariableNameMap inputs;
   VariableNameMap outputs;
@@ -116,25 +132,22 @@ void DoubleCheckOperator::Run(const Scope& scope,
   std::map<std::string, std::string> input_diff_var_names;
   std::map<std::string, std::string> output_diff_var_names;
 
-  // Wait var's initailization.
-  Wait(place);
-
   Scope* var_scope = const_cast<Scope*>(&scope);
   VLOG(10) << "PrepareNameMap";
-  PrepareNameMap(var_scope, place, base_op_.Inputs(), &inputs,
+  PrepareNameMap(var_scope, place, base_op_->Inputs(), &inputs,
                  &input_diff_var_names, base_handle_.Inputs());
-  PrepareNameMap(var_scope, place, base_op_.Outputs(), &outputs,
+  PrepareNameMap(var_scope, place, base_op_->Outputs(), &outputs,
                  &output_diff_var_names, base_handle_.Outputs());
 
   if (input_diff_var_names.size() == 0 && output_diff_var_names.size() == 0) {
-    VLOG(10) << "end double check " << base_op_.Type()
+    VLOG(10) << "end double check " << base_op_->Type()
              << ", no fp16 should be checked";
     return;
   }
 
-  VLOG(10) << "double check " << base_op_.Type() << " fp16 content";
+  VLOG(10) << "double check " << base_op_->Type() << " fp16 content";
   auto check_op = paddle::framework::OpRegistry::CreateOp(type, inputs, outputs,
-                                                          base_op_.Attrs());
+                                                          base_op_->Attrs());
   check_op->Run(scope, place);
 
   for (auto it : output_diff_var_names) {
@@ -144,14 +157,14 @@ void DoubleCheckOperator::Run(const Scope& scope,
 
   // Wait difference complation.
   Wait(place);
-  VLOG(10) << "end double check " << base_op_.Type();
+  VLOG(10) << "end double check " << base_op_->Type();
 }
 
 struct RangeFunctor {
   RangeFunctor(const platform::float16* a, const float* b) : a_(a), b_(b) {}
   inline HOSTDEVICE void operator()(size_t id) const {
-    PADDLE_ENFORCE((fabs(static_cast<float>(a_[id]) - b_[id]) < 0.01),
-                   "fabs(%f - %f) > 0.01", static_cast<float>(a_[id]), b_[id]);
+    PADDLE_ENFORCE((fabs(static_cast<float>(a_[id]) - b_[id]) < 0.1),
+                   "fabs(%f - %f) > 0.1", static_cast<float>(a_[id]), b_[id]);
   }
   const platform::float16* a_;
   const float* b_;

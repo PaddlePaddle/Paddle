@@ -27,7 +27,7 @@ namespace details {
 
 class DoubleCheckOperator {
  public:
-  explicit DoubleCheckOperator(const OperatorBase& base_op,
+  explicit DoubleCheckOperator(OperatorBase* base_op,
                                const OpHandleBase& base_handle)
       : base_op_(base_op), base_handle_(base_handle) {}
   void Run(const Scope& scope, const platform::Place& place);
@@ -50,7 +50,7 @@ class DoubleCheckOperator {
       std::map<std::string, std::string>* diff_var_names);
 
  private:
-  const OperatorBase& base_op_;
+  OperatorBase* base_op_{nullptr};
   const OpHandleBase& base_handle_;
 };
 }  // namespace details
