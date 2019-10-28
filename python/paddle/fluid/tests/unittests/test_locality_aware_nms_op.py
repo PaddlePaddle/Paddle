@@ -18,6 +18,7 @@ import numpy as np
 import copy
 from op_test import OpTest
 from test_multiclass_nms_op import iou
+import paddle.fluid as fluid
 
 
 def weight_merge(box1, box2, score1, score2):
@@ -193,7 +194,7 @@ class TestLocalAwareNMSOp(OpTest):
         background = -1
         nms_threshold = 0.3
         nms_top_k = 400
-        keep_top_k = 200
+        keep_top_k = 20
         score_threshold = self.score_threshold
 
         scores = np.random.random((N * M, C)).astype('float32')
@@ -297,6 +298,20 @@ class TestLocalAwareNMSOp4Points(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestLocalityAwareNMSAPI(OpTest):
+    def test_api(self):
+        boxes = fluid.data(name='bboxes', shape=[None, 81, 8], dtype='float32')
+        scores = fluid.data(name='scores', shape=[None, 1, 81], dtype='float32')
+        fluid.layers.locality_aware_nms(
+            bboxes=boxes,
+            scores=scores,
+            score_threshold=0.5,
+            nms_top_k=400,
+            nms_threshold=0.3,
+            keep_top_k=200,
+            normalized=False)
 
 
 if __name__ == '__main__':

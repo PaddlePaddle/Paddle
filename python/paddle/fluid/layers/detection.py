@@ -3223,7 +3223,7 @@ def locality_aware_nms(bboxes,
 
 
             import paddle.fluid as fluid
-            boxes = fluid.data(name='bboxes', shape=[None,81, 8],
+            boxes = fluid.data(name='bboxes', shape=[None, 81, 8],
                                       dtype='float32')
             scores = fluid.data(name='scores', shape=[None, 1, 81],
                                       dtype='float32')

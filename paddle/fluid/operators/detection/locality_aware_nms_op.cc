@@ -26,12 +26,12 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("BBoxes"),
-                   "Input(BBoxes) of MultiClassNMS should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Scores"),
-                   "Input(Scores) of MultiClassNMS should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of MultiClassNMS should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("BBoxes"), true,
+                      "Input(BBoxes) of MultiClassNMS should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Scores"), true,
+                      "Input(Scores) of MultiClassNMS should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of MultiClassNMS should not be null.");
 
     auto box_dims = ctx->GetInputDim("BBoxes");
     auto score_dims = ctx->GetInputDim("Scores");
@@ -67,7 +67,7 @@ class LocalityAwareNMSOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Scores")->type(),
+        OperatorWithKernel::IndicateVarDataType(ctx, "Scores"),
         platform::CPUPlace());
   }
 };
@@ -346,7 +346,6 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
       const std::map<int, std::vector<int>>& selected_indices,
       const int scores_size, Tensor* outs, int* oindices = nullptr,
       const int offset = 0) const {
-    int64_t class_num = scores.dims()[1];
     int64_t predict_dim = scores.dims()[1];
     int64_t box_size = bboxes.dims()[1];
     if (scores_size == 2) {
@@ -369,19 +368,12 @@ class LocalityAwareNMSKernel : public framework::OpKernel<T> {
 
         odata[count * out_dim] = label;  // label
         const T* bdata;
-        if (scores_size == 3) {
-          bdata = bboxes_data + idx * box_size;
-          odata[count * out_dim + 1] = sdata[idx];  // score
-          if (oindices != nullptr) {
-            oindices[count] = offset + idx;
-          }
-        } else {
-          bdata = bbox.data<T>() + idx * box_size;
-          odata[count * out_dim + 1] = *(scores_data + idx * class_num + label);
-          if (oindices != nullptr) {
-            oindices[count] = offset + idx * class_num + label;
-          }
+        bdata = bboxes_data + idx * box_size;
+        odata[count * out_dim + 1] = sdata[idx];  // score
+        if (oindices != nullptr) {
+          oindices[count] = offset + idx;
         }
+
         // xmin, ymin, xmax, ymax or multi-points coordinates
         std::memcpy(odata + count * out_dim + 2, bdata, box_size * sizeof(T));
         count++;
