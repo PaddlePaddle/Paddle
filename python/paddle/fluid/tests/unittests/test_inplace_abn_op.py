@@ -41,7 +41,8 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                       only_forward=False,
                       activation="identity",
                       alpha=1.0,
-                      use_cuda=False):
+                      use_cuda=False,
+                      inplace=False):
         main = fluid.Program()
         startup = fluid.Program()
         main.random_seed = seed
@@ -142,6 +143,25 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                     for infer_only in [False, True]:
                         self.compare(place, layout, infer_only, activation,
                                      alpha, use_cuda)
+
+    def test_all_branches(self):
+        seed = 10
+        os.environ['FLAGS_cudnn_deterministic'] = "1"
+        data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
+        use_cudas = [False, True] if core.is_compiled_with_cuda() else [False]
+        alpha = 0.1
+        layouts = ["NCHW", "NHWC"]
+        for use_cuda in use_cudas:
+            place = core.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else core.CPUPlace()
+            for layout in layouts:
+                for activation in ['identity', 'leaky_relu']:
+                    main, startup, outs = self.build_program(
+                        place, layout, seed, False, activation, alpha, use_cuda,
+                        True)
+                    exe = fluid.Executor(place)
+                    exe.run(startup)
+                    exe.run(program=main, feed={'input': data})
 
 
 if __name__ == '__main__':
