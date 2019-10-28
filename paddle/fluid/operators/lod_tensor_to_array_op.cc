@@ -199,14 +199,16 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
                    "Output(Out) of LoDTensorToArrayOp should not be null.");
 
     auto x_dim = context->GetInputDim("X");
-    // The first dim of each LoDTensor in Output can only be set at run-time.;
-    // We still have to Resize each LoDTensor in Output.
+    // For compile-time, the first dim of input X and output Out should be -1.
+    // For runtime, the first dim of input X should be the sum of all elements's
+    // first dim in output Out. The output's dims will be re-computed in detail
+    // kernel implementation.
     context->SetOutputDim("Out", x_dim);
 
     // The output LoDTensor's lod_level should be input X's lod_level - 1.
     // For compile time, we call DecreaseLoDLevel to set output's lod_level.
-    // For runtime, output LoDTensor's is determined by input X's lod and the
-    // level specified by input RandTable.
+    // For runtime, output LoDTensor's lod is determined by input X's lod and
+    // the level specified by input RandTable.
     // We cannot get X's detail lod and RankTable's level in this function, so
     // leave this work to the detail kernel implementation.
     if (!context->IsRuntime()) {
