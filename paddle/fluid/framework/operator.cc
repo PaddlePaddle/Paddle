@@ -933,7 +933,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (FLAGS_check_nan_inf) {
-    ///*
+    /*
     for (auto& vname : OutputVars(true)) {
       auto* var = exec_scope.FindVar(vname);
       if (var == nullptr) continue;
@@ -944,14 +944,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                             var->Get<framework::SelectedRows>().value());
       }
     }
-    //*/
-    /*
-    for (auto& vname : OutputVars(true)) {
-        auto* var = exec_scope.FindVar(vname);
-        if (var == nullptr) continue;
-        framework::details::EnforceNoNanOrInf(type_, exec_scope, vname, place);
-    }
     */
+    for (auto& vname : OutputVars(true)) {
+      auto* var = exec_scope.FindVar(vname);
+      if (var == nullptr) continue;
+      framework::details::EnforceNoNanOrInf(type_, exec_scope, vname, place);
+    }
   }
 
   // To solve issue #15032, have a discussion with @Luotao for cpu inference,
