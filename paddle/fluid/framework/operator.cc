@@ -933,21 +933,25 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (FLAGS_check_nan_inf) {
-    /*
-  for (auto& vname : OutputVars(true)) {
-    auto* var = exec_scope.FindVar(vname);
-    if (var == nullptr) continue;
-    if (var->IsType<framework::LoDTensor>()) {
-      CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
-    } else if (var->IsType<framework::SelectedRows>()) {
-      CheckTensorNANOrInf(type_, vname,
-                          var->Get<framework::SelectedRows>().value());
-    }
-  }
-  */
+    ///*
     for (auto& vname : OutputVars(true)) {
-      framework::details::EnforceNoNanOrInf(type_, exec_scope, vname, place);
+      auto* var = exec_scope.FindVar(vname);
+      if (var == nullptr) continue;
+      if (var->IsType<framework::LoDTensor>()) {
+        CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
+      } else if (var->IsType<framework::SelectedRows>()) {
+        CheckTensorNANOrInf(type_, vname,
+                            var->Get<framework::SelectedRows>().value());
+      }
     }
+    //*/
+    /*
+    for (auto& vname : OutputVars(true)) {
+        auto* var = exec_scope.FindVar(vname);
+        if (var == nullptr) continue;
+        framework::details::EnforceNoNanOrInf(type_, exec_scope, vname, place);
+    }
+    */
   }
 
   // To solve issue #15032, have a discussion with @Luotao for cpu inference,
