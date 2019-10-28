@@ -88,10 +88,11 @@ no_grad.__doc__ = _no_grad_.__doc__
 @signature_safe_contextmanager
 def guard(place=None):
     """
-    This context will create a dygraph context for dygraph to run
+    This context will create a dygraph context for dygraph to run, using python ``with`` statement.
 
-    Args:
-        place(fluid.CPUPlace|fluid.CUDAPlace|None): Place to run
+    Parameters:
+        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph. 
+            If None, the running place will be determined according to the way of paddle compilation. Default: None
 
     return:
         None

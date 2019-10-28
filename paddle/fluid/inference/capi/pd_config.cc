@@ -33,6 +33,7 @@ void PD_DeleteAnalysisConfig(PD_AnalysisConfig* config) {
   if (config) {
     delete config;
     config = nullptr;
+    VLOG(3) << "PD_AnalysisConfig delete successfully. ";
   }
 }
 

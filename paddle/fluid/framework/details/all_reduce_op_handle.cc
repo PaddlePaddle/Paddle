@@ -171,6 +171,10 @@ void AllReduceOpHandle::NCCLAllReduceFunc(
     }
   });
 
+  SyncNCCLAllReduce();
+}
+
+void AllReduceOpHandle::SyncNCCLAllReduce() {
   if (FLAGS_sync_nccl_allreduce) {
     for (auto &p : places_) {
       int dev_id = boost::get<platform::CUDAPlace>(p).device;

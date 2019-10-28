@@ -51,9 +51,9 @@ endif()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
 if(WITH_GPU)
-  nv_test(tensor_util_test SRCS tensor_util_test.cc tensor_util_test.cu DEPS tensor)
+  nv_test(tensor_util_test SRCS tensor_util_test.cc tensor_util_test.cu DEPS tensor dlpack_tensor)
 else()
-  cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor)
+  cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor dlpack_tensor)
 endif()
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
@@ -127,6 +127,7 @@ cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope gl
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
+cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op_registry device_context)
 
 cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)

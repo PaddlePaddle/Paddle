@@ -132,9 +132,6 @@ static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
-      return default_lod;
-    }
     return tensor.lod();
   } else {
     return default_lod;
@@ -186,7 +183,14 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   } catch (platform::EnforceNotMet exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
+  } catch (platform::EOFException&) {
+    std::rethrow_exception(std::current_exception());
+  } catch (std::exception& ex) {
+    LOG(WARNING) << Type() << " raises an exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    std::rethrow_exception(std::current_exception());
   } catch (...) {
+    LOG(WARNING) << Type() << " raises an unknown exception";
     std::rethrow_exception(std::current_exception());
   }
 }
@@ -238,8 +242,16 @@ const std::vector<std::string>& OperatorBase::Outputs(
 std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
+
+  std::unordered_set<std::string> no_need_buffer_vars;
+  if (info_ && info_->NoNeedBufferVarsInferer()) {
+    no_need_buffer_vars =
+        Info().NoNeedBufferVarsInferer()(Inputs(), Outputs(), Attrs());
+  }
+
   for (auto it = inputs_.begin(); it != inputs_.end();) {
     auto& input = *it;
+    bool is_no_need_buffer_var = (no_need_buffer_vars.count(input.first) > 0);
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
       auto var_name = input.second[i];
@@ -252,7 +264,9 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           if (row_size >= 0) {
             ss << "[row_size=" << row_size << "]";
           }
-          std::string dtype = GetDtype(*scope, var_name);
+          std::string dtype = is_no_need_buffer_var
+                                  ? "unknown_dtype"
+                                  : GetDtype(*scope, var_name);
           ss << ":" << dtype;
           ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
           ss << "(" << GetLoDDebug(*scope, var_name) << ")";
