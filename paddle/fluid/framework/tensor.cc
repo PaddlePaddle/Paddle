@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/memory/allocation/numpy_allocator.h"
 
 namespace paddle {
 namespace framework {
@@ -64,6 +65,15 @@ void* Tensor::mutable_data(platform::Place place, size_t requested_size) {
   PADDLE_ENFORCE_NOT_NULL(
       this->holder_, "Cannot invoke mutable data if current hold nothing.");
   return mutable_data(place, type_, requested_size);
+}
+
+void Tensor::from_numpy(void* data_ptr, size_t size,
+                        const std::function<void()>& deleter) {
+  PADDLE_ENFORCE_NOT_NULL(
+      data_ptr, "Cannot invoke from_numpy with data_ptr hold nothing.");
+  holder_.reset();
+  holder_ = std::shared_ptr<memory::Allocation>(
+      memory::allocation::NumpyAllocator(data_ptr, deleter).Allocate(size));
 }
 
 Tensor& Tensor::ShareDataWith(const Tensor& src) {

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <pybind11/numpy.h>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -117,6 +118,9 @@ class Tensor {
 
   /*! The internal of two tensors share the same memory block. */
   Tensor& ShareDataWith(const Tensor& src);
+
+  void from_numpy(void* data_ptr, size_t size,
+                  const std::function<void()>& deleter);
 
   /**
    * @brief  Return a sub-tensor of the given tensor.

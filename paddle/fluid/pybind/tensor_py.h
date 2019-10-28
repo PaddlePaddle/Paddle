@@ -76,8 +76,18 @@ void PyCPUTensorSetFromArray(
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
-
   self->Resize(framework::make_ddim(dims));
+
+  //  array.inc_ref();
+  //  void *data_ptr =
+  //      const_cast<void *>(reinterpret_cast<const void *>(array.data()));
+  //  self->from_numpy(data_ptr, sizeof(T) * array.size(), [array]() {
+  //    VLOG(3) << "into deleter";
+  //    pybind11::gil_scoped_acquire gil;
+  //    array.dec_ref();
+  //    VLOG(3) << "end deleter";
+  //  });
+
   auto *dst = self->mutable_data<T>(place);
   std::memcpy(dst, array.data(), sizeof(T) * array.size());
 }
@@ -485,10 +495,12 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor) {
 
   size_t numel = 1;
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
+    VLOG(3) << "TensorToPyArray tensor_dims[i] " << tensor_dims[i];
     py_dims[i] = (size_t)tensor_dims[i];
     py_strides[i] = sizeof_dtype * numel;
     numel *= py_dims[i];
   }
+  VLOG(3) << "TensorToPyArray numel: " << numel;
 
   const void *tensor_buf_ptr = tensor.data<void>();
 

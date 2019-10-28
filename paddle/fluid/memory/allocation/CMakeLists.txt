@@ -1,5 +1,6 @@
 cc_library(allocator SRCS allocator.cc DEPS place)
 cc_library(cpu_allocator SRCS cpu_allocator.cc DEPS allocator)
+cc_library(numpy_allocator SRCS numpy_allocator.cc DEPS allocator)
 cc_library(locked_allocator SRCS locked_allocator.cc DEPS allocator)
 cc_library(buffered_allocator SRCS buffered_allocator.cc DEPS allocator)
 cc_library(best_fit_allocator SRCS best_fit_allocator.cc DEPS allocator)

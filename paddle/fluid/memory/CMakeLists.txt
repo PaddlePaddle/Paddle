@@ -8,7 +8,7 @@ else ()
 endif()
 
 cc_library(malloc SRCS malloc.cc DEPS
-    place enforce allocator_facade profiler ${MKLDNN_CTX_DEPS})
+    place enforce allocator_facade numpy_allocator profiler ${MKLDNN_CTX_DEPS})
 cc_library(memcpy SRCS memcpy.cc DEPS place)
 
 cc_library(memory

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "paddle/fluid/memory/allocation/numpy_allocator.h"
 #include "paddle/fluid/platform/place.h"
 namespace paddle {
 
