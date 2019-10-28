@@ -86,6 +86,8 @@ class DistributedNotifyOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() {
     AddInput("X", "(Tensor, SelectedRows) Input variables to be sent")
         .AsDuplicable();
+    AddInput("Y", "(Any) Dummy inputs, used for control dependency")
+        .AsDuplicable();
     AddOutput("Out", "(Any) Dummy outputs, used for control dependency")
         .AsDuplicable();
     AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);

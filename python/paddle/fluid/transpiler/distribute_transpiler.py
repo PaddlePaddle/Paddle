@@ -304,6 +304,7 @@ class DistributeTranspiler(object):
             PRINT_LOG = True
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
+        self.counter_var = None
 
     def _transpile_nccl2(self,
                          trainer_id,
@@ -632,29 +633,6 @@ class DistributeTranspiler(object):
 
         self.grad_name_to_send_dummy_out = dict()
 
-        if not self.sync_mode:
-            lr_ops = self._get_lr_ops()
-            if len(lr_ops) > 0:
-                decay_dummy_output = program.global_block().create_var(
-                    name=framework.generate_control_dev_var_name())
-                if self.config.runtime_split_send_recv:
-                    ## async mode, using communicator to merge and send
-                    send_varnames = [self.counter_var.name]
-                else:
-                    send_varnames = []
-                sections = []
-                program.global_block()._prepend_op(
-                    type="distributed_notify",
-                    inputs={"X": self.counter_var},
-                    outputs={"Out": decay_dummy_output},
-                    attrs={
-                        "epmap": pserver_endpoints,
-                        "sections": sections,
-                        "send_varnames": send_varnames,
-                        "merge_add": True,
-                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-                    })
-
         for grad_varname, splited_vars in grad_var_mapping_items:
             eplist = ps_dispatcher.dispatch(splited_vars)
 
@@ -744,6 +722,34 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
             fetch_barrier_input.append(send_barrier_out)
+        else:
+            if self.has_distributed_lookup_table:
+                self.grad_name_to_send_dummy_out[
+                    self.table_name] = program.global_block().create_var(
+                        name=framework.generate_control_dev_var_name())
+            input_deps = list(self.grad_name_to_send_dummy_out.values())
+            lr_ops = self._get_lr_ops()
+            if len(lr_ops) > 0 and self.counter_var:
+                decay_dummy_output = program.global_block().create_var(
+                    name=framework.generate_control_dev_var_name())
+                if self.config.runtime_split_send_recv:
+                    ## async mode, using communicator to merge and send
+                    send_varnames = [self.counter_var.name]
+                else:
+                    send_varnames = []
+                sections = []
+                program.global_block().append_op(
+                    type="distributed_notify",
+                    inputs={"X": self.counter_var,
+                            "Y": input_deps},
+                    outputs={"Out": decay_dummy_output},
+                    attrs={
+                        "epmap": pserver_endpoints,
+                        "sections": sections,
+                        "send_varnames": send_varnames,
+                        "merge_add": True,
+                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                    })
 
         # step 3: insert recv op to receive parameters from parameter server
         recv_vars = []
