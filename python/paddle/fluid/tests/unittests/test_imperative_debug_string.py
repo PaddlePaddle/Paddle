@@ -58,7 +58,7 @@ class TestDygraphDebugString(unittest.TestCase):
                 out.backward()
                 mlp.clear_gradients()
                 unique_name_tmp, trace_var_tmp, alive_var_tmp = fluid.dygraph.base._print_debug_msg(
-                    is_test=True)
+                    mlp.parameters(), is_test=True)
                 if i > 0:
                     self.assertGreaterEqual(unique_name, unique_name_tmp)
                     self.assertGreaterEqual(trace_var, trace_var_tmp)
@@ -68,7 +68,7 @@ class TestDygraphDebugString(unittest.TestCase):
                     trace_var = trace_var_tmp
                     alive_var = alive_var_tmp
                 try:
-                    fluid.dygraph.base._print_debug_msg()
+                    fluid.dygraph.base._print_debug_msg(mlp.parameters())
                 except Exception as e:
                     raise RuntimeError(
                         "No Exception is accepted in _print_debug_msg, but we got: {}".

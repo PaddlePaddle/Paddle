@@ -1006,7 +1006,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                         dy_param_init[param.name] = param.numpy()
 
                 dy_avg_cost.backward(backward_strategy)
-                optimizer.minimize(dy_avg_cost)
+                optimizer.minimize(
+                    dy_avg_cost, parameter_list=transformer.parameters())
                 transformer.clear_gradients()
 
                 if i == batch_num - 1:

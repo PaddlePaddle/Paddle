@@ -252,7 +252,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                                               to_variable(labels_np[
                                                   slice:slice + BATCH_SIZE])))
                     loss.backward()
-                    adam.minimize(loss)
+                    adam.minimize(loss, parameter_list=deepcf.parameters())
                     deepcf.clear_gradients()
                     dy_loss = loss.numpy()
                     sys.stderr.write('dynamic loss: %s %s\n' % (slice, dy_loss))
@@ -278,7 +278,7 @@ class TestDygraphDeepCF(unittest.TestCase):
                                               to_variable(labels_np[
                                                   slice:slice + BATCH_SIZE])))
                     loss2.backward(backward_strategy)
-                    adam2.minimize(loss2)
+                    adam2.minimize(loss2, parameter_list=deepcf2.parameters())
                     deepcf2.clear_gradients()
                     dy_loss2 = loss2.numpy()
                     sys.stderr.write('dynamic loss: %s %s\n' %

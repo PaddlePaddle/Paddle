@@ -96,7 +96,7 @@ class TestImperativeMnist(unittest.TestCase):
                 dy_param_init_value[param.name] = param.numpy()
 
             loss.backward()
-            sgd.minimize(loss)
+            sgd.minimize(loss, parameter_list=policy.parameters())
             policy.clear_gradients()
 
             dy_param_value = {}

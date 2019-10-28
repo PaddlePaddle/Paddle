@@ -405,7 +405,7 @@ class TestParallelDyGraphRunnerBase(object):
                 if args.update_method == "nccl2":
                     model.apply_collective_grads()
 
-                opt.minimize(loss)
+                opt.minimize(loss, parameter_list=model.parameters())
                 model.clear_gradients()
         print_to_out(out_losses)
 

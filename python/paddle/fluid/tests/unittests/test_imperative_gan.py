@@ -151,7 +151,10 @@ class TestDygraphGAN(unittest.TestCase):
 
             d_loss = d_loss_real + d_loss_fake
             d_loss.backward()
-            sgd.minimize(d_loss)
+            sgd.minimize(
+                d_loss,
+                parameter_list=(
+                    discriminator.parameters() + generator.parameters()))
             discriminator.clear_gradients()
             generator.clear_gradients()
 
@@ -161,7 +164,10 @@ class TestDygraphGAN(unittest.TestCase):
                 fluid.layers.sigmoid_cross_entropy_with_logits(
                     x=d_fake, label=to_variable(np.ones([2, 1], np.float32))))
             g_loss.backward()
-            sgd.minimize(g_loss)
+            sgd.minimize(
+                g_loss,
+                parameter_list=(
+                    discriminator.parameters() + generator.parameters()))
             for p in discriminator.parameters():
                 dy_params[p.name] = p.numpy()
             for p in generator.parameters():
@@ -194,7 +200,10 @@ class TestDygraphGAN(unittest.TestCase):
 
             d_loss2 = d_loss_real2 + d_loss_fake2
             d_loss2.backward(backward_strategy)
-            sgd2.minimize(d_loss2)
+            sgd2.minimize(
+                d_loss2,
+                parameter_list=(
+                    discriminator2.parameters() + generator2.parameters()))
             discriminator2.clear_gradients()
             generator2.clear_gradients()
 
@@ -204,7 +213,10 @@ class TestDygraphGAN(unittest.TestCase):
                 fluid.layers.sigmoid_cross_entropy_with_logits(
                     x=d_fake2, label=to_variable(np.ones([2, 1], np.float32))))
             g_loss2.backward(backward_strategy)
-            sgd2.minimize(g_loss2)
+            sgd2.minimize(
+                g_loss2,
+                parameter_list=(
+                    discriminator2.parameters() + generator2.parameters()))
             for p in discriminator2.parameters():
                 dy_params2[p.name] = p.numpy()
             for p in generator.parameters():

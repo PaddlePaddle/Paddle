@@ -166,7 +166,7 @@ class TestImperativeMnist(unittest.TestCase):
                             dy_param_init_value[param.name] = param.numpy()
 
                     avg_loss.backward()
-                    sgd.minimize(avg_loss)
+                    sgd.minimize(avg_loss, parameter_list=mnist.parameters())
                     mnist.clear_gradients()
 
                     dy_param_value = {}

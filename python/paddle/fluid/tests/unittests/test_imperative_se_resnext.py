@@ -365,7 +365,8 @@ class TestImperativeResneXt(unittest.TestCase):
                     #                            .get_tensor())
                     #        dy_grad_value[param.name + core.grad_var_suffix()] = np_array
 
-                    optimizer.minimize(avg_loss)
+                    optimizer.minimize(
+                        avg_loss, parameter_list=se_resnext.parameters())
                     se_resnext.clear_gradients()
 
                     dy_param_value = {}

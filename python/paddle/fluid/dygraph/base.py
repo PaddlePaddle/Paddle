@@ -141,14 +141,14 @@ def guard(place=None):
                     yield
 
 
-def _print_debug_msg(limit=5, is_test=False):
+def _print_debug_msg(parameter_list, limit=5, is_test=False):
     if not core._is_dygraph_debug_enabled():
         logging.warn(
             'Debug mode is not enabled. Please set FLAGS_dygraph_debug=1 to enable debug'
         )
         return
     unique_name_size = len(framework.unique_name.generator.ids)
-    tracer_var_size = len(framework._dygraph_tracer()._vars)
+    tracer_var_size = len(parameter_list)
     alive_cpp_var_size = len(core.VarBase._alive_vars())
     if not is_test:
         logging.warn(

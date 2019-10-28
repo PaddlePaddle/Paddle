@@ -262,7 +262,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
                 dy_loss.backward()
-                adam.minimize(dy_loss)
+                adam.minimize(dy_loss, parameter_list=ptb_model.parameters())
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
@@ -344,7 +344,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
                 dy_loss.backward()
-                adam.minimize(dy_loss)
+                adam.minimize(dy_loss, parameter_list=ptb_model.parameters())
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
@@ -449,7 +449,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
                 dy_loss.backward()
-                adam.minimize(dy_loss)
+                adam.minimize(dy_loss, parameter_list=ptb_model.parameters())
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
@@ -553,7 +553,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
                 dy_loss.backward()
-                adam.minimize(dy_loss)
+                adam.minimize(dy_loss, parameter_list=ptb_model.parameters())
                 ptb_model.clear_gradients()
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
@@ -666,7 +666,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                                                             init_cell)
 
                 dy_loss.backward()
-                adam.minimize(dy_loss)
+                adam.minimize(dy_loss, parameter_list=ptb_model.parameters())
                 ptb_model.clear_gradients()
 
             opti_dict = adam.state_dict()
@@ -759,7 +759,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                                                             init_cell)
 
                 dy_loss.backward()
-                adam.minimize(dy_loss)
+                adam.minimize(dy_loss, parameter_list=ptb_model.parameters())
                 ptb_model.clear_gradients()
 
             opti_dict = adam.state_dict()
@@ -860,7 +860,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
                                                             init_cell)
 
                 dy_loss.backward()
-                adam.minimize(dy_loss)
+                adam.minimize(dy_loss, parameter_list=ptb_model.parameters())
                 ptb_model.clear_gradients()
 
             opti_dict = adam.state_dict()

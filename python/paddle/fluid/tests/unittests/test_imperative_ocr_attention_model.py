@@ -486,7 +486,8 @@ class TestDygraphOCRAttention(unittest.TestCase):
                             dy_grad_value[param.name + core.grad_var_suffix(
                             )] = np_array
 
-                    optimizer.minimize(avg_loss)
+                    optimizer.minimize(
+                        avg_loss, parameter_list=ocr_attention.parameters())
                     ocr_attention.clear_gradients()
                     dy_param_value = {}
                     for param in ocr_attention.parameters():

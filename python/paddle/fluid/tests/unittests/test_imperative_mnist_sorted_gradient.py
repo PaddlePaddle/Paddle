@@ -69,7 +69,7 @@ class TestImperativeMnistSortGradient(unittest.TestCase):
                             dy_param_init_value2[param.name] = param.numpy()
 
                     avg_loss2.backward(backward_strategy)
-                    sgd2.minimize(avg_loss2)
+                    sgd2.minimize(avg_loss2, parameter_list=mnist2.parameters())
                     mnist2.clear_gradients()
 
                     dy_param_value2 = {}

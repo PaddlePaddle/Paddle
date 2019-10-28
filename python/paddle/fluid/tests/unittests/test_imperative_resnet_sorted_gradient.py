@@ -124,7 +124,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                         dy_grad_value[param.name + core.grad_var_suffix(
                         )] = np_array
 
-                optimizer.minimize(avg_loss)
+                optimizer.minimize(avg_loss, parameter_list=resnet.parameters())
                 resnet.clear_gradients()
 
                 dy_param_value = {}
