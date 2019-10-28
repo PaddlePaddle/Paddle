@@ -342,6 +342,12 @@ PYBIND11_MODULE(core_noavx, m) {
           LoadStaticNameListFromDisk(str_file_name, vec_name_list, scope);
         });
 
+  m.def("_create_loaded_parameter",
+        [](const std::string &str_file_name, const py::handle &vec_var_list,
+           const Scope &scope, const Executor *executor) {
+          CreateVariableIfNotExit(vec_var_list, scope, executor);
+        });
+
   m.def("_save_dygraph_dict", [](const std::string &str_file_name,
                                  const PyNameVarBaseMap &state_dict) {
     auto vec_var_base_list = GetVarBaseList(state_dict);
@@ -359,18 +365,6 @@ PYBIND11_MODULE(core_noavx, m) {
       map_output.emplace(load_tensor[i]->Name(), load_tensor[i]);
     }
 
-    return map_output;
-  });
-
-  m.def("_load_np_dict", [](const std::string &str_file_name) {
-    std::map<std::string, std::shared_ptr<Tensor>> map_load_tensor;
-    LoadTensorFromDisk(str_file_name, &map_load_tensor);
-
-    std::unordered_map<std::string, py::array> map_output;
-
-    for (auto &v : map_load_tensor) {
-      map_output.emplace(v.first, TensorToPyArray(*(v.second)));
-    }
     return map_output;
   });
 
