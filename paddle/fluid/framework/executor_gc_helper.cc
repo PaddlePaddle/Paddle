@@ -89,10 +89,10 @@ static bool VarCanBeDeleted(const std::string &name, const BlockDesc &block,
          type == proto::VarType::LOD_TENSOR_ARRAY;
 }
 
-std::unordered_map<OperatorBase *, std::vector<std::string>> GetUnusedVars(
-    const BlockDesc &block,
-    const std::vector<std::unique_ptr<OperatorBase>> &ops,
-    const std::vector<std::string> &skip_var_list) {
+std::unordered_map<const OperatorBase *, std::vector<std::string>>
+GetUnusedVars(const BlockDesc &block,
+              const std::vector<std::unique_ptr<OperatorBase>> &ops,
+              const std::vector<std::string> &skip_var_list) {
   std::unordered_set<std::string> skip_vars(skip_var_list.begin(),
                                             skip_var_list.end());
 
@@ -134,7 +134,7 @@ std::unordered_map<OperatorBase *, std::vector<std::string>> GetUnusedVars(
     }
   }
 
-  std::unordered_map<OperatorBase *, std::vector<std::string>> result;
+  std::unordered_map<const OperatorBase *, std::vector<std::string>> result;
   for (auto &name_op_idx_pair : var_op_idx_map) {
     auto &name = name_op_idx_pair.first;
     size_t op_idx = name_op_idx_pair.second;
@@ -144,8 +144,8 @@ std::unordered_map<OperatorBase *, std::vector<std::string>> GetUnusedVars(
 }
 
 void DeleteUnusedTensors(
-    const Scope &scope, OperatorBase *op,
-    const std::unordered_map<OperatorBase *, std::vector<std::string>>
+    const Scope &scope, const OperatorBase *op,
+    const std::unordered_map<const OperatorBase *, std::vector<std::string>>
         &delete_vars_map,
     GarbageCollector *gc) {
   auto iter = delete_vars_map.find(op);

@@ -5,3 +5,8 @@ else()
 endif(WITH_PSLIB)
 
 cc_library(nccl_wrapper SRCS nccl_wrapper.cc DEPS framework_proto variable_helper scope)
+if(WITH_BOX_PS)
+    cc_library(box_wrapper SRCS box_wrapper.cc DEPS framework_proto lod_tensor box_ps)
+else()
+    cc_library(box_wrapper SRCS box_wrapper.cc DEPS framework_proto lod_tensor)
+endif(WITH_BOX_PS)

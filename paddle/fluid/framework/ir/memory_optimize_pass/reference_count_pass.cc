@@ -312,13 +312,22 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
   ShrinkDepsOpFunctor shrink_func(
       ir::FilterByNodeWrapper<details::OpHandleBase>(*graph));
 
+  details::PinnedVars *pinned_var_set = nullptr;
+  if (graph->Has(details::kPinnedVars)) {
+    pinned_var_set = &graph->Get<details::PinnedVars>(details::kPinnedVars);
+  }
+  auto is_pinned_var = [&pinned_var_set](const VarDesc &var_desc) {
+    return var_desc.Persistable() ||
+           (pinned_var_set && pinned_var_set->count(var_desc.Name()));
+  };
+
   VLOG(1) << "Place number: " << vars.size();
   for (size_t i = 0; i < vars.size(); ++i) {
     for (auto &name_var_pair : vars[i]) {
       // Whether this variable can be reused or deleted? If not, we do not
       // compute reference counts and dependencies.
       VarDesc *var_desc = TryGetLatestVarDesc(name_var_pair.second);
-      if (var_desc == nullptr || var_desc->Persistable()) {
+      if (var_desc == nullptr || is_pinned_var(*var_desc)) {
         continue;
       }
 

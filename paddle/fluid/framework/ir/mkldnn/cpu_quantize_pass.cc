@@ -209,12 +209,11 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
                      is_output_unsigned, "Scale_out");
 
     // change threshold in bounded ReLu
-    if (conv_op->Op()->HasAttr("fuse_brelu") &&
-        boost::get<bool>(conv_op->Op()->GetAttr("fuse_brelu"))) {
+    if (conv_op->Op()->GetAttrIfExists<std::string>("fuse_activation") ==
+        "relu6") {
       float scale_out = boost::get<float>(conv_op->Op()->GetAttr("Scale_out"));
-      float threshold =
-          boost::get<float>(conv_op->Op()->GetAttr("fuse_brelu_threshold"));
-      conv_op->Op()->SetAttr("fuse_brelu_threshold", scale_out * threshold);
+      float threshold = boost::get<float>(conv_op->Op()->GetAttr("fuse_alpha"));
+      conv_op->Op()->SetAttr("fuse_alpha", scale_out * threshold);
     }
 
     ++quantize_conv_count;

@@ -171,8 +171,9 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
+        ctx.device_context());
   }
 };
 
@@ -232,9 +233,9 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Loss"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Loss")),
+                                   ctx.device_context());
   }
 };
 
@@ -255,23 +256,11 @@ class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-class SoftmaxWithCrossEntropyInplaceInference
-    : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc& op_desc, bool use_cuda) const {
-    return {{"Logits", "Softmax"}};
-  }
-};
+DECLARE_INPLACE_OP_INFERER(SoftmaxWithCrossEntropyInplaceInference,
+                           {"Logits", "Softmax"});
 
-class SoftmaxWithCrossEntropyGradInplaceInference
-    : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc& op_desc, bool use_cuda) const {
-    return {{"Softmax", framework::GradVarName("Logits")}};
-  }
-};
+DECLARE_INPLACE_OP_INFERER(SoftmaxWithCrossEntropyGradInplaceInference,
+                           {"Softmax", framework::GradVarName("Logits")});
 
 }  // namespace operators
 }  // namespace paddle

@@ -13,39 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"
-#include <memory>
-#include <string>
-#include <unordered_set>
-
-namespace paddle {
-namespace framework {
-namespace ir {
-
-void MKLDNNPlacementPass::ApplyImpl(ir::Graph* graph) const {
-  VLOG(3) << "Applies MKL-DNN placement strategy.";
-  const auto& op_types_list =
-      Get<std::unordered_set<std::string>>("mkldnn_enabled_op_types");
-  if (!graph->Has("use_mkldnn")) {
-    graph->Set<bool>("use_mkldnn", new bool(true));
-  }
-  for (const Node* n : graph->Nodes()) {
-    if (n->IsOp()) {
-      auto* op = n->Op();
-      if (op->HasAttr("use_mkldnn") || op->HasProtoAttr("use_mkldnn")) {
-        if (op_types_list.empty()) {
-          op->SetAttr("use_mkldnn", true);
-        } else if (std::find(op_types_list.begin(), op_types_list.end(),
-                             n->Name()) != op_types_list.end()) {
-          op->SetAttr("use_mkldnn", true);
-        }
-      }
-    }
-  }
-}
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
 
 REGISTER_PASS(mkldnn_placement_pass, paddle::framework::ir::MKLDNNPlacementPass)
     .RequirePassAttr("mkldnn_enabled_op_types");

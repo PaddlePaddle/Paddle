@@ -16,9 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
-DEFINE_int64(cudnn_exhaustive_search_times, -1,
-             "Exhaustive search times for cuDNN convolution, "
-             "default is -1, not exhaustive search");
+DECLARE_int64(cudnn_exhaustive_search_times);
 
 namespace paddle {
 namespace operators {
@@ -81,11 +79,11 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
         cudnn_conv_desc, groups));
 
     cudnnTensorDescriptor_t cudnn_input_desc = input_desc.descriptor<T>(
-        layout, framework::vectorize2int(input->dims()));
+        layout, framework::vectorize<int>(input->dims()));
     cudnnTensorDescriptor_t cudnn_output_desc = output_desc.descriptor<T>(
-        layout, framework::vectorize2int(output->dims()));
+        layout, framework::vectorize<int>(output->dims()));
     cudnnFilterDescriptor_t cudnn_filter_desc = filter_desc.descriptor<T>(
-        layout, framework::vectorize2int(filter->dims()));
+        layout, framework::vectorize<int>(filter->dims()));
     // Now only support NCHW
     std::vector<int> bias_dim = {1, static_cast<int>(output->dims()[1]), 1, 1};
     cudnnTensorDescriptor_t cudnn_bias_desc =

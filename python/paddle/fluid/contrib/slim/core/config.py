@@ -27,7 +27,7 @@ __all__ = ['ConfigFactory']
 """This factory is used to create instances by loading and parsing configure file with yaml format.
 """
 
-PLUGINS = ['pruners', 'quantizers', 'quantizers', 'strategies', 'controllers']
+PLUGINS = ['pruners', 'quantizers', 'distillers', 'strategies', 'controllers']
 
 
 class ConfigFactory(object):

@@ -39,10 +39,7 @@ class TestSequenceUnpadOp(OpTest):
         else:
             out_shape = out_shape + self.x_shape[2:]
 
-        self.inputs = {
-            'X': x,
-            'Length': np.array(self.length).astype('int64').reshape(-1, 1)
-        }
+        self.inputs = {'X': x, 'Length': np.array(self.length).astype('int64')}
         self.outputs = {'Out': (out.reshape(out_shape), out_lod)}
 
     def setUp(self):

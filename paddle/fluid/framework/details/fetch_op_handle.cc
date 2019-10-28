@@ -61,12 +61,17 @@ void FetchOpHandle::RunImpl() {
                             var_handle->name());
 
     auto &t = var->Get<framework::LoDTensor>();
-    if (platform::is_gpu_place(t.place())) {
+    if (t.IsInitialized() && t.numel() > 0) {
+      if (platform::is_gpu_place(t.place())) {
 #ifdef PADDLE_WITH_CUDA
-      TensorCopy(t, cpu, &tensors_[i]);
+        TensorCopy(t, cpu, &tensors_[i]);
 #endif
+      } else {
+        tensors_[i].ShareDataWith(t);
+      }
     } else {
-      tensors_[i].ShareDataWith(t);
+      tensors_[i].clear();
+      tensors_[i].Resize({0});
     }
     tensors_[i].set_lod(t.lod());
   }

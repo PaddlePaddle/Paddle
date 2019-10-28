@@ -23,9 +23,6 @@
 namespace paddle {
 namespace operators {
 
-static framework::proto::VarType::Type kDefaultDtype =
-    framework::proto::VarType::Type::VarType_Type_BOOL;
-
 template <typename DeviceContext, typename T>
 class CoalesceTensorOp : public framework::OpKernel<T> {
  public:
@@ -66,8 +63,10 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
 
     // Get numel and dtype
     size_t numel = 0;
-    auto dtype = kDefaultDtype;
-    GetMemSizeAndDtype(in_tensors, in_var_names, &numel, &dtype,
+    auto dtype = static_cast<framework::proto::VarType::Type>(
+        context.Attr<int>("dtype"));
+    size_t size_of_dtype = framework::SizeOfType(dtype);
+    GetMemSizeAndDtype(in_tensors, in_var_names, &numel, size_of_dtype,
                        context.GetPlace());
 
     // Alloc the continuous space
@@ -78,7 +77,6 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
     // Init the continuous space
     auto out_tensors = context.MultiOutput<framework::LoDTensor>("Output");
     size_t offset = 0;
-    size_t size_of_dtype = framework::SizeOfType(dtype);
     if (context.Attr<bool>("copy_data")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
         size_t len = static_cast<size_t>(in_tensors[i]->numel());
@@ -120,26 +118,14 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
   void GetMemSizeAndDtype(
       const std::vector<const framework::LoDTensor *> &lod_tensors,
       const std::vector<std::string> var_names, size_t *numel,
-      framework::proto::VarType::Type *dtype,
-      const platform::Place &place) const {
+      const size_t &size_of_dtype, const platform::Place &place) const {
     PADDLE_ENFORCE_EQ(lod_tensors.size(), var_names.size());
     *numel = 0;
-    size_t size_of_dtype = 0;
-
     std::stringstream ss;
     ss << "alloc_space_for_vars: ";
     for (size_t i = 0; i < var_names.size(); ++i) {
       PADDLE_ENFORCE(lod_tensors[i]->IsInitialized(), "%s is not initialized.",
                      var_names[i]);
-
-      auto p_dtype = lod_tensors[i]->type();
-      if (*dtype == kDefaultDtype) {
-        PADDLE_ENFORCE_NE(p_dtype, kDefaultDtype, "%s's type should not be %s.",
-                          var_names[i], kDefaultDtype);
-        *dtype = p_dtype;
-        size_of_dtype = framework::SizeOfType(p_dtype);
-      }
-      PADDLE_ENFORCE_EQ(p_dtype, *dtype, "Input vars is not equal.");
 
       auto size = lod_tensors[i]->numel();
       PADDLE_ENFORCE_GT(size, 0);
@@ -178,6 +164,7 @@ class AllocContinuousSpaceOpMaker : public framework::OpProtoAndCheckerMaker {
               "(LoDTensor) The output tensor "
               "of coalesce_tensor operator. And the tensors of"
               " Output is sliced from the tensor of FusedOutput.");
+    AddAttr<int>("dtype", "The output data type.");
     AddAttr<bool>("copy_data", "Whether to copy the Input value to Output.")
         .SetDefault(false);
     AddAttr<bool>("set_constant",

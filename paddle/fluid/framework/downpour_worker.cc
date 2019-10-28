@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/string/string_helper.h"
 
 #if defined _WIN32 || defined __APPLE__
 #else
@@ -43,6 +44,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
       sparse_grad_names_[table_id][j] = table.sparse_grad_name(j);
     }
     label_var_name_[table_id] = table.label_var_name();
+    sparse_push_keys_[table_id] = std::vector<uint64_t>();
   }
 
   for (int i = 0; i < param_.dense_table_size(); ++i) {
@@ -63,6 +65,10 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     skip_ops_[i] = param_.skip_ops(i);
   }
 
+  for (int i = 0; i < param_.stat_var_names_size(); ++i) {
+    stat_var_name_map_[param_.stat_var_names(i)] = 1;
+  }
+
   need_to_push_sparse_ = param_.push_sparse();
   need_to_push_dense_ = param_.push_dense();
 
@@ -71,7 +77,90 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   use_cvm_ = desc.use_cvm();
   scale_datanorm_ = desc.scale_datanorm();
   dump_slot_ = desc.dump_slot();
+  dump_fields_.resize(desc.dump_fields_size());
+  for (int i = 0; i < desc.dump_fields_size(); ++i) {
+    dump_fields_[i] = desc.dump_fields(i);
+  }
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
+  for (int i = 0; i < desc.check_nan_var_names_size(); ++i) {
+    check_nan_var_names_.push_back(desc.check_nan_var_names(i));
+  }
+}
+
+void DownpourWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
+  writer_.Reset(queue);
+}
+
+void DownpourWorker::SetNeedDump(bool need_dump_field) {
+  need_dump_field_ = need_dump_field;
+}
+
+template <typename T>
+std::string PrintLodTensorType(LoDTensor* tensor, int64_t start, int64_t end) {
+  auto count = tensor->numel();
+  if (start < 0 || end > count) {
+    VLOG(3) << "access violation";
+    return "access violation";
+  }
+  std::ostringstream os;
+  for (int64_t i = start; i < end; i++) {
+    os << ":" << tensor->data<T>()[i];
+  }
+  return os.str();
+}
+
+std::string PrintLodTensorIntType(LoDTensor* tensor, int64_t start,
+                                  int64_t end) {
+  auto count = tensor->numel();
+  if (start < 0 || end > count) {
+    VLOG(3) << "access violation";
+    return "access violation";
+  }
+  std::ostringstream os;
+  for (int64_t i = start; i < end; i++) {
+    os << ":" << static_cast<uint64_t>(tensor->data<int64_t>()[i]);
+  }
+  return os.str();
+}
+
+std::string PrintLodTensor(LoDTensor* tensor, int64_t start, int64_t end) {
+  std::string out_val;
+  if (tensor->type() == proto::VarType::FP32) {
+    out_val = PrintLodTensorType<float>(tensor, start, end);
+  } else if (tensor->type() == proto::VarType::INT64) {
+    out_val = PrintLodTensorIntType(tensor, start, end);
+  } else if (tensor->type() == proto::VarType::FP64) {
+    out_val = PrintLodTensorType<double>(tensor, start, end);
+  } else {
+    out_val = "unsupported type";
+  }
+  return out_val;
+}
+
+std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
+  auto& dims = tensor->dims();
+  if (tensor->lod().size() != 0) {
+    auto& lod = tensor->lod()[0];
+    return {lod[index] * dims[1], lod[index + 1] * dims[1]};
+  } else {
+    return {index * dims[1], (index + 1) * dims[1]};
+  }
+}
+
+bool CheckValidOutput(LoDTensor* tensor, int batch_size) {
+  auto& dims = tensor->dims();
+  if (dims.size() != 2) return false;
+  if (tensor->lod().size() != 0) {
+    auto& lod = tensor->lod()[0];
+    if (lod.size() != batch_size + 1) {
+      return false;
+    }
+  } else {
+    if (dims[0] != batch_size) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {
@@ -103,6 +192,14 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
     LoDTensor* tensor = fea_var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var "
                              << sparse_key_names_[table_id][i] << " is null";
+
+    // skip slots which do not have embedding
+    Variable* emb_var =
+        thread_scope_->FindVar(sparse_value_names_[table_id][i]);
+    if (emb_var == nullptr) {
+      continue;
+    }
+
     int64_t* ids = tensor->data<int64_t>();
     size_t fea_idx = 0;
     // tensor->lod()[0].size() == batch_size + 1
@@ -149,6 +246,9 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     int64_t* ids = tensor->data<int64_t>();
     int len = tensor->numel();
     Variable* var_emb = thread_scope_->FindVar(emb_slot_name);
+    if (var_emb == nullptr) {
+      continue;
+    }
     LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
     float* ptr = tensor_emb->mutable_data<float>({len, table.emb_dim()},
                                                  platform::CPUPlace());
@@ -334,9 +434,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
       }
       timeline.Start();
-      fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
-                                     sparse_key_names_[tid], &features_[tid],
-                                     &feature_values_[tid], table.fea_dim());
+      fleet_ptr_->PullSparseVarsSync(
+          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
+          &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
       timeline.Pause();
       pull_sparse_time += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
@@ -383,6 +483,22 @@ void DownpourWorker::TrainFilesWithProfiler() {
       }
     }
 
+    // check inf and nan
+    for (std::string& var_name : check_nan_var_names_) {
+      Variable* var = thread_scope_->FindVar(var_name);
+      if (var == nullptr) {
+        continue;
+      }
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (tensor == nullptr) {
+        continue;
+      }
+      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
+                        "Tensor %s contains Inf", var_name);
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
+                        "Tensor %s contains NAN", var_name);
+    }
+
     if (need_to_push_sparse_) {
       for (int i = 0; i < param_.program_config(0).push_sparse_table_id_size();
            ++i) {
@@ -400,7 +516,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_);
+            dump_slot_, &sparse_push_keys_[tid]);
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
@@ -542,9 +658,9 @@ void DownpourWorker::TrainFiles() {
           break;
         }
       }
-      fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
-                                     sparse_key_names_[tid], &features_[tid],
-                                     &feature_values_[tid], table.fea_dim());
+      fleet_ptr_->PullSparseVarsSync(
+          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
+          &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
       CollectLabelInfo(i);
       FillSparseValue(i);
       auto nid_iter = std::find(sparse_value_names_[tid].begin(),
@@ -570,6 +686,22 @@ void DownpourWorker::TrainFiles() {
       }
     }
 
+    // check inf and nan
+    for (std::string& var_name : check_nan_var_names_) {
+      Variable* var = thread_scope_->FindVar(var_name);
+      if (var == nullptr) {
+        continue;
+      }
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (tensor == nullptr) {
+        continue;
+      }
+      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
+                        "Tensor %s contains Inf", var_name);
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
+                        "Tensor %s contains NAN", var_name);
+    }
+
     if (need_to_push_sparse_) {
       // push gradients here
       for (int i = 0; i < param_.program_config(0).push_sparse_table_id_size();
@@ -587,7 +719,7 @@ void DownpourWorker::TrainFiles() {
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_);
+            dump_slot_, &sparse_push_keys_[tid]);
       }
     }
 
@@ -600,7 +732,6 @@ void DownpourWorker::TrainFiles() {
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
             scale_datanorm_, cur_batch);
       }
-
       VLOG(3) << "push dense gradient done.";
 
       // the following code should be more precise and clean
@@ -646,10 +777,51 @@ void DownpourWorker::TrainFiles() {
         pull_dense_worker_->IncreaseThreadVersion(thread_id_, tid);
       }
     }
+    if (need_dump_field_) {
+      int batch_size = device_reader_->GetCurBatchSize();
+      std::vector<std::string> ars(batch_size);
+      for (auto& ar : ars) {
+        ar.clear();
+      }
+      auto& ins_id_vec = device_reader_->GetInsIdVec();
+      auto& ins_content_vec = device_reader_->GetInsContentVec();
+      for (size_t i = 0; i < ins_id_vec.size(); i++) {
+        ars[i] += ins_id_vec[i];
+        ars[i] = ars[i] + "\t" + ins_content_vec[i];
+      }
+      for (auto& field : dump_fields_) {
+        Variable* var = thread_scope_->FindVar(field);
+        if (var == nullptr) {
+          continue;
+        }
+        LoDTensor* tensor = var->GetMutable<LoDTensor>();
+        if (!CheckValidOutput(tensor, batch_size)) {
+          continue;
+        }
+        for (int i = 0; i < batch_size; ++i) {
+          auto output_dim = tensor->dims()[1];
+          std::string output_dimstr =
+              boost::lexical_cast<std::string>(output_dim);
+          ars[i] = ars[i] + "\t" + field + ":" + output_dimstr;
+          auto bound = GetTensorBound(tensor, i);
+          ars[i] += PrintLodTensor(tensor, bound.first, bound.second);
+        }
+      }
+      // #pragma omp parallel for
+      for (size_t i = 0; i < ars.size(); i++) {
+        if (ars[i].length() == 0) {
+          continue;
+        }
+        writer_ << ars[i];
+      }
+    }
 
     PrintFetchVars();
     thread_scope_->DropKids();
     ++batch_cnt;
+  }
+  if (need_dump_field_) {
+    writer_.Flush();
   }
 }
 

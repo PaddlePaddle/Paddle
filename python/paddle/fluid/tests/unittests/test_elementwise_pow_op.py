@@ -104,5 +104,15 @@ class TestElementwisePowOp_broadcast_3(TestElementwisePowOp):
         }
 
 
+class TestElementwisePowOp_broadcast_4(TestElementwisePowOp):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 1, 5]).astype("float32")
+        }
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+
 if __name__ == '__main__':
     unittest.main()

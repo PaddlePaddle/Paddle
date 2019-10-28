@@ -22,6 +22,8 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+using DataLayout = framework::DataLayout;
+
 /*
  * \brief Compute the depthwise convolution which include
  * forward process and backpropagation process
@@ -34,7 +36,8 @@ class DepthwiseConvFunctor {
                   const framework::Tensor& filter,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::vector<int>& dilations, framework::Tensor* output);
+                  const std::vector<int>& dilations, framework::Tensor* output,
+                  const DataLayout data_layout = DataLayout::kNCHW);
 };
 
 template <typename DeviceContext, typename T,
@@ -47,7 +50,8 @@ class DepthwiseConvInputGradFunctor {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
-                  framework::Tensor* input_grad);
+                  framework::Tensor* input_grad,
+                  const DataLayout data_layout = DataLayout::kNCHW);
 };
 
 template <typename DeviceContext, typename T,
@@ -59,7 +63,8 @@ class DepthwiseConvFilterGradFunctor {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   const std::vector<int>& dilations,
-                  framework::Tensor* filter_grad);
+                  framework::Tensor* filter_grad,
+                  const DataLayout data_layout = DataLayout::kNCHW);
 };
 
 }  // namespace math

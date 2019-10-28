@@ -43,7 +43,7 @@ void Conv2dFusionOpConverter<TargetT, PrecisionT>::operator()(
   PADDLE_ENFORCE_NOT_NULL(filter_v);
 
   auto weight_tensor = tensor_from_var(*filter_v, platform::CPUPlace());
-  auto weight_shape = framework::vectorize2int(weight_tensor->dims());
+  auto weight_shape = framework::vectorize<int>(weight_tensor->dims());
 
   auto *b_v = scope.FindVar(op_desc.Input("Bias").front());
   PADDLE_ENFORCE_NOT_NULL(b_v);
@@ -99,7 +99,7 @@ void Conv2dFusionOpConverter<TargetT, PrecisionT>::operator()(
     this->engine_->AddTensorScale(input_name, in_scale / int8_range);
   } else {
     auto weight_tensor = tensor_from_var(*filter_v, platform::CPUPlace());
-    auto weight_shape = framework::vectorize2int(weight_tensor->dims());
+    auto weight_shape = framework::vectorize<int>(weight_tensor->dims());
     auto *weight1 = pblock_from_tensor<TargetT, PrecisionT>(
         *weight_tensor, weight_shape, this->engine_);
     this->engine_->AddOpAttr(op_name, "weight_1", *weight1);

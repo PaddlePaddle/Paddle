@@ -53,8 +53,8 @@ void FusionSquaredMatSubOp::InferShape(
 
 framework::OpKernelType FusionSquaredMatSubOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(framework::GetDataTypeOfVar(ctx.InputVar("X")),
-                                 ctx.GetPlace());
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
 }
 
 void FusionSquaredMatSubOpMaker::Make() {
@@ -136,8 +136,7 @@ class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_squared_mat_sub, ops::FusionSquaredMatSubOp,
-                  ops::FusionSquaredMatSubOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::FusionSquaredMatSubOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fusion_squared_mat_sub,
                        ops::FusionSquaredMatSubKernel<float>,

@@ -20,7 +20,6 @@ import numpy as np
 import os
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-from paddle.fluid.layers.io import open_recordio_file
 
 pos_enc_param_names = (
     "src_pos_enc_table",
@@ -394,6 +393,51 @@ def decoder(dec_input,
     return dec_output
 
 
+def build_inputs(max_length, n_head):
+    names = [
+        'src_word',
+        'src_pos',
+        'trg_word',
+        'trg_pos',
+        'src_slf_attn_bias',
+        'trg_slf_attn_bias',
+        'trg_src_attn_bias',
+        'gold',
+        'weights',
+    ]
+
+    shapes = [
+        [batch_size * max_length, 1],
+        [batch_size * max_length, 1],
+        [batch_size * max_length, 1],
+        [batch_size * max_length, 1],
+        [batch_size, n_head, max_length, max_length],
+        [batch_size, n_head, max_length, max_length],
+        [batch_size, n_head, max_length, max_length],
+        [batch_size * max_length, 1],
+        [batch_size * max_length, 1],
+    ]
+
+    dtypes = [
+        'int64',
+        'int64',
+        'int64',
+        'int64',
+        'float32',
+        'float32',
+        'float32',
+        'int64',
+        'float32',
+    ]
+
+    all_inputs = []
+    for name, shape, dtype in zip(names, shapes, dtypes):
+        all_inputs.append(
+            fluid.layers.data(
+                name=name, shape=shape, dtype=dtype, append_batch_size=False))
+    return all_inputs
+
+
 def transformer(
         src_vocab_size,
         trg_vocab_size,
@@ -408,34 +452,9 @@ def transformer(
         src_pad_idx,
         trg_pad_idx,
         pos_pad_idx, ):
-    file_obj = open_recordio_file(
-        filename=os.environ.get('RECORDIO_FILENAME', '/tmp/wmt16.recordio'),
-        shapes=[
-            [batch_size * max_length, 1],
-            [batch_size * max_length, 1],
-            [batch_size * max_length, 1],
-            [batch_size * max_length, 1],
-            [batch_size, n_head, max_length, max_length],
-            [batch_size, n_head, max_length, max_length],
-            [batch_size, n_head, max_length, max_length],
-            [batch_size * max_length, 1],
-            [batch_size * max_length, 1],
-        ],
-        dtypes=[
-            'int64',
-            'int64',
-            'int64',
-            'int64',
-            'float32',
-            'float32',
-            'float32',
-            'int64',
-            'float32',
-        ],
-        lod_levels=[0] * 9)
 
-    src_word, src_pos, trg_word, trg_pos, src_slf_attn_bias, trg_slf_attn_bias, trg_src_attn_bias, gold, weights = fluid.layers.read_file(
-        file_obj)
+    src_word, src_pos, trg_word, trg_pos, src_slf_attn_bias, trg_slf_attn_bias, trg_src_attn_bias, gold, weights = build_inputs(
+        max_length, n_head)
 
     enc_input = prepare_encoder(
         src_word,

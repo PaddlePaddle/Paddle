@@ -49,7 +49,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   }
 
   VLOG(6) << "Find " << fuse_op_type << " operators : " << opt_ops_num
-          << ", and " << opt_nodes.size() << " for dense gradients ";
+          << ", and " << opt_nodes.size() << " for dense gradients.";
   if (opt_nodes.size() == 0 || result.Has(details::kFusedOptType)) {
     if (result.Has(details::kFusedOptType)) {
       auto &opt_type =
@@ -68,6 +68,11 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
                "operators, which can not be handled well at present.";
     return;
   }
+
+  LOG(WARNING) << "Find " << fuse_op_type << " operators : " << opt_ops_num
+               << ", and " << opt_nodes.size() << " for dense gradients. "
+               << "To make the speed faster, those optimization are fused "
+                  "during training.";
 
   result.Set(details::kFusedOptType, new details::FusedOptType);
   result.Get<details::FusedOptType>(details::kFusedOptType) = fuse_op_type;
@@ -106,6 +111,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     PADDLE_ENFORCE_LE(
         params_and_dense_grads.size(), aux_var_set.at(kGrad).size(),
         "The number of dense gradients should be little than optimizer ops.");
+
     std::unordered_set<std::string> opt_grad_set(aux_var_set.at(kGrad).size());
     for (auto &p_g : params_and_dense_grads) {
       opt_grad_set.insert(p_g.second);
@@ -138,7 +144,8 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
       auto &fused_vars = result.Get<details::FusedVars>(details::kFusedVars);
       auto iter =
           std::find(fused_vars.begin(), fused_vars.end(), fused_grad.front());
-      PADDLE_ENFORCE(iter != fused_vars.end(), "Not find the fused_grad.");
+      PADDLE_ENFORCE_EQ(iter != fused_vars.end(), true,
+                        "Not find the fused_grad.");
       fused_vars_name[kGrad] = fused_grad.front();
 
       // Sort the parameters and auxiliary variables according
@@ -147,7 +154,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
                                &opt_nodes);
       grad_fused = true;
     } else {
-      VLOG(10) << "The number of new gradients is " << new_grad_idx.size();
+      VLOG(6) << "The number of new gradients is " << new_grad_idx.size();
       if (new_grad_idx.size() == 1) return;
       // NOTE(zcd): If the gradients of backward stage and optimization stage
       // have diff, Only take care of the the gradient of optimization stage.
@@ -155,17 +162,25 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     }
   }
 
+  // Check dtype
+  auto dtype = GetDtypeOfVar(vars_info, aux_var_set.at(kParam).front());
+  for (auto vars : aux_var_set) {
+    for (auto &var_name : vars.second) {
+      PADDLE_ENFORCE_EQ(dtype, GetDtypeOfVar(vars_info, var_name));
+    }
+  }
+
   // Step 4: Alloc continuous space for Parameters and AuxiliaryVar(e.g.
   // Moment1, Moment2, Beta1Pow, Beta2Pow) of all the optimizer ops
   // separately.
   if (!grad_fused) {
-    InitFusedGradsAndAllocSpaceForGrads(aux_var_set.at(kParam),
-                                        aux_var_set.at(kGrad),
-                                        fused_vars_name.at(kGrad), &result);
+    InitFusedGradsAndAllocSpaceForGrads(
+        aux_var_set.at(kParam), aux_var_set.at(kGrad),
+        fused_vars_name.at(kGrad), dtype, &result);
   }
   aux_var_names.pop_back();
   InitFusedVarsAndAllocSpaceForVars(aux_var_names, aux_var_set, fused_vars_name,
-                                    &result);
+                                    dtype, &result);
 
   // Step 5: Fuse optimizer Ops and Scale Ops
   auto *fused_opt_node =
@@ -245,19 +260,25 @@ void FuseOptimizerOpPass::GradientsFilter(
 void FuseOptimizerOpPass::InitFusedGradsAndAllocSpaceForGrads(
     const std::vector<std::string> &params,
     const std::vector<std::string> &grads, const std::string &fused_grad_name,
-    ir::Graph *result) const {
+    const proto::VarType::Type &dtype, ir::Graph *result) const {
+  auto &pinned_var_set =
+      result->GetOrInit<details::PinnedVars>(details::kPinnedVars);
+
   auto vars_info = GetVarInfo(*result);
-  // Set Gradients as Persistable to prevent this var becoming reusable.
+  // The Gradients should not be reused during memory optimization.
   for (auto &grad_var_name : grads) {
     auto iter = vars_info.find(grad_var_name);
-    PADDLE_ENFORCE(iter != vars_info.end());
-    PADDLE_ENFORCE(!iter->second.empty());
+    PADDLE_ENFORCE_EQ(iter != vars_info.end(), true, "%s is not found.",
+                      grad_var_name);
+    PADDLE_ENFORCE_EQ(!iter->second.empty(), true, "%s is not found.",
+                      grad_var_name);
     PADDLE_ENFORCE_NOT_NULL(iter->second.front()->Var());
-    PADDLE_ENFORCE(IsLoDTensorType(iter->second.front()->Var()->GetType()),
-                   "Currently the gradient type only should be LoDTensor when "
-                   "fusing optimizer ops.");
+    PADDLE_ENFORCE_EQ(
+        IsLoDTensorType(iter->second.front()->Var()->GetType()), true,
+        "Currently the gradient type only should be LoDTensor when "
+        "fusing optimizer ops.");
     for (auto var : iter->second) {
-      var->Var()->SetPersistable(true);
+      pinned_var_set.insert(var->Var()->Name());
     }
   }
 
@@ -266,8 +287,8 @@ void FuseOptimizerOpPass::InitFusedGradsAndAllocSpaceForGrads(
   ProgramDesc &program_desc =
       result->Get<details::ProgramDescs>(details::kProgramDescs).back();
   auto *global_block = program_desc.MutableBlock(0);
-  AppendAllocContinuousSpace(params, grads, fused_grad_name, global_block,
-                             false, false);
+  AppendAllocContinuousSpace(params, grads, fused_grad_name, dtype,
+                             global_block, false, false);
 }
 
 std::unordered_map<std::string, std::vector<Node *>>
@@ -289,14 +310,30 @@ bool FuseOptimizerOpPass::IsLoDTensorType(
   return type == proto::VarType::LOD_TENSOR;
 }
 
-proto::VarType::Type FuseOptimizerOpPass::GetTypeOfVar(
-    const std::unordered_map<std::string, std::vector<Node *>> &var_nodes,
-    const std::string &name) const {
-  auto grad_iter = var_nodes.find(name);
-  PADDLE_ENFORCE(grad_iter != var_nodes.end());
-  PADDLE_ENFORCE(grad_iter->second.size() > 0);
+const VarDesc *FuseOptimizerOpPass::GetVarDescFromVarsInfo(
+    const std::unordered_map<std::string, std::vector<Node *>> &vars_info,
+    const std::string &var_name) const {
+  auto grad_iter = vars_info.find(var_name);
+  PADDLE_ENFORCE_EQ(grad_iter != vars_info.end(), true, "%s is not found.",
+                    var_name);
+  PADDLE_ENFORCE_EQ(!grad_iter->second.empty(), true, "%s is not found.",
+                    var_name);
   PADDLE_ENFORCE_NOT_NULL(grad_iter->second.front()->Var());
-  return grad_iter->second.front()->Var()->GetType();
+  return grad_iter->second.front()->Var();
+}
+
+proto::VarType::Type FuseOptimizerOpPass::GetDtypeOfVar(
+    const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
+    const std::string &name) const {
+  auto var_desc = GetVarDescFromVarsInfo(vars_info, name);
+  return var_desc->GetDataType();
+}
+
+proto::VarType::Type FuseOptimizerOpPass::GetTypeOfVar(
+    const std::unordered_map<std::string, std::vector<Node *>> &vars_info,
+    const std::string &name) const {
+  auto var_desc = GetVarDescFromVarsInfo(vars_info, name);
+  return var_desc->GetType();
 }
 
 void FuseOptimizerOpPass::InitFusedVarsAndAllocSpaceForVars(
@@ -304,7 +341,7 @@ void FuseOptimizerOpPass::InitFusedVarsAndAllocSpaceForVars(
     const std::unordered_map<std::string, std::vector<std::string>>
         &aux_var_set,
     const std::unordered_map<std::string, std::string> &fused_vars_name,
-    ir::Graph *result) const {
+    const proto::VarType::Type &dtype, ir::Graph *result) const {
   // Define Ops
   result->Get<details::ProgramDescs>(details::kProgramDescs).emplace_back();
   ProgramDesc &program_desc =
@@ -313,7 +350,7 @@ void FuseOptimizerOpPass::InitFusedVarsAndAllocSpaceForVars(
   for (auto &var_name : aux_var_names) {
     AppendAllocContinuousSpace(
         aux_var_set.at(var_name), aux_var_set.at(var_name),
-        fused_vars_name.at(var_name), global_block, true);
+        fused_vars_name.at(var_name), dtype, global_block, true);
   }
 }
 
@@ -321,24 +358,25 @@ void FuseOptimizerOpPass::SortParametersAndAuxVars(
     const std::vector<std::pair<std::string, std::string>> &params_grads,
     std::unordered_map<std::string, std::vector<std::string>> *aux_vars_set,
     std::vector<ir::Node *> *ops) const {
-  PADDLE_ENFORCE_NE(aux_vars_set->count(kParam), static_cast<size_t>(0));
-  auto &param_vec = aux_vars_set->at(kParam);
+  PADDLE_ENFORCE_NE(aux_vars_set->count(kGrad), static_cast<size_t>(0));
+  auto &grad_vec = aux_vars_set->at(kGrad);
 
-  std::vector<size_t> param_sort_idx;
-  param_sort_idx.reserve(param_vec.size());
+  std::vector<size_t> grad_sort_idx;
+  grad_sort_idx.reserve(grad_vec.size());
 
   for (auto &p_g : params_grads) {
-    auto iter = std::find(param_vec.begin(), param_vec.end(), p_g.first);
-    PADDLE_ENFORCE(iter != param_vec.end());
-    auto idx = std::distance(param_vec.begin(), iter);
-    param_sort_idx.emplace_back(idx);
+    auto iter = std::find(grad_vec.begin(), grad_vec.end(), p_g.second);
+    PADDLE_ENFORCE_EQ(iter != grad_vec.end(), true,
+                      "%s is not found in grad_vec", p_g.second);
+    auto idx = std::distance(grad_vec.begin(), iter);
+    grad_sort_idx.emplace_back(idx);
   }
 
   for (auto &aux_vars : *aux_vars_set) {
     std::vector<std::string> sorted_vars;
     sorted_vars.reserve(aux_vars.second.size());
     for (size_t i = 0; i < aux_vars.second.size(); ++i) {
-      sorted_vars.emplace_back(aux_vars.second.at(param_sort_idx[i]));
+      sorted_vars.emplace_back(aux_vars.second.at(grad_sort_idx[i]));
     }
     std::swap(aux_vars.second, sorted_vars);
 
@@ -354,7 +392,7 @@ void FuseOptimizerOpPass::SortParametersAndAuxVars(
   std::vector<ir::Node *> sorted_ops;
   sorted_ops.reserve(ops->size());
   for (size_t i = 0; i < ops->size(); ++i) {
-    sorted_ops.emplace_back(ops->at(param_sort_idx[i]));
+    sorted_ops.emplace_back(ops->at(grad_sort_idx[i]));
   }
   std::swap(*ops, sorted_ops);
 }
@@ -378,7 +416,8 @@ void FuseOptimizerOpPass::GetSpecifiedOpsAndVars(
 void FuseOptimizerOpPass::AppendAllocContinuousSpace(
     const std::vector<std::string> &in_args,
     const std::vector<std::string> &out_args, const std::string &fused_out_arg,
-    BlockDesc *global_block, bool copy_data, bool check_name) const {
+    const proto::VarType::Type &dtype, BlockDesc *global_block, bool copy_data,
+    bool check_name) const {
   auto op_desc = global_block->AppendOp();
   op_desc->SetType("coalesce_tensor");
   op_desc->SetInput("Input", in_args);
@@ -386,6 +425,7 @@ void FuseOptimizerOpPass::AppendAllocContinuousSpace(
   op_desc->SetOutput("FusedOutput", {fused_out_arg});
   op_desc->SetAttr("copy_data", copy_data);
   op_desc->SetAttr("check_name", check_name);
+  op_desc->SetAttr("dtype", static_cast<int>(dtype));
 }
 
 void FuseOptimizerOpPass::InsertInputAndOutputForFusedOpNode(

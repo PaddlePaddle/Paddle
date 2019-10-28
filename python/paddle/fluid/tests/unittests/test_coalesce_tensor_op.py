@@ -25,7 +25,7 @@ alignment = 256
 class TestAllocContinuousSpace(OpTest):
     def setUp(self):
         self.op_type = "coalesce_tensor"
-        self.dtype = np.float32
+        self.dtype, self.fluid_dtype = self.init_dtype()
         attrs = self.init_attr()
         self.copy_data = attrs["copy_data"]
         self.constant = attrs["constant"]
@@ -38,7 +38,7 @@ class TestAllocContinuousSpace(OpTest):
         self.outputs = {'Output': self.Outputs, 'FusedOutput': self.FusedOutput}
 
     def init_dtype(self):
-        self.dtype = np.float32
+        return np.float32, int(core.VarDesc.VarType.FP32)
 
     def init_input(self):
         inputs = []
@@ -51,7 +51,12 @@ class TestAllocContinuousSpace(OpTest):
         return inputs
 
     def init_attr(self):
-        return {"copy_data": True, "set_constant": False, "constant": 0.0}
+        return {
+            "copy_data": True,
+            "set_constant": False,
+            "constant": 0.0,
+            "dtype": self.fluid_dtype
+        }
 
     def init_output(self, input_list, set_constant, constant):
         inputs = []
@@ -82,7 +87,12 @@ class TestAllocContinuousSpace(OpTest):
 
 class TestAllocContinuousSpace2(TestAllocContinuousSpace):
     def init_attr(self):
-        return {"copy_data": False, "set_constant": True, "constant": 0.5}
+        return {
+            "copy_data": False,
+            "set_constant": True,
+            "constant": 0.5,
+            "dtype": self.fluid_dtype
+        }
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():

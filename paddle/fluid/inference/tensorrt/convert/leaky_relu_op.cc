@@ -81,7 +81,7 @@ class LeakyReluOpConverter : public OpConverter {
     std::string alpha_name = op_desc.Output("Out")[0] + "_alpha";
     PADDLE_ENFORCE(engine_->weight_map.find(alpha_name) ==
                    engine_->weight_map.end());
-    engine_->weight_map[alpha_name] = std::move(alpha_tensor);
+    engine_->SetWeights(alpha_name, std::move(alpha_tensor));
 #endif
     auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(output_layer, "leaky_relu", {output_name},

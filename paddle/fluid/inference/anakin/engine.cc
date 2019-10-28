@@ -86,7 +86,7 @@ void AnakinEngine<TargetT, PrecisionType, RunType>::BindInput(
     auto *tensor = input.second;
     auto *data = tensor->data<float>();
 
-    auto fluid_input_shape = framework::vectorize2int(tensor->dims());
+    auto fluid_input_shape = framework::vectorize<int>(tensor->dims());
     while (fluid_input_shape.size() < 4) {
       fluid_input_shape.push_back(1);
     }
