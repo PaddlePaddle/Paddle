@@ -67,10 +67,13 @@ add_subdirectory(capi)
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.sym")
-  foreach(v ${paddle_fluid_list})
-    set_target_properties(${v} PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
-  endforeach(v ${paddle_fluid_list})
-  
+  if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    foreach(v ${paddle_fluid_list})
+      set_target_properties(${v} PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+    endforeach(v ${paddle_fluid_list})
+  else()
+    set_target_properties(paddle_fluid PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+  endif()
   
 endif()
 

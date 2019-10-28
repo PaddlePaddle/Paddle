@@ -57,17 +57,15 @@ else()
 endif()
 message("flags" ${CMAKE_CXX_FLAGS})
 
+set(CUDA_LIB "" CACHE STRING "CUDA Library")
 if(WITH_GPU)
   if(NOT WIN32)
     set(CUDA_LIB "/usr/local/cuda/lib64/" CACHE STRING "CUDA Library")
   else()
-    message("CUDA_LIB======${CUDA_LIB}==")
     if(CUDA_LIB STREQUAL "")
- #     set(CUDA_LIB "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\lib\\x64")
        set(CUDA_LIB "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v9.0\\lib\\x64")
-       message("CUDA_LIB======${CUDA_LIB}")
     endif()
-    set(CUDA_LIB "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v9.0\\lib\\x64")
+
   endif(NOT WIN32)
 endif()
 
@@ -134,10 +132,17 @@ if (NOT WIN32)
       glog gflags protobuf z xxhash
       ${EXTERNAL_LIB})
 else()
-  set(DEPS ${DEPS}
-      ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags_static libprotobuf zlibstatic xxhash ${EXTERNAL_LIB})
-  set(DEPS ${DEPS} libcmt shlwapi.lib)
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(DEPS ${DEPS}
+        ${MATH_LIB} ${MKLDNN_LIB}
+        glog gflags_static libprotobufd ${EXTERNAL_LIB})
+    set(DEPS ${DEPS} libcmtd shlwapi.lib)
+  else()
+    set(DEPS ${DEPS}
+        ${MATH_LIB} ${MKLDNN_LIB}
+        glog gflags_static libprotobuf ${EXTERNAL_LIB})
+    set(DEPS ${DEPS} libcmt shlwapi.lib)
+  endif()
 endif(NOT WIN32)
 
 if(WITH_GPU)
@@ -153,7 +158,6 @@ if(WITH_GPU)
       set(DEPS ${DEPS} ${TENSORRT_LIB_DIR}/nvinfer_plugin${CMAKE_STATIC_LIBRARY_SUFFIX})
     endif()
     set(DEPS ${DEPS} ${CUDA_LIB}/cudart${CMAKE_STATIC_LIBRARY_SUFFIX} )
-    message("${CUDA_LIB}/cudart${CMAKE_STATIC_LIBRARY_SUFFIX} ==============")
     set(DEPS ${DEPS} ${CUDA_LIB}/cublas${CMAKE_STATIC_LIBRARY_SUFFIX} )
     set(DEPS ${DEPS} ${CUDA_LIB}/cudnn${CMAKE_STATIC_LIBRARY_SUFFIX} )
   endif()

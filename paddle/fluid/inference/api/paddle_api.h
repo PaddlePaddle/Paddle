@@ -44,7 +44,7 @@ namespace paddle {
 
 /** paddle data type.
  */
-enum  PaddleDType {
+enum PaddleDType {
   FLOAT32,
   INT64,
   INT32,

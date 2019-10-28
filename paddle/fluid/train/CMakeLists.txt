@@ -15,8 +15,6 @@ function(train_test TARGET_NAME)
     foreach(arg ${arg_list})
         string(REGEX REPLACE "^_$" "" arg "${arg}")
         if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
-            list(LENGTH  paddle_fluid_origin len_1)
-            message("========paddle_fluid_origin_list=== len_1=${len_1} ====${paddle_fluid_origin_list}")
             cc_test(test_train_${TARGET_NAME}${arg}
                     SRCS test_train_${TARGET_NAME}.cc
                     DEPS paddle_fluid_origin_list

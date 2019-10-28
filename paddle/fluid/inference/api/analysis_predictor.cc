@@ -906,7 +906,7 @@ void AnalysisPredictor::SaveOptimModel(const std::string &dir) {
   framework::Executor exe(place);
   exe.Run(save_program, scope(), 0, true, true);
 }
-  
+
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
     const AnalysisConfig &config) {

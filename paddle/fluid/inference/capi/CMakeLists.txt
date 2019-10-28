@@ -26,6 +26,7 @@ function(copy TARGET)
     list(LENGTH copy_lib_SRCS copy_lib_SRCS_len)
     list(LENGTH copy_lib_DSTS copy_lib_DSTS_len)
     if (NOT ${copy_lib_SRCS_len} EQUAL ${copy_lib_DSTS_len})
+        message("${copy_lib_SRCS_len}============${copy_lib_DSTS_len}")
         message(FATAL_ERROR "${TARGET} source numbers are not equal to destination numbers")
     endif ()
     math(EXPR len "${copy_lib_SRCS_len} - 1")
@@ -46,6 +47,7 @@ function(copy TARGET)
     endforeach ()
 endfunction()
 
+# capi-inference-only library
 set(FLUID_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_c_install_dir" CACHE STRING
 "A path setting CAPI fluid inference shared")
 
@@ -126,19 +128,39 @@ copy(paddle_fluid_c_shared
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
-    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.dll
+    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.dll
         ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.lib)
 else(WIN32)
-    set(paddle_fluid_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
+    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
 endif(WIN32)
 
 if(WIN32)
     copy(paddle_fluid_c_shared
-            SRCS  ${src_dir}/inference/capi/c_api.h ${paddle_fluid_lib}
+            SRCS  ${src_dir}/inference/capi/c_api.h ${paddle_fluid_c_lib}
             DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib
                   ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
 else()
     copy(paddle_fluid_c_shared
-        SRCS  ${src_dir}/inference/capi/c_api.h ${paddle_fluid_lib}
+        SRCS  ${src_dir}/inference/capi/c_api.h ${paddle_fluid_c_lib}
         DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
 endif()
+
+# paddle fluid version
+function(version version_file)
+    execute_process(
+            COMMAND ${GIT_EXECUTABLE} log --pretty=format:%H -1
+            WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+            OUTPUT_VARIABLE PADDLE_GIT_COMMIT)
+    file(WRITE ${version_file}
+            "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n"
+            "WITH_MKL: ${WITH_MKL}\n"
+            "WITH_MKLDNN: ${WITH_MKLDNN}\n"
+            "WITH_GPU: ${WITH_GPU}\n")
+    if (WITH_GPU)
+        file(APPEND ${version_file}
+                "CUDA version: ${CUDA_VERSION}\n"
+                "CUDNN version: v${CUDNN_MAJOR_VERSION}\n")
+    endif ()
+endfunction()
+
+version(${FLUID_INFERENCE_C_INSTALL_DIR}/version.txt)
