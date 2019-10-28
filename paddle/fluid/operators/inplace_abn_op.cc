@@ -29,7 +29,7 @@ class InplaceABNOp : public paddle::operators::BatchNormOp {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type = ctx.Input<Tensor>("X")->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
     // and var tensors should both be float. (For float or float16 input tensor)
     // or double (For double input tensor).
