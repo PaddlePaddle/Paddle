@@ -258,32 +258,40 @@ def save_vars(executor,
 
 def save_params(executor, dirname, main_program=None, filename=None):
     """
-    This function filters out all parameters from the give `main_program`
-    and then save them to the folder `dirname` or the file `filename`.
+    This operator saves all parameters from the :code:`main_program` to
+    the folder :code:`dirname` or file :code:`filename`. You can refer to 
+    :ref:`api_guide_model_save_reader_en` for more details.
 
-    Use the `dirname` to specify the saving folder. If you would like to
-    save parameters in separate files, set `filename` None; if you would
-    like to save all parameters in a single file, use `filename` to specify
+    Use the :code:`dirname` to specify the saving folder. If you would like to
+    save parameters in separate files, set :code:`filename` None; if you would
+    like to save all parameters in a single file, use :code:`filename` to specify
     the file name.
 
-    NOTICE: Some variables are not Parameter while they are necessary for
-    training. So you can NOT save and continue your training just by
-    `save_params()` and `load_params()`. Please use `save_persistables()`
-    and `load_persistables()` instead. If you want to save your model for
-    the inference, please use the `save_inference_model` API. You can refer
-    to :ref:`api_guide_model_save_reader_en` for more details.
+    Note: 
+        Some variables are not Parameter while they are necessary for
+        training, such as learning rate, global step, etc. So you can NOT save 
+        and continue your training just by :ref:`api_fluid_io_save_params`
+        and :ref:`api_fluid_io_load_params`. Please use :ref:`api_fluid_io_save_persistables`
+        and :ref:`api_fluid_io_load_persistables` instead. 
+        
+        If you want to save your model for the inference, please use the 
+        :ref:`api_fluid_io_save_inference_model`. You can refer to
+        :ref:`api_guide_model_save_reader_en` for more details.
 
     Args:
-        executor(Executor): The executor to run for saving parameters.
+        executor(Executor): The executor to run for saving parameters, You can 
+                            refer to :ref:`api_guide_executor_en`.
         dirname(str): The saving directory path.
-        main_program(Program|None): The program whose parameters will be
-                                    saved. If it is None, the default
-                                    main program will be used automatically.
-                                    Default: None
-        filename(str|None): The file to save all parameters. If you prefer
-                            to save parameters in differnet files, set it
-                            to None.
-                            Default: None
+        main_program(Program, optional): The program whose parameters will be
+                                         saved. You can refer to 
+                                         :ref:`api_guide_Program_en` for more 
+                                         details. If it is None, the default main
+                                         program will be used.
+                                         Default: None
+        filename(str, optional): The file to save all parameters. If you prefer
+                                 to save parameters in different files, set it
+                                 to None.
+                                 Default: None
 
     Returns:
         None
@@ -292,12 +300,21 @@ def save_params(executor, dirname, main_program=None, filename=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-
+           
+            params_path = "./my_paddle_model"
+            image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
+            predict = fluid.layers.fc(input=image, size=10, act='softmax')
+    
+            loss = fluid.layers.cross_entropy(input=predict, label=label)
+            avg_loss = fluid.layers.mean(loss)
+            
             exe = fluid.Executor(fluid.CPUPlace())
-            param_path = "./my_paddle_model"
-            prog = fluid.default_main_program()
-            fluid.io.save_params(executor=exe, dirname=param_path,
-                                 main_program=None)
+            exe.run(fluid.default_startup_program())
+            fluid.io.save_params(executor=exe, dirname=params_path)
+            # The parameters weights and bias of the fc layer in the network are going to 
+            # be saved in different files in the path "./my_paddle_model" 
     """
     save_vars(
         executor,
@@ -491,25 +508,31 @@ def _save_distributed_persistables(executor, dirname, main_program):
 
 def save_persistables(executor, dirname, main_program=None, filename=None):
     """
-    This function filters out all variables with `persistable==True` from the
-    give `main_program` and then saves these variables to the folder `dirname`
-    or file `filename`.
+    This operator saves all persistable variables from :code:`main_program` to 
+    the folder :code:`dirname` or file :code:`filename`. You can refer to 
+    :ref:`api_guide_model_save_reader_en` for more details. And then
+    saves these persistables variables to the folder :code:`dirname` or file 
+    :code:`filename`. 
 
-    The `dirname` is used to specify the folder where persistable variables
+    The :code:`dirname` is used to specify the folder where persistable variables
     are going to be saved. If you would like to save variables in separate
-    files, set `filename` None; if you would like to save all variables in a
-    single file, use `filename` to specify the file name.
+    files, set :code:`filename` None; if you would like to save all variables in a
+    single file, use :code:`filename` to specify the file name.
 
     Args:
         executor(Executor): The executor to run for saving persistable variables.
-        dirname(str): The directory path.
-        main_program(Program|None): The program whose persistbale variables will
-                                    be saved. If it is None, the default main
-                                    program will be used automatically.
-                                    Default: None
-        filename(str|None): The file to saved all variables. If you prefer to
-                            save variables in differnet files, set it to None.
-                            Default: None
+                            You can refer to :ref:`api_guide_executor_en` for 
+                            more details.
+        dirname(str): The saving directory path.
+        main_program(Program, optional): The program whose persistbale variables will
+                                         be saved. You can refer to 
+                                         :ref:`api_guide_Program_en` for more details.
+                                         If it is None, the default main program will 
+                                         be used.
+                                         Default: None.
+        filename(str, optional): The file to save all variables. If you prefer to
+                                 save variables in different files, set it to None.
+                                 Default: None.
 
     Returns:
         None
@@ -518,13 +541,22 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
-
+        
+            dir_path = "./my_paddle_model"
+            file_name = "persistables"
+            image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
+           
+            predict = fluid.layers.fc(input=image, size=10, act='softmax')
+            loss = fluid.layers.cross_entropy(input=predict, label=label)
+            avg_loss = fluid.layers.mean(loss)
             exe = fluid.Executor(fluid.CPUPlace())
-            param_path = "./my_paddle_model"
-            # `prog` can be a program defined by the user
-            prog = fluid.default_main_program()
-            fluid.io.save_persistables(executor=exe, dirname=param_path,
-                                       main_program=prog)
+            exe.run(fluid.default_startup_program())
+            fluid.io.save_persistables(executor=exe, dirname=dir_path, filename=file_name)
+            # The persistables variables weights and bias in the fc layer of the network 
+            # are going to be saved in the same file named "persistables" in the path
+            # "./my_paddle_model"
     """
     if main_program and main_program._is_distributed:
         _save_distributed_persistables(
@@ -973,42 +1005,54 @@ def save_inference_model(dirname,
                          program_only=False):
     """
     Prune the given `main_program` to build a new program especially for inference,
-    and then save it and all related parameters to given `dirname` by the `executor`.
+    and then save it and all related parameters to given `dirname` .
     If you just want to save parameters of your trained model, please use the
-    `save_params` API. You can refer to :ref:`api_guide_model_save_reader_en` for
-    more details.
+    :ref:`api_fluid_io_save_params` . You can refer to :ref:`api_guide_model_save_reader_en`
+    for more details.
 
+    Note:
+        The :code:`dirname` is used to specify the folder where inference model 
+        structure and parameters are going to be saved. If you would like to save params of
+        Program in separate files, set `params_filename` None; if you would like to save all 
+        params of Program in a single file, use `params_filename` to specify the file name.
 
     Args:
         dirname(str): The directory path to save the inference model.
-        feeded_var_names(list[str]): Names of variables that need to be feeded data
-                                     during inference.
-        target_vars(list[Variable]): Variables from which we can get inference
-                                     results.
-        executor(Executor): The executor that saves the inference model.
-        main_program(Program|None): The original program, which will be pruned to
-                                    build the inference model. If is setted None,
-                                    the default main program will be used.
-                                    Default: None.
-        model_filename(str|None): The name of file to save the inference program
-                                  itself. If is setted None, a default filename
-                                  `__model__` will be used.
-        params_filename(str|None): The name of file to save all related parameters.
-                                   If it is setted None, parameters will be saved
-                                   in separate files .
+        feeded_var_names(list[str]): list of string. Names of variables that need to be feeded
+                                     data during inference.
+        target_vars(list[Variable]): list of Variable. Variables from which we can get 
+                                     inference results.
+        executor(Executor): The executor that saves the inference model. You can refer 
+                            to :ref:`api_guide_executor_en` for more details.
+        main_program(Program, optional): The original program, which will be pruned to
+                                         build the inference model. If is setted None,
+                                         the global default :code:`_main_program_` will be used.
+                                         Default: None.
+        model_filename(str, optional): The name of file to save the inference program
+                                       itself. If is setted None, a default filename
+                                       :code:`__model__` will be used.
+        params_filename(str, optional): The name of file to save all related parameters.
+                                        If it is setted None, parameters will be saved
+                                        in separate files .
         export_for_deployment(bool): If True, programs are modified to only support
                                      direct inference deployment. Otherwise,
                                      more information will be stored for flexible
                                      optimization and re-training. Currently, only
                                      True is supported.
-        program_only(bool): If True, It will save inference program only, and do not save params of Program.
+                                     Default: True.
+        program_only(bool, optional): If True, It will save inference program only, and do not 
+                                      save params of Program.
+                                      Default: False.
 
     Returns:
-        target_var_name_list(list): The fetch variables' name list
+        The fetch variables' name list
+
+     Return Type:
+        list
 
     Raises:
-        ValueError: If `feed_var_names` is not a list of basestring.
-        ValueError: If `target_vars` is not a list of Variable.
+        ValueError: If `feed_var_names` is not a list of basestring, an exception is thrown.
+        ValueError: If `target_vars` is not a list of Variable, an exception is thrown.
 
     Examples:
         .. code-block:: python
@@ -1018,8 +1062,8 @@ def save_inference_model(dirname,
             path = "./infer_model"
 
             # User defined network, here a softmax regresssion example
-            image = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
             predict = fluid.layers.fc(input=image, size=10, act='softmax')
 
@@ -1037,9 +1081,9 @@ def save_inference_model(dirname,
                                           target_vars=[predict],
                                           executor=exe)
 
-            # In this example, the function will prune the default main program
-            # to make it suitable for infering the `predict` var. The pruned
-            # inference program is going to be saved in the "./infer_model/__model__"
+            # In this example, the save_inference_mode inference will prune the default
+            # main program according to the network's input node (img) and output node(predict). 
+            # The pruned inference program is going to be saved in the "./infer_model/__model__"
             # and parameters are going to be saved in separate files under folder
             # "./infer_model".
 

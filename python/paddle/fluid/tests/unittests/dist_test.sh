@@ -15,7 +15,7 @@ if [[ ${TEST_TIMEOUT}"x" == "x" ]]; then
 fi
 
 # rm flag file
-rm -f ${name}*.log
+rm -f ${name}_*.log
 
 # start the unit test
 run_time=$(( $TEST_TIMEOUT - 10 ))
@@ -28,9 +28,15 @@ fi
 
 echo "${name} faild with ${exit_code}"
 
+netstat -an
+
 # paddle log
 echo "${name} log"
-cat -n ${name}*.log
+for log in `ls ${name}_*.log`
+do
+    printf "\ncat ${log}\n"
+    cat -n ${log}
+done
 
 #display system context
 for i in {1..2}; do 

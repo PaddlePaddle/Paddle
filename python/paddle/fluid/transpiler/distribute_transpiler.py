@@ -701,6 +701,7 @@ class DistributeTranspiler(object):
                 send_vars.append(var)
 
         if self.sync_mode:
+            fetch_barrier_input = []
             send_barrier_out = program.global_block().create_var(
                 name=framework.generate_control_dev_var_name())
             if self.has_distributed_lookup_table:
@@ -718,6 +719,7 @@ class DistributeTranspiler(object):
                     "trainer_id": self.trainer_id,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
+            fetch_barrier_input.append(send_barrier_out)
 
         # step 3: insert recv op to receive parameters from parameter server
         recv_vars = []
@@ -788,12 +790,14 @@ class DistributeTranspiler(object):
                         OP_ROLE_VAR_ATTR_NAME:
                         [param_varname, recv_op_role_var_name]
                     })
+                if self.sync_mode:
+                    fetch_barrier_input.extend(splited_var)
 
         if self.sync_mode:
             # form a WAW dependency
             program.global_block().append_op(
                 type="fetch_barrier",
-                inputs={},
+                inputs={"X": fetch_barrier_input},
                 outputs={"Out": all_recv_outputs},
                 attrs={
                     "endpoints": pserver_endpoints,
@@ -818,6 +822,18 @@ class DistributeTranspiler(object):
 
             self._update_remote_sparse_update_op(program,
                                                  need_sparse_update_params)
+        if not self.sync_mode:
+            lr_ops = self._get_lr_ops()
+            if len(lr_ops) > 0:
+                program.global_block().append_op(
+                    type="distributed_notify",
+                    inputs={},
+                    outputs={},
+                    attrs={
+                        "epmap": pserver_endpoints,
+                        "trainer_id": self.trainer_id,
+                        "type": "LRDECAY@RECV"
+                    })
 
         self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
 
@@ -1125,6 +1141,8 @@ class DistributeTranspiler(object):
         lr_ops = self._get_lr_ops()
         # record optimize blocks and we can run them on pserver parallel
         optimize_blocks = []
+
+        lr_decay_block_id = -1
         if len(lr_ops) > 0:
             lr_decay_block = pserver_program._create_block(
                 pserver_program.num_blocks - 1)
@@ -1134,6 +1152,7 @@ class DistributeTranspiler(object):
                 # append sub blocks to pserver_program in lr_decay_op
                 __clone_lr_op_sub_block__(cloned_op, pserver_program,
                                           lr_decay_block)
+            lr_decay_block_id = lr_decay_block.idx
 
         # append op to the current block
         grad_to_block_id = []
@@ -1211,6 +1230,7 @@ class DistributeTranspiler(object):
             "sync_mode": self.sync_mode,
             "grad_to_block_id": grad_to_block_id,
             "sparse_grad_to_param": sparse_grad_to_param,
+            "lr_decay_block_id": lr_decay_block_id,
         }
 
         if self.has_distributed_lookup_table:

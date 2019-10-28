@@ -351,6 +351,14 @@ class InstallHeaders(Command):
     def get_outputs(self):
         return self.outfiles
 
+# Saving the installation log generated from setup.py to log_file.
+# The log_file is ${PADDLE_BINARY_DIR}/python/setup.py.log.
+stdout = sys.stdout
+stderr = sys.stderr
+log_file = open('setup.py.log', 'w')
+sys.stdout = log_file
+sys.stderr = log_file
+
 setup(name='${PACKAGE_NAME}',
       version='${PADDLE_VERSION}',
       description='Parallel Distributed Deep Learning',
@@ -367,3 +375,12 @@ setup(name='${PACKAGE_NAME}',
           'install': InstallCommand,
       }
 )
+
+log_file.close()
+# Revert back the stdout/stderr to their default references.
+sys.stdout = stdout
+sys.stderr = stderr
+# As there are a lot of files in purelib which causes many logs,
+# we don't print them on the screen, and you can open `setup.py.log` 
+# for the full logs.
+os.system('grep -v "purelib" setup.py.log')

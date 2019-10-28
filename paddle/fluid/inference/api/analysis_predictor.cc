@@ -506,6 +506,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       framework::InitGflags(flags);
     }
   }
+  if (config.glog_info_disabled()) {
+    google::InitGoogleLogging("Init");
+    FLAGS_logtostderr = 1;
+    FLAGS_minloglevel = google::WARNING;
+    LOG(WARNING) << " - GLOG's LOG(INFO) is disabled.";
+  }
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
   // Each config can only be used for one predictor.

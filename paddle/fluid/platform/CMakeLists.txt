@@ -72,7 +72,7 @@ ENDIF()
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
-    ${dgc_deps})
+    ${dgc_deps} dlpack)
 
 if (WITH_DISTRIBUTE)
   cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto  device_context enforce)
