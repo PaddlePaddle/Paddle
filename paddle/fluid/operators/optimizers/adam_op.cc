@@ -78,7 +78,7 @@ void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType AdamOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  auto input_data_type = ctx.Input<framework::Tensor>("Param")->type();
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
 

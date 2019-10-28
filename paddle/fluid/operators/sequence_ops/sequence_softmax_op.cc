@@ -51,7 +51,7 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
     }
     std::string data_format = ctx.Attr<std::string>("data_format");
     return framework::OpKernelType(
-        ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
         framework::StringToDataLayout(data_format), library_);
   }
 };
@@ -146,7 +146,7 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
     }
     std::string data_format = ctx.Attr<std::string>("data_format");
     return framework::OpKernelType(
-        ctx.Input<Tensor>("Out")->type(), ctx.GetPlace(),
+        OperatorWithKernel::IndicateVarDataType(ctx, "Out"), ctx.GetPlace(),
         framework::StringToDataLayout(data_format), library_);
   }
 };
