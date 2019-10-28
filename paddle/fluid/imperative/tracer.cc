@@ -51,6 +51,11 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   auto op = OpBase::Create(op_id, type, ins, outs, std::move(attrs), place);
   op->Run(ins, outs);
 
+  if (enable_program_desc_tracing_) {
+    VLOG(5) << "Trace op " << type << " into ProgramDesc";
+    program_desc_tracer_->InsertOp(type, ins, outs, op->Attrs());
+  }
+
   if (ComputeRequiredGrad(ins, outs, trace_backward)) {
     TraceBackward(op, framework::OpDesc(op->Type(), op->InputNameMap(),
                                         op->OutputNameMap(), op->Attrs()),
@@ -225,10 +230,12 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
               VLOG(3) << op->Type();
             }
           }
+          auto grad_name = (*(fwd_var_iter->second))->GradVarBase()->Name();
           if (!grad_pending_ops.empty()) {
             for (const auto& op : grad_pending_ops) {
-              PADDLE_ENFORCE_NOT_NULL(op,
-                                      "No nullptr should be grad_pending op");
+              PADDLE_ENFORCE_NOT_NULL(
+                  op, "No nullptr should be grad_pending op for variable %s ",
+                  grad_name);
               if (visited_preceding_ops.count(op) == 0) {
                 visited_preceding_ops.insert(op);
                 grad_op->InsertGradPendingOps(op);

@@ -94,8 +94,7 @@ class RetinanetDetectionOutputOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
-        framework::GetDataTypeOfVar(ctx.MultiInputVar("Scores")[0]);
-
+        OperatorWithKernel::IndicateVarDataType(ctx, "Scores");
     return framework::OpKernelType(input_data_type,
                                    platform::CPUPlace());  // ctx.GetPlace());
   }

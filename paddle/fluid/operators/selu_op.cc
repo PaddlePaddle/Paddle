@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/selu_op.h"
+
+#include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace paddle {
 namespace operators {
@@ -39,7 +42,7 @@ class SeluOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::GetDataTypeOfVar(ctx.InputVar("X")), ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -115,7 +118,7 @@ class SeluGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::GetDataTypeOfVar(ctx.InputVar("Out")), ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Out"), ctx.GetPlace());
   }
 };
 

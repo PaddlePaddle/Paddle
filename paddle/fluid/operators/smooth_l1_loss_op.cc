@@ -135,11 +135,13 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_GE(out_dims.size(), 2,
                       "The tensor rank of Input(Out@Grad) should be 2.");
-    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, out_dims[0], in_dims[0],
-                                 "The 1st dimension of Input(Out@Grad) must be "
-                                 "same as input.");
-    PADDLE_INFERSHAPE_ENFORCE_EQ(
-        ctx, out_dims[1], 1, "The 2nd dimension of Input(Out@Grad) must be 1.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(out_dims[0], in_dims[0],
+                        "The 1st dimension of Input(Out@Grad) must be "
+                        "same as input.");
+      PADDLE_ENFORCE_EQ(out_dims[1], 1,
+                        "The 2nd dimension of Input(Out@Grad) must be 1.");
+    }
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");

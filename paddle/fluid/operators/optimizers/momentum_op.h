@@ -29,6 +29,11 @@ using framework::SelectedRows;
 struct NoNesterov;
 struct UseNesterov;
 
+class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override;
+};
+
 class MomentumOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -80,7 +85,8 @@ class MomentumOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
+    auto input_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param");
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
