@@ -121,7 +121,7 @@ class Collective(Fleet):
 
         assert isinstance(main_program, Program), \
             "In fleet.save_inference_model() function, main_program " \
-            "must be as Program type, but CompiledProgram is given."
+            "must be as Program type."
 
         io.save_persistables(executor, dirname, main_program, None)
 
