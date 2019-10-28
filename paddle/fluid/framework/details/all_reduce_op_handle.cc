@@ -24,6 +24,7 @@
 #include "paddle/fluid/platform/profiler.h"
 
 #ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/details/double_check.h"
 DECLARE_bool(sync_nccl_allreduce);
 #endif
 DECLARE_bool(check_nan_inf);
@@ -114,90 +115,6 @@ void AllReduceOpHandle::AllReduceImpl(
   AllReduceFunc(lod_tensor_data, dtype, numel, places, grad_var_names);
 }
 
-template <typename T>
-struct AllReduceRangeFunctor {
-  explicit AllReduceRangeFunctor(const T *a) : a_(a) {}
-  inline HOSTDEVICE void operator()(size_t id) const {
-    float r = static_cast<float>(a_[id]);
-    PADDLE_ENFORCE(std::isnan(r) == 0, "%f is nan", r);
-    PADDLE_ENFORCE(std::isinf(r) == 0, "%f is inf", r);
-  }
-  const T *a_;
-};
-
-struct TensorCheckerVisitor {
-  TensorCheckerVisitor(const std::string &var_name,
-                       const framework::Tensor &tensor,
-                       const platform::Place &place)
-      : var_name_(var_name), tensor_(tensor), place_(place) {}
-
-  template <typename T>
-  void apply() const {
-    if (!std::is_floating_point<T>::value) {
-      VLOG(10) << var_name_
-               << " need not to check, it's type is not float point";
-      return;
-    }
-
-    AllReduceRangeFunctor<T> func(tensor_.data<T>());
-    if (platform::is_gpu_place(place_)) {
-#ifdef PADDLE_WITH_CUDA
-      auto *dev_ctx = reinterpret_cast<platform::CUDADeviceContext *>(
-          platform::DeviceContextPool::Instance().Get(place_));
-      platform::ForRange<platform::CUDADeviceContext> for_range(
-          *dev_ctx, tensor_.numel());
-      for_range(func);
-#else
-      PADDLE_THROW("PaddlePaddle should compile with GPU.");
-#endif
-      return;
-    }
-
-    auto *dev_ctx = reinterpret_cast<platform::CPUDeviceContext *>(
-        platform::DeviceContextPool::Instance().Get(place_));
-    platform::ForRange<platform::CPUDeviceContext> for_range(*dev_ctx,
-                                                             tensor_.numel());
-    for_range(func);
-  }
-
-  std::string var_name_;
-  const framework::Tensor &tensor_;
-  const platform::Place &place_;
-};
-
-void AllReduceOpHandle::CheckNanOrInf(const std::string &op_type,
-                                      const framework::Scope &scope,
-                                      const std::string &var_name,
-                                      const platform::Place &place) {
-  auto *var = scope.FindVar(var_name);
-  PADDLE_ENFORCE_NOT_NULL(var, "can't find var:%s", var_name);
-
-  const Tensor *tensor{nullptr};
-  if (var->IsType<framework::LoDTensor>()) {
-    tensor = &var->Get<framework::LoDTensor>();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    tensor = &var->Get<framework::SelectedRows>().value();
-  } else {
-    VLOG(10) << var_name << " var_name need not to check";
-    return;
-  }
-
-  if (tensor->memory_size() == 0) {
-    VLOG(10) << var_name << " var_name need not to check, size == 0";
-    return;
-  }
-
-  /*
-  PADDLE_ENFORCE(!framework::TensorContainsInf(*tensor),
-          "Operator %s output Tensor %s contains Inf", op_type, var_name);
-  PADDLE_ENFORCE(!framework::TensorContainsNAN(*tensor),
-          "Operator %s output Tensor %s contains NAN", op_type, var_name);
-          */
-
-  TensorCheckerVisitor vistor(var_name, *tensor, place);
-  VisitDataType(tensor->type(), vistor);
-}
-
 void AllReduceOpHandle::AllReduceFunc(
     std::vector<const void *> lod_tensor_data,
     const framework::proto::VarType::Type &dtype, int64_t numel,
@@ -245,8 +162,8 @@ void AllReduceOpHandle::AllReduceFunc(
   if (FLAGS_check_nan_inf) {
     for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
       VLOG(10) << Name() << " check_nan_inf " << out_var_names[i];
-      CheckNanOrInf(Name(), *local_exec_scopes_[i], out_var_names[i],
-                    places_[i]);
+      EnforceNoNanOrInf(Name(), *local_exec_scopes_[i], out_var_names[i],
+                        places_[i]);
     }
   }
 
