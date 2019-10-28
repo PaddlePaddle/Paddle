@@ -66,6 +66,7 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
     auto *out = context.Output<framework::LoDTensor>("Out");
     auto x_dims = in->dims();
 
+    bool need_resize_out_dims = false;
     if (axes.empty()) {
       auto axes_tensor_list =
           context.MultiInput<framework::Tensor>("AxesTensorList");
@@ -75,10 +76,13 @@ class UnsqueezeKernel : public framework::OpKernel<T> {
         auto *axes_tensor = context.Input<framework::Tensor>("AxesTensor");
         axes = GetDataFromTensor<int>(axes_tensor);
       }
+      need_resize_out_dims = true;
     }
-
-    auto out_dims = GetOutputShape(axes, x_dims);
-    out->Resize(out_dims);
+    framework::DDim out_dims = out->dims();
+    if (need_resize_out_dims) {
+      out_dims = GetOutputShape(axes, x_dims);
+      out->Resize(out_dims);
+    }
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
         *in, context.GetPlace(),
