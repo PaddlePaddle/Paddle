@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/inplace_abn_op.h"
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/framework.pb.h"
