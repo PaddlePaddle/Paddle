@@ -82,7 +82,7 @@ class ElementwiseOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
@@ -236,8 +236,8 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type =
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
@@ -274,7 +274,7 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = ctx.Input<Tensor>("DOut")->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DOut");
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
@@ -306,13 +306,13 @@ class ElementwiseOpDoubleGradWithoutDXDY
     if (ctx.HasInput("DDX") == false) {
       PADDLE_ENFORCE_EQ(ctx.HasInput("DDY"), true,
                         "Input(DDY) should not be null");
-      input_data_type = ctx.Input<Tensor>("DDY")->type();
+      input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDY");
     } else if (ctx.HasInput("DDY") == false) {
       PADDLE_ENFORCE_EQ(ctx.HasInput("DDX"), true,
                         "Input(DDX) should not be null");
-      input_data_type = ctx.Input<Tensor>("DDX")->type();
+      input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
     } else {
-      input_data_type = ctx.Input<Tensor>("DDX")->type();
+      input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
     }
 
 #ifdef PADDLE_WITH_MKLDNN

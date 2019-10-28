@@ -68,7 +68,7 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type =
-        framework::GetDataTypeOfVar(ctx.MultiInputVar("MultiLevelRois")[0]);
+        OperatorWithKernel::IndicateVarDataType(ctx, "MultiLevelRois");
     return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 };

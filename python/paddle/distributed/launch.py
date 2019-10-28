@@ -51,7 +51,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 log_handler = logging.StreamHandler()
 log_format = logging.Formatter(
-    '%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s: %(message)s')
+    '%(levelname)s %(asctime)s %(filename)s:%(lineno)d] %(message)s')
 log_handler.setFormatter(log_format)
 logger.addHandler(log_handler)
 
@@ -214,10 +214,14 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
 
     procs = []
     cmds = []
+    ranks = []
     for i in range(0, selected_gpus_num):
+
+        rank = (node_id * selected_gpus_num + i)
+
         current_env.update({
             "FLAGS_selected_gpus": "%s" % selected_gpus[i],
-            "PADDLE_TRAINER_ID": "%d" % (node_id * selected_gpus_num + i),
+            "PADDLE_TRAINER_ID": "%d" % rank,
             "PADDLE_CURRENT_ENDPOINT":
             "%s:%d" % (current_node_ip, args.started_port + i),
             "PADDLE_TRAINERS_NUM": "%d" % nranks,
@@ -242,19 +246,22 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
             proc = subprocess.Popen(cmd, env=current_env)
 
         procs.append(proc)
+        ranks.append(rank)
 
     try:
         alive = True
         error = False
+        error_rank = []
         # wait all process finish or one error
         while alive and not error:
             alive = False
-            for p in procs:
+            for rank, p in zip(ranks, procs):
                 ret = p.poll()
                 if ret is None:
                     alive = True
                 elif ret != 0:
                     error = True
+                    error_rank.append(rank)
             time.sleep(1)
 
         if error:
@@ -266,11 +273,15 @@ paddlecloud environment.".format(args.cluster_node_ips, node_ips))
         terminate_procs(procs)
         raise
     except SystemExit:
-        logger.error("One trainer process abort, exit")
+        logger.error(
+            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
+            format(nranks, error_rank))
         terminate_procs(procs)
         raise
     except:
-        logger.error("Trainer process abort, exit")
+        logger.error(
+            "ABORT!!! Out of all {} trainers, the trainer process with rank={} was aborted. Please check its log.".
+            format(nranks, error_rank))
         terminate_procs(procs)
         raise
     finally:

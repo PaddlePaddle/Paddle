@@ -48,16 +48,6 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
-proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
-  if (var->IsType<framework::LoDTensor>()) {
-    return var->Get<framework::LoDTensor>().type();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    return var->Get<framework::SelectedRows>().value().type();
-  } else {
-    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
-  }
-}
-
 static DDim GetDimsDebug(const Scope& scope, const std::string& name,
                          bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);

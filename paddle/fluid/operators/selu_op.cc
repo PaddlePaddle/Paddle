@@ -41,7 +41,7 @@ class SeluOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::GetDataTypeOfVar(ctx.InputVar("X")), ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
@@ -118,7 +118,7 @@ class SeluGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::GetDataTypeOfVar(ctx.InputVar("Out")), ctx.GetPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Out"), ctx.GetPlace());
   }
 };
 

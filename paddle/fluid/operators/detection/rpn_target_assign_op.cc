@@ -77,7 +77,7 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Anchor")->type(),
+        OperatorWithKernel::IndicateVarDataType(ctx, "Anchor"),
         platform::CPUPlace());
   }
 };
@@ -726,7 +726,7 @@ class RetinanetTargetAssignOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Anchor")->type(),
+        OperatorWithKernel::IndicateVarDataType(ctx, "Anchor"),
         platform::CPUPlace());
   }
 };

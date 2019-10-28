@@ -76,7 +76,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    auto input_data_type = ctx.Input<Tensor>("X")->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                      "float16 can only be used on GPU place");
@@ -187,8 +187,8 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    auto input_data_type =
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                      "float16 can only be used on GPU place");

@@ -184,30 +184,34 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
           true,
           "The Input(Label) should be a 3-D tensor with last "
           "dimension fixed to 1 or a 2-D tensor in padding mode.");
-      PADDLE_INFERSHAPE_ENFORCE_EQ(
-          ctx, emission_dims[0], label_dims[0],
-          "The batch size of Input(Emission) and Input(Label) "
-          "should be the same.");
-      PADDLE_INFERSHAPE_ENFORCE_EQ(
-          ctx, emission_dims[1], label_dims[1],
-          "The max length of Input(Emission) and Input(Label) "
-          "should be the same.");
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(emission_dims[0], label_dims[0],
+                          "The batch size of Input(Emission) and Input(Label) "
+                          "should be the same.");
+        PADDLE_ENFORCE_EQ(emission_dims[1], label_dims[1],
+                          "The max length of Input(Emission) and Input(Label) "
+                          "should be the same.");
+      }
     } else {
       PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
                         "The Input(Emission) should be a 2-D tensor.");
-      PADDLE_INFERSHAPE_ENFORCE_EQ(
-          ctx, emission_dims[1], transition_dims[1],
-          "The 2nd dimension of the Input(Emission) and the Input(Transition) "
-          "should be equal to the tag number.");
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(emission_dims[1], transition_dims[1],
+                          "The 2nd dimension of the Input(Emission) and the "
+                          "Input(Transition) "
+                          "should be equal to the tag number.");
+      }
 
       auto label_dims = ctx->GetInputDim("Label");
       PADDLE_ENFORCE_EQ(label_dims.size(), 2,
                         "The Input(Label) should be a 2-D tensor with the 2nd "
                         "dimensions fixed to 1.");
-      PADDLE_INFERSHAPE_ENFORCE_EQ(
-          ctx, emission_dims[0], label_dims[0],
-          "The height of Input(Emission) and the height of Input(Label) "
-          "should be the same.");
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(
+            emission_dims[0], label_dims[0],
+            "The height of Input(Emission) and the height of Input(Label) "
+            "should be the same.");
+      }
     }
     ctx->SetOutputDim("Alpha", emission_dims);
     ctx->SetOutputDim("EmissionExps", emission_dims);
@@ -224,8 +228,9 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
   // is determined by its input "Emission".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<LoDTensor>("Emission")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Emission"),
+        platform::CPUPlace());
   }
 };
 
@@ -263,7 +268,8 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<LoDTensor>(framework::GradVarName("LogLikelihood"))->type(),
+        OperatorWithKernel::IndicateVarDataType(
+            ctx, framework::GradVarName("LogLikelihood")),
         platform::CPUPlace());
   }
 };

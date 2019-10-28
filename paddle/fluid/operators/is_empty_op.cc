@@ -35,7 +35,8 @@ class IsEmptyOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto *x = ctx.Input<framework::LoDTensor>("X");
-    return framework::OpKernelType(x->type(), x->place());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), x->place());
   }
 };
 

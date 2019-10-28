@@ -68,9 +68,9 @@ class GridSampleOp : public framework::OperatorWithKernel {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kAnyLayout, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        framework::DataLayout::kAnyLayout, library_);
   }
 };
 
@@ -164,9 +164,9 @@ class GridSampleOpGrad : public framework::OperatorWithKernel {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kAnyLayout, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        framework::DataLayout::kAnyLayout, library_);
   }
 };
 

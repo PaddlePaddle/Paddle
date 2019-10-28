@@ -102,7 +102,6 @@ class ConcatOp : public framework::OperatorWithKernel {
     if (flag == 0) {
       PADDLE_THROW("All Inputs of Concat OP are Empty!");
     }
-
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
@@ -175,9 +174,9 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 

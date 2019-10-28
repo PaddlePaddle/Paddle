@@ -107,8 +107,9 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
   virtual bool IsSoftLabel(framework::InferShapeContext* ctx) const {
@@ -157,9 +158,9 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Y"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Y")),
+                                   ctx.device_context());
   }
 
   virtual framework::DDim GetXDim(framework::InferShapeContext* ctx) const {

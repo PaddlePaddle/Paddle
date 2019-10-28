@@ -130,26 +130,6 @@ struct LRNGradFunctor<platform::CPUDeviceContext, T> {
 template struct LRNGradFunctor<platform::CPUDeviceContext, float>;
 template struct LRNGradFunctor<platform::CPUDeviceContext, double>;
 
-namespace {
-framework::OpKernelType GetExpectedLRNKernel(
-    const framework::ExecutionContext& ctx) {
-  framework::LibraryType library_{framework::LibraryType::kPlain};
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-#ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = framework::DataLayout::kMKLDNN;
-  }
-#endif
-
-  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
-                                 layout_, library_);
-}
-}  // namespace
-
 class LRNOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -175,7 +155,20 @@ class LRNOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return GetExpectedLRNKernel(ctx);
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    }
+#endif
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout_, library_);
   }
 };
 
@@ -281,7 +274,20 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return GetExpectedLRNKernel(ctx);
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    }
+#endif
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout_, library_);
   }
 };
 }  // namespace operators

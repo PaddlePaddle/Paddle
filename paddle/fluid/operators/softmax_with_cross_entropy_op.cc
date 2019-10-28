@@ -171,8 +171,9 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
+        ctx.device_context());
   }
 };
 
@@ -232,9 +233,9 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Loss"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Loss")),
+                                   ctx.device_context());
   }
 };
 

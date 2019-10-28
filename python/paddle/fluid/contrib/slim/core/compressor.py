@@ -505,7 +505,7 @@ class Compressor(object):
                         _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
                             context.epoch_id, context.batch_id,
                             context.optimize_graph.out_nodes.keys(
-                            ), [round(r, 3) for r in results]))
+                            ), [round(r, 6) for r in results]))
                     for strategy in self.strategies:
                         strategy.on_batch_end(context)
                     context.batch_id += 1
@@ -525,7 +525,7 @@ class Compressor(object):
                     _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
                         context.epoch_id, context.batch_id,
                         context.optimize_graph.out_nodes.keys(
-                        ), [round(r, 3) for r in results]))
+                        ), [round(r, 6) for r in results]))
                 for strategy in self.strategies:
                     strategy.on_batch_end(context)
                 context.batch_id += 1

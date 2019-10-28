@@ -122,9 +122,9 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 

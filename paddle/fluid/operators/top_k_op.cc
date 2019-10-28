@@ -53,8 +53,9 @@ class TopkOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context(), layout_, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context(),
+        layout_, library_);
   }
 };
 

@@ -80,7 +80,7 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Scores")->type(),
+        OperatorWithKernel::IndicateVarDataType(ctx, "Scores"),
         platform::CPUPlace());
   }
 };

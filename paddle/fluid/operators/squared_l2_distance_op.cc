@@ -137,12 +137,14 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
-    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, out_dims[0], x_dims[0],
-                                 "First dimension of output gradient and "
-                                 "input value must be equal.");
-    PADDLE_INFERSHAPE_ENFORCE_EQ(ctx, out_dims[1], 1,
-                                 "Second dimension of output gradient "
-                                 "must be 1.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(out_dims[0], x_dims[0],
+                        "First dimension of output gradient and "
+                        "input value must be equal.");
+      PADDLE_ENFORCE_EQ(out_dims[1], 1,
+                        "Second dimension of output gradient "
+                        "must be 1.");
+    }
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(x_grad_name)) ctx->SetOutputDim(x_grad_name, x_dims);
@@ -152,8 +154,9 @@ class SquaredL2DistanceGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("sub_result")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "sub_result"),
+        ctx.GetPlace());
   }
 };
 

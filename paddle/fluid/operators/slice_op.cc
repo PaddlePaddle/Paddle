@@ -128,8 +128,9 @@ class SliceOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,
@@ -243,9 +244,9 @@ class SliceOpGrad : public framework::OperatorWithKernel {
   }
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string &var_name, const Tensor &tensor,

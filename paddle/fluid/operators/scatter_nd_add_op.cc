@@ -69,8 +69,8 @@ class ScatterNdAddOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx.Input<Tensor>("X")->type(),
-                      ctx.Input<Tensor>("Updates")->type(),
+    PADDLE_ENFORCE_EQ(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                      OperatorWithKernel::IndicateVarDataType(ctx, "Updates"),
                       "Ref and Updates must have same type");
     return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
                                    ctx.device_context());
@@ -95,9 +95,9 @@ class ScatterNdAddGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 

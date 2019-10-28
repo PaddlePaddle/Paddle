@@ -120,8 +120,9 @@ class UnfoldOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -141,9 +142,9 @@ class UnfoldGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::Tensor>(framework::GradVarName("Y"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Y")),
+                                   ctx.device_context());
   }
 };
 

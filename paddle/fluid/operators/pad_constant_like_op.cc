@@ -56,8 +56,9 @@ class PadConstantLikeOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Y")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Y"),
+        ctx.device_context());
   }
 };
 
@@ -186,8 +187,9 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Y")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Y"),
+        ctx.device_context());
   }
 };
 

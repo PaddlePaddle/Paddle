@@ -44,8 +44,9 @@ class MeanIoUOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Predictions")->type(),
-                                   ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Predictions"),
+        ctx.GetPlace());
   }
 };
 

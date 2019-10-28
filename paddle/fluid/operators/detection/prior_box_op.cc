@@ -69,7 +69,8 @@ class PriorBoxOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_input_type = ctx.Input<framework::Tensor>("Input")->type();
+    auto input_input_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;

@@ -162,7 +162,7 @@ class SampleLogitsOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Logits"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Logits");
     framework::OpKernelType kt =
         framework::OpKernelType(data_type, ctx.device_context());
     return kt;
@@ -201,8 +201,8 @@ class SampleLogitsOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(
-        ctx.InputVar(framework::GradVarName("SampledLogits")));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("SampledLogits"));
     framework::OpKernelType kt =
         framework::OpKernelType(data_type, ctx.device_context());
     return kt;
