@@ -114,9 +114,8 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
     layout = framework::DataLayout::kMKLDNN;
   }
 #endif
-  return framework::OpKernelType(
-      framework::GetDataTypeOfVar(ctx.InputVar(name)), ctx.GetPlace(), layout,
-      library);
+  return framework::OpKernelType(oper.IndicateVarDataType(ctx, name),
+                                 ctx.GetPlace(), layout, library);
 }
 
 class ActivationOp : public framework::OperatorWithKernel {

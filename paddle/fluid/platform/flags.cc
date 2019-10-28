@@ -199,7 +199,9 @@ DEFINE_bool(
  */
 DEFINE_int32(communicator_max_merge_var_num, 20,
              "max var num to merge and send");
-
+DEFINE_bool(communicator_is_sgd_optimizer, true,
+            "gradient sent to the server is the sum of the gradients "
+            "calculated by each thread if optimizer is sgd");
 /**
  * Distributed related FLAG
  * Name: FLAGS_communicator_send_queue_size

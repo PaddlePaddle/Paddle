@@ -440,8 +440,9 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
-                                 layout, library);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(), layout,
+      library);
 }
 
 template <typename T>
