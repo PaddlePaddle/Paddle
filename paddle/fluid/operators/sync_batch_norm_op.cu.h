@@ -497,6 +497,9 @@ template <typename DeviceContext, typename T>
 class SyncBatchNormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override;
+
+ protected:
+  void GradCompute(const framework::ExecutionContext &ctx) const;
 };
 
 }  // namespace operators

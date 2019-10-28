@@ -107,6 +107,13 @@ class InplaceABNOpMaker : public paddle::operators::BatchNormOpMaker {
 class InplaceABNOpGradMaker : public paddle::operators::BatchNormGradMaker {
  public:
   using paddle::operators::BatchNormGradMaker::BatchNormGradMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op = BatchNormGradMaker::Apply();
+    op->SetInput("Y", Output("Y"));
+    return op;
+  }
 };
 
 template <typename DeviceContext, typename T>
@@ -137,8 +144,8 @@ class InplaceABNGradKernel
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
 
-    auto& py = const_cast<Tensor&>(*y);
-    auto& pd_y = const_cast<Tensor&>(*d_y);
+    auto py = *y;
+    auto pd_y = *d_y;
     auto cur_y = EigenVector<T>::Flatten(py);
     auto cur_dy = EigenVector<T>::Flatten(pd_y);
 

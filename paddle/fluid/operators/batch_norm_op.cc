@@ -449,8 +449,13 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    GradCompute(ctx, nullptr);
+  }
+
+ protected:
+  void GradCompute(const framework::ExecutionContext &ctx,
+                   const Tensor *y) const {
     const auto *x = ctx.Input<Tensor>("X");
-    auto *y = ctx.Input<Tensor>("Y");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -462,7 +467,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const float epsilon = ctx.Attr<float>("epsilon");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
-    bool is_inplace = (x->data<T>() == y->data<T>());
+    bool is_inplace = (y != nullptr && x->data<T>() == y->data<T>());
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -659,7 +664,6 @@ std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
   auto *op = new framework::OpDesc();
   op->SetType(GradOpType());
   op->SetInput("X", Input("X"));
-  op->SetInput("Y", Output("Y"));
   op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
 
   op->SetInput("Scale", Input("Scale"));
