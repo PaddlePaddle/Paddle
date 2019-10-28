@@ -33,20 +33,37 @@ class TestDistMnistFleetSave(TestDistBase):
         fluid_persistables = sorted(os.listdir(fluid_model_path))
         fleet_model_path = os.path.join(dirname, 'fleet_persistables')
         fleet_persistables = sorted(os.listdir(fleet_model_path))
-        if len(fluid_persistables) != len(fleet_persistables):
-            raise ValueError("Test Failed.")
-        for i in range(len(fluid_persistables)):
-            if fluid_persistables[i] != fleet_persistables[i]:
-                raise ValueError("Test Failed.")
-
         fluid_infer_path = os.path.join(dirname, 'fluid_infer')
         fluid_infer_files = sorted(os.listdir(fluid_infer_path))
         fleet_infer_path = os.path.join(dirname, 'fleet_infer')
         fleet_infer_files = sorted(os.listdir(fleet_infer_path))
+
+        if len(fluid_persistables) != len(fleet_persistables):
+            shutil.rmtree(fluid_model_path)
+            shutil.rmtree(fleet_model_path)
+            shutil.rmtree(fluid_infer_path)
+            shutil.rmtree(fleet_infer_path)
+            raise ValueError("Test Failed.")
+        for i in range(len(fluid_persistables)):
+            if fluid_persistables[i] != fleet_persistables[i]:
+                shutil.rmtree(fluid_model_path)
+                shutil.rmtree(fleet_model_path)
+                shutil.rmtree(fluid_infer_path)
+                shutil.rmtree(fleet_infer_path)
+                raise ValueError("Test Failed.")
+
         if len(fluid_infer_files) != len(fleet_infer_files):
+            shutil.rmtree(fluid_model_path)
+            shutil.rmtree(fleet_model_path)
+            shutil.rmtree(fluid_infer_path)
+            shutil.rmtree(fleet_infer_path)
             raise ValueError("Test Failed.")
         for i in range(len(fluid_infer_files)):
             if fluid_infer_files[i] != fleet_infer_files[i]:
+                shutil.rmtree(fluid_model_path)
+                shutil.rmtree(fleet_model_path)
+                shutil.rmtree(fluid_infer_path)
+                shutil.rmtree(fleet_infer_path)
                 raise ValueError("Test Failed.")
         return True
 

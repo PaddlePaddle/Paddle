@@ -531,6 +531,7 @@ class TestDistBase(unittest.TestCase):
         self._use_local_sgd = False
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
+        self._save_model = False
         self._setup_config()
 
         global DIST_UT_PORT
