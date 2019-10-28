@@ -102,7 +102,6 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
   }
 }
 
-proto::VarType::Type GetDataTypeOfVar(const Variable* var);
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
