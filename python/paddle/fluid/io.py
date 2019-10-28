@@ -1540,13 +1540,13 @@ def save(program, model_path):
 def load(program, model_path, executor=None):
     """
     This function filter out parameters and optimizer information from program, and then get corresponding value from file.
-    An exception will throw if shape or dtype of the parameters is not match between program and loaded file.
-
-    NOTICE: This function MUST called after run start_up_program
+    An exception will throw if shape or dtype of the parameters is not match.
 
     Args: 
-        program: The program to be load
-        model_path: The file prefix store the program
+        program(Program): The program will be loaded
+        model_path(str): The file prefix store the program
+        executor(Executor, optional): The executor used for initialize the parameter 
+                                      When startup program is not run.
 
     Returns:
         None
@@ -1591,6 +1591,9 @@ def load(program, model_path, executor=None):
 def load_program_state(model_path):
     """
     Load program state from local file
+    
+
+
     """
     parameter_file_name = model_path + ".pdparams"
     assert os.path.exists(parameter_file_name), \
@@ -1610,6 +1613,27 @@ def load_program_state(model_path):
 def set_program_state(program, state_dict):
     """
     Set program parameter from state_dict
+
+    An exception will throw if shape or dtype of the parameters is not match. 
+
+    NOTICE: This function MUST called after run start_up_program
+
+    Args:
+        program(Program): The program to be set
+        state_dict(dict): the dict store Parameter or optimizer information
+    Returns: 
+        None
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            prog = fluid.default_main_program()
+            fluid.save( prog, "./temp")
+
+            fluid.load( prog, "./temp")
+
     """
     parameter_list = list(filter(is_persistable, program.list_vars()))
 
