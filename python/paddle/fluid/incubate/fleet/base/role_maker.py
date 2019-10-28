@@ -335,12 +335,10 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             if not self._is_collective:
                 try:
+                    # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
+                    # format: string(ip:port), eg. 127.0.0.1:6001
                     eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(
                         ",")
-                    if len(eplist) == 0:
-                        raise ValueError(
-                            "Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set,"
-                            "format: string(ip:port), eg. 127.0.0.1:6001")
                     # note that, we usually assign the same port to different ips
                     # if we run parameter server training in local mode
                     # port should be different in environment variables
@@ -359,7 +357,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                         role = Role.SERVER
                         cur_ip = os.environ["POD_IP"]
                         curr_port = os.environ["PADDLE_PORT"]
-                        curr_endpoint = ".".join([cur_ip, curr_port])
+                        curr_endpoint = ":".join([cur_ip, curr_port])
                         current_id = eplist.index(curr_endpoint)
                     else:
                         raise ValueError(
