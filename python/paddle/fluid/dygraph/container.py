@@ -51,6 +51,7 @@ class Sequential(Layer):
                 )
                 model2['l1']  # access l1 layer
                 model2.add_sublayer('l3', fluid.FC('l3', 3))  # add sublayer
+                print([l.full_name() for l in model2.sublayers()])  # ['l1/FC_0', 'l2/FC_0', 'l3/FC_0']
                 res2 = model2(data)  # sequential execution
 
     """

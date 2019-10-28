@@ -19,7 +19,7 @@ import paddle.fluid as fluid
 import numpy as np
 
 
-class TestImperativeContainer(unittest.TestCase):
+class TestImperativeContainerSequential(unittest.TestCase):
     def test_sequential(self):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
