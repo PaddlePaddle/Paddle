@@ -19,7 +19,7 @@ SET(MKLDNN_PREFIX_DIR    ${THIRD_PARTY_PATH}/mkldnn)
 SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 SET(MKLDNN_REPOSITORY     https://github.com/intel/mkl-dnn.git)
-SET(MKLDNN_TAG            161ac408a240f469d3c81e6913b2545ed45d026f)
+SET(MKLDNN_TAG            518a316a8cd6deb82dc7866bc04bd0355a25c3a4)
 
 # Introduce variables:
 # * CMAKE_INSTALL_LIBDIR

@@ -29,8 +29,8 @@ using mkldnn::stream;
 using platform::to_void_cast;
 using platform::GetMKLDNNFormat;
 
-inline void GetWeightsTz(std::vector<int>& weights_tz, int groups,  // NOLINT
-                         bool is_conv3d) {
+inline void GetWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
+                         int groups, bool is_conv3d) {
   if (groups > 1) {
     if (is_conv3d) {
       int output = weights_tz[0];
@@ -211,11 +211,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     GetWeightsTz(weights_tz, g, is_conv3d);
 =======
     GetWeightsTz(weights_tz, g, is_conv3d);
-<<<<<<< 24f6805a741d026b4c77eacbb556ef9879032c70
 
+<<<<<<< df4af97a56450dd445bdaf7a364822e73eca925b
 =======
 >>>>>>> Rebase changes
 >>>>>>> Rebase changes
+=======
+>>>>>>> Cosmetics
     auto dst_tz = paddle::framework::vectorize(output->dims());
 
     // Get unique name for storing MKLDNN primitives
@@ -695,10 +697,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       }
       platform::SetDstMemoryHandler<T_out>(ctx, output, handler, dst_memory_p);
 
-      if (src_memory_reorder_p) {
-        // pipeline.push_back(*src_memory_reorder_p);
-      }
-
       auto residual_reorder_p = std::static_pointer_cast<mkldnn::reorder>(
           dev_ctx.GetBlob(residual_reorder_key));
       if (residual_reorder_p) {
@@ -707,7 +705,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         residual_reorder_p->execute(astream, *user_residual_data_p,
                                     *dst_memory_p);
         astream.wait();
-        // pipeline.push_back(*residual_reorder_p);
       }
 
       auto bias_memory_p =
