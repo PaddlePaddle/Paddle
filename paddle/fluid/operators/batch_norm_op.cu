@@ -260,7 +260,7 @@ class InplaceHelper {
                   double epsilon, int C, int M, const int num, const Y *y,
                   int grid2, int block, const cudaStream_t &stream) {
     KeBNRestoreData<<<grid2, block, 0, stream>>>(
-        layout, x, scale, bias, mean, variance, epsilon, C, M, num, x);
+        layout, x, scale, bias, mean, variance, epsilon, C, M, num, y);
   }
 };
 
