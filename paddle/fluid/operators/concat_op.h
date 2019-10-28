@@ -48,13 +48,11 @@ static inline framework::DDim ComputeAndCheckShape(
         if (check_shape) {
           // check all shape in run time
           PADDLE_ENFORCE_EQ(
-              out_dims[j], inputs_dims[i][j],
-              "ShapeError: Input tensors should have same "
-              "dimensions(or specific dimension = -1) except the axis. "
-              "But recevied axis = %s, input[0]'s shape = "
-              "[%s], input[%s]'s shape = [%s], the \"%s\" "
-              "dimension of input[%s] is unexpected",
-              axis, inputs_dims[0], i, inputs_dims[j], j, i);
+              inputs_dims[0][j], inputs_dims[i][j],
+              "ShapeError: Dimension %d in inputs' shapes must be equal. "
+              "But recevied input[0]'s shape = "
+              "[%s], input[%d]'s shape = [%s].",
+              j, inputs_dims[0], i, inputs_dims[i]);
         }
       }
     }
@@ -77,22 +75,25 @@ class ConcatKernel : public framework::OpKernel<T> {
     framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
     PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
     auto axis = ctx.Attr<int>("axis");
+    bool need_resize_out_dims = false;
     if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
       axis = GetDataFromTensor<int>(axis_tensor)[0];
+      need_resize_out_dims = true;
     }
     axis = ComputeAxis(static_cast<int64_t>(axis),
                        static_cast<int64_t>(ins[0]->dims().size()));
 
-    const size_t n = ins.size();
-    std::vector<framework::DDim> ins_dims(n);
-    for (size_t i = 0; i < n; i++) {
-      ins_dims[i] = ins[i]->dims();
+    if (need_resize_out_dims) {
+      const size_t n = ins.size();
+      std::vector<framework::DDim> ins_dims(n);
+      for (size_t i = 0; i < n; i++) {
+        ins_dims[i] = ins[i]->dims();
+      }
+
+      framework::DDim out_dims = ComputeAndCheckShape(true, ins_dims, axis);
+      out->Resize(out_dims);
     }
-
-    framework::DDim out_dims = ComputeAndCheckShape(true, ins_dims, axis);
-    out->Resize(out_dims);
-
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 

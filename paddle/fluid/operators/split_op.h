@@ -113,20 +113,27 @@ class SplitOpKernel : public framework::OpKernel<T> {
     auto in_dims = in->dims();
     auto outs_number = outs.size();
 
+    bool need_resize_outs_dims = false;
     if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
       axis = GetDataFromTensor<int>(axis_tensor)[0];
+      need_resize_outs_dims = true;
     }
     auto sections_tensor_list =
         ctx.MultiInput<framework::Tensor>("SectionsTensorList");
     if (sections_tensor_list.size() > 0) {
       sections = GetDataFromTensorList<int>(sections_tensor_list);
+      need_resize_outs_dims = true;
     }
-    std::vector<framework::DDim> outs_dims =
-        UpdateOutsDims(true, true, in_dims, num, sections, axis, outs_number);
-    for (size_t j = 0; j < outs.size(); ++j) {
-      outs[j]->Resize(outs_dims[j]);
+
+    if (need_resize_outs_dims) {
+      std::vector<framework::DDim> outs_dims =
+          UpdateOutsDims(true, true, in_dims, num, sections, axis, outs_number);
+      for (size_t j = 0; j < outs.size(); ++j) {
+        outs[j]->Resize(outs_dims[j]);
+      }
     }
+
     auto place = ctx.GetPlace();
 
     std::vector<const framework::Tensor*> shape_refer;
