@@ -74,6 +74,10 @@ class AllReduceOpHandle : public OpHandleBase {
                      const framework::proto::VarType::Type &dtype,
                      int64_t numel, const std::vector<platform::Place> &places,
                      const std::vector<std::string> &out_var_handles);
+
+  void CheckNanOrInf(const std::string &op_type, const framework::Scope &scope,
+                     const std::string &var_nname,
+                     const platform::Place &place);
 };
 
 }  // namespace details

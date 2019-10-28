@@ -155,8 +155,14 @@ void DoubleCheckOperator::Run(const Scope& scope,
 struct RangeFunctor {
   RangeFunctor(const platform::float16* a, const float* b) : a_(a), b_(b) {}
   inline HOSTDEVICE void operator()(size_t id) const {
-    PADDLE_ENFORCE((fabs(static_cast<float>(a_[id]) - b_[id] / b_[id])) < 0.001,
-                   "fabs(%f - %f) > 0.1", static_cast<float>(a_[id]), b_[id]);
+    float r = fabs(static_cast<float>(a_[id]) - b_[id]);
+    float r0 = fabs(r / b_[id]);
+    if (r < 0.001) {
+      return;
+    }
+
+    PADDLE_ENFORCE(r0 < 0.01, "%f = %f op %f", r0, static_cast<float>(a_[id]),
+                   b_[id]);
   }
   const platform::float16* a_;
   const float* b_;
