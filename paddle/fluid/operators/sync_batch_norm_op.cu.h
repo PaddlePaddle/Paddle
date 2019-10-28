@@ -14,15 +14,16 @@ limitations under the License. */
 
 #pragma once
 
-// clang-format off
 #include <algorithm>
 #include <cfloat>
+#include <cmath>
 #include <string>
 #include <vector>
 #include "cub/cub.cuh"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
+#include "paddle/fluid/operators/norm_utils.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -111,8 +112,8 @@ static __global__ void KeNormAffine(const T *x,
   for (int i = gid; i < num; i += stride) {
     const int c = layout == framework::DataLayout::kNCHW ? (i / M) % C : i % C;
     auto x_i = static_cast<BatchNormParamType<T>>(x[i]);
-    auto y_i = \
-      (x_i - mean[c]) / sqrt(variance[c] + epsilon) * scale[c] + bias[c];
+    auto y_i =
+        (x_i - mean[c]) / sqrt(variance[c] + epsilon) * scale[c] + bias[c];
     y[i] = static_cast<T>(y_i);
   }
 }
@@ -168,11 +169,13 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
     const int threads = 256;
     int grid = std::min(C, (max_threads + threads - 1) / threads);
     if (layout == framework::DataLayout::kNCHW) {
-      KeLocalStats<T, threads, framework::DataLayout::kNCHW>
-        <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
+      KeLocalStats<T, threads,
+                   framework::DataLayout::kNCHW><<<grid, threads, 0, stream>>>(
+          x_d, N, H * W * D, C, stats);
     } else {
-      KeLocalStats<T, threads, framework::DataLayout::kNHWC>
-        <<<grid, threads, 0, stream>>>(x_d, N, H * W * D, C, stats);
+      KeLocalStats<T, threads,
+                   framework::DataLayout::kNHWC><<<grid, threads, 0, stream>>>(
+          x_d, N, H * W * D, C, stats);
     }
 
     Tensor c_g_st;
@@ -225,10 +228,11 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
 }
 
 template <typename T, const int BlockDim, framework::DataLayout layout>
-__global__ void KeBackwardLocalStats(
-    const T *dy, const T *x, const BatchNormParamType<T> *means,
-    int N, int M, int C, BatchNormParamType<T> *sum_dy_prod) {
-  typedef cub::BlockReduce<double, BlockDim> BlockReduce;
+__global__ void KeBackwardLocalStats(const T *dy, const T *x,
+                                     const BatchNormParamType<T> *means, int N,
+                                     int M, int C,
+                                     BatchNormParamType<T> *sum_dy_prod) {
+  typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   for (int k = blockIdx.x; k < C; k += gridDim.x) {
     BatchNormParamType<T> sum1 = 0.;
@@ -264,9 +268,9 @@ __global__ void KeBackwardLocalStats(
 template <typename T, int BlockDim, framework::DataLayout layout>
 static __global__ void KeBNBackwardScaleBias(
     const T *dy, const T *x, const BatchNormParamType<T> *mean,
-    const BatchNormParamType<T> *inv_variance,
-    const double epsilon, const int N, const int C, const int HxW,
-    BatchNormParamType<T> *dscale, BatchNormParamType<T> *dbias) {
+    const BatchNormParamType<T> *inv_variance, const double epsilon,
+    const int N, const int C, const int HxW, BatchNormParamType<T> *dscale,
+    BatchNormParamType<T> *dbias) {
   const int outer_size = C;
   const int inner_size = N * HxW;
   typedef cub::BlockReduce<BatchNormParamType<T>, BlockDim> BlockReduce;
@@ -288,11 +292,9 @@ static __global__ void KeBNBackwardScaleBias(
       db_sum += dy_i;
     }
     __syncthreads();
-    auto os = BlockReduce(temp_storage)
-                    .Reduce(static_cast<double>(ds_sum), cub::Sum());
+    auto os = BlockReduce(temp_storage).Reduce(ds_sum, cub::Sum());
     __syncthreads();
-    auto ob = BlockReduce(temp_storage)
-                    .Reduce(static_cast<double>(db_sum), cub::Sum());
+    auto ob = BlockReduce(temp_storage).Reduce(db_sum, cub::Sum());
     __syncthreads();
     if (threadIdx.x == 0) {
       dscale[i] = os * inv_var_i;
@@ -303,10 +305,12 @@ static __global__ void KeBNBackwardScaleBias(
 }
 
 template <typename T, framework::DataLayout layout>
-static __global__ void KeBNRestoreData(
-    T *x, const BatchNormParamType<T> *scale, const BatchNormParamType<T> *bias,
-    const BatchNormParamType<T> *mean, const BatchNormParamType<T> *sv_inv,
-    const double epsilon, int C, int M, int num, const T *y) {
+static __global__ void KeBNRestoreData(T *x, const BatchNormParamType<T> *scale,
+                                       const BatchNormParamType<T> *bias,
+                                       const BatchNormParamType<T> *mean,
+                                       const BatchNormParamType<T> *sv_inv,
+                                       const double epsilon, int C, int M,
+                                       int num, const T *y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   for (int i = gid; i < num; i += stride) {
@@ -324,8 +328,8 @@ static __global__ void KeBNBackwardData(
     const BatchNormParamType<T> *inv_variance,
     const BatchNormParamType<T> *g_sum_dy,
     const BatchNormParamType<T> *g_sum_dy_prod,
-    const BatchNormParamType<T> *num_dev, const double epsilon,
-    const int C, const int HxW, const int num, T *dx) {
+    const BatchNormParamType<T> *num_dev, const double epsilon, const int C,
+    const int HxW, const int num, T *dx) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   auto scale = static_cast<BatchNormParamType<T>>(C) / num;
@@ -334,14 +338,14 @@ static __global__ void KeBNBackwardData(
     const int c = layout == framework::DataLayout::kNCHW ? i / HxW % C : i % C;
     auto inv_var = inv_variance[c];
     auto s_d = gamma[c];
-    auto gvar = -(g_sum_dy_prod[c] / dev_num) \
-                * s_d * inv_var * (inv_var * inv_var);
+    auto gvar =
+        -(g_sum_dy_prod[c] / dev_num) * s_d * inv_var * (inv_var * inv_var);
     auto gmean = -(g_sum_dy[c] / dev_num) * s_d * inv_var;
 
     auto x_i = static_cast<BatchNormParamType<T>>(x[i]);
     auto dy_i = static_cast<BatchNormParamType<T>>(dy[i]);
-    auto dx_i = dy_i * s_d * inv_var + gmean * scale \
-                + gvar * scale * (x_i - mean[c]);
+    auto dx_i =
+        dy_i * s_d * inv_var + gmean * scale + gvar * scale * (x_i - mean[c]);
     dx[i] = static_cast<T>(dx_i);
   }
 }
@@ -414,14 +418,14 @@ void SyncBatchNormGradFunctor(
       KeBNRestoreData<
           T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
           const_cast<T *>(x_d), scale->data<BatchNormParamType<T>>(),
-          bias->data<BatchNormParamType<T>>(), saved_mean,
-          saved_inv_var, epsilon, C, H * W * D, x_numel, y->data<T>());
+          bias->data<BatchNormParamType<T>>(), saved_mean, saved_inv_var,
+          epsilon, C, H * W * D, x_numel, y->data<T>());
     } else {
       KeBNRestoreData<
           T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
           const_cast<T *>(x_d), scale->data<BatchNormParamType<T>>(),
-          bias->data<BatchNormParamType<T>>(), saved_mean,
-          saved_inv_var, epsilon, C, H * W * D, x_numel, y->data<T>());
+          bias->data<BatchNormParamType<T>>(), saved_mean, saved_inv_var,
+          epsilon, C, H * W * D, x_numel, y->data<T>());
     }
   }
 
@@ -459,8 +463,8 @@ void SyncBatchNormGradFunctor(
       KeBNBackwardData<
           T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
           dy_d, x_d, scale->data<BatchNormParamType<T>>(), saved_mean,
-          saved_inv_var, stats, stats + C, stats + 2 * C, epsilon, C,
-          fsize, x->numel(), d_x->data<T>());
+          saved_inv_var, stats, stats + C, stats + 2 * C, epsilon, C, fsize,
+          x->numel(), d_x->data<T>());
     }
   } else {
     if (d_scale && d_bias) {
@@ -475,8 +479,8 @@ void SyncBatchNormGradFunctor(
       KeBNBackwardData<
           T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
           dy_d, x_d, scale->data<BatchNormParamType<T>>(), saved_mean,
-          saved_inv_var, stats, stats + C, stats + 2 * C, epsilon, C,
-          fsize, x->numel(), d_x->data<T>());
+          saved_inv_var, stats, stats + C, stats + 2 * C, epsilon, C, fsize,
+          x->numel(), d_x->data<T>());
     }
   }
 }
@@ -493,6 +497,10 @@ template <typename DeviceContext, typename T>
 class SyncBatchNormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override;
+
+ protected:
+  void GradCompute(const framework::ExecutionContext &ctx,
+                   const Tensor *y) const;
 };
 
 }  // namespace operators

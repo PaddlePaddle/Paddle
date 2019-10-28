@@ -58,6 +58,12 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    GradCompute(ctx, nullptr);
+  }
+
+ protected:
+  void GradCompute(const framework::ExecutionContext &ctx,
+                   const Tensor *y) const {
     PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
                       "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
@@ -65,7 +71,6 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
 
     const DataLayout layout = framework::StringToDataLayout(layout_str);
     const auto *x = ctx.Input<Tensor>("X");
-    const auto *y = ctx.Input<Tensor>("Y");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");

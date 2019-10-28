@@ -57,8 +57,8 @@ class InplaceABNGradKernel
     auto activation =
         GetInplaceABNActivationType(ctx.Attr<std::string>("activation"));
 
-    auto& py = const_cast<Tensor&>(*y);
-    auto& pd_y = const_cast<Tensor&>(*d_y);
+    auto py = *y;
+    auto pd_y = *d_y;
     auto cur_y = EigenVector<T>::Flatten(py);
     auto cur_dy = EigenVector<T>::Flatten(pd_y);
 
@@ -66,9 +66,9 @@ class InplaceABNGradKernel
     functor.GradCompute(ctx, activation, place, cur_y, cur_y, cur_dy, cur_dy);
 
     if (ctx.Attr<bool>("use_sync_bn")) {
-      SyncBatchNormGradKernel<DeviceContext, T>::Compute(ctx);
+      SyncBatchNormGradKernel<DeviceContext, T>::GradCompute(ctx, y);
     } else {
-      BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
+      BatchNormGradKernel<DeviceContext, T>::GradCompute(ctx, y);
     }
   }
 };
