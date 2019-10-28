@@ -425,8 +425,8 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
 
 class TestNearestAPI(OpTest):
     def test_case(self):
-        x = fluid.data(name="x", shape=[1, 3, 6, 6], dtype="float32")
-        y = fluid.data(name="y", shape=[1, 6, 6, 3], dtype="float32")
+        x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+        y = fluid.data(name="y", shape=[2, 6, 6, 3], dtype="float32")
 
         dim = fluid.data(name="dim", shape=[1], dtype="int32")
         shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
@@ -442,14 +442,18 @@ class TestNearestAPI(OpTest):
             x, out_shape=[4, 4], actual_shape=actual_size)
         out5 = fluid.layers.resize_nearest(x, scale=scale_tensor)
 
-        x_data = np.random.random((1, 3, 6, 6)).astype("float32")
+        x_data = np.random.random((2, 3, 6, 6)).astype("float32")
         dim_data = np.array([12]).astype("int32")
         shape_data = np.array([12, 12]).astype("int32")
         actual_size_data = np.array([12, 12]).astype("int32")
         scale_data = np.array([2.0]).astype("float32")
 
-        place = core.CPUPlace()
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
         exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
         results = exe.run(fluid.default_main_program(),
                           feed={
                               "x": x_data,

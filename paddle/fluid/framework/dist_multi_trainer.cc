@@ -144,6 +144,10 @@ void DistMultiTrainer::Run() {
   }
 }
 
+Scope *DistMultiTrainer::GetWorkerScope(int thread_id) {
+  return workers_[thread_id]->GetThreadScope();
+}
+
 void DistMultiTrainer::Finalize() {
   for (auto &th : threads_) {
     th.join();
@@ -199,5 +203,5 @@ void DistMultiTrainer::MergeToRootScope(LoDTensor *root_tensor,
     root_data[i] += data[i];
   }
 }
-}  // end namespace framework
-}  // end namespace paddle
+}  // namespace framework
+}  // namespace paddle

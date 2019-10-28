@@ -53,7 +53,11 @@ bool RequestSendHandler::Handle(const std::string& varname,
     rpc_server_->IncreaseBatchBarrier(kRequestSend);
   } else if (varname == COMPLETE_MESSAGE) {
     VLOG(3) << "sync: recv complete message";
-    HeartBeatMonitor::GetInstance()->Update(trainer_id, "", COMPLETED);
+
+    if (HeartBeatMonitor::GetInstance() != nullptr) {
+      HeartBeatMonitor::GetInstance()->Update(trainer_id, "", COMPLETED);
+    }
+
     rpc_server_->Complete();
   } else {
     // Async
@@ -248,6 +252,23 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
   VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
           << out_var_name;
   executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope_);
+  return true;
+}
+
+bool RequestNotifyHandler::Handle(const std::string& varname,
+                                  framework::Scope* scope,
+                                  framework::Variable* invar,
+                                  framework::Variable** outvar,
+                                  const int trainer_id,
+                                  const std::string& out_var_name,
+                                  const std::string& table_name) {
+  VLOG(4) << "RequestNotifyHandler" << varname;
+  if (varname == LEARNING_RATE_DECAY_MESSAGE) {
+    PADDLE_ENFORCE_NE(
+        lr_decay_block_id, -1,
+        "when lr_decay_block_id = -1, there should be no RPC invoke.");
+    executor_->RunPreparedContext(lr_decay_prepared_ctx_.get(), scope_);
+  }
   return true;
 }
 

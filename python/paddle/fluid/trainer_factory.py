@@ -53,6 +53,8 @@ class TrainerFactory(object):
                 trainer._set_dump_file_num(opt_info["dump_file_num"])
                 trainer._set_dump_converter(opt_info["dump_converter"])
                 trainer._set_adjust_ins_weight(opt_info["adjust_ins_weight"])
+                trainer._set_check_nan_var_names(opt_info[
+                    "check_nan_var_names"])
             trainer._set_device_worker(device_worker)
         return trainer
 
@@ -83,6 +85,9 @@ class FetchHandlerMonitor(object):
                     fetch_scope.find_var(varname)
                     for varname in fetch_target_names
                 ]
+
+                if None in fetch_vars:
+                    continue
 
                 fetch_tensors = [var.get_tensor() for var in fetch_vars]
 

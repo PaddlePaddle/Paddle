@@ -211,6 +211,8 @@ class DownpourWorker : public HogwildWorker {
   std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  // actually pushed feasign of each table
+  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
 
   // feasign
   std::map<uint64_t, std::vector<uint64_t>> features_;
@@ -230,6 +232,8 @@ class DownpourWorker : public HogwildWorker {
   // adjust ins weight
   AdjustInsWeightConfig adjust_ins_weight_config_;
   std::vector<float> nid_show_;
+  // check nan and inf during training
+  std::vector<std::string> check_nan_var_names_;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)

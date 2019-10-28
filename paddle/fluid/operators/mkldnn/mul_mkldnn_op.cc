@@ -340,8 +340,7 @@ std::shared_ptr<MulPrimitiveFactory<XT, YT, OT>> GetPrimitiveFactory(
     const Tensor *input_x, const Tensor *input_y,
     const mkldnn::engine &mkldnn_engine, bool enable_quant) {
   const std::string key = platform::CreateKey(
-      input_x->format(), input_x->type(),
-      framework::vectorize<int>(input_x->dims()), input_y->format(),
+      input_x->type(), framework::vectorize<int>(input_x->dims()),
       input_y->type(), framework::vectorize<int>(input_y->dims()),
       ctx.op().Output("Out"));
 

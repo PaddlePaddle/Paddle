@@ -135,7 +135,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       framework::OpKernelType::kDefaultCustomizedTypeValue;
   framework::LibraryType library{framework::LibraryType::kPlain};
   // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  auto input_data_type = ctx.Input<Tensor>("Input")->type();
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
   std::string data_format =
       "AnyLayout";  // todo enable data layout when it's ready
   framework::DataLayout layout = framework::StringToDataLayout(data_format);
@@ -318,7 +318,7 @@ void Conv2DOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
-      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
@@ -455,7 +455,7 @@ void Conv3DOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardware. This size should be chosen carefully.")
-      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddAttr<bool>("exhaustive_search",
                 "(bool, default false) cuDNN has many algorithm to calculation "
                 "convolution, whether enable exhaustive search "
@@ -527,9 +527,9 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
   }
 #endif
 
-  auto type = framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                      ctx.GetPlace(), layout_, library_,
-                                      customized_type_value);
+  auto type = framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+      layout_, library_, customized_type_value);
 #ifdef PADDLE_WITH_CUDA
   if (library_ == framework::LibraryType::kCUDNN) {
     std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];
@@ -704,9 +704,9 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
     customized_type_value = kConvMKLDNNFP32;
   }
 #endif
-  auto type = framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                      ctx.GetPlace(), layout_, library_,
-                                      customized_type_value);
+  auto type = framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+      layout_, library_, customized_type_value);
 #ifdef PADDLE_WITH_CUDA
   if (library_ == framework::LibraryType::kCUDNN) {
     std::vector<framework::KernelConfig>& configs = kernel_configs_map_[type];

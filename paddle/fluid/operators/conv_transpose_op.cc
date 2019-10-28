@@ -132,8 +132,9 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                 ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+      layout_, library_);
 }
 
 void Conv2DTransposeOpMaker::Make() {
@@ -222,7 +223,7 @@ void Conv2DTransposeOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardward. This size should be carefully setted.")
-      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
 
@@ -323,7 +324,7 @@ void Conv3DTransposeOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardward. This size should be carefully setted.")
-      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddComment(R"DOC(
 Convolution3D Transpose Operator.
 
@@ -384,8 +385,9 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
   }
 
   framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                 ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+      layout_, library_);
 }
 
 class ConvTransposeGradOpDescMaker : public framework::SingleGradOpDescMaker {
