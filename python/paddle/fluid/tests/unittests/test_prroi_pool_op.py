@@ -42,8 +42,8 @@ class TestPRROIPoolOp(OpTest):
     def init_test_case(self):
         self.batch_size = 3
         self.channels = 3 * 2 * 2
-        self.height = 6
-        self.width = 4
+        self.height = 26
+        self.width = 24
 
         self.x_dim = [self.batch_size, self.channels, self.height, self.width]
 
@@ -82,8 +82,7 @@ class TestPRROIPoolOp(OpTest):
         self.check_output()
 
     def test_backward(self):
-        for place in self._get_places():
-            self._get_gradient(['X'], place, ["Out"], None)
+        self.check_grad(['X'], 'Out', max_relative_error=1.0)
 
     def run_net(self, place):
         with program_guard(Program(), Program()):
@@ -156,8 +155,8 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
     def init_test_case(self):
         self.batch_size = 3
         self.channels = 3 * 2 * 2
-        self.height = 6
-        self.width = 4
+        self.height = 26
+        self.width = 24
 
         self.x_dim = [self.batch_size, self.channels, self.height, self.width]
 
@@ -196,8 +195,7 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
         self.check_output()
 
     def test_backward(self):
-        for place in self._get_places():
-            self._get_gradient(['X', 'ROIs'], place, ["Out"], None)
+        self.check_grad(['X'], 'Out', max_relative_error=1.0)
 
     def run_net(self, place):
         with program_guard(Program(), Program()):
