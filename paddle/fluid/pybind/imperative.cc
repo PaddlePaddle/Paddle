@@ -320,9 +320,24 @@ void BindImperative(py::module *m_ptr) {
              return self.Forward(inputs);
            });
 
+  py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
+      .def("set_name_prefix",
+           &imperative::jit::ProgramDescTracer::SetNamePrefix)
+      .def("set_feed_vars", &imperative::jit::ProgramDescTracer::SetFeedVars)
+      .def("set_fetch_vars", &imperative::jit::ProgramDescTracer::SetFetchVars)
+      .def("create_program_desc",
+           &imperative::jit::ProgramDescTracer::CreateProgramDesc)
+      .def("reset", &imperative::jit::ProgramDescTracer::Reset);
+
   py::class_<imperative::Tracer>(m, "Tracer", "")
       .def("__init__",
            [](imperative::Tracer &self) { new (&self) imperative::Tracer(); })
+      .def_property("_enable_program_desc_tracing",
+                    &imperative::Tracer::IsProgramDescTracingEnabled,
+                    &imperative::Tracer::SetEnableProgramDescTracing)
+      .def("_get_program_desc_tracer",
+           &imperative::Tracer::GetProgramDescTracer,
+           py::return_value_policy::reference)
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
               const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,

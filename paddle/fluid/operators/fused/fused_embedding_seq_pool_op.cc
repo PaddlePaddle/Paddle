@@ -57,7 +57,7 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -126,7 +126,7 @@ class FusedEmbeddingSeqPoolOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };

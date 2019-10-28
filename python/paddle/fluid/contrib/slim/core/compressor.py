@@ -55,7 +55,9 @@ def cached_reader(reader, sampled_rate, cache_path, cached_id):
     def s_reader():
         if os.path.isdir(cache_path):
             for file_name in open(os.path.join(cache_path, "list")):
-                yield np.load(os.path.join(cache_path, file_name.strip()))
+                yield np.load(
+                    os.path.join(cache_path, file_name.strip()),
+                    allow_pickle=True)
         else:
             os.makedirs(cache_path)
             list_file = open(os.path.join(cache_path, "list"), 'w')
@@ -503,7 +505,7 @@ class Compressor(object):
                         _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
                             context.epoch_id, context.batch_id,
                             context.optimize_graph.out_nodes.keys(
-                            ), [round(r, 3) for r in results]))
+                            ), [round(r, 6) for r in results]))
                     for strategy in self.strategies:
                         strategy.on_batch_end(context)
                     context.batch_id += 1
@@ -523,7 +525,7 @@ class Compressor(object):
                     _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
                         context.epoch_id, context.batch_id,
                         context.optimize_graph.out_nodes.keys(
-                        ), [round(r, 3) for r in results]))
+                        ), [round(r, 6) for r in results]))
                 for strategy in self.strategies:
                     strategy.on_batch_end(context)
                 context.batch_id += 1

@@ -331,7 +331,7 @@ void MultiHeadGPUCompute(const platform::CUDADeviceContext &dev_ctx,
   auto stream = dev_ctx.stream();
 
   int grid = m;
-  PADDLE_ENFORCE_LT(k, 1024,
+  PADDLE_ENFORCE_LE(k, 1024,
                     "Input head_number * size_per_head should <= 1024");
   int block = k <= 1024 ? k : 1024;
   add_QKV<T><<<grid, block, 0, stream>>>(Q, K, V, q_buf, k_buf, v_buf, bias_q,

@@ -61,8 +61,9 @@ class CenterLossOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -117,7 +118,8 @@ class CenterLossGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<Tensor>("SampleCenterDiff")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "SampleCenterDiff"),
+        ctx.device_context());
   }
 };
 
