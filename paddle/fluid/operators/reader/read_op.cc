@@ -113,9 +113,10 @@ class ReadOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size(),
                       "input size and output size of read_op do not match");
 
-    std::vector<framework::DDim> shapes = reader->Shapes();
-    std::vector<framework::proto::VarType::Type> var_types = reader->VarTypes();
-    std::vector<bool> need_check_feed = reader->NeedCheckFeed();
+    const std::vector<framework::DDim>& shapes = reader->Shapes();
+    const std::vector<framework::proto::VarType::Type>& var_types =
+        reader->VarTypes();
+    const std::vector<bool>& need_check_feed = reader->NeedCheckFeed();
     PADDLE_ENFORCE_EQ(out_arg_names.size(), need_check_feed.size(),
                       "output size of read_op and the number of feeded "
                       "variables of reader do not match");

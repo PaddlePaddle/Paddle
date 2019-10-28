@@ -54,14 +54,16 @@ class ReaderBase {
   std::unordered_set<ReaderBase*> GetEndPoints();
 
   // Returns the shapes of the feeded variables
-  std::vector<DDim> Shapes() const { return shapes_; }
+  const std::vector<DDim>& Shapes() const { return shapes_; }
 
   // Returns the dtypes of the feeded variables
-  std::vector<proto::VarType::Type> VarTypes() const { return var_types_; }
+  const std::vector<proto::VarType::Type>& VarTypes() const {
+    return var_types_;
+  }
 
   // For Backward compatibility, old fluid.layers.data doesn't check shape.
   // This function returns whether you have the check shape for this Reader.
-  std::vector<bool> NeedCheckFeed() const { return need_check_feed_; }
+  const std::vector<bool>& NeedCheckFeed() const { return need_check_feed_; }
 
   virtual ~ReaderBase();
 
@@ -178,13 +180,15 @@ class ReaderHolder {
     reader_->Start();
   }
 
-  std::vector<DDim> Shapes() const { return reader_->Shapes(); }
+  const std::vector<DDim>& Shapes() const { return reader_->Shapes(); }
 
-  std::vector<proto::VarType::Type> VarTypes() const {
+  const std::vector<proto::VarType::Type>& VarTypes() const {
     return reader_->VarTypes();
   }
 
-  std::vector<bool> NeedCheckFeed() const { return reader_->NeedCheckFeed(); }
+  const std::vector<bool>& NeedCheckFeed() const {
+    return reader_->NeedCheckFeed();
+  }
 
   operator const std::shared_ptr<ReaderBase>&() const { return this->reader_; }
 
