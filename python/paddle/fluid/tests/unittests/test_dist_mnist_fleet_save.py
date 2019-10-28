@@ -65,6 +65,10 @@ class TestDistMnistFleetSave(TestDistBase):
                 shutil.rmtree(fluid_infer_path)
                 shutil.rmtree(fleet_infer_path)
                 raise ValueError("Test Failed.")
+        shutil.rmtree(fluid_model_path)
+        shutil.rmtree(fleet_model_path)
+        shutil.rmtree(fluid_infer_path)
+        shutil.rmtree(fleet_infer_path)
         return True
 
     def check_with_place(self,
