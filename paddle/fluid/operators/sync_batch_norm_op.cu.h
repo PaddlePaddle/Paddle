@@ -394,6 +394,7 @@ void SyncBatchNormGradFunctor(
     strides = {H * W * C * D, 1, W * D * C, D * C, C};
   }
   const T *x_d = x->data<T>();
+  auto px_d = *x_d;
   const T *dy_d = d_y->data<T>();
 
   auto &dev_ctx = ctx.cuda_device_context();
@@ -417,13 +418,13 @@ void SyncBatchNormGradFunctor(
     if (layout == framework::DataLayout::kNCHW) {
       KeBNRestoreData<
           T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-          const_cast<T *>(x_d), scale->data<BatchNormParamType<T>>(),
+          &px_d, scale->data<BatchNormParamType<T>>(),
           bias->data<BatchNormParamType<T>>(), saved_mean, saved_inv_var,
           epsilon, C, H * W * D, x_numel, y->data<T>());
     } else {
       KeBNRestoreData<
           T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-          const_cast<T *>(x_d), scale->data<BatchNormParamType<T>>(),
+          &px_d, scale->data<BatchNormParamType<T>>(),
           bias->data<BatchNormParamType<T>>(), saved_mean, saved_inv_var,
           epsilon, C, H * W * D, x_numel, y->data<T>());
     }

@@ -355,6 +355,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const auto *x = ctx.Input<Tensor>("X");
+    auto px = *x->template data<T>();
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
@@ -449,10 +450,9 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           saved_var->template data<BatchNormParamType<T>>();
 
       if (is_inplace) {
-        inplace_functor(data_layout, const_cast<T *>(x->template data<T>()),
-                        scale->data<T>(), bias->data<T>(), saved_mean_data,
-                        saved_var_data, epsilon, C, H * W * D, num,
-                        x->data<T>(), grid2, block, stream);
+        inplace_functor(data_layout, &px, scale->data<T>(), bias->data<T>(),
+                        saved_mean_data, saved_var_data, epsilon, C, H * W * D,
+                        num, x->data<T>(), grid2, block, stream);
       }
 
       if (d_scale && d_bias) {
@@ -503,10 +503,9 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           running_var->template data<BatchNormParamType<T>>();
 
       if (is_inplace) {
-        inplace_functor(data_layout, const_cast<T *>(x->template data<T>()),
-                        scale->data<T>(), bias->data<T>(), running_mean_data,
-                        running_var_data, epsilon, C, H * W * D, num,
-                        x->data<T>(), grid2, block, stream);
+        inplace_functor(data_layout, &px, scale->data<T>(), bias->data<T>(),
+                        running_mean_data, running_var_data, epsilon, C,
+                        H * W * D, num, x->data<T>(), grid2, block, stream);
       }
 
       if (data_layout == framework::DataLayout::kNCHW) {
