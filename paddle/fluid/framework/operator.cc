@@ -21,6 +21,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/data_transform.h"
+#include "paddle/fluid/framework/details/var_utils.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_call_stack.h"
@@ -932,15 +933,20 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (FLAGS_check_nan_inf) {
+    /*
+  for (auto& vname : OutputVars(true)) {
+    auto* var = exec_scope.FindVar(vname);
+    if (var == nullptr) continue;
+    if (var->IsType<framework::LoDTensor>()) {
+      CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
+    } else if (var->IsType<framework::SelectedRows>()) {
+      CheckTensorNANOrInf(type_, vname,
+                          var->Get<framework::SelectedRows>().value());
+    }
+  }
+  */
     for (auto& vname : OutputVars(true)) {
-      auto* var = exec_scope.FindVar(vname);
-      if (var == nullptr) continue;
-      if (var->IsType<framework::LoDTensor>()) {
-        CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
-      } else if (var->IsType<framework::SelectedRows>()) {
-        CheckTensorNANOrInf(type_, vname,
-                            var->Get<framework::SelectedRows>().value());
-      }
+      framework::details::EnforceNoNanOrInf(type_, exec_scope, vname, place);
     }
   }
 

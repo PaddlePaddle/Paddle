@@ -24,7 +24,7 @@
 #include "paddle/fluid/platform/profiler.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/framework/details/double_check.h"
+#include "paddle/fluid/framework/details/var_utils.h"
 DECLARE_bool(sync_nccl_allreduce);
 #endif
 DECLARE_bool(check_nan_inf);

@@ -54,11 +54,6 @@ class DoubleCheckOperator {
   const OpHandleBase& base_handle_;
 };
 
-// assert false when meets NAN or inf
-void EnforceNoNanOrInf(const std::string& op_type,
-                       const framework::Scope& scope,
-                       const std::string& var_name,
-                       const platform::Place& place);
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
