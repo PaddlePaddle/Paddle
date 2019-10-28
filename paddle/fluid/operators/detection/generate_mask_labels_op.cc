@@ -80,7 +80,7 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Rois"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Rois");
     return framework::OpKernelType(data_type, platform::CPUPlace());
   }
 };

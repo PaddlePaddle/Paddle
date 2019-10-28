@@ -80,8 +80,9 @@ class FCOp : public framework::OperatorWithKernel {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
-    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                   ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+        layout, library);
   }
 };
 

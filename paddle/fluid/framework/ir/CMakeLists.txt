@@ -111,8 +111,10 @@ set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
 
 cc_library(pass_builder SRCS pass_builder.cc DEPS pass)
 
-if(WITH_GPU)
-    cc_test(codegen_test SRCS codegen_test.cc DEPS codegen_helper codegen device_code lod_tensor)
+if(NOT APPLE AND NOT WIN32)
+  if(WITH_GPU)
+      cc_test(codegen_test SRCS codegen_test.cc DEPS codegen_helper codegen device_code lod_tensor)
+  endif()
 endif()
 cc_test(node_test SRCS node_test.cc DEPS node)
 cc_test(pass_test SRCS pass_test.cc DEPS graph pass graph_helper)
