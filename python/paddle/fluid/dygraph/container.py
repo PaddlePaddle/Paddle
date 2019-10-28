@@ -35,7 +35,6 @@ class Sequential(Layer):
             data = np.random.uniform(-1, 1, [30, 10]).astype('float32')
             with fluid.dygraph.guard():
                 data = fluid.dygraph.to_variable(data)
-
                 # create Sequential with iterable Layers
                 model1 = fluid.dygraph.Sequential('model1',
                     fluid.FC('fc1', 2),
