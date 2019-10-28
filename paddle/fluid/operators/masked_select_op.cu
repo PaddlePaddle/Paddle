@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <vector>
 #include "paddle/fluid/operators/masked_select_op.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -27,14 +29,14 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-__global__ void MaskedSelect(const int nums, const T* input, const T* mask,
-                             T* output) {
+__global__ void MaskedSelect(const int nums, const T* input_data,
+                             const T* mask_data, T* output_data) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
   int j = index;
   for (size_t i = index; i < nums; i += offset) {
-    if (mask[i]) {
-      output[j] = input_data[i];
+    if (mask_data[i]) {
+      output_data[j] = input_data[i];
       j += offset;
     }
   }
@@ -49,7 +51,7 @@ class MaskedSelectOPCUDAKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<framework::Tensor>("Out");
 
     const T* input_data = input->data<T>();
-    auto* mask_data = mask->data<bool>();
+    const T* mask_data = mask->data<T>();
 
     int out_dim = 0;
     for (size_t i = 0; i < mask->numel(); i++) {
@@ -65,7 +67,7 @@ class MaskedSelectOPCUDAKernel : public framework::OpKernel<T> {
     int threads = kNumCUDAThreads;
 
     MaskedSelect<T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
-        blocks, input_data, mask_data, output_data);
+        input->numel(), input_data, mask_data, output_data);
   }
 };
 
@@ -100,7 +102,7 @@ class MaskedSelectGradOPCUDAKernel : public framework::OpKernel<T> {
     int blocks = NumBlocks(mask->numel());
     int threads = kNumCUDAThreads;
 
-    auto* mask_data = mask->data<bool>();
+    const T* mask_data = mask->data<T>();
     const T* output_grad_data = output_grad->data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
 
