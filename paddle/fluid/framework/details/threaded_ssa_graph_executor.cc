@@ -320,9 +320,7 @@ void ThreadedSSAGraphExecutor::RunTracedOps(
 
 void ThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
   try {
-    if (VLOG_IS_ON(10)) {
-      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-    }
+    VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
     if (LIKELY(!strategy_.dry_run_)) {
       op->Run(strategy_.use_cuda_);
     }

@@ -38,7 +38,12 @@ class LookupTableV2Op : public framework::OperatorWithKernel {
     auto ids_dims = ctx->GetInputDim("Ids");
     int ids_rank = ids_dims.size();
     VLOG(5) << "ids rank is " << ids_rank << std::endl;
-    PADDLE_ENFORCE_EQ(table_dims.size(), 2);
+    PADDLE_ENFORCE_EQ(
+        table_dims.size(), 2,
+        "ShapeError: The dimensions of the 'lookup table' must be 2. "
+        "But received lookup table's dimensions = %d, "
+        "lookup table's shape = [%s].",
+        table_dims.size(), table_dims);
 
     auto output_dims = framework::vectorize(ids_dims);
     output_dims.push_back(table_dims[1]);
@@ -53,7 +58,7 @@ class LookupTableV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -149,8 +154,8 @@ class LookupTableV2OpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(
-        ctx.InputVar(framework::GradVarName("Out")));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };

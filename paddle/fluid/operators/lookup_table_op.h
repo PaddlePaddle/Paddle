@@ -113,9 +113,15 @@ class LookupTableKernel : public framework::OpKernel<T> {
           if (padding_idx != kNoPadding && ids[i] == padding_idx) {
             memset(output + i * row_width, 0, row_width * sizeof(T));
           } else {
-            PADDLE_ENFORCE_GE(ids[i], 0);
+            PADDLE_ENFORCE_GE(
+                ids[i], 0,
+                "Variable value (input) of OP(fluid.layers.embedding) "
+                "expected >= 0. But received %ld",
+                ids[i]);
             auto id_index = table_t.Index(ids[i]);
-            PADDLE_ENFORCE_GE(id_index, 0, "the input key should be exists.");
+            PADDLE_ENFORCE_GE(
+                id_index, 0, "the input key should be exists. But received %d.",
+                id_index);
             blas.VCOPY(row_width, table + id_index * row_width,
                        output + i * row_width);
           }
@@ -180,9 +186,14 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
         auto *d_table_data = d_table_value->data<T>();
 
         auto d_output_dims = d_output->dims();
-        PADDLE_ENFORCE_EQ(
-            d_table_value->dims(),
-            framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1));
+        auto d_output_dims_2d =
+            framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+        PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
+                          "ShapeError: The shape of lookup_table@Grad and "
+                          "output@Grad should be same. "
+                          "But received lookup_table@Grad's shape = [%s], "
+                          "output@Grad's shape = [%s].",
+                          d_table_value->dims(), d_output_dims_2d);
         memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
       }
     } else {

@@ -38,7 +38,7 @@ if (ANAKIN_SUBGRAPH)
     add_subdirectory(anakin)
 endif()
 
-SET(OP_HEADER_DEPS xxhash)
+SET(OP_HEADER_DEPS xxhash executor)
 if (WITH_GPU)
     SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
 endif()
@@ -49,13 +49,13 @@ if (WITH_DISTRIBUTE)
 endif()
 
 SET(OP_ONLY_MKL "")
-if (NOT WITH_MKL)
+if (NOT WITH_MKL OR NOT WITH_AVX)
     SET(OP_ONLY_MKL ${OP_ONLY_MKL} match_matrix_tensor_op)
     SET(OP_ONLY_MKL ${OP_ONLY_MKL} var_conv_2d_op)
 endif()
 
 register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op
-	sync_batch_norm_op ${OP_ONLY_MKL} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+	sync_batch_norm_op multihead_matmul_op ${OP_ONLY_MKL} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
@@ -73,6 +73,8 @@ if (WITH_GPU)
         op_library(sync_batch_norm_op)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(sync_batch_norm);\n")
     endif()
+    op_library(multihead_matmul_op)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(multihead_matmul);\n")
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
@@ -126,3 +128,5 @@ endif()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
+
+cc_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op)

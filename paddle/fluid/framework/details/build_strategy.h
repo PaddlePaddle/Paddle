@@ -89,7 +89,7 @@ struct BuildStrategy {
   bool fuse_elewise_add_act_ops_{false};
   // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
   // should not be sparse types
-  boost::optional<bool> fuse_all_optimizer_ops_{boost::none};
+  boost::optional<bool> fuse_all_optimizer_ops_{false};
   boost::optional<bool> fuse_all_reduce_ops_{boost::none};
   // fuse_relu_depthwise_conv can fuse the `relu ->
   // depthwise_conv`

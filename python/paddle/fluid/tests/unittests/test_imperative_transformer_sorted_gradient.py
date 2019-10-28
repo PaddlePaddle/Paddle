@@ -24,6 +24,8 @@ import numpy as np
 import six
 np.set_printoptions(suppress=True)
 
+from utils import DyGraphProgramDescTracerTestHelper
+
 
 # Copy from models
 class TrainTaskConfig(object):
@@ -976,10 +978,28 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 optimizer = fluid.optimizer.SGD(learning_rate=0.003)
             dy_param_init = dict()
             dy_param_updated = dict()
+
+            helper = DyGraphProgramDescTracerTestHelper(transformer, self)
+
             for i in range(batch_num):
                 enc_inputs, dec_inputs, label, weights = create_data()
-                dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = transformer(
-                    enc_inputs, dec_inputs, label, weights)
+                if i % 5 == 0:
+                    outs, outs_static = helper.run(
+                        inputs=[enc_inputs, dec_inputs, label, weights],
+                        feed_names=[
+                            'enc_input_0', 'enc_input_1', 'enc_input_2',
+                            'dec_input_0', 'dec_input_1', 'dec_input_2',
+                            'dec_input_3', 'label', 'weights'
+                        ],
+                        fetch_names=[
+                            'dy_sum_cost', 'dy_avg_cost', 'dy_predict',
+                            'dy_token_num'
+                        ])
+                    helper.assertEachVar(outs, outs_static)
+                else:
+                    outs = transformer(enc_inputs, dec_inputs, label, weights)
+
+                dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = outs
 
                 if i == 0:
                     for param in transformer.parameters():
@@ -992,6 +1012,11 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 if i == batch_num - 1:
                     for param in transformer.parameters():
                         dy_param_updated[param.name] = param.numpy()
+
+            dy_avg_cost_value = dy_avg_cost.numpy()
+            dy_sum_cost_value = dy_sum_cost.numpy()
+            dy_predict_value = dy_predict.numpy()
+            dy_token_num_value = dy_token_num.numpy()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
@@ -1067,13 +1092,12 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                                                                     4]] = out[k]
 
         self.assertTrue(
-            np.array_equal(static_avg_cost_value, dy_avg_cost.numpy()))
+            np.array_equal(static_avg_cost_value, dy_avg_cost_value))
         self.assertTrue(
-            np.array_equal(static_sum_cost_value, dy_sum_cost.numpy()))
+            np.array_equal(static_sum_cost_value, dy_sum_cost_value))
+        self.assertTrue(np.array_equal(static_predict_value, dy_predict_value))
         self.assertTrue(
-            np.array_equal(static_predict_value, dy_predict.numpy()))
-        self.assertTrue(
-            np.array_equal(static_token_num_value, dy_token_num.numpy()))
+            np.array_equal(static_token_num_value, dy_token_num_value))
 
         for key, value in six.iteritems(static_param_init):
             self.assertTrue(np.array_equal(value, dy_param_init[key]))

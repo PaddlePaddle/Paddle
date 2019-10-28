@@ -199,7 +199,9 @@ DEFINE_bool(
  */
 DEFINE_int32(communicator_max_merge_var_num, 20,
              "max var num to merge and send");
-
+DEFINE_bool(communicator_is_sgd_optimizer, true,
+            "gradient sent to the server is the sum of the gradients "
+            "calculated by each thread if optimizer is sgd");
 /**
  * Distributed related FLAG
  * Name: FLAGS_communicator_send_queue_size
@@ -301,11 +303,9 @@ DEFINE_double(memory_fraction_of_eager_deletion, 1.0,
  * Allocator related FLAG
  * Name: FLAGS_allocator_strategy
  * Since Version: 1.2
- * Value Range: string, {naive_best_fit, auto_groth}, default=naive_best_fit
+ * Value Range: string, {naive_best_fit, auto_growth}, default=naive_best_fit
  * Example:
- * Note: Allocator policy for selecting Paddle Paddle.
- *       The allocator strategy is under development and the non-legacy
- *       allocator is not yet stable.
+ * Note: For selecting allocator policy of PaddlePaddle.
  */
 DEFINE_string(allocator_strategy, "naive_best_fit",
               "The allocation strategy. naive_best_fit means the original best "

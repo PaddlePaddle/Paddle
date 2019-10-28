@@ -39,17 +39,23 @@ class TransposeOp : public framework::OperatorWithKernel {
     size_t axis_size = axis.size();
 
     PADDLE_ENFORCE_EQ(x_rank, axis_size,
-                      "The input tensor's rank(%d) "
-                      "should be equal to the axis's size(%d)",
+                      "ShapeError: The input tensor's dimension "
+                      "should be equal to the axis's size. "
+                      "But received input tensor's dimension is %d, "
+                      "axis's size is %d",
                       x_rank, axis_size);
 
     std::vector<int> count(axis_size, 0);
     for (size_t i = 0; i < axis_size; i++) {
       PADDLE_ENFORCE(
           axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1,
-          "Each element of Attribute axis should be a unique value "
-          "range from 0 to (dims - 1), "
-          "where the dims is the axis's size");
+          "ValueError: Each element of Attribute axis should "
+          "be a unique value range from 0 to (dims - 1), "
+          "where the dims is the axis's size, "
+          "unique value means this axis value can appear only once. "
+          "But received axis[%d] is %d, axis_size is %d, "
+          "count[axis[%d]] is %d",
+          i, axis[i], axis_size, i, count[axis[i]]);
     }
 
     framework::DDim out_dims(x_dims);
@@ -72,8 +78,9 @@ class TransposeOp : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout_, library_);
   }
 };
 
@@ -158,9 +165,9 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace(), layout_, library_);
   }
 };
 
@@ -204,8 +211,9 @@ class Transpose2Op : public TransposeOp {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout_, library_);
   }
 };
 
@@ -262,9 +270,9 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace(), layout_, library_);
   }
 };
 
