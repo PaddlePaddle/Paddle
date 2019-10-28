@@ -33,7 +33,7 @@ class FCFunctor<platform::CPUDeviceContext, T> {
     framework::Tensor X1;
     X1.Resize({M * (K + 4)});
     T* X1_data = X1.mutable_data<T>(platform::CPUPlace());
-    if (N % 128 == 0 && K % 128 == 0) {
+    if (M % 128 == 0 && N % 128 == 0 && K % 128 == 0) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
