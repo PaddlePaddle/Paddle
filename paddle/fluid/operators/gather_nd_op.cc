@@ -61,7 +61,7 @@ class GatherNdOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<Tensor>("X");
-    const auto& x_type = x->type();
+    const auto& x_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(
         x_type,
         x_type == framework::proto::VarType::BOOL
@@ -82,9 +82,9 @@ class GatherNdGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 

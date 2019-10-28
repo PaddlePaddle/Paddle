@@ -16925,9 +16925,9 @@ def deformable_conv(input,
             float32, float64.
         offset (Variable): The input coordinate offset of deformable convolution layer.
             A Tensor with type float32, float64.
-        Mask (Variable, Optional): The input mask of deformable covolution layer.
-            A Tensor with type float32, float64.It should be None when you use
-            deformable_conv_v2.
+        Mask (Variable, Optional): The input mask of deformable convolution layer.
+            A Tensor with type float32, float64. It should be None when you use
+            deformable convolution v1.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple): The filter size. If filter_size is a tuple,

@@ -70,7 +70,7 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
 
 framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
-  auto input_data_type = ctx.Input<Tensor>("X")->type();
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   // By default, the type of the scale, bias, mean,
   // and var tensors should both be float. (For float or float16 input tensor)
   // or double (For double input tensor).
@@ -236,8 +236,8 @@ framework::OpKernelType InstanceNormGradOp::GetExpectedKernelType(
   if (t == nullptr) {
     PADDLE_THROW("cannot find Y@GRAD");
   }
-  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                 ctx.GetPlace());
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
 }
 
 template <typename T>
@@ -396,8 +396,8 @@ framework::OpKernelType InstanceNormDoubleGradOp::GetExpectedKernelType(
   if (t == nullptr) {
     PADDLE_THROW("cannot find Y@GRAD");
   }
-  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                 ctx.GetPlace());
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
 }
 
 std::unique_ptr<framework::OpDesc> InstanceNormDoubleGradMaker::Apply() const {

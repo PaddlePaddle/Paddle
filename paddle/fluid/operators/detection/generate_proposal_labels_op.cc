@@ -87,7 +87,7 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("RpnRois"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "RpnRois");
     return framework::OpKernelType(data_type, platform::CPUPlace());
   }
 };
