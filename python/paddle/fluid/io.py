@@ -1593,9 +1593,9 @@ def load(program, model_path, executor=None):
     parameter_list = list(filter(is_parameter, program.list_vars()))
 
     if executor:
-        paddle.fluid.core._create_loaded_parameter(
-            parameter_file_name, parameter_list,
-            global_scope(), executor._default_executor)
+        paddle.fluid.core._create_loaded_parameter(parameter_list,
+                                                   global_scope(),
+                                                   executor._default_executor)
     with open(parameter_file_name, 'rb') as f:
         load_dict = pickle.load(f)
     for v in parameter_list:
@@ -1614,8 +1614,7 @@ def load(program, model_path, executor=None):
 
         if executor:
             paddle.fluid.core._create_loaded_parameter(
-                opt_file_name, optimizer_var_list,
-                global_scope(), executor._default_executor)
+                optimizer_var_list, global_scope(), executor._default_executor)
 
         with open(opt_file_name, 'rb') as f:
             load_dict = pickle.load(f)
@@ -1630,7 +1629,28 @@ def load_program_state(model_path):
     """
     Load program state from local file
     
+    Args:
+        model_path(str): The file prefix store the program
+    Returns:
+        state_dict(dict): the dict store Parameter and optimizer information
 
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.data( name="x", shape=[10, 10], dtype='float32')
+            y = fluid.layers.fc( x, 10)
+            z = fluid.layers.fc( y, 10)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run( fluid.default_startup_program() )
+            prog = fluid.default_main_program()
+
+            fluid.save( prog, "./temp")
+            program_state = fluid.load_program_state( "./temp")
+            
+            fluid.set_program_state( prog, program_state)
 
     """
     parameter_file_name = model_path + ".pdparams"
@@ -1660,19 +1680,25 @@ def set_program_state(program, state_dict):
 
     Args:
         program(Program): The program to be set
-        state_dict(dict): the dict store Parameter or optimizer information
+        state_dict(dict): the dict store Parameter and optimizer information
     Returns: 
         None
     
     Examples:
         .. code-block:: python
-
+            
             import paddle.fluid as fluid
+            x = fluid.data( name="x", shape=[10, 10], dtype='float32')
+            y = fluid.layers.fc( x, 10)
+            z = fluid.layers.fc( y, 10)
 
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run( fluid.default_startup_program() )
             prog = fluid.default_main_program()
-            fluid.save( prog, "./temp")
 
-            fluid.load( prog, "./temp")
+            fluid.save( prog, "./temp")
+            program_state = fluid.load_program_state( "./temp")
 
     """
     parameter_list = list(filter(is_persistable, program.list_vars()))

@@ -278,7 +278,6 @@ static void inline CreateVariableIfNotExit(
         auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
         tensor_temp->Resize(framework::make_ddim(var_desc.GetShape()));
         tensor_temp->mutable_data(exe->GetPlace(), var_desc.GetDataType());
-        LOG(ERROR) << "load var " << para_name;
       }
     }
   } else {
@@ -343,8 +342,8 @@ PYBIND11_MODULE(core_noavx, m) {
         });
 
   m.def("_create_loaded_parameter",
-        [](const std::string &str_file_name, const py::handle &vec_var_list,
-           const Scope &scope, const Executor *executor) {
+        [](const py::handle &vec_var_list, const Scope &scope,
+           const Executor *executor) {
           CreateVariableIfNotExit(vec_var_list, scope, executor);
         });
 

@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.dygraph.nn import Embedding
@@ -22,8 +23,10 @@ import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Adam
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
+from paddle.fluid.executor import global_scope
 import numpy as np
 import six
+import pickle
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -648,17 +651,58 @@ class TestVariableInit(unittest.TestCase):
 
         fluid.save(fluid.default_main_program(), "./test_path")
 
+        def set_var(var, ndarray):
+            t = var.get_tensor()
+            p = t._place()
+            if p.is_cpu_place():
+                place = paddle.fluid.CPUPlace()
+            elif p.is_cuda_pinned_place():
+                place = paddle.fluid.CUDAPinnedPlace()
+            else:
+                p = paddle.fluid.core.Place()
+                p.set_place(t._place())
+                place = paddle.fluid.CUDAPlace(p.gpu_device_id())
+
+            t.set(ndarray, place)
+
         program = fluid.default_main_program()
         new_scope = fluid.core.Scope()
+
+        place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
+        ) else fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
         parameter_list = list(
             filter(fluid.io.is_parameter, program.list_vars()))
-        fluid.core._load_static_dict("./test_path.pdparams", parameter_list,
-                                     new_scope, exe._default_executor)
 
-        parameter_list = list(
+        fluid.core._create_loaded_parameter(parameter_list, new_scope,
+                                            exe._default_executor)
+        parameter_file_name = "./test_path.pdparams"
+        with open(parameter_file_name, 'rb') as f:
+            load_dict = pickle.load(f)
+
+        for v in parameter_list:
+            assert v.name in load_dict, \
+                "Can not find [{}] in model file [{}]".format(
+                    v.name, parameter_file_name)
+            new_v = new_scope.find_var(v.name)
+            set_var(new_v, load_dict[v.name])
+
+        opt_list = list(
             filter(fluid.io.is_belong_to_optimizer, program.list_vars()))
-        fluid.core._load_static_dict("./test_path.pdopt", parameter_list,
-                                     new_scope, exe._default_executor)
+
+        fluid.core._create_loaded_parameter(opt_list, new_scope,
+                                            exe._default_executor)
+        opt_file_name = "./test_path.pdopt"
+        with open(opt_file_name, 'rb') as f:
+            load_dict = pickle.load(f)
+
+        for v in opt_list:
+            assert v.name in load_dict, \
+                "Can not find [{}] in model file [{}]".format(
+                    v.name, opt_file_name)
+
+            new_v = new_scope.find_var(v.name)
+            set_var(new_v, load_dict[v.name])
 
         base_map = {}
         for var in program.list_vars():
