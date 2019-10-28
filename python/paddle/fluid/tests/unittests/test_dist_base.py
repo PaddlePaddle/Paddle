@@ -185,6 +185,23 @@ class TestDistRunnerBase(object):
             out_losses.append(loss[0])
             print_to_err(type(self).__name__, "run step %d finished" % i)
         print_to_err(type(self).__name__, "trainer run finished")
+        if args.save_model and fleet.worker_index() == 0:
+            model_save_dir = "/tmp"
+            model_save_dir_fluid = os.path.join(model_save_dir,
+                                                "fluid_persistables")
+            fluid.io.save_persistables(exe, model_save_dir_fluid,
+                                       fleet._origin_program)
+            model_save_dir_fleet = os.path.join(model_save_dir,
+                                                "fleet_persistables")
+            fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
+            infer_save_dir_fluid = os.path.join(model_save_dir, "fluid_infer")
+            infer_save_dir_fleet = os.path.join(model_save_dir, "fleet_infer")
+            feeded_var_names = [var.name for var in feed_var_list]
+            fluid.io.save_inference_model(infer_save_dir_fluid,
+                                          feeded_var_names, [avg_cost], exe,
+                                          fleet._origin_program)
+            fleet.save_inference_model(infer_save_dir_fleet, feeded_var_names,
+                                       [avg_cost], exe)
 
         if six.PY2:
             print(pickle.dumps(out_losses))
@@ -438,6 +455,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
     parser.add_argument('--hogwild', action='store_true')
+    parser.add_argument('--save_model', action='store_true')
     parser.add_argument(
         '--use_reader_alloc', action='store_true', required=False)
     parser.add_argument('--batch_size', required=False, type=int, default=2)
@@ -763,6 +781,8 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_reduce"
         if self._use_reader_alloc:
             tr_cmd += " --use_reader_alloc"
+        if self._save_model:
+            tr_cmd += " --save_model"
         if self.__use_cuda:
             tr_cmd += " --use_cuda"
             env.update({
