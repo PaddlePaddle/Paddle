@@ -210,7 +210,7 @@ if(WIN32)
 else()
         copy(fluid_lib_dist
                 SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_fluid_lib}
-                DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
+                DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} 
                 )
 endif()
 
