@@ -1247,9 +1247,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         target = targets[i]
         if grad is None:
             grad_name = _append_grad_suffix_(target.name)
-            target_shape = paddle.fluid.layers.shape(target)
-            op_desc = _create_op_desc_("fill_constant",
-                                       {"ShapeTensor": [target_shape.name]},
+            op_desc = _create_op_desc_("fill_constant", {},
                                        {"Out": [grad_name]}, {
                                            "shape": target.shape,
                                            "value": 1.0,
