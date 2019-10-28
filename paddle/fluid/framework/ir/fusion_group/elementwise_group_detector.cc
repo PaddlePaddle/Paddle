@@ -99,7 +99,7 @@ bool ElementwiseGroupDetector::IsOutputOfElementwiseOp(Node* n) {
 
 void ElementwiseGroupDetector::Insert(Node* n) {
   if (subgraph_.nodes_set.find(n) == subgraph_.nodes_set.end()) {
-    LOG(INFO) << "Insert " << n->Name() << " to subgraph " << name_;
+    VLOG(5) << "Insert " << n->Name() << " to subgraph " << name_;
     subgraph_.nodes_set.insert(n);
   }
 }
@@ -148,9 +148,9 @@ int ElementwiseGroupDetector::operator()(Node* n) {
     name_ = n->Name();
     Insert(n);
     num_operations_ = Search(n, n->inputs);
-    LOG(INFO) << "Detect elementwise subgraph begin with " << name_ << ", "
-              << num_operations_ << " operations, "
-              << GetSubgraph().GetNumNodes() << " nodes";
+    VLOG(4) << "Detect elementwise subgraph begin with " << name_ << ", "
+            << num_operations_ << " operations, " << GetSubgraph().GetNumNodes()
+            << " nodes";
   }
   return num_operations_;
 }

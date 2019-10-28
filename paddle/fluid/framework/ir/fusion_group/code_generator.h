@@ -28,8 +28,7 @@ class CodeGenerator {
   std::string GenerateCode(TemplateVariable template_var);
 
   // TODO(wangchao): add a more general interface
-  // std::string Generate(const std::string name, const
-  // std::unordered_set<Node*> subgraph);
+  // std::string Generate(const std::string name, const SubGraph& subgraph);
 
  private:
   CodeTemplate code_template_;

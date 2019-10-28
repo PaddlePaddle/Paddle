@@ -62,7 +62,6 @@ struct SubGraph {
           }
         }
         if (!is_found) {
-          LOG(INFO) << "Input: " << n->Name();
           input_vars.push_back(n);
         }
       }
@@ -86,7 +85,6 @@ struct SubGraph {
           }
         }
         if (!is_found) {
-          LOG(INFO) << "Output: " << n->Name();
           output_vars.push_back(n);
         }
       }
