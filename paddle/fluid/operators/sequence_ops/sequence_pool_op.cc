@@ -24,14 +24,25 @@ class SequencePoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequencePoolOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequencePoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of SequencePoolOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of SequencePoolOp should not be null.");
+
+    if (!ctx->IsRuntime()) {
+      // Check the lod_level for compile-time.
+      framework::VarDesc* x_desc =
+          boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("X")[0]);
+      PADDLE_ENFORCE_GT(
+          x_desc->GetLoDLevel(), 0,
+          "The LoD level Input(X) of sequence_pool should be larger than 0");
+    }
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     if (ctx->Attrs().Get<std::string>("pooltype") == "MAX") {
-      PADDLE_ENFORCE(ctx->HasOutput("MaxIndex"),
-                     "Output(MaxIndex) of SequencePoolOp should not be null.");
+      PADDLE_ENFORCE_EQ(
+          ctx->HasOutput("MaxIndex"), true,
+          "Output(MaxIndex) of SequencePoolOp should not be null.");
       ctx->SetOutputDim("MaxIndex", ctx->GetInputDim("X"));
     }
   }
@@ -57,6 +68,9 @@ class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
         "(string, default 'AVERAGE') the pooling pooltype of SequencePoolOp.")
         .SetDefault("AVERAGE")
         .InEnum({"AVERAGE", "SUM", "SQRT", "LAST", "FIRST", "MAX"});
+    AddAttr<float>("pad_value",
+                   "(float, default 0.0) The value to pad for empty sequence.")
+        .SetDefault(0.0);
     AddComment(R"DOC(
 Sequence Pool Operator.
 
@@ -68,6 +82,8 @@ It supports six pooling types:
 4. LAST:    Out[i] = last instance in i-th sequence X[i]
 5. FIRST:   Out[i] = first instance in i-th sequence X[i]
 6. MAX:     $$Out[i] = max(X_i)$$
+
+and for the empty sequence Out[i] = attr(pad_value).
 
 The following example explains how this works:
 For a mini-batch of 3 variable-length sentences,
@@ -97,9 +113,10 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Gradient of Out should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("X"), "The input X should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+                      "Gradient of Out should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "The input X should not be null.");
     auto og_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(og_dims.size(), x_dims.size(),
@@ -115,9 +132,9 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 

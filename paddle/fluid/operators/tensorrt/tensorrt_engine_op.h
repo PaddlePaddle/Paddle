@@ -43,17 +43,19 @@ class TensorRTEngineOp : public framework::OperatorBase {
  private:
   std::vector<std::string> input_names_;
   std::unordered_set<std::string> param_names_;
-  mutable std::unique_ptr<TensorRTEngine> trt_engine_;
+  mutable TensorRTEngine *trt_engine_{nullptr};
   int max_batch_size_;
   int workspace_size_;
   std::unique_ptr<TRTInt8Calibrator> calibrator_;
   bool enable_int8_;
+  bool enable_fp16_;
   bool use_calib_mode_;
   std::string calibration_data_;
   std::string engine_key_;
-  std::string engine_serialized_data_;
   bool calibration_mode_;
+  int predictor_id_;
   int device_id_;
+  AnalysisConfig::Precision precision_mode_;
 
  public:
   TensorRTEngineOp(const std::string &type,
@@ -66,10 +68,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
     workspace_size_ = Attr<int>("workspace_size");
     device_id_ = Attr<int>("gpu_id");
     enable_int8_ = Attr<bool>("enable_int8");
+    enable_fp16_ = Attr<bool>("enable_fp16");
     use_calib_mode_ = Attr<bool>("use_calib_mode");
     calibration_data_ = Attr<std::string>("calibration_data");
     engine_key_ = Attr<std::string>("engine_key");
-    engine_serialized_data_ = Attr<std::string>("engine_serialized_data");
+    predictor_id_ = Attr<int>("predictor_id");
 
     auto params = Attr<std::vector<std::string>>("parameters");
     for (const auto &param : params) {
@@ -84,16 +87,21 @@ class TensorRTEngineOp : public framework::OperatorBase {
     if (enable_int8_ && calibration_data_.size()) {
       calibrator_.reset(new TRTInt8Calibrator(calibration_data_));
     }
+    bool has_engine =
+        inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+            .Has(engine_key_ + std::to_string(predictor_id_));
 
-    if (!calibration_mode_ && !engine_serialized_data_.empty()) {
-      trt_engine_.reset(new inference::tensorrt::TensorRTEngine(
-          max_batch_size_, workspace_size_, enable_int8_, calibrator_.get(),
-          device_id_));
-      PADDLE_ENFORCE(engine_serialized_data_.size(),
-                     "TRT serialized data should not be empty here,"
-                     "there must be error when generate serialized data in TRT "
-                     "subgraph detect pass.");
-      trt_engine_->Deserialize(engine_serialized_data_);
+    if (!calibration_mode_ && has_engine) {
+      trt_engine_ =
+          inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+              .Get(engine_key_ + std::to_string(predictor_id_));
+    }
+    precision_mode_ = AnalysisConfig::Precision::kFloat32;
+    if (enable_int8_) {
+      precision_mode_ = AnalysisConfig::Precision::kInt8;
+    }
+    if (enable_fp16_) {
+      precision_mode_ = AnalysisConfig::Precision::kHalf;
     }
   }
 
@@ -123,8 +131,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
     // This process will builds a 32-bit trt engine, runs it on the calibration
     // set, and records a histogram for each
     // tensor of the distribution of activation values.
-    LOG_FIRST_N(INFO, 1) << "The TRT engine: " << engine_key_
-                         << " is running calibration trt int8... ";
+    LOG_FIRST_N(INFO, 1) << "This process is generating calibration table for "
+                            "Paddle TRT int8...";
+
     int runtime_batch = 1;
     if (!Singleton<TRTCalibratorEngineManager>::Global().Has(engine_key_)) {
       TRTCalibratorEngine *calib_res =
@@ -142,7 +151,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
           calib_buffers, runtime_batch, engine_key_, dev_place));
       calib_res->thr_.reset(new std::thread([&]() {
         calib_res->engine_.reset(new TensorRTEngine(
-            max_batch_size_, workspace_size_, enable_int8_,
+            max_batch_size_, workspace_size_, precision_mode_,
             calib_res->calib_.get(),
             boost::get<platform::CUDAPlace>(dev_place).device));
         VLOG(3) << "start the calib trt engine thread";
@@ -174,7 +183,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
 
-    PADDLE_ENFORCE(!input_names_.empty(), "should pass more than one inputs");
+    PADDLE_ENFORCE_EQ(input_names_.empty(), false,
+                      "should pass at least one input");
 
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
@@ -194,7 +204,21 @@ class TensorRTEngineOp : public framework::OperatorBase {
       // convert input and copy to TRT engine's buffer
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
-      auto t_shape = framework::vectorize(t.dims());
+      auto t_shape = framework::vectorize<int64_t>(t.dims());
+      // check if the input shapes are consistent with model.
+      if (HasAttr(x + "_shape")) {
+        std::vector<int64_t> i_shape = Attr<std::vector<int64_t>>(x + "_shape");
+        std::vector<int64_t> model_input_shape(i_shape.begin() + 1,
+                                               i_shape.end());
+        std::vector<int64_t> runtime_input_shape(t_shape.begin() + 1,
+                                                 t_shape.end());
+        PADDLE_ENFORCE_EQ(model_input_shape == runtime_input_shape, true,
+                          "Input shapes are inconsistent with the model. TRT 5 "
+                          "or lower version "
+                          "does not support dynamic input shapes. Please check "
+                          "your input shapes.");
+      }
+
       runtime_batch = t_shape[0];
 
       const int bind_index = engine->engine()->getBindingIndex(x.c_str());
@@ -239,12 +263,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
   TensorRTEngine *GetEngine(const framework::Scope &scope,
                             const platform::Place &dev_place) const {
     if (!trt_engine_) {
-      trt_engine_.reset(new inference::tensorrt::TensorRTEngine(
-          max_batch_size_, workspace_size_, enable_int8_, calibrator_.get(),
-          device_id_));
-      PrepareTRTEngine(scope, trt_engine_.get());
+      trt_engine_ =
+          inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
+              .Create(engine_key_ + std::to_string(predictor_id_),
+                      max_batch_size_, workspace_size_, precision_mode_,
+                      calibrator_.get(), device_id_);
+      PrepareTRTEngine(scope, trt_engine_);
     }
-    return trt_engine_.get();
+    return trt_engine_;
   }
 
   void PrepareTRTEngine(const framework::Scope &scope,

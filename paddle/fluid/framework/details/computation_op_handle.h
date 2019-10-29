@@ -38,6 +38,8 @@ class ComputationOpHandle : public OpHandleBase {
 
   const Scope *GetScope() const { return scope_; }
 
+  Scope *GetScope() { return scope_; }
+
   const platform::Place &GetPlace() const { return place_; }
 
   void SetLockAndRecordEventFree(bool b) { is_lock_and_record_event_free_ = b; }
@@ -48,6 +50,8 @@ class ComputationOpHandle : public OpHandleBase {
   void RunImpl() override;
 
   bool NeedWait(VarHandleBase *in_var) override;
+
+  std::vector<Scope *> GetLocalScopes() override { return {scope_}; }
 
  private:
   std::unique_ptr<OperatorBase> op_;

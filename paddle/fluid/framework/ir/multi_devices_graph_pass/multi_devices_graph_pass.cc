@@ -157,7 +157,7 @@ void MultiDevSSAGraphBuilderBase::Init() const {
   local_scopes_ = Get<const std::vector<Scope *>>(details::kLocalScopes);
   strategy_ = Get<const details::BuildStrategy>(kStrategy);
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
-  multi_nccl_ctxs_ = &Get<platform::MultiNCCLContextMap>(details::kNCCLCtxs);
+  multi_nccl_ctxs_ = &Get<platform::NCCLCommunicator>(details::kNCCLCtxs);
   nccl_ctxs_ = nullptr;
   if (multi_nccl_ctxs_) {
     nccl_ctxs_ = multi_nccl_ctxs_->DefaultFlatCtx();
@@ -205,7 +205,7 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
       }
 
       // Insert collective ops if nranks > 1
-      if (!is_forwarding && Get<size_t>(kNRanks) > 1) {
+      if (!is_forwarding && Get<size_t>(details::kNRanks) > 1) {
         try {
           bool is_bk_op =
               static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
@@ -242,7 +242,7 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
               InsertCollectiveOp(&result, p_name, g_name);
             }
           }
-        } catch (boost::bad_get e) {
+        } catch (boost::bad_get &e) {
         }
       }
     }
@@ -273,7 +273,7 @@ void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
       loss_scale = 1;
       break;
     case details::BuildStrategy::GradientScaleStrategy::kCoeffNumDevice:
-      loss_scale = Get<size_t>(kNRanks);
+      loss_scale = Get<size_t>(details::kNRanks);
       break;
     case details::BuildStrategy::GradientScaleStrategy::kCustomized:
       loss_scale = 0;
@@ -465,8 +465,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
           new details::SparseAllReduceOpHandle(
               result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
               scopes, places, multi_nccl_ctxs_, is_encoded,
-              static_cast<int>(strategy_.trainers_endpoints_.size()) *
-                  places_.size()));
+              strategy_.num_trainers_ * places_.size()));
     } else {
       result->Get<GraphOps>(kGraphOps).emplace_back(
           new details::AllReduceOpHandle(
@@ -699,7 +698,7 @@ bool ReduceSSAGraphBuilder::DealWithSpecialOp(ir::Graph *result,
 
 void ReduceSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
   if (UseGPU()) {
-    if (strategy_.fuse_broadcast_ops_) {
+    if (strategy_.fuse_broadcast_ops_ == true) {
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
       for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {
@@ -778,7 +777,7 @@ std::vector<ir::Node *> ReduceSSAGraphBuilder::SortForReduceMode(
         backward_vars =
             boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
                 OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-      } catch (boost::bad_get e) {
+      } catch (boost::bad_get &e) {
       }
       PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
 
@@ -1068,7 +1067,7 @@ void DistSSAGraphBuilder::InsertPostprocessOps(ir::Graph *result) const {
         strategy_.reduce_ == details::BuildStrategy::ReduceStrategy::kReduce) {
       return;
     }
-    if (strategy_.fuse_broadcast_ops_) {
+    if (strategy_.fuse_broadcast_ops_ == true) {
       CreateFusedBroadcastOp(result, bcast_var_name_set_);
     } else {
       for (size_t dev_id = 0; dev_id < bcast_var_name_set_.size(); ++dev_id) {
@@ -1106,7 +1105,7 @@ static int MultiDevSSAGraphBuilderRegister(const std::string &builder_mode) {
       .RequirePassAttr(paddle::framework::details::kPlaces)               \
       .RequirePassAttr(paddle::framework::details::kLocalScopes)          \
       .RequirePassAttr(paddle::framework::ir::kStrategy)                  \
-      .RequirePassAttr(paddle::framework::ir::kNRanks)
+      .RequirePassAttr(paddle::framework::details::kNRanks)
 
 REGISTER_MULTI_DEVICES_PASS(reduce_mode_multi_devices_pass,
                             paddle::framework::ir::ReduceSSAGraphBuilder);

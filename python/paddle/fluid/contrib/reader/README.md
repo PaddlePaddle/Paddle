@@ -16,10 +16,10 @@ and two types of data format:
 
 ## Distributed reader
 
-The distributed reader is mainly used by multi-process tasks, it splits the origin batch samples to N sub-batch samples, and the N is equal to the number of processes. The usage is similar to `paddle.batch`.
+The distributed reader is mainly used by multi-process tasks, and the input must be a batch reader.
 
 Cons:
   - It can be operated conveniently so that different processes can read different data.
 
 Pros:
-  - Because each process reads the original batch data and then divides the data, the performance may be poor.
+  - If batch_reader produces training data, and batch_reader loads or preprocesses data for a long time, this data reading method may be slower.

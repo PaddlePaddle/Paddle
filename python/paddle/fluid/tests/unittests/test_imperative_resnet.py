@@ -24,6 +24,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid import Conv2D, Pool2D, BatchNorm, FC
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper
 
 batch_size = 8
 train_parameters = {
@@ -71,7 +72,6 @@ def optimizer_setting(params):
 class ConvBNLayer(fluid.Layer):
     def __init__(self,
                  name_scope,
-                 num_channels,
                  num_filters,
                  filter_size,
                  stride=1,
@@ -81,7 +81,6 @@ class ConvBNLayer(fluid.Layer):
 
         self._conv = Conv2D(
             self.full_name(),
-            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=stride,
@@ -100,30 +99,22 @@ class ConvBNLayer(fluid.Layer):
 
 
 class BottleneckBlock(fluid.Layer):
-    def __init__(self,
-                 name_scope,
-                 num_channels,
-                 num_filters,
-                 stride,
-                 shortcut=True):
+    def __init__(self, name_scope, num_filters, stride, shortcut=True):
         super(BottleneckBlock, self).__init__(name_scope)
 
         self.conv0 = ConvBNLayer(
             self.full_name(),
-            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=1,
             act='relu')
         self.conv1 = ConvBNLayer(
             self.full_name(),
-            num_channels=num_filters,
             num_filters=num_filters,
             filter_size=3,
             stride=stride,
             act='relu')
         self.conv2 = ConvBNLayer(
             self.full_name(),
-            num_channels=num_filters,
             num_filters=num_filters * 4,
             filter_size=1,
             act=None)
@@ -131,14 +122,11 @@ class BottleneckBlock(fluid.Layer):
         if not shortcut:
             self.short = ConvBNLayer(
                 self.full_name(),
-                num_channels=num_channels,
                 num_filters=num_filters * 4,
                 filter_size=1,
                 stride=stride)
 
         self.shortcut = shortcut
-
-        self._num_channels_out = num_filters * 4
 
     def forward(self, inputs):
         y = self.conv0(inputs)
@@ -175,7 +163,6 @@ class ResNet(fluid.Layer):
 
         self.conv = ConvBNLayer(
             self.full_name(),
-            num_channels=3,
             num_filters=64,
             filter_size=7,
             stride=2,
@@ -188,7 +175,6 @@ class ResNet(fluid.Layer):
             pool_type='max')
 
         self.bottleneck_block_list = []
-        num_channels = 64
         for block in range(len(depth)):
             shortcut = False
             for i in range(depth[block]):
@@ -196,11 +182,9 @@ class ResNet(fluid.Layer):
                     'bb_%d_%d' % (block, i),
                     BottleneckBlock(
                         self.full_name(),
-                        num_channels=num_channels,
                         num_filters=num_filters[block],
                         stride=2 if i == 0 and block != 0 else 1,
                         shortcut=shortcut))
-                num_channels = bottleneck_block._num_channels_out
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
 
@@ -227,6 +211,15 @@ class ResNet(fluid.Layer):
 
 
 class TestDygraphResnet(unittest.TestCase):
+    def reader_decorator(self, reader):
+        def _reader_imple():
+            for item in reader():
+                doc = np.array(item[0]).reshape(3, 224, 224)
+                label = np.array(item[1]).astype('int64').reshape(1)
+                yield doc, label
+
+        return _reader_imple
+
     def test_resnet_float32(self):
         seed = 90
 
@@ -242,28 +235,38 @@ class TestDygraphResnet(unittest.TestCase):
             np.random.seed(seed)
             import random
             random.seed = seed
-            train_reader = paddle.batch(
-                paddle.dataset.flowers.train(use_xmap=False),
-                batch_size=batch_size)
+
+            batch_py_reader = fluid.io.PyReader(capacity=1)
+            batch_py_reader.decorate_sample_list_generator(
+                paddle.batch(
+                    self.reader_decorator(
+                        paddle.dataset.flowers.train(use_xmap=False)),
+                    batch_size=batch_size,
+                    drop_last=True),
+                places=fluid.CPUPlace())
 
             dy_param_init_value = {}
             for param in resnet.parameters():
                 dy_param_init_value[param.name] = param.numpy()
 
-            for batch_id, data in enumerate(train_reader()):
+            helper = DyGraphProgramDescTracerTestHelper(resnet, self)
+
+            for batch_id, data in enumerate(batch_py_reader()):
                 if batch_id >= batch_num:
                     break
 
-                dy_x_data = np.array(
-                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    batch_size, 1)
-
-                img = to_variable(dy_x_data)
-                label = to_variable(y_data)
+                img = data[0]
+                label = data[1]
                 label.stop_gradient = True
 
-                out = resnet(img)
+                if batch_id % 5 == 0:
+                    out, out_static = helper.run(img,
+                                                 feed_names=['image'],
+                                                 fetch_names=['logits'])
+                    helper.assertEachVar(out, out_static)
+                else:
+                    out = resnet(img)
+
                 loss = fluid.layers.cross_entropy(input=out, label=label)
                 avg_loss = fluid.layers.mean(x=loss)
 

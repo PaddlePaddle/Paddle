@@ -27,10 +27,6 @@ DECLARE_int64(cudnn_exhaustive_search_times);
 namespace paddle {
 namespace operators {
 
-static constexpr char kCUDNNFwdAlgoCache[] = "kCUDNNFwdAlgoCache";
-static constexpr char kCUDNNBwdDataAlgoCache[] = "kCUDNNBwdDataAlgoCache";
-static constexpr char kCUDNNBwdFilterAlgoCache[] = "kCUDNNBwdFilterAlgoCache";
-
 #if CUDNN_VERSION_MIN(6, 0, 5)
 static constexpr size_t kNUM_CUDNN_FWD_ALGS = CUDNN_CONVOLUTION_FWD_ALGO_COUNT;
 static constexpr size_t kNUM_CUDNN_BWD_FILTER_ALGS =

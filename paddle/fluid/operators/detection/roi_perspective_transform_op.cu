@@ -120,16 +120,16 @@ __device__ void bilinear_interpolate(const T* in_data, const int channels,
                                      int out_idx, int* out2in_idx,
                                      T* out2in_w) {
   // Deal with cases that source coords are out of feature map boundary
-  if (GT<T>(-0.5, in_w) || GT<T>(in_w, width - 0.5) || GT<T>(-0.5, in_h) ||
-      GT<T>(in_h, height - 0.5)) {
+  if (GT_E<T>(-0.5, in_w) || GT_E<T>(in_w, width - 0.5) ||
+      GT_E<T>(-0.5, in_h) || GT_E<T>(in_h, height - 0.5)) {
     val[0] = 0.0;
     return;
   }
 
-  if (GT<T>(0, in_w)) {
+  if (GT_E<T>(0, in_w)) {
     in_w = 0;
   }
-  if (GT<T>(0, in_h)) {
+  if (GT_E<T>(0, in_h)) {
     in_h = 0;
   }
 
@@ -242,10 +242,10 @@ __device__ void get_transform_matrix(const int transformed_width,
   T estimated_width = (len1 + len3) / 2.0;
 
   // Get the normalized height and normalized width
-  int normalized_height = transformed_height;
+  int normalized_height = max(2, transformed_height);
   int normalized_width =
       round(estimated_width * (normalized_height - 1) / estimated_height) + 1;
-  normalized_width = min(normalized_width, transformed_width);
+  normalized_width = max(2, min(normalized_width, transformed_width));
 
   T dx1 = x1 - x2;
   T dx2 = x3 - x2;
@@ -254,9 +254,9 @@ __device__ void get_transform_matrix(const int transformed_width,
   T dy2 = y3 - y2;
   T dy3 = y0 - y1 + y2 - y3;
 
-  matrix[6] = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1) /
+  matrix[6] = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1 + 1e-5) /
               (normalized_width - 1);
-  matrix[7] = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1) /
+  matrix[7] = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1 + 1e-5) /
               (normalized_height - 1);
   matrix[8] = 1;
 
@@ -274,14 +274,16 @@ __device__ void get_transform_matrix(const int transformed_width,
 }
 
 template <typename T>
-__global__ void RoiTransformKernel(
-    const float* input_data, const float* rois_data, const int* roi2image_data,
-    int num_rois, int in_height, int in_width, int channels,
-    int transformed_height, int transformed_width, float spatial_scale,
-    T* output_data, int* out2in_idx, T* out2in_w) {
+__global__ void RoiTransformKernel(const float* input_data,
+                                   const float* rois_data,
+                                   const int* roi2image_data, int num_rois,
+                                   int in_height, int in_width, int channels,
+                                   int transformed_height,
+                                   int transformed_width, float spatial_scale,
+                                   T* output_data, int* out2in_idx, T* out2in_w,
+                                   int* mask, T* transform_matrix) {
   int output_size =
       num_rois * transformed_height * transformed_width * channels;
-
   CUDA_1D_KERNEL_LOOP(index, output_size) {
     // (n, c, out_h, out_w) is an element in the transformed output
     int out_w = idx4_4(index, num_rois, channels, transformed_height,
@@ -306,28 +308,35 @@ __global__ void RoiTransformKernel(
     T matrix[9];
     get_transform_matrix<T>(transformed_width, transformed_height, roi_x, roi_y,
                             matrix);
-
+    for (int i = 0; i < 9; i++) {
+      transform_matrix[n * 9 + i] = matrix[i];
+    }
     // Get source coords
     T in_w;
     T in_h;
     get_source_coords<T>(matrix, out_w, out_h, &in_w, &in_h);
 
     if (in_quad<T>(in_w, in_h, roi_x, roi_y)) {
-      if (GT<T>(-0.5, in_w) || GT<T>(in_w, static_cast<T>(in_width - 0.5)) ||
-          GT<T>(-0.5, in_h) || GT<T>(in_h, static_cast<T>(in_height - 0.5))) {
+      if (GT_E<T>(-0.5, in_w) ||
+          GT_E<T>(in_w, static_cast<T>(in_width - 0.5)) ||
+          GT_E<T>(-0.5, in_h) ||
+          GT_E<T>(in_h, static_cast<T>(in_height - 0.5))) {
         // Skip if source coords is not in input image
         output_data[index] = 0.0;
+        mask[(n * transformed_height + out_h) * transformed_width + out_w] = 0;
       } else {
         // Perform bilinear interpolation
         int in_n = roi2image_data[n];
         bilinear_interpolate<T>(input_data, channels, in_width, in_height, in_n,
                                 c, in_w, in_h, output_data + index, index,
                                 out2in_idx, out2in_w);
+        mask[(n * transformed_height + out_h) * transformed_width + out_w] = 1;
       }
 
     } else {
       // Skip if source coords is not in quad
       output_data[index] = 0.0;
+      mask[(n * transformed_height + out_h) * transformed_width + out_w] = 0;
     }
   }
 }
@@ -341,7 +350,11 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::Tensor>("Out");
     auto* out2in_idx = ctx.Output<framework::Tensor>("Out2InIdx");
     auto* out2in_w = ctx.Output<framework::Tensor>("Out2InWeights");
+    auto* mask = ctx.Output<framework::Tensor>("Mask");
+    auto* out_transform_matrix =
+        ctx.Output<framework::Tensor>("TransformMatrix");
 
+    int* mask_data = mask->mutable_data<int>(ctx.GetPlace());
     int* out2in_idx_data =
         out2in_idx->mutable_data<int>({out->numel(), 4}, ctx.GetPlace());
     T* out2in_w_data =
@@ -382,25 +395,30 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     int block = 512;
     int grid = (out_size + block - 1) / block;
 
+    // Get transform matrix
+    T* matrix =
+        out_transform_matrix->mutable_data<T>({rois_num, 9}, ctx.GetPlace());
+
     RoiTransformKernel<T><<<grid, block, 0, stream>>>(
         input_data, rois_data, roi2image_dev.data<int>(), rois_num, in_height,
         in_width, channels, transformed_height, transformed_width,
-        spatial_scale, output_data, out2in_idx_data, out2in_w_data);
+        spatial_scale, output_data, out2in_idx_data, out2in_w_data, mask_data,
+        matrix);
   }
 };
 
 template <typename T>
 __device__ T get_feature_gradient(T xs, T ys, int w, int h, const int width,
                                   const int height) {
-  if (GT<T>(-0.5, xs) || GT<T>(xs, width - 0.5) || GT<T>(-0.5, ys) ||
-      GT<T>(ys, height - 0.5)) {
+  if (GT_E<T>(-0.5, xs) || GT_E<T>(xs, width - 0.5) || GT_E<T>(-0.5, ys) ||
+      GT_E<T>(ys, height - 0.5)) {
     return 0;
   }
 
-  if (GT<T>(0, xs)) {
+  if (GT_E<T>(0, xs)) {
     xs = 0;
   }
-  if (GT<T>(0, ys)) {
+  if (GT_E<T>(0, ys)) {
     ys = 0;
   }
 

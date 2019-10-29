@@ -66,19 +66,14 @@ struct LambMomentUpdateFunctor {
     T g = grad_[i];
     T mom1 = moment1_[i];
     T mom2 = moment2_[i];
-    T beta1_pow = *beta1_pow_;
-    T beta2_pow = *beta2_pow_;
     T p = param_[i];
 
     mom1 = beta1_ * mom1 + (1 - beta1_) * g;
     mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
 
-    T mom1_h = mom1 / (1 - beta1_pow);
-    T mom2_h = mom2 / (1 - beta2_pow);
-
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
-    trust_ratio_div_[i] = mom1_h / sqrt(mom2_h + epsilon_) + weight_decay_ * p;
+    trust_ratio_div_[i] = mom1 / (sqrt(mom2) + epsilon_) + weight_decay_ * p;
   }
 };
 
@@ -130,19 +125,14 @@ struct SparseLambMomentUpdateFunctor {
     // The following code is same as dense
     T mom1 = moment1_[i];
     T mom2 = moment2_[i];
-    T beta1_pow = *beta1_pow_;
-    T beta2_pow = *beta2_pow_;
     T p = param_[i];
 
     mom1 = beta1_ * mom1 + (1 - beta1_) * g;
     mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
 
-    T mom1_h = mom1 / (1 - beta1_pow);
-    T mom2_h = mom2 / (1 - beta2_pow);
-
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
-    trust_ratio_div_[i] = mom1_h / sqrt(mom2_h + epsilon_) + weight_decay_ * p;
+    trust_ratio_div_[i] = mom1 / (sqrt(mom2) + epsilon_) + weight_decay_ * p;
   }
 
   inline HOSTDEVICE void operator()(size_t i) const {

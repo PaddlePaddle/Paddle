@@ -119,16 +119,18 @@ std::vector<T> split_string(const std::string& str) {
   return list;
 }
 
-template <class T>
-std::string join_strings(const std::vector<T>& strs, char delim) {
+template <class Container>
+std::string join_strings(const Container& strs, char delim) {
   std::string str;
 
-  for (size_t i = 0; i < strs.size(); i++) {
+  int i = 0;
+  for (auto& elem : strs) {
     if (i > 0) {
       str += delim;
     }
 
-    str += boost::lexical_cast<std::string>(strs[i]);
+    str += boost::lexical_cast<std::string>(elem);
+    ++i;
   }
 
   return str;

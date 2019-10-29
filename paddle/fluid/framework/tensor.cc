@@ -35,13 +35,14 @@ size_t Tensor::memory_size() const {
 }
 
 void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
-                           memory::Allocator::Attr attr,
                            size_t requested_size) {
   type_ = type;
   PADDLE_ENFORCE_GE(numel(), 0,
                     "When calling this method, the Tensor's numel must be "
                     "equal or larger than zero. "
-                    "Please check Tensor::Resize has been called first.");
+                    "Please check Tensor::dims, or Tensor::Resize has been "
+                    "called first. The Tensor's shape is [",
+                    dims(), "] now");
   size_t size = numel() * SizeOfType(type);
   if (requested_size) {
     PADDLE_ENFORCE_GE(requested_size, size);
@@ -50,18 +51,19 @@ void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
-    holder_ = memory::AllocShared(place, size, attr);
+    // Reset holder first before re-allocate to save memory
+    holder_.reset();
+    holder_ = memory::AllocShared(place, size);
     offset_ = 0;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  offset_);
 }
 
-void* Tensor::mutable_data(platform::Place place, memory::Allocator::Attr attr,
-                           size_t requested_size) {
-  PADDLE_ENFORCE(this->holder_ != nullptr,
-                 "Cannot invoke mutable data if current hold nothing.");
-  return mutable_data(place, type_, attr, requested_size);
+void* Tensor::mutable_data(platform::Place place, size_t requested_size) {
+  PADDLE_ENFORCE_NOT_NULL(
+      this->holder_, "Cannot invoke mutable data if current hold nothing.");
+  return mutable_data(place, type_, requested_size);
 }
 
 Tensor& Tensor::ShareDataWith(const Tensor& src) {

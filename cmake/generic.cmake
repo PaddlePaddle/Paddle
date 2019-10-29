@@ -115,10 +115,6 @@ function(common_link TARGET_NAME)
   if (WITH_PROFILER)
     target_link_libraries(${TARGET_NAME} gperftools::profiler)
   endif()
-
-  if (WITH_JEMALLOC)
-    target_link_libraries(${TARGET_NAME} jemalloc::jemalloc)
-  endif()
 endfunction()
 
 
@@ -363,10 +359,10 @@ function(cc_binary TARGET_NAME)
   target_link_libraries(${TARGET_NAME} ${os_dependency_modules})
 endfunction(cc_binary)
 
-function(cc_test TARGET_NAME)
+function(cc_test_build TARGET_NAME)
   if(WITH_TESTING)
     set(oneValueArgs "")
-    set(multiValueArgs SRCS DEPS ARGS)
+    set(multiValueArgs SRCS DEPS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
     if(WIN32)
@@ -379,15 +375,37 @@ function(cc_test TARGET_NAME)
     target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} ${os_dependency_modules} paddle_gtest_main lod_tensor memory gtest gflags glog)
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     common_link(${TARGET_NAME})
+  endif()
+endfunction()
+
+function(cc_test_run TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs COMMAND ARGS)
+    cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
-             COMMAND ${TARGET_NAME} ${cc_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+	    COMMAND ${cc_test_COMMAND}
+	    ARGS ${cc_test_ARGS}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_limit_of_tmp_allocation=4294967296) # 4G
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true ${MKL_DEBUG_FLAG})
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
     # No unit test should exceed 10 minutes.
     set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+  endif()
+endfunction()
+
+function(cc_test TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS ARGS)
+    cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    cc_test_build(${TARGET_NAME}
+	    SRCS ${cc_test_SRCS}
+	    DEPS ${cc_test_DEPS})
+    cc_test_run(${TARGET_NAME}
+	    COMMAND ${TARGET_NAME}
+	    ARGS ${cc_test_ARGS})
   endif()
 endfunction(cc_test)
 
@@ -453,7 +471,6 @@ function(nv_test TARGET_NAME)
     add_test(${TARGET_NAME} ${TARGET_NAME})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_limit_of_tmp_allocation=4294967296) # 4G
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
   endif()
 endfunction(nv_test)
@@ -703,12 +720,23 @@ function(py_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS ENVS)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    add_test(NAME ${TARGET_NAME}
-             COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
-             FLAGS_cpu_deterministic=true FLAGS_limit_of_tmp_allocation=4294967296  # 4G
-             PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
-             ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
-             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if(WITH_COVERAGE)
+      add_test(NAME ${TARGET_NAME}
+               COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+               FLAGS_cpu_deterministic=true
+               PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
+               COVERAGE_FILE=${PADDLE_BINARY_DIR}/python-coverage.data
+               ${PYTHON_EXECUTABLE} -m coverage run --branch -p ${py_test_SRCS} ${py_test_ARGS}
+               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    else()
+      add_test(NAME ${TARGET_NAME}
+               COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+               FLAGS_cpu_deterministic=true
+               PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
+               ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
+               WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    endif()
+
     # No unit test should exceed 10 minutes.
     set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
   endif()

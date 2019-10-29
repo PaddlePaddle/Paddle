@@ -14,7 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "ngraph/ngraph.hpp"
@@ -42,11 +44,11 @@ ngraph::NodeVector ElementwiseBinaryNodePrepare(
   if (lhs_shape == rhs_shape) {
     return ngraph::NodeVector{lhs, rhs};
   }
+  axis = (rhs_shape.size() == 0) ? lhs_shape.size() - 1 : axis;
   axis = (axis == -1 ? lhs_shape.size() - rhs_shape.size() : axis);
   PADDLE_ENFORCE(axis >= 0 && axis < (int)(lhs_shape.size()),
                  "Axis should be in range [0, lhs_shape)");
   paddle::platform::TrimTrailingSingularDims(&rhs_shape);
-  axis = (rhs_shape.size() == 0) ? lhs_shape.size() : axis;
 
   int pre, n, post;
   paddle::platform::GetMidDims(lhs_shape, rhs_shape, axis, &pre, &n, &post);

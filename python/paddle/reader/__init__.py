@@ -66,6 +66,4 @@ An example implementation for multiple item data reader creator:
 import paddle.reader.decorator
 from paddle.reader.decorator import *
 
-import paddle.reader.creator
-
-__all__ = decorator.__all__ + ['creator']
+__all__ = decorator.__all__

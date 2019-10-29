@@ -13,11 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/inference_api.h"
+#include <pybind11/numpy.h>
 #include <pybind11/stl.h>
 #include <cstring>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <string>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
@@ -35,15 +39,96 @@ using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
 using paddle::AnalysisPredictor;
 
-static void BindPaddleDType(py::module *m);
-static void BindPaddleBuf(py::module *m);
-static void BindPaddleTensor(py::module *m);
-static void BindPaddlePlace(py::module *m);
-static void BindPaddlePredictor(py::module *m);
-static void BindNativeConfig(py::module *m);
-static void BindNativePredictor(py::module *m);
-static void BindAnalysisConfig(py::module *m);
-static void BindAnalysisPredictor(py::module *m);
+namespace {
+void BindPaddleDType(py::module *m);
+void BindPaddleBuf(py::module *m);
+void BindPaddleTensor(py::module *m);
+void BindPaddlePlace(py::module *m);
+void BindPaddlePredictor(py::module *m);
+void BindNativeConfig(py::module *m);
+void BindNativePredictor(py::module *m);
+void BindAnalysisConfig(py::module *m);
+void BindAnalysisPredictor(py::module *m);
+
+#ifdef PADDLE_WITH_MKLDNN
+void BindMkldnnQuantizerConfig(py::module *m);
+#endif
+
+template <typename T>
+PaddleBuf PaddleBufCreate(py::array_t<T> data) {
+  PaddleBuf buf(data.size() * sizeof(T));
+  std::copy_n(static_cast<T *>(data.mutable_data()), data.size(),
+              static_cast<T *>(buf.data()));
+  return buf;
+}
+
+template <typename T>
+void PaddleBufReset(PaddleBuf &buf, py::array_t<T> data) {  // NOLINT
+  buf.Resize(data.size() * sizeof(T));
+  std::copy_n(static_cast<T *>(data.mutable_data()), data.size(),
+              static_cast<T *>(buf.data()));
+}
+
+template <typename T>
+PaddleDType PaddleTensorGetDType();
+
+template <>
+PaddleDType PaddleTensorGetDType<int32_t>() {
+  return PaddleDType::INT32;
+}
+
+template <>
+PaddleDType PaddleTensorGetDType<int64_t>() {
+  return PaddleDType::INT64;
+}
+
+template <>
+PaddleDType PaddleTensorGetDType<float>() {
+  return PaddleDType::FLOAT32;
+}
+
+template <typename T>
+PaddleTensor PaddleTensorCreate(
+    py::array_t<T> data, const std::string name = "",
+    const std::vector<std::vector<size_t>> &lod = {}, bool copy = true) {
+  PaddleTensor tensor;
+
+  if (copy) {
+    PaddleBuf buf(data.size() * sizeof(T));
+    std::copy_n(static_cast<T *>(data.mutable_data()), data.size(),
+                static_cast<T *>(buf.data()));
+    tensor.data = std::move(buf);
+  } else {
+    tensor.data = PaddleBuf(data.mutable_data(), data.size() * sizeof(T));
+  }
+
+  tensor.dtype = PaddleTensorGetDType<T>();
+  tensor.name = name;
+  tensor.lod = lod;
+  tensor.shape.resize(data.ndim());
+  std::copy_n(data.shape(), data.ndim(), tensor.shape.begin());
+
+  return tensor;
+}
+
+py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
+  py::dtype dt;
+  switch (tensor.dtype) {
+    case PaddleDType::INT32:
+      dt = py::dtype::of<int32_t>();
+      break;
+    case PaddleDType::INT64:
+      dt = py::dtype::of<int64_t>();
+      break;
+    case PaddleDType::FLOAT32:
+      dt = py::dtype::of<float>();
+      break;
+    default:
+      LOG(FATAL) << "unsupported dtype";
+  }
+  return py::array(dt, {tensor.shape}, tensor.data.data());
+}
+}  // namespace
 
 void BindInferenceApi(py::module *m) {
   BindPaddleDType(m);
@@ -55,7 +140,9 @@ void BindInferenceApi(py::module *m) {
   BindNativePredictor(m);
   BindAnalysisConfig(m);
   BindAnalysisPredictor(m);
-
+#ifdef PADDLE_WITH_MKLDNN
+  BindMkldnnQuantizerConfig(m);
+#endif
   m->def("create_paddle_predictor",
          &paddle::CreatePaddlePredictor<AnalysisConfig>);
   m->def("create_paddle_predictor",
@@ -63,6 +150,7 @@ void BindInferenceApi(py::module *m) {
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
 }
 
+namespace {
 void BindPaddleDType(py::module *m) {
   py::enum_<PaddleDType>(*m, "PaddleDType")
       .value("FLOAT32", PaddleDType::FLOAT32)
@@ -78,23 +166,39 @@ void BindPaddleBuf(py::module *m) {
         std::memcpy(buf.data(), static_cast<void *>(data.data()), buf.length());
         return buf;
       }))
-      .def(py::init([](std::vector<int64_t> &data) {
-        auto buf = PaddleBuf(data.size() * sizeof(int64_t));
-        std::memcpy(buf.data(), static_cast<void *>(data.data()), buf.length());
-        return buf;
-      }))
+      .def(py::init(&PaddleBufCreate<int32_t>))
+      .def(py::init(&PaddleBufCreate<int64_t>))
+      .def(py::init(&PaddleBufCreate<float>))
       .def("resize", &PaddleBuf::Resize)
       .def("reset",
            [](PaddleBuf &self, std::vector<float> &data) {
              self.Resize(data.size() * sizeof(float));
              std::memcpy(self.data(), data.data(), self.length());
            })
-      .def("reset",
-           [](PaddleBuf &self, std::vector<int64_t> &data) {
-             self.Resize(data.size() * sizeof(int64_t));
-             std::memcpy(self.data(), data.data(), self.length());
-           })
+      .def("reset", &PaddleBufReset<int32_t>)
+      .def("reset", &PaddleBufReset<int64_t>)
+      .def("reset", &PaddleBufReset<float>)
       .def("empty", &PaddleBuf::empty)
+      .def("tolist",
+           [](PaddleBuf &self, const std::string &dtype) -> py::list {
+             py::list l;
+             if (dtype == "int32") {
+               auto *data = static_cast<int32_t *>(self.data());
+               auto size = self.length() / sizeof(int32_t);
+               l = py::cast(std::vector<int32_t>(data, data + size));
+             } else if (dtype == "int64") {
+               auto *data = static_cast<int64_t *>(self.data());
+               auto size = self.length() / sizeof(int64_t);
+               l = py::cast(std::vector<int64_t>(data, data + size));
+             } else if (dtype == "float32") {
+               auto *data = static_cast<float *>(self.data());
+               auto size = self.length() / sizeof(float);
+               l = py::cast(std::vector<float>(data, data + size));
+             } else {
+               LOG(FATAL) << "unsupported dtype";
+             }
+             return l;
+           })
       .def("float_data",
            [](PaddleBuf &self) -> std::vector<float> {
              auto *data = static_cast<float *>(self.data());
@@ -116,6 +220,19 @@ void BindPaddleBuf(py::module *m) {
 void BindPaddleTensor(py::module *m) {
   py::class_<PaddleTensor>(*m, "PaddleTensor")
       .def(py::init<>())
+      .def(py::init(&PaddleTensorCreate<int32_t>), py::arg("data"),
+           py::arg("name") = "",
+           py::arg("lod") = std::vector<std::vector<size_t>>(),
+           py::arg("copy") = true)
+      .def(py::init(&PaddleTensorCreate<int64_t>), py::arg("data"),
+           py::arg("name") = "",
+           py::arg("lod") = std::vector<std::vector<size_t>>(),
+           py::arg("copy") = true)
+      .def(py::init(&PaddleTensorCreate<float>), py::arg("data"),
+           py::arg("name") = "",
+           py::arg("lod") = std::vector<std::vector<size_t>>(),
+           py::arg("copy") = true)
+      .def("as_ndarray", &PaddleTensorGetData)
       .def_readwrite("name", &PaddleTensor::name)
       .def_readwrite("shape", &PaddleTensor::shape)
       .def_readwrite("data", &PaddleTensor::data)
@@ -191,6 +308,7 @@ void BindAnalysisConfig(py::module *m) {
   py::enum_<AnalysisConfig::Precision>(analysis_config, "Precision")
       .value("Float32", AnalysisConfig::Precision::kFloat32)
       .value("Int8", AnalysisConfig::Precision::kInt8)
+      .value("Half", AnalysisConfig::Precision::kHalf)
       .export_values();
 
   analysis_config.def(py::init<const AnalysisConfig &>())
@@ -218,6 +336,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("switch_ir_optim", &AnalysisConfig::SwitchIrOptim,
            py::arg("x") = true)
       .def("ir_optim", &AnalysisConfig::ir_optim)
+      .def("enable_memory_optim", &AnalysisConfig::EnableMemoryOptim)
+      .def("enable_profile", &AnalysisConfig::EnableProfile)
+      .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
+      .def("set_optim_cache_dir", &AnalysisConfig::SetOptimCacheDir)
       .def("switch_use_feed_fetch_ops", &AnalysisConfig::SwitchUseFeedFetchOps,
            py::arg("x") = true)
       .def("use_feed_fetch_ops_enabled",
@@ -229,7 +351,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("workspace_size") = 1 << 20, py::arg("max_batch_size") = 1,
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
-           py::arg("use_static") = true, py::arg("use_calib_mode") = false)
+           py::arg("use_static") = false, py::arg("use_calib_mode") = true)
       .def("enable_anakin_engine", &AnalysisConfig::EnableAnakinEngine,
            py::arg("max_batch_size") = 1,
            py::arg("max_input_shape") =
@@ -249,12 +371,39 @@ void BindAnalysisConfig(py::module *m) {
       .def("cpu_math_library_num_threads",
            &AnalysisConfig::cpu_math_library_num_threads)
       .def("to_native_config", &AnalysisConfig::ToNativeConfig)
+      .def("enable_quantizer", &AnalysisConfig::EnableMkldnnQuantizer)
+#ifdef PADDLE_WITH_MKLDNN
+      .def("quantizer_config", &AnalysisConfig::mkldnn_quantizer_config,
+           py::return_value_policy::reference)
+#endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
       .def("model_from_memory", &AnalysisConfig::model_from_memory)
       .def("pass_builder", &AnalysisConfig::pass_builder,
            py::return_value_policy::reference);
 }
+
+#ifdef PADDLE_WITH_MKLDNN
+void BindMkldnnQuantizerConfig(py::module *m) {
+  py::class_<MkldnnQuantizerConfig> quantizer_config(*m,
+                                                     "MkldnnQuantizerConfig");
+  quantizer_config.def(py::init<const MkldnnQuantizerConfig &>())
+      .def(py::init<>())
+      .def("set_quant_data",
+           [](MkldnnQuantizerConfig &self,
+              const std::vector<PaddleTensor> &data) {
+             auto warmup_data =
+                 std::make_shared<std::vector<PaddleTensor>>(data);
+             self.SetWarmupData(warmup_data);
+             return;
+           })
+      .def("set_quant_batch_size", &MkldnnQuantizerConfig::SetWarmupBatchSize)
+      .def(
+          "set_enabled_op_types",
+          (void (MkldnnQuantizerConfig::*)(std::unordered_set<std::string> &)) &
+              MkldnnQuantizerConfig::SetEnabledOpTypes);
+}
+#endif
 
 void BindAnalysisPredictor(py::module *m) {
   py::class_<AnalysisPredictor, PaddlePredictor>(*m, "AnalysisPredictor")
@@ -272,8 +421,10 @@ void BindAnalysisPredictor(py::module *m) {
       .def("zero_copy_run", &AnalysisPredictor::ZeroCopyRun)
       .def("clone", &AnalysisPredictor::Clone)
       .def("scope", &AnalysisPredictor::scope,
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+      .def("SaveOptimModel", &AnalysisPredictor::SaveOptimModel,
+           py::arg("dir"));
 }
-
+}  // namespace
 }  // namespace pybind
 }  // namespace paddle

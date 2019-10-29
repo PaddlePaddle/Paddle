@@ -46,7 +46,7 @@ class GaussianRandomBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
     AddAttr<int>("seed",
                  "(int, default 0) "
                  "Random seed of generator."
-                 "0 means use system wide seed."
+                 "0 means don't specify random seed."
                  "Note that if seed is not 0, this operator will always "
                  "generate the same random numbers every time.")
         .SetDefault(0);
@@ -58,9 +58,9 @@ class GaussianRandomBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
     AddComment(R"DOC(
 
 Used to initialize tensors with gaussian random generator.
-The defalut mean of the distribution is 0. and defalut standard
-deviation (std) of the distribution is 1.. Uers can set mean and std
-by input arguments.
+The default mean of the distribution is 0, and default standard
+deviation (std) of the distribution is 1.0. Uers can set mean and std
+via input arguments.
 )DOC");
   }
 };

@@ -26,6 +26,7 @@
 #ifdef PADDLE_WITH_CUDA
 #ifndef _WIN32
 #include "paddle/fluid/operators/nccl/nccl_gpu_common.h"
+#include "paddle/fluid/platform/nccl_helper.h"
 #endif
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/cudnn_rnn_cache.h"

@@ -40,9 +40,6 @@ int RegisterFileReader(const std::string& filetype) {
   return 0;
 }
 
-std::unique_ptr<framework::ReaderBase> CreateReaderByFileName(
-    const std::string& file_name);
-
 extern std::vector<framework::DDim> RestoreShapes(
     const std::vector<int>& shape_concat, const std::vector<int>& ranks);
 

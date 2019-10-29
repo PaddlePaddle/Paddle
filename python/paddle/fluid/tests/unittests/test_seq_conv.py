@@ -241,5 +241,21 @@ class TestSeqProjectCase3(TestSeqProject):
         self.output_represention = 8  # output feature size
 
 
+class TestSeqConvApi(unittest.TestCase):
+    def test_api(self):
+        import paddle.fluid as fluid
+
+        x = fluid.layers.data('x', shape=[32], lod_level=1)
+        y = fluid.layers.sequence_conv(
+            input=x, num_filters=2, filter_size=3, padding_start=None)
+
+        place = fluid.CPUPlace()
+        x_tensor = fluid.create_lod_tensor(
+            np.random.rand(10, 32).astype("float32"), [[2, 3, 1, 4]], place)
+        exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
+        ret = exe.run(feed={'x': x_tensor}, fetch_list=[y], return_numpy=False)
+
+
 if __name__ == '__main__':
     unittest.main()

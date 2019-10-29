@@ -44,7 +44,6 @@ TEST(AnalysisPredictor, analysis_off) {
   ASSERT_EQ(predictor->scope_->parent(), nullptr);
   ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
   // ir is turned off, so program shouldn't be optimized.
-  ASSERT_FALSE(predictor->status_program_optimized_);
   LOG(INFO) << "scope parameters " << predictor->scope_->LocalVarNames().size();
 
   // 2. Dummy Input Data
@@ -76,8 +75,6 @@ TEST(AnalysisPredictor, analysis_on) {
   ASSERT_TRUE(predictor->sub_scope_);
   ASSERT_EQ(predictor->scope_->parent(), nullptr);
   ASSERT_EQ(predictor->sub_scope_->parent(), predictor->scope_.get());
-  // ir is turned on, so program should be optimized.
-  ASSERT_TRUE(predictor->status_program_optimized_);
   // 2. Dummy Input Data
   int64_t data[4] = {1, 2, 3, 4};
   PaddleTensor tensor;
@@ -260,7 +257,7 @@ class MkldnnQuantizerTest : public testing::Test {
     predictor.reset(new AnalysisPredictor(config));
     auto* predictor_p = static_cast<AnalysisPredictor*>(predictor.get());
 
-    auto qconfig = std::make_shared<MkldnnQuantizerConfig>();
+    auto qconfig = new MkldnnQuantizerConfig();
 
     mkldnn_quantizer.reset(
         new AnalysisPredictor::MkldnnQuantizer(*predictor_p, qconfig));

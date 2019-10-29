@@ -44,6 +44,8 @@ struct FetchBarrierOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
+  std::vector<Scope *> GetLocalScopes() override { return local_scopes_; }
+
   bool NeedWait(VarHandleBase *in_var) override;
 
  private:

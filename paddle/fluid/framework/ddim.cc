@@ -48,68 +48,6 @@ bool DDim::operator==(const DDim& d) const {
 
 bool DDim::operator!=(const DDim& d) const { return !(*this == d); }
 
-struct DDimPlusVisitor {
-  explicit DDimPlusVisitor(const int64_t* d1, const int64_t* d2)
-      : d1_(d1), d2_(d2) {}
-
-  template <int D>
-  inline void operator()(Dim<D>& self) const {
-    UnrollAdd<D>::Run(d1_, d2_, self.GetMutable());
-  }
-
-  const int64_t* d1_;
-  const int64_t* d2_;
-};
-
-DDim DDim::operator+(const DDim& d) const {
-  PADDLE_ENFORCE(size() == d.size());
-  DDim ret;
-  ret.rank_ = rank_;
-  ret.apply_visitor(DDimPlusVisitor(Get(), d.Get()));
-  return ret;
-}
-
-struct DDimMulVisitor {
-  explicit DDimMulVisitor(const int64_t* d1, const int64_t* d2)
-      : d1_(d1), d2_(d2) {}
-
-  template <int D>
-  inline void operator()(Dim<D>& self) const {
-    UnrollMul<D>::Run(d1_, d2_, self.GetMutable());
-  }
-
-  const int64_t* d1_;
-  const int64_t* d2_;
-};
-
-DDim DDim::operator*(const DDim& d) const {
-  PADDLE_ENFORCE(size() == d.size());
-  DDim ret;
-  ret.rank_ = rank_;
-  ret.apply_visitor(DDimMulVisitor(Get(), d.Get()));
-  return ret;
-}
-
-int64_t get(const DDim& ddim, int idx) { return ddim[idx]; }
-
-void set(DDim& ddim, int idx, int value) { ddim[idx] = value; }  // NOLINT
-
-std::vector<int64_t> vectorize(const DDim& ddim) {
-  std::vector<int64_t> result(DDim::kMaxRank);
-  dynamic_dim_assign(ddim.Get(), result.data(), ddim.size());
-  result.resize(ddim.size());
-  return result;
-}
-
-// NOTE: framework::vectorize converts to type int64_t
-//       which does not fit cudnn inputs.
-std::vector<int> vectorize2int(const DDim& ddim) {
-  std::vector<int> result(DDim::kMaxRank);
-  dynamic_dim_assign(ddim.Get(), result.data(), ddim.size());
-  result.resize(ddim.size());
-  return result;
-}
-
 struct ProductVisitor {
   template <int D>
   inline int64_t operator()(const Dim<D>& dim) {

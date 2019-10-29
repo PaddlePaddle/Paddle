@@ -13,6 +13,10 @@
 # limitations under the License.
 
 from .executor import global_scope
+"""
+Communicator is used for async distribute training in distribute_transpiler mode.
+It's a wrapper of a cpp class Communicator and should be used inside fleet API.
+"""
 from . import core
 from .framework import Program
 
@@ -20,7 +24,11 @@ __all__ = ['Communicator']
 
 
 class Communicator(object):
-    def __init__(self, program):
+    def __init__(self,
+                 program,
+                 vars_info=None,
+                 trainers=None,
+                 geo_sgd_need_push_nums=None):
         """
         Communicator is used for async distribute training in distribute_transpiler mode.
         It's a wrapper of a cpp class Communicator and should be used inside fleet API.
@@ -47,7 +55,15 @@ class Communicator(object):
         for op in program.block(0).ops:
             if op.type == "recv":
                 op._set_attr('do_not_run', True)
-        self.communicator_ = core.DistCommunicator(program.desc, global_scope())
+        # Todo: Add check
+        if vars_info and trainers and geo_sgd_need_push_nums:
+            # for geo sgd
+            self.communicator_ = core.DistCommunicator(
+                program.desc,
+                global_scope(), vars_info, trainers, geo_sgd_need_push_nums)
+        else:
+            self.communicator_ = core.DistCommunicator(program.desc,
+                                                       global_scope())
 
     def start(self):
         """
@@ -86,3 +102,21 @@ class Communicator(object):
                 comm.stop()
         """
         self.communicator_.stop()
+
+    def is_running(self):
+        """
+        Get communicator is running or stop.
+
+        Returns:
+            bool
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                prog = fluid.Program()
+                comm = fluid.communicator.Communicator(prog)
+                comm.is_running()
+        """
+        self.communicator_.is_running()

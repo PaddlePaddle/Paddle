@@ -97,7 +97,8 @@ class LSTMOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Input")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
@@ -153,11 +154,11 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
               "in the backward.")
         .AsIntermediate();
     AddAttr<bool>("use_peepholes",
-                  "(bool, defalut: True) "
+                  "(bool, default: True) "
                   "whether to enable diagonal/peephole connections.")
         .SetDefault(true);
     AddAttr<bool>("is_reverse",
-                  "(bool, defalut: False) "
+                  "(bool, default: False) "
                   "whether to compute reversed LSTM.")
         .SetDefault(false);
     AddAttr<std::string>(
@@ -169,7 +170,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddAttr<std::string>("cell_activation",
                          "(string, default: tanh)"
-                         "The activation for cell output, `tanh` by defalut.")
+                         "The activation for cell output, `tanh` by default.")
         .SetDefault("tanh")
         .InEnum({"sigmoid", "tanh", "relu", "identity"});
     AddAttr<std::string>("candidate_activation",
@@ -181,7 +182,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Long-Short Term Memory (LSTM) Operator.
 
-The defalut implementation is diagonal/peephole connection
+The default implementation is diagonal/peephole connection
 (https://arxiv.org/pdf/1402.1128.pdf), the formula is as follows:
 
 $$ i_t = \\sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + W_{ic}c_{t-1} + b_i) $$
@@ -199,7 +200,7 @@ $$ h_t = o_t \\odot act_h(c_t) $$
 - W terms denote weight matrices (e.g. $W_{xi}$ is the matrix
   of weights from the input gate to the input), $W_{ic}, W_{fc}, W_{oc}$
   are diagonal weight matrices for peephole connections. In our implementation,
-  we use vectors to reprenset these diagonal weight matrices.
+  we use vectors to represent these diagonal weight matrices.
 - The b terms denote bias vectors ($b_i$ is the input gate bias vector).
 - $\sigma$ is the non-line activations, such as logistic sigmoid function.
 - $i, f, o$ and $c$ are the input gate, forget gate, output gate,
@@ -261,7 +262,8 @@ class LSTMGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("Input")->type(), ctx.device_context());
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 

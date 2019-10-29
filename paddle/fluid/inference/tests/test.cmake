@@ -48,13 +48,35 @@ if(NOT EXISTS ${WORD2VEC_INSTALL_DIR} AND NOT WIN32)
 endif()
 set(WORD2VEC_MODEL_DIR "${WORD2VEC_INSTALL_DIR}/word2vec.inference.model")
 
+function (inference_base_test_build TARGET)
+   set(options "")
+   set(oneValueArgs "")
+   set(multiValueArgs SRCS DEPS)
+   cmake_parse_arguments(base_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+   cc_test_build(${TARGET} SRCS ${base_test_SRCS} DEPS ${base_test_DEPS})
+endfunction()
+
+function (inference_base_test_run TARGET)
+   set(options "")
+   set(oneValueArgs "")
+   set(multiValueArgs COMMAND ARGS)
+   cmake_parse_arguments(base_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+   if(WITH_GPU)
+       set(mem_opt "--fraction_of_gpu_memory_to_use=0.5")
+   endif()
+   cc_test_run(${TARGET} COMMAND ${base_test_COMMAND} ARGS ${mem_opt} ${base_test_ARGS})
+endfunction()
+
 function (inference_base_test TARGET)
    set(options "")
    set(oneValueArgs "")
    set(multiValueArgs SRCS ARGS DEPS)
    cmake_parse_arguments(base_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-   if(WITH_GPU)
-       set(mem_opt "--fraction_of_gpu_memory_to_use=0.5")
-   endif()
-   cc_test(${TARGET} SRCS ${base_test_SRCS} DEPS ${base_test_DEPS} ARGS ${mem_opt} ${base_test_ARGS})
+   inference_base_test_build(${TARGET}
+	   SRCS ${base_test_SRCS}
+	   DEPS ${base_test_DEPS})
+   inference_base_test_run(${TARGET}
+	   COMMAND ${TARGET}
+	   ARGS ${base_test_ARGS})
 endfunction()
+

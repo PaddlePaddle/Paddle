@@ -29,12 +29,30 @@ class EditDistanceOp : public framework::OperatorWithKernel {
                    "Output(SequenceNum) shouldn't be null.");
     auto hyp_dims = ctx->GetInputDim("Hyps");
     auto ref_dims = ctx->GetInputDim("Refs");
-    PADDLE_ENFORCE(hyp_dims.size() == 2 && hyp_dims[1] == 1,
-                   "Input(Hyps) must be a 2-D LoDTensor with the 2nd dimension "
-                   "equal to 1.");
-    PADDLE_ENFORCE(ref_dims.size() == 2 && ref_dims[1] == 1,
-                   "Input(Refs) must be a 2-D LoDTensor with the 2nd dimension "
-                   "equal to 1.");
+
+    if (ctx->HasInput("HypsLength") && ctx->HasInput("RefsLength")) {
+      auto hyp_length_dims = ctx->GetInputDim("HypsLength");
+      auto ref_length_dims = ctx->GetInputDim("RefsLength");
+
+      PADDLE_ENFORCE(hyp_dims.size() == 2 && ref_dims.size() == 2 &&
+                         hyp_dims[0] == ref_dims[0],
+                     "Input(Hyps) and Input(Refs) must be 2-D Tensors with "
+                     "identical first dimension");
+      PADDLE_ENFORCE(hyp_length_dims[0] == ref_length_dims[0] &&
+                         hyp_length_dims[0] == hyp_dims[0],
+                     "Input(HypsLength), Input(RefsLength) and Input(Hyps) "
+                     "should have identical first dimension");
+    } else {
+      PADDLE_ENFORCE(
+          hyp_dims.size() == 2 && hyp_dims[1] == 1,
+          "Input(Hyps) must be a 2-D LoDTensor with the 2nd dimension "
+          "equal to 1.");
+      PADDLE_ENFORCE(
+          ref_dims.size() == 2 && ref_dims[1] == 1,
+          "Input(Refs) must be a 2-D LoDTensor with the 2nd dimension "
+          "equal to 1.");
+    }
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("Refs"));
     ctx->SetOutputDim("SequenceNum", {1});
   }
@@ -51,11 +69,21 @@ class EditDistanceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Hyps",
-             "(2-D LoDTensor<int64_t>, 2nd dim. equal to 1) "
+             "2-D Tensor<int64_t>, or 2-D LoDTensor<int64_t> with last "
+             "dimension being 1. "
              "The indices for hypothesis strings.");
     AddInput("Refs",
-             "(2-D LoDTensor<int64_t>, 2nd dim. equal to 1) "
+             "2-D Tensor<int64_t>, or 2-D LoDTensor<int64_t> with last "
+             "dimension being 1. "
              "The indices for reference strings.");
+    AddInput("HypsLength",
+             "1-D Tensor<int64_t>. "
+             "Sequence length for hyps when hyps is a tensor")
+        .AsDispensable();
+    AddInput("RefsLength",
+             "1-D Tensor<int64_t>. "
+             "Sequence length for refs when refs is a tensor")
+        .AsDispensable();
     AddOutput("SequenceNum", "The sequence count of current batch");
     AddAttr<bool>("normalized",
                   "(bool, default false) Indicated whether to normalize "
@@ -78,12 +106,11 @@ insertion:
 
    "kitten" -> "sitten" -> "sittin" -> "sitting"
 
-Input(Hyps) is a LoDTensor consisting of all the hypothesis strings with the total
-number denoted by `batch_size`, and the separation is specified by the LoD information.
+Input(Hyps) is a 2-D Tensor or a 2-D LoDTensor consisting of all the hypothesis strings.
 And the `batch_size` reference strings are arranged in order in the same way in the
-LoDTensor Input(Refs).
+Input(Refs).
 
-Output(Out) contains the `batch_size` results and each stands for the edit stance
+Output(Out) contains the `batch_size` results and each stands for the edit distance
 for a pair of strings respectively. If Attr(normalized) is true, the edit distance
 will be divided by the length of reference string.
 )DOC");

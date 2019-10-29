@@ -33,7 +33,9 @@ from ir_memory_optimize_net_base import TestIrMemOptBase
 
 
 class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
-    def check_network_convergence(self, use_cuda=True, py_opt=False,
+    def check_network_convergence(self,
+                                  use_cuda=True,
+                                  use_mem_opt=False,
                                   iter_num=5):
         prog = Program()
         startup_prog = Program()
@@ -75,11 +77,14 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
             exec_strategy = fluid.ExecutionStrategy()
             exec_strategy.use_cuda = use_cuda
 
-            if py_opt:
-                fluid.memory_optimize(fluid.default_main_program())
+            build_strategy = fluid.BuildStrategy()
+            build_strategy.memory_optimize = use_mem_opt
+
             train_cp = compiler.CompiledProgram(fluid.default_main_program())
             train_cp = train_cp.with_data_parallel(
-                loss_name=avg_loss.name, exec_strategy=exec_strategy)
+                loss_name=avg_loss.name,
+                exec_strategy=exec_strategy,
+                build_strategy=build_strategy)
             fetch_list = [avg_loss.name]
 
             exe.run(startup_prog)
@@ -116,7 +121,6 @@ class TestIrMemoryOptimizeIfElseOp(unittest.TestCase):
             ret2 = self.check_network_convergence(True, False)
             print(ret2)
             self.assertTrue(np.allclose(ret1, ret2))
-            #self.assertEqual(ret1, ret2)
 
 
 if __name__ == "__main__":

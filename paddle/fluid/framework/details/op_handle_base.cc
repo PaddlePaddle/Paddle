@@ -20,7 +20,7 @@ namespace framework {
 namespace details {
 std::string OpHandleBase::DebugString() const {
   std::stringstream ss;
-  ss << "(";
+  ss << Name() << "(";
   for (auto *var : inputs_) {
     ss << var->DebugString() << ", ";
   }
@@ -35,7 +35,45 @@ std::string OpHandleBase::DebugString() const {
 OpHandleBase::~OpHandleBase() {
 #ifdef PADDLE_WITH_CUDA
   for (auto &ev : events_) {
-    PADDLE_ENFORCE(cudaEventDestroy(ev.second));
+    if (ev.second) {
+      PADDLE_ENFORCE(cudaEventDestroy(ev.second));
+    }
+  }
+#endif
+}
+
+void OpHandleBase::InitCUDA() {
+#ifdef PADDLE_WITH_CUDA
+  for (auto &p : dev_ctxes_) {
+    int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
+    PADDLE_ENFORCE(cudaSetDevice(dev_id));
+    PADDLE_ENFORCE(
+        cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
+  }
+  if (IsMultiDeviceTransfer() && dev_ctxes_.size() > 0) {
+    for (auto &out_var : outputs_) {
+      auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
+      if (out_var_handle) {
+        int dev_id =
+            boost::get<platform::CUDAPlace>(out_var_handle->place()).device;
+        out_var_handle->SetGenerateEvent(events_.at(dev_id));
+      }
+    }
+  } else {
+    PADDLE_ENFORCE_EQ(dev_ctxes_.size(), 1UL,
+                      "%s should have only one dev_ctx.", Name());
+    auto &place = dev_ctxes_.begin()->first;
+    int dev_id = boost::get<platform::CUDAPlace>(place).device;
+    for (auto &out_var : outputs_) {
+      auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
+      if (out_var_handle) {
+        PADDLE_ENFORCE(platform::is_same_place(place, out_var_handle->place()),
+                       "The place of output(%s) is not consistent with the "
+                       "place of current op(%s).",
+                       out_var_handle->Name(), Name());
+        out_var_handle->SetGenerateEvent(events_.at(dev_id));
+      }
+    }
   }
 #endif
 }
@@ -43,41 +81,9 @@ OpHandleBase::~OpHandleBase() {
 void OpHandleBase::Run(bool use_cuda) {
 #ifdef PADDLE_WITH_CUDA
   if (events_.empty() && use_cuda && dev_ctxes_.size() > 0) {
-    for (auto &p : dev_ctxes_) {
-      int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
-      PADDLE_ENFORCE(cudaSetDevice(dev_id));
-      PADDLE_ENFORCE(
-          cudaEventCreateWithFlags(&events_[dev_id], cudaEventDisableTiming));
-    }
-    if (IsMultiDeviceTransfer() && dev_ctxes_.size() > 0) {
-      for (auto &out_var : outputs_) {
-        auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
-        if (out_var_handle) {
-          int dev_id =
-              boost::get<platform::CUDAPlace>(out_var_handle->place()).device;
-          out_var_handle->SetGenerateEvent(events_.at(dev_id));
-        }
-      }
-    } else {
-      PADDLE_ENFORCE_EQ(dev_ctxes_.size(), 1UL,
-                        "%s should have only one dev_ctx.", Name());
-      auto &place = dev_ctxes_.begin()->first;
-      int dev_id = boost::get<platform::CUDAPlace>(place).device;
-      for (auto &out_var : outputs_) {
-        auto *out_var_handle = dynamic_cast<VarHandle *>(out_var);
-        if (out_var_handle) {
-          PADDLE_ENFORCE(
-              platform::is_same_place(place, out_var_handle->place()),
-              "The place of output(%s) is not consistent with the "
-              "place of current op(%s).",
-              out_var_handle->Name(), Name());
-          out_var_handle->SetGenerateEvent(events_.at(dev_id));
-        }
-      }
-    }
+    InitCUDA();
   }
 #else
-
   PADDLE_ENFORCE(!use_cuda);
 #endif
 
@@ -182,26 +188,16 @@ bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
 }
 
 void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
+  callback();
 #ifdef PADDLE_WITH_CUDA
   if (!events_.empty()) {  // Use event
-    std::function<void()> method = callback;
     for (auto &p : dev_ctxes_) {
-      method = [method, p, this]() {
-        VLOG(10) << "cudadevicecontext:"
-                 << static_cast<platform::CUDADeviceContext *>(p.second)
-                 << ", dev_id:"
-                 << boost::get<platform::CUDAPlace>(p.first).device;
-
-        static_cast<platform::CUDADeviceContext *>(p.second)->RecordEvent(
-            events_.at(boost::get<platform::CUDAPlace>(p.first).device),
-            method);
-      };
+      auto dev_id = boost::get<platform::CUDAPlace>(p.first).device;
+      auto *cuda_dev_ctx = static_cast<platform::CUDADeviceContext *>(p.second);
+      VLOG(10) << "cudadevicecontext:" << cuda_dev_ctx << ", dev_id:" << dev_id;
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaEventRecord(events_.at(dev_id), cuda_dev_ctx->stream()));
     }
-    method();
-  } else {
-#endif
-    callback();
-#ifdef PADDLE_WITH_CUDA
   }
 #endif
 }
@@ -230,6 +226,17 @@ size_t OpHandleBase::NotReadyInputSize() const {
     }
   }
   return res.size();
+}
+
+void OpHandleBase::SetLocalExecScopes(
+    const std::unordered_map<Scope *, Scope *> &scope_map) {
+  local_exec_scopes_.clear();
+  auto scopes = GetLocalScopes();
+  for (auto *scope : scopes) {
+    auto iter = scope_map.find(scope);
+    PADDLE_ENFORCE(iter != scope_map.end(), "Local scope not found");
+    local_exec_scopes_.emplace_back(iter->second);
+  }
 }
 
 }  // namespace details

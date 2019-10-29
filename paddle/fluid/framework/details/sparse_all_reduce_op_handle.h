@@ -32,15 +32,20 @@ class SparseAllReduceOpHandle : public AllReduceOpHandle {
   SparseAllReduceOpHandle(ir::Node *node,
                           const std::vector<Scope *> &local_scopes,
                           const std::vector<platform::Place> &places,
-                          const platform::MultiNCCLContextMap *ctxs,
+                          const platform::NCCLCommunicator *ctxs,
                           bool is_encoded = false, int nranks = -1);
   std::string Name() const override;
+
+  void WaitInputVarGenerated() override;
 
  protected:
   void RunImpl() override;
   int GetKValue(const std::string &grad_name);
   bool IsEncoded();
   void RunImplEncoded();
+  void SparseAllReduceFunc(
+      const std::vector<std::function<void()>> &all_gather_calls,
+      const std::vector<std::function<void()>> &sparse_reduce_calls);
 
  private:
   bool is_encoded_{false};

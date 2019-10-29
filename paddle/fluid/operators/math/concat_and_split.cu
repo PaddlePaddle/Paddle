@@ -15,6 +15,7 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/mixed_vector.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
@@ -73,6 +74,33 @@ __global__ void ConcatKernel(const T* input_addr0, const T* input_addr1,
   const T* inputs_data[2];
   inputs_data[0] = input_addr0;
   inputs_data[1] = input_addr1;
+  ConcatKernelDetail<T>(inputs_data, fixed_in_col, out_rows, out_cols,
+                        output_data);
+}
+
+template <typename T>
+__global__ void ConcatKernel(const T* input_addr0, const T* input_addr1,
+                             const T* input_addr2, const int fixed_in_col,
+                             const int out_rows, const int out_cols,
+                             T* output_data) {
+  const T* inputs_data[3];
+  inputs_data[0] = input_addr0;
+  inputs_data[1] = input_addr1;
+  inputs_data[2] = input_addr2;
+  ConcatKernelDetail<T>(inputs_data, fixed_in_col, out_rows, out_cols,
+                        output_data);
+}
+
+template <typename T>
+__global__ void ConcatKernel(const T* input_addr0, const T* input_addr1,
+                             const T* input_addr2, const T* input_addr3,
+                             const int fixed_in_col, const int out_rows,
+                             const int out_cols, T* output_data) {
+  const T* inputs_data[4];
+  inputs_data[0] = input_addr0;
+  inputs_data[1] = input_addr1;
+  inputs_data[2] = input_addr2;
+  inputs_data[3] = input_addr3;
   ConcatKernelDetail<T>(inputs_data, fixed_in_col, out_rows, out_cols,
                         output_data);
 }
@@ -147,6 +175,31 @@ __global__ void SplitKernel(const T* input_data, const int in_row,
   SplitKernelDetail<T>(input_data, in_row, in_col, fixed_out_col, outputs_data);
 }
 
+template <typename T>
+__global__ void SplitKernel(const T* input_data, const int in_row,
+                            const int in_col, const int fixed_out_col,
+                            T* outputs_addr0, T* outputs_addr1,
+                            T* outputs_addr2) {
+  T* outputs_data[3];
+  outputs_data[0] = outputs_addr0;
+  outputs_data[1] = outputs_addr1;
+  outputs_data[2] = outputs_addr2;
+  SplitKernelDetail<T>(input_data, in_row, in_col, fixed_out_col, outputs_data);
+}
+
+template <typename T>
+__global__ void SplitKernel(const T* input_data, const int in_row,
+                            const int in_col, const int fixed_out_col,
+                            T* outputs_addr0, T* outputs_addr1,
+                            T* outputs_addr2, T* outputs_addr3) {
+  T* outputs_data[4];
+  outputs_data[0] = outputs_addr0;
+  outputs_data[1] = outputs_addr1;
+  outputs_data[2] = outputs_addr2;
+  outputs_data[3] = outputs_addr3;
+  SplitKernelDetail<T>(input_data, in_row, in_col, fixed_out_col, outputs_data);
+}
+
 static inline void GetBlockDims(const platform::CUDADeviceContext& context,
                                 int num_rows, int num_cols, dim3* block_dims,
                                 dim3* grid_dims) {
@@ -210,10 +263,9 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
 
     memory::allocation::AllocationPtr tmp_dev_ins_data;
     const T** dev_ins_data = nullptr;
-    if (!has_same_shape || (in_num != 2)) {
+    if (!has_same_shape || in_num < 2 || in_num > 4) {
       tmp_dev_ins_data =
-          platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
-              inputs_data.size() * sizeof(T*));
+          memory::Alloc(context, inputs_data.size() * sizeof(T*));
       memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                    tmp_dev_ins_data->ptr(), platform::CPUPlace(),
                    static_cast<void*>(inputs_data.data()),
@@ -226,14 +278,21 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
         ConcatKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
             inputs_data[0], inputs_data[1], in_col, out_row, out_col,
             output->data<T>());
+      } else if (in_num == 3) {
+        ConcatKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+            inputs_data[0], inputs_data[1], inputs_data[2], in_col, out_row,
+            out_col, output->data<T>());
+      } else if (in_num == 4) {
+        ConcatKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+            inputs_data[0], inputs_data[1], inputs_data[2], inputs_data[3],
+            in_col, out_row, out_col, output->data<T>());
       } else {
         ConcatKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
             dev_ins_data, in_num, in_col, out_row, out_col, output->data<T>());
       }
     } else {
       auto tmp_dev_ins_col_data =
-          platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
-              inputs_col.size() * sizeof(int));
+          memory::Alloc(context, inputs_col.size() * sizeof(int));
       memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                    tmp_dev_ins_col_data->ptr(), platform::CPUPlace(),
                    static_cast<void*>(inputs_col.data()),
@@ -294,10 +353,9 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
 
     memory::allocation::AllocationPtr tmp_dev_outs_data;
     T** dev_out_gpu_data = nullptr;
-    if (!has_same_shape || (o_num != 2)) {
+    if (!has_same_shape || o_num < 2 || o_num > 4) {
       tmp_dev_outs_data =
-          platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
-              outputs_data.size() * sizeof(T*));
+          memory::Alloc(context, outputs_data.size() * sizeof(T*));
       memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                    tmp_dev_outs_data->ptr(), platform::CPUPlace(),
                    reinterpret_cast<void*>(outputs_data.data()),
@@ -310,14 +368,23 @@ class SplitFunctor<platform::CUDADeviceContext, T> {
         SplitKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
             input.data<T>(), in_row, in_col, out0_col, outputs_data[0],
             outputs_data[1]);
+      } else if (o_num == 3) {
+        SplitKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+            input.data<T>(), in_row, in_col, out0_col, outputs_data[0],
+            outputs_data[1], outputs_data[2]);
+      } else if (o_num == 4) {
+        SplitKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
+            input.data<T>(), in_row, in_col, out0_col, outputs_data[0],
+            outputs_data[1], outputs_data[2], outputs_data[3]);
       } else {
         SplitKernel<<<grid_dims, block_dims, 0, context.stream()>>>(
             input.data<T>(), in_row, in_col, out0_col, dev_out_gpu_data);
       }
     } else {
       auto tmp_dev_ins_col_data =
-          platform::DeviceTemporaryAllocator::Instance().Get(context).Allocate(
-              outputs_cols.size() * sizeof(int));
+          memory::Alloc(context,
+
+                        outputs_cols.size() * sizeof(int));
       memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
                    tmp_dev_ins_col_data->ptr(), platform::CPUPlace(),
                    reinterpret_cast<void*>(outputs_cols.data()),

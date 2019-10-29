@@ -48,29 +48,41 @@ class TestImperativeOptimizerBase(unittest.TestCase):
     def get_optimizer(self):
         raise NotImplementedError()
 
+    def reader_decorator(self, reader):
+        def _reader_imple():
+            for item in reader():
+                image = np.array(item[0]).reshape(1, 28, 28)
+                label = np.array(item[1]).astype('int64').reshape(1)
+                yield image, label
+
+        return _reader_imple
+
     def _check_mlp(self):
         seed = 90
+        batch_size = 128
+
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
 
             mlp = MLP('mlp')
             optimizer = self.get_optimizer()
-            train_reader = paddle.batch(
-                paddle.dataset.mnist.train(), batch_size=128, drop_last=True)
+
+            batch_py_reader = fluid.io.PyReader(capacity=1)
+            batch_py_reader.decorate_sample_list_generator(
+                paddle.batch(
+                    self.reader_decorator(paddle.dataset.mnist.train()),
+                    batch_size=batch_size,
+                    drop_last=True),
+                places=fluid.CPUPlace())
 
             dy_param_init_value = {}
-            for batch_id, data in enumerate(train_reader()):
+            for batch_id, data in enumerate(batch_py_reader()):
                 if batch_id >= self.batch_num:
                     break
 
-                dy_x_data = np.array(
-                    [x[0].reshape(1, 28, 28) for x in data]).astype('float32')
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    128, 1)
-
-                img = to_variable(dy_x_data)
-                label = to_variable(y_data)
+                img = data[0]
+                label = data[1]
                 label._stop_gradient = True
 
                 cost = mlp(img)

@@ -110,8 +110,7 @@ void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
                       const char* var_name) {
   auto x = scope->Var(var_name);
   auto tensor = x->GetMutable<LoDTensor>();
-  tensor->mutable_data(place, proto::VarType::FP32,
-                       ::paddle::memory::Allocator::kDefault, 1);
+  tensor->mutable_data(place, proto::VarType::FP32, 1);
 }
 
 void MainTest(const ProgramDesc& prog, int conv_count, int pool_count,

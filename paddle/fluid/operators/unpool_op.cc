@@ -46,7 +46,7 @@ class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
                               "strides (height, width) of unpooling operator.")
         .SetDefault({1, 1});
     AddAttr<std::vector<int>>("paddings",
-                              "(vector defalut:{0,0}), "
+                              "(vector default:{0,0}), "
                               "paddings (height, width) of unpooling operator.")
         .SetDefault({0, 0});
     AddAttr<std::string>(
@@ -74,8 +74,9 @@ class UnpoolOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
  public:
@@ -117,8 +118,9 @@ class UnpoolOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
  public:

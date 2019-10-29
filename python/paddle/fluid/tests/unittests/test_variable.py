@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 from paddle.fluid.framework import default_main_program, Program, convert_np_dtype_to_dtype_, in_dygraph_mode
 import paddle.fluid as fluid
+import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import numpy as np
 
@@ -67,19 +68,24 @@ class TestVariable(unittest.TestCase):
 
         for i in range(3):
             nw = w[i]
-            self.assertEqual((1, 100, 100), nw.shape)
+            self.assertEqual((100, 100), nw.shape)
 
         nw = w[:]
         self.assertEqual((784, 100, 100), nw.shape)
 
-        nw = w[:, :, ...]
+        nw = w[:, :]
         self.assertEqual((784, 100, 100), nw.shape)
 
-        nw = w[::2, ::2, :]
-        self.assertEqual((392, 50, 100), nw.shape)
+        nw = w[:, :, -1]
+        self.assertEqual((784, 100), nw.shape)
 
-        nw = w[::-2, ::-2, :]
-        self.assertEqual((392, 50, 100), nw.shape)
+        nw = w[1, 1, 1]
+
+        self.assertEqual(len(nw.shape), 1)
+        self.assertEqual(nw.shape[0], 1)
+
+        nw = w[:, :, :-1]
+        self.assertEqual((784, 100, 99), nw.shape)
 
         self.assertEqual(0, nw.lod_level)
 
@@ -94,18 +100,23 @@ class TestVariable(unittest.TestCase):
             var1 = var[0, 1, 1]
             var2 = var[1:]
             var3 = var[0:1]
-            var4 = var[..., ]
-            var5 = var[2::-2]
-            var6 = var[1, 1:, 1:]
-            var7 = var[1, ..., 1:]
-            var8 = var[1, ...]
+            var4 = var[::-1]
+            var5 = var[1, 1:, 1:]
             var_reshape = fluid.layers.reshape(var, [3, -1, 3])
-            var9 = var_reshape[1, ..., 2]
-            var10 = var_reshape[:, :, -1]
+            var6 = var_reshape[:, :, -1]
+            var7 = var[:, :, :-1]
+            var8 = var[:1, :1, :1]
+            var9 = var[:-1, :-1, :-1]
+            var10 = var[::-1, :1, :-1]
+            var11 = var[:-1, ::-1, -1:]
+            var12 = var[1:2, 2:, ::-1]
+            var13 = var[2:10, 2:, -2:-1]
+            var14 = var[1:-1, 0:2, ::-1]
+            var15 = var[::-1, ::-1, ::-1]
 
             x = fluid.layers.data(name='x', shape=[13], dtype='float32')
             y = fluid.layers.fc(input=x, size=1, act=None)
-            var11 = y[:, 0]
+            y_1 = y[:, 0]
             feeder = fluid.DataFeeder(place=place, feed_list=[x])
             data = []
             data.append((np.random.randint(10, size=[13]).astype('float32')))
@@ -115,28 +126,38 @@ class TestVariable(unittest.TestCase):
                                 feed=feeder.feed([data]),
                                 fetch_list=[
                                     var, var1, var2, var3, var4, var5, var6,
-                                    var7, var8, var9, var10, var11
+                                    var7, var8, var9, var10, var11, var12,
+                                    var13, var14, var15
                                 ])
 
-            self.assertTrue((np.array(local_out[1]) == np.array(tensor_array[
-                0, 1, 1])).all())
-            self.assertTrue((np.array(local_out[2]) == np.array(tensor_array[
-                1:])).all())
-            self.assertTrue((np.array(local_out[3]) == np.array(tensor_array[
-                0:1])).all())
-            self.assertTrue((np.array(local_out[4]) == np.array(
-                tensor_array[..., ])).all())
-            self.assertTrue((np.array(local_out[5]) == np.array(tensor_array[
-                2::-2])).all())
-            self.assertTrue((np.array(local_out[6]) == np.array(tensor_array[
-                1, 1:, 1:])).all())
-            self.assertTrue((np.array(local_out[7]) == np.array(tensor_array[
-                1, ..., 1:])).all())
-            self.assertTrue((np.array(local_out[8]) == np.array(tensor_array[
-                1, ...])).all())
-            self.assertEqual(local_out[9].shape, (1, 3, 1))
-            self.assertEqual(local_out[10].shape, (3, 3, 1))
-            self.assertEqual(local_out[11].shape, (1, 1))
+            self.assertTrue(
+                np.array_equal(local_out[1], tensor_array[0, 1, 1:2]))
+            self.assertTrue(np.array_equal(local_out[2], tensor_array[1:]))
+            self.assertTrue(np.array_equal(local_out[3], tensor_array[0:1]))
+            self.assertTrue(np.array_equal(local_out[4], tensor_array[::-1]))
+            self.assertTrue(
+                np.array_equal(local_out[5], tensor_array[1, 1:, 1:]))
+            self.assertTrue(
+                np.array_equal(local_out[6],
+                               tensor_array.reshape((3, -1, 3))[:, :, -1]))
+            self.assertTrue(
+                np.array_equal(local_out[7], tensor_array[:, :, :-1]))
+            self.assertTrue(
+                np.array_equal(local_out[8], tensor_array[:1, :1, :1]))
+            self.assertTrue(
+                np.array_equal(local_out[9], tensor_array[:-1, :-1, :-1]))
+            self.assertTrue(
+                np.array_equal(local_out[10], tensor_array[::-1, :1, :-1]))
+            self.assertTrue(
+                np.array_equal(local_out[11], tensor_array[:-1, ::-1, -1:]))
+            self.assertTrue(
+                np.array_equal(local_out[12], tensor_array[1:2, 2:, ::-1]))
+            self.assertTrue(
+                np.array_equal(local_out[13], tensor_array[2:10, 2:, -2:-1]))
+            self.assertTrue(
+                np.array_equal(local_out[14], tensor_array[1:-1, 0:2, ::-1]))
+            self.assertTrue(
+                np.array_equal(local_out[15], tensor_array[::-1, ::-1, ::-1]))
 
     def test_slice(self):
         place = fluid.CPUPlace()
@@ -148,12 +169,10 @@ class TestVariable(unittest.TestCase):
     def _tostring(self):
         b = default_main_program().current_block()
         w = b.create_var(dtype="float64", lod_level=0)
-        print(w)
         self.assertTrue(isinstance(str(w), str))
 
         if core.is_compiled_with_cuda():
             wc = b.create_var(dtype="int", lod_level=0)
-            print(wc)
             self.assertTrue(isinstance(str(wc), str))
 
     def test_tostring(self):

@@ -1563,7 +1563,7 @@ def fast_decode(
             } for cache in caches]
             pre_pos = layers.elementwise_mul(
                 x=layers.fill_constant_batch_size_like(
-                    input=pre_enc_output,  # cann't use pre_ids here since it has lod
+                    input=pre_enc_output,  # can't use pre_ids here since it has lod
                     value=1,
                     shape=[-1, 1, 1],
                     dtype=pre_ids.dtype),

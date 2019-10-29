@@ -117,26 +117,28 @@ def reader_creator(data_file,
 
     def reader():
         while True:
-            for file in open(file_list):
-                file = file.strip()
-                batch = None
-                with open(file, 'rb') as f:
-                    if six.PY2:
-                        batch = pickle.load(f)
-                    else:
-                        batch = pickle.load(f, encoding='bytes')
-                if six.PY3:
-                    batch = cpt.to_text(batch)
-                data = batch['data']
-                labels = batch['label']
-                for sample, label in six.moves.zip(data, batch['label']):
-                    yield sample, int(label) - 1
+            with open(file_list, 'r') as f_list:
+                for file in f_list:
+                    file = file.strip()
+                    batch = None
+                    with open(file, 'rb') as f:
+                        if six.PY2:
+                            batch = pickle.load(f)
+                        else:
+                            batch = pickle.load(f, encoding='bytes')
+
+                        if six.PY3:
+                            batch = cpt.to_text(batch)
+                        data_batch = batch['data']
+                        labels_batch = batch['label']
+                        for sample, label in six.moves.zip(data_batch,
+                                                           labels_batch):
+                            yield sample, int(label) - 1
             if not cycle:
                 break
 
     if use_xmap:
-        cpu_num = int(os.environ.get('CPU_NUM', cpu_count()))
-        return xmap_readers(mapper, reader, cpu_num, buffered_size)
+        return xmap_readers(mapper, reader, min(4, cpu_count()), buffered_size)
     else:
         return map_readers(mapper, reader)
 

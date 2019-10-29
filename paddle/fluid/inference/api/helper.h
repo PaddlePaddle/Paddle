@@ -64,9 +64,12 @@ static int GetUniqueId() {
 }
 
 static void split(const std::string &str, char sep,
-                  std::vector<std::string> *pieces) {
+                  std::vector<std::string> *pieces, bool ignore_null = true) {
   pieces->clear();
   if (str.empty()) {
+    if (!ignore_null) {
+      pieces->push_back(str);
+    }
     return;
   }
   size_t pos = 0;
@@ -314,7 +317,7 @@ static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
                       double batch_latency, int epoch = 1,
                       const framework::proto::VarType::Type data_type =
                           framework::proto::VarType::FP32) {
-  PADDLE_ENFORCE(batch_size > 0, "Non-positive batch size.");
+  PADDLE_ENFORCE_GT(batch_size, 0, "Non-positive batch size.");
   double sample_latency = batch_latency / batch_size;
   LOG(INFO) << "====== threads: " << num_threads << ", thread id: " << tid
             << " ======";

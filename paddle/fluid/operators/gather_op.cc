@@ -45,8 +45,9 @@ class GatherOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -62,9 +63,9 @@ class GatherGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -74,6 +75,13 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The source input of gather op");
     AddInput("Index", "The index input of gather op");
     AddOutput("Out", "The output of gather op");
+    AddAttr<bool>(
+        "overwrite",
+        "(bool, default: False) "
+        "In backward process, calc the grad when has same index,"
+        "If true, update the grad using the overwrite mode in same index,"
+        "If false, using the accumulate mode in same index.")
+        .SetDefault(true);
     AddComment(R"DOC(
 Gather Operator.
 
