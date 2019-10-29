@@ -385,6 +385,7 @@ def _py_reader(capacity,
         shape_concat = []
         ranks = []
         shapes = []
+        need_check_feed = []
 
         for feed_data in feed_list:
             dtypes.append(feed_data.dtype)
@@ -392,8 +393,10 @@ def _py_reader(capacity,
             ranks.append(len(feed_data.shape))
             shapes.append(feed_data.shape)
             lod_levels.append(feed_data.lod_level)
+            need_check_feed.append(int(feed_data.desc.need_check_feed()))
     else:
         dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
+        need_check_feed = [0 for dt in dtypes]
         shape_concat = []
         ranks = []
 
@@ -403,7 +406,7 @@ def _py_reader(capacity,
 
         if lod_levels is None:
             lod_levels = [0] * len(shapes)
-
+    dtype_int = [int(t) for t in dtypes]
     if name is None:
         queue_name = unique_name('lod_tensor_blocking_queue')
         reader_name = unique_name('create_py_reader')
@@ -425,6 +428,8 @@ def _py_reader(capacity,
         attrs={
             'shape_concat': shape_concat,
             'lod_levels': lod_levels,
+            'dtypes': dtype_int,
+            'need_check_feed': need_check_feed,
             'ranks': ranks
         })
 

@@ -331,7 +331,7 @@ class GeneratorLoader(DataLoaderBase):
             self._init_non_iterable()
 
     def _wait_thread_ends(self):
-        # Get self._thread first to prevent data race, because __thread_main__ 
+        # Get self._thread first to prevent data race, because __thread_main__
         # would set self._thread be None at the end
         thread = self._thread
         if thread is not None and self._iterable:
@@ -342,12 +342,21 @@ class GeneratorLoader(DataLoaderBase):
         self._wait_thread_ends()
         if in_dygraph_mode():
             self._var_names = []
+            self._shapes = []
+            self._dtypes = []
+            self._need_check_feed = []
         else:
             self._var_names = [v.name for v in self._feed_list]
+            self._shapes = [v.shape for v in self._feed_list]
+            self._dtypes = [v.dtype for v in self._feed_list]
+            self._need_check_feed = [
+                v.desc.need_check_feed() for v in self._feed_list
+            ]
         self._queue = core.init_lod_tensor_blocking_queue(core.Variable(),
                                                           self._capacity)
         self._reader = core.create_py_reader(
-            self.queue, self._var_names, self._places, self._use_double_buffer)
+            self.queue, self._var_names, self._shapes, self._dtypes,
+            self._need_check_feed, self._places, self._use_double_buffer)
 
     def _init_non_iterable(self):
         lod_levels = []
@@ -355,6 +364,7 @@ class GeneratorLoader(DataLoaderBase):
         shape_concat = []
         ranks = []
         shapes = []
+        need_check_feed = []
 
         for feed_data in self._feed_list:
             dtypes.append(feed_data.dtype)
@@ -362,6 +372,7 @@ class GeneratorLoader(DataLoaderBase):
             ranks.append(len(feed_data.shape))
             shapes.append(feed_data.shape)
             lod_levels.append(feed_data.lod_level)
+            need_check_feed.append(int(feed_data.desc.need_check_feed()))
 
         queue_name = data_loader_unique_name_generator(
             'lod_tensor_blocking_queue')
@@ -374,6 +385,7 @@ class GeneratorLoader(DataLoaderBase):
         startup_blk = default_startup_program().current_block()
         startup_var = startup_blk.create_var(name=reader_name)
 
+        dtype_int = [int(t) for t in dtypes]
         startup_blk.append_op(
             type='create_py_reader',
             inputs={'blocking_queue': [queue_name]},
@@ -381,6 +393,8 @@ class GeneratorLoader(DataLoaderBase):
             attrs={
                 'shape_concat': shape_concat,
                 'lod_levels': lod_levels,
+                'dtypes': dtype_int,
+                'need_check_feed': need_check_feed,
                 'ranks': ranks
             })
 
