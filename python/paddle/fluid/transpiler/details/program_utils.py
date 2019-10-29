@@ -29,15 +29,6 @@ def delete_ops(block, ops):
             print(e)
 
 
-def delete_vars(block, vars):
-    for var_name in vars:
-        try:
-            if (block.has_var(var_name)):
-                block._remove_var(var_name)
-        except Exception as e:
-            print(e)
-
-
 def find_op_by_input_arg(block, arg_name):
     for index, op in enumerate(block.ops):
         if arg_name in op.input_arg_names:

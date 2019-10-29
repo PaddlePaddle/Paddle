@@ -45,7 +45,7 @@ from .. import core, framework, unique_name, initializer
 from ..framework import Program, default_main_program, \
     default_startup_program, Block, Parameter, grad_var_name
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
-from .details import delete_ops, find_op_by_output_arg, delete_vars
+from .details import delete_ops, find_op_by_output_arg
 from ..distribute_lookup_table import find_distributed_lookup_table
 from . import collective
 
