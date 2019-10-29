@@ -20,6 +20,9 @@ from .base import *
 from . import layers
 from .layers import *
 
+from . import container
+from .container import *
+
 from . import nn
 from .nn import *
 
@@ -41,6 +44,7 @@ from .backward_strategy import *
 __all__ = []
 __all__ += layers.__all__
 __all__ += base.__all__
+__all__ += container.__all__
 __all__ += nn.__all__
 __all__ += tracer.__all__
 __all__ += parallel.__all__
