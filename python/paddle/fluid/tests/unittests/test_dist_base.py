@@ -185,6 +185,12 @@ class TestDistRunnerBase(object):
             out_losses.append(loss[0])
             print_to_err(type(self).__name__, "run step %d finished" % i)
         print_to_err(type(self).__name__, "trainer run finished")
+
+        if six.PY2:
+            print(pickle.dumps(out_losses))
+        else:
+            sys.stdout.buffer.write(pickle.dumps(out_losses))
+
         if args.save_model and fleet.worker_index() == 0:
             model_save_dir = "/tmp"
             model_save_dir_fluid = os.path.join(model_save_dir,
@@ -202,11 +208,6 @@ class TestDistRunnerBase(object):
                                           fleet._origin_program)
             fleet.save_inference_model(infer_save_dir_fleet, feeded_var_names,
                                        [avg_cost], exe)
-
-        if six.PY2:
-            print(pickle.dumps(out_losses))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out_losses))
 
     def run_trainer(self, args):
         self.lr = args.lr
