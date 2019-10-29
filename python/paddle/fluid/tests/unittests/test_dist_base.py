@@ -206,8 +206,8 @@ class TestDistRunnerBase(object):
                                           feeded_var_names, [avg_cost], exe,
                                           fleet._origin_program)
             infer_save_dir_fleet = os.path.join(model_save_dir, "fleet_infer")
-            fleet.save_inference_model(infer_save_dir_fleet, feeded_var_names,
-                                       [avg_cost], exe)
+            fleet.save_inference_model(exe, infer_save_dir_fleet,
+                                       feeded_var_names, [avg_cost])
 
     def run_trainer(self, args):
         self.lr = args.lr
