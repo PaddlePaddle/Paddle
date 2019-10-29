@@ -204,8 +204,9 @@ bool CUDADeviceCode::CheckNVRTCResult(nvrtcResult result,
 bool CUDADeviceCode::CheckCUDADriverResult(CUresult result,
                                            std::string function) {
   if (result != CUDA_SUCCESS) {
+    const char* error = nullptr;
     LOG(WARNING) << "Call " << function
-                 << " failed: " << dynload::cuGetErrorString(result);
+                 << " failed: " << dynload::cuGetErrorString(result, &error);
     return false;
   }
   return true;

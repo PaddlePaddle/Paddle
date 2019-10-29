@@ -22,19 +22,19 @@ class FusionGroupOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
+    PADDLE_ENFORCE_GE(ctx->Inputs("Inputs").size(), 1UL,
                       "The number of inputs should be no less than 1.");
-    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
+    PADDLE_ENFORCE_GE(ctx->Outputs("Outs").size(), 1UL,
                       "The number of outputs should be no less than 1.");
 
-    const size_t num_ins = ctx->Inputs("X").size();
-    const size_t num_outs = ctx->Outputs("Out").size();
+    const size_t num_ins = ctx->Inputs("Inputs").size();
+    const size_t num_outs = ctx->Outputs("Outs").size();
 
     int type = ctx->Attrs().Get<int>("type");
     PADDLE_ENFORCE_EQ(type, 0UL,
                       "Only support fusion of elementwise operations.");
 
-    std::vector<framework::DDim> x_dims = ctx->GetInputsDim("X");
+    std::vector<framework::DDim> x_dims = ctx->GetInputsDim("Inputs");
     PADDLE_ENFORCE_EQ(x_dims.size(), num_ins);
 
     if (type == 0) {
@@ -46,12 +46,12 @@ class FusionGroupOp : public framework::OperatorWithKernel {
       for (size_t j = 0; j < num_outs; ++j) {
         out_dims.push_back(x_dims[0]);
       }
-      ctx->SetOutputsDim("Out", out_dims);
+      ctx->SetOutputsDim("Outs", out_dims);
     }
 
-    // Only lod of X[0] would be shared with Out.
+    // Only lod of Inputs[0] would be shared with Outs.
     for (size_t j = 0; j < num_outs; ++j) {
-      ctx->ShareLoD("X", /*->*/ "Out", 0, j);
+      ctx->ShareLoD("Inputs", /*->*/ "Outs", 0, j);
     }
   }
 };
@@ -59,9 +59,11 @@ class FusionGroupOp : public framework::OperatorWithKernel {
 class FusionGroupOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(std::vector<LoDTensor>) The inputs of fusion_group op.")
+    AddInput("Inputs",
+             "(std::vector<LoDTensor>) The inputs of fusion_group op.")
         .AsDuplicable();
-    AddOutput("Out", "(std::vector<LoDTensor>) The outputs of fusion_group op.")
+    AddOutput("Outs",
+              "(std::vector<LoDTensor>) The outputs of fusion_group op.")
         .AsDuplicable();
     AddAttr<int>("type", "Fusion type.").SetDefault(0);
     AddAttr<std::string>("func_name", "Name of the generated functions.")

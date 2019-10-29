@@ -74,8 +74,8 @@ framework::OpDesc* CreateFusionGroupOp(
 
   auto* op = program->MutableBlock(0)->AppendOp();
   op->SetType("fusion_group");
-  op->SetInput("X", input_names);
-  op->SetOutput("Out", output_names);
+  op->SetInput("Inputs", input_names);
+  op->SetOutput("Outs", output_names);
   op->SetAttr("type", type);
   op->SetAttr("func_name", func_name);
   op->SetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName(),

@@ -26,8 +26,8 @@ template <typename DeviceContext, typename T>
 class FusionGroupKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
-    auto outs = ctx.MultiOutput<framework::LoDTensor>("Out");
+    auto ins = ctx.MultiInput<framework::LoDTensor>("Inputs");
+    auto outs = ctx.MultiOutput<framework::LoDTensor>("Outs");
     int type = ctx.Attr<int>("type");
 
     size_t num_ins = ins.size();
