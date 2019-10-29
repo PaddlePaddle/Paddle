@@ -18,82 +18,65 @@ import unittest
 
 import numpy
 import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
-from paddle.fluid.layers import mul, data
+import paddle.fluid as fluid
 
 
 class TestExecutor(unittest.TestCase):
     def test_mul(self):
-        a = data(name='a', shape=[784], dtype='float32')
-        b = data(
-            name='b',
-            shape=[784, 100],
-            dtype='float32',
-            append_batch_size=False)
-        output = mul(x=a, y=b)
-        place = core.CPUPlace()
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+
+        with fluid.program_guard(main_program, startup_program):
+            a = fluid.layers.data(name='a', shape=[784], dtype='float32')
+            b = fluid.layers.data(
+                name='b',
+                shape=[784, 100],
+                dtype='float32',
+                append_batch_size=False)
+            output = fluid.layers.mul(x=a, y=b)
+
+        # Compute with numpy
         a_np = numpy.random.random((100, 784)).astype('float32')
         b_np = numpy.random.random((784, 100)).astype('float32')
-        exe = Executor(place)
-        import time
-        use_cache = True
-        step_num = 3
-        run_time = 0.0
-        for i in range(step_num):
-            begin = time.time()
-            outs = exe.run(feed={'a': a_np,
-                                 'b': b_np},
-                           fetch_list=[output.name],
-                           use_program_cache=use_cache)
-            end = time.time()
-            run_time += end - begin
-            out = outs[0]
-            self.assertEqual((100, 100), out.shape)
-            self.assertTrue(numpy.allclose(out, numpy.dot(a_np, b_np)))
-        print("run time %f" % run_time)
-        use_cache = False
-        run_time = 0.0
-        for i in range(step_num):
-            begin = time.time()
-            outs = exe.run(feed={'a': a_np,
-                                 'b': b_np},
-                           fetch_list=[output.name],
-                           use_program_cache=use_cache)
-            end = time.time()
-            run_time += end - begin
-            out = outs[0]
-            self.assertEqual((100, 100), out.shape)
-            self.assertTrue(numpy.allclose(out, numpy.dot(a_np, b_np)))
-        print("run time %f" % run_time)
-        use_cache = True
-        run_time = 0.0
-        for i in range(step_num):
-            begin = time.time()
-            outs = exe.run(feed={'a': a_np,
-                                 'b': b_np},
-                           fetch_list=[output.name],
-                           use_program_cache=use_cache)
-            end = time.time()
-            run_time += end - begin
-            out = outs[0]
-            self.assertEqual((100, 100), out.shape)
-            self.assertTrue(numpy.allclose(out, numpy.dot(a_np, b_np)))
-        print("run time %f" % run_time)
+        out_np = numpy.dot(a_np, b_np)
 
-        use_cache = True
-        run_time = 0.0
-        for i in range(step_num):
-            begin = time.time()
-            outs = exe.run(feed={'a': a_np,
-                                 'b': b_np},
-                           fetch_list=[output],
-                           use_program_cache=use_cache)
-            end = time.time()
-            run_time += end - begin
-            out = outs[0]
-            self.assertEqual((100, 100), out.shape)
-            self.assertTrue(numpy.allclose(out, numpy.dot(a_np, b_np)))
-        print("run time %f" % run_time)
+        place = core.CPUPlace()
+        exe = fluid.Executor(place)
+
+        def _train(use_program_cache, max_iters=1):
+            import time
+
+            run_time = 0.0
+            for i in range(max_iters):
+                begin = time.time()
+                outs = exe.run(program=main_program,
+                               feed={'a': a_np,
+                                     'b': b_np},
+                               fetch_list=[output.name],
+                               use_program_cache=use_program_cache)
+                end = time.time()
+                run_time += end - begin
+                out = outs[0]
+                self.assertEqual((100, 100), out.shape)
+                self.assertTrue(numpy.allclose(out, out_np))
+            return run_time
+
+        max_iters = 3
+        run_time_with_cache = _train(
+            use_program_cache=True, max_iters=max_iters)
+        print("run time with program cache: %f" % run_time_with_cache)
+
+        run_time_without_cache = _train(
+            use_program_cache=False, max_iters=max_iters)
+        print("run time without program cache: %f" % run_time_without_cache)
+
+        run_time_with_cache = _train(
+            use_program_cache=True, max_iters=max_iters)
+        print("run time with program cache: %f" % run_time_with_cache)
+
+        run_time_with_cache = _train(
+            use_program_cache=True, max_iters=max_iters)
+        print("run time with program cache: %f" % run_time_with_cache)
 
 
 if __name__ == '__main__':
