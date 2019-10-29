@@ -127,7 +127,9 @@ class CudnnGRUGPUGradKernel : public framework::OpKernel<T> {
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto *cache_var = ctx.InputVar("Cache");
-    PADDLE_ENFORCE(cache_var->IsInitialized());
+    PADDLE_ENFORCE_EQ(cache_var->IsInitialized(), true,
+                      "Cache should be initialized");
+
     CudnnRNNCache *cudnn_rnn_cache =
         const_cast<framework::Variable *>(cache_var)
             ->GetMutable<CudnnRNNCache>();
