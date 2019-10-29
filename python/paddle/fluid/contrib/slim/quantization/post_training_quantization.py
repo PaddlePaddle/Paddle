@@ -33,7 +33,11 @@ class PostTrainingQuantization(object):
                  feed_var_names,
                  fetch_list,
                  save_model_path,
-                 algo="KL"):
+                 algo="KL",
+                 quantizable_op_type=[
+                     "conv2d", "depthwise_conv2d", "mul", "pool2d",
+                     "elementwise_add"
+                 ]):
         '''
         The class utilizes post training quantization methon to quantize the 
         fp32 model. It saves the sample data, uses sample data to calculate 
@@ -42,17 +46,20 @@ class PostTrainingQuantization(object):
 
         Args:
             place(fluid.CPUPlace|fluid.CUDAPlace): The runtime place of 
-            the program
+                the program
             executor(Executor): Use the executor to save the quantized model
             scope(fluid.Scope): The scope of the program, use it to load 
-            and save variables
+                and save variables
             program(Program): The fp32 program, which will be quantized
             feed_var_names(list[str]): The feed var names of the program
             fetch_list(list[str]): The fetch var names of the program
             save_model_path(str): The path to save the quantized model
             algo(str, optional): If algo=KL, use KL-divergenc method to 
-            get the more precise scale factor. If algo='direct', use abs_max
-            methon to get the scale factor. Default is KL.
+                get the more precise scale factor. If algo='direct', use 
+                abs_max methon to get the scale factor. Default is KL.
+            quantizable_op_type(list[str], optional): List the type of ops 
+                that will be quantized. Default is ["conv2d", "depthwise_conv2d", 
+                "mul", "pool2d", "elementwise_add"].
         '''
         self._place = place
         self._executor = executor
@@ -62,11 +69,15 @@ class PostTrainingQuantization(object):
         self._fetch_list = fetch_list
         self._save_model_path = save_model_path
         self._algo = algo
+        self._quantizable_op_type = quantizable_op_type
+        supported_quantizable_op_type = [
+            "conv2d", "depthwise_conv2d", "mul", "pool2d", "elementwise_add"
+        ]
+        for op_type in self._quantizable_op_type:
+            assert op_type in supported_quantizable_op_type, \
+                op_type + " is not supported for quantization."
 
         self._bit_length = 8
-        self._supported_quant_op_type = ("conv2d", "depthwise_conv2d", "mul",
-                                         "pool2d", "elementwise_add")
-
         self._quantized_weight_var_name = []
         self._quantized_act_var_name = []
         self._sampling_data = {}
@@ -92,7 +103,7 @@ class PostTrainingQuantization(object):
 
     def save_quant_model(self):
         '''
-        Obtain scale factor, insert quant/dequant op to graph, 
+        Obtain scale factor, insert quant/dequant op into graph, 
         and save quant model to disk.
         '''
         self._calculate_scale_factor()
@@ -112,7 +123,7 @@ class PostTrainingQuantization(object):
         for block in self._program.blocks:
             for op in block.ops:
                 op_type = op.type
-                if op_type in self._supported_quant_op_type:
+                if op_type in self._quantizable_op_type:
                     if op_type in ("conv2d", "depthwise_conv2d"):
                         self._quantized_act_var_name.append(
                             op.input("Input")[0])
@@ -144,6 +155,8 @@ class PostTrainingQuantization(object):
                             self._quantized_act_var_name.append(x_var_name)
                             self._quantized_act_var_name.append(y_var_name)
 
+        # set activation variables to be persistable, 
+        # so we can obtain the tensor data in sample_data stage
         for var in self._program.list_vars():
             if var.name in self._quantized_act_var_name:
                 var.persistable = True
@@ -179,21 +192,33 @@ class PostTrainingQuantization(object):
 
         # use QuantizationTransformPass to insert fake_quantize/fake_dequantize op
         graph = IrGraph(core.Graph(self._program.desc), for_test=True)
+
+        qtp_quantizable_op_type = []
+        for op_type in ["conv2d", "depthwise_conv2d", "mul"]:
+            if op_type in self._quantizable_op_type:
+                qtp_quantizable_op_type.append(op_type)
         transform_pass = QuantizationTransformPass(
             scope=self._scope,
             place=self._place,
             weight_bits=self._bit_length,
             activation_bits=self._bit_length,
             activation_quantize_type='moving_average_abs_max',
-            weight_quantize_type='channel_wise_abs_max')
+            weight_quantize_type='channel_wise_abs_max',
+            quantizable_op_type=qtp_quantizable_op_type)
         transform_pass.apply(graph)
 
         # use AddQuantDequantPass to insert fake_quant_dequant op
+        aqdp_quantizable_op_type = []
+        for op_type in ["pool2d", "elementwise_add"]:
+            if op_type in self._quantizable_op_type:
+                aqdp_quantizable_op_type.append(op_type)
         add_quant_dequant_pass = AddQuantDequantPass(
-            scope=self._scope, place=self._place)
+            scope=self._scope,
+            place=self._place,
+            quantizable_op_type=aqdp_quantizable_op_type)
         add_quant_dequant_pass.apply(graph)
 
-        # set scale
+        # save scale factor to scale var node
         for key, val in self._quantized_var_scale_factor.items():
             self._set_var_node_value(
                 key + ".scale", np.array(
@@ -208,7 +233,8 @@ class PostTrainingQuantization(object):
             place=self._place,
             weight_bits=self._bit_length,
             activation_bits=self._bit_length,
-            weight_quantize_type='channel_wise_abs_max')
+            weight_quantize_type='channel_wise_abs_max',
+            quantizable_op_type=qtp_quantizable_op_type)
         freeze_pass.apply(graph)
         self._program = graph.to_program()
 
@@ -233,8 +259,8 @@ class PostTrainingQuantization(object):
         '''
         Set the value of var node by name, if the node is not exits,
         '''
-        assert isinstance(
-            np_value, np.ndarray), 'The type of value should be numpy array.'
+        assert isinstance(np_value, np.ndarray), \
+            'The type of value should be numpy array.'
         var_node = self._scope.find_var(var_node_name)
         if var_node != None:
             tensor = var_node.get_tensor()
@@ -291,7 +317,7 @@ class PostTrainingQuantization(object):
             candidate_distr_Q_quantized = [0] * num_quantized_bins
             j_start = 0
             j_end = num_merged_bins
-            for idx in xrange(num_quantized_bins):
+            for idx in range(num_quantized_bins):
                 candidate_distr_Q_quantized[idx] = sum(candidate_distr_Q[
                     j_start:j_end])
                 j_start += num_merged_bins
@@ -329,7 +355,7 @@ class PostTrainingQuantization(object):
         num_merged_bins = len(reference_bins) / len(quantized_bins)
         j_start = 0
         j_end = num_merged_bins
-        for idx in xrange(len(quantized_bins)):
+        for idx in range(len(quantized_bins)):
             zero_count = reference_bins[j_start:j_end].count(0)
             num_merged_bins = j_end - j_start
             if zero_count == num_merged_bins:
@@ -337,7 +363,7 @@ class PostTrainingQuantization(object):
             else:
                 avg_bin_ele = quantized_bins[idx] / (
                     num_merged_bins - zero_count + 0.0)
-            for idx1 in xrange(j_start, j_end):
+            for idx1 in range(j_start, j_end):
                 expanded_quantized_bins[idx1] = (0 if reference_bins[idx1] == 0
                                                  else avg_bin_ele)
             j_start += num_merged_bins

@@ -204,7 +204,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
         scope = fluid.global_scope()
         [infer_program, feed_dict, fetch_targets] = \
             fluid.io.load_inference_model(model_path, exe)
-
         val_reader = paddle.batch(val(), self.batch_size)
         iterations = self.infer_iterations
 
@@ -219,6 +218,9 @@ class TestPostTrainingQuantization(unittest.TestCase):
                                                              str(e)))
                 sys.exit(-1)
 
+            quantizable_op_type = [
+                "conv2d", "depthwise_conv2d", "mul", "pool2d", "elementwise_add"
+            ]
             ptq = PostTrainingQuantization(
                 place=place,
                 executor=exe,
@@ -227,7 +229,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
                 feed_var_names=feed_dict,
                 fetch_list=fetch_targets,
                 save_model_path=self.int8_model,
-                algo=algo)
+                algo=algo,
+                quantizable_op_type=quantizable_op_type)
 
         test_info = []
         cnt = 0
@@ -257,7 +260,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
             if (batch_id + 1) % 100 == 0:
                 print("{0} images,".format(batch_id + 1))
                 sys.stdout.flush()
-
             if (batch_id + 1) == iterations:
                 break
 
@@ -283,6 +285,49 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
         self.algo = "KL"
 
     def test_resnet50(self):
+        self.download_model()
+        print("Start FP32 inference for {0} on {1} images ...".format(
+            self.model, self.infer_iterations * self.batch_size))
+        (fp32_throughput, fp32_latency,
+         fp32_acc1) = self.run_program(self.model_cache_folder + "/model")
+
+        print("Start INT8 post training quantization for {0} on {1} images ...".
+              format(self.model, self.sample_iterations * self.batch_size))
+        self.run_program(
+            self.model_cache_folder + "/model", True, algo=self.algo)
+
+        print("Start INT8 inference for {0} on {1} images ...".format(
+            self.model, self.infer_iterations * self.batch_size))
+        (int8_throughput, int8_latency,
+         int8_acc1) = self.run_program(self.int8_model)
+
+        print(
+            "FP32 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}".
+            format(self.model, self.batch_size, fp32_throughput, fp32_latency,
+                   fp32_acc1))
+        print(
+            "INT8 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}".
+            format(self.model, self.batch_size, int8_throughput, int8_latency,
+                   int8_acc1))
+        sys.stdout.flush()
+
+        delta_value = fp32_acc1 - int8_acc1
+        self.assertLess(delta_value, 0.05)
+
+
+class TestPostTrainingForMobilenetv1(TestPostTrainingQuantization):
+    def download_model(self):
+        # mobilenetv1 fp32 data
+        data_urls = [
+            'http://paddle-inference-dist.bj.bcebos.com/int8/mobilenetv1_int8_model.tar.gz'
+        ]
+        data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
+        self.model_cache_folder = self.download_data(data_urls, data_md5s,
+                                                     "mobilenetv1_fp32")
+        self.model = "MobileNet-V1"
+        self.algo = "KL"
+
+    def test_mobilenetv1(self):
         self.download_model()
         print("Start FP32 inference for {0} on {1} images ...".format(
             self.model, self.infer_iterations * self.batch_size))
