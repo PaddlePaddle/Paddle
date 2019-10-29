@@ -27,7 +27,7 @@ class SequenceConvOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SequenceConvOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Filter"),
@@ -82,7 +82,7 @@ class SequenceConvGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Gradient of output(Out) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"), "The input(X) should not be null.");
@@ -207,11 +207,29 @@ class SequenceConvGradNoNeedBufferVarsInference
  public:
   using framework::NoNeedBufferVarsInference::NoNeedBufferVarsInference;
 
-  std::unordered_set<std::string> operator()() const override {
-    if (!boost::get<bool>(Attrs().at("paddingTrainable"))) {
-      return {"PaddingData"};
-    } else {
+ private:
+  static bool IsPaddingTrainable(const framework::AttributeMap &attrs) {
+    return boost::get<bool>(attrs.at("paddingTrainable"));
+  }
+
+ public:
+  std::unordered_set<std::string> operator()(
+      const framework::VariableNameMap &, const framework::VariableNameMap &,
+      const framework::AttributeMap &attrs) const final {
+    if (IsPaddingTrainable(attrs)) {
       return {};
+    } else {
+      return {"PaddingData"};
+    }
+  }
+
+  std::unordered_set<std::string> operator()(
+      const imperative::NameVarBaseMap &, const imperative::NameVarBaseMap &,
+      const framework::AttributeMap &attrs) const final {
+    if (IsPaddingTrainable(attrs)) {
+      return {};
+    } else {
+      return {"PaddingData"};
     }
   }
 };

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -214,9 +215,9 @@ struct OpInfoFiller<T, kShapeInference> {
 template <typename T>
 struct OpInfoFiller<T, kInplaceOpInference> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->infer_inplace_ = [](const OpDesc& op_desc, bool use_cuda) {
+    info->infer_inplace_ = [](bool use_cuda) {
       T infer;
-      return infer(op_desc, use_cuda);
+      return infer(use_cuda);
     };
   }
 };
@@ -224,12 +225,7 @@ struct OpInfoFiller<T, kInplaceOpInference> {
 template <typename T>
 struct OpInfoFiller<T, kNoNeedBufferVarsInference> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->infer_no_need_buffer_vars_ = [](const VariableNameMap& inputs,
-                                          const VariableNameMap& outputs,
-                                          const AttributeMap& attrs) {
-      T infer(inputs, outputs, attrs);
-      return infer();
-    };
+    info->infer_no_need_buffer_vars_.Set(std::make_shared<T>());
   }
 };
 

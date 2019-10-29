@@ -14,48 +14,82 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace framework {
 
 class NoNeedBufferVarsInference {
  public:
-  NoNeedBufferVarsInference(const VariableNameMap &inputs,
-                            const VariableNameMap &outputs,
-                            const AttributeMap &attrs)
-      : inputs_(inputs), outputs_(outputs), attrs_(attrs) {}
-
   virtual ~NoNeedBufferVarsInference() = default;
 
-  const VariableNameMap &Inputs() const { return inputs_; }
+  virtual std::unordered_set<std::string> operator()(
+      const VariableNameMap &inputs, const VariableNameMap &outputs,
+      const AttributeMap &attrs) const = 0;
 
-  const VariableNameMap &Outputs() const { return outputs_; }
-
-  const AttributeMap &Attrs() const { return attrs_; }
-
-  virtual std::unordered_set<std::string> operator()() const = 0;
-
- private:
-  const VariableNameMap &inputs_;
-  const VariableNameMap &outputs_;
-  const AttributeMap &attrs_;
+  virtual std::unordered_set<std::string> operator()(
+      const imperative::NameVarBaseMap &inputs,
+      const imperative::NameVarBaseMap &outputs,
+      const AttributeMap &attrs) const = 0;
 };
 
-#define DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(class_type, ...)  \
-  class class_type final                                        \
-      : public ::paddle::framework::NoNeedBufferVarsInference { \
-   public:                                                      \
-    using ::paddle::framework::NoNeedBufferVarsInference::      \
-        NoNeedBufferVarsInference;                              \
-                                                                \
-    std::unordered_set<std::string> operator()() const final {  \
-      return {__VA_ARGS__};                                     \
-    }                                                           \
+#define DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(class_type, ...)        \
+  class class_type final                                              \
+      : public ::paddle::framework::NoNeedBufferVarsInference {       \
+   public:                                                            \
+    using ::paddle::framework::NoNeedBufferVarsInference::            \
+        NoNeedBufferVarsInference;                                    \
+                                                                      \
+    std::unordered_set<std::string> operator()(                       \
+        const ::paddle::framework::VariableNameMap &inputs,           \
+        const ::paddle::framework::VariableNameMap &outputs,          \
+        const ::paddle::framework::AttributeMap &attrs) const final { \
+      return {__VA_ARGS__};                                           \
+    }                                                                 \
+                                                                      \
+    std::unordered_set<std::string> operator()(                       \
+        const ::paddle::imperative::NameVarBaseMap &inputs,           \
+        const ::paddle::imperative::NameVarBaseMap &outputs,          \
+        const ::paddle::framework::AttributeMap &attrs) const final { \
+      return {__VA_ARGS__};                                           \
+    }                                                                 \
   }
+
+class InferNoNeedBufferVarsFN {
+ public:
+  inline std::unordered_set<std::string> operator()(
+      const VariableNameMap &inputs, const VariableNameMap &outputs,
+      const AttributeMap &attrs) const {
+    PADDLE_ENFORCE_NOT_NULL(inferer_);
+    return (*inferer_)(inputs, outputs, attrs);
+  }
+
+  inline std::unordered_set<std::string> operator()(
+      const imperative::NameVarBaseMap &inputs,
+      const imperative::NameVarBaseMap &outputs,
+      const AttributeMap &attrs) const {
+    PADDLE_ENFORCE_NOT_NULL(inferer_);
+    return (*inferer_)(inputs, outputs, attrs);
+  }
+
+  inline operator bool() const { return inferer_ != nullptr; }
+
+  inline bool operator!() const { return inferer_ == nullptr; }
+
+  inline void Set(const std::shared_ptr<NoNeedBufferVarsInference> &inferer) {
+    PADDLE_ENFORCE_NOT_NULL(inferer);
+    PADDLE_ENFORCE_EQ(inferer_, nullptr);
+    inferer_ = inferer;
+  }
+
+ private:
+  std::shared_ptr<NoNeedBufferVarsInference> inferer_;
+};
 
 }  // namespace framework
 }  // namespace paddle

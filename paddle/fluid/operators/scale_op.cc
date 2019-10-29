@@ -97,7 +97,7 @@ class ScaleGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-using ScaleOpInplace = framework::SingleOpInplaceInToOut;
+DECLARE_INPLACE_OP_INFERER(ScaleOpInplace, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 

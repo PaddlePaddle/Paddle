@@ -298,8 +298,8 @@ class AffineChannelNoNeedBufferVarsInference
   using framework::NoNeedBufferVarsInference::NoNeedBufferVarsInference;
 
  private:
-  inline bool HasOutput(const std::string& name) const {
-    auto& outputs = Outputs();
+  inline static bool HasOutput(const framework::VariableNameMap& outputs,
+                               const std::string& name) {
     auto iter = outputs.find(name);
     if (iter == outputs.end() || iter->second.empty()) {
       return false;
@@ -308,10 +308,35 @@ class AffineChannelNoNeedBufferVarsInference
     }
   }
 
+  inline static bool HasOutput(const imperative::NameVarBaseMap& outputs,
+                               const std::string& name) {
+    auto iter = outputs.find(name);
+    if (iter == outputs.end() || iter->second.empty()) {
+      return false;
+    } else {
+      return iter->second[0] != nullptr;
+    }
+  }
+
  public:
-  std::unordered_set<std::string> operator()() const override {
-    if (!HasOutput(framework::GradVarName("Scale")) &&
-        !HasOutput(framework::GradVarName("Bias"))) {
+  std::unordered_set<std::string> operator()(
+      const framework::VariableNameMap&,
+      const framework::VariableNameMap& outputs,
+      const framework::AttributeMap&) const final {
+    if (!HasOutput(outputs, framework::GradVarName("Scale")) &&
+        !HasOutput(outputs, framework::GradVarName("Bias"))) {
+      return {"X"};
+    } else {
+      return {};
+    }
+  }
+
+  std::unordered_set<std::string> operator()(
+      const imperative::NameVarBaseMap&,
+      const imperative::NameVarBaseMap& outputs,
+      const framework::AttributeMap&) const final {
+    if (!HasOutput(outputs, framework::GradVarName("Scale")) &&
+        !HasOutput(outputs, framework::GradVarName("Bias"))) {
       return {"X"};
     } else {
       return {};

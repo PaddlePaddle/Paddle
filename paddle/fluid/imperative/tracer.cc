@@ -19,6 +19,36 @@
 namespace paddle {
 namespace imperative {
 
+static void ClearNoNeedBufferInputs(const OpBase& op, NameVarBaseMap* ins,
+                                    const NameVarBaseMap& outs,
+                                    const framework::AttributeMap& attrs) {
+  auto& inferer = op.Info().NoNeedBufferVarsInferer();
+  if (!inferer) return;
+  auto no_need_buffer_slots = inferer(*ins, outs, attrs);
+  if (no_need_buffer_slots.empty()) return;
+
+  for (auto& slot : no_need_buffer_slots) {
+    auto iter = ins->find(slot);
+    if (iter == ins->end()) continue;
+    VLOG(2) << "Clear data buffer of " << slot << " in " << op.Type();
+
+    for (auto& each_var : iter->second) {
+      if (!each_var) continue;
+
+      auto& var = each_var->Var();
+      PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(), true,
+                        "Only support LoDTensor");
+      // TODO(zjl): support higher order derivatives
+      auto new_var = new VarBase(false, each_var->Name());
+      auto* new_tensor =
+          new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto& old_tensor = var.Get<framework::LoDTensor>();
+      new_tensor->Resize(old_tensor.dims());
+      each_var.reset(new_var);
+    }
+  }
+}
+
 static std::vector<std::unique_ptr<framework::OpDesc>> CreateGradOpDescs(
     const framework::OpInfo& op_info, const framework::OpDesc& op_desc,
     const std::unordered_set<std::string>& no_grad_set,
@@ -254,6 +284,8 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
     }
     // To ensure numeric stability as static graph
     grad_op->SortGradPendingOps();
+    ClearNoNeedBufferInputs(*grad_op, grad_op->GetMutableInsMap(),
+                            grad_op->GetOutsMap(), grad_op->Attrs());
   }
 }
 
