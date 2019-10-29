@@ -195,6 +195,10 @@ class DownpourWorker : public HogwildWorker {
   void CollectLabelInfo(size_t table_id);
   void AdjustInsWeight();
   void DumpParam();
+  void CopySparseTable();
+  void CopyDenseTable();
+  void CopyDenseVars();
+  void CopyTable(int batch_cnt);
 
  private:
   bool need_dump_param_;
@@ -237,6 +241,12 @@ class DownpourWorker : public HogwildWorker {
   std::vector<float> nid_show_;
   // check nan and inf during training
   std::vector<std::string> check_nan_var_names_;
+  // copy table
+  CopyTableConfig copy_table_config_;
+  std::map<uint64_t, uint64_t> table_dependency_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
