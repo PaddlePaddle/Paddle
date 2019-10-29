@@ -418,14 +418,14 @@ void SyncBatchNormGradFunctor(
     if (layout == framework::DataLayout::kNCHW) {
       KeBNRestoreData<
           T, framework::DataLayout::kNCHW><<<grid2, block, 0, stream>>>(
-          px.data<BatchNormParamType<T>>(),
+          px.mutable_data<T>(ctx.GetPlace()),
           scale->data<BatchNormParamType<T>>(),
           bias->data<BatchNormParamType<T>>(), saved_mean, saved_inv_var,
           epsilon, C, H * W * D, x_numel, y->data<T>());
     } else {
       KeBNRestoreData<
           T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
-          px.data<BatchNormParamType<T>>(),
+          px.mutable_data<T>(ctx.GetPlace()),
           scale->data<BatchNormParamType<T>>(),
           bias->data<BatchNormParamType<T>>(), saved_mean, saved_inv_var,
           epsilon, C, H * W * D, x_numel, y->data<T>());
