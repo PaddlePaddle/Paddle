@@ -19,6 +19,7 @@ import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
 from paddle.fluid.executor import Executor
 from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.framework import Program
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
