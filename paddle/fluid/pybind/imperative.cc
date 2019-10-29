@@ -233,6 +233,10 @@ void BindImperative(py::module *m_ptr) {
   m.def("_is_dygraph_debug_enabled",
         []() { return imperative::IsDebugEnabled(); });
   m.def("_dygraph_debug_level", []() { return imperative::GetDebugLevel(); });
+  m.def("_switch_tracer",
+        [](const std::shared_ptr<imperative::Tracer> &tracer) {
+          imperative::SetCurrentTracer(tracer);
+        });
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase",
@@ -344,7 +348,9 @@ void BindImperative(py::module *m_ptr) {
            &imperative::jit::ProgramDescTracer::CreateProgramDesc)
       .def("reset", &imperative::jit::ProgramDescTracer::Reset);
 
-  py::class_<imperative::Tracer>(m, "Tracer", "")
+  py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
+      m, "Tracer",
+      R"DOC()DOC")
       .def("__init__",
            [](imperative::Tracer &self) { new (&self) imperative::Tracer(); })
       .def_property("_enable_program_desc_tracing",

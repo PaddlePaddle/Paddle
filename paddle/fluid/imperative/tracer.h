@@ -93,5 +93,9 @@ class Tracer {
   std::unique_ptr<UniqueNameGenerator> generator_;
 };
 
+// To access static variable current_tracer
+std::shared_ptr<Tracer>& GetCurrentTracer();
+void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
+
 }  // namespace imperative
 }  // namespace paddle
