@@ -1159,7 +1159,7 @@ class Executor(object):
         """
         if len(dataset.filelist) < dataset.thread_num:
             warnings.warn(
-                "len(dataset.filelist):{} < dataset.thread_num: {} ,multi thread performance will be affected "
+                "dataset file nums: {} < dataset thread nums: {} ,multi thread performance will be affected "
                 .format(len(dataset.filelist), dataset.thread_num))
         return self._run_from_dataset(program, dataset, scope, thread, False,
                                       debug, fetch_list, fetch_info,
