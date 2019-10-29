@@ -233,6 +233,12 @@ copy(fluid_lib_dist
         DSTS ${dst_dir}/${module} ${dst_dir}/${module}/tinyformat
         )
 
+set(module "imperative")
+copy(fluid_lib_dist
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/jit/*.h 
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/jit
+        )
+
 set(module "pybind")
 copy(fluid_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/paddle/fluid/${module}/pybind.h
