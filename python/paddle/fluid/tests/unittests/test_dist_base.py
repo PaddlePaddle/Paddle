@@ -201,11 +201,11 @@ class TestDistRunnerBase(object):
                                                 "fleet_persistables")
             fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
             infer_save_dir_fluid = os.path.join(model_save_dir, "fluid_infer")
-            infer_save_dir_fleet = os.path.join(model_save_dir, "fleet_infer")
             feeded_var_names = [var.name for var in feed_var_list]
             fluid.io.save_inference_model(infer_save_dir_fluid,
                                           feeded_var_names, [avg_cost], exe,
                                           fleet._origin_program)
+            infer_save_dir_fleet = os.path.join(model_save_dir, "fleet_infer")
             fleet.save_inference_model(infer_save_dir_fleet, feeded_var_names,
                                        [avg_cost], exe)
 

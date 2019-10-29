@@ -97,7 +97,8 @@ class Collective(Fleet):
             main_program = self._origin_program
         assert isinstance(main_program, Program), \
             "In fleet.save_inference_model() function, main_program " \
-            "must be as Program type, but CompiledProgram is given."
+            "must be as Program type."
+
         io.save_inference_model(dirname, feeded_var_names, target_vars,
                                 executor, main_program, None, None,
                                 export_for_deployment)
