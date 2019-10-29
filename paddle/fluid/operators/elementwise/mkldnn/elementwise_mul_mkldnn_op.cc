@@ -48,7 +48,7 @@ static void ReorderInput(framework::Tensor* tensor,
                          const platform::Place& place,
                          const mkldnn::engine& engine, bool isFourDim) {
   using platform::to_void_cast;
-  auto dims = paddle::framework::vectorize2int(tensor->dims());
+  auto dims = paddle::framework::vectorize<int>(tensor->dims());
   framework::Tensor out_tensor;
   out_tensor.Resize(tensor->dims());
   out_tensor.set_format(isFourDim ? MKLDNNMemoryFormat::nchw
@@ -80,7 +80,7 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
 
     auto x_dims = x->dims();
     auto y_dims_untrimmed = y->dims();
-    auto x_int_dims = paddle::framework::vectorize2int(x_dims);
+    auto x_int_dims = paddle::framework::vectorize<int>(x_dims);
 
     UpdateDataFormat(ctx, const_cast<Tensor*>(x), "x_data_format");
     UpdateDataFormat(ctx, const_cast<Tensor*>(y), "y_data_format");

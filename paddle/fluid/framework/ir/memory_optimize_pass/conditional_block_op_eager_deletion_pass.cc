@@ -48,7 +48,7 @@ class ConditionalOpEagerDeletionPass : public Pass {
       auto &ifelse_ops = ops_pair.second.first;
       auto &ifelse_grad_ops = ops_pair.second.second;
       operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
-          ifelse_ops, ifelse_grad_ops);
+          graph->OriginProgram(), ifelse_ops, ifelse_grad_ops);
     }
   }
 };

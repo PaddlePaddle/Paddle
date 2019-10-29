@@ -53,8 +53,9 @@ class CropOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -174,9 +175,9 @@ class CropOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -207,6 +208,8 @@ REGISTER_OPERATOR(crop, ops::CropOp, ops::CropOpMaker,
                   ops::CropGradOpDescMaker);
 REGISTER_OPERATOR(crop_grad, ops::CropOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    crop, ops::CropKernel<paddle::platform::CPUDeviceContext, float>);
+    crop, ops::CropKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CropKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
-    crop_grad, ops::CropGradKernel<paddle::platform::CPUDeviceContext, float>);
+    crop_grad, ops::CropGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::CropGradKernel<paddle::platform::CPUDeviceContext, double>);

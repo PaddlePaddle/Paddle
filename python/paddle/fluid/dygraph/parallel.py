@@ -20,7 +20,7 @@ from . import layers
 from . import parallel_helper
 from .. import framework
 from ..layers import collective
-from . import to_variable
+from . import to_variable, no_grad
 
 __all__ = ["prepare_context"]
 
@@ -197,6 +197,7 @@ class DataParallel(layers.Layer):
             for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
                 nn.reshape(x=g_var, shape=g_shape, inplace=True)
 
+    @no_grad
     def apply_collective_grads(self):
         """
         AllReduce the Parameters' gradient.

@@ -1,5 +1,9 @@
 include(operators)
-register_operators(EXCLUDES fusion_transpose_flatten_concat_op fusion_conv_inception_op fusion_group_op)
+register_operators(EXCLUDES
+    fusion_transpose_flatten_concat_op
+    fusion_conv_inception_op
+    fused_fc_elementwise_layernorm_op
+    fusion_group_op)
 if (WITH_GPU)
   op_library(fusion_transpose_flatten_concat_op)
   file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fusion_transpose_flatten_concat);\n")
@@ -12,4 +16,6 @@ if (WITH_GPU)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fusion_group);\n")
     cc_test(test_fusion_group_op SRCS fusion_group_op_test.cc DEPS fusion_group_op)
   endif()
+  op_library(fused_fc_elementwise_layernorm_op)
+  file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_fc_elementwise_layernorm);\n")
 endif()

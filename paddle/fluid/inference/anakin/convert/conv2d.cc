@@ -41,7 +41,7 @@ void Conv2dOpConverter<TargetT, PrecisionT>::operator()(
   auto *filter_v = scope.FindVar(op_desc.Input("Filter").front());
   PADDLE_ENFORCE_NOT_NULL(filter_v);
   auto weight_tensor = tensor_from_var(*filter_v, platform::CPUPlace());
-  auto weight_shape = framework::vectorize2int(weight_tensor->dims());
+  auto weight_shape = framework::vectorize<int>(weight_tensor->dims());
 
   PADDLE_ENFORCE_EQ(weight_tensor->dims().size(), 4UL);
 

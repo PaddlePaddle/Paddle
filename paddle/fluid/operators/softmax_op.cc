@@ -47,10 +47,8 @@ class SoftmaxOp : public framework::OperatorWithKernel {
                    "R is the rank of Input(X).");
 
     auto use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
-    auto use_mkldnn = ctx->Attrs().Get<bool>("use_mkldnn");
     if (axis != rank_x - 1 && axis != -1) {
       PADDLE_ENFORCE(!use_cudnn, "CUDNN kernel only support axis as -1.");
-      PADDLE_ENFORCE(!use_mkldnn, "MKLDNN kernel only support axis as -1.");
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -78,7 +76,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    auto input_data_type = ctx.Input<Tensor>("X")->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                      "float16 can only be used on GPU place");
@@ -189,8 +187,8 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    auto input_data_type =
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                      "float16 can only be used on GPU place");

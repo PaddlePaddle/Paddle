@@ -21,8 +21,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class SGDOpKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override;
+};
+
+template <typename T>
+class SGDOpKernel<platform::CPUDeviceContext, T>
+    : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const auto *learning_rate = ctx.Input<framework::Tensor>("LearningRate");

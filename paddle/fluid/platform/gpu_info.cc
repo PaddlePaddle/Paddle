@@ -39,6 +39,14 @@ inline std::string CudaErrorWebsite() {
 }
 
 static int GetCUDADeviceCountImpl() {
+  int driverVersion = 0;
+  cudaError_t status = cudaDriverGetVersion(&driverVersion);
+
+  if (!(status == cudaSuccess && driverVersion != 0)) {
+    // No GPU driver
+    return 0;
+  }
+
   const auto *cuda_visible_devices = std::getenv("CUDA_VISIBLE_DEVICES");
   if (cuda_visible_devices != nullptr) {
     std::string cuda_visible_devices_str(cuda_visible_devices);

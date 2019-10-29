@@ -16,7 +16,7 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/operators/math/fc_compute.h"
+#include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
@@ -129,8 +129,8 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType AttentionLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                 ctx.device_context());
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context());
 }
 
 void AttentionLSTMOpMaker::Make() {
@@ -339,10 +339,13 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     T* lstm_x_data = lstm_x->mutable_data<T>(ctx.GetPlace());
     T* lstm_out_data = lstm_out->mutable_data<T>(ctx.GetPlace());
 
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+
     // x(TxM) * fc (Mx1) part of atten_wgt(M+D)x1
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
-    math::FCCompute<DeviceContext, T>(blas, total_T, 1, M, x_data, atten_w_data,
-                                      atted_x_data, atten_b_data);
+    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    math::FCFunctor<DeviceContext, T> fc;
+    fc(dev_ctx, total_T, 1, M, x_data, atten_w_data, atted_x_data,
+       atten_b_data);
 
     const T* cur_atten_x_data = atted_x_data;
     const T* cur_x_data = x_data;
@@ -369,8 +372,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
         // 1d. softmax
         vec_softmax<T>(seq_len, fc_out_data, fc_out_data);
         // mul x(seq_len*M) and sum pool
-        math::FCCompute<DeviceContext, T>(blas, 1, M, seq_len, fc_out_data,
-                                          cur_x_data, lstm_x_data);
+        fc(dev_ctx, 1, M, seq_len, fc_out_data, cur_x_data, lstm_x_data);
 
         /// 2. compute LSTM step
         // lstm weight : concat[forget , input , output , tilde]

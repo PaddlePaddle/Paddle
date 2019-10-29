@@ -61,7 +61,7 @@ class FuseMomentumOpPass : public FuseOptimizerOpPass {
     // NOTE: fused_var is only exist in scope, so the graph doesn't have
     // fused_var node.
 
-    VLOG(7) << "Insert momentum to graph ";
+    VLOG(6) << "Insert momentum to graph ";
     OpDesc momentum_desc(momentum_ops[0]->Op()->Block());
     momentum_desc.SetType("momentum");
     momentum_desc.SetInput(kParam, {fused_vars_name.at(kParam)});

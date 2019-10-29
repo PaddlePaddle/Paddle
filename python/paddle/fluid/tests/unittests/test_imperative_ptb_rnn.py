@@ -24,6 +24,7 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
+from utils import DyGraphProgramDescTracerTestHelper
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -239,6 +240,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_hidden = None
             last_cell = None
 
+            helper = DyGraphProgramDescTracerTestHelper(ptb_model, self)
+
             for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
@@ -252,8 +255,17 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
-                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
-                                                            init_cell)
+                if i % 5 == 0:
+                    outs, outs_static = helper.run(
+                        [x, y, init_hidden, init_cell],
+                        feed_names=['x', 'y', 'init_hidden', 'init_cell'],
+                        fetch_names=['dy_loss', 'last_hidden', 'last_cell'])
+                    helper.assertEachVar(outs, outs_static)
+                else:
+                    outs = ptb_model(x, y, init_hidden, init_cell)
+
+                dy_loss, last_hidden, last_cell = outs
+
                 if i == 0:
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()
@@ -263,6 +275,10 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 if i == batch_num - 1:
                     for param in ptb_model.parameters():
                         dy_param_updated[param.name] = param.numpy()
+
+            dy_loss_value = dy_loss.numpy()
+            dy_last_cell_value = last_cell.numpy()
+            dy_last_hidden_value = last_hidden.numpy()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
@@ -330,11 +346,11 @@ class TestDygraphPtbRnn(unittest.TestCase):
                         static_param_updated[static_param_name_list[k -
                                                                     3]] = out[k]
 
-        self.assertTrue(np.array_equal(static_loss_value, dy_loss.numpy()))
+        self.assertTrue(np.array_equal(static_loss_value, dy_loss_value))
         self.assertTrue(
-            np.array_equal(static_last_cell_value, last_cell.numpy()))
+            np.array_equal(static_last_cell_value, dy_last_cell_value))
         self.assertTrue(
-            np.array_equal(static_last_hidden_value, last_hidden.numpy()))
+            np.array_equal(static_last_hidden_value, dy_last_hidden_value))
         for key, value in six.iteritems(static_param_init):
             self.assertTrue(np.array_equal(value, dy_param_init[key]))
         for key, value in six.iteritems(static_param_updated):

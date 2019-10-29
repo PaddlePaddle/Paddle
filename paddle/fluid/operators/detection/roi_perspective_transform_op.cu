@@ -120,16 +120,16 @@ __device__ void bilinear_interpolate(const T* in_data, const int channels,
                                      int out_idx, int* out2in_idx,
                                      T* out2in_w) {
   // Deal with cases that source coords are out of feature map boundary
-  if (GT<T>(-0.5, in_w) || GT<T>(in_w, width - 0.5) || GT<T>(-0.5, in_h) ||
-      GT<T>(in_h, height - 0.5)) {
+  if (GT_E<T>(-0.5, in_w) || GT_E<T>(in_w, width - 0.5) ||
+      GT_E<T>(-0.5, in_h) || GT_E<T>(in_h, height - 0.5)) {
     val[0] = 0.0;
     return;
   }
 
-  if (GT<T>(0, in_w)) {
+  if (GT_E<T>(0, in_w)) {
     in_w = 0;
   }
-  if (GT<T>(0, in_h)) {
+  if (GT_E<T>(0, in_h)) {
     in_h = 0;
   }
 
@@ -242,10 +242,10 @@ __device__ void get_transform_matrix(const int transformed_width,
   T estimated_width = (len1 + len3) / 2.0;
 
   // Get the normalized height and normalized width
-  int normalized_height = transformed_height;
+  int normalized_height = max(2, transformed_height);
   int normalized_width =
       round(estimated_width * (normalized_height - 1) / estimated_height) + 1;
-  normalized_width = min(normalized_width, transformed_width);
+  normalized_width = max(2, min(normalized_width, transformed_width));
 
   T dx1 = x1 - x2;
   T dx2 = x3 - x2;
@@ -254,9 +254,9 @@ __device__ void get_transform_matrix(const int transformed_width,
   T dy2 = y3 - y2;
   T dy3 = y0 - y1 + y2 - y3;
 
-  matrix[6] = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1) /
+  matrix[6] = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1 + 1e-5) /
               (normalized_width - 1);
-  matrix[7] = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1) /
+  matrix[7] = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1 + 1e-5) /
               (normalized_height - 1);
   matrix[8] = 1;
 
@@ -284,7 +284,6 @@ __global__ void RoiTransformKernel(const float* input_data,
                                    int* mask, T* transform_matrix) {
   int output_size =
       num_rois * transformed_height * transformed_width * channels;
-
   CUDA_1D_KERNEL_LOOP(index, output_size) {
     // (n, c, out_h, out_w) is an element in the transformed output
     int out_w = idx4_4(index, num_rois, channels, transformed_height,
@@ -318,8 +317,10 @@ __global__ void RoiTransformKernel(const float* input_data,
     get_source_coords<T>(matrix, out_w, out_h, &in_w, &in_h);
 
     if (in_quad<T>(in_w, in_h, roi_x, roi_y)) {
-      if (GT<T>(-0.5, in_w) || GT<T>(in_w, static_cast<T>(in_width - 0.5)) ||
-          GT<T>(-0.5, in_h) || GT<T>(in_h, static_cast<T>(in_height - 0.5))) {
+      if (GT_E<T>(-0.5, in_w) ||
+          GT_E<T>(in_w, static_cast<T>(in_width - 0.5)) ||
+          GT_E<T>(-0.5, in_h) ||
+          GT_E<T>(in_h, static_cast<T>(in_height - 0.5))) {
         // Skip if source coords is not in input image
         output_data[index] = 0.0;
         mask[(n * transformed_height + out_h) * transformed_width + out_w] = 0;
@@ -409,15 +410,15 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
 template <typename T>
 __device__ T get_feature_gradient(T xs, T ys, int w, int h, const int width,
                                   const int height) {
-  if (GT<T>(-0.5, xs) || GT<T>(xs, width - 0.5) || GT<T>(-0.5, ys) ||
-      GT<T>(ys, height - 0.5)) {
+  if (GT_E<T>(-0.5, xs) || GT_E<T>(xs, width - 0.5) || GT_E<T>(-0.5, ys) ||
+      GT_E<T>(ys, height - 0.5)) {
     return 0;
   }
 
-  if (GT<T>(0, xs)) {
+  if (GT_E<T>(0, xs)) {
     xs = 0;
   }
-  if (GT<T>(0, ys)) {
+  if (GT_E<T>(0, ys)) {
     ys = 0;
   }
 

@@ -6,6 +6,12 @@ cc_library(best_fit_allocator SRCS best_fit_allocator.cc DEPS allocator)
 cc_library(naive_best_fit_allocator SRCS naive_best_fit_allocator.cc DEPS allocator buddy_allocator profiler)
 cc_test(buffered_allocator_test SRCS buffered_allocator_test.cc DEPS locked_allocator buffered_allocator cpu_allocator best_fit_allocator)
 
+if (WITH_MKLDNN)
+  set(MKLDNN_CTX_DEPS mkldnn)
+else ()
+  set(MKLDNN_CTX_DEPS)
+endif()
+
 if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
 endif()

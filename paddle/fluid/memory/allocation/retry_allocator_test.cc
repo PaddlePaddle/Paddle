@@ -43,7 +43,7 @@ TEST(RetryAllocator, RetryAllocator) {
   std::unique_ptr<LockedAllocator> locked_allocator(
       new LockedAllocator(std::move(best_fit_allocator)));
 
-  size_t thread_num = 8;
+  size_t thread_num = 4;
   size_t sleep_time = 40;
   size_t extra_time = 10;
 
@@ -127,7 +127,7 @@ TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
   {
     platform::CUDAPlace p(0);
     RetryAllocator allocator(std::make_shared<CUDAAllocator>(p), retry_ms);
-    size_t allocate_size = -1UL;  // Very large number
+    size_t allocate_size = (static_cast<size_t>(1) << 40);  // Very large number
     try {
       auto allocation = allocator.Allocate(allocate_size);
       ASSERT_TRUE(false);

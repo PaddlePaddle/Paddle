@@ -35,7 +35,11 @@ class MemOptVarInfo {
     return ref_cnt_ == 1 || (runtime_ref_cnt_.fetch_sub(1) == 1);
   }
 
-  void ResetRuntimeRefCnt() { runtime_ref_cnt_ = ref_cnt_; }
+  void ResetRuntimeRefCnt() {
+    if (ref_cnt_ != 1) {
+      runtime_ref_cnt_ = ref_cnt_;
+    }
+  }
 
   void SetRefCnt(size_t ref_cnt) {
     PADDLE_ENFORCE_GE(ref_cnt, 1,
@@ -44,17 +48,44 @@ class MemOptVarInfo {
     runtime_ref_cnt_ = ref_cnt;
   }
 
-  bool IsSkipped() const { return skipped_; }
+  // Skip all memory optimization, including memory reuse and garbage collection
+  void SetSkipAllMemoryOptimization(bool is_skipped) {
+    skip_all_memory_optimization_ = is_skipped;
+  }
 
-  void SetSkip(bool skipped) { skipped_ = skipped; }
+  bool IsSkippedAllMemoryOptimization() const {
+    return skip_all_memory_optimization_;
+  }
+
+  // Skip all memory reuse, including inplace and cross op memory reuse
+  void SetSkipMemoryReuse(bool is_skipped) { skip_memory_reuse_ = is_skipped; }
+
+  bool IsSkippedMemoryReuse() const {
+    return skip_memory_reuse_ || skip_all_memory_optimization_;
+  }
 
   const std::string &Name() const { return name_; }
 
  private:
   std::string name_;
+
+  /**
+   * ref_cnt_ is the total number of last-lived ops of variable. It would not
+   * be changed during iterations.
+   *
+   * runtime_ref_cnt_ is the runtime reference count of variable, which would
+   * decrease 1 when each EagerDeletionOpHandle runs. As a result, it should
+   * be reset to ref_cnt_ after each iteration ends. Since operators are
+   * scheduled in many threads inside ParallelExecutor, runtime_ref_cnt_
+   * must be an atomic integer to guarantee the thread safety and visibility.
+   *
+   * Speciallly, if ref_cnt_ is 1, we do not need to reset runtime_ref_cnt_
+   * after iteration ends.
+   */
   size_t ref_cnt_;
   std::atomic<size_t> runtime_ref_cnt_;
-  bool skipped_{false};
+  bool skip_memory_reuse_{false};
+  bool skip_all_memory_optimization_{false};
 };
 
 using MemOptVarInfoMapList = std::vector<
@@ -72,8 +103,9 @@ class SkipMemOptVarsGuard {
     for (auto &var : vars) {
       for (auto &map : *list_) {
         auto iter = map.find(var);
-        if (iter != map.end() && !iter->second->IsSkipped()) {
-          iter->second->SetSkip(true);
+        if (iter != map.end() &&
+            !iter->second->IsSkippedAllMemoryOptimization()) {
+          iter->second->SetSkipAllMemoryOptimization(true);
           skip_vars_.emplace_back(iter->second.get());
         }
       }
@@ -82,7 +114,7 @@ class SkipMemOptVarsGuard {
 
   ~SkipMemOptVarsGuard() {
     for (auto *var : skip_vars_) {
-      var->SetSkip(false);
+      var->SetSkipAllMemoryOptimization(false);
     }
 
     if (list_ && need_reset_ref_cnt_) {

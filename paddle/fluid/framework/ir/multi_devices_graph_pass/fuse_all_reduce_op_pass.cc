@@ -29,14 +29,21 @@ namespace ir {
 class FuseAllReduceOpPass : public ir::Pass {
  protected:
   void ApplyImpl(ir::Graph *graph) const override {
-    ir::Graph &result = *graph;
+    if (Get<size_t>(details::kNRanks) <= 1) {
+      VLOG(6) << "The number of place is" << Get<size_t>(details::kNRanks)
+              << ", there doesn't need apply FuseAllReduceOpPass.";
+      return;
+    }
+
     auto &places = Get<const std::vector<platform::Place>>(details::kPlaces);
     auto &local_scopes = Get<const std::vector<Scope *>>(details::kLocalScopes);
+
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     auto *multi_nccl_ctxs =
         &Get<platform::NCCLCommunicator>(details::kNCCLCtxs);
 #endif
 
+    ir::Graph &result = *graph;
     auto &params_grads =
         result.Get<details::ParamsAndGrads>(details::kParamsAndDenseGrads);
     size_t num_of_all_reduce = params_grads.size();
@@ -49,7 +56,7 @@ class FuseAllReduceOpPass : public ir::Pass {
     std::unordered_map<std::string, Node *> all_reduce_ops =
         GetAllReduceOps(result, places, grads);
 
-    VLOG(10) << "Find all_reduce_ops: " << all_reduce_ops.size();
+    VLOG(6) << "Find all_reduce_ops: " << all_reduce_ops.size();
     if (all_reduce_ops.size() == 0) {
       return;
     }
@@ -58,10 +65,15 @@ class FuseAllReduceOpPass : public ir::Pass {
                       "The number of all_reduce OpHandle is not equal to the "
                       "number of grads. Maybe some gradients are sparse type, "
                       "it is not supported currently.");
-    VLOG(10) << "Insert fused_all_reduce";
 
     auto &group_params_grads = graph->Get<details::GroupParamsAndGrads>(
         details::kGroupParamsAndDenseGrads);
+
+    LOG(WARNING) << string::Sprintf(
+        "Find all_reduce operators: %d. To make the speed faster, some "
+        "all_reduce ops are fused during training, after fusion, "
+        "the number of all_reduce ops is %d.",
+        all_reduce_ops.size(), group_params_grads.size());
 
     for (auto &group_p_g : group_params_grads) {
       size_t group_size = group_p_g.size();
@@ -203,4 +215,5 @@ class FuseAllReduceOpPass : public ir::Pass {
 }  // namespace paddle
 
 REGISTER_PASS(fuse_all_reduce_op_pass,
-              paddle::framework::ir::FuseAllReduceOpPass);
+              paddle::framework::ir::FuseAllReduceOpPass)
+    .RequirePassAttr(paddle::framework::details::kNRanks);
