@@ -100,8 +100,10 @@ class ShrinkRNNMemoryInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE(context->HasInput("I"));
     PADDLE_ENFORCE(context->HasInput("RankTable"));
     context->SetOutputDim("Out", context->GetInputDim("X"));
+    // For runtime, output's lod is computed according to input's lod, but
+    // remove the finished sequence. It is set in detail kernel implementation.
     if (!context->IsRuntime()) {
-      context->DecreaseLoDLevel("X", /*->*/ "Out");
+      context->ShareLoD("X", /*->*/ "Out");
     }
   }
 };

@@ -28,6 +28,16 @@ class SequencePoolOp : public framework::OperatorWithKernel {
                       "Input(X) of SequencePoolOp should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       "Output(Out) of SequencePoolOp should not be null.");
+
+    if (!ctx->IsRuntime()) {
+      // Check the lod_level for compile-time.
+      framework::VarDesc* x_desc =
+          boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("X")[0]);
+      PADDLE_ENFORCE_GT(
+          x_desc->GetLoDLevel(), 0,
+          "The LoD level Input(X) of sequence_pool should be larger than 0");
+    }
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     if (ctx->Attrs().Get<std::string>("pooltype") == "MAX") {
       PADDLE_ENFORCE_EQ(
