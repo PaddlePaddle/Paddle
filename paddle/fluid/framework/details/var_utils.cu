@@ -98,7 +98,7 @@ void EnforceNoNanOrInf(const std::string& op_type,
   }
 
   VLOG(10) << "begin check " << op_type << " var_name:" << var_name
-           << ", place:" << tensor->place << ", numel:" << tensor->numel();
+           << ", place:" << tensor->place() << ", numel:" << tensor->numel();
   TensorCheckerVisitor vistor(var_name, *tensor, place);
   VisitDataType(tensor->type(), vistor);
 }
