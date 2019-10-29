@@ -350,8 +350,7 @@ class Optimizer(object):
             persistable=True,
             dtype=dtype or param.dtype,
             type=param.type,
-            shape=shape,
-            belong_to_optimizer=True)
+            shape=shape)
         self.helper.set_variable_initializer(
             var, initializer=Constant(value=float(fill_value)))
 
