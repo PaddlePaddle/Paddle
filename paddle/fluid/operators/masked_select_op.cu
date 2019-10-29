@@ -30,7 +30,7 @@ static inline int NumBlocks(const int N) {
 
 template <typename T>
 __global__ void MaskedSelect(const int nums, const T* input_data,
-                             const T* mask_data, T* output_data) {
+                             const bool* mask_data, T* output_data) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
   int j = index;
@@ -51,7 +51,7 @@ class MaskedSelectOPCUDAKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<framework::Tensor>("Out");
 
     const T* input_data = input->data<T>();
-    const T* mask_data = mask->data<T>();
+    auto* mask_data = mask->data<bool>();
 
     int out_dim = 0;
     for (size_t i = 0; i < mask->numel(); i++) {
@@ -73,7 +73,7 @@ class MaskedSelectOPCUDAKernel : public framework::OpKernel<T> {
 
 template <typename T>
 __global__ void MaskedSelectGrad(const int nums, const T* output_grad_data,
-                                 const T* mask_data, T* input_grad_data) {
+                                 const bool* mask_data, T* input_grad_data) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
   int j = index;
@@ -102,7 +102,7 @@ class MaskedSelectGradOPCUDAKernel : public framework::OpKernel<T> {
     int blocks = NumBlocks(mask->numel());
     int threads = kNumCUDAThreads;
 
-    const T* mask_data = mask->data<T>();
+    auto* mask_data = mask->data<bool>();
     const T* output_grad_data = output_grad->data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
 
