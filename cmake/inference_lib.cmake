@@ -161,7 +161,7 @@ endif ()
 if (TENSORRT_FOUND)
     set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/tensorrt")
     copy(inference_lib_dist
-            SRCS ${TENSORRT_INCLUDE_DIR}/Nv*.h ${TENSORRT_LIBRARY}/*nvinfer*
+            SRCS ${TENSORRT_INCLUDE_DIR}/Nv*.h ${TENSORRT_LIBRARY_DIR}/*nvinfer*
             DSTS ${dst_dir}/include ${dst_dir}/lib)
 endif ()
 
