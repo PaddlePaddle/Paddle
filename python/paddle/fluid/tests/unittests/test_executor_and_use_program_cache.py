@@ -19,13 +19,13 @@ import unittest
 import numpy
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+from test_eager_deletion_padding_rnn import PaddingRNNTestBase
 
 
 class TestExecutor(unittest.TestCase):
     def test_mul(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
-
         with fluid.program_guard(main_program, startup_program):
             a = fluid.layers.data(name='a', shape=[784], dtype='float32')
             b = fluid.layers.data(
@@ -73,10 +73,18 @@ class TestExecutor(unittest.TestCase):
         run_time_with_cache = _train(
             use_program_cache=True, max_iters=max_iters)
         print("run time with program cache: %f" % run_time_with_cache)
+        self.assertLess(run_time_with_cache, run_time_without_cache)
 
         run_time_with_cache = _train(
             use_program_cache=True, max_iters=max_iters)
         print("run time with program cache: %f" % run_time_with_cache)
+        self.assertLess(run_time_with_cache, run_time_without_cache)
+
+
+class ExecutorPaddingRNNTest(PaddingRNNTestBase):
+    def test_executor_use_program_cache(self):
+        # Set parallel to False to use the default executor.
+        self.compare_padding_static_mode(parallel=False, use_program_cache=True)
 
 
 if __name__ == '__main__':
