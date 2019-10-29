@@ -85,6 +85,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
         core.VarDesc.VarType.LOD_TENSOR, core.VarDesc.VarType.SELECTED_ROWS,
         core.VarDesc.VarType.LOD_TENSOR_ARRAY
     ]
+
     for in_name in op.input_names:
         if src_dtype == core.VarDesc.VarType.FP32 and op.type == 'batch_norm':
             if in_name != 'X':
@@ -112,7 +113,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                             "in_dtype": in_var.dtype,
                             "out_dtype": out_var.dtype
                         })
-                num_cast_ops += 1
+                    num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
             else:
                 if op.has_attr('in_dtype'):
