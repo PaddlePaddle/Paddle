@@ -58,6 +58,7 @@ class CUDADeviceCode : public DeviceCode {
 
  private:
   bool CheckNVRTCResult(nvrtcResult result, std::string function);
+  bool CheckCUDADriverResult(CUresult result, std::string function);
 
   bool is_compiled_{false};
   int max_threads_{0};

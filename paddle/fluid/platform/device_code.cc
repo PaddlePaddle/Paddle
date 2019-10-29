@@ -87,8 +87,9 @@ CUDADeviceCode::CUDADeviceCode(const Place& place, const std::string& name,
 
 bool CUDADeviceCode::Compile() {
   is_compiled_ = false;
-  if (!dynload::HasNVRTC()) {
-    LOG(WARNING) << "NVRTC is need for JIT compiling of CUDA code.";
+  if (!dynload::HasNVRTC() || !dynload::HasCUDADriver()) {
+    LOG(WARNING)
+        << "NVRTC and CUDA driver are need for JIT compiling of CUDA code.";
     return false;
   }
 
@@ -152,13 +153,16 @@ bool CUDADeviceCode::Compile() {
     return false;
   }
 
-  PADDLE_ENFORCE_EQ(
-      dynload::cuModuleLoadData(&module_, ptx_.data()), CUDA_SUCCESS,
-      "Fail to load PTX of %s (in cuModuleLoadData.)", name_.c_str());
-  PADDLE_ENFORCE_EQ(
-      dynload::cuModuleGetFunction(&function_, module_, name_.c_str()),
-      CUDA_SUCCESS, "Fail to get function of %s (in cuModuleGetFunction.)",
-      name_.c_str());
+  if (!CheckCUDADriverResult(dynload::cuModuleLoadData(&module_, ptx_.data()),
+                             "cuModuleLoadData")) {
+    return false;
+  }
+
+  if (!CheckCUDADriverResult(
+          dynload::cuModuleGetFunction(&function_, module_, name_.c_str()),
+          "cuModuleGetFunction")) {
+    return false;
+  }
 
   max_threads_ = dev_ctx->GetMaxPhysicalThreadCount();
   is_compiled_ = true;
@@ -192,6 +196,16 @@ bool CUDADeviceCode::CheckNVRTCResult(nvrtcResult result,
   if (result != NVRTC_SUCCESS) {
     LOG(WARNING) << "Call " << function
                  << " failed: " << dynload::nvrtcGetErrorString(result);
+    return false;
+  }
+  return true;
+}
+
+bool CUDADeviceCode::CheckCUDADriverResult(CUresult result,
+                                           std::string function) {
+  if (result != CUDA_SUCCESS) {
+    LOG(WARNING) << "Call " << function
+                 << " failed: " << dynload::cuGetErrorString(result);
     return false;
   }
   return true;

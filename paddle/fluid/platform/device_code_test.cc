@@ -30,7 +30,8 @@ void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
 
 #ifdef PADDLE_WITH_CUDA
 TEST(DeviceCode, cuda) {
-  if (!paddle::platform::dynload::HasNVRTC()) {
+  if (!paddle::platform::dynload::HasNVRTC() ||
+      !paddle::platform::dynload::HasCUDADriver()) {
     return;
   }
 
