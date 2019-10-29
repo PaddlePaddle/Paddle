@@ -173,23 +173,6 @@ class CheckpointNotifyProcessor : public BaseProcessor {
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
-class DistributeNotifyProcessor : public BaseProcessor {
- public:
-  explicit DistributeNotifyProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(), stub_g_(ch) {}
-
-  virtual ~DistributeNotifyProcessor() {}
-
-  void ProcessImpl() override {
-    if (response_call_back_) {
-      response_call_back_(*var_h_.get(), reply_);
-    }
-  }
-  ::grpc::ByteBuffer reply_;
-  ::grpc::GenericStub stub_g_;
-  RequestSendCallBack response_call_back_ = nullptr;
-};
-
 class GRPCClient : public RPCClient {
  public:
   GRPCClient() : ok_(true), completed_(false), stopped_(false) {}

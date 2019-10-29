@@ -139,8 +139,8 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
       send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
           send_var_name, send_varnames, epmap, height_section, trainer_id,
           merge_add, use_send_handler);
-      VLOG(3) << "find and init an " << op->Type()
-              << " op: " << send_varname_to_ctx[send_var_name];
+      VLOG(3) << "find and init an send op: "
+              << send_varname_to_ctx[send_var_name];
     } else if (op->Type() == "recv") {
       auto do_not_run = boost::get<int>(op->GetNullableAttr("do_not_run"));
       PADDLE_ENFORCE_GT(do_not_run, 0, "recv should not run!");
