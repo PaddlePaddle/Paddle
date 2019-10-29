@@ -19,7 +19,7 @@ import unittest
 import numpy
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from test_eager_deletion_padding_rnn import PaddingRNNTestBase
+from test_eager_deletion_padding_rnn import RNNConfig, PaddingRNNTestBase
 
 
 class TestExecutor(unittest.TestCase):
@@ -73,7 +73,6 @@ class TestExecutor(unittest.TestCase):
         run_time_with_cache = _train(
             use_program_cache=True, max_iters=max_iters)
         print("run time with program cache: %f" % run_time_with_cache)
-        self.assertLess(run_time_with_cache, run_time_without_cache)
 
         run_time_with_cache = _train(
             use_program_cache=True, max_iters=max_iters)
@@ -81,9 +80,68 @@ class TestExecutor(unittest.TestCase):
 
 
 class ExecutorPaddingRNNTest(PaddingRNNTestBase):
-    def test_executor_use_program_cache(self):
-        # Set parallel to False to use the default executor.
-        self.compare_padding_static_mode(parallel=False, use_program_cache=True)
+    def train_and_save_inference_program(self,
+                                         rnn_model="static",
+                                         parallel=True,
+                                         use_program_cache=True):
+        config = RNNConfig("test", rnn_model)
+        with fluid.scope_guard(fluid.Scope()):
+            self.train(config, parallel, use_program_cache)
+            fluid.io.save_inference_model(
+                main_program=self.main_program,
+                feeded_var_names=self.feed_order,
+                target_vars=[self.loss, self.last_hidden, self.last_cell],
+                executor=self.exe,
+                dirname="padding_rnn." + rnn_model + ".inference_model",
+                params_filename="__params__")
+
+    def test_inference_output(self):
+        for rnn_model in ["static", "padding"]:
+            # Set parallel to False to use the default executor.
+            self.train_and_save_inference_program(
+                rnn_model=rnn_model, parallel=True, use_program_cache=True)
+
+            x_np = numpy.random.random(
+                (self.config.batch_size, self.config.num_steps,
+                 1)).astype("int64")
+            y_np = numpy.random.random(
+                (self.config.batch_size * self.config.num_steps,
+                 1)).astype("int64")
+            init_hidden_np = numpy.random.random(
+                (self.config.num_layers, self.config.batch_size,
+                 self.config.hidden_size)).astype("float32")
+            init_cell_np = numpy.random.random(
+                (self.config.num_layers, self.config.batch_size,
+                 self.config.hidden_size)).astype("float32")
+
+            for use_program_cache in [False, True]:
+                with fluid.scope_guard(fluid.Scope()):
+                    save_dirname = "padding_rnn." + rnn_model + ".inference_model"
+                    [inference_program, feed_target_names,
+                     fetch_targets] = fluid.io.load_inference_model(
+                         save_dirname, self.exe, params_filename="__params__")
+
+                    results = self.exe.run(program=inference_program,
+                                           feed={
+                                               "x": x_np,
+                                               "y": y_np,
+                                               "init_hidden": init_hidden_np,
+                                               "init_cell": init_cell_np
+                                           },
+                                           fetch_list=fetch_targets,
+                                           use_program_cache=use_program_cache)
+                    if use_program_cache is True:
+                        results_with_cache = results
+                    else:
+                        results_without_cache = results
+            self.assertEqual(
+                len(results_with_cache), len(results_without_cache))
+            for i in range(len(results_with_cache)):
+                self.assertEqual(results_with_cache[i].shape,
+                                 results_without_cache[i].shape)
+                self.assertTrue(
+                    numpy.allclose(results_with_cache[i], results_without_cache[
+                        i]))
 
 
 if __name__ == '__main__':
