@@ -9079,7 +9079,7 @@ def unsqueeze(input, axes, name=None):
 
     Args:
         input (Variable): The input Tensor to be unsqueezed. It is a N-D Tensor of data types float32, float64, int32.
-        axes (list): List of integers, indicating the dimensions to be inserted.
+        axes (int|list|tuple|Variable): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
         name (str|None): Name for this layer.
 
     Returns:
@@ -9093,13 +9093,45 @@ def unsqueeze(input, axes, name=None):
             y = fluid.layers.unsqueeze(input=x, axes=[1])
 
     """
-    helper = LayerHelper("unsqueeze", **locals())
+    if not isinstance(axes, (int, list, tuple, Variable)):
+        raise TypeError(
+            "The type of 'axes' in unsqueeze must be int, list, tuple or Variable, but "
+            "received %s." % (type(axes)))
+    helper = LayerHelper("unsqueeze2", **locals())
+    inputs = {"X": input}
+    attrs = {}
+
+    def _to_Variable_list(one_list):
+        Variable_list = []
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                ele.stop_gradient = True
+                Variable_list.append(ele)
+            else:
+                assert (isinstance(ele, int))
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', ele, force_cpu=True, out=temp_out)
+                Variable_list.append(temp_out)
+        return Variable_list
+
+    if isinstance(axes, int):
+        axes = [axes]
+    if isinstance(axes, Variable):
+        axes.stop_gradient = True
+        inputs["AxesTensor"] = axes
+    elif isinstance(axes, (list, tuple)):
+        contain_var = not all(not isinstance(ele, Variable) for ele in axes)
+        if contain_var:
+            inputs["AxesTensorList"] = _to_Variable_list(axes)
+        else:
+            attrs["axes"] = axes
+
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type="unsqueeze2",
-        inputs={"X": input},
-        attrs={"axes": axes},
+        inputs=inputs,
+        attrs=attrs,
         outputs={"Out": out,
                  "XShape": x_shape})
 
