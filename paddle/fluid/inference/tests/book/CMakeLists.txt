@@ -14,10 +14,19 @@ function(inference_test TARGET_NAME)
   endif()
   foreach(arg ${arg_list})
     string(REGEX REPLACE "^_$" "" arg "${arg}")
-    cc_test(test_inference_${TARGET_NAME}${arg}
+    if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+      cc_test(test_inference_${TARGET_NAME}${arg}
+        SRCS test_inference_${TARGET_NAME}.cc
+        DEPS paddle_fluid_origin_list
+        ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.inference.model)
+    else()
+      cc_test(test_inference_${TARGET_NAME}${arg}
         SRCS test_inference_${TARGET_NAME}.cc
         DEPS paddle_fluid_origin
         ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.inference.model)
+    endif()
+
+   
     set_tests_properties(test_inference_${TARGET_NAME}${arg}
             PROPERTIES DEPENDS test_${TARGET_NAME})
     set_tests_properties(test_inference_${TARGET_NAME}${arg}
@@ -42,9 +51,18 @@ inference_test(word2vec)
 
 # This is an unly work around to make this test run
 # TODO(TJ): clean me up
-cc_test(test_inference_nlp
-  SRCS test_inference_nlp.cc
-  DEPS paddle_fluid_origin
-  ARGS
-  --model_path=${PADDLE_BINARY_DIR}/python/paddle/fluid/tests/book/recognize_digits_mlp.inference.model)
+if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+  cc_test(test_inference_nlp
+    SRCS test_inference_nlp.cc
+    DEPS paddle_fluid_origin_list
+    ARGS
+    --model_path=${PADDLE_BINARY_DIR}/python/paddle/fluid/tests/book/recognize_digits_mlp.inference.model)
+else()
+  cc_test(test_inference_nlp
+    SRCS test_inference_nlp.cc
+    DEPS paddle_fluid_origin
+    ARGS
+    --model_path=${PADDLE_BINARY_DIR}/python/paddle/fluid/tests/book/recognize_digits_mlp.inference.model)
+endif()
+
 set_tests_properties(test_inference_nlp PROPERTIES LABELS "RUN_TYPE=DIST")

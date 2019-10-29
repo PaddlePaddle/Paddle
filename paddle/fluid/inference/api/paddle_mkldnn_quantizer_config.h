@@ -22,6 +22,16 @@
 
 #include "paddle_api.h"  // NOLINT
 
+#if defined(_WIN32)
+#ifdef PADDLE_ON_INFERENCE
+#define PADDLE_INFENRENCE_EXPORT __declspec(dllexport)
+#else
+#define PADDLE_INFENRENCE_EXPORT __declspec(dllimport)
+#endif  // PADDLE_ON_INFERENCE
+#else
+#define PADDLE_INFENRENCE_EXPORT __attribute__((visibility("default")))
+#endif  // _WIN32
+
 namespace paddle {
 
 // Algorithms for finding scale of quantized Tensors.
@@ -32,7 +42,7 @@ enum class ScaleAlgo {
   KL,      // Find scale based on KL Divergence
 };
 
-struct MkldnnQuantizerConfig {
+struct PADDLE_INFENRENCE_EXPORT MkldnnQuantizerConfig {
   MkldnnQuantizerConfig();
 
   /** Specify a quantization algorithm for a connection (input/output) of the

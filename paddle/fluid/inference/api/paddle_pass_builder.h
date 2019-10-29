@@ -18,6 +18,16 @@
 #include <string>
 #include <vector>
 
+#if defined(_WIN32)
+#ifdef PADDLE_ON_INFERENCE
+#define PADDLE_INFENRENCE_EXPORT __declspec(dllexport)
+#else
+#define PADDLE_INFENRENCE_EXPORT __declspec(dllimport)
+#endif  // PADDLE_ON_INFERENCE
+#else
+#define PADDLE_INFENRENCE_EXPORT __attribute__((visibility("default")))
+#endif  // _WIN32
+
 /*! \file */
 
 /*! \namespace paddle */
@@ -25,7 +35,7 @@ namespace paddle {
 
 /** This is a pass builder based on string. It is part of inference API.
  */
-class PaddlePassBuilder {
+class PADDLE_INFENRENCE_EXPORT PaddlePassBuilder {
  public:
   explicit PaddlePassBuilder(const std::vector<std::string> &passes)
       : passes_(passes) {}
@@ -80,7 +90,7 @@ class PaddlePassBuilder {
 
 /**Pass strategy to help control the IR passes.
  */
-class PassStrategy : public PaddlePassBuilder {
+class PADDLE_INFENRENCE_EXPORT PassStrategy : public PaddlePassBuilder {
  public:
   explicit PassStrategy(const std::vector<std::string> &passes)
       : PaddlePassBuilder(passes) {}
@@ -114,7 +124,7 @@ class PassStrategy : public PaddlePassBuilder {
 
 /** The CPU passes controller, it is used in AnalysisPredictor with CPU mode.
  */
-class CpuPassStrategy : public PassStrategy {
+class PADDLE_INFENRENCE_EXPORT CpuPassStrategy : public PassStrategy {
  public:
   CpuPassStrategy();
 
@@ -140,7 +150,7 @@ class CpuPassStrategy : public PassStrategy {
 
 /** The GPU passes strategy, it is used in AnalysisPredictor with GPU mode.
  */
-class GpuPassStrategy : public PassStrategy {
+class PADDLE_INFENRENCE_EXPORT GpuPassStrategy : public PassStrategy {
  public:
   GpuPassStrategy();
 
@@ -161,7 +171,9 @@ class GpuPassStrategy : public PassStrategy {
   bool use_cudnn_{false};
 };
 
-extern const std::vector<std::string> kTRTSubgraphPasses;
-extern const std::vector<std::string> kAnakinSubgraphPasses;
+PADDLE_INFENRENCE_EXPORT extern const std::vector<std::string>
+    kTRTSubgraphPasses;
+PADDLE_INFENRENCE_EXPORT extern const std::vector<std::string>
+    kAnakinSubgraphPasses;
 
 }  // namespace paddle

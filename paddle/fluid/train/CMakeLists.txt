@@ -14,10 +14,17 @@ function(train_test TARGET_NAME)
     endif()
     foreach(arg ${arg_list})
         string(REGEX REPLACE "^_$" "" arg "${arg}")
-        cc_test(test_train_${TARGET_NAME}${arg}
-                SRCS test_train_${TARGET_NAME}.cc
-                DEPS paddle_fluid_origin
-                ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.train.model/)
+        if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+            cc_test(test_train_${TARGET_NAME}${arg}
+                    SRCS test_train_${TARGET_NAME}.cc
+                    DEPS paddle_fluid_origin_list
+                    ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.train.model/)
+        else()
+            cc_test(test_train_${TARGET_NAME}${arg}
+                    SRCS test_train_${TARGET_NAME}.cc
+                    DEPS paddle_fluid_origin
+                    ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.train.model/)
+    endif()
         set_tests_properties(test_train_${TARGET_NAME}${arg}
                 PROPERTIES DEPENDS test_${TARGET_NAME})
         set_tests_properties(test_train_${TARGET_NAME}${arg}
