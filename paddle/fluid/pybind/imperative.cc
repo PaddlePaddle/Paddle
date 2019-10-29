@@ -180,28 +180,36 @@ void BindImperative(py::module *m_ptr) {
   py::class_<imperative::detail::BackwardStrategy> backward_strategy(
       m, "BackwardStrategy", R"DOC(
 
-    BackwardStrategy is a descriptor of a how to run the backward process. Now it has:
+    BackwardStrategy is a descriptor of how to run the backward process.
 
-    1. :code:`sort_sum_gradient`, which will sum the gradient by the reverse order of trace.
+    **Note**:
+        **This API is only avaliable in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **Mode**
 
-    Examples:
+    Attribute:
+        **sort_sum_gradient**:
 
-        .. code-block:: python
+        If framework will sum the gradient by the reverse order of trace. eg. x_var ( :ref:`api_guide_Variable` ) will be the input of multiple OP such as :ref:`api_fluid_layers_scale` , this attr will decide if framework will sum gradient of `x_var` by the reverse order.
 
-          import numpy as np
-          import paddle.fluid as fluid
-          from paddle.fluid import FC
+        By Default: False
 
-          x = np.ones([2, 2], np.float32)
-          with fluid.dygraph.guard():
-              inputs2 = []
-              for _ in range(10):
-                  inputs2.append(fluid.dygraph.base.to_variable(x))
-              ret2 = fluid.layers.sums(inputs2)
-              loss2 = fluid.layers.reduce_sum(ret2)
-              backward_strategy = fluid.dygraph.BackwardStrategy()
-              backward_strategy.sort_sum_gradient = True
-              loss2.backward(backward_strategy)
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle.fluid as fluid
+
+                x = np.ones([2, 2], np.float32)
+                with fluid.dygraph.guard():
+                    x_var = fluid.dygraph.to_variable(x)
+                    sums_inputs = []
+                    # x_var will be multi-scales' input here
+                    for _ in range(10):
+                        sums_inputs.append(fluid.layers.scale(x_var))
+                    ret2 = fluid.layers.sums(sums_inputs)
+                    loss2 = fluid.layers.reduce_sum(ret2)
+                    backward_strategy = fluid.dygraph.BackwardStrategy()
+                    backward_strategy.sort_sum_gradient = True
+                    loss2.backward(backward_strategy)
       )DOC");
   backward_strategy.def(py::init())
       .def_property("sort_sum_gradient",
@@ -230,13 +238,11 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::VarBase &self, const std::string &name,
               framework::proto::VarType::Type type,
               framework::proto::VarType::Type dtype,
-              const std::vector<int> &dims, bool stop_gradient,
-              bool persistable) {
+              const std::vector<int> &dims, bool persistable) {
              new (&self) imperative::VarBase(name);
              self.SetPersistable(persistable);
              self.SetType(type);
              self.SetDataType(dtype);
-             self.SetStopGradient(stop_gradient);
              if (type == framework::proto::VarType::LOD_TENSOR) {
                auto *tensor =
                    self.MutableVar()->GetMutable<framework::LoDTensor>();
@@ -302,8 +308,9 @@ void BindImperative(py::module *m_ptr) {
       .def_property_readonly("dtype", &imperative::VarBase::DataType)
       .def_property("persistable", &imperative::VarBase::Persistable,
                     &imperative::VarBase::SetPersistable)
-      .def_property("stop_gradient", &imperative::VarBase::StopGradient,
-                    &imperative::VarBase::SetStopGradient);
+      .def_property("stop_gradient",
+                    &imperative::VarBase::OverridedStopGradient,
+                    &imperative::VarBase::SetOverridedStopGradient);
 
   py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
   layer.def(py::init<>())

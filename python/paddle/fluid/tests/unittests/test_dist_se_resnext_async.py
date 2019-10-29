@@ -15,7 +15,9 @@
 from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
+
 import os
+flag_name = os.path.splitext(__file__)[0]
 
 
 def skip_ci(func):
@@ -36,7 +38,11 @@ class TestDistSeResneXt2x2Async(TestDistBase):
 
     @skip_ci
     def test_dist_train(self):
-        self.check_with_place("dist_se_resnext.py", delta=100)
+        self.check_with_place(
+            "dist_se_resnext.py",
+            delta=100,
+            check_error_log=True,
+            log_name=flag_name)
 
 
 if __name__ == "__main__":

@@ -41,8 +41,11 @@ static constexpr bool CanInplaceAct() {
       : public ::paddle::framework::OpProtoAndCheckerMaker {                 \
    public:                                                                   \
     void Make() override {                                                   \
-      AddInput("X", "Input of " #OP_NAME " operator");                       \
-      AddOutput("Out", "Output of " #OP_NAME " operator");                   \
+      AddInput("X", "Input of " #OP_NAME                                     \
+                    " operator, an N-D Tensor, with data type float32, "     \
+                    "float64 or float16.");                                  \
+      AddOutput("Out", "Output of " #OP_NAME                                 \
+                       " operator, a Tensor with shape same as input.");     \
       AddAttr<bool>("use_mkldnn",                                            \
                     "(bool, default false) Only used in mkldnn kernel")      \
           .SetDefault(false);                                                \
@@ -173,7 +176,7 @@ $$out = \\log \\frac{1}{1 + e^{-x}}$$
 )DOC";
 
 UNUSED constexpr char ExpDoc[] = R"DOC(
-Exp Activation Operator.
+Exp Operator. Computes exp of x element-wise with a natural number :math:`e` as the base.
 
 $out = e^x$
 
@@ -210,10 +213,10 @@ $$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
-Please make sure legal input, when input a negative value closed to zero,
-you should add a small epsilon(1e-12) to avoid negative number caused by numerical errors.
+.. math:: out=\sqrt x=x^{1/2}
 
-$out = \sqrt{x}$
+**Note**:
+  input value must be greater than or equal to zero.
 
 )DOC";
 
@@ -234,7 +237,7 @@ $out = |x|$
 )DOC";
 
 UNUSED constexpr char CeilDoc[] = R"DOC(
-Ceil Activation Operator.
+Ceil Operator. Computes ceil of x element-wise.
 
 $out = \left \lceil x \right \rceil$
 
@@ -248,7 +251,7 @@ $out = \left \lfloor x \right \rfloor$
 )DOC";
 
 UNUSED constexpr char CosDoc[] = R"DOC(
-Cosine Activation Operator.
+Cosine Operator. Computes cosine of x element-wise.
 
 $out = cos(x)$
 
@@ -262,9 +265,17 @@ $out = sin(x)$
 )DOC";
 
 UNUSED constexpr char RoundDoc[] = R"DOC(
-Round Activation Operator.
+The OP rounds the values in the input to the nearest integer value.
 
-$out = [x]$
+.. code-block:: python
+
+  input:
+    x.shape = [4]
+    x.data = [1.2, -0.9, 3.4, 0.9]
+
+  output:
+    out.shape = [4]
+    out.data = [1., -1., 3., 1.]
 
 )DOC";
 
@@ -285,7 +296,7 @@ Natural logarithm of x.
 )DOC";
 
 UNUSED constexpr char SquareDoc[] = R"DOC(
-Square Activation Operator.
+The OP square each elements of the inputs.
 
 $out = x^2$
 
@@ -350,9 +361,14 @@ $$out = \tanh^{-1}(x)$$
 class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of LeakyRelu operator");
-    AddOutput("Out", "Output of LeakyRelu operator");
-    AddAttr<float>("alpha", "The small negative slope").SetDefault(0.02f);
+    AddInput("X",
+             "A LoDTensor or Tensor representing preactivation values. Must be "
+             "one of the following types: float32, float64.");
+    AddOutput(
+        "Out",
+        "A LoDTensor or Tensor with the same type and size as that of x.");
+    AddAttr<float>("alpha", "Slope of the activation function at x < 0.")
+        .SetDefault(0.02f);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
@@ -363,7 +379,7 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 LeakyRelu Activation Operator.
 
-$out = \max(x, \alpha * x)$
+$$out = \max(x, \alpha * x)$$
 
 )DOC");
   }
@@ -414,8 +430,12 @@ class HardShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
 class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of BRelu operator");
-    AddOutput("Out", "Output of BRelu operator");
+    AddInput("X",
+             "The input is a multi-dimensional Tensor. The data type is "
+             "float32, float64.");
+    AddOutput("Out",
+              "The output is a multi-dimensional Tensor which has same "
+              "dimension and data type as the ``X``.");
     AddAttr<float>("t_min", "The min marginal value of BRelu")
         .SetDefault(static_cast<float>(0));
     AddAttr<float>("t_max", "The max marginal value of BRelu")
@@ -423,7 +443,7 @@ class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 BRelu Activation Operator.
 
-$out = \max(\min(x, t_{min}), t_{max})$
+$out = \min(\max(x, t_{min}), t_{max})$
 
 )DOC");
   }
@@ -448,8 +468,12 @@ $out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$
 class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of ELU operator");
-    AddOutput("Out", "Output of ELU operator");
+    AddInput("X",
+             "The input is a multi-dimensional Tensor. The data type is "
+             "float32 or float64.");
+    AddOutput("Out",
+              "The output is a multi-dimensional Tensor which has same "
+              "dimension and data type as the ``x``.");
     AddAttr<float>("alpha", "The alpha value of ELU").SetDefault(1.0f);
     AddComment(R"DOC(
 ELU Activation Operator.
@@ -466,14 +490,19 @@ $out = \max(0, x) + \min(0, \alpha * (e^x - 1))$
 class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of Relu6 operator");
-    AddOutput("Out", "Output of Relu6 operator");
-    AddAttr<float>("threshold", "The threshold value of Relu6")
+    AddInput("X",
+             "Input of relu6 operator, an N-D Tensor, "
+             "with data type float32, float64.");
+    AddOutput(
+        "Out",
+        "Output of relu6 operator, a Tensor with the same shape as input.");
+    AddAttr<float>("threshold",
+                   "The threshold value of Relu6. Default is 6.0. ")
         .SetDefault(6.0f);
     AddComment(R"DOC(
 Relu6 Activation Operator.
 
-$out = \min(\max(0, x), 6)$
+$out = \min(\max(0, x), threshold)$
 
 )DOC");
   }
@@ -502,10 +531,12 @@ $out = x^{factor}$
 class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of STanh operator");
-    AddOutput("Out", "Output of STanh operator");
-    AddAttr<float>("scale_a", "The scale parameter of a for the input")
-        .SetDefault(2.0f / 3.0f);
+    AddInput("X",
+             "Input of STanh operator."
+             " A LoDTensor or Tensor with type float32, float64.");
+    AddOutput("Out", "Output of STanh operator. A Tensor with type float32.");
+    AddAttr<float>("scale_a", "The scale parameter of a for the input. ")
+        .SetDefault(0.67f);
     AddAttr<float>("scale_b", "The scale parameter of b for the input")
         .SetDefault(1.7159f);
     AddComment(R"DOC(
@@ -541,23 +572,23 @@ class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
 class HardSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Input of HardSigmoid operator");
-    AddOutput("Out", "Output of HardSigmoid operator");
-    AddAttr<float>("slope", "Slope for linear approximation of sigmoid")
+    AddInput("X", "An N-D Tensor with data type float32, float64. ");
+    AddOutput("Out", "A Tensor with the same shape as input. ");
+    AddAttr<float>("slope",
+                   "The slope of the linear approximation of sigmoid. Its "
+                   "value MUST BE positive. Default is 0.2. ")
         .SetDefault(0.2f);
-    AddAttr<float>("offset", "Offset for linear approximation of sigmoid")
+    AddAttr<float>(
+        "offset",
+        "The offset of the linear approximation of sigmoid. Default is 0.5. ")
         .SetDefault(0.5f);
     AddComment(R"DOC(
 HardSigmoid Activation Operator.
 
-Segment-wise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
+A 3-part piecewise linear approximation of sigmoid(https://arxiv.org/abs/1603.00391),
 which is much faster than sigmoid.
 
-$out = \max(0, \min(1, slope * x + shift))$
-
-The slope should be positive. The offset can be either positive or negative.
-The default slope and shift are set according to the above reference.
-It is recommended to use the defaults for this activation.
+$out = \max(0, \min(1, slope * x + offset))$
 
 )DOC");
   }

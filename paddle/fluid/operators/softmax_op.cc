@@ -47,10 +47,8 @@ class SoftmaxOp : public framework::OperatorWithKernel {
                    "R is the rank of Input(X).");
 
     auto use_cudnn = ctx->Attrs().Get<bool>("use_cudnn");
-    auto use_mkldnn = ctx->Attrs().Get<bool>("use_mkldnn");
     if (axis != rank_x - 1 && axis != -1) {
       PADDLE_ENFORCE(!use_cudnn, "CUDNN kernel only support axis as -1.");
-      PADDLE_ENFORCE(!use_mkldnn, "MKLDNN kernel only support axis as -1.");
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));

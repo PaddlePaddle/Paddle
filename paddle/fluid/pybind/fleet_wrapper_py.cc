@@ -65,7 +65,9 @@ void BindFleetWrapper(py::module* m) {
       .def("client_flush", &framework::FleetWrapper::ClientFlush)
       .def("load_from_paddle_model",
            &framework::FleetWrapper::LoadFromPaddleModel)
-      .def("load_model_one_table", &framework::FleetWrapper::LoadModelOneTable);
+      .def("load_model_one_table", &framework::FleetWrapper::LoadModelOneTable)
+      .def("set_client2client_config",
+           &framework::FleetWrapper::SetClient2ClientConfig);
 }  // end FleetWrapper
 }  // end namespace pybind
 }  // end namespace paddle

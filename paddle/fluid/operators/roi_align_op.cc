@@ -95,7 +95,7 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(Tensor), "
-             "The input of ROIAlignOp. "
+             "The input of ROIAlignOp. The data type is float32 or float64."
              "The format of input tensor is NCHW. Where N is batch size, "
              "C is the number of input channels, "
              "H is the height of the feature, and "
@@ -110,7 +110,8 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(Tensor), "
               "The output of ROIAlignOp is a 4-D tensor with shape "
-              "(num_rois, channels, pooled_h, pooled_w).");
+              "(num_rois, channels, pooled_h, pooled_w). The data type is "
+              "float32 or float64.");
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
                    "Multiplicative spatial scale factor "

@@ -105,7 +105,7 @@ def gen_complete_file_flag(flag_file):
 
 class TestListenAndServOp(unittest.TestCase):
     def setUp(self):
-        self.ps_timeout = 5
+        self.ps_timeout = 200
         self.ip = "127.0.0.1"
         self.port = "0"
         self.trainers = 1

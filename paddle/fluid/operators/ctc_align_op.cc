@@ -22,15 +22,18 @@ class CTCAlignOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input of CTCAlignOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                   "Output of CTCAlignOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
+                      "Input of CTCAlignOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
+                      "Output of CTCAlignOp should not be null.");
 
     auto input_dims = ctx->GetInputDim("Input");
 
     // TODO(wanghaoshuang): it is tricky to set the wrong dimension here.
     ctx->SetOutputDim("Output", input_dims);
+    if (ctx->HasInput("InputLength")) {
+      ctx->SetOutputDim("OutputLength", {input_dims[0], 1});
+    }
   }
 
  protected:
@@ -47,7 +50,17 @@ class CTCAlignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Input",
              "2-D Tensor or LodTensor with  shape "
              "[Lp, 1], where Lp is the sum of all input sequences' length.");
+    AddInput("InputLength",
+             "2-D Tensor with shape [batch_size, 1], "
+             " When Input is padding mode, InputLength is length of every "
+             "sequence in Input.")
+        .AsDispensable();
     AddOutput("Output", "(Tensor, default: Tensor<int>), The align result.");
+    AddOutput("OutputLength",
+              "2-D Tensor with shape [batch_size, 1], "
+              "When Input is padding mode, OutputLength is length of every "
+              "sequence in Output.")
+        .AsDispensable();
     AddAttr<int>("blank",
                  "(int, default: 0), the blank label setted in Connectionist "
                  "Temporal Classification (CTC) op.")
@@ -83,7 +96,10 @@ Then:
 or Given:
     Input.data = [[0, 1, 2, 2, 0, 4], 
                   [0, 4, 5, 0, 6, 0], 
-                  [0, 7, 7, 7, 0, 0]]   
+                  [0, 7, 7, 7, 0, 0]]
+    InputLength.data  = [[6],
+                         [5],
+                         [4]],   
     Input.dims = {3, 6},
     Input.Lod = []
 And:
@@ -94,7 +110,10 @@ And:
 Then:
     Output.data = [[1, 2, 4, 0, 0, 0],
                    [4, 5, 6, 0, 0, 0],
-                   [7, 0, 0, 0, 0, 0]]
+                   [7, 0, 0, 0, 0, 0]],
+    OutputLength.data = [[3],
+                         [3],
+                         [1]],
     Output.dims = {3, 6},
     Output.Lod = []
 )DOC");

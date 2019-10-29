@@ -36,12 +36,6 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(image_dims.size() == 4, "The layout of image is NCHW.");
     PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
 
-    PADDLE_ENFORCE_LT(input_dims[2], image_dims[2],
-                      "The height of input must smaller than image.");
-
-    PADDLE_ENFORCE_LT(input_dims[3], image_dims[3],
-                      "The width of input must smaller than image.");
-
     auto min_sizes = ctx->Attrs().Get<std::vector<float>>("min_sizes");
     auto max_sizes = ctx->Attrs().Get<std::vector<float>>("max_sizes");
     auto variances = ctx->Attrs().Get<std::vector<float>>("variances");

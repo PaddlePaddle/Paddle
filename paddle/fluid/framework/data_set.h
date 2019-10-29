@@ -99,7 +99,7 @@ class Dataset {
   // local shuffle data
   virtual void LocalShuffle() = 0;
   // global shuffle data
-  virtual void GlobalShuffle() = 0;
+  virtual void GlobalShuffle(int thread_num = -1) = 0;
   // for slots shuffle
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) = 0;
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
@@ -120,6 +120,11 @@ class Dataset {
   virtual void DestroyPreLoadReaders() = 0;
   // set preload thread num
   virtual void SetPreLoadThreadNum(int thread_num) = 0;
+  // seperate train thread and dataset thread
+  virtual void DynamicAdjustChannelNum(int channel_num) = 0;
+  virtual void DynamicAdjustReadersNum(int thread_num) = 0;
+  // set fleet send sleep seconds
+  virtual void SetFleetSendSleepSeconds(int seconds) = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -169,7 +174,7 @@ class DatasetImpl : public Dataset {
   virtual void WaitPreLoadDone();
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
-  virtual void GlobalShuffle();
+  virtual void GlobalShuffle(int thread_num = -1);
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) {}
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
                              std::vector<Record>* result) {}
@@ -181,6 +186,9 @@ class DatasetImpl : public Dataset {
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
   virtual void SetPreLoadThreadNum(int thread_num);
+  virtual void DynamicAdjustChannelNum(int channel_num);
+  virtual void DynamicAdjustReadersNum(int thread_num);
+  virtual void SetFleetSendSleepSeconds(int seconds);
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -217,6 +225,8 @@ class DatasetImpl : public Dataset {
   std::vector<std::string> merge_slots_list_;
   bool slots_shuffle_fea_eval_ = false;
   int preload_thread_num_;
+  std::mutex global_index_mutex_;
+  int64_t global_index_ = 0;
 };
 
 // use std::vector<MultiSlotType> or Record as data type

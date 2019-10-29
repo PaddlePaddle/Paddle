@@ -23,6 +23,8 @@ limitations under the License. */
 #endif
 #include <stdlib.h>   // for malloc and free
 #include <algorithm>  // for std::max
+#include <string>
+#include <utility>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
@@ -119,19 +121,25 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     return p;
   } else {
     PADDLE_ENFORCE_NE(cudaGetLastError(), cudaSuccess);
+
+    size_t avail, total;
+    platform::GpuMemoryUsage(&avail, &total);
+
     PADDLE_THROW_BAD_ALLOC(
-        "Cannot malloc " + std::to_string(size / 1024.0 / 1024.0) +
-        " MB GPU memory. Please shrink "
-        "FLAGS_fraction_of_gpu_memory_to_use or "
-        "FLAGS_initial_gpu_memory_in_mb or "
-        "FLAGS_reallocate_gpu_memory_in_mb "
-        "environment variable to a lower value. " +
-        "Current FLAGS_fraction_of_gpu_memory_to_use value is " +
-        std::to_string(FLAGS_fraction_of_gpu_memory_to_use) +
-        ". Current FLAGS_initial_gpu_memory_in_mb value is " +
-        std::to_string(FLAGS_initial_gpu_memory_in_mb) +
-        ". Current FLAGS_reallocate_gpu_memory_in_mb value is " +
-        std::to_string(FLAGS_reallocate_gpu_memory_in_mb));
+        "\n\nOut of memory error on GPU %d. "
+        "Cannot allocate %s memory on GPU %d, "
+        "available memory is only %s.\n\n"
+        "Please check whether there is any other process using GPU %d.\n"
+        "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
+        "2. If no, please try one of the following suggestions:\n"
+        "   1) Decrease the batch size of your model.\n"
+        "   2) FLAGS_fraction_of_gpu_memory_to_use is %.2lf now, "
+        "please set it to a higher value but less than 1.0.\n"
+        "      The command is "
+        "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.\n\n",
+        gpu_id_, string::HumanReadableSize(size), gpu_id_,
+        string::HumanReadableSize(avail), gpu_id_,
+        FLAGS_fraction_of_gpu_memory_to_use);
   }
 }
 

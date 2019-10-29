@@ -101,8 +101,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(memory_pool_init_size_mb_);
 
   CP_MEMBER(enable_memory_optim_);
-  CP_MEMBER(static_memory_optim_);
-  CP_MEMBER(static_memory_optim_force_update_);
   // TensorRT related.
   CP_MEMBER(use_tensorrt_);
   CP_MEMBER(tensorrt_workspace_size_);
@@ -132,6 +130,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
 
   // profile related.
   CP_MEMBER(with_profile_);
+
+  // glog related.
+  CP_MEMBER(with_glog_info_);
 
   // Ir related.
   CP_MEMBER(enable_ir_optim_);
@@ -371,8 +372,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << tensorrt_min_subgraph_size_;
 
   ss << enable_memory_optim_;
-  ss << static_memory_optim_;
-  ss << static_memory_optim_force_update_;
 
   ss << use_ngraph_;
 
@@ -385,6 +384,8 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << model_from_memory_;
 
   ss << with_profile_;
+
+  ss << with_glog_info_;
 
   ss << enable_ir_optim_;
   ss << use_feed_fetch_ops_;
@@ -420,12 +421,8 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
 #endif
 }
 
-void AnalysisConfig::EnableMemoryOptim(bool static_optim,
-                                       bool force_update_static_cache) {
+void AnalysisConfig::EnableMemoryOptim() {
   enable_memory_optim_ = true;
-  static_memory_optim_ = static_optim;
-  static_memory_optim_force_update_ = force_update_static_cache;
-
   Update();
 }
 
@@ -463,6 +460,11 @@ void AnalysisConfig::SwitchIrDebug(int x) {
 
 void AnalysisConfig::EnableProfile() {
   with_profile_ = true;
+  Update();
+}
+
+void AnalysisConfig::DisableGlogInfo() {
+  with_glog_info_ = false;
   Update();
 }
 
