@@ -102,45 +102,10 @@ class RoleMakerBase(object):
         """
         return self._server_endpoints
 
-
-class MultiProcessRoleMaker(RoleMakerBase):
-    """
-    MultiProcessRoleMaker is a default role maker for multi-process
-    GPU training. It works with paddle.distributed.lanuch.py by-design
-    """
-
-    def __init__(self):
-        super(MultiProcessRoleMaker, self).__init__()
-        self._role_is_generated = False
-
-    def generate_role(self):
-        import os
-        if not self._role_is_generated:
-            self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-            self._num_trainers = 1
-            self._training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
-            assert (self._training_role == "TRAINER")
-            self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-            self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
-            if self._worker_endpoints:
-                self._worker_endpoints = self._worker_endpoints.split(",")
-                self._num_trainers = len(self._worker_endpoints)
-            self._role_is_generated = True
-
-    def is_worker(self):
-        return True
-
-    def is_server(self):
-        return False
-
-    def is_first_worker(self):
-        return self._current_id == 0
-
-    def worker_index(self):
-        return self._current_id
-
-    def worker_num(self):
-        return self._worker_num
+    def to_string(self):
+        return "role: {}, current_id: {}, worker_endpoints: {}, server_endpoints: {}".format(
+            self._role, self._current_id, self._worker_endpoints,
+            self._server_endpoints)
 
 
 class MPIRoleMaker(RoleMakerBase):
@@ -361,35 +326,73 @@ class MPISymetricRoleMaker(MPIRoleMaker):
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
-    def __init__(self):
+    def __init__(self, is_collective=False):
         super(PaddleCloudRoleMaker, self).__init__()
         self._role_is_generated = False
+        self._is_collective = is_collective
 
     def generate_role(self):
         if not self._role_is_generated:
-            self.port = os.getenv("PADDLE_PORT", "6174")
-            self.pserver_ips = os.getenv("PADDLE_PSERVERS", "")
-            eplist = []
-            for ip in self.pserver_ips.split(","):
-                eplist.append(':'.join([ip, self.port]))
-            self.endpoints = ",".join(eplist)
-            self._trainers = int(os.getenv("PADDLE_TRAINERS_NUM", "1"))
-            self.current_endpoint = os.getenv("POD_IP",
-                                              "localhost") + ":" + self.port
-            self.role = os.getenv("TRAINING_ROLE", "TRAINER")
-            self.trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-            self.eplist = eplist
-            print("PaddleCloudRoleMaker() endpoints: %s" % self.endpoints)
-            self.endpoints = self.endpoints.split(",")
-            self._server_endpoints = self.endpoints
-            self._worker_endpoints = self.endpoints
-            if self.role.upper() == "PSERVER":
-                self._current_id = self.endpoints.index(self.current_endpoint)
-                self._role = Role.SERVER
+            if not self._is_collective:
+                try:
+                    port = os.environ["PADDLE_PORT"]
+                    pserver_ips = os.environ["PADDLE_PSERVERS"].split(",")
+                    if "," in port:
+                        ports = port.split(",")
+                    else:
+                        ports = [port] * len(pserver_ips)
+                    eplist = []
+                    # note that, we usually assign the same port to different ips
+                    # if we run parameter server training in local mode
+                    # port should be different in environment variables
+                    for i, ip in enumerate(pserver_ips):
+                        eplist.append(':'.join([ip, ports[i]]))
+
+                    trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
+                    training_role = os.environ["TRAINING_ROLE"]
+
+                    if training_role not in ["TRAINER", "PSERVER"]:
+                        raise ValueError(
+                            "TRAINING_ROLE must be PSERVER or TRAINER")
+
+                    if training_role == "TRAINER":
+                        role = Role.WORKER
+                        current_id = int(os.environ["PADDLE_TRAINER_ID"])
+                    elif training_role == "PSERVER":
+                        role = Role.SERVER
+                        cur_ip = os.environ["POD_IP"]
+                        cur_idx = pserver_ips.index(cur_ip)
+                        current_id = eplist.index(":".join(
+                            [cur_ip, ports[cur_idx]]))
+                    else:
+                        raise ValueError(
+                            "TRAINING_ROLE must be PSERVER or TRAINER")
+                except ValueError as ve:
+                    raise ValueError(
+                        "something wrong with PaddleCloud, please check environment"
+                    )
+
+                self._trainers_num = trainers_num
+                self._server_endpoints = eplist
+                self._role = role
+                self._current_id = current_id
             else:
-                self._current_id = self.trainer_id
-                self._role = Role.WORKER
+                self._current_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+                self._training_role = os.getenv("PADDLE_TRAINING_ROLE",
+                                                "TRAINER")
+                assert (self._training_role == "TRAINER")
+                self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+                self._current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
+                assert self._worker_endpoints is not None, "can't find PADDLE_TRAINER_ENDPOINTS"
+                self._worker_endpoints = self._worker_endpoints.split(",")
+                self._trainers_num = len(self._worker_endpoints)
+
             self._role_is_generated = True
+
+    def get_pserver_endpoints(self):
+        if not self._role_is_generated:
+            self.generate_role()
+        return self._server_endpoints
 
     def is_worker(self):
         if not self._role_is_generated:
@@ -419,7 +422,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
     def worker_num(self):
         if not self._role_is_generated:
             self.generate_role()
-        return self._trainers
+        return self._trainers_num
 
 
 class UserDefinedRoleMaker(RoleMakerBase):
@@ -435,29 +438,45 @@ class UserDefinedRoleMaker(RoleMakerBase):
         """
         super(UserDefinedRoleMaker, self).__init__()
 
-        if not isinstance(current_id, int):
-            raise TypeError("current_id must be as int")
+        if not isinstance(server_endpoints, list):
+            raise TypeError("server_endpoints must be as string list")
+        elif len(server_endpoints) <= 0:
+            raise ValueError(
+                "the length of server_endpoints list must be greater than 0")
+        elif len(server_endpoints) != len(set(server_endpoints)):
+            raise ValueError("server_endpoints can't have duplicate elements")
         else:
-            if current_id < 0:
-                raise ValueError("current_id must be gather or equal 0")
-            self._current_id = current_id
+            for server_endpoint in server_endpoints:
+                if not isinstance(server_endpoint, str):
+                    raise TypeError(
+                        "every element in server_endpoints list must be as string"
+                    )
+            self._server_endpoints = server_endpoints
 
         if role != Role.WORKER and role != Role.SERVER:
             raise TypeError("role must be as Role")
         else:
             self._role = role
 
+        if not isinstance(current_id, int):
+            raise TypeError("current_id must be as int")
+        else:
+            if current_id < 0:
+                raise ValueError(
+                    "current_id must be greater than or equal to 0")
+            elif self._role == Role.SERVER and current_id >= len(
+                    server_endpoints):
+                raise ValueError(
+                    "if role is Role.SERVER, current_id must be less than or equal to len(server_endpoints) - 1"
+                )
+            self._current_id = current_id
+
         if not isinstance(worker_num, int):
             raise TypeError("worker_num must be as int")
         else:
-            if worker_num < 0:
-                raise ValueError("worker_num must be gather or equal 0")
+            if worker_num <= 0:
+                raise ValueError("worker_num must be greater than 0")
             self._worker_num = worker_num
-
-        if not isinstance(server_endpoints, list):
-            raise TypeError("server_endpoints must be as string list")
-        else:
-            self._server_endpoints = server_endpoints
 
     def generate_role(self):
         self._role_is_generated = True
@@ -489,17 +508,33 @@ class UserDefinedCollectiveRoleMaker(RoleMakerBase):
         """
         super(UserDefinedCollectiveRoleMaker, self).__init__()
 
+        if not isinstance(worker_endpoints, list):
+            raise TypeError("worker_endpoints must be as string list")
+        elif len(worker_endpoints) <= 0:
+            raise ValueError(
+                "the length of worker_endpoints list must be greater than 0")
+        elif len(worker_endpoints) != len(set(worker_endpoints)):
+            raise ValueError("worker_endpoints can't have duplicate elements")
+        else:
+            for worker_endpoint in worker_endpoints:
+                if not isinstance(worker_endpoint, str):
+                    raise TypeError(
+                        "every element in worker_endpoints list must be as string"
+                    )
+            self._worker_endpoints = worker_endpoints
+
         if not isinstance(current_id, int):
             raise TypeError("current_id must be as int")
         else:
             if current_id < 0:
-                raise ValueError("current_id must be greater or equal 0")
+                raise ValueError(
+                    "current_id must be greater than or equal to 0")
+            elif current_id >= len(worker_endpoints):
+                raise ValueError(
+                    "current_id must be less than or equal to len(worker_endpoints) - 1"
+                )
             self._current_id = current_id
 
-        if not isinstance(worker_endpoints, list):
-            raise TypeError("worker_endpoints must be as string list")
-        else:
-            self._worker_endpoints = worker_endpoints
         self._worker_num = len(self._worker_endpoints)
 
     def generate_role(self):

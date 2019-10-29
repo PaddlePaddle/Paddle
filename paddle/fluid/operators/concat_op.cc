@@ -31,7 +31,7 @@ class ConcatOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
-                      "Inputs(X) of ConcatOp should be empty.");
+                      "Inputs(X) of ConcatOp should not be empty.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ConcatOp should not be null.");
 
@@ -41,8 +41,9 @@ class ConcatOp : public framework::OperatorWithKernel {
                     static_cast<int64_t>(ins[0].size()));
 
     const size_t n = ins.size();
-
-    PADDLE_ENFORCE_GT(n, 0, "Input tensors count should > 0.");
+    PADDLE_ENFORCE_GT(n, 0,
+                      "ShapeError: Input tensors count should > 0. But "
+                      "recevied inputs' length is 0.");
     if (n == 1) {
       VLOG(3) << "Warning: concat op have only one input, may waste memory";
     }
@@ -66,9 +67,14 @@ class ConcatOp : public framework::OperatorWithKernel {
               ctx->IsRuntime() || (out_dims[j] > 0 && ins[i][j] > 0);
           if (check_shape) {
             // check all shape in run time
-            PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
-                              "Input tensors should have the same "
-                              "elements except the specify axis.");
+            PADDLE_ENFORCE_EQ(
+                out_dims[j], ins[i][j],
+                "ShapeError: Input tensors should have same "
+                "dimensions(or specific dimension = -1) except the axis. "
+                "But recevied axis = %s, input[0]'s shape = "
+                "[%s], input[%s]'s shape = [%s], the \"%s\" "
+                "dimension of input[%s] is unexpected",
+                axis, ins[0], i, ins[j], j, i);
           }
         }
       }
@@ -96,7 +102,6 @@ class ConcatOp : public framework::OperatorWithKernel {
     if (flag == 0) {
       PADDLE_THROW("All Inputs of Concat OP are Empty!");
     }
-
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
       return framework::OpKernelType(input_data_type, ctx.GetPlace(),
@@ -169,9 +174,9 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 

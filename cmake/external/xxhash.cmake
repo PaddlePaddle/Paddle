@@ -16,26 +16,27 @@ ENDIF()
 
 if(WIN32)
   ExternalProject_Add(
-          extern_xxhash
-          ${EXTERNAL_PROJECT_LOG_ARGS}
-          GIT_REPOSITORY  "https://github.com/Cyan4973/xxHash"
-          GIT_TAG         "v0.6.5"
-          PREFIX          ${XXHASH_SOURCE_DIR}
-          DOWNLOAD_NAME   "xxhash"
-          UPDATE_COMMAND  ""
-          BUILD_IN_SOURCE 1
-          PATCH_COMMAND
-          CONFIGURE_COMMAND
-          ${CMAKE_COMMAND} ${XXHASH_SOURCE_DIR}/src/extern_xxhash/cmake_unofficial
-          -DCMAKE_INSTALL_PREFIX:PATH=${XXHASH_INSTALL_DIR}
-          -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
-          -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
-          -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-          -DBUILD_XXHSUM=OFF
-          -DCMAKE_GENERATOR_PLATFORM=x64
-          -DBUILD_SHARED_LIBS=OFF
-          ${OPTIONAL_CACHE_ARGS}
-          TEST_COMMAND      ""
+      extern_xxhash
+      ${EXTERNAL_PROJECT_LOG_ARGS}
+      GIT_REPOSITORY  "https://github.com/Cyan4973/xxHash"
+      GIT_TAG         "v0.6.5"
+      PREFIX          ${XXHASH_SOURCE_DIR}
+      DOWNLOAD_NAME   "xxhash"
+      UPDATE_COMMAND  ""
+      BUILD_IN_SOURCE 1
+      PATCH_COMMAND
+      CONFIGURE_COMMAND
+      ${CMAKE_COMMAND} ${XXHASH_SOURCE_DIR}/src/extern_xxhash/cmake_unofficial
+                      -DCMAKE_INSTALL_PREFIX:PATH=${XXHASH_INSTALL_DIR}
+                      -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+                      -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
+                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                      -DBUILD_XXHSUM=OFF
+                      -DCMAKE_GENERATOR=${CMAKE_GENERATOR}
+                      -DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}
+                      -DBUILD_SHARED_LIBS=OFF
+                      ${OPTIONAL_CACHE_ARGS}
+      TEST_COMMAND      ""
   )
 else()
   ExternalProject_Add(
@@ -47,7 +48,7 @@ else()
       DOWNLOAD_NAME   "xxhash"
       UPDATE_COMMAND  ""
       CONFIGURE_COMMAND ""
-      BUILD_IN_SOURCE 1
+      BUILD_IN_SOURCE  1
       PATCH_COMMAND
       BUILD_COMMAND     ${BUILD_CMD}
       INSTALL_COMMAND   export PREFIX=${XXHASH_INSTALL_DIR}/ && make install

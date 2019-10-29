@@ -65,10 +65,9 @@ class TestSoftmaxWithXe(unittest.TestCase):
                 )).with_data_parallel(
                     build_strategy=build_strategy, places=place)
 
-                if inplace:
-                    fetch_list = [z_d.name, x_d.name]
-                else:
-                    fetch_list = [z_d.name, s_d.name]
+                fetch_list = [z_d.name, s_d.name]
+
+                print('Inplace is {}'.format("ON" if inplace else "OFF"))
 
                 z, s = exe.run(prog,
                                feed={x_d.name: x,

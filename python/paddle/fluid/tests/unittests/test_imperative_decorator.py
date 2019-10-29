@@ -15,6 +15,7 @@
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import unittest
+
 from test_imperative_base import new_program_scope
 
 
@@ -23,14 +24,14 @@ class TestTracerMode(unittest.TestCase):
         self.init_mode = True
 
     def get_tracer_mode(self):
-        assert fluid.dygraph.enabled(), "Dygraph mode must be enabled"
+        assert fluid.in_dygraph_mode(), "Dygraph mode must be enabled"
 
     @fluid.dygraph.no_grad
     def no_grad_func(self, a):
         self.assertEqual(self.tracer._train_mode, False)
         return a
 
-    @fluid.dygraph.base._not_support
+    @framework.dygraph_not_support
     def not_support_func(self):
         return True
 

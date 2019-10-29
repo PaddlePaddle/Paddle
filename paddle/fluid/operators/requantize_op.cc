@@ -25,8 +25,9 @@ framework::OpKernelType ReQuantOp::GetExpectedKernelType(
   framework::LibraryType library_ = framework::LibraryType::kMKLDNN;
   framework::DataLayout layout_ = framework::DataLayout::kMKLDNN;
 
-  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                 ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+      layout_, library_);
 }
 
 void ReQuantOpMaker::Make() {
@@ -42,5 +43,4 @@ void ReQuantOpMaker::Make() {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(requantize, ops::ReQuantOp, ops::ReQuantOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(requantize, ops::ReQuantOp, ops::ReQuantOpMaker);

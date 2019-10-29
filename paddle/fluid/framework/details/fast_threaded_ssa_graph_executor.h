@@ -33,6 +33,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
  public:
   FastThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
                                const std::vector<Scope *> &local_scopes,
+                               const std::vector<Scope *> &local_exec_scopes,
                                const std::vector<platform::Place> &places,
                                ir::Graph *graph);
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
@@ -43,6 +44,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   // be destroyed first.
   ExecutionStrategy strategy_;
   std::vector<Scope *> local_scopes_;
+  std::vector<Scope *> local_exec_scopes_;
   std::vector<platform::Place> places_;
   ir::Graph *graph_;
 

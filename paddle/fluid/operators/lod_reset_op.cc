@@ -36,15 +36,19 @@ class LoDResetOp : public framework::OperatorWithKernel {
     } else if (ctx->IsRuntime()) {
       ctx->ShareLoD("Y", "Out");
     }
-
+    auto append = ctx->Attrs().Get<bool>("append");
+    if (append) {
+      ctx->ShareLoD("X", /*->*/ "Out");
+    }
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -53,10 +57,14 @@ class LoDResetOpVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto x_var_name = ctx->Input("X").front();
     auto out_var_name = ctx->Output("Out").front();
+    bool append = boost::get<bool>(ctx->GetAttr("append"));
     if (ctx->HasInput("Y")) {
       auto y_var_name = ctx->Input("Y").front();
       auto y_lod_level = std::max(ctx->GetLoDLevel(y_var_name), 1);
       ctx->SetLoDLevel(out_var_name, y_lod_level);
+    } else if (append) {
+      auto x_lod_level = std::max(ctx->GetLoDLevel(x_var_name), 1);
+      ctx->SetLoDLevel(out_var_name, x_lod_level);
     } else {
       ctx->SetLoDLevel(out_var_name, 1);
     }
@@ -84,6 +92,7 @@ class LoDResetOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("target_lod",
                               "The target level 0 LoD from Attr().")
         .SetDefault(std::vector<int>{});
+    AddAttr<bool>("append", "Append data to lod vector.").SetDefault(false);
     AddComment(R"DOC(LoDReset operator
 
 Set LoD of `X` to a new one specified by `Y` or attribute `target_lod`. When `Y`
@@ -164,9 +173,9 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 

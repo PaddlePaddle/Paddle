@@ -75,7 +75,10 @@ class AucKernel : public framework::OpKernel<T> {
     const auto *label_data = label->data<int64_t>();
 
     for (size_t i = 0; i < batch_size; i++) {
-      auto predict_data = inference_data[i * inference_width + 1];
+      // if predict_data[i] has dim of 2, then predict_data[i][1] is pos prob
+      // if predict_data[i] has dim of 1, then predict_data[i][0] is pos prob
+      auto predict_data =
+          inference_data[i * inference_width + (inference_width - 1)];
       PADDLE_ENFORCE_LE(predict_data, 1,
                         "The predict data must less or equal 1.");
       PADDLE_ENFORCE_GE(predict_data, 0,

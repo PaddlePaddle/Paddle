@@ -17,7 +17,9 @@
 namespace paddle {
 namespace platform {
 
-static constexpr int kDefaultConvWorkspaceSizeLimitMB = 4096;
+static constexpr int kDefaultConvWorkspaceSizeLimitMB = 512;
+
+int GetDefaultConvWorkspaceSizeLimitMB();
 
 }  // namespace platform
 }  // namespace paddle

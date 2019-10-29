@@ -4,6 +4,8 @@ cc_library(memory_optim_pass SRCS memory_optimize_pass.cc DEPS analysis_pass zer
 cc_library(ir_params_sync_among_devices_pass SRCS ir_params_sync_among_devices_pass.cc DEPS analysis_pass argument ir_pass_manager)
 cc_library(ir_graph_to_program_pass SRCS ir_graph_to_program_pass.cc DEPS analysis_pass graph_to_program_pass)
 cc_library(adjust_cudnn_workspace_size_pass SRCS adjust_cudnn_workspace_size_pass.cc DEPS analysis_pass graph_to_program_pass)
+cc_library(inference_op_replace_pass SRCS inference_op_replace_pass.cc DEPS analysis_pass graph_to_program_pass)
+cc_library(ir_graph_clean_pass SRCS ir_graph_clean_pass.cc DEPS analysis_pass)
 
 cc_library(analysis_passes SRCS passes.cc DEPS
   ir_graph_build_pass
@@ -11,7 +13,9 @@ cc_library(analysis_passes SRCS passes.cc DEPS
   ir_params_sync_among_devices_pass
   adjust_cudnn_workspace_size_pass
   memory_optim_pass
+  inference_op_replace_pass
   ir_graph_to_program_pass
+  ir_graph_clean_pass
 )
 
 set(analysis_deps ${analysis_deps}

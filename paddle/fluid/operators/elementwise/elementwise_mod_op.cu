@@ -19,4 +19,6 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mod, ops::ElementwiseModKernel<plat::CUDADeviceContext, int>,
-    ops::ElementwiseModKernel<plat::CUDADeviceContext, int64_t>);
+    ops::ElementwiseModKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseModFPKernel<plat::CUDADeviceContext, float>,
+    ops::ElementwiseModFPKernel<plat::CUDADeviceContext, double>);

@@ -25,7 +25,7 @@ namespace paddle {
 namespace contrib {
 // Configurations for Anakin engine.
 struct AnakinConfig : public PaddlePredictor::Config {
-  enum TargetType { NVGPU = 0, X86, MLU };
+  enum TargetType { NVGPU = 0, X86, MLU, BM };
   int device_id{0};
   std::string model_file;
   std::map<std::string, std::vector<int>> init_inputs_shape;
@@ -34,6 +34,8 @@ struct AnakinConfig : public PaddlePredictor::Config {
   int max_stream{4};
   int data_stream_id{0};
   int compute_stream_id{0};
+  char* model_buf_p{nullptr};
+  size_t model_buf_len{0};
   TargetType target_type;
 #ifdef ANAKIN_MLU_PLACE
   int model_parallel{8};

@@ -64,6 +64,9 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("mkldnn_enabled_op_types",
                 new std::unordered_set<std::string>(
                     argument->mkldnn_enabled_op_types()));
+    } else if (pass_name == "cudnn_placement_pass") {
+      pass->Set("cudnn_enabled_op_types",
+                new std::unordered_set<std::string>());
 #ifdef PADDLE_WITH_MKLDNN
     } else if (pass_name == "cpu_quantize_placement_pass") {
       pass->Set("quantize_enabled_op_types",
@@ -84,21 +87,32 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
 
-      bool enable_int8 = argument->tensorrt_precision_mode() ==
-                         AnalysisConfig::Precision::kInt8;
+      auto precision_mode = argument->tensorrt_precision_mode();
+      bool enable_int8 = precision_mode == AnalysisConfig::Precision::kInt8;
 
       pass->Set("predictor_id", new int(argument->predictor_id()));
       bool use_calib_mode = argument->tensorrt_use_calib_mode();
       pass->Set("enable_int8", new bool(enable_int8));
       pass->Set("use_calib_mode", new bool(use_calib_mode));
+      pass->Set("precision_mode",
+                new AnalysisConfig::Precision(precision_mode));
 
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();
-      bool int8_valid = !(model_from_memory && enable_int8);
+      std::string optim_cache_dir = argument->optim_cache_dir();
+      bool int8_valid =
+          !(model_from_memory && optim_cache_dir.empty() && enable_int8);
       PADDLE_ENFORCE(int8_valid,
-                     "TRT INT8 Now don't support model load from memory.");
+                     "When you are in TRT INT8 mode, and load model from "
+                     "memory, you should set optim_cache_dir using "
+                     "config.SetOptimCacheDir()");
+      PADDLE_ENFORCE(!(model_from_memory && use_static_engine),
+                     "When you are using Paddle-TRT, and also using load model "
+                     "from memory, you should set the use_static to false.");
 
-      if ((!model_from_memory && use_static_engine) || enable_int8) {
+      if (!optim_cache_dir.empty()) {
+        pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));
+      } else if (use_static_engine || enable_int8) {
         std::string model_opt_cache_dir =
             argument->Has("model_dir")
                 ? argument->model_dir()
@@ -110,8 +124,6 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
-      pass->Set("engine_opt_info", new std::map<std::string, std::string>(
-                                       argument->engine_opt_info()));
     }
     if (pass_name == "ngraph_subgraph_pass") {
       pass->Set("program",
@@ -123,8 +135,6 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_gpu", new bool(argument->use_gpu()));
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
-      pass->Set("engine_opt_info", new std::map<std::string, std::string>(
-                                       argument->engine_opt_info()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
       pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
                                        argument->anakin_max_input_shape()));

@@ -56,8 +56,9 @@ class PReluOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -79,10 +80,10 @@ x,         \qquad  \text{if} \ x >= 0
 $$
 The input `X` can carry the LoD (Level of Details) information,
 or not. And the output shares the LoD information with input `X`.
-There are modes: 
+There are modes:
   all: all elements share same weight
   channel: elements in a channel share same weight
-  element: each element has a weight 
+  element: each element has a weight
 )DOC");
     AddAttr<std::string>("mode", "The mode for inputs to share weights.")
         .SetDefault("all");
@@ -112,8 +113,9 @@ class PReluGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 

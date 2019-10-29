@@ -24,6 +24,7 @@ namespace framework {
 namespace ir {
 
 Graph* Pass::Apply(Graph* graph) const {
+  CheckPrevPass();
   PADDLE_ENFORCE(graph, "graph passed to Pass::Apply() cannot be empty.");
   for (const std::string& attr : required_pass_attrs_) {
     PADDLE_ENFORCE(attrs_.find(attr) != attrs_.end(),
@@ -33,17 +34,18 @@ Graph* Pass::Apply(Graph* graph) const {
     PADDLE_ENFORCE(graph->Has(attr), "Required graph atrribute %s not set.",
                    attr);
   }
-  auto* native_graph = graph;
   ApplyImpl(graph);
   // TODO(panyx0718): Add more verifications.
   PADDLE_ENFORCE(!HasCircle(*graph),
-                 "Illegal Pass. Generated graph shouldn't has cycle.");
+                 "Illegal Pass %s. Generated graph shouldn't have cycle.",
+                 Type());
   PADDLE_ENFORCE(VarDescIsConsistency(*graph),
                  "The VarDescs of persistable variable are not consistency.");
-  PADDLE_ENFORCE(graph == native_graph,
-                 "Pass::Apply() cannot delete the passed graph and shouldn't "
-                 "return a new graph.(For the need of pybind11)");
   applied_ = true;
+  if (!graph->Has(kPassRecorder)) {
+    graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
+  }
+  graph->Get<PassRecorder>(kPassRecorder).insert(Type());
   return graph;
 }
 

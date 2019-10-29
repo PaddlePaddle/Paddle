@@ -30,18 +30,6 @@ using framework::DataLayout;
 using mkldnn::stream;
 using platform::GetMKLDNNFormat;
 
-std::string CreateKey(const paddle::framework::ExecutionContext& ctx,
-                      const std::vector<int>& src_tz, const float scale_data,
-                      const bool is_negative) {
-  std::string key;
-  key.reserve(platform::MKLDNNHandler::MaxKeyLength);
-  platform::MKLDNNHandler::AppendKeyDims(&key, src_tz);
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(scale_data));
-  platform::MKLDNNHandler::AppendKey(&key, std::to_string(is_negative));
-  platform::MKLDNNHandler::AppendKey(&key, ctx.op().Output("Output"));
-  return key;
-}
-
 template <typename T>
 class QuantOpKernel : public framework::OpKernel<T> {
  public:
@@ -54,13 +42,14 @@ class QuantOpKernel : public framework::OpKernel<T> {
     const auto& engine = dev_ctx.GetEngine();
 
     std::vector<primitive> pipeline;
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    auto src_tz = paddle::framework::vectorize<int>(input->dims());
+    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
 
     const T* input_data = input->data<T>();
 
     bool is_negative = ctx.Attr<bool>("is_negative_input");
-    std::string key = CreateKey(ctx, src_tz, scale_data, is_negative);
+    std::string key = platform::CreateKey(src_tz, scale_data, is_negative,
+                                          ctx.op().Output("Output"));
     const std::string key_prim = key + "@reorder_p";
     const std::string key_src_mem = key + "@src_mem";
     const std::string key_dst_mem = key + "@dst_mem";
@@ -123,8 +112,6 @@ class QuantOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
-
-// TODO(Xiaoli) Support FP32->S8 quantization.
 
 REGISTER_OP_KERNEL(quantize, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::QuantOpKernel<float>);

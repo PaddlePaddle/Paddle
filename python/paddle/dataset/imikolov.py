@@ -26,9 +26,10 @@ import collections
 import tarfile
 import six
 
-__all__ = ['train', 'test', 'build_dict', 'convert']
+__all__ = ['train', 'test', 'build_dict']
 
-URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
+#URL = 'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'
+URL = 'https://dataset.bj.bcebos.com/imikolov%2Fsimple-examples.tgz'
 MD5 = '30177ea32e27c525793142b6bf2c8e2d'
 
 
@@ -152,15 +153,3 @@ def test(word_idx, n, data_type=DataType.NGRAM):
 
 def fetch():
     paddle.dataset.common.download(URL, "imikolov", MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    N = 5
-    word_dict = build_dict()
-    paddle.dataset.common.convert(path,
-                                  train(word_dict, N), 1000, "imikolov_train")
-    paddle.dataset.common.convert(path,
-                                  test(word_dict, N), 1000, "imikolov_test")

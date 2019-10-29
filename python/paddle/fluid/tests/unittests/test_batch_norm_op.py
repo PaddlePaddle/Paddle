@@ -21,6 +21,8 @@ from paddle.fluid.op import Operator
 import paddle.fluid as fluid
 from op_test import OpTest
 from paddle.fluid.framework import grad_var_name
+import paddle.fluid as fluid
+from paddle.fluid import Program, program_guard
 
 
 def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
@@ -338,14 +340,14 @@ class TestBatchNormOpTraining(unittest.TestCase):
         return y, mean_out, variance_out, saved_mean, saved_variance, x_grad, scale_grad, bias_grad
 
     def set_mean_variance(self, scale_shape, x, data_layout):
-        mean = np.zeros(scale_shape).astype(np.float32)
-        variance = np.ones(scale_shape).astype(np.float32)
+        mean, variance = _cal_mean_variance(x, self.epsilon, data_layout)
+        mean_pre = np.zeros(scale_shape).astype(np.float32)
+        variance_pre = np.ones(scale_shape).astype(np.float32)
         # computing global mean/variance for one step
         if self.use_global_stats:
             mom = self.momentum
-            x_mean, x_var = _cal_mean_variance(x, self.epsilon, data_layout)
-            mean = x_mean * (1. - mom) + mom * mean
-            variance = x_var * (1. - mom) + mom * variance
+            mean = mean * (1. - mom) + mom * mean_pre
+            variance = variance * (1. - mom) + mom * variance_pre
         return mean, variance
 
     def test_forward_backward(self):
@@ -442,6 +444,10 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     fetch_list=self.fetch_list)
 
             for id, name in enumerate(self.fetch_list):
+                if name == 'variance':
+                    self.__assert_close(
+                        var_dict[name], out[id], name, atol=1e-3)
+                    continue
                 self.__assert_close(var_dict[name], out[id], name)
             print("op test forward passed: ", str(place), data_layout)
 
@@ -456,6 +462,13 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
     def init_kernel_type(self):
         pass
+
+
+class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
+    def init_test_case(self):
+        self.use_global_stats = False
+        self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
+        self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
 class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
@@ -517,6 +530,20 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
         self.use_global_stats = True
         self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
+
+
+class TestBatchNormOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # the input of batch_norm must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.batch_norm, x1)
+
+            # the input dtype of batch_norm must be float16 or float32 or float64
+            # float16 only can be set on GPU place
+            x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.batch_norm, x2)
 
 
 if __name__ == '__main__':
