@@ -78,7 +78,6 @@ class TestExecutor(unittest.TestCase):
         run_time_with_cache = _train(
             use_program_cache=True, max_iters=max_iters)
         print("run time with program cache: %f" % run_time_with_cache)
-        self.assertLess(run_time_with_cache, run_time_without_cache)
 
 
 class ExecutorPaddingRNNTest(PaddingRNNTestBase):
