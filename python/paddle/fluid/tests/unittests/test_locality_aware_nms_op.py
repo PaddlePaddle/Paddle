@@ -194,7 +194,7 @@ class TestLocalAwareNMSOp(OpTest):
         background = -1
         nms_threshold = 0.3
         nms_top_k = 400
-        keep_top_k = 20
+        keep_top_k = 10
         score_threshold = self.score_threshold
 
         scores = np.random.random((N * M, C)).astype('float32')
@@ -238,6 +238,11 @@ class TestLocalAwareNMSOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestLocalAwareNMSOpNoBoxes(TestLocalAwareNMSOp):
+    def set_argument(self):
+        self.score_threshold = 2.0
 
 
 class TestLocalAwareNMSOp4Points(OpTest):
