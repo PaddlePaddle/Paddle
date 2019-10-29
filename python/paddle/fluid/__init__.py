@@ -86,7 +86,7 @@ from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from . import install_check
 from .dygraph.nn import *
 from .dygraph.layers import *
-from .io import save, load
+from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 
 Tensor = LoDTensor
