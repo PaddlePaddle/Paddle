@@ -121,7 +121,7 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
   RpcCtxMap recv_varname_to_ctx;
   for (auto *op : program.Block(0).AllOps()) {
     VLOG(3) << "node name " << op->Type();
-    if (op->Type() == "send" || op->Type() == "distributed_notify") {
+    if (op->Type() == "send") {
       auto send_var_name = op->Input("X")[0];
       auto send_varnames = boost::get<std::vector<std::string>>(
           op->GetNullableAttr("send_varnames"));
@@ -134,10 +134,8 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
       if (!merge_add) {
         merge_add = FLAGS_communicator_is_sgd_optimizer;
       }
-      bool use_send_handler = true;
-      if (op->Type() == "distributed_notify") {
-        use_send_handler = false;
-      }
+      auto use_send_handler =
+          boost::get<bool>(op->GetNullableAttr("use_send_handler"));
       send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
           send_var_name, send_varnames, epmap, height_section, trainer_id,
           merge_add, use_send_handler);

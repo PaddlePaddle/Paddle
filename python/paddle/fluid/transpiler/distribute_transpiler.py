@@ -723,11 +723,6 @@ class DistributeTranspiler(object):
                 })
             fetch_barrier_input.append(send_barrier_out)
         else:
-            if self.has_distributed_lookup_table:
-                self.grad_name_to_send_dummy_out[
-                    self.table_name] = program.global_block().create_var(
-                        name=framework.generate_control_dev_var_name())
-            input_deps = list(self.grad_name_to_send_dummy_out.values())
             lr_ops = self._get_lr_ops()
             if len(lr_ops) > 0 and self.counter_var:
                 decay_dummy_output = program.global_block().create_var(
@@ -739,15 +734,15 @@ class DistributeTranspiler(object):
                     send_varnames = []
                 sections = []
                 program.global_block().append_op(
-                    type="distributed_notify",
-                    inputs={"X": self.counter_var,
-                            "Y": input_deps},
+                    type="send",
+                    inputs={"X": self.counter_var},
                     outputs={"Out": decay_dummy_output},
                     attrs={
                         "epmap": pserver_endpoints,
                         "sections": sections,
                         "send_varnames": send_varnames,
                         "merge_add": True,
+                        "use_send_handler": False,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                     })
 

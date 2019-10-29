@@ -45,6 +45,7 @@ class SendOp : public framework::OperatorBase {
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
     auto height_sections = Attr<std::vector<int64_t>>("sections");
+    auto use_send_handler = Attr<bool>("use_send_handler");
 
     if (send_varnames.size() > 0) {
       if (ins.size() > 1) {
@@ -62,13 +63,27 @@ class SendOp : public framework::OperatorBase {
           distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
       std::vector<distributed::VarHandlePtr> rets;
-      for (size_t i = 0; i < ins.size(); i++) {
-        if (NeedSend(scope, ins[i])) {
-          VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
-          rets.push_back(
-              rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]));
-        } else {
-          VLOG(3) << "don't send no-initialied variable: " << ins[i];
+      if (use_send_handler) {
+        for (size_t i = 0; i < ins.size(); i++) {
+          if (NeedSend(scope, ins[i])) {
+            VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
+            rets.push_back(
+                rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]));
+          } else {
+            VLOG(3) << "don't send no-initialied variable: " << ins[i];
+          }
+        }
+      } else {
+        for (size_t i = 0; i < ins.size(); i++) {
+          for (size_t j = 0; j < epmap.size(); j++) {
+            if (NeedSend(scope, ins[i])) {
+              VLOG(3) << "sending " << ins[i] << " to " << epmap[j];
+              rets.push_back(rpc_client->AsyncDistributeNotify(epmap[j], ctx,
+                                                               scope, ins[i]));
+            } else {
+              VLOG(3) << "don't send no-initialied variable: " << ins[i];
+            }
+          }
         }
       }
       for (size_t i = 0; i < rets.size(); i++) {
@@ -117,6 +132,11 @@ This operator will send variables to listen_and_serve op at the parameter server
                   "(bool, default 0)"
                   "merge method, true represent add, false represent average")
         .SetDefault(false);
+    AddAttr<bool>(
+        "use_send_handler",
+        "(bool, default 1)"
+        "if it's true, use send handler, other wise, use notify handler")
+        .SetDefault(true);
   }
 };
 
