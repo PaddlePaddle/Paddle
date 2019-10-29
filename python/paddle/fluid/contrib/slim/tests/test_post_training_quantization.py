@@ -299,8 +299,6 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
         (int8_throughput, int8_latency,
          int8_acc1) = self.run_program(self.int8_model)
 
-        delta_value = fp32_acc1 - int8_acc1
-        self.assertLess(delta_value, 0.05)
         print(
             "FP32 {0}: batch_size {1}, throughput {2} images/second, latency {3} second, accuracy {4}".
             format(self.model, self.batch_size, fp32_throughput, fp32_latency,
@@ -310,6 +308,9 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
             format(self.model, self.batch_size, int8_throughput, int8_latency,
                    int8_acc1))
         sys.stdout.flush()
+
+        delta_value = fp32_acc1 - int8_acc1
+        self.assertLess(delta_value, 0.05)
 
 
 if __name__ == '__main__':

@@ -19,6 +19,7 @@ from .... import core
 from ....framework import IrGraph
 from .quantization_pass import QuantizationTransformPass
 from .quantization_pass import QuantizationFreezePass
+from .quantization_pass import AddQuantDequantPass
 
 __all__ = ['PostTrainingQuantization']
 
@@ -63,7 +64,8 @@ class PostTrainingQuantization(object):
         self._algo = algo
 
         self._bit_length = 8
-        self._supported_quant_op_type = ("conv2d", "depthwise_conv2d", "mul")
+        self._supported_quant_op_type = ("conv2d", "depthwise_conv2d", "mul",
+                                         "pool2d", "elementwise_add")
 
         self._quantized_weight_var_name = []
         self._quantized_act_var_name = []
@@ -132,6 +134,15 @@ class PostTrainingQuantization(object):
                             self._quantized_weight_var_name.append(y_var_name)
                             self._quantized_act_var_name.append(
                                 op.output("Out")[0])
+                    elif op_type == "pool2d":
+                        self._quantized_act_var_name.append(op.input("X")[0])
+                    elif op_type == "elementwise_add":
+                        x_var_name = op.input("X")[0]
+                        y_var_name = op.input("Y")[0]
+                        if x_var_name not in persistable_var_names and \
+                            y_var_name not in persistable_var_names:
+                            self._quantized_act_var_name.append(x_var_name)
+                            self._quantized_act_var_name.append(y_var_name)
 
         for var in self._program.list_vars():
             if var.name in self._quantized_act_var_name:
@@ -158,14 +169,14 @@ class PostTrainingQuantization(object):
                 self._quantized_var_scale_factor[var_name] = \
                     np.max(np.abs(self._sampling_data[var_name]))
 
-        for var in self._program.list_vars():
-            if var.name in self._quantized_act_var_name:
-                var.persistable = False
-
     def _update_program(self):
         '''
         Insert fake_quantize/fake_dequantize op to the program.
         '''
+        for var in self._program.list_vars():
+            if var.name in self._quantized_act_var_name:
+                var.persistable = False
+
         # use QuantizationTransformPass to insert fake_quantize/fake_dequantize op
         graph = IrGraph(core.Graph(self._program.desc), for_test=True)
         transform_pass = QuantizationTransformPass(
@@ -177,10 +188,18 @@ class PostTrainingQuantization(object):
             weight_quantize_type='channel_wise_abs_max')
         transform_pass.apply(graph)
 
-        # set scale in fake_quantize/fake_dequantize op
+        # use AddQuantDequantPass to insert fake_quant_dequant op
+        add_quant_dequant_pass = AddQuantDequantPass(
+            scope=self._scope, place=self._place)
+        add_quant_dequant_pass.apply(graph)
+
+        # set scale
         for key, val in self._quantized_var_scale_factor.items():
             self._set_var_node_value(
                 key + ".scale", np.array(
+                    [val], dtype=np.float32))
+            self._set_var_node_value(
+                key + ".quant_dequant.scale", np.array(
                     [val], dtype=np.float32))
 
         # apply QuantizationFreezePass, and obtain the final quant model
@@ -212,12 +231,14 @@ class PostTrainingQuantization(object):
 
     def _set_var_node_value(self, var_node_name, np_value):
         '''
-        Set the value of var node
+        Set the value of var node by name, if the node is not exits,
         '''
         assert isinstance(
             np_value, np.ndarray), 'The type of value should be numpy array.'
-        tensor = self._scope.var(var_node_name).get_tensor()
-        tensor.set(np_value, self._place)
+        var_node = self._scope.find_var(var_node_name)
+        if var_node != None:
+            tensor = var_node.get_tensor()
+            tensor.set(np_value, self._place)
 
     def _get_kl_scaling_factor(self, activation_blob, num_quantized_bins=255):
         '''
