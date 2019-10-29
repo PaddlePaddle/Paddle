@@ -71,6 +71,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     }
 
     // add w padding
+    // This is to add padding for dimension 128 on concern of MKL performance
     auto* scope = param_scope();
     auto* weight = scope->FindVar(w->Name())->GetMutable<LoDTensor>();
     auto weight_data = weight->data<float>();

@@ -724,15 +724,32 @@ void Blas<platform::CPUDeviceContext>::MatMul(const int M, const int N,
                      C, &N);
   return;
 #endif
-  int NN = N;
-  int KK = K;
+  // This is to add padding for dimension 128 on concern of MKL performance
   if (M % 128 == 0 && N % 128 == 0 && K % 128 == 0) {
+    framework::Tensor C1;
+    C1.Resize({M * (N + 4)});
+    T *C1_data = C1.mutable_data<T>(platform::CPUPlace());
+    framework::Tensor A1;
+    A1.Resize({M * (K + 4)});
+    T *A1_data = A1.mutable_data<T>(platform::CPUPlace());
+    int NN = N;
+    int KK = K;
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+    for (int i = 0; i < M; i++) {
+      memcpy(A1_data + i * (K + 4), A + i * K, K * sizeof(A[0]));
+    }
     NN = N + 4;
     KK = K + 4;
-  }
+    CBlas<T>::GEMM(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K,
+                   static_cast<T>(1), A1_data, KK, B, NN, static_cast<T>(0),
+                   C1_data, NN);
 
-  CBlas<T>::GEMM(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K,
-                 static_cast<T>(1), A, KK, B, NN, static_cast<T>(0), C, NN);
+  } else {
+    CBlas<T>::GEMM(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K,
+                   static_cast<T>(1), A, K, B, N, static_cast<T>(0), C, N);
+  }
 }
 
 template <typename DeviceContext>

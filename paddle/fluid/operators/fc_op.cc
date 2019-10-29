@@ -32,6 +32,7 @@ class FCOp : public framework::OperatorWithKernel {
 
     auto in_dims = ctx->GetInputDim("Input");
     auto w_dims = ctx->GetInputDim("W");
+    // This is to add padding for dimension 128 on concern of MKL performance
     if ((w_dims[0] - 4) % 128 == 0 && (w_dims[1] - 4) % 128 == 0)
       w_dims = framework::DDim{w_dims[0] - 4, w_dims[1] - 4};
 
