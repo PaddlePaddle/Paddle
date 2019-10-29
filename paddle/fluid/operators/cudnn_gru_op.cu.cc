@@ -186,6 +186,7 @@ class CudnnGRUGPUGradKernel : public framework::OpKernel<T> {
     auto run_seq_len = input_dims[0];
     PADDLE_ENFORCE_LE((size_t)run_seq_len, cudnn_rnn_cache->max_length_,
                       "cudnn running seq_len CAN not greater max_lengh");
+
     CUDNN_ENFORCE(platform::dynload::cudnnRNNBackwardData(
         handle, cudnn_rnn_cache->rnn_desc_, run_seq_len,
         cudnn_rnn_cache->y_desc_, out_data, cudnn_rnn_cache->dy_desc_,

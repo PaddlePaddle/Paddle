@@ -23,26 +23,28 @@ class CudnnGRUOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of GRU should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("W"),
-                   "Input(Weight) of GRU should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
+                      "Input(Input) of GRU should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
+                      "Input(Weight) of GRU should not be null.");
 
-    PADDLE_ENFORCE(ctx->HasInput("InitH"),
-                   "Input(init_h) of GRU should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Cache"),
-                   "Input(Cache) of GRU should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of GRU should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("last_h"),
-                   "Output(last_h) of GRU should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("InitH"), true,
+                      "Input(init_h) of GRU should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Cache"), true,
+                      "Input(Cache) of GRU should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of GRU should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("last_h"), true,
+                      "Output(last_h) of GRU should not be null.");
 
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(in_dims.size(), 3, "Input(X)'s rank must be 3.");
 
     auto out_dims = in_dims;
     auto hidden_size = ctx->Attrs().Get<int>("hidden_size");
-    out_dims[2] = hidden_size;
+    auto is_bidirec = ctx->Attrs().Get<bool>("is_bidirec");
+    const auto num_directions = is_bidirec ? 2 : 1;
+    out_dims[2] = hidden_size * num_directions;
 
     ctx->SetOutputDim("Out", out_dims);
     ctx->SetOutputDim("last_h", ctx->GetInputDim("InitH"));
@@ -145,16 +147,17 @@ class CudnnGRUGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of GRU should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) of GRU should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("last_h"),
-                   "Input(last_h) of GRU should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
+                      "Input(Input) of GRU should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
+                      "Input(W) of GRU should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("last_h"), true,
+                      "Input(last_h) of GRU should not be null.");
 
-    PADDLE_ENFORCE(ctx->HasInput("Cache"),
-                   "Input(last_c) of GRU should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("InitH"),
-                   "Input(init_h) of GRU should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Cache"), true,
+                      "Input(last_c) of GRU should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("InitH"), true,
+                      "Input(init_h) of GRU should not be null.");
 
     auto SetOutGradDim = [&ctx](const std::string& name) {
       auto g_name = framework::GradVarName(name);
