@@ -134,7 +134,8 @@ def train(net_type, use_cuda, save_dirname, is_local):
 
         optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
 
-        amp_lists = AutoMixedPrecisionLists(custom_black_varnames={"loss"})
+        amp_lists = fluid.contrib.mixed_precision.AutoMixedPrecisionLists(
+            custom_black_varnames={"loss"})
         mp_optimizer = fluid.contrib.mixed_precision.decorate(
             optimizer=optimizer,
             amp_lists=amp_lists,
