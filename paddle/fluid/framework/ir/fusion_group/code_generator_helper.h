@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #pragma once
 
 #include <iostream>
@@ -81,6 +82,7 @@ class TemplateVariable {
  private:
   std::unordered_map<std::string, std::string> strings_;
 };
+
 class CodeTemplate {
  public:
   CodeTemplate() = default;
@@ -110,6 +112,7 @@ class CodeTemplate {
 
     return EmitIndents(ret);
   }
+
   std::string EmitIndents(std::string str) {
     std::string ret = str;
     int space_num = 0;
@@ -147,6 +150,7 @@ static std::string EmitUniqueName(std::vector<OperationExpression> expression) {
   }
   return ret.str();
 }
+
 // we get the parameter list code for the expression information
 static std::string EmitDeclarationCode(
     std::vector<OperationExpression> expression, std::string type) {
