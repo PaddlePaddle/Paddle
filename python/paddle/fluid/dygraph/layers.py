@@ -22,6 +22,7 @@ from . import parallel_helper
 from .. import unique_name
 from paddle.fluid import core
 from .layer_object_helper import LayerObjectHelper
+from .base import program_desc_tracing_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
 from paddle.fluid.framework import Variable
@@ -171,9 +172,11 @@ class Layer(core.Layer):
 
     def __call__(self, *inputs, **kwargs):
         if not self._built:
-            self._build_once(*inputs, **kwargs)
-            if parallel_helper._is_data_parallel_mode():
-                parallel_helper._broadcast_parameters(self._parameters.values())
+            with program_desc_tracing_guard(False):
+                self._build_once(*inputs, **kwargs)
+                if parallel_helper._is_data_parallel_mode():
+                    parallel_helper._broadcast_parameters(
+                        self._parameters.values())
 
         outputs = self.forward(*inputs, **kwargs)
         self._built = True

@@ -48,7 +48,7 @@ class SGDOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Param"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 
@@ -110,4 +110,6 @@ $$param\_out = param - learning\_rate * grad$$
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sgd, ops::SGDOp, ops::SGDOpMaker,
                   paddle::framework::EmptyGradOpMaker, ops::SGDOpInferVarType);
-REGISTER_OP_CPU_KERNEL(sgd, ops::SGDOpKernel<float>, ops::SGDOpKernel<double>);
+REGISTER_OP_CPU_KERNEL(
+    sgd, ops::SGDOpKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SGDOpKernel<paddle::platform::CPUDeviceContext, double>);

@@ -186,13 +186,16 @@ class ReshapeOp : public framework::OperatorWithKernel {
         output_shape[unk_dim_idx] = -1;
       }
     } else {
-      PADDLE_ENFORCE_EQ(
-          capacity, in_size,
-          "ShapeError: The 'shape' in ReshapeOp is invalid. "
-          "The input tensor X'size must be equal to the capacity of 'shape'. "
-          "But received X's shape = [%s], X's size = %d, 'shape' is [%s], the "
-          "capacity of 'shape' is %d.",
-          in_dims, in_size, framework::make_ddim(shape), capacity);
+      if (all_positive) {
+        PADDLE_ENFORCE_EQ(
+            capacity, in_size,
+            "ShapeError: The 'shape' in ReshapeOp is invalid. "
+            "The input tensor X'size must be equal to the capacity of 'shape'. "
+            "But received X's shape = [%s], X's size = %d, 'shape' is [%s], "
+            "the "
+            "capacity of 'shape' is %d.",
+            in_dims, in_size, framework::make_ddim(shape), capacity);
+      }
     }
     return framework::make_ddim(output_shape);
   }
@@ -200,8 +203,9 @@ class ReshapeOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -302,8 +306,9 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -472,9 +477,9 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -508,8 +513,9 @@ class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("DDX")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "DDX"),
+        ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
