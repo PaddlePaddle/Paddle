@@ -743,7 +743,9 @@ class DistributeTranspiler(object):
                         "send_varnames": send_varnames,
                         "merge_add": True,
                         "use_send_handler": False,
-                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                        OP_ROLE_VAR_ATTR_NAME:
+                        [self.counter_var.name, self.counter_var.name]
                     })
 
         # step 3: insert recv op to receive parameters from parameter server
