@@ -72,8 +72,8 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
         send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
             send_var_name, send_varnames, epmap, height_section, trainer_id,
             merge_add, use_send_handler);
-        VLOG(3) << "find and init an " << op->Type()
-                << " op: " << send_varname_to_ctx[send_var_name];
+        VLOG(3) << "find and init an send op: "
+                << send_varname_to_ctx[send_var_name];
       } else if (node->Name() == "recv") {
         auto recv_var_name = node->Op()->Output("Out")[0];
         auto recv_varnames = boost::get<std::vector<std::string>>(
