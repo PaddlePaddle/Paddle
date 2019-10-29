@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import math
+import logging
 import numpy as np
 from .... import io
 from .... import core
@@ -39,18 +40,18 @@ class PostTrainingQuantization(object):
         op to obtain the quantized model.
 
         Args:
-            place(fluid.CPUPlace|fluid.CUDAPlace): the runtime place of 
+            place(fluid.CPUPlace|fluid.CUDAPlace): The runtime place of 
             the program
-            executor(Executor): use the executor to save the quantized model
-            scope(fluid.Scope): the scope of the program, use it to load 
+            executor(Executor): Use the executor to save the quantized model
+            scope(fluid.Scope): The scope of the program, use it to load 
             and save variables
-            program(Program): the fp32 program, which will be quantized
-            feed_var_names(list[str]): the feed var names of the program
-            fetch_list(list[str]): the fetch var names of the program
-            save_model_path(str): the path to save the quantized model
+            program(Program): The fp32 program, which will be quantized
+            feed_var_names(list[str]): The feed var names of the program
+            fetch_list(list[str]): The fetch var names of the program
+            save_model_path(str): The path to save the quantized model
             algo(str, optional): If algo=KL, use KL-divergenc method to 
             get the more precise scale factor. If algo='direct', use abs_max
-            methon to get the scale factor.  
+            methon to get the scale factor. Default is KL.
         '''
         self._place = place
         self._executor = executor
@@ -63,14 +64,13 @@ class PostTrainingQuantization(object):
 
         self._bit_length = 8
         self._supported_quant_op_type = ("conv2d", "depthwise_conv2d", "mul")
-        self._conv_op_type = ("conv2d", "depthwise_conv2d")
 
         self._quantized_weight_var_name = []
         self._quantized_act_var_name = []
         self._sampling_data = {}
         self._quantized_var_scale_factor = {}
 
-        self.__prepare()
+        self._prepare()
 
     def sample_data(self):
         '''
@@ -79,13 +79,13 @@ class PostTrainingQuantization(object):
         '''
         for var_name in self._quantized_weight_var_name:
             if var_name not in self._sampling_data:
-                var_tensor = self.__load_var_value(var_name)
+                var_tensor = self._load_var_value(var_name)
                 self._sampling_data[var_name] = var_tensor
 
         for var_name in self._quantized_act_var_name:
             if var_name not in self._sampling_data:
                 self._sampling_data[var_name] = []
-            var_tensor = self.__load_var_value(var_name)
+            var_tensor = self._load_var_value(var_name)
             self._sampling_data[var_name].append(var_tensor)
 
     def save_quant_model(self):
@@ -93,33 +93,51 @@ class PostTrainingQuantization(object):
         Obtain scale factor, insert quant/dequant op to graph, 
         and save quant model to disk.
         '''
-        self.__calculate_scale_factor()
-        self.__update_program()
-        self.__save_offline_model()
+        self._calculate_scale_factor()
+        self._update_program()
+        self._save_offline_model()
 
-    def __prepare(self):
+    def _prepare(self):
         '''
         Collect the variable names for sampling, 
         and set activation variables to be persistable.
         '''
-        for op in self._program.current_block().ops:
-            op_type = op.type
-            if op_type in self._supported_quant_op_type:
-                if op_type in self._conv_op_type:
-                    self._quantized_act_var_name.append(op.input("Input")[0])
-                    self._quantized_weight_var_name.append(
-                        op.input("Filter")[0])
-                    self._quantized_act_var_name.append(op.output("Output")[0])
-                else:
-                    self._quantized_act_var_name.append(op.input("X")[0])
-                    self._quantized_weight_var_name.append(op.input("Y")[0])
-                    self._quantized_act_var_name.append(op.output("Out")[0])
+        persistable_var_names = []
+        for var in self._program.list_vars():
+            if var.persistable:
+                persistable_var_names.append(var.name)
+
+        for block in self._program.blocks:
+            for op in block.ops:
+                op_type = op.type
+                if op_type in self._supported_quant_op_type:
+                    if op_type in ("conv2d", "depthwise_conv2d"):
+                        self._quantized_act_var_name.append(
+                            op.input("Input")[0])
+                        self._quantized_weight_var_name.append(
+                            op.input("Filter")[0])
+                        self._quantized_act_var_name.append(
+                            op.output("Output")[0])
+                    elif op_type == "mul":
+                        x_var_name = op.input("X")[0]
+                        y_var_name = op.input("Y")[0]
+                        if x_var_name not in persistable_var_names and \
+                            y_var_name not in persistable_var_names:
+                            op._set_attr("skip_quant", True)
+                            logging.warning(
+                                "A mul op skip quant for two "
+                                "input variables are not persistable")
+                        else:
+                            self._quantized_act_var_name.append(x_var_name)
+                            self._quantized_weight_var_name.append(y_var_name)
+                            self._quantized_act_var_name.append(
+                                op.output("Out")[0])
 
         for var in self._program.list_vars():
             if var.name in self._quantized_act_var_name:
                 var.persistable = True
 
-    def __calculate_scale_factor(self):
+    def _calculate_scale_factor(self):
         '''
         Calculate the scale factor of quantized variables.
         '''
@@ -133,55 +151,18 @@ class PostTrainingQuantization(object):
                 var_name] = scale_factor_per_channel
 
         for var_name in self._quantized_act_var_name:
-            if self._algo != "KL":
-                max_values = [
-                    np.max(np.abs(data))
-                    for data in self._sampling_data[var_name]
-                ]
-                self._quantized_var_scale_factor[var_name] = max(max_values)
+            if self._algo == "KL":
+                self._quantized_var_scale_factor[var_name] = \
+                    self._get_kl_scaling_factor(np.abs(self._sampling_data[var_name]))
             else:
-                self._quantized_var_scale_factor[
-                    var_name] = self.__get_kl_scaling_factor(
-                        np.abs(self._sampling_data[var_name]))
+                self._quantized_var_scale_factor[var_name] = \
+                    np.max(np.abs(self._sampling_data[var_name]))
 
         for var in self._program.list_vars():
             if var.name in self._quantized_act_var_name:
                 var.persistable = False
 
-    def __save_scale(self):
-        '''
-        Save scale information to the quantized op.
-        '''
-        for op in self._program.current_block().ops:
-            op_type = op.type
-            if op_type in self._supported_quant_op_type:
-                if op_type in self._conv_op_type:
-                    input_var_name = op.input("Input")[0]
-                    weights_var_name = op.input("Filter")[0]
-                    output_var_name = op.output("Output")[0]
-                    op._set_attr(
-                        "Scale_in",
-                        self._quantized_var_scale_factor[input_var_name])
-                    op._set_attr(
-                        "Scale_weights",
-                        [self._quantized_var_scale_factor[weights_var_name]])
-                    op._set_attr(
-                        "Scale_out",
-                        self._quantized_var_scale_factor[output_var_name])
-                else:
-                    x_var_name = op.input("X")[0]
-                    y_var_name = op.input("Y")[0]
-                    output_var_name = op.output("Out")[0]
-                    op._set_attr("scale_x",
-                                 self._quantized_var_scale_factor[x_var_name])
-                    op._set_attr(
-                        "scale_y",
-                        [self._quantized_var_scale_factor[y_var_name]])
-                    op._set_attr(
-                        "scale_out",
-                        self._quantized_var_scale_factor[output_var_name])
-
-    def __update_program(self):
+    def _update_program(self):
         '''
         Insert fake_quantize/fake_dequantize op to the program.
         '''
@@ -198,7 +179,7 @@ class PostTrainingQuantization(object):
 
         # set scale in fake_quantize/fake_dequantize op
         for key, val in self._quantized_var_scale_factor.items():
-            self.__set_var_node_value(
+            self._set_var_node_value(
                 key + ".scale", np.array(
                     [val], dtype=np.float32))
 
@@ -212,7 +193,7 @@ class PostTrainingQuantization(object):
         freeze_pass.apply(graph)
         self._program = graph.to_program()
 
-    def __save_offline_model(self):
+    def _save_offline_model(self):
         '''
         Save the quantized model to the disk.
         '''
@@ -223,13 +204,13 @@ class PostTrainingQuantization(object):
             executor=self._executor,
             main_program=self._program)
 
-    def __load_var_value(self, var_name):
+    def _load_var_value(self, var_name):
         '''
         Load variable value from scope
         '''
         return np.array(self._scope.find_var(var_name).get_tensor())
 
-    def __set_var_node_value(self, var_node_name, np_value):
+    def _set_var_node_value(self, var_node_name, np_value):
         '''
         Set the value of var node
         '''
@@ -238,7 +219,7 @@ class PostTrainingQuantization(object):
         tensor = self._scope.var(var_node_name).get_tensor()
         tensor.set(np_value, self._place)
 
-    def __get_kl_scaling_factor(self, activation_blob, num_quantized_bins=255):
+    def _get_kl_scaling_factor(self, activation_blob, num_quantized_bins=255):
         '''
         Using the KL-divergenc method to get the more precise scaling factor.
         '''
@@ -296,11 +277,11 @@ class PostTrainingQuantization(object):
                 j_end += num_merged_bins
                 if (idx + 1) == num_quantized_bins - 1:
                     j_end = i
-            candidate_distr_Q = self.__expand_quantized_bins(
+            candidate_distr_Q = self._expand_quantized_bins(
                 candidate_distr_Q_quantized, reference_distr_bins)
             Q_sum = sum(candidate_distr_Q)
-            kl_divergence = self.__safe_entropy(reference_distr_P, P_sum,
-                                                candidate_distr_Q, Q_sum)
+            kl_divergence = self._safe_entropy(reference_distr_P, P_sum,
+                                               candidate_distr_Q, Q_sum)
             if not kl_inited:
                 min_kl_divergence = kl_divergence
                 min_kl_index = i
@@ -320,7 +301,7 @@ class PostTrainingQuantization(object):
             min_kl_index = starting_iter
         return (min_kl_index + 0.5) * bin_width
 
-    def __expand_quantized_bins(self, quantized_bins, reference_bins):
+    def _expand_quantized_bins(self, quantized_bins, reference_bins):
         '''
         '''
         expanded_quantized_bins = [0] * len(reference_bins)
@@ -344,8 +325,7 @@ class PostTrainingQuantization(object):
                 j_end = len(reference_bins)
         return expanded_quantized_bins
 
-    def __safe_entropy(self, reference_distr_P, P_sum, candidate_distr_Q,
-                       Q_sum):
+    def _safe_entropy(self, reference_distr_P, P_sum, candidate_distr_Q, Q_sum):
         '''
         Calculate the entropy.
         '''
@@ -365,16 +345,3 @@ class PostTrainingQuantization(object):
                 tmp_sum1 += p_idx * (math.log(Q_sum * p_idx))
                 tmp_sum2 += p_idx * (math.log(P_sum * q_idx))
         return (tmp_sum1 - tmp_sum2) / P_sum
-
-    def __debug(self, ouput_path):
-        '''
-        '''
-        f = open(ouput_path, "w")
-        for var_name in self._quantized_act_var_name:
-            var_data = np.abs(self._sampling_data[var_name])
-            kl_scale = self.__get_kl_scaling_factor(var_data)
-            f.write("var: " + var_name + ",min: " + str(np.min(var_data)) +
-                    ",max:" + str(np.max(var_data)) + ", kl scale:" + str(
-                        kl_scale) + ",save scale:" + str(
-                            self._quantized_var_scale_factor[var_name]) + "\n")
-        f.close()

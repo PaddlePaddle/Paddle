@@ -237,12 +237,10 @@ class TestPostTrainingQuantization(unittest.TestCase):
                 [x[0].reshape(image_shape) for x in data]).astype("float32")
             label = np.array([x[1] for x in data]).astype("int64")
             label = label.reshape([-1, 1])
-            running_program = infer_program if generate_int8 else infer_program.clone(
-            )
 
             t1 = time.time()
             _, acc1, _ = exe.run(
-                running_program,
+                infer_program,
                 feed={feed_dict[0]: image,
                       feed_dict[1]: label},
                 fetch_list=fetch_targets)
