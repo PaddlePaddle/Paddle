@@ -224,8 +224,9 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
   // is determined by its input "Emission".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<LoDTensor>("Emission")->type(),
-                                   platform::CPUPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Emission"),
+        platform::CPUPlace());
   }
 };
 
@@ -263,7 +264,8 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<LoDTensor>(framework::GradVarName("LogLikelihood"))->type(),
+        OperatorWithKernel::IndicateVarDataType(
+            ctx, framework::GradVarName("LogLikelihood")),
         platform::CPUPlace());
   }
 };
