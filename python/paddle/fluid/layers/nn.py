@@ -17623,8 +17623,8 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     Args:
         shape (list|tuple|Variable): The shape of the output Tensor,  if the shape is a list or tuple, 
                                      its elements can be an integer
-                                     or a Tensor with the shape [1], and the type of the Tensor is int64. 
-                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor is int64.
+                                     or a Tensor with the shape [1], and the type of the Tensor must be int32 or int64. 
+                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor must be int32 or int64.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the output Tensor. Supported data types: float32, float64.
                                                   Default: float32.
         min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
@@ -17652,12 +17652,17 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
             # example 2:
             # attr shape is a list which contains tensor Variable.
             dim_1 = fluid.layers.fill_constant([1],"int64",3)
-            result_2 = fluid.layers.uniform_random(shape=[dim_1, 5])
+            dim_2 = fluid.layers.fill_constant([1],"int32",5)
+            result_2 = fluid.layers.uniform_random(shape=[dim_1, dim_2])
 
             # example 3:
-            # attr shape is a Variable, the data type must be int64
+            # attr shape is a Variable, the data type must be int64 or int32.
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
             result_3 = fluid.layers.uniform_random(var_shape)
+            var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
+            result_4 = fluid.layers.uniform_random(var_shape_int32)
+             
+
 
     """
     if not (isinstance(shape, (list, tuple, Variable))):

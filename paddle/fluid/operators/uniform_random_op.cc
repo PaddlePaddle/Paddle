@@ -172,24 +172,24 @@ class UniformRandomOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("ShapeTensor",
-             "(Tensor<int64_t>, optional). If provided, uniform_ranodom "
+             "(Tensor<int64_t> or Tensor<int32_t>, optional) . If provided, "
+             "uniform_random "
              "according to "
              "this given shape. It means that it has a higher priority than "
              "the shape attribute, while the shape attribute still should be "
              "set correctly to gurantee shape inference in compile time.")
         .AsDispensable();
     AddInput("ShapeTensorList",
-             "(vector<Tensor<int64_t>>, optional). If provided, uniform_random "
-             "use this."
-             "The shape of the tensor in vector MUST BE [1],"
-             "it has the highest priority compare with Input(Shape) and "
-             "attr(shape).")
+             "(vector<Tensor<int64_t>> or vector<Tensor<int32_t>>, optional). "
+             "If provided, uniform_random use this. The shape of the tensor "
+             "must be [1], it has the highest priority comparing with "
+             "Input(ShapeTensor) and attr(shape).")
         .AsDuplicable()
         .AsDispensable();
     AddOutput("Out", "The output tensor of uniform random op");
     AddComment(R"DOC(
 This operator initializes a tensor with random values sampled from a
-uniform distribution. The random result is in set [min, max].
+uniform distribution. The random result is in set [min, max).
 
 )DOC");
     AddAttr<std::vector<int64_t>>("shape", "The shape of the output tensor")
