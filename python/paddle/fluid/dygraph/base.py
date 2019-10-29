@@ -127,6 +127,7 @@ def guard(place=None):
     train = framework.Program()
     startup = framework.Program()
     tracer = Tracer()
+    core._switch_tracer(tracer)
 
     if place is None:
         if core.is_compiled_with_cuda():

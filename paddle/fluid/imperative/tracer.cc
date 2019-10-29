@@ -16,9 +16,17 @@
 #include <unordered_set>
 #include <utility>
 #include "paddle/fluid/platform/profiler.h"
-
 namespace paddle {
 namespace imperative {
+
+static std::shared_ptr<Tracer> current_tracer(nullptr);
+
+std::shared_ptr<Tracer>& GetCurrentTracer() { return current_tracer; }
+
+void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_) {
+  current_tracer = tracer_;
+  VLOG(6) << "Set current tracer: " <<  current_tracer;
+}
 
 struct OpBaseCmp {
   bool operator()(OpBase* first, OpBase* second) {
