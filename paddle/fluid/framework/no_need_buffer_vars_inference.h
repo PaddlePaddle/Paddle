@@ -20,22 +20,58 @@
 #include <vector>
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
+class InferNoNeedBufferVarsContext {
+ public:
+  explicit InferNoNeedBufferVarsContext(const framework::AttributeMap &attrs)
+      : attrs_(attrs) {}
+  virtual ~InferNoNeedBufferVarsContext() = default;
+
+  virtual bool HasOutput(const std::string &slot) const = 0;
+
+  const Attribute &GetAttr(const std::string &attr) const;
+
+ private:
+  const framework::AttributeMap &attrs_;
+};
+
+class StaticGraphInferNoNeedBufferVarsContext final
+    : public InferNoNeedBufferVarsContext {
+ public:
+  StaticGraphInferNoNeedBufferVarsContext(const VariableNameMap &inputs,
+                                          const VariableNameMap &outputs,
+                                          const AttributeMap &attrs);
+
+  bool HasOutput(const std::string &slot) const final;
+
+ private:
+  const VariableNameMap &inputs_;
+  const VariableNameMap &outputs_;
+};
+
+class DyGraphInferNoNeedBufferVarsContext final
+    : public InferNoNeedBufferVarsContext {
+ public:
+  DyGraphInferNoNeedBufferVarsContext(const imperative::NameVarBaseMap &inputs,
+                                      const imperative::NameVarBaseMap &outputs,
+                                      const AttributeMap &attr);
+
+  bool HasOutput(const std::string &slot) const final;
+
+ private:
+  const imperative::NameVarBaseMap &inputs_;
+  const imperative::NameVarBaseMap &outputs_;
+};
+
 class NoNeedBufferVarsInference {
  public:
   virtual ~NoNeedBufferVarsInference() = default;
-
   virtual std::unordered_set<std::string> operator()(
-      const VariableNameMap &inputs, const VariableNameMap &outputs,
-      const AttributeMap &attrs) const = 0;
-
-  virtual std::unordered_set<std::string> operator()(
-      const imperative::NameVarBaseMap &inputs,
-      const imperative::NameVarBaseMap &outputs,
-      const AttributeMap &attrs) const = 0;
+      const InferNoNeedBufferVarsContext &ctx) const = 0;
 };
 
 #define DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(class_type, ...)        \
@@ -46,16 +82,8 @@ class NoNeedBufferVarsInference {
         NoNeedBufferVarsInference;                                    \
                                                                       \
     std::unordered_set<std::string> operator()(                       \
-        const ::paddle::framework::VariableNameMap &inputs,           \
-        const ::paddle::framework::VariableNameMap &outputs,          \
-        const ::paddle::framework::AttributeMap &attrs) const final { \
-      return {__VA_ARGS__};                                           \
-    }                                                                 \
-                                                                      \
-    std::unordered_set<std::string> operator()(                       \
-        const ::paddle::imperative::NameVarBaseMap &inputs,           \
-        const ::paddle::imperative::NameVarBaseMap &outputs,          \
-        const ::paddle::framework::AttributeMap &attrs) const final { \
+        const ::paddle::framework::InferNoNeedBufferVarsContext &ctx) \
+        const final {                                                 \
       return {__VA_ARGS__};                                           \
     }                                                                 \
   }
@@ -66,7 +94,8 @@ class InferNoNeedBufferVarsFN {
       const VariableNameMap &inputs, const VariableNameMap &outputs,
       const AttributeMap &attrs) const {
     PADDLE_ENFORCE_NOT_NULL(inferer_);
-    return (*inferer_)(inputs, outputs, attrs);
+    StaticGraphInferNoNeedBufferVarsContext ctx(inputs, outputs, attrs);
+    return (*inferer_)(ctx);
   }
 
   inline std::unordered_set<std::string> operator()(
@@ -74,14 +103,15 @@ class InferNoNeedBufferVarsFN {
       const imperative::NameVarBaseMap &outputs,
       const AttributeMap &attrs) const {
     PADDLE_ENFORCE_NOT_NULL(inferer_);
-    return (*inferer_)(inputs, outputs, attrs);
+    DyGraphInferNoNeedBufferVarsContext ctx(inputs, outputs, attrs);
+    return (*inferer_)(ctx);
   }
 
   inline operator bool() const { return inferer_ != nullptr; }
 
   inline bool operator!() const { return inferer_ == nullptr; }
 
-  inline void Set(const std::shared_ptr<NoNeedBufferVarsInference> &inferer) {
+  inline void Reset(const std::shared_ptr<NoNeedBufferVarsInference> &inferer) {
     PADDLE_ENFORCE_NOT_NULL(inferer);
     PADDLE_ENFORCE_EQ(inferer_, nullptr);
     inferer_ = inferer;

@@ -207,26 +207,9 @@ class SequenceConvGradNoNeedBufferVarsInference
  public:
   using framework::NoNeedBufferVarsInference::NoNeedBufferVarsInference;
 
- private:
-  static bool IsPaddingTrainable(const framework::AttributeMap &attrs) {
-    return boost::get<bool>(attrs.at("paddingTrainable"));
-  }
-
- public:
   std::unordered_set<std::string> operator()(
-      const framework::VariableNameMap &, const framework::VariableNameMap &,
-      const framework::AttributeMap &attrs) const final {
-    if (IsPaddingTrainable(attrs)) {
-      return {};
-    } else {
-      return {"PaddingData"};
-    }
-  }
-
-  std::unordered_set<std::string> operator()(
-      const imperative::NameVarBaseMap &, const imperative::NameVarBaseMap &,
-      const framework::AttributeMap &attrs) const final {
-    if (IsPaddingTrainable(attrs)) {
+      const framework::InferNoNeedBufferVarsContext &ctx) const final {
+    if (boost::get<bool>(ctx.GetAttr("paddingTrainable"))) {
       return {};
     } else {
       return {"PaddingData"};

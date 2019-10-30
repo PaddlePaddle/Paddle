@@ -225,7 +225,7 @@ struct OpInfoFiller<T, kInplaceOpInference> {
 template <typename T>
 struct OpInfoFiller<T, kNoNeedBufferVarsInference> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->infer_no_need_buffer_vars_.Set(std::make_shared<T>());
+    info->infer_no_need_buffer_vars_.Reset(std::make_shared<T>());
   }
 };
 
