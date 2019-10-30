@@ -237,6 +237,56 @@ static std::vector<std::string> inline GetNameList(
   return vec_res;
 }
 
+static void inline CreateVariableIfNotExit(
+    const py::handle &py_handle, const framework::Scope &scope,
+    const framework::Executor *exe = nullptr) {
+  std::vector<std::string> vec_res;
+
+  PyObject *py_obj = py_handle.ptr();  // get underlying PyObject
+  // Python None is not nullptr in C++!
+  if (!py_obj || py_obj == Py_None) {
+    PADDLE_THROW("Save parameter list is None");
+  }
+
+  if (PyList_Check(py_obj)) {
+    size_t len = PyList_GET_SIZE(py_obj);
+
+    vec_res.reserve(len);
+
+    const char *kNameField = "name";
+    const char *kVarDescField = "desc";
+
+    for (size_t i = 0; i < len; ++i) {
+      PyObject *py_name =
+          PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kNameField);
+      PADDLE_ENFORCE_NOT_NULL(py_name);
+      auto para_name = PyObjectCast<std::string>(py_name);
+      Py_DECREF(py_name);
+
+      auto var = scope.FindVar(para_name);
+      if (var == nullptr) {
+        PADDLE_ENFORCE_NE(exe, nullptr,
+                          "Parameter not Initialized, "
+                          "Please set argument [executor] not None "
+                          "or run startup program first");
+        PyObject *py_var_desc =
+            PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kVarDescField);
+        PADDLE_ENFORCE_NOT_NULL(py_var_desc);
+        auto var_desc = PyObjectCast<framework::VarDesc>(py_var_desc);
+        Py_DECREF(py_var_desc);
+        var = const_cast<framework::Scope *>(&scope)->Var(para_name);
+        auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
+        tensor_temp->Resize(framework::make_ddim(var_desc.GetShape()));
+        tensor_temp->mutable_data(exe->GetPlace(), var_desc.GetDataType());
+      }
+    }
+  } else {
+    PADDLE_THROW("Set parameter should be a list");
+  }
+
+  return;
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -285,9 +335,16 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_load_static_dict",
         [](const std::string &str_file_name, const py::handle &vec_var_list,
-           const Scope &scope) {
+           const Scope &scope, const Executor *executor) {
           std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
+          CreateVariableIfNotExit(vec_var_list, scope, executor);
           LoadStaticNameListFromDisk(str_file_name, vec_name_list, scope);
+        });
+
+  m.def("_create_loaded_parameter",
+        [](const py::handle &vec_var_list, const Scope &scope,
+           const Executor *executor) {
+          CreateVariableIfNotExit(vec_var_list, scope, executor);
         });
 
   m.def("_save_dygraph_dict", [](const std::string &str_file_name,

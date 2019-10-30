@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-
+import paddle.fluid as fluid
 from op_test import OpTest
 
 
@@ -77,6 +77,164 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
         self.ori_shape = (3, 2, 5)
         self.axes = (3, 1, 1)
         self.new_shape = (3, 1, 1, 2, 5, 1)
+
+
+# axes is a list(with tensor)
+class TestUnsqueezeOp_AxesTensorList(OpTest):
+    def setUp(self):
+        self.init_test_case()
+        self.op_type = "unsqueeze2"
+
+        axes_tensor_list = []
+        for index, ele in enumerate(self.axes):
+            axes_tensor_list.append(("axes" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+        self.inputs = {
+            "X": np.random.random(self.ori_shape).astype("float32"),
+            "AxesTensorList": axes_tensor_list
+        }
+        self.init_attrs()
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.new_shape),
+            "XShape": np.random.random(self.ori_shape).astype("float32")
+        }
+
+    def test_check_output(self):
+        self.check_output(no_check_set=["XShape"])
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
+
+    def init_test_case(self):
+        self.ori_shape = (3, 5)
+        self.axes = (1, 2)
+        self.new_shape = (3, 1, 1, 5)
+
+    def init_attrs(self):
+        self.attrs = {}
+
+
+class TestUnsqueezeOp1_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
+    def init_test_case(self):
+        self.ori_shape = (3, 5)
+        self.axes = (-1, )
+        self.new_shape = (3, 5, 1)
+
+
+class TestUnsqueezeOp2_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
+    def init_test_case(self):
+        self.ori_shape = (3, 5)
+        self.axes = (0, -1)
+        self.new_shape = (1, 3, 5, 1)
+
+
+class TestUnsqueezeOp3_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
+    def init_test_case(self):
+        self.ori_shape = (3, 2, 5)
+        self.axes = (0, 3, 3)
+        self.new_shape = (1, 3, 2, 1, 1, 5)
+
+
+class TestUnsqueezeOp4_AxesTensorList(TestUnsqueezeOp_AxesTensorList):
+    def init_test_case(self):
+        self.ori_shape = (3, 2, 5)
+        self.axes = (3, 1, 1)
+        self.new_shape = (3, 1, 1, 2, 5, 1)
+
+
+# axes is a Tensor
+class TestUnsqueezeOp_AxesTensor(OpTest):
+    def setUp(self):
+        self.init_test_case()
+        self.op_type = "unsqueeze2"
+
+        self.inputs = {
+            "X": np.random.random(self.ori_shape).astype("float32"),
+            "AxesTensor": np.array(self.axes).astype("int32")
+        }
+        self.init_attrs()
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.new_shape),
+            "XShape": np.random.random(self.ori_shape).astype("float32")
+        }
+
+    def test_check_output(self):
+        self.check_output(no_check_set=["XShape"])
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
+
+    def init_test_case(self):
+        self.ori_shape = (3, 5)
+        self.axes = (1, 2)
+        self.new_shape = (3, 1, 1, 5)
+
+    def init_attrs(self):
+        self.attrs = {}
+
+
+class TestUnsqueezeOp1_AxesTensor(TestUnsqueezeOp_AxesTensor):
+    def init_test_case(self):
+        self.ori_shape = (3, 5)
+        self.axes = (-1, )
+        self.new_shape = (3, 5, 1)
+
+
+class TestUnsqueezeOp2_AxesTensor(TestUnsqueezeOp_AxesTensor):
+    def init_test_case(self):
+        self.ori_shape = (3, 5)
+        self.axes = (0, -1)
+        self.new_shape = (1, 3, 5, 1)
+
+
+class TestUnsqueezeOp3_AxesTensor(TestUnsqueezeOp_AxesTensor):
+    def init_test_case(self):
+        self.ori_shape = (3, 2, 5)
+        self.axes = (0, 3, 3)
+        self.new_shape = (1, 3, 2, 1, 1, 5)
+
+
+class TestUnsqueezeOp4_AxesTensor(TestUnsqueezeOp_AxesTensor):
+    def init_test_case(self):
+        self.ori_shape = (3, 2, 5)
+        self.axes = (3, 1, 1)
+        self.new_shape = (3, 1, 1, 2, 5, 1)
+
+
+# test api
+class TestUnsqueezeAPI(OpTest):
+    def test_api(self):
+        input = np.random.random([3, 2, 5]).astype("float32")
+        x = fluid.data(name='x', shape=[3, 2, 5], dtype="float32")
+        positive_3 = fluid.layers.fill_constant([1], "int32", 3)
+        axes_tensor = fluid.data(name='axes_tensor', shape=[3], dtype="int32")
+
+        out_1 = fluid.layers.unsqueeze(x, axes=[3, 1, 1])
+        out_2 = fluid.layers.unsqueeze(x, axes=[positive_3, 1, 1])
+        out_3 = fluid.layers.unsqueeze(x, axes=axes_tensor)
+        out_4 = fluid.layers.unsqueeze(x, axes=3)
+
+        exe = fluid.Executor(place=fluid.CPUPlace())
+        res_1, res_2, res_3, res_4 = exe.run(
+            fluid.default_main_program(),
+            feed={
+                "x": input,
+                "axes_tensor": np.array([3, 1, 1]).astype("int32")
+            },
+            fetch_list=[out_1, out_2, out_3, out_4])
+
+        assert np.array_equal(res_1, input.reshape([3, 1, 1, 2, 5, 1]))
+        assert np.array_equal(res_2, input.reshape([3, 1, 1, 2, 5, 1]))
+        assert np.array_equal(res_3, input.reshape([3, 1, 1, 2, 5, 1]))
+        assert np.array_equal(res_4, input.reshape([3, 2, 5, 1]))
+
+    def test_error(self):
+        def test_axes_type():
+            x2 = fluid.data(name="x2", shape=[2, 25], dtype="int32")
+            fluid.layers.unsqueeze(x2, axes=2.1)
+
+        self.assertRaises(TypeError, test_axes_type)
 
 
 if __name__ == "__main__":
