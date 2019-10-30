@@ -207,7 +207,7 @@ class FleetWrapper {
   // copy feasign key/value from src_table_id to dest_table_id
   int32_t CopyTable(int src_table_id, int dest_table_id);
   // copy feasign key/value from src_table_id to dest_table_id
-  int32_t CopyTableByFeasign(int src_table_id, int dest_table_id,  // NOLINT
+  int32_t CopyTableByFeasign(int src_table_id, int dest_table_id,   // NOLINT
                              std::vector<uint64_t>& feasign_list);  // NOLINT
   // clear all models, release their memory
   void ClearModel();
