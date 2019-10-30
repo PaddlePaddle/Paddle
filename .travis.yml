@@ -19,6 +19,7 @@ before_install:
   - sudo pip install pylint pytest astroid isort
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
+install: travis_wait 30 mvn install
 script:
   - |
     # 43min timeout
