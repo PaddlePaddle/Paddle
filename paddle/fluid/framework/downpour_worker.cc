@@ -797,8 +797,8 @@ void DownpourWorker::CopyDenseVars() {
     float* dest_data = dest_tensor->data<float>();
 
     CHECK(src_tensor->numel() == dest_tensor->numel())
-        << "tensor numel not equal," << src_tensor->numel()
-        << " vs " << dest_tensor->numel();
+        << "tensor numel not equal," << src_tensor->numel() << " vs "
+        << dest_tensor->numel();
     for (int i = 0; i < src_tensor->numel(); i++) {
       dest_data[i] = src_data[i];
     }

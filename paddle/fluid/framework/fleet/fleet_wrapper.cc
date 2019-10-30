@@ -937,7 +937,7 @@ int32_t FleetWrapper::CopyTable(int src_table_id, int dest_table_id) {
 }
 
 int32_t FleetWrapper::CopyTableByFeasign(
-    int src_table_id, int dest_table_id,  // NOLINT
+    int src_table_id, int dest_table_id,    // NOLINT
     std::vector<uint64_t>& feasign_list) {  // NOLINT
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->copy_table_by_feasign(
