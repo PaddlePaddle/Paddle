@@ -36,6 +36,7 @@ else(WIN32)
 endif(WIN32)
 
 add_subdirectory(api)
+add_subdirectory(capi)
 
 if(WITH_MKLDNN)
 	set(mkldnn_quantizer_src ${CMAKE_CURRENT_SOURCE_DIR}/api/mkldnn_quantizer.cc)
@@ -47,7 +48,7 @@ if (ANAKIN_FOUND)
     set(ANAKIN_SHARED_INFERENCE_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/api/api_anakin_engine.cc)
 endif()
 set(SHARED_INFERENCE_SRCS
-    io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
+    io.cc ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed.cc ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_set.cc ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed_factory.cc ${CMAKE_CURRENT_SOURCE_DIR}/../framework/dataset_factory.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${mkldnn_quantizer_src}
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc

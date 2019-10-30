@@ -17,6 +17,7 @@
 #include "paddle/fluid/inference/analysis/passes/inference_op_replace_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_analysis_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
+#include "paddle/fluid/inference/analysis/passes/ir_graph_clean_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_graph_to_program_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
@@ -32,6 +33,8 @@ PassRegistry::PassRegistry() {
                   std::unique_ptr<AnalysisPass>(new IrAnalysisPass));
   passes_.emplace("ir_graph_build_pass",
                   std::unique_ptr<AnalysisPass>(new IrGraphBuildPass));
+  passes_.emplace("ir_graph_clean_pass",
+                  std::unique_ptr<AnalysisPass>(new IrInferCleanGraphPass));
   passes_.emplace("memory_optimize_pass",
                   std::unique_ptr<AnalysisPass>(new MemoryOptimizePass));
   passes_.emplace(

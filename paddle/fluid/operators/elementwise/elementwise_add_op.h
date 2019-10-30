@@ -11,21 +11,14 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #pragma once
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
-
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct AddFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a + b; }
-};
 
 template <typename DeviceContext, typename T>
 void default_elementwise_add(const framework::ExecutionContext &ctx,
@@ -36,31 +29,12 @@ void default_elementwise_add(const framework::ExecutionContext &ctx,
                                                         AddFunctor<T>(), z);
 }
 
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    std::is_floating_point<T>::value &&
-    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_add_same_dims(const framework::ExecutionContext &ctx,
-                          const framework::Tensor *x,
-                          const framework::Tensor *y, framework::Tensor *z) {
-  auto blas = math::GetBlas<DeviceContext, T>(ctx);
-  blas.VADD(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
-}
-
-template <typename DeviceContext, typename T>
-typename std::enable_if<
-    !std::is_floating_point<T>::value ||
-    !std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
-elementwise_add_same_dims(const framework::ExecutionContext &ctx,
-                          const framework::Tensor *x,
-                          const framework::Tensor *y, framework::Tensor *z) {
-  auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-  auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-  auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-
-  auto &place = *ctx.template device_context<DeviceContext>().eigen_device();
-  eigen_z.device(place) = eigen_x + eigen_y;
-}
+template <typename DeviceContext, typename T, class Enable = void>
+struct SameDimsElemwiseAdd {
+  void operator()(const framework::ExecutionContext &ctx,
+                  const framework::Tensor *x, const framework::Tensor *y,
+                  framework::Tensor *z);
+};
 
 template <typename DeviceContext, typename T>
 class ElementwiseAddKernel : public framework::OpKernel<T> {
@@ -69,12 +43,11 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto *x = ctx.Input<framework::LoDTensor>("X");
     auto *y = ctx.Input<framework::LoDTensor>("Y");
     auto *z = ctx.Output<framework::LoDTensor>("Out");
-
     z->mutable_data<T>(ctx.GetPlace());
-
     auto dims_equal = x->dims() == y->dims();
     if (dims_equal) {
-      elementwise_add_same_dims<DeviceContext, T>(ctx, x, y, z);
+      SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
+      same_dims_add(ctx, x, y, z);
     } else {
       default_elementwise_add<DeviceContext, T>(ctx, x, y, z);
     }
@@ -112,7 +85,6 @@ elementwise_add_grad(const framework::ExecutionContext &ctx,
                      const framework::Tensor *dout, framework::Tensor *dx,
                      framework::Tensor *dy) {
   auto blas = math::GetBlas<DeviceContext, T>(ctx);
-
   if (dx) {
     blas.VCOPY(dout->numel(), dout->data<T>(),
                dx->mutable_data<T>(ctx.GetPlace()));
@@ -126,8 +98,8 @@ elementwise_add_grad(const framework::ExecutionContext &ctx,
 
 template <typename DeviceContext, typename T>
 typename std::enable_if<
-    !std::is_floating_point<T>::value ||
-    !std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+    !std::is_floating_point<T>::value &&
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
 elementwise_add_grad(const framework::ExecutionContext &ctx,
                      const framework::Tensor *x, const framework::Tensor *y,
                      const framework::Tensor *out,
@@ -135,6 +107,18 @@ elementwise_add_grad(const framework::ExecutionContext &ctx,
                      framework::Tensor *dy) {
   default_elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
 }
+
+#ifdef PADDLE_WITH_CUDA
+// cuda definition
+template <typename DeviceContext, typename T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+elementwise_add_grad(const framework::ExecutionContext &ctx,
+                     const framework::Tensor *x, const framework::Tensor *y,
+                     const framework::Tensor *out,
+                     const framework::Tensor *dout, framework::Tensor *dx,
+                     framework::Tensor *dy);
+#endif
 
 template <typename DeviceContext, typename T>
 class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
@@ -151,8 +135,7 @@ class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
     auto *out = dout;
     auto *x = dout, *y = dout;
 
-    if (platform::is_cpu_place(ctx.GetPlace()) && dx != nullptr &&
-        dy != nullptr && (dx->dims() == dy->dims())) {
+    if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
       elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
     } else {
       default_elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx,

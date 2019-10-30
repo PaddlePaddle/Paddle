@@ -22,8 +22,9 @@ from op_test import OpTest
 class TestPadOp(OpTest):
     def setUp(self):
         self.initTestCase()
+        self.dtype = self.get_dtype()
         self.op_type = "pad"
-        self.inputs = {'X': np.random.random(self.shape).astype("float32"), }
+        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype), }
         self.attrs = {}
         self.attrs['paddings'] = np.array(self.paddings).flatten()
         self.attrs['pad_value'] = self.pad_value
@@ -33,6 +34,9 @@ class TestPadOp(OpTest):
                           mode='constant',
                           constant_values=self.pad_value)
         }
+
+    def get_dtype(self):
+        return np.float32
 
     def test_check_output(self):
         self.check_output()
@@ -66,6 +70,27 @@ class TestCase3(TestPadOp):
         self.paddings = [(0, 1)]
         self.pad_value = 0.9
 
+
+#----------------Pad Fp16----------------
+
+
+def create_test_fp16(parent):
+    class TestPadFp16(parent):
+        def get_dtype(self):
+            return np.float16
+
+        def test_check_grad_normal(self):
+            self.check_grad(['X'], 'Out', max_relative_error=0.3)
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    TestPadFp16.__name__ = cls_name
+    globals()[cls_name] = TestPadFp16
+
+
+create_test_fp16(TestPadOp)
+create_test_fp16(TestCase1)
+create_test_fp16(TestCase2)
+create_test_fp16(TestCase3)
 
 if __name__ == '__main__':
     unittest.main()

@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
+// setting iterations to 0 means processing the whole dataset
 namespace paddle {
 namespace inference {
 namespace analysis {
@@ -143,8 +144,8 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
     int32_t num_images = FLAGS_warmup_batch_size) {
   int test_data_batch_size = test_data[0][0].shape[0];
   auto iterations = test_data.size();
-  PADDLE_ENFORCE(
-      static_cast<size_t>(num_images) <= iterations * test_data_batch_size,
+  PADDLE_ENFORCE_LE(
+      static_cast<size_t>(num_images), iterations * test_data_batch_size,
       "The requested quantization warmup data size " +
           std::to_string(num_images) + " is bigger than all test data size.");
 
@@ -234,8 +235,8 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
                 static_cast<int64_t *>(difficult.data.data()) + objects_accum);
     objects_accum = objects_accum + objects_remain;
   }
-  PADDLE_ENFORCE(
-      static_cast<size_t>(num_objects) == static_cast<size_t>(objects_accum),
+  PADDLE_ENFORCE_EQ(
+      static_cast<size_t>(num_objects), static_cast<size_t>(objects_accum),
       "The requested num of objects " + std::to_string(num_objects) +
           " is the same as objects_accum.");
 
@@ -273,7 +274,8 @@ TEST(Analyzer_int8_mobilenet_ssd, quantization) {
   q_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
   q_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(FLAGS_warmup_batch_size);
 
-  CompareQuantizedAndAnalysis(&cfg, &q_cfg, input_slots_all);
+  // 0 is avg_cost, 1 is top1_acc, 2 is top5_acc or mAP
+  CompareQuantizedAndAnalysis(&cfg, &q_cfg, input_slots_all, 2);
 }
 
 }  // namespace analysis

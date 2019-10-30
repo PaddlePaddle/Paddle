@@ -16,7 +16,6 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/operators/math/fc_compute.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -115,7 +114,7 @@ void FusedEmbeddingFCLSTMOp::InferShape(
 framework::OpKernelType FusedEmbeddingFCLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return framework::OpKernelType(
-      ctx.Input<framework::LoDTensor>("Embeddings")->type(),
+      OperatorWithKernel::IndicateVarDataType(ctx, "Embeddings"),
       ctx.device_context());
 }
 
@@ -589,8 +588,7 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fused_embedding_fc_lstm, ops::FusedEmbeddingFCLSTMOp,
-                  ops::FusedEmbeddingFCLSTMOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::FusedEmbeddingFCLSTMOpMaker);
 
 REGISTER_OP_CPU_KERNEL(fused_embedding_fc_lstm,
                        ops::FusedEmbeddingFCLSTMKernel<float>,

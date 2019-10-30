@@ -28,7 +28,7 @@ void SetOp(ProgramDesc* prog, const std::string& type,
   op->SetType(type);
   if (type == "conv2d") {
     op->SetAttr("use_mkldnn", use_mkldnn);
-    op->SetAttr("fuse_relu", false);
+    op->SetAttr("fuse_activation", std::string(""));
     op->SetInput("Input", {inputs[0]});
     op->SetInput("Filter", {inputs[1]});
     if (inputs.size() > 2) {
@@ -109,8 +109,9 @@ void MainTest(const ProgramDesc& prog, bool fuse_relu) {
     if (node->IsOp()) {
       auto* op = node->Op();
       if (op->Type() == "conv2d") {
-        ASSERT_TRUE(op->HasAttr("fuse_relu"));
-        bool fuse_relu_attr = boost::get<bool>(op->GetAttr("fuse_relu"));
+        ASSERT_TRUE(op->HasAttr("fuse_activation"));
+        bool fuse_relu_attr =
+            (boost::get<std::string>(op->GetAttr("fuse_activation")) == "relu");
         EXPECT_EQ(fuse_relu, fuse_relu_attr);
       } else if (op->Type() == "relu") {
         relu_count++;

@@ -27,7 +27,7 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Y"), "Output(Y) must exist");
 
     int maxlen = ctx->Attrs().Get<int>("maxlen");
-    auto dim = framework::vectorize2int(ctx->GetInputDim("X"));
+    auto dim = framework::vectorize<int>(ctx->GetInputDim("X"));
 
     if (ctx->HasInputs("MaxLenTensor")) {
       dim.push_back(-1);
@@ -40,8 +40,9 @@ class SequenceMaskOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
