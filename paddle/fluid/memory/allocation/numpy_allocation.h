@@ -21,7 +21,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-class NumpyAllocation : public memory::Allocation {
+class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
  public:
   explicit NumpyAllocation(std::shared_ptr<pybind11::array> arr, ssize_t size,
                            paddle::platform::CPUPlace place)
