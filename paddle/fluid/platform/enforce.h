@@ -202,7 +202,7 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
 
 inline bool is_error(bool stat) { return !stat; }
 
-inline void throw_on_error(const std::string& msg) {
+inline void throw_error_with_msg(const std::string& msg) {
 #ifndef REPLACE_ENFORCE_GLOG
   throw std::runtime_error(msg);
 #else
@@ -252,7 +252,7 @@ struct EnforceNotMet : public std::exception {
     auto __cond__ = (COND);                                               \
     if (UNLIKELY(::paddle::platform::is_error(__cond__))) {               \
       try {                                                               \
-        ::paddle::platform::throw_on_error(                               \
+        ::paddle::platform::throw_error_with_msg(                         \
             ::paddle::string::Sprintf(__VA_ARGS__));                      \
       } catch (...) {                                                     \
         throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
