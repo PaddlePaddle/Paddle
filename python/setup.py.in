@@ -285,7 +285,7 @@ headers = (
     list(find_files('*', '${PROTOBUF_INCLUDE_DIR}')) + # protobuf
     list(find_files('*', '${DLPACK_INCLUDE_DIR}')) + # dlpack 
     list(find_files('*.h', '${THREADPOOL_INCLUDE_DIR}'))) # threadpool
-
+headers = ()
 
 class InstallCommand(InstallCommandBase):
     def finalize_options(self):
