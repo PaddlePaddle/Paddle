@@ -1,6 +1,6 @@
 include(operators)
 register_operators(EXCLUDES
-    conv2d_fusion_op
+    conv_fusion_op
     fusion_transpose_flatten_concat_op
     fusion_conv_inception_op
     fused_fc_elementwise_layernorm_op
