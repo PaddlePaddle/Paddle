@@ -56,7 +56,7 @@ EOL
         -v ${HOME}/.ccache:/root/.ccache \
         -w /paddle \
         $IMG \
-        paddle/scripts/paddle_build.sh $@
+        paddle/scripts/paddle_build.sh $1
     set +x
 }
 
@@ -65,7 +65,7 @@ function main() {
     VERSION="latest-dev"
     PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
     IMG=${DOCKER_REPO}:${VERSION}
-    start_build_docker $@
+    start_build_docker $1
 }
 
-main $@
+main $1
