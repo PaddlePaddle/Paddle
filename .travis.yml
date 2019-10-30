@@ -14,6 +14,7 @@ env:
   - JOB=check_style
 addons:
   ssh_known_hosts: 13.229.163.131
+install: travis_wait 30 mvn install
 before_install:
   # For pylint dockstring checker
   - sudo pip install pylint pytest astroid isort
