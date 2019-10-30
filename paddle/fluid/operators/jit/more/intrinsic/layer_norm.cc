@@ -26,28 +26,29 @@ namespace intrinsic {
 void LayerNorm(float* x, float* out, float* mean, float* var,
                const float* scale, const float* bias, int height,
                const float epsilon, int right) {
-  __m256 sum;
-  __m256 mean_vec, var_vec;
-  __m128 hi, lo;
-  __m256 tmp;
-  size_t offset;
-  size_t j;
   int block = YMM_FLOAT_BLOCK;
   const int rest = right % block;
   const int end = right - rest;
-
-  __m256 reverse_num_vec =
-      _mm256_div_ps(_mm256_set1_ps(1.0), _mm256_set1_ps(right));
-  __m256 epsilon_vec = _mm256_set1_ps(epsilon);
-  int rest_mask =
-      ((-1) & (~((~0U) >> (sizeof(int) * 8 - (block - rest))))) & 0x0ff;
-  __m256i mask_vec = _mm256_set_epi32(
-      rest_mask & 0x80 ? 0xffffffff : 0, rest_mask & 0x40 ? 0xffffffff : 0,
-      rest_mask & 0x20 ? 0xffffffff : 0, rest_mask & 0x10 ? 0xffffffff : 0,
-      rest_mask & 0x8 ? 0xffffffff : 0, rest_mask & 0x4 ? 0xffffffff : 0,
-      rest_mask & 0x2 ? 0xffffffff : 0, rest_mask & 0x1 ? 0xffffffff : 0);
-
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
   for (int i = 0; i < height; ++i) {
+    __m256 sum;
+    __m256 mean_vec, var_vec;
+    __m128 hi, lo;
+    __m256 tmp;
+    size_t offset;
+    size_t j;
+    __m256 reverse_num_vec =
+        _mm256_div_ps(_mm256_set1_ps(1.0), _mm256_set1_ps(right));
+    __m256 epsilon_vec = _mm256_set1_ps(epsilon);
+    int rest_mask =
+        ((-1) & (~((~0U) >> (sizeof(int) * 8 - (block - rest))))) & 0x0ff;
+    __m256i mask_vec = _mm256_set_epi32(
+        rest_mask & 0x80 ? 0xffffffff : 0, rest_mask & 0x40 ? 0xffffffff : 0,
+        rest_mask & 0x20 ? 0xffffffff : 0, rest_mask & 0x10 ? 0xffffffff : 0,
+        rest_mask & 0x8 ? 0xffffffff : 0, rest_mask & 0x4 ? 0xffffffff : 0,
+        rest_mask & 0x2 ? 0xffffffff : 0, rest_mask & 0x1 ? 0xffffffff : 0);
     offset = i * right;
 
     /* get mean */
