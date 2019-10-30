@@ -356,6 +356,15 @@ void BindImperative(py::module *m_ptr) {
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
+      .def_property("_train_mode", &imperative::Tracer::NoGrad,
+                    &imperative::Tracer::SetNoGrad)
+      .def_property("_expected_place", &imperative::Tracer::ExpectedPlace,
+                    &imperative::Tracer::SetExpectedPlace<platform::CUDAPlace>)
+      .def_property("_expected_place", &imperative::Tracer::ExpectedPlace,
+                    &imperative::Tracer::SetExpectedPlace<platform::CPUPlace>)
+      .def_property(
+          "_expected_place", &imperative::Tracer::ExpectedPlace,
+          &imperative::Tracer::SetExpectedPlace<platform::CUDAPinnedPlace>)
       .def("_get_program_desc_tracer",
            &imperative::Tracer::GetProgramDescTracer,
            py::return_value_policy::reference)

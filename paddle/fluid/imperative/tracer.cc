@@ -19,7 +19,7 @@
 namespace paddle {
 namespace imperative {
 
-static std::shared_ptr<Tracer> current_tracer(nullptr);
+static std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 std::shared_ptr<Tracer>& GetCurrentTracer() { return current_tracer; }
 

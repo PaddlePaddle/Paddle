@@ -134,6 +134,7 @@ def guard(place=None):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
+    tracer._expected_place = place
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
