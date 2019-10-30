@@ -119,8 +119,11 @@ class Tensor {
   /*! The internal of two tensors share the same memory block. */
   Tensor& ShareDataWith(const Tensor& src);
 
-  void from_numpy(void* data_ptr, size_t size,
-                  const std::function<void()>& deleter);
+  //  void from_numpy(void* data_ptr, size_t size,
+  //                  const std::function<void()>& deleter);
+
+  template <typename T>
+  void from_numpy(const py::array* arr);
 
   /**
    * @brief  Return a sub-tensor of the given tensor.

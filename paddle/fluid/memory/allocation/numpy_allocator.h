@@ -13,7 +13,13 @@
 // limitations under the License.
 
 #pragma once
+
+#include <pybind11/numpy.h>
+#include <memory>
 #include "paddle/fluid/memory/allocation/allocator.h"
+#include "pybind11/pybind11.h"
+
+namespace py = pybind11;
 
 namespace paddle {
 namespace memory {
@@ -21,32 +27,24 @@ namespace allocation {
 
 class NumpyAllocation : public Allocation {
  public:
-  NumpyAllocation(void* data_ptr, size_t size,
-                  const std::function<void()>& deleter)
-      : Allocation(data_ptr, size, platform::CPUPlace()) {
-    _deleter = deleter;
+  NumpyAllocation(const py::array *arr, const ssize_t size)
+      : arr_(arr),
+        Allocation(
+            const_cast<void *>(reinterpret_cast<const void *>(arr->data())),
+            size, platform::CPUPlace()) {}
+  ~NumpyAllocation() {
+    py::gil_scoped_acquire gil;
+    arr_->dec_ref();
   }
 
-  void callDeleter() { _deleter(); }
-
  private:
-  std::function<void()> _deleter;
+  const py::array *arr_;
 };
 
-class NumpyAllocator : public Allocator {
- public:
-  NumpyAllocator(void* data_ptr, const std::function<void()>& deleter)
-      : data_ptr(data_ptr), deleter(deleter) {}
-  bool IsAllocThreadSafe() const override;
+std::shared_ptr<Allocation> FromNumpyArray(const py::array *arr, ssize_t size) {
+  return std::make_shared<NumpyAllocation>(arr, size);
+}
 
- protected:
-  Allocation* AllocateImpl(size_t size) override;
-  void FreeImpl(Allocation* allocation) override;
-
- private:
-  void* data_ptr;
-  const std::function<void()>& deleter;
-};
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

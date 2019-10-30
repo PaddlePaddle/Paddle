@@ -67,15 +67,10 @@ void* Tensor::mutable_data(platform::Place place, size_t requested_size) {
   return mutable_data(place, type_, requested_size);
 }
 
-void Tensor::from_numpy(void* data_ptr, size_t size,
-                        const std::function<void()>& deleter) {
-  PADDLE_ENFORCE_NOT_NULL(
-      data_ptr, "Cannot invoke from_numpy with data_ptr hold nothing.");
-  //  auto new_holder =
-  //  std::make_shared<memory::Allocation>(memory::allocation::NumpyAllocator(data_ptr,
-  //  deleter).Allocate(size));
-  auto new_holder = std::shared_ptr<memory::Allocation>(
-      memory::allocation::NumpyAllocator(data_ptr, deleter).Allocate(size));
+template <typename T>
+void Tensor::from_numpy(const py::array* arr) {
+  auto new_holder =
+      memory::allocation::FromNumpyArray(arr, sizeof(T) * (arr->size()));
   this->ResetHolder(new_holder);
 }
 
