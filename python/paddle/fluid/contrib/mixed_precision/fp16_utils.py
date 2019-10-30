@@ -196,7 +196,8 @@ def rewrite_program(main_prog, amp_lists):
     white_op_set = set()
     black_op_set = set()
     for op in ops:
-        if _is_in_black_varnames(op, amp_lists):
+        if amp_lists.black_varnames is not None and _is_in_black_varnames(
+                op, amp_lists):
             black_op_set.add(op)
             continue
 
