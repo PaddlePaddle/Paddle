@@ -35,13 +35,6 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLDNN_INSTALL_DIR}/${LIBDIR
 
 INCLUDE_DIRECTORIES(${MKLDNN_INC_DIR}) # For MKLDNN code to include internal headers.
 
-IF(${CBLAS_PROVIDER} STREQUAL "MKLML")
-    SET(MKLDNN_DEPENDS   ${MKLML_PROJECT})
-    MESSAGE(STATUS "Build MKLDNN with MKLML ${MKLML_ROOT}")
-ELSE()
-    MESSAGE(FATAL_ERROR "Should enable MKLML when build MKLDNN")
-ENDIF()
-
 IF(NOT WIN32)
     SET(MKLDNN_FLAG "-Wno-error=strict-overflow -Wno-error=unused-result -Wno-error=array-bounds")
     SET(MKLDNN_FLAG "${MKLDNN_FLAG} -Wno-unused-result -Wno-unused-value")
@@ -66,6 +59,7 @@ ExternalProject_Add(
     BUILD_ALWAYS        1
     # UPDATE_COMMAND      ""
     CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+<<<<<<< 3de5cc77f26d99d7b210a0593e13bafd514f0c69
                         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                         -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
                         -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
@@ -79,8 +73,21 @@ ExternalProject_Add(
                         -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
                         -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
                         -DMKLDNN_BUILD_TESTS=OFF -DMKLDNN_BUILD_EXAMPLES=OFF
+=======
+    CMAKE_ARGS          -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+    CMAKE_ARGS          -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+    CMAKE_ARGS          -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
+    CMAKE_ARGS          -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+    CMAKE_ARGS          -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+    CMAKE_ARGS          -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
+    CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
+    CMAKE_ARGS          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    CMAKE_ARGS          -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    CMAKE_ARGS          -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
+    CMAKE_ARGS          -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
+    CMAKE_ARGS          -DMKLDNN_BUILD_TESTS=OFF -DMKLDNN_BUILD_EXAMPLES=OFF
+>>>>>>> Delete MKL from mkldnn.cmake
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${MKLDNN_INSTALL_DIR}
-                        -DMKLROOT:PATH=${MKLML_ROOT}
 )
 if(WIN32)
     SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/${LIBDIR}/mkldnn.lib" CACHE FILEPATH "mkldnn library." FORCE)
@@ -99,7 +106,7 @@ add_definitions(-DPADDLE_WITH_MKLDNN)
 SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/mkldnn_dummy.c)
 FILE(WRITE ${dummyfile} "const char * dummy = \"${dummyfile}\";")
 ADD_LIBRARY(mkldnn STATIC ${dummyfile})
-TARGET_LINK_LIBRARIES(mkldnn ${MKLDNN_LIB} ${MKLML_LIB} ${MKLML_IOMP_LIB})
+TARGET_LINK_LIBRARIES(mkldnn ${MKLDNN_LIB})
 ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT})
 
 # copy the real so.0 lib to install dir
