@@ -19,43 +19,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/pooling.h"
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
-template <typename T>
-inline std::vector<T> GetDataFromTensorList(
-    const std::vector<const framework::Tensor *> &list_tensor) {
-  std::vector<T> vec_new_data;
-  for (size_t i = 0; i < list_tensor.size(); ++i) {
-    auto tensor = list_tensor[i];
-    PADDLE_ENFORCE_EQ(
-        tensor->dims(), framework::make_ddim({1}),
-        "ShapeError: If the element type is Tensor, "
-        "the element's shape must be [1]. But received the element's shape "
-        "is [%s]",
-        tensor->dims());
-    if (platform::is_gpu_place(tensor->place())) {
-      framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-      vec_new_data.push_back((*temp.data<T>()));
-    } else {
-      vec_new_data.push_back((*tensor->data<T>()));
-    }
-  }
-  return vec_new_data;
-}
-template <typename T>
-inline std::vector<T> GetDataFromTensor(const framework::Tensor *x) {
-  auto *data = x->data<T>();
-  framework::Tensor cpu_attr_tensor;
-  if (platform::is_gpu_place(x->place())) {
-    TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
-    data = cpu_attr_tensor.data<T>();
-  }
-  auto vec_data = std::vector<T>(data, data + x->numel());
-  return vec_data;
-}
 
 template <typename DeviceContext, typename T>
 class UnsqueezeKernel : public framework::OpKernel<T> {

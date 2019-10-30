@@ -20,35 +20,61 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T = int32_t>
 inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
-  auto* data = x->data<T>();
-  framework::Tensor cpu_attr_tensor;
-  if (platform::is_gpu_place(x->place())) {
-    TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
-    data = cpu_attr_tensor.data<T>();
+  std::vector<T> vec_new_data;
+  if (x->type() == framework::proto::VarType::INT32) {
+    auto* data = x->data<int>();
+    if (platform::is_gpu_place(x->place())) {
+      framework::Tensor cpu_attr_tensor;
+      TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
+      data = cpu_attr_tensor.data<int>();
+    }
+    vec_new_data = std::vector<T>(data, data + x->numel());
+  } else if (x->type() == framework::proto::VarType::INT64) {
+    auto* data = x->data<int64_t>();
+    if (platform::is_gpu_place(x->place())) {
+      framework::Tensor cpu_attr_tensor;
+      TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
+      data = cpu_attr_tensor.data<int64_t>();
+    }
+    vec_new_data = std::vector<T>(data, data + x->numel());
+  } else {
+    PADDLE_THROW("The dtype of Tensor must be int32 or int64.");
   }
-  auto vec_data = std::vector<T>(data, data + x->numel());
-  return vec_data;
+  return vec_new_data;
 }
-template <typename T>
+
+template <typename T = int32_t>
 inline std::vector<T> GetDataFromTensorList(
     const std::vector<const framework::Tensor*>& list_tensor) {
   std::vector<T> vec_new_data;
   for (size_t i = 0; i < list_tensor.size(); ++i) {
     auto tensor = list_tensor[i];
-    PADDLE_ENFORCE_EQ(
-        tensor->dims(), framework::make_ddim({1}),
-        "ShapeError: If the element type is Tensor, "
-        "the element's shape must be [1]. But received the element's shape "
-        "is [%s]",
-        tensor->dims());
-    if (platform::is_gpu_place(tensor->place())) {
-      framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-      vec_new_data.push_back((*temp.data<T>()));
+    PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
+                      "ShapeError: The shape of Tensor in list must be [1]. "
+                      "But received the shape "
+                      "is [%s]",
+                      tensor->dims());
+
+    if (tensor->type() == framework::proto::VarType::INT32) {
+      if (platform::is_gpu_place(tensor->place())) {
+        framework::Tensor temp;
+        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        vec_new_data.push_back(static_cast<T>(*temp.data<int>()));
+      } else {
+        vec_new_data.push_back(static_cast<T>(*tensor->data<int>()));
+      }
+    } else if (tensor->type() == framework::proto::VarType::INT64) {
+      if (platform::is_gpu_place(tensor->place())) {
+        framework::Tensor temp;
+        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        vec_new_data.push_back(static_cast<T>(*temp.data<int64_t>()));
+      } else {
+        vec_new_data.push_back(static_cast<T>(*tensor->data<int64_t>()));
+      }
     } else {
-      vec_new_data.push_back((*tensor->data<T>()));
+      PADDLE_THROW("The dtype of Tensor in list must be int32 or int64.");
     }
   }
   return vec_new_data;
