@@ -57,8 +57,8 @@ if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
     SET(OP_MKL_DEPS ${OP_MKL_DEPS} pyramid_hash_op)
 endif()
 
-register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op
-	sync_batch_norm_op multihead_matmul_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+register_operators(EXCLUDES py_func_op warpctc_op dgc_op
+	sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
@@ -67,17 +67,10 @@ if (WITH_GPU)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
     endif()
-    # conv_fusion_op needs cudnn 7 above
-    if (NOT ${CUDNN_VERSION} VERSION_LESS 7100)
-        op_library(conv_fusion_op)
-        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
-    endif()
     if (NOT WIN32)
         op_library(sync_batch_norm_op)
         file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(sync_batch_norm);\n")
     endif()
-    op_library(multihead_matmul_op)
-    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(multihead_matmul);\n")
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
