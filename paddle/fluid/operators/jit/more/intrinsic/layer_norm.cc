@@ -30,9 +30,8 @@ void LayerNorm(float* x, float* out, float* mean, float* var,
   const int rest = right % block;
   const int end = right - rest;
 #ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
-  for (int i = 0; i < height; ++i) {
+#pragma omp parallel
+  {
     __m256 sum;
     __m256 mean_vec, var_vec;
     __m128 hi, lo;
@@ -49,109 +48,117 @@ void LayerNorm(float* x, float* out, float* mean, float* var,
         rest_mask & 0x20 ? 0xffffffff : 0, rest_mask & 0x10 ? 0xffffffff : 0,
         rest_mask & 0x8 ? 0xffffffff : 0, rest_mask & 0x4 ? 0xffffffff : 0,
         rest_mask & 0x2 ? 0xffffffff : 0, rest_mask & 0x1 ? 0xffffffff : 0);
-    offset = i * right;
 
-    /* get mean */
-    sum = _mm256_setzero_ps();
-    for (j = offset; j < end + offset; j += block) {
-      sum = _mm256_add_ps(sum, _mm256_loadu_ps((const float*)x + j));
-    }
-    if (rest != 0) {
-      j = offset + right - block;
-      tmp = _mm256_loadu_ps((const float*)x + j);
-      tmp = _mm256_blendv_ps(_mm256_setzero_ps(), tmp,
-                             *(__m256*)&mask_vec);  // NOLINT
-      sum = _mm256_add_ps(sum, tmp);
-    }
-    hi = _mm256_extractf128_ps(sum, 1);
-    lo = _mm256_extractf128_ps(sum, 0);
-    sum = _mm256_add_ps(
-        sum, _mm256_insertf128_ps(
-                 _mm256_insertf128_ps(_mm256_setzero_ps(), hi, 0), lo, 1));
-    sum = _mm256_hadd_ps(sum, sum);
-    sum = _mm256_hadd_ps(sum, sum);
-    mean_vec = _mm256_mul_ps(sum, reverse_num_vec);
-    mean[i] = *reinterpret_cast<float*>(&mean_vec);
+#pragma omp for
+#endif
+    for (int i = 0; i < height; ++i) {
+      offset = i * right;
 
-    /* get variance */
-    sum = _mm256_setzero_ps();
-    for (j = offset; j < end + offset; j += block) {
-      tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)x + j), mean_vec);
-      tmp = _mm256_mul_ps(tmp, tmp);
-      sum = _mm256_add_ps(sum, tmp);
-    }
-    if (rest != 0) {
-      j = offset + right - block;
-      tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)x + j), mean_vec);
-      tmp = _mm256_mul_ps(tmp, tmp);
-      tmp = _mm256_blendv_ps(_mm256_setzero_ps(), tmp,
-                             *(__m256*)&mask_vec);  // NOLINT
-      sum = _mm256_add_ps(sum, tmp);
-    }
-    hi = _mm256_extractf128_ps(sum, 1);
-    lo = _mm256_extractf128_ps(sum, 0);
-    sum = _mm256_add_ps(
-        sum, _mm256_insertf128_ps(
-                 _mm256_insertf128_ps(_mm256_setzero_ps(), hi, 0), lo, 1));
-    sum = _mm256_hadd_ps(sum, sum);
-    sum = _mm256_hadd_ps(sum, sum);
-    var_vec = _mm256_mul_ps(sum, reverse_num_vec);
-    var[i] = *reinterpret_cast<float*>(&var_vec);
-
-    /* get x_norm and calculate output*/
-    for (j = offset; j < end + offset; j += block) {
-      tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)x + j), mean_vec);
-      tmp = _mm256_div_ps(tmp,
-                          _mm256_sqrt_ps(_mm256_add_ps(var_vec, epsilon_vec)));
-      _mm256_storeu_ps(reinterpret_cast<float*>(out) + j, tmp);
-    }
-    if (rest != 0) {
-      j = offset + right - block;
-      tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)x + j), mean_vec);
-      tmp = _mm256_div_ps(tmp,
-                          _mm256_sqrt_ps(_mm256_add_ps(var_vec, epsilon_vec)));
-      _mm256_storeu_ps(reinterpret_cast<float*>(out) + j, tmp);
-    }
-
-    if (scale) {
-      if (rest != 0) {
-        j = offset + right - block;
-        tmp = _mm256_loadu_ps((const float*)out + j);
-      }
+      /* get mean */
+      sum = _mm256_setzero_ps();
       for (j = offset; j < end + offset; j += block) {
-        _mm256_storeu_ps(
-            reinterpret_cast<float*>(out) + j,
-            _mm256_mul_ps(_mm256_loadu_ps((const float*)out + j),
-                          _mm256_loadu_ps((const float*)scale + j - offset)));
+        sum = _mm256_add_ps(sum, _mm256_loadu_ps((const float*)x + j));
       }
       if (rest != 0) {
         j = offset + right - block;
-        _mm256_storeu_ps(
-            reinterpret_cast<float*>(out) + j,
-            _mm256_mul_ps(tmp,
-                          _mm256_loadu_ps((const float*)scale + j - offset)));
+        tmp = _mm256_loadu_ps((const float*)x + j);
+        tmp = _mm256_blendv_ps(_mm256_setzero_ps(), tmp,
+                               *(__m256*)&mask_vec);  // NOLINT
+        sum = _mm256_add_ps(sum, tmp);
       }
-    }
+      hi = _mm256_extractf128_ps(sum, 1);
+      lo = _mm256_extractf128_ps(sum, 0);
+      sum = _mm256_add_ps(
+          sum, _mm256_insertf128_ps(
+                   _mm256_insertf128_ps(_mm256_setzero_ps(), hi, 0), lo, 1));
+      sum = _mm256_hadd_ps(sum, sum);
+      sum = _mm256_hadd_ps(sum, sum);
+      mean_vec = _mm256_mul_ps(sum, reverse_num_vec);
+      mean[i] = *reinterpret_cast<float*>(&mean_vec);
 
-    if (bias) {
-      if (rest != 0) {
-        j = offset + right - block;
-        tmp = _mm256_loadu_ps((const float*)out + j);
-      }
+      /* get variance */
+      sum = _mm256_setzero_ps();
       for (j = offset; j < end + offset; j += block) {
-        _mm256_storeu_ps(
-            reinterpret_cast<float*>(out) + j,
-            _mm256_add_ps(_mm256_loadu_ps((const float*)out + j),
-                          _mm256_loadu_ps((const float*)bias + j - offset)));
+        tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)x + j), mean_vec);
+        tmp = _mm256_mul_ps(tmp, tmp);
+        sum = _mm256_add_ps(sum, tmp);
       }
       if (rest != 0) {
         j = offset + right - block;
-        _mm256_storeu_ps(reinterpret_cast<float*>(out) + j,
-                         _mm256_add_ps(tmp, _mm256_loadu_ps((const float*)bias +
-                                                            j - offset)));
+        tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)x + j), mean_vec);
+        tmp = _mm256_mul_ps(tmp, tmp);
+        tmp = _mm256_blendv_ps(_mm256_setzero_ps(), tmp,
+                               *(__m256*)&mask_vec);  // NOLINT
+        sum = _mm256_add_ps(sum, tmp);
+      }
+      hi = _mm256_extractf128_ps(sum, 1);
+      lo = _mm256_extractf128_ps(sum, 0);
+      sum = _mm256_add_ps(
+          sum, _mm256_insertf128_ps(
+                   _mm256_insertf128_ps(_mm256_setzero_ps(), hi, 0), lo, 1));
+      sum = _mm256_hadd_ps(sum, sum);
+      sum = _mm256_hadd_ps(sum, sum);
+      var_vec = _mm256_mul_ps(sum, reverse_num_vec);
+      var[i] = *reinterpret_cast<float*>(&var_vec);
+
+      /* get x_norm and calculate output*/
+      for (j = offset; j < end + offset; j += block) {
+        tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)x + j), mean_vec);
+        tmp = _mm256_div_ps(
+            tmp, _mm256_sqrt_ps(_mm256_add_ps(var_vec, epsilon_vec)));
+        _mm256_storeu_ps(reinterpret_cast<float*>(out) + j, tmp);
+      }
+      if (rest != 0) {
+        j = offset + right - block;
+        tmp = _mm256_sub_ps(_mm256_loadu_ps((const float*)x + j), mean_vec);
+        tmp = _mm256_div_ps(
+            tmp, _mm256_sqrt_ps(_mm256_add_ps(var_vec, epsilon_vec)));
+        _mm256_storeu_ps(reinterpret_cast<float*>(out) + j, tmp);
+      }
+
+      if (scale) {
+        if (rest != 0) {
+          j = offset + right - block;
+          tmp = _mm256_loadu_ps((const float*)out + j);
+        }
+        for (j = offset; j < end + offset; j += block) {
+          _mm256_storeu_ps(
+              reinterpret_cast<float*>(out) + j,
+              _mm256_mul_ps(_mm256_loadu_ps((const float*)out + j),
+                            _mm256_loadu_ps((const float*)scale + j - offset)));
+        }
+        if (rest != 0) {
+          j = offset + right - block;
+          _mm256_storeu_ps(
+              reinterpret_cast<float*>(out) + j,
+              _mm256_mul_ps(tmp,
+                            _mm256_loadu_ps((const float*)scale + j - offset)));
+        }
+      }
+
+      if (bias) {
+        if (rest != 0) {
+          j = offset + right - block;
+          tmp = _mm256_loadu_ps((const float*)out + j);
+        }
+        for (j = offset; j < end + offset; j += block) {
+          _mm256_storeu_ps(
+              reinterpret_cast<float*>(out) + j,
+              _mm256_add_ps(_mm256_loadu_ps((const float*)out + j),
+                            _mm256_loadu_ps((const float*)bias + j - offset)));
+        }
+        if (rest != 0) {
+          j = offset + right - block;
+          _mm256_storeu_ps(
+              reinterpret_cast<float*>(out) + j,
+              _mm256_add_ps(tmp,
+                            _mm256_loadu_ps((const float*)bias + j - offset)));
+        }
       }
     }
+#ifdef PADDLE_WITH_MKLML
   }
+#endif
 }
 
 bool LayerNormKernel::CanBeUsed(const int& d) const {
