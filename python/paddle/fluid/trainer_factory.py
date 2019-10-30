@@ -69,7 +69,8 @@ class TrainerFactory(object):
                 if opt_info.get("dump_converter") is not None:
                     trainer._set_dump_converter(opt_info["dump_converter"])
                 if opt_info.get("adjust_ins_weight") is not None:
-                    trainer._set_adjust_ins_weight(opt_info["adjust_ins_weight"])
+                    trainer._set_adjust_ins_weight(
+                        opt_info["adjust_ins_weight"])
                 if opt_info.get("copy_table") is not None:
                     trainer._set_copy_table_config(opt_info["copy_table"])
                 if opt_info.get("check_nan_var_names") is not None:
