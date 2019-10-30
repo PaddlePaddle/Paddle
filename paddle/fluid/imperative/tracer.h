@@ -48,7 +48,9 @@ class Tracer {
   Tracer()
       : engine_(new BasicEngine()),
         program_desc_tracer_(new jit::ProgramDescTracer()),
-        generator_(new UniqueNameGenerator()) {}
+        generator_(new UniqueNameGenerator()) {
+    expected_place_ = platform::CPUPlace();
+  }
 
   ~Tracer() = default;
 
@@ -80,6 +82,17 @@ class Tracer {
     return generator_->Generate(key);
   }
 
+  platform::Place ExpectedPlace() const { return expected_place_; }
+
+  template <typename PlaceType>
+  void SetExpectedPlace(PlaceType place) {
+    expected_place_ = place;
+  }
+
+  bool NoGrad() const { return no_grad_; }
+
+  void SetNoGrad(bool no_grad) { no_grad_ = no_grad; }
+
  private:
   static size_t GenerateUniqueId() {
     static std::atomic<size_t> id{0};
@@ -91,10 +104,12 @@ class Tracer {
   std::unique_ptr<jit::ProgramDescTracer> program_desc_tracer_;
   bool enable_program_desc_tracing_{false};
   std::unique_ptr<UniqueNameGenerator> generator_;
+  platform::Place expected_place_;
+  bool no_grad_{false};
 };
 
 // To access static variable current_tracer
-std::shared_ptr<Tracer>& GetCurrentTracer();
+const std::shared_ptr<Tracer>& GetCurrentTracer();
 void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
 
 }  // namespace imperative
