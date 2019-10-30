@@ -750,13 +750,14 @@ void DownpourWorker::CopyDenseTable() {
       continue;
     }
     int32_t dim = fleet_ptr_->CopyTable(src_table, dest_table);
-    VLOG(3) << "copy param from table " << src_table
-            << " to table " << dest_table << ", dim=" << dim;
+    VLOG(3) << "copy param from table " << src_table << " to table "
+            << dest_table << ", dim=" << dim;
     if (copy_table_config_.dense_pull_after_copy()) {
       VLOG(3) << "dense pull after copy, table=" << dest_table;
       pull_dense_status.resize(0);
       fleet_ptr_->PullDenseVarsAsync(*root_scope_, dest_table,
-          dense_value_names_[dest_table], &pull_dense_status);
+                                     dense_value_names_[dest_table],
+                                     &pull_dense_status);
       for (auto& t : pull_dense_status) {
         t.wait();
         auto status = t.get();
@@ -784,13 +785,15 @@ void DownpourWorker::CopyDenseVars() {
     Variable* src_var = thread_scope_->FindVar(src_var_name);
     CHECK(src_var != nullptr) << src_var_name << " not found";  // NOLINT
     LoDTensor* src_tensor = src_var->GetMutable<LoDTensor>();
-    CHECK(src_tensor != nullptr) << src_var_name << " tensor is null";  // NOLINT
+    CHECK(src_tensor != nullptr) << src_var_name
+                                 << " tensor is null";  // NOLINT
     float* src_data = src_tensor->data<float>();
 
     Variable* dest_var = thread_scope_->FindVar(dest_var_name);
     CHECK(dest_var != nullptr) << dest_var_name << " not found";  // NOLINT
     LoDTensor* dest_tensor = dest_var->GetMutable<LoDTensor>();
-    CHECK(dest_tensor != nullptr) << dest_var_name << " tensor is null";  // NOLINT
+    CHECK(dest_tensor != nullptr) << dest_var_name
+                                  << " tensor is null";  // NOLINT
     float* dest_data = dest_tensor->data<float>();
 
     CHECK(src_tensor->numel() == dest_tensor->numel())
