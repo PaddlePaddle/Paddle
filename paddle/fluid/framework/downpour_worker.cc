@@ -206,6 +206,105 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
       << "expect fea info size:" << feature.size() << " real:" << global_index;
 }
 
+void DownpourWorker::FillSparseFromLocal(const Scope& scope, const uint64_t table_id,
+                                         const std::vector<std::string>& var_names, std::vector< std::unordered_map<uint64_t, std::vector<float>> >& local_tables) {
+
+  TableParameter table;
+  for (auto i : param_.sparse_table()) {
+    if (i.table_id() == table_id) {
+      table = i;
+      break;
+      }
+  }
+
+  auto& fea_value = feature_values_[table_id];
+  auto fea_idx = 0u;
+  std::vector<float> init_value(table.fea_dim());
+  auto& fea_keys = features_[table_id];
+  fea_keys.clear();
+  fea_keys.resize(0);
+  fea_keys.reserve(30000);
+  int shard_num = local_tables.size();
+  for (size_t i = 0; i < sparse_key_names_[table_id].size(); ++i) {
+    std::string slot_name = sparse_key_names_[table_id][i];
+    std::string emb_slot_name = sparse_value_names_[table_id][i];
+    // get ids tensor
+    Variable* var = scope.FindVar(slot_name);
+    if (var == nullptr) {
+      continue;
+    }
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    CHECK(tensor != nullptr) << "tensor of var " << slot_name << " is null";
+    int64_t* ids = tensor->data<int64_t>();
+    int len = tensor->numel();
+        // get embedding tensor
+    Variable* var_emb = thread_scope_->FindVar(emb_slot_name);
+    LoDTensor* tensor_emb = var_emb->GetMutable<LoDTensor>();
+    float* ptr = tensor_emb->mutable_data<float>({len, table.emb_dim()},
+                                                     platform::CPUPlace());
+    memset(ptr, 0, sizeof(float) * len * table.emb_dim());
+
+    auto& tensor_lod = tensor->lod()[0];
+    LoD data_lod{tensor_lod};
+    tensor_emb->set_lod(data_lod);
+
+    bool is_nid = (adjust_ins_weight_config_.need_adjust() &&
+                adjust_ins_weight_config_.nid_slot() == emb_slot_name);
+    if (is_nid) {
+      nid_show_.clear();
+    }
+    int nid_ins_index = 0;
+
+
+    for (int index = 0; index < len; ++index) {
+      if (use_cvm_) {
+        if (ids[index] == 0u) {
+          memcpy(ptr + table.emb_dim() * index, init_value.data(),
+                           sizeof(float) * table.emb_dim());
+          if (is_nid) {
+            nid_show_.push_back(-1);
+            ++nid_ins_index;
+          }
+          continue;
+        }
+
+        uint64_t fea_key = static_cast<uint64_t>(ids[index]);
+        int shard_id = fea_key % shard_num; 
+        fea_keys.push_back(fea_key);
+        memcpy(ptr + table.emb_dim() * index, local_tables[shard_id][fea_key].data(),
+                       sizeof(float) * table.emb_dim());
+        if (is_nid && index == tensor->lod()[0][nid_ins_index]) {
+          nid_show_.push_back(fea_value[fea_idx][0]);
+          ++nid_ins_index;
+         }
+        fea_idx++;
+      } else {
+        if (ids[index] == 0u) {
+          memcpy(ptr + table.emb_dim() * index, init_value.data() + 2,
+                           sizeof(float) * table.emb_dim());
+          if (is_nid) {
+            nid_show_.push_back(-1);
+            ++nid_ins_index;
+          }
+          continue;
+        }
+        uint64_t fea_key = static_cast<uint64_t>(ids[index]);
+        int shard_id = fea_key % shard_num; 
+        fea_keys.push_back(fea_key);
+        memcpy(ptr + table.emb_dim() * index, local_tables[shard_id][fea_key].data() + 2,
+                       sizeof(float) * table.emb_dim());
+        if (is_nid && index == tensor->lod()[0][nid_ins_index]) {
+          nid_show_.push_back(fea_value[fea_idx][0]);
+          ++nid_ins_index;
+        }
+        fea_idx++;
+      }
+    }
+
+
+  }
+}
+
 void DownpourWorker::FillSparseValue(size_t table_idx) {
   uint64_t table_id = static_cast<uint64_t>(
       param_.program_config(0).pull_sparse_table_id(table_idx));
@@ -423,7 +522,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
       }
   }
   // pre-defined for the first op run with async-pulled embedding
-  int op_count = 929;
+  int op_count = 991;
+  uint64_t general_tid = 1;
   timeline.Start();
   while ((cur_batch = device_reader_->Next()) > 0) {
     timeline.Pause();
@@ -448,12 +548,17 @@ void DownpourWorker::TrainFilesWithProfiler() {
       
       if (table.is_local()) {
         timeline.Start();
+        // FillSparseFromLocal(*thread_scope_, tid, sparse_key_names_[tid], fleet_ptr_->GetLocalTable());
         fleet_ptr_->PullSparseVarsFromLocal(*thread_scope_, tid,
                                        sparse_key_names_[tid], &features_[tid],
                                        &feature_values_[tid], table.fea_dim());
+        // std::cout << "local sparse table with fea dim: " << table.fea_dim() << std::endl;
+        // CollectLabelInfo(i);
+        general_tid = tid;       
         timeline.Pause();
         pull_sparse_local_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
+        //continue;
         // std::cout << "local sparse table with fea dim: " << table.fea_dim() << std::endl;
       } else if (table.is_async()) {
         // std::cout << "Async pull with tid: " << tid << std::endl;
@@ -524,7 +629,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
           } else {
             // std::cout << "Done Async Pull with tid: " << async_tid << std::endl;
             timeline.Start();
-            CollectLabelInfo(async_index);
+            // CollectLabelInfo(async_index);
             timeline.Pause();
             collect_label_time += timeline.ElapsedSec();
             total_time += timeline.ElapsedSec();
@@ -549,6 +654,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
         timeline.Start();
         VLOG(3) << "Going to run op " << op_name[run_op_idx];
         op->Run(*thread_scope_, place_);
+        // std::cout << run_op_idx  << " th op: " << op->Type() << std::endl;
         VLOG(3) << "Op " << op_name[run_op_idx] << " Finished";
         timeline.Pause();
         op_total_time[run_op_idx++] += timeline.ElapsedSec();
@@ -570,7 +676,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
         timeline.Start();
         fleet_ptr_->PushSparseVarsWithLabelAsync(
-            *thread_scope_, tid, features_[tid], feature_labels_[tid],
+            *thread_scope_, tid, features_[tid], feature_labels_[general_tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
             dump_slot_);
@@ -732,7 +838,8 @@ void DownpourWorker::TrainFiles() {
       }
   }
   // pre-defined for the first op run with async-pulled embedding
-  int op_count = 929;
+  int op_count = 991;
+  uint64_t general_tid = 1;
   while ((cur_batch = device_reader_->Next()) > 0) {
     // pull sparse here
     for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
@@ -748,11 +855,14 @@ void DownpourWorker::TrainFiles() {
       }
       // std::cout << "Debug TrainFiles current tid: " << tid << " is local: " << table.is_local() <<  std::endl;
       if (table.is_local()) {
-        
-        fleet_ptr_->PullSparseVarsFromLocal(*thread_scope_, tid,
-                                       sparse_key_names_[tid], &features_[tid],
-                                       &feature_values_[tid], table.fea_dim());
+        // fleet_ptr_->PullSparseVarsFromLocal(*thread_scope_, tid,
+        //                               sparse_key_names_[tid], &features_[tid],
+        //                               &feature_values_[tid], table.fea_dim());
+        FillSparseFromLocal(*thread_scope_, tid, sparse_key_names_[tid], fleet_ptr_->GetLocalTable());
         // std::cout << "local sparse table with fea dim: " << table.fea_dim() << std::endl;
+        CollectLabelInfo(i);
+        general_tid = tid;
+        continue;
       } else if (table.is_async()) {
         pull_async_status = fleet_ptr_->PullSparseVarsAsync(*thread_scope_, tid,
                                             sparse_key_names_[tid], &features_[tid],
@@ -777,7 +887,10 @@ void DownpourWorker::TrainFiles() {
 
     // do computation here
     int run_op_idx = 0;
+    //int all_run = 0;
     for (auto& op : ops_) {
+      // std::cout << all_run  << " th op: " << op->Type() << std::endl;
+      //all_run ++;
       bool need_skip = false;
       for (auto t = 0u; t < skip_ops_.size(); ++t) {
         if (op->Type().find(skip_ops_[t]) != std::string::npos) {
@@ -796,7 +909,7 @@ void DownpourWorker::TrainFiles() {
             exit(-1);
           } else {
             // std::cout << "Done Async Pull with tid: " << async_tid << std::endl;  
-            CollectLabelInfo(async_index);
+            // CollectLabelInfo(async_index);
             FillSparseValue(async_index);
             auto nid_iter = std::find(sparse_value_names_[async_tid].begin(),
                                       sparse_value_names_[async_tid].end(),
@@ -808,6 +921,7 @@ void DownpourWorker::TrainFiles() {
 
         } 
         op->Run(*thread_scope_, place_);
+        // std::cout << run_op_idx  << " th op: " << op->Type() << std::endl;
         run_op_idx++;
       }
     }
@@ -826,7 +940,7 @@ void DownpourWorker::TrainFiles() {
           }
         }
         fleet_ptr_->PushSparseVarsWithLabelAsync(
-            *thread_scope_, tid, features_[tid], feature_labels_[tid],
+            *thread_scope_, tid, features_[tid], feature_labels_[general_tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
             dump_slot_);

@@ -34,13 +34,27 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
 void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
   auto &block = program.Block(0);
   op_names_.clear();
+  int i = 0;
+  std::vector<OperatorBase*> tmp_ops;
   for (auto &op_desc : block.AllOps()) {
     std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
     op_names_.push_back(op_desc->Type());
     OperatorBase *local_op_ptr = local_op.release();
-    ops_.push_back(local_op_ptr);
+    
+    if (i == 2667) {
+      ops_.insert(ops_.end(), tmp_ops.begin(), tmp_ops.end());
+      ops_.push_back(local_op_ptr);
+    } else if (i >= 1338 && i <= 2605) {
+      tmp_ops.push_back(local_op_ptr);
+    } else {
+      ops_.push_back(local_op_ptr);    
+    }
+    i++;
     continue;
   }
+  
+    //ops_.push_back(local_op_ptr);
+    //continue;
 }
 
 void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {

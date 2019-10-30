@@ -160,16 +160,20 @@ class DistributedAdam(DistributedOptimizerImplBase):
         dense_table_index = sparse_table_index
         program_configs = {}
         param_grads_list = []
-
+        multi_loss = strategy.get('multi_loss', False)
+        program_set = set()
         for loss_index in range(len(losses)):
             program_id = str(id(losses[loss_index].block.program))
-            program_configs[program_id] = {
-                "pull_sparse":
-                [t_index for t_index in range(sparse_table_index)],
-                "push_sparse":
-                [t_index for t_index in range(sparse_table_index)]
-            }
+            print "minimize program, id: ", program_id
+            if program_id not in program_set:
+                program_configs[program_id] = {
+                    "pull_sparse":
+                    [t_index for t_index in range(sparse_table_index)],
+                    "push_sparse":
+                    [t_index for t_index in range(sparse_table_index)]
+                }
 
+            program_set.add(program_id)
             params_grads = sorted(
                 fluid.backward.append_backward(losses[loss_index],
                                                parameter_list, no_grad_set),
@@ -207,8 +211,12 @@ class DistributedAdam(DistributedOptimizerImplBase):
             worker.add_dense_table(dense_table_index, self._learning_rate,
                                    params, grads, dense_start_table_id,
                                    sparse_table_names)
-            program_configs[program_id]["pull_dense"] = [dense_table_index]
-            program_configs[program_id]["push_dense"] = [dense_table_index]
+            if "pull_dense" in program_configs[program_id]  and "push_dense" in program_configs[program_id] and len(program_configs[program_id]["pull_dense"]) > 0:
+                program_configs[program_id]["pull_dense"].extend([dense_table_index])
+                program_configs[program_id]["push_dense"].extend([dense_table_index])
+            else:
+                program_configs[program_id]["pull_dense"] = [dense_table_index]
+                program_configs[program_id]["push_dense"] = [dense_table_index]
             if len(data_norm_params) != 0 and len(data_norm_grads) != 0:
                 dense_table_index += 1
                 if strategy.get('datanorm_table') is not None:

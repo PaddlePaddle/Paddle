@@ -67,7 +67,7 @@ class FleetWrapper {
     client2client_connect_timeout_ms_ = 10000;
     // pslib request max retry
     client2client_max_retry_ = 3;
-    pull_local_thread_num_ = 40;
+    pull_local_thread_num_ = 25;
   }
 
   void SetClient2ClientConfig(int request_timeout_ms, int connect_timeout_ms,

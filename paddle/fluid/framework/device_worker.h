@@ -191,6 +191,7 @@ class DownpourWorker : public HogwildWorker {
   std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
   void FillSparseValue(size_t table_id);
+  void FillSparseFromLocal(const Scope& scope, const uint64_t table_id, const std::vector<std::string>& var_names, std::vector< std::unordered_map<uint64_t, std::vector<float>> >& local_tables);
   void PushGradients();
   void CollectLabelInfo(size_t table_id);
   void AdjustInsWeight();
