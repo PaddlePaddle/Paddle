@@ -23,17 +23,66 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+template <typename T>
+inline std::vector<T> GetDataFromTensorList(
+    const std::vector<const framework::Tensor *> &list_tensor) {
+  std::vector<T> vec_new_data;
+  for (size_t i = 0; i < list_tensor.size(); ++i) {
+    auto tensor = list_tensor[i];
+    PADDLE_ENFORCE_EQ(
+        tensor->dims(), framework::make_ddim({1}),
+        "ShapeError: If the element type is Tensor, "
+        "the element's shape must be [1]. But received the element's shape "
+        "is [%s]",
+        tensor->dims());
+    if (platform::is_gpu_place(tensor->place())) {
+      framework::Tensor temp;
+      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+      vec_new_data.push_back((*temp.data<T>()));
+    } else {
+      vec_new_data.push_back((*tensor->data<T>()));
+    }
+  }
+  return vec_new_data;
+}
+template <typename T>
+inline std::vector<T> GetDataFromTensor(const framework::Tensor *x) {
+  auto *data = x->data<T>();
+  framework::Tensor cpu_attr_tensor;
+  if (platform::is_gpu_place(x->place())) {
+    TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
+    data = cpu_attr_tensor.data<T>();
+  }
+  auto vec_data = std::vector<T>(data, data + x->numel());
+  return vec_data;
+}
 
 template <typename DeviceContext, typename T>
 class UnsqueezeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto &axes = context.Attr<std::vector<int>>("axes");
+    auto axes = context.Attr<std::vector<int>>("axes");
     auto *in = context.Input<framework::LoDTensor>("X");
     auto *out = context.Output<framework::LoDTensor>("Out");
     auto x_dims = in->dims();
-    auto out_dims = GetOutputShape(axes, x_dims);
 
+    bool need_resize_out_dims = false;
+    if (axes.empty()) {
+      auto axes_tensor_list =
+          context.MultiInput<framework::Tensor>("AxesTensorList");
+      if (axes_tensor_list.size() > 0) {
+        axes = GetDataFromTensorList<int>(axes_tensor_list);
+      } else if (context.HasInput("AxesTensor")) {
+        auto *axes_tensor = context.Input<framework::Tensor>("AxesTensor");
+        axes = GetDataFromTensor<int>(axes_tensor);
+      }
+      need_resize_out_dims = true;
+    }
+    framework::DDim out_dims = out->dims();
+    if (need_resize_out_dims) {
+      out_dims = GetOutputShape(axes, x_dims);
+      out->Resize(out_dims);
+    }
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
         *in, context.GetPlace(),
@@ -92,27 +141,6 @@ class UnsqueezeGradKernel : public framework::OpKernel<T> {
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);
     d_x->Resize(in_dims);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class Unsqueeze2Kernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *out = context.Output<framework::LoDTensor>("Out");
-    auto *in = context.Input<framework::LoDTensor>("X");
-
-    auto &axes = context.Attr<std::vector<int>>("axes");
-
-    auto x_dims = in->dims();
-    auto out_dims =
-        UnsqueezeKernel<DeviceContext, T>::GetOutputShape(axes, x_dims);
-
-    out->mutable_data(context.GetPlace(), in->type());
-    framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
-    out->Resize(out_dims);
   }
 };
 
