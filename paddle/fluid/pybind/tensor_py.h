@@ -20,6 +20,7 @@ limitations under the License. */
 #include <tuple>
 #include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/memory/allocation/numpy_allocation.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
@@ -65,23 +66,6 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   }
 }
 
-class NumpyAllocation : public memory::Allocation {
- public:
-  explicit NumpyAllocation(std::shared_ptr<pybind11::array> arr, ssize_t size,
-                           paddle::platform::CPUPlace place)
-      : Allocation(
-            const_cast<void *>(reinterpret_cast<const void *>(arr->data())),
-            size, place),
-        arr_(arr) {}
-  ~NumpyAllocation() override {
-    py::gil_scoped_acquire gil;
-    arr_->dec_ref();
-  }
-
- private:
-  std::shared_ptr<pybind11::array> arr_;
-};
-
 template <typename T>
 void PyCPUTensorSetFromArray(
     framework::Tensor *self,
@@ -96,7 +80,7 @@ void PyCPUTensorSetFromArray(
   self->Resize(framework::make_ddim(dims));
 
   array.inc_ref();
-  auto holder = std::make_shared<NumpyAllocation>(
+  auto holder = std::make_shared<memory::allocation::NumpyAllocation>(
       std::make_shared<pybind11::array>(static_cast<pybind11::array>(array)),
       sizeof(T) * (array.size()), place);
   self->ResetHolder(holder);
