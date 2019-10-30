@@ -19,11 +19,10 @@ before_install:
   - sudo pip install pylint pytest astroid isort
   - |
     function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
-install: travis_wait 30 mvn install
 script:
   - |
     # 43min timeout
-    paddle/scripts/paddle_docker_build.sh ${JOB}
+    travis_wait 30 paddle/scripts/paddle_docker_build.sh ${JOB}
     if [ $? -eq 0 ] || [ $? -eq 142 ]; then true; else exit 1; fi;
 notifications:
   email:
