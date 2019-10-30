@@ -62,10 +62,10 @@ class Conv2DFusionOpMaker : public Conv2DOpMaker {
 class Conv2DFusionOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"),
-                   "Input(Input) of ConvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Filter"),
-                   "Input(Filter) of ConvOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
+                      "Input(Input) of ConvOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), true,
+                      "Input(Filter) of ConvOp should not be null.");
     auto in_dims = ctx->GetInputDim("Input");
     auto filter_dims = ctx->GetInputDim("Filter");
 
@@ -79,14 +79,14 @@ class Conv2DFusionOpInferShape : public framework::InferShapeBase {
       oshape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
                                       dilations[i], paddings[i], strides[i]));
     }
-    PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                   "Output(Output) of ConvOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
+                      "Output(Output) of ConvOp should not be null.");
     ctx->SetOutputDim("Output", framework::make_ddim(oshape));
     std::vector<int> channels =
         ctx->Attrs().Get<std::vector<int>>("split_channels");
     if (channels.size()) {
-      PADDLE_ENFORCE(ctx->HasOutputs("Outputs"),
-                     "Output(Outputs) of ConvOp should not be null.");
+      PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"), true,
+                        "Output(Outputs) of ConvOp should not be null.");
       std::vector<framework::DDim> oshapes;
       oshapes.reserve(channels.size());
       for (size_t i = 0; i < channels.size(); ++i) {

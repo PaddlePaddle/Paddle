@@ -268,6 +268,16 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
 }
 
 #endif
+
+TEST(test_tracer, test_unique_name_generator) {
+  // generate two unique names
+  imperative::Tracer tracer;
+  auto fc_1 = tracer.GenerateUniqueName("fc");
+  auto fc_2 = tracer.GenerateUniqueName("fc");
+  ASSERT_STREQ("fc_1", fc_1.c_str());
+  ASSERT_STREQ("fc_2", fc_2.c_str());
+}
+
 }  // namespace imperative
 }  // namespace paddle
 
