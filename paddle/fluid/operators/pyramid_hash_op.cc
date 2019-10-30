@@ -336,22 +336,24 @@ class PyramidHashOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class PyramidHashGradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class PyramidHashGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op_desc_ptr = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op_desc_ptr = new T();
     op_desc_ptr->SetType("pyramid_hash_grad");
-    op_desc_ptr->SetInput("X", Input("X"));
-    op_desc_ptr->SetInput("W", Input("W"));
-    op_desc_ptr->SetInput("DropPos", Output("DropPos"));
+    op_desc_ptr->SetInput("X", this->Input("X"));
+    op_desc_ptr->SetInput("W", this->Input("W"));
+    op_desc_ptr->SetInput("DropPos", this->Output("DropPos"));
 
-    op_desc_ptr->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op_desc_ptr->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op_desc_ptr->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
+    op_desc_ptr->SetInput(framework::GradVarName("Out"),
+                          this->OutputGrad("Out"));
+    op_desc_ptr->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op_desc_ptr->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(op_desc_ptr);
   }
 };
 
@@ -435,7 +437,8 @@ namespace ops = paddle::operators;
 namespace plt = paddle::platform;
 namespace frm = paddle::framework;
 REGISTER_OPERATOR(pyramid_hash, ops::PyramidHashOP, ops::PyramidHashOpMaker,
-                  ops::PyramidHashGradOpMaker);
+                  ops::PyramidHashGradOpMaker<paddle::framework::OpDesc>,
+                  ops::PyramidHashGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(pyramid_hash_grad, ops::PyramidHashOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
