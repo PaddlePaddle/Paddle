@@ -328,14 +328,14 @@ class InstallHeaders(Command):
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
-            patters = ['eigen3/src/extern_eigen3', 'boost/src/extern_boost',
+            patterns = ['eigen3/src/extern_eigen3', 'boost/src/extern_boost',
                        'dlpack/src/extern_dlpack/include',
                        'install/protobuf/include',
                        'install/gflags/include',
                        'install/glog/include', 'install/xxhash/include',
                        'threadpool/src/extern_threadpool']
-            for patter in patters:
-                install_dir = re.sub(patter, '', install_dir)
+            for pattern in patterns:
+                install_dir = re.sub(pattern, '', install_dir)
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
         if not os.path.exists(install_dir):
             self.mkpath(install_dir)
