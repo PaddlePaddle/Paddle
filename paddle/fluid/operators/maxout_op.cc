@@ -24,7 +24,7 @@ class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "A 4-D Tensor with data type of float32. "
+             "A 4-D Tensor with data type of float32 or float64. "
              "The data format is NCHW or NHWC. Where N is "
              "batch size, C is the number of channels, "
              "H and W is the height and width of "
@@ -34,13 +34,11 @@ class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
               "with input Tensor. ");
     AddAttr<int>(
         "groups",
-        "The data type is int32. "
         "Specifies how many groups the input tensor will be split into "
         "at the channel dimension. And the number of output channel is "
         "the number of channels divided by groups. ");
     AddAttr<int>(
         "axis",
-        "The data type is int32. "
         "Specifies the index of channel dimension where maxout will "
         "be performed. It should be 1 when data format is NCHW, -1 or 3 "
         "when data format is NHWC. "
