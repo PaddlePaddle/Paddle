@@ -171,7 +171,7 @@ void TestMain(const std::vector<std::string>& input_names,
 }
 
 TEST(FusionGroupOp, elementwise) {
-  if (!platform::dynload::HasNVRTC()) {
+  if (!platform::dynload::HasNVRTC() || !platform::dynload::HasCUDADriver()) {
     return;
   }
 
