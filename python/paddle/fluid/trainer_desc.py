@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Defination of trainers."""
 
 import sys
 from os import path
@@ -220,6 +221,11 @@ class MultiTrainer(TrainerDesc):
 
 
 class DistMultiTrainer(TrainerDesc):
+    """
+    Implement of DistMultiTrainer.
+    It's for Distributed training.
+    """
+
     def __init__(self):
         super(DistMultiTrainer, self).__init__()
         pass
@@ -239,6 +245,11 @@ class DistMultiTrainer(TrainerDesc):
 
 
 class PipelineTrainer(TrainerDesc):
+    """
+    Implement of PipelineTrainer.
+    It's for Pipeline.
+    """
+
     def __init__(self):
         super(PipelineTrainer, self).__init__()
         pass

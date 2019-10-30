@@ -21,6 +21,9 @@ limitations under the License. */
 #include <mutex>  // NOLINT
 #include <string>
 #include <thread>  // NOLINT
+#include <unordered_map>  // NOLINT
+#include <unordered_set>  // NOLINT
+#include <utility>  // NOLINT
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
@@ -197,7 +200,6 @@ class DownpourWorker : public HogwildWorker {
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();
-  void CopyTable(int batch_cnt);
 
  private:
   bool need_to_push_dense_;
