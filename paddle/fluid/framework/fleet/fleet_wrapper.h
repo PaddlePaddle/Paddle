@@ -81,6 +81,14 @@ class FleetWrapper {
                           int fea_dim,
                           const std::vector<std::string>& var_emb_names);
 
+  // Pull sparse variables from server with dependency in sync mode
+  void PullSparseVarsWithDependencySync(
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<std::string>& var_names,
+      std::vector<uint64_t>* fea_keys,
+      std::vector<std::vector<float>>* fea_values, int fea_dim,
+      const std::vector<std::string>& var_emb_names, uint64_t dependent_table);
+
   // pull dense variables from server in sync mod
   void PullDenseVarsSync(const Scope& scope, const uint64_t table_id,
                          const std::vector<std::string>& var_names);
@@ -125,6 +133,19 @@ class FleetWrapper {
       std::vector<::std::future<int32_t>>* push_sparse_status,
       const int batch_size, const bool use_cvm, const bool dump_slot,
       std::vector<uint64_t>* sparse_push_keys);
+
+  // Push sparse variables with labels to server in async mode,
+  // table_id has its dependent_table
+  void PushSparseVarsWithLabelWithDependencyAsync(
+      const Scope& scope, const uint64_t table_id,
+      const std::vector<uint64_t>& fea_keys,
+      const std::vector<float>& fea_labels,
+      const std::vector<std::string>& sparse_key_names,
+      const std::vector<std::string>& sparse_grad_names, const int emb_dim,
+      std::vector<std::vector<float>>* push_values,
+      std::vector<::std::future<int32_t>>* push_sparse_status,
+      const int batch_size, const bool use_cvm, const bool dump_slot,
+      std::vector<uint64_t>* sparse_push_keys, uint64_t dependent_table);
 
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
@@ -186,7 +207,8 @@ class FleetWrapper {
   // copy feasign key/value from src_table_id to dest_table_id
   int32_t CopyTable(int src_table_id, int dest_table_id);
   // copy feasign key/value from src_table_id to dest_table_id
-  int32_t CopyTableByFeasign(int src_table_id, int dest_table_id, std::vector<uint64_t>& feasign_list);
+  int32_t CopyTableByFeasign(int src_table_id, int dest_table_id,  // NOLINT
+                             std::vector<uint64_t>& feasign_list);  // NOLINT
   // clear all models, release their memory
   void ClearModel();
   // shrink sparse table

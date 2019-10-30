@@ -97,14 +97,14 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   for (int i = 0; i < copy_table_config_.src_sparse_tables_size(); ++i) {
     uint64_t src_table = copy_table_config_.src_sparse_tables(i);
     uint64_t dest_table = copy_table_config_.dest_sparse_tables(i);
-    VLOG(3) << "copy_sparse_tables_ push back " <<  src_table << "->"
+    VLOG(3) << "copy_sparse_tables_ push back " << src_table << "->"
             << dest_table;
     copy_sparse_tables_.push_back(std::make_pair(src_table, dest_table));
   }
   for (int i = 0; i < copy_table_config_.src_dense_tables_size(); ++i) {
     uint64_t src_table = copy_table_config_.src_dense_tables(i);
     uint64_t dest_table = copy_table_config_.dest_dense_tables(i);
-    VLOG(3) << "copy_dense_tables_ push back " <<  src_table << "->"
+    VLOG(3) << "copy_dense_tables_ push back " << src_table << "->"
             << dest_table;
     copy_dense_tables_.push_back(std::make_pair(src_table, dest_table));
   }
@@ -843,9 +843,17 @@ void DownpourWorker::TrainFiles() {
           break;
         }
       }
-      fleet_ptr_->PullSparseVarsSync(
-          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-          &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
+      if (copy_table_config_.enable_dependency() &&
+          table_dependency_.find(tid) != table_dependency_.end()) {
+        fleet_ptr_->PullSparseVarsWithDependencySync(
+            *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
+            &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid],
+            table_dependency_[tid]);
+      } else {
+        fleet_ptr_->PullSparseVarsSync(
+            *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
+            &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
+      }
       CollectLabelInfo(i);
       FillSparseValue(i);
       auto nid_iter = std::find(sparse_value_names_[tid].begin(),
@@ -900,11 +908,20 @@ void DownpourWorker::TrainFiles() {
             break;
           }
         }
-        fleet_ptr_->PushSparseVarsWithLabelAsync(
-            *thread_scope_, tid, features_[tid], feature_labels_[tid],
-            sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid]);
+        if (copy_table_config_.enable_dependency() &&
+            table_dependency_.find(tid) != table_dependency_.end()) {
+          fleet_ptr_->PushSparseVarsWithLabelWithDependencyAsync(
+              *thread_scope_, tid, features_[tid], feature_labels_[tid],
+              sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
+              &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+              dump_slot_, &sparse_push_keys_[tid], table_dependency_[tid]);
+        } else {
+          fleet_ptr_->PushSparseVarsWithLabelAsync(
+              *thread_scope_, tid, features_[tid], feature_labels_[tid],
+              sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
+              &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+              dump_slot_, &sparse_push_keys_[tid]);
+        }
       }
     }
 
