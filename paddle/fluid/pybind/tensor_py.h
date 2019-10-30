@@ -489,12 +489,10 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor) {
 
   size_t numel = 1;
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-    VLOG(3) << "TensorToPyArray tensor_dims[i] " << tensor_dims[i];
     py_dims[i] = (size_t)tensor_dims[i];
     py_strides[i] = sizeof_dtype * numel;
     numel *= py_dims[i];
   }
-  VLOG(3) << "TensorToPyArray numel: " << numel;
 
   const void *tensor_buf_ptr = tensor.data<void>();
 
