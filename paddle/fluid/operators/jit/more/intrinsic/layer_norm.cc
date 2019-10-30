@@ -32,6 +32,7 @@ void LayerNorm(float* x, float* out, float* mean, float* var,
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel
   {
+#endif
     __m256 sum;
     __m256 mean_vec, var_vec;
     __m128 hi, lo;
@@ -49,6 +50,7 @@ void LayerNorm(float* x, float* out, float* mean, float* var,
         rest_mask & 0x8 ? 0xffffffff : 0, rest_mask & 0x4 ? 0xffffffff : 0,
         rest_mask & 0x2 ? 0xffffffff : 0, rest_mask & 0x1 ? 0xffffffff : 0);
 
+#ifdef PADDLE_WITH_MKLML
 #pragma omp for
 #endif
     for (int i = 0; i < height; ++i) {
