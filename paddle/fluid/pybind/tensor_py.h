@@ -65,21 +65,21 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   }
 }
 
-template <typename T>
 class NumpyAllocation : public memory::Allocation {
  public:
-  explicit NumpyAllocation(const py::array *arr)
-      : arr_(arr),
-        Allocation(
+  explicit NumpyAllocation(std::shared_ptr<pybind11::array> arr, ssize_t size,
+                           paddle::platform::CPUPlace place)
+      : Allocation(
             const_cast<void *>(reinterpret_cast<const void *>(arr->data())),
-            sizeof(T) * (arr->size()), platform::CPUPlace()) {}
-  ~NumpyAllocation() {
+            size, place),
+        arr_(arr) {}
+  ~NumpyAllocation() override {
     py::gil_scoped_acquire gil;
     arr_->dec_ref();
   }
 
  private:
-  const py::array *arr_;
+  std::shared_ptr<pybind11::array> arr_;
 };
 
 template <typename T>
@@ -96,7 +96,9 @@ void PyCPUTensorSetFromArray(
   self->Resize(framework::make_ddim(dims));
 
   array.inc_ref();
-  auto holder = std::make_shared<NumpyAllocation<T>>(&array);
+  auto holder = std::make_shared<NumpyAllocation>(
+      std::make_shared<pybind11::array>(static_cast<pybind11::array>(array)),
+      sizeof(T) * (array.size()), place);
   self->ResetHolder(holder);
 }
 
