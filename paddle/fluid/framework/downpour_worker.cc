@@ -457,9 +457,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
       }
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
-          CopySparseTable();
-          CopyDenseTable();
-          CopyDenseVars();
+        CopySparseTable();
+        CopyDenseTable();
+        CopyDenseVars();
       }
     }
     timeline.Pause();
@@ -726,8 +726,7 @@ void DownpourWorker::CopySparseTable() {
     } else {
       std::vector<uint64_t> fea_vec(feasign_set_[src_table].begin(),
                                     feasign_set_[src_table].end());
-      feanum = fleet_ptr_->CopyTableByFeasign(
-          src_table, dest_table, fea_vec);
+      feanum = fleet_ptr_->CopyTableByFeasign(src_table, dest_table, fea_vec);
       fea_vec.clear();
       std::vector<uint64_t>().swap(fea_vec);
     }
@@ -762,8 +761,8 @@ void DownpourWorker::CopyDenseTable() {
         t.wait();
         auto status = t.get();
         if (status != 0) {
-            LOG(WARNING) << "pull dense after copy table failed,"
-                         << " table=" << dest_table;
+          LOG(WARNING) << "pull dense after copy table failed,"
+                       << " table=" << dest_table;
         }
       }
     }
