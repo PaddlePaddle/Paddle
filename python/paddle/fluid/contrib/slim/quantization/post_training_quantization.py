@@ -120,40 +120,36 @@ class PostTrainingQuantization(object):
             if var.persistable:
                 persistable_var_names.append(var.name)
 
-        for block in self._program.blocks:
-            for op in block.ops:
-                op_type = op.type
-                if op_type in self._quantizable_op_type:
-                    if op_type in ("conv2d", "depthwise_conv2d"):
-                        self._quantized_act_var_name.append(
-                            op.input("Input")[0])
-                        self._quantized_weight_var_name.append(
-                            op.input("Filter")[0])
-                        self._quantized_act_var_name.append(
-                            op.output("Output")[0])
-                    elif op_type == "mul":
-                        x_var_name = op.input("X")[0]
-                        y_var_name = op.input("Y")[0]
-                        if x_var_name not in persistable_var_names and \
-                            y_var_name not in persistable_var_names:
-                            op._set_attr("skip_quant", True)
-                            logging.warning(
-                                "A mul op skip quant for two "
-                                "input variables are not persistable")
-                        else:
-                            self._quantized_act_var_name.append(x_var_name)
-                            self._quantized_weight_var_name.append(y_var_name)
-                            self._quantized_act_var_name.append(
-                                op.output("Out")[0])
-                    elif op_type == "pool2d":
-                        self._quantized_act_var_name.append(op.input("X")[0])
-                    elif op_type == "elementwise_add":
-                        x_var_name = op.input("X")[0]
-                        y_var_name = op.input("Y")[0]
-                        if x_var_name not in persistable_var_names and \
-                            y_var_name not in persistable_var_names:
-                            self._quantized_act_var_name.append(x_var_name)
-                            self._quantized_act_var_name.append(y_var_name)
+        block = self._program.global_block()
+        for op in block.ops:
+            op_type = op.type
+            if op_type in self._quantizable_op_type:
+                if op_type in ("conv2d", "depthwise_conv2d"):
+                    self._quantized_act_var_name.append(op.input("Input")[0])
+                    self._quantized_weight_var_name.append(
+                        op.input("Filter")[0])
+                    self._quantized_act_var_name.append(op.output("Output")[0])
+                elif op_type == "mul":
+                    x_var_name = op.input("X")[0]
+                    y_var_name = op.input("Y")[0]
+                    if x_var_name not in persistable_var_names and \
+                        y_var_name not in persistable_var_names:
+                        op._set_attr("skip_quant", True)
+                        logging.warning("A mul op skip quant for two "
+                                        "input variables are not persistable")
+                    else:
+                        self._quantized_act_var_name.append(x_var_name)
+                        self._quantized_weight_var_name.append(y_var_name)
+                        self._quantized_act_var_name.append(op.output("Out")[0])
+                elif op_type == "pool2d":
+                    self._quantized_act_var_name.append(op.input("X")[0])
+                elif op_type == "elementwise_add":
+                    x_var_name = op.input("X")[0]
+                    y_var_name = op.input("Y")[0]
+                    if x_var_name not in persistable_var_names and \
+                        y_var_name not in persistable_var_names:
+                        self._quantized_act_var_name.append(x_var_name)
+                        self._quantized_act_var_name.append(y_var_name)
 
         # set activation variables to be persistable, 
         # so we can obtain the tensor data in sample_data stage
@@ -278,27 +274,7 @@ class PostTrainingQuantization(object):
             ending_iter = 2047
             starting_iter = int(ending_iter * 0.7)
         else:
-            th = max(abs(max_val), abs(min_val))
-            hist, hist_edeges = np.histogram(
-                activation_blob, bins=2048, range=(-th, th))
-            starting_iter = 0
-            ending_iter = 2047
-            if abs(max_val) > abs(min_val):
-                while starting_iter < ending_iter:
-                    if hist[starting_iter] == 0:
-                        starting_iter += 1
-                        continue
-                    else:
-                        break
-                starting_iter += int((ending_iter - starting_iter) * 0.6)
-            else:
-                while ending_iter > 0:
-                    if hist[ending_iter] == 0:
-                        ending_iter -= 1
-                        continue
-                    else:
-                        break
-                starting_iter = int(0.6 * ending_iter)
+            logging.error("Please first apply abs to activation_blob.")
         bin_width = hist_edeges[1] - hist_edeges[0]
 
         P_sum = len(np.array(activation_blob).ravel())
@@ -313,7 +289,7 @@ class PostTrainingQuantization(object):
             reference_distr_P[i - 1] += outliers_count
             reference_distr_bins = reference_distr_P[:]
             candidate_distr_Q = hist[0:i].tolist()
-            num_merged_bins = i / num_quantized_bins
+            num_merged_bins = int(i / num_quantized_bins)
             candidate_distr_Q_quantized = [0] * num_quantized_bins
             j_start = 0
             j_end = num_merged_bins
@@ -352,7 +328,7 @@ class PostTrainingQuantization(object):
         '''
         '''
         expanded_quantized_bins = [0] * len(reference_bins)
-        num_merged_bins = len(reference_bins) / len(quantized_bins)
+        num_merged_bins = int(len(reference_bins) / len(quantized_bins))
         j_start = 0
         j_end = num_merged_bins
         for idx in range(len(quantized_bins)):
