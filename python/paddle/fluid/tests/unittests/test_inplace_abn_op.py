@@ -152,8 +152,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
         alpha = 0.1
         layouts = ["NCHW", "NHWC"]
         for use_cuda in use_cudas:
-            place = core.CUDAPlace(0) if core.is_compiled_with_cuda(
-            ) else core.CPUPlace()
+            place = core.CUDAPlace(0) if use_cuda else core.CPUPlace()
             for layout in layouts:
                 for activation in ['identity', 'leaky_relu']:
                     main, startup, outs = self.build_program(
