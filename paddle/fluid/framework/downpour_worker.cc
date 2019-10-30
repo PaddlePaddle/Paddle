@@ -479,9 +479,17 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
       }
       timeline.Start();
-      fleet_ptr_->PullSparseVarsSync(
-          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-          &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
+      if (copy_table_config_.enable_dependency() &&
+          table_dependency_.find(tid) != table_dependency_.end()) {
+        fleet_ptr_->PullSparseVarsWithDependencySync(
+            *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
+            &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid],
+            table_dependency_[tid]);
+      } else {
+        fleet_ptr_->PullSparseVarsSync(
+            *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
+            &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
+      }
       timeline.Pause();
       pull_sparse_time += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
@@ -557,11 +565,20 @@ void DownpourWorker::TrainFilesWithProfiler() {
           }
         }
         timeline.Start();
-        fleet_ptr_->PushSparseVarsWithLabelAsync(
-            *thread_scope_, tid, features_[tid], feature_labels_[tid],
-            sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
-            &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_, &sparse_push_keys_[tid]);
+        if (copy_table_config_.enable_dependency() &&
+            table_dependency_.find(tid) != table_dependency_.end()) {
+          fleet_ptr_->PushSparseVarsWithLabelWithDependencyAsync(
+              *thread_scope_, tid, features_[tid], feature_labels_[tid],
+              sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
+              &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+              dump_slot_, &sparse_push_keys_[tid], table_dependency_[tid]);
+        } else {
+          fleet_ptr_->PushSparseVarsWithLabelAsync(
+              *thread_scope_, tid, features_[tid], feature_labels_[tid],
+              sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
+              &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
+              dump_slot_, &sparse_push_keys_[tid]);
+        }
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
