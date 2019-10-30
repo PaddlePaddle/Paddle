@@ -154,7 +154,9 @@ class Allocator {
   class AllocationDeleter {
    public:
     inline void operator()(Allocation* allocation) const {
+      VLOG(3) << "AllocationDeleter()";
       Allocator* allocator = allocation->TopDecoratedAllocator();
+      VLOG(3) << "AllocationDeleter allocator:" << allocator;
       allocator->Free(allocation);
     }
   };
@@ -173,7 +175,9 @@ class Allocator {
 
   // This function should not be called outside Allocator class
   inline void Free(Allocation* allocation) {
+    VLOG(3) << "Allocator::Free";
     allocation->PopDecoratedAllocator();
+    VLOG(3) << "Allocator::before FreeImpl, allocation: " << allocation;
     FreeImpl(allocation);
   }
 

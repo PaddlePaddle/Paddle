@@ -71,9 +71,12 @@ void Tensor::from_numpy(void* data_ptr, size_t size,
                         const std::function<void()>& deleter) {
   PADDLE_ENFORCE_NOT_NULL(
       data_ptr, "Cannot invoke from_numpy with data_ptr hold nothing.");
-  holder_.reset();
-  holder_ = std::shared_ptr<memory::Allocation>(
+  //  auto new_holder =
+  //  std::make_shared<memory::Allocation>(memory::allocation::NumpyAllocator(data_ptr,
+  //  deleter).Allocate(size));
+  auto new_holder = std::shared_ptr<memory::Allocation>(
       memory::allocation::NumpyAllocator(data_ptr, deleter).Allocate(size));
+  this->ResetHolder(new_holder);
 }
 
 Tensor& Tensor::ShareDataWith(const Tensor& src) {

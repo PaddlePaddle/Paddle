@@ -20,9 +20,13 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 Allocation* NumpyAllocator::AllocateImpl(size_t size) {
-  return new NumpyAllocation(data_ptr, size, deleter);
+  VLOG(3) << "NumpyAllocator::AllocateImpl, numpy_allocator: " << this;
+  auto res = new NumpyAllocation(data_ptr, size, deleter);
+  VLOG(3) << "NumpyAllocator::AllocateImpl, numpy_allocation: " << res;
+  return res;
 }
 void NumpyAllocator::FreeImpl(Allocation* allocation) {
+  VLOG(3) << "NumpyAllocator::FreeImpl";
   reinterpret_cast<NumpyAllocation*>(allocation)->callDeleter();
 }
 bool NumpyAllocator::IsAllocThreadSafe() const { return true; }

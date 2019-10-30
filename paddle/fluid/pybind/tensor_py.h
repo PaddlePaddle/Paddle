@@ -78,18 +78,18 @@ void PyCPUTensorSetFromArray(
   }
   self->Resize(framework::make_ddim(dims));
 
-  //  array.inc_ref();
-  //  void *data_ptr =
-  //      const_cast<void *>(reinterpret_cast<const void *>(array.data()));
-  //  self->from_numpy(data_ptr, sizeof(T) * array.size(), [array]() {
-  //    VLOG(3) << "into deleter";
-  //    pybind11::gil_scoped_acquire gil;
-  //    array.dec_ref();
-  //    VLOG(3) << "end deleter";
-  //  });
+  array.inc_ref();
+  void *data_ptr =
+      const_cast<void *>(reinterpret_cast<const void *>(array.data()));
+  self->from_numpy(data_ptr, sizeof(T) * array.size(), [array]() {
+    VLOG(3) << "into deleter";
+    pybind11::gil_scoped_acquire gil;
+    array.dec_ref();
+    VLOG(3) << "end deleter";
+  });
 
-  auto *dst = self->mutable_data<T>(place);
-  std::memcpy(dst, array.data(), sizeof(T) * array.size());
+  //  auto *dst = self->mutable_data<T>(place);
+  //  std::memcpy(dst, array.data(), sizeof(T) * array.size());
 }
 
 template <>
