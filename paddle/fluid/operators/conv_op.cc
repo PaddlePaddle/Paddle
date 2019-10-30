@@ -57,6 +57,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
                     in_dims.size(), in_dims);
 
   PADDLE_ENFORCE_EQ(
+
       in_dims.size(), filter_dims.size(),
       "ShapeError: Conv input dimension and filter dimension should be the "
       "equal."
