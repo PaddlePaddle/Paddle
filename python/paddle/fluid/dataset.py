@@ -426,6 +426,7 @@ class InMemoryDataset(DatasetBase):
         """
         self.dataset.set_merge_by_lineid(merge_size)
         self.merge_by_lineid = True
+        self.parse_ins_id = True
 
     def load_into_memory(self):
         """

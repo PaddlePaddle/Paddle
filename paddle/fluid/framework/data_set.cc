@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <random>
 #include <unordered_map>
+#include <unordered_set>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -642,7 +643,6 @@ void MultiSlotDataset::MergeByInsId() {
       use_slots.push_back(slot.name());
     }
   }
-
   CHECK(multi_output_channel_.size() != 0);  // NOLINT
   auto channel_data = paddle::framework::MakeChannel<Record>();
   VLOG(3) << "multi_output_channel_.size() " << multi_output_channel_.size();
@@ -700,9 +700,9 @@ void MultiSlotDataset::MergeByInsId() {
       for (auto& feature : recs[k].uint64_feasigns_) {
         uint16_t slot = feature.slot();
         if (all_int64.find(slot) != all_int64.end()) {
-            has_conflict_slot = true;
-            conflict_slot = slot;
-            break;
+          has_conflict_slot = true;
+          conflict_slot = slot;
+          break;
         }
         local_uint64.insert(slot);
         rec.uint64_feasigns_.push_back(std::move(feature));
@@ -727,7 +727,7 @@ void MultiSlotDataset::MergeByInsId() {
       }
       all_float.insert(local_float.begin(), local_float.end());
     }
-    
+
     if (has_conflict_slot) {
       LOG(WARNING) << "drop ins " << recs[i].ins_id_ << " size=" << j - i
                    << ", because conflict_slot=" << use_slots[conflict_slot];
