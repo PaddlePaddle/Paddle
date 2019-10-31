@@ -12,18 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_BOX_PS})
-  return()
-ENDIF(NOT ${WITH_BOX_PS})
-
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
-        "Windows or Mac is not supported with BOX_PS in Paddle yet."
-        "Force WITH_BOX_PS=OFF")
-    SET(WITH_BOX_PS OFF CACHE STRING "Disable BOX_PS package in Windows and MacOS" FORCE)
-    return()
-ENDIF()
-
 INCLUDE(ExternalProject)
 
 SET(BOX_PS_PROJECT       "extern_box_ps")
