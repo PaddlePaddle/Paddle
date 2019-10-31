@@ -507,7 +507,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     }
   }
   if (config.glog_info_disabled()) {
-    google::InitGoogleLogging("Init");
     FLAGS_logtostderr = 1;
     FLAGS_minloglevel = google::WARNING;
     LOG(WARNING) << " - GLOG's LOG(INFO) is disabled.";
