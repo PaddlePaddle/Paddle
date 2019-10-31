@@ -346,13 +346,28 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::Tracer::SetEnableProgramDescTracing)
       .def_property("_train_mode", &imperative::Tracer::NoGrad,
                     &imperative::Tracer::SetNoGrad)
-      .def_property("_expected_place", &imperative::Tracer::ExpectedPlace,
-                    &imperative::Tracer::SetExpectedPlace<platform::CUDAPlace>)
-      .def_property("_expected_place", &imperative::Tracer::ExpectedPlace,
-                    &imperative::Tracer::SetExpectedPlace<platform::CPUPlace>)
       .def_property(
-          "_expected_place", &imperative::Tracer::ExpectedPlace,
-          &imperative::Tracer::SetExpectedPlace<platform::CUDAPinnedPlace>)
+          "_expected_place",
+          [](const imperative::Tracer &self) -> py::object {
+            return py::cast(self.ExpectedPlace());
+          },
+          [](imperative::Tracer &self, const py::object &obj) {
+            if (py::isinstance<platform::CUDAPlace>(obj)) {
+              auto p = obj.cast<platform::CUDAPlace *>();
+              self.SetExpectedPlace<platform::CUDAPlace>(*p);
+            } else if (py::isinstance<platform::CPUPlace>(obj)) {
+              auto p = obj.cast<platform::CPUPlace *>();
+              self.SetExpectedPlace<platform::CPUPlace>(*p);
+            } else if (py::isinstance<platform::CUDAPinnedPlace>(obj)) {
+              auto p = obj.cast<platform::CUDAPinnedPlace *>();
+              self.SetExpectedPlace<platform::CUDAPinnedPlace>(*p);
+            } else {
+              PADDLE_THROW(
+                  "Incompatible Place Type: supports CUDAPlace, CPUPlace, "
+                  "CUDAPinnedPlace, "
+                  "but got Unknown Type!");
+            }
+          })
       .def("_get_program_desc_tracer",
            &imperative::Tracer::GetProgramDescTracer,
            py::return_value_policy::reference)
