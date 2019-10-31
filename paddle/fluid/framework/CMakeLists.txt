@@ -122,6 +122,8 @@ cc_library(no_need_buffer_vars_inference SRCS no_need_buffer_vars_inference.cc D
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto no_need_buffer_vars_inference)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
 
+cc_test(no_need_buffer_vars_inference_test SRCS no_need_buffer_vars_inference_test.cc DEPS no_need_buffer_vars_inference layer)
+
 cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
