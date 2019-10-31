@@ -57,8 +57,8 @@ class DequantizeMaxAbsOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const {
-    auto type = framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>("X")->type(), ctx.device_context());
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    auto type = framework::OpKernelType(data_type, ctx.device_context());
     return type;
   }
 };
