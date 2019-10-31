@@ -205,7 +205,7 @@ inline void AppendKey(std::string* key, const std::vector<int>& dims) {
 template <typename... ArgTypes>
 inline std::string CreateKey(ArgTypes&&... args) {
   std::string key;
-  key.reserve(256);
+  key.reserve(64);
   using expand_type = int[];
   expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
   return key;

@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.compiler as compiler
 import paddle.fluid.core as core
+import six
 import unittest
 
 os.environ['CPU_NUM'] = str(4)
@@ -65,25 +66,64 @@ class TestFeedData(unittest.TestCase):
         return in_data, label, loss
 
     def test(self):
-        for use_cuda in [True, False] if core.is_compiled_with_cuda(
-        ) else [False]:
+        for use_cuda in [True,
+                         False] if core.is_compiled_with_cuda() else [False]:
             for use_parallel_executor in [False, True]:
                 print('Test Parameters:'),
                 print({
                     'use_cuda': use_cuda,
                     'use_parallel_executor': use_parallel_executor,
                 })
+                # Test feeding without error
                 self._test_feed_data_match_shape_type(use_cuda,
                                                       use_parallel_executor)
                 self._test_feed_data_contains_neg_one(use_cuda,
                                                       use_parallel_executor)
-                with self.assertRaises(ValueError):
+
+                # Test exception message when feeding with error 
+                batch_size = self._get_batch_size(use_cuda,
+                                                  use_parallel_executor)
+                if six.PY2:
+                    in_shape_tuple = (long(-1), long(3), long(4), long(8))
+                    feed_shape_list = [
+                        long(batch_size), long(3), long(4), long(5)
+                    ]
+                else:
+                    in_shape_tuple = (-1, 3, 4, 8)
+                    feed_shape_list = [batch_size, 3, 4, 5]
+
+                with self.assertRaises(ValueError) as shape_mismatch_err:
                     self._test_feed_data_shape_mismatch(use_cuda,
                                                         use_parallel_executor)
+                self.assertEqual(
+                    str(shape_mismatch_err.exception),
+                    "The feeded Variable %r should have dimensions = %r, "
+                    "shape = %r, but received feeded shape %r" %
+                    (u'data', len(in_shape_tuple), in_shape_tuple,
+                     feed_shape_list))
+
+                with self.assertRaises(ValueError) as dtype_mismatch_err:
+                    self._test_feed_data_dtype_mismatch(use_cuda,
+                                                        use_parallel_executor)
+                self.assertEqual(
+                    str(dtype_mismatch_err.exception),
+                    "The data type of feeded Variable %r must be 'int64', but "
+                    "received 'float64'" % (u'label'))
+
+    def _test_feed_data_dtype_mismatch(self, use_cuda, use_parallel_executor):
+        batch_size = self._get_batch_size(use_cuda, use_parallel_executor)
+        in_size = [batch_size, 3, 4, 5]
+        feed_in_data = np.random.uniform(
+            size=[batch_size, 3, 4, 5]).astype(np.float32)
+        label_size = [batch_size, 1]
+        feed_label = np.random.randint(
+            low=0, high=self.class_num, size=[batch_size, 1]).astype(np.float64)
+        self._feed_data_in_executor(in_size, label_size, feed_in_data,
+                                    feed_label, use_cuda, use_parallel_executor)
 
     def _test_feed_data_shape_mismatch(self, use_cuda, use_parallel_executor):
         batch_size = self._get_batch_size(use_cuda, use_parallel_executor)
-        in_size = [-1, 3, 4, 8]
+        in_size = [None, 3, 4, 8]
         feed_in_data = np.random.uniform(
             size=[batch_size, 3, 4, 5]).astype(np.float32)
         label_size = [-1, 1]
@@ -97,7 +137,7 @@ class TestFeedData(unittest.TestCase):
         in_size = [-1, 3, 4, 5]
         feed_in_data = np.random.uniform(
             size=[batch_size, 3, 4, 5]).astype(np.float32)
-        label_size = (-1, 1)
+        label_size = (None, 1)
         feed_label = np.random.randint(
             low=0, high=self.class_num, size=[batch_size, 1]).astype(np.int64)
         self._feed_data_in_executor(in_size, label_size, feed_in_data,

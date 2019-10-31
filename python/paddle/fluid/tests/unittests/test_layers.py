@@ -180,7 +180,7 @@ class TestLayer(LayerTest):
             self.assertFalse(np.array_equal(out1.numpy(), out2.numpy()))
 
             mismatched_weight = np.random.randn(4, 4).astype("float32")
-            with self.assertRaises(ValueError):
+            with self.assertRaises(AssertionError):
                 fc2.weight.set_value(mismatched_weight)
             fc2.weight.set_value(fc1_weight_init)
             fc2.bias.set_value(fc1_bias_init)
@@ -2830,8 +2830,7 @@ class TestBook(LayerTest):
         print(str(program))
 
     def test_deformable_conv(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
+        with self.static_graph():
             input = layers.data(
                 name='input',
                 append_batch_size=False,
@@ -2847,6 +2846,23 @@ class TestBook(LayerTest):
                 append_batch_size=False,
                 shape=[2, 9, 32, 32],
                 dtype="float32")
+            out = layers.deformable_conv(
+                input=input,
+                offset=offset,
+                mask=mask,
+                num_filters=2,
+                filter_size=3,
+                padding=1)
+            return (out)
+
+    def test_deformable_conv2(self):
+        with self.static_graph():
+            input = fluid.data(
+                name='input', shape=[None, 3, None, None], dtype="float32")
+            offset = fluid.data(
+                name='offset', shape=[None, 18, None, None], dtype="float32")
+            mask = fluid.data(
+                name='mask', shape=[None, 9, None, None], dtype="float32")
             out = layers.deformable_conv(
                 input=input,
                 offset=offset,
@@ -3043,6 +3059,29 @@ class TestBook(LayerTest):
                 name='label', shape=[-1, 1], dtype='int64', lod_level=1)
             evaluator = fluid.evaluator.EditDistance(predict, label)
             return evaluator.metrics
+
+    def test_basic_gru(self):
+        input_size = 128
+        hidden_size = 256
+        with self.static_graph():
+            input = fluid.data(
+                name="input", shape=[None, None, input_size], dtype='float32')
+            pre_hidden = fluid.data(
+                name="pre_hidden", shape=[None, hidden_size], dtype='float32')
+            sequence_length = fluid.data(
+                name="sequence_length", shape=[None], dtype='int32')
+
+            for bidirectional in [True, False]:
+                for batch_first in [True, False]:
+                    rnn_out, last_hidden = fluid.contrib.layers.basic_gru(
+                        input,
+                        pre_hidden,
+                        hidden_size=256,
+                        num_layers=2,
+                        sequence_length=sequence_length,
+                        dropout_prob=0.5,
+                        bidirectional=bidirectional,
+                        batch_first=batch_first)
 
 
 if __name__ == '__main__':

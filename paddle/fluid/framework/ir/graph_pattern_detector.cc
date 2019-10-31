@@ -93,8 +93,7 @@ void GraphPatternDetector::operator()(Graph *graph,
   ValidateByNodeRole(&subgraphs);
 
   if (subgraphs.empty()) return;
-  PrettyLogEndl(Style::detail(), "---  detected %d subgraphs",
-                subgraphs.size());
+  LOG(INFO) << "---  detected " << subgraphs.size() << " subgraphs";
   int id = 0;
   for (auto &g : subgraphs) {
     VLOG(3) << "optimizing #" << id++ << " subgraph";
@@ -666,10 +665,11 @@ bool VarLinksFromOp(Node *node, const std::string &op_type) {
 }
 
 PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
+                                     const std::string &conv_type,
                                      bool with_eltwise_add) {
   // Create Operators
-  conv_input->assert_is_op_input("conv2d", "Input");
-  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  conv_input->assert_is_op_input(conv_type, "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op(conv_type);
 
   PDNode *eltwise_op = nullptr;
   if (with_eltwise_add) {
@@ -683,11 +683,11 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
                               ->AsInput()
                               ->assert_is_persistable_var()
-                              ->assert_is_op_input("conv2d", "Filter");
+                              ->assert_is_op_input(conv_type, "Filter");
 
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
                            ->AsIntermediate()
-                           ->assert_is_only_output_of_op("conv2d");
+                           ->assert_is_only_output_of_op(conv_type);
 
   PDNode *eltwise_y_in_var = nullptr;
   PDNode *eltwise_out_var = nullptr;

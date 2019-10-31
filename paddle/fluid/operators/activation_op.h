@@ -210,14 +210,6 @@ struct BaseActivationFunctor {
   using AttrPair = std::vector<std::pair<const char*, float*>>;
 
   AttrPair GetAttrs() { return AttrPair(); }
-
-  /* NOTE(*): Output reuse X memory if X is not dependented by its Gradient.
-     For example, sigmoid op's gradient didn't involve x, so its output can
-     reuse
-     input memory. But abs op's gradient use x, it can not be inplaced.
-     gradient did use x.
-   */
-  bool Inplace() const { return false; }
 };
 
 // sigmoid(x) = 1 / (1 + exp(-x))

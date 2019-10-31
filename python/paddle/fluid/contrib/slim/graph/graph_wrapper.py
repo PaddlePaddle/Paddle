@@ -263,6 +263,7 @@ class GraphWrapper(object):
             build_strategy = compiler.BuildStrategy()
             build_strategy.enable_inplace = mem_opt
             build_strategy.memory_optimize = mem_opt
+            build_strategy.fuse_all_reduce_ops = False
             #            build_strategy.async_mode = False
             self.compiled_graph = compiler.CompiledProgram(
                 target).with_data_parallel(

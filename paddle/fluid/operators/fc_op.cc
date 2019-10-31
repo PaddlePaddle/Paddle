@@ -80,41 +80,11 @@ class FCOp : public framework::OperatorWithKernel {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
-    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                   ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+        layout, library);
   }
 };
-
-void FCOpGrad::InferShape(framework::InferShapeContext* ctx) const {
-  auto in_dims = ctx->GetInputDim("Input");
-  auto w_dims = ctx->GetInputDim("W");
-
-  if (ctx->HasOutput(framework::GradVarName("Input"))) {
-    ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
-  }
-  if (ctx->HasOutput(framework::GradVarName("W"))) {
-    ctx->SetOutputDim(framework::GradVarName("W"), w_dims);
-  }
-
-  if (ctx->HasInput("Bias")) {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("Bias")), true,
-                      "Should have bias grad");
-    auto bias_dims = ctx->GetInputDim("Bias");
-    ctx->SetOutputDim(framework::GradVarName("Bias"), bias_dims);
-  }
-}
-
-framework::OpKernelType FCOpGrad::GetExpectedKernelType(
-    const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-  if (ctx.Attr<bool>("use_mkldnn")) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
-  }
-  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                 ctx.GetPlace(), layout, library);
-}
 
 class FCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -153,9 +123,11 @@ The size of each dimension of the parameters checked in the infer-shape.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fc, ops::FCOp, ops::FCOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(fc_grad, ops::FCOpGrad);
+
+REGISTER_OPERATOR(
+    fc, ops::FCOp, ops::FCOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     fc, ops::FCOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FCOpKernel<paddle::platform::CPUDeviceContext, double>);

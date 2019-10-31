@@ -275,6 +275,10 @@ class TestTensor(unittest.TestCase):
             self.assertTrue(
                 isinstance(
                     tensor._mutable_data(place, dtype), numbers.Integral))
+            places = fluid.cuda_pinned_places()
+            self.assertTrue(
+                isinstance(
+                    tensor._mutable_data(places[0], dtype), numbers.Integral))
 
 
 if __name__ == '__main__':

@@ -86,6 +86,8 @@ from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from . import install_check
 from .dygraph.nn import *
 from .dygraph.layers import *
+from .io import save, load, load_program_state, set_program_state
+from .dygraph.checkpoint import save_dygraph, load_dygraph
 
 Tensor = LoDTensor
 
@@ -122,6 +124,8 @@ __all__ = framework.__all__ + executor.__all__ + \
         'unique_name',
         'Scope',
         'install_check',
+        'save',
+        'load',
     ]
 
 
@@ -188,6 +192,7 @@ def __bootstrap__():
         read_env_flags.append('rpc_get_thread_num')
         read_env_flags.append('rpc_prefetch_thread_num')
         read_env_flags.append('rpc_disable_reuse_port')
+        read_env_flags.append('rpc_retry_bind_port')
 
         read_env_flags.append('worker_update_interval_secs')
 
@@ -201,6 +206,7 @@ def __bootstrap__():
         read_env_flags.append('communicator_fake_rpc')
         read_env_flags.append('communicator_send_wait_times')
         read_env_flags.append('communicator_merge_sparse_grad')
+        read_env_flags.append('communicator_is_sgd_optimizer')
         if core.is_compiled_with_brpc():
             read_env_flags.append('max_body_size')
             #set brpc max body size

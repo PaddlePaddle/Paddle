@@ -175,5 +175,38 @@ class TestLayerNormOp(unittest.TestCase):
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=3)
 
 
+class TestLayerNormAPI(unittest.TestCase):
+    def test_case(self):
+        x = fluid.layers.data(
+            name='x',
+            shape=[64, 32, 256],
+            dtype='float32',
+            append_batch_size=False)
+        x = fluid.layers.layer_norm(
+            x,
+            scale=True,
+            shift=True,
+            begin_norm_axis=1,
+            epsilon=1e-05,
+            param_attr=None,
+            bias_attr=None)
+        x = fluid.layers.layer_norm(
+            x,
+            scale=False,
+            shift=False,
+            begin_norm_axis=1,
+            epsilon=1e-05,
+            param_attr=None,
+            bias_attr=None)
+        x = fluid.layers.layer_norm(
+            x,
+            scale=False,
+            shift=False,
+            begin_norm_axis=1,
+            epsilon=1e-05,
+            param_attr="scale",
+            bias_attr="shift")
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -58,6 +58,7 @@ class Executor {
 
   explicit Executor(const platform::Place& place);
 
+  ~Executor();
   /*
    * Close this Executor.
    * Calling this method will send complete messages to all pserver instances.
@@ -94,12 +95,6 @@ class Executor {
                           const std::string& feed_holder_name = "feed",
                           const std::string& fetch_holder_name = "fetch");
 
-  std::unique_ptr<ExecutorPrepareContext> PrepareCtxCache(
-      const ProgramDesc& program, int block_id,
-      const std::vector<std::string>& skip_ref_cnt_vars =
-          std::vector<std::string>(),
-      bool force_disable_gc = false);
-
   static std::unique_ptr<ExecutorPrepareContext> Prepare(
       const ProgramDesc& program, int block_id,
       const std::vector<std::string>& skip_ref_cnt_vars =
@@ -124,6 +119,8 @@ class Executor {
       const ProgramDesc& main_program, const std::string& trainer_desc_str,
       Scope* scope, Dataset* dataset);
   void RunFromDataset(std::shared_ptr<TrainerBase> trainer);
+
+  const platform::Place GetPlace() const { return place_; }
 
  private:
   const platform::Place place_;

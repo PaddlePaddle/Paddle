@@ -27,6 +27,17 @@ __all__ = [
 ]
 
 
+@signature_safe_contextmanager
+def program_desc_tracing_guard(enable):
+    tracer = framework._dygraph_tracer()
+    if tracer:
+        original_val = tracer._enable_program_desc_tracing
+        tracer._enable_program_desc_tracing = enable
+    yield
+    if tracer:
+        tracer._enable_program_desc_tracing = original_val
+
+
 # This function should be removed in V1.6, because it can easily lead to cyclic dependencies.
 def enabled():
     # Internal use only
@@ -88,10 +99,11 @@ no_grad.__doc__ = _no_grad_.__doc__
 @signature_safe_contextmanager
 def guard(place=None):
     """
-    This context will create a dygraph context for dygraph to run
+    This context will create a dygraph context for dygraph to run, using python ``with`` statement.
 
-    Args:
-        place(fluid.CPUPlace|fluid.CUDAPlace|None): Place to run
+    Parameters:
+        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph. 
+            If None, the running place will be determined according to the way of paddle compilation. Default: None
 
     return:
         None
@@ -150,15 +162,15 @@ def _print_debug_msg(limit=5, is_test=False):
 @framework.dygraph_only
 def to_variable(value, block=None, name=None):
     """
-    This function will create a variable from ndarray
+    The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 
-    Args:
-        value(ndarray): the numpy value need to be convert
-        block(fluid.Block|None): which block this variable will be in
-        name(str|None): Name of Variable
+    Parameters:
+        value(ndarray): The numpy\.ndarray object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
+        block(fluid.Block, optional): Which block this variable will be in. Default: None.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
-    return:
-        Variable: The variable created from given numpy
+    Returns:
+        Variable: ``Tensor`` created from the specified numpy\.ndarray object, data type and shape is the same as ``value`` .
 
     Examples:
 

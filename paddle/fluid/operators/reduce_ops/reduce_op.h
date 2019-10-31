@@ -171,6 +171,12 @@ class ReduceOp : public framework::OperatorWithKernel {
                       "dimensions = %d, X's shape = [%s].",
                       x_rank, x_dims);
     auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
+    PADDLE_ENFORCE_GT(
+        dims.size(), 0,
+        "ShapeError: The input dim dimensions of Reduce "
+        "shoud be greater than 0. But received the dim dimesions of Reduce "
+        " = %d",
+        dims.size());
 
     for (size_t i = 0; i < dims.size(); ++i) {
       PADDLE_ENFORCE_LT(dims[i], x_rank,
@@ -217,6 +223,19 @@ class ReduceOp : public framework::OperatorWithKernel {
   }
 };
 
+class ReduceOpUseInputPlace : public ReduceOp {
+ public:
+  using ReduceOp::ReduceOp;
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    kt.place_ = ctx.Input<framework::LoDTensor>("X")->place();
+    return kt;
+  }
+};
+
 class ReduceGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -248,9 +267,9 @@ class ReduceGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
   }
 };
 
@@ -297,21 +316,26 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
 
 namespace ops = paddle::operators;
 
-#define REGISTER_REDUCE_OP(op_name)                                      \
-  class __##op_name##Maker__ : public ops::ReduceOpMaker {               \
-   protected:                                                            \
-    virtual std::string GetName() const { return #op_name; }             \
-    virtual std::string GetOpType() const { return "Reduce " #op_name; } \
-  };                                                                     \
-  REGISTER_OPERATOR(op_name, ops::ReduceOp, __##op_name##Maker__,        \
-                    paddle::framework::DefaultGradOpDescMaker<true>);    \
+#define REGISTER_REDUCE_OP(op_name)                                           \
+  class __##op_name##Maker__ : public ops::ReduceOpMaker {                    \
+   protected:                                                                 \
+    virtual std::string GetName() const { return #op_name; }                  \
+    virtual std::string GetOpType() const { return "Reduce " #op_name; }      \
+  };                                                                          \
+  REGISTER_OPERATOR(                                                          \
+      op_name, ops::ReduceOp, __##op_name##Maker__,                           \
+      paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>, \
+      paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase,       \
+                                            true>);                           \
   REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)
 
-#define REGISTER_REDUCE_OP_WITHOUT_GRAD(op_name)                         \
+#define REGISTER_REDUCE_OP_WITHOUT_GRAD(op_name, ...)                    \
   class __##op_name##Maker__ : public ops::ReduceOpMaker {               \
    protected:                                                            \
     virtual std::string GetName() const { return #op_name; }             \
     virtual std::string GetOpType() const { return "Reduce " #op_name; } \
   };                                                                     \
-  REGISTER_OPERATOR(op_name, ops::ReduceOp, __##op_name##Maker__,        \
-                    paddle::framework::EmptyGradOpMaker);
+  REGISTER_OPERATOR(                                                     \
+      op_name, ops::ReduceOp##__VA_ARGS__, __##op_name##Maker__,         \
+      paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,    \
+      paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

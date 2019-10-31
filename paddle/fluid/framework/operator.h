@@ -102,7 +102,6 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
   }
 }
 
-proto::VarType::Type GetDataTypeOfVar(const Variable* var);
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
@@ -308,6 +307,17 @@ class ExecutionContext {
     return it->second;
   }
 
+  virtual std::vector<std::string> InNameList() const {
+    std::vector<std::string> vec_temp;
+    vec_temp.reserve(ctx_.inputs.size());
+
+    for (auto& input : ctx_.inputs) {
+      vec_temp.emplace(input.first);
+    }
+
+    return vec_temp;
+  }
+
   template <typename T>
   const T* Input(const std::string& name) const {
     auto* var = InputVar(name);
@@ -477,6 +487,9 @@ class OperatorWithKernel : public OperatorBase {
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
                          const RuntimeContext& ctx) const override;
 
+  proto::VarType::Type IndicateVarDataType(const ExecutionContext& ctx,
+                                           const std::string& name) const;
+
   virtual OpKernelType GetExpectedKernelType(const ExecutionContext& ctx) const;
 
   std::vector<KernelConfig>* GetKernelConfig(const OpKernelType& key) const;
@@ -488,6 +501,8 @@ class OperatorWithKernel : public OperatorBase {
       const OpKernelType& expected_kernel_type) const;
 
  private:
+  void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,
+                          proto::VarType::Type* type) const;
   // indicate kernel DataType by input data. By default all input data must be
   // same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;

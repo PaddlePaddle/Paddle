@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
@@ -31,40 +29,49 @@ void PD_DeletePaddleTensor(PD_Tensor* tensor) {
   if (tensor) {
     delete tensor;
     tensor = nullptr;
+    VLOG(3) << "PD_Tensor delete successfully. ";
   }
 }
 
 void PD_SetPaddleTensorName(PD_Tensor* tensor, char* name) {
+  PADDLE_ENFORCE_NOT_NULL(tensor);
   tensor->tensor.name = std::string(name);
 }
 
 void PD_SetPaddleTensorDType(PD_Tensor* tensor, PD_DataType dtype) {
+  PADDLE_ENFORCE_NOT_NULL(tensor);
   tensor->tensor.dtype = paddle::ConvertToPaddleDType(dtype);
 }
 
 void PD_SetPaddleTensorData(PD_Tensor* tensor, PD_PaddleBuf* buf) {
+  PADDLE_ENFORCE_NOT_NULL(tensor);
   tensor->tensor.data = buf->buf;
 }
 
 void PD_SetPaddleTensorShape(PD_Tensor* tensor, int* shape, int size) {
+  PADDLE_ENFORCE_NOT_NULL(tensor);
   tensor->tensor.shape.assign(shape, shape + size);
 }
 
 const char* PD_GetPaddleTensorName(const PD_Tensor* tensor) {
+  PADDLE_ENFORCE_NOT_NULL(tensor);
   return tensor->tensor.name.c_str();
 }
 
 PD_DataType PD_GetPaddleTensorDType(const PD_Tensor* tensor) {
+  PADDLE_ENFORCE_NOT_NULL(tensor);
   return ConvertToPDDataType(tensor->tensor.dtype);
 }
 
 PD_PaddleBuf* PD_GetPaddleTensorData(const PD_Tensor* tensor) {
+  PADDLE_ENFORCE_NOT_NULL(tensor);
   PD_PaddleBuf* ret = PD_NewPaddleBuf();
   ret->buf = tensor->tensor.data;
   return ret;
 }
 
 int* PD_GetPaddleTensorShape(const PD_Tensor* tensor, int** size) {
+  PADDLE_ENFORCE_NOT_NULL(tensor);
   std::vector<int> shape = tensor->tensor.shape;
   int s = shape.size();
   *size = &s;

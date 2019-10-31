@@ -968,6 +968,18 @@ class TestPool2dAPI(OpTest):
             append_batch_size=False,
             dtype="float32")
 
+        input_NHWC_negetive = fluid.layers.data(
+            name="input_NHWC_negetive",
+            shape=[2, -1, 5, 3],
+            append_batch_size=False,
+            dtype="float32")
+
+        input_NCHW_negetive = fluid.layers.data(
+            name="input_NCHW_negetive",
+            shape=[2, 3, -1, -1],
+            append_batch_size=False,
+            dtype="float32")
+
         ksize = [3, 3]
         out_1 = fluid.layers.pool2d(
             input=input_NHWC,
@@ -1034,11 +1046,34 @@ class TestPool2dAPI(OpTest):
             use_cudnn=False,
             data_format="NHWC")
 
+        # test negetive
+        out_9 = fluid.layers.pool2d(
+            input=input_NHWC_negetive,
+            pool_size=ksize,
+            pool_type="avg",
+            pool_padding=[0, 0],
+            use_cudnn=False,
+            data_format="NHWC")
+        assert out_9.shape == (2, -1, 3, 3)
+
+        out_10 = fluid.layers.pool2d(
+            input=input_NCHW_negetive,
+            pool_size=ksize,
+            pool_type="avg",
+            pool_padding=[0, 0],
+            use_cudnn=False,
+            data_format="NCHW")
+        assert out_10.shape == (2, 3, -1, -1)
+
         exe = fluid.Executor(place=fluid.CPUPlace())
         [res_1, res_2, res_3, res_4, res_5, res_6, res_7, res_8] = exe.run(
             fluid.default_main_program(),
-            feed={"input_NHWC": x_NHWC,
-                  "input_NCHW": x_NCHW},
+            feed={
+                "input_NHWC": x_NHWC,
+                "input_NCHW": x_NCHW,
+                "input_NHWC_negetive": x_NHWC,
+                "input_NCHW_negetive": x_NCHW
+            },
             fetch_list=[
                 out_1, out_2, out_3, out_4, out_5, out_6, out_7, out_8
             ])

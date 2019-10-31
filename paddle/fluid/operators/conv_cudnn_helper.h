@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <array>
 #include <memory>
 #include <vector>
 #include "paddle/fluid/framework/operator_kernel_configs.h"

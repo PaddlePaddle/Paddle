@@ -79,25 +79,25 @@ softshrink.__doc__ = """
 :strong:`Softshrink Activation Operator`
 
 ..  math::
-    out = \begin{cases}
-            x - \alpha, \text{if } x > \alpha \\
-            x + \alpha, \text{if } x < -\alpha \\
-            0,  \text{otherwise}
-            \end{cases}
+    out = \\begin{cases}
+            x - \\alpha, \\text{if } x > \\alpha \\\\
+            x + \\alpha, \\text{if } x < -\\alpha \\\\
+            0,  \\text{otherwise}
+          \\end{cases}
 
 
 Args:
-    x: Input of Softshrink operator
-    alpha (FLOAT): non-negative offset
+    x: Input of Softshrink operator, an N-D Tensor, with data type float32, float64 or float16.
+    alpha (float): non-negative offset
     
 Returns:
-    Output of Softshrink operator
+    Output of Softshrink operator with the same type of input.
 
 Examples:
     .. code-block:: python
     
         import paddle.fluid as fluid
-        data = fluid.layers.data(name="input", shape=[784])
+        data = fluid.data(name="input", shape=[None, 784])
         result = fluid.layers.softshrink(x=data, alpha=0.3)
 """
 
@@ -137,12 +137,24 @@ def cumsum(x, axis=None, exclusive=None, reverse=None):
     return _cum_sum_(**kwargs)
 
 
-cumsum.__doc__ = _cum_sum_.__doc__ + """
-Examples:
+cumsum.__doc__ = """
+The cumulative sum of the elements along a given axis. By default, the first element of the result is the same of the first element of the input. If exlusive is true, the first element of the result is 0.
 
-    >>> import paddle.fluid as fluid
-    >>> data = fluid.layers.data(name="input", shape=[32, 784])
-    >>> result = fluid.layers.cumsum(data, axis=0)
+Args:
+    x (Variable): Input of cumsum operator, the Tensor/LoDTensor needed to be cumsumed. 
+    axis (int, optional): The dimenstion to accumulate along. -1 means the last dimenstion. Default is -1.
+    exclusive (bool, optional): Whether to perform exclusive cumsum. Default is False.
+    reverse (bool, optional): If true, the cumsum is performed in the reversed direction. Default is False.
+
+Returns:
+    Variable(Tensor/LoDTensor): The result of cumsum operator, output of cumsum operator. 
+
+Examples:
+    .. code-block:: python
+        
+        import paddle.fluid as fluid
+        data = fluid.layers.data(name="input", shape=[32, 784])
+        result = fluid.layers.cumsum(data, axis=0)
 """
 
 __all__ += ['thresholded_relu']
@@ -160,10 +172,70 @@ def thresholded_relu(x, threshold=None):
     return _thresholded_relu_(**kwargs)
 
 
-thresholded_relu.__doc__ = _thresholded_relu_.__doc__ + """
-Examples:
+thresholded_relu.__doc__ = """
+:strong:`Thresholded ReLU Activation Operator`
 
-    >>> import paddle.fluid as fluid
-    >>> data = fluid.layers.data(name="input", shape=[1])
-    >>> result = fluid.layers.thresholded_relu(data, threshold=0.4)
+Equation:
+    ..  math::
+        out = \\begin{cases}
+            x, &if x > threshold \\\\
+            0, &otherwise
+            \\end{cases}
+
+Args:
+    x(Variable): The input of Thresholded ReLU op, Tensor or LoDTensor, dtype: float32 or float64.
+        
+    threshold(float, optional): The threshold value. Note that if the arg `threshold` is not set, the threshold in the equation is 1.0.
+
+Returns:
+
+    Variable: The output of Thresholded ReLU op, Tensor or LoDTensor, dtype: float32 or float64, the same as the input, shape: the same as the input.
+
+Examples:
+    
+    .. code-block:: python
+    
+        # declarative mode
+        import numpy as np
+        from paddle import fluid
+        
+        x = fluid.data(name="x", shape=(-1, 3), dtype="float32")
+        y = fluid.layers.thresholded_relu(x, threshold=0.1)
+        
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        start = fluid.default_startup_program()
+        main = fluid.default_main_program()
+        
+        data = np.random.randn(2, 3).astype("float32")
+        exe.run(start)
+        
+        y_np, = exe.run(main, feed={"x": data}, fetch_list=[y])
+        
+        data
+        # array([[ 0.21134382, -1.1805999 ,  0.32876605],
+        #        [-1.2210793 , -0.7365624 ,  1.0013918 ]], dtype=float32)
+        y_np
+        # array([[ 0.21134382, -0.        ,  0.32876605],
+        #        [-0.        , -0.        ,  1.0013918 ]], dtype=float32)
+
+    .. code-block:: python
+    
+        # imperative mode
+        import numpy as np
+        from paddle import fluid
+        import paddle.fluid.dygraph as dg
+        
+        data = np.random.randn(2, 3).astype("float32")
+        place = fluid.CPUPlace()
+        with dg.guard(place) as g:
+            x = dg.to_variable(data)
+            y = fluid.layers.thresholded_relu(x, threshold=0.1)
+            y_np = y.numpy()
+        data
+        # array([[ 0.21134382, -1.1805999 ,  0.32876605],
+        #        [-1.2210793 , -0.7365624 ,  1.0013918 ]], dtype=float32)
+        y_np
+        # array([[ 0.21134382, -0.        ,  0.32876605],
+        #        [-0.        , -0.        ,  1.0013918 ]], dtype=float32)
 """
