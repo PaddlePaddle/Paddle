@@ -12335,7 +12335,7 @@ def prelu(x, mode, param_attr=None, name=None):
         shape=alpha_shape,
         dtype='float32',
         is_bias=False,
-        default_initializer=Constant(1.0))
+        default_initializer=Constant(0.25))
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="prelu",
