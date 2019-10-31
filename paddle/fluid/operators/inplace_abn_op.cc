@@ -106,15 +106,36 @@ class InplaceABNOpMaker : public paddle::operators::BatchNormOpMaker {
 };
 
 template <typename T>
-class InplaceABNOpGradMaker : public paddle::operators::BatchNormGradMaker<T> {
+class InplaceABNOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using paddle::operators::BatchNormGradMaker<T>::BatchNormGradMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
   std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op = paddle::operators::BatchNormGradMaker<T>::Apply();
+    auto* op = new T();
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Output("Y"));
-    return op;
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+
+    op->SetInput("Scale", this->Input("Scale"));
+    op->SetInput("Bias", this->Input("Bias"));
+    op->SetInput("SavedMean", this->Output("SavedMean"));
+    op->SetInput("SavedVariance", this->Output("SavedVariance"));
+
+    // used when setting use_global_stats True during training
+    if (boost::get<bool>(this->GetAttr("use_global_stats"))) {
+      op->SetInput("Mean", this->Output("MeanOut"));
+      op->SetInput("Variance", this->Output("VarianceOut"));
+    }
+
+    op->SetAttrMap(this->Attrs());
+
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+
+    return std::unique_ptr<T>(op);
   }
 };
 
