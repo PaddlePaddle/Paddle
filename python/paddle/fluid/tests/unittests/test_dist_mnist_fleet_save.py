@@ -58,21 +58,21 @@ class TestDistMnistFleetSave(TestDistBase):
         fleet_infer_files = sorted(os.listdir(fleet_infer_path))
 
         if len(fluid_persistables) != len(fleet_persistables):
-            _rm_temp_files(dirname)
+            self._rm_temp_files(dirname)
             raise ValueError("Test Failed.")
         for i in range(len(fluid_persistables)):
             if fluid_persistables[i] != fleet_persistables[i]:
-                _rm_temp_files(dirname)
+                self._rm_temp_files(dirname)
                 raise ValueError("Test Failed.")
 
         if len(fluid_infer_files) != len(fleet_infer_files):
-            _rm_temp_files(dirname)
+            self._rm_temp_files(dirname)
             raise ValueError("Test Failed.")
         for i in range(len(fluid_infer_files)):
             if fluid_infer_files[i] != fleet_infer_files[i]:
-                _rm_temp_files(dirname)
+                self._rm_temp_files(dirname)
                 raise ValueError("Test Failed.")
-        _rm_temp_files(dirname)
+        self._rm_temp_files(dirname)
         return True
 
     def check_with_place(self,
