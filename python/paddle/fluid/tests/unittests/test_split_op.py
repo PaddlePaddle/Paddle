@@ -228,14 +228,19 @@ create_test_fp16(TestSplitOp)
 class TestSplitAPI(OpTest):
     def test_api(self):
         input_1 = np.random.random([4, 5, 6]).astype("int32")
-        positive_1 = fluid.layers.fill_constant([1], "int32", 1)
+        positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
+        positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
+        positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
         x_1 = fluid.data(shape=[4, 5, 6], dtype='int32', name='x_1')
         x_2 = fluid.data(shape=[4, 5, None], dtype='int32', name='x_2')
 
         out_0, out_1, out_2 = fluid.layers.split(
-            input=x_1, num_or_sections=[2, positive_1, -1], dim=1)
+            input=x_1,
+            num_or_sections=[positive_2_int64, positive_1_int32, -1],
+            dim=positive_1_int64)
+
         out_3, out_4, out_5 = fluid.layers.split(
-            input=x_1, num_or_sections=[2, 1, 2], dim=positive_1)
+            input=x_1, num_or_sections=[2, 1, 2], dim=positive_1_int32)
         fluid.layers.split(input=x_2, num_or_sections=2, dim=2)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
