@@ -424,6 +424,7 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
 }
 
 const Variable* ExecutionContext::InputVar(const std::string& name) const {
+  call_set_.insert(name);
   auto it = ctx_.inputs.find(name);
   if (it == ctx_.inputs.end()) return nullptr;
 
@@ -907,8 +908,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
-                                   kernel_configs));
+  ExecutionContext exe_context(*this, exec_scope, *dev_ctx, *runtime_ctx,
+                               kernel_configs);
+  (*kernel_func_)(exe_context);
 
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
@@ -957,6 +959,15 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // after run to avoid memory leak
   if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope_) {
     scope.DeleteScope(transfer_scope);
+  }
+
+  // report unsed var
+  auto unsed_name_list = exe_context.GetUnusedNames();
+
+  if (unsed_name_list.size() > 0) {
+    for (size_t i = 0; i < unsed_name_list.size(); ++i) {
+      LOG(ERROR) << "Input in Grad input not uesed " << unsed_name_list[i];
+    }
   }
 }
 

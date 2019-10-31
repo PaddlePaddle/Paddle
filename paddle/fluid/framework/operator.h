@@ -18,6 +18,7 @@ limitations under the License. */
 #include <atomic>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -268,6 +269,7 @@ class ExecutionContext {
 
   const std::vector<const Variable*> MultiInputVar(
       const std::string& name) const {
+    call_set_.insert(name);
     auto it = ctx_.inputs.find(name);
     if (it == ctx_.inputs.end()) {
       return {};
@@ -286,6 +288,7 @@ class ExecutionContext {
 
   template <typename T>
   const T* Input(const std::string& name) const {
+    call_set_.insert(name);
     auto* var = InputVar(name);
     return var == nullptr ? nullptr : &var->Get<T>();
   }
@@ -298,6 +301,7 @@ class ExecutionContext {
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
+    call_set_.insert(name);
     auto it = ctx_.inputs.find(name);
     if (it == ctx_.inputs.end()) {
       return {};
@@ -385,12 +389,28 @@ class ExecutionContext {
     return *boost::get<std::shared_ptr<T>>((*kernel_configs_)[idx]);
   }
 
+  const std::set<std::string>& GetCallSet() const { return call_set_; }
+
+  std::vector<std::string> GetUnusedNames() const {
+    std::vector<std::string> vec_temp;
+
+    for (auto& v : ctx_.inputs) {
+      if (call_set_.count(v.first) == 0) {
+        vec_temp.push_back(v.first);
+      }
+    }
+
+    return vec_temp;
+  }
+
  private:
   const OperatorBase& op_;
   const Scope& scope_;
   const platform::DeviceContext& device_context_;
   const RuntimeContext& ctx_;
   mutable std::vector<KernelConfig>* kernel_configs_;
+
+  mutable std::set<std::string> call_set_;
 };
 
 template <>
