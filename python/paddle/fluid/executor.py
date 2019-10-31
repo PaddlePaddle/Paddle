@@ -1010,6 +1010,7 @@ class Executor(object):
         trainer._gen_trainer_desc()
 
         self._dump_debug_info(program=program, trainer=trainer)
+        dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_instance = self._default_executor.init_for_dataset(
             program.desc, trainer._desc(), scope, dataset.dataset)
@@ -1019,16 +1020,15 @@ class Executor(object):
             fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
             fetch_monitor.start()
 
-            dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
             self._default_executor.run_from_dataset(trainer_instance)
-            dataset._dynamic_adjust_after_train()
+
             fetch_monitor.stop()
-            dataset._finish_to_run()
         else:
-            dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
+
             self._default_executor.run_from_dataset(trainer_instance)
-            dataset._dynamic_adjust_after_train()
-            dataset._finish_to_run()
+
+        dataset._dynamic_adjust_after_train()
+        dataset._finish_to_run()
 
         return None
 
