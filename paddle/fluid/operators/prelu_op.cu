@@ -109,7 +109,7 @@ __global__ void PReluGradElementWiseKernel(const T* x_ptr, const T* y_ptr,
     T x = x_ptr[offset + i];
     T dy = dy_ptr[offset + i];
     T alpha = alpha_func(alpha_ptr, channel, spatial_size, i);
-    if (dx_ptr != nullptr) dx_ptr[offset + i] = (y > 0) ? dy : alpha * dy;
+    if (dx_ptr != nullptr) dx_ptr[offset + i] = (x > 0) ? dy : alpha * dy;
     if (dalpha_ptr != nullptr) dalpha_ptr[offset + i] = (x > 0) ? 0 : x * dy;
   }
 }
