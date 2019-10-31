@@ -7296,7 +7296,9 @@ def warpctc(input,
             blank=0,
             norm_by_times=False,
             input_length=None,
-            label_length=None):
+            label_length=None,
+            label_lod_level=0,
+            logits_lod_level=0):
     """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
@@ -7331,7 +7333,8 @@ def warpctc(input,
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
        label_length(Variable): The length for each label sequence if it is
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
-
+       label_lod_level(int): The level of label's lod used to calculate ctc loss.
+       logits_lod_level(int): The level of logits' lod used to calculate ctc loss.
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
         which is a 2-D Tensor with the shape [batch_size, 1].
@@ -7418,6 +7421,8 @@ def warpctc(input,
         attrs={
             'blank': blank,
             'norm_by_times': norm_by_times,
+            'logits_lod_level': logits_lod_level,
+            'label_lod_level': label_lod_level
         })
     return loss_out
 

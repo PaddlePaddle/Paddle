@@ -115,6 +115,12 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "normalize the gradients by the number of time-step, "
                   "which is also the sequence's length.")
         .SetDefault(false);
+    AddAttr<int>("logits_lod_level",
+                 "(int, default: 0), the lod level of logits.")
+        .SetDefault(0);
+    AddAttr<int>("label_lod_level",
+                 "(int, default: 0), the lod level of label.")
+        .SetDefault(0);
     AddComment(R"DOC(
 An operator integrating the open-source
 [warp-ctc](https://github.com/baidu-research/warp-ctc) library, which is used in
