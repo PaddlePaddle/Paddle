@@ -85,6 +85,9 @@ class MatMulKernel : public framework::OpKernel<T> {
 #else
     blas.MatMul(x, mat_dim_a, y, mat_dim_b, scale, out, T(0));
 #endif
+    std::cout<<"Matmul x dims: "<<x.dims()<<std::endl;
+    std::cout<<"Matmul y dims: "<<y.dims()<<std::endl;
+    std::cout << "Matmul output dims: " << out->dims() << std::endl;
   }
 };
 

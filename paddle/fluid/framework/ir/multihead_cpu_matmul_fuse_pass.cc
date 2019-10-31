@@ -204,6 +204,16 @@ void MultiheadCPUMatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       MultiheadStackRemove(graph);
     }
   }
+  std::cout << "ReshapeTranspose: " << count1 << std::endl;
+  std::cout << "TransposeReshape: " << count2 << std::endl;
+  std::cout << "ReshapeTransposeScale: " << count3 << std::endl;
+  std::cout << "Stack: " << count0 << std::endl;
+  std::vector<ir::Node*> nodes = TopologySortOperations(*graph);
+  for (auto node : nodes) {
+    if (node->Op()->Type() == "transpose2") {
+      std::cout << "Transpose2  still exists" << std::endl;
+    }
+  }
 }
 
 }  // namespace ir

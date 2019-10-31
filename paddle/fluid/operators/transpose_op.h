@@ -67,6 +67,7 @@ class TransposeKernel : public framework::OpKernel<T> {
     int ndims = axis.size();
     auto& dev_ctx = context.template device_context<DeviceContext>();
     TransCompute<DeviceContext, T>(ndims, dev_ctx, *x, out, axis);
+    std::cout << "transpose2 output: " << out->dims() << std::endl;
   }
 };
 
