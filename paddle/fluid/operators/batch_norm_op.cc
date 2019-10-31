@@ -450,12 +450,6 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    GradCompute(ctx, nullptr);
-  }
-
- protected:
-  void GradCompute(const framework::ExecutionContext &ctx,
-                   const Tensor *y) const {
     const auto *x = ctx.Input<Tensor>("X");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
@@ -468,7 +462,11 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     const float epsilon = ctx.Attr<float>("epsilon");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
-    bool is_inplace = (y != nullptr && x->data<T>() == y->data<T>());
+    bool is_inplace = false;
+    if (ctx.HasInput("Y")) {
+      auto *y = ctx.Input<Tensor>("Y");
+      is_inplace = (y != nullptr && x->data<T>() == y->data<T>());
+    }
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
@@ -565,10 +563,10 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
     switch (data_layout) {
       case DataLayout::kNCHW: {
         if (is_inplace) {
-          auto px = *y;
+          auto px = *x;
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()),
                                   sample_size, N * C);
-          ConstEigenArrayMap<T> y_data(y->data<T>(), sample_size, N * C);
+          ConstEigenArrayMap<T> y_data(x->data<T>(), sample_size, N * C);
           for (int nc = 0; nc < N * C; ++nc) {
             x_data.col(nc) = (y_data.col(nc) - bias_arr(nc % C)) /
                                  scale_inv_var_nhw(nc % C) / scale_coefff +
@@ -613,10 +611,10 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
       }
       case DataLayout::kNHWC: {
         if (is_inplace) {
-          auto px = *y;
+          auto px = *x;
           EigenArrayMap<T> x_data(px.mutable_data<T>(ctx.GetPlace()), C,
                                   N * sample_size);
-          ConstEigenArrayMap<T> y_data(y->data<T>(), C, N * sample_size);
+          ConstEigenArrayMap<T> y_data(x->data<T>(), C, N * sample_size);
           for (int nhw = 0; nhw < N * sample_size; nhw++) {
             x_data.col(nhw) = (y_data.col(nhw) - bias_arr) / scale_inv_var_nhw /
                                   scale_coefff +

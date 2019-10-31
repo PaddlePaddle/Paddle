@@ -353,13 +353,17 @@ static __global__ void KeBNBackwardData(
 template <typename DeviceContext, typename T>
 void SyncBatchNormGradFunctor(
     const framework::ExecutionContext &ctx, const DataLayout layout,
-    const framework::Tensor *x, const framework::Tensor *y,
-    const framework::Tensor *scale, const framework::Tensor *bias,
-    framework::Tensor *d_x, const framework::Tensor *d_y,
-    framework::Tensor *d_scale, framework::Tensor *d_bias,
-    const framework::Tensor *mean, const framework::Tensor *variance,
-    const double epsilon) {
-  bool is_inplace = (y != nullptr && x->data<T>() == y->data<T>());
+    const framework::Tensor *x, const framework::Tensor *scale,
+    const framework::Tensor *bias, framework::Tensor *d_x,
+    const framework::Tensor *d_y, framework::Tensor *d_scale,
+    framework::Tensor *d_bias, const framework::Tensor *mean,
+    const framework::Tensor *variance, const double epsilon) {
+  bool is_inplace = false;
+  if (ctx.HasInput("Y")) {
+    auto *y = ctx.Input<Tensor>("Y");
+    is_inplace = (y != nullptr && x->data<T>() == y->data<T>());
+  }
+
   const auto &x_dims = x->dims();
 
   PADDLE_ENFORCE_GE(x_dims.size(), 2,
@@ -421,14 +425,14 @@ void SyncBatchNormGradFunctor(
           px.mutable_data<T>(ctx.GetPlace()),
           scale->data<BatchNormParamType<T>>(),
           bias->data<BatchNormParamType<T>>(), saved_mean, saved_inv_var,
-          epsilon, C, H * W * D, x_numel, y->data<T>());
+          epsilon, C, H * W * D, x_numel, x->data<T>());
     } else {
       KeBNRestoreData<
           T, framework::DataLayout::kNHWC><<<grid2, block, 0, stream>>>(
           px.mutable_data<T>(ctx.GetPlace()),
           scale->data<BatchNormParamType<T>>(),
           bias->data<BatchNormParamType<T>>(), saved_mean, saved_inv_var,
-          epsilon, C, H * W * D, x_numel, y->data<T>());
+          epsilon, C, H * W * D, x_numel, x->data<T>());
     }
   }
 
@@ -500,10 +504,6 @@ template <typename DeviceContext, typename T>
 class SyncBatchNormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override;
-
- protected:
-  void GradCompute(const framework::ExecutionContext &ctx,
-                   const Tensor *y) const;
 };
 
 }  // namespace operators

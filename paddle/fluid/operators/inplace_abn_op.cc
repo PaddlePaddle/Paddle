@@ -153,7 +153,7 @@ class InplaceABNGradKernel
     InplaceABNActivation<DeviceContext, T> functor;
     functor.GradCompute(ctx, activation, place, cur_y, cur_y, cur_dy, cur_dy);
 
-    BatchNormGradKernel<DeviceContext, T>::GradCompute(ctx, y);
+    BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
   }
 };
 

@@ -66,9 +66,9 @@ class InplaceABNGradKernel
     functor.GradCompute(ctx, activation, place, cur_y, cur_y, cur_dy, cur_dy);
 
     if (ctx.Attr<bool>("use_sync_bn")) {
-      SyncBatchNormGradKernel<DeviceContext, T>::GradCompute(ctx, y);
+      SyncBatchNormGradKernel<DeviceContext, T>::Compute(ctx);
     } else {
-      BatchNormGradKernel<DeviceContext, T>::GradCompute(ctx, y);
+      BatchNormGradKernel<DeviceContext, T>::Compute(ctx);
     }
   }
 };
