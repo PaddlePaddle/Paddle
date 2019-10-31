@@ -191,7 +191,7 @@ class TestDistRunnerBase(object):
         else:
             sys.stdout.buffer.write(pickle.dumps(out_losses))
 
-        if args.save_model and fleet.worker_index() == 0:
+        if args.save_model:
             model_save_dir = "/tmp"
             if fleet.worker_index() == 0:
                 model_save_dir_fluid = os.path.join(model_save_dir,
