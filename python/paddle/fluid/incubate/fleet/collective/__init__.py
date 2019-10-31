@@ -16,6 +16,7 @@ import logging
 import paddle.fluid as fluid
 import paddle.fluid.io as io
 import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
@@ -89,6 +90,41 @@ class Collective(Fleet):
 
 
 fleet = Collective()
+
+
+def _switch_fleet(new_fleet):
+    global fleet
+    ex = fleet  # old
+    fleet = new_fleet  # new
+    return ex
+
+
+@signature_safe_contextmanager
+def fleet_guard(new_fleet):
+    """
+    This function switches fleet through python `with` statement.
+    If this function is not invoked, all access to fleet will use the default global fleet.
+
+    Parameters:
+        new_fleet: The new fleet object.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            from paddle.fluid.incubate.fleet.collective import fleet, Collective
+
+            new_fleet = Collective()
+            with fluid.fleet_guard(new_fleet):
+                role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+                fleet.init(role) # use new_fleet
+    """
+
+    ex = _switch_fleet(new_fleet)
+    yield
+    _switch_fleet(ex)
 
 
 class DistributedStrategy(fluid.BuildStrategy):

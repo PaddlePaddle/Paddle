@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import abc
+import copy
 
 import paddle.fluid as fluid
 from paddle.fluid.executor import Executor
@@ -263,7 +264,7 @@ class DistributedOptimizer(object):
             raise TypeError("optimizer must be an instance of Optimizer")
 
         self._optimizer = optimizer
-        self._strategy = strategy
+        self._strategy = copy.deepcopy(strategy)
 
     @abc.abstractmethod
     def backward(self,
