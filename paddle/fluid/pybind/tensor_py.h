@@ -71,7 +71,7 @@ void PyCPUTensorSetFromArray(
     framework::Tensor *self,
     pybind11::array_t<T, pybind11::array::c_style | pybind11::array::forcecast>
         array,
-    paddle::platform::CPUPlace place, bool zero_copy = true) {
+    paddle::platform::CPUPlace place, bool zero_copy = false) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
