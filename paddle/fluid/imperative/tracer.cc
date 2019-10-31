@@ -25,7 +25,7 @@ static void ClearNoNeedBufferInputs(const OpBase& op, NameVarBaseMap* ins,
                                     const framework::AttributeMap& attrs) {
   auto& inferer = op.Info().NoNeedBufferVarsInferer();
   if (!inferer) return;
-  auto no_need_buffer_slots = inferer(*ins, outs, attrs);
+  const auto& no_need_buffer_slots = inferer(*ins, outs, attrs);
   if (no_need_buffer_slots.empty()) return;
 
   for (auto& slot : no_need_buffer_slots) {

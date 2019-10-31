@@ -209,12 +209,13 @@ class SequenceConvGradNoNeedBufferVarsInference
  public:
   using framework::NoNeedBufferVarsInference::NoNeedBufferVarsInference;
 
-  std::unordered_set<std::string> operator()(
+  const std::unordered_set<std::string> &operator()(
       const framework::InferNoNeedBufferVarsContext &ctx) const final {
-    if (boost::get<bool>(ctx.GetAttr("paddingTrainable"))) {
-      return {};
+    static const std::unordered_set<std::string> kPaddingData({"PaddingData"});
+    if (!boost::get<bool>(ctx.GetAttr("paddingTrainable"))) {
+      return kPaddingData;
     } else {
-      return {"PaddingData"};
+      return Empty();
     }
   }
 };

@@ -888,7 +888,6 @@ class PowOpGrad : public framework::OperatorWithKernel {
                                    tensor.place(), tensor.layout());
   }
 };
-
 DECLARE_INPLACE_OP_INFERER(ActFwdInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
@@ -1010,11 +1009,9 @@ REGISTER_OP_CPU_KERNEL(
                               ops::SqrtGradGradFunctor<double>>,
     ops::SqrtDoubleGradKernel<plat::CPUDeviceContext,
                               ops::SqrtGradGradFunctor<plat::float16>>);
-/* ==========================================================================
- */
+/* ========================================================================== */
 
-/* ==========================   square register
- * ============================ */
+/* ==========================   square register  ============================ */
 REGISTER_OPERATOR(
     square, ops::ActivationOp, ops::SquareOpMaker,
     ops::ActivationOpInferVarType,
@@ -1043,11 +1040,9 @@ REGISTER_OP_CPU_KERNEL(
                                 ops::SquareGradGradFunctor<double>>,
     ops::SquareDoubleGradKernel<plat::CPUDeviceContext,
                                 ops::SquareGradGradFunctor<plat::float16>>);
-/* ==========================================================================
- */
+/* ========================================================================== */
 
-/* ==========================   pow register  ============================
- */
+/* ==========================   pow register  ============================ */
 
 REGISTER_OPERATOR(
     pow, ops::PowOp, ops::PowOpMaker, ops::ActivationOpInferVarType,
@@ -1065,5 +1060,4 @@ REGISTER_OP_CPU_KERNEL(
     pow_grad,
     ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<float>>,
     ops::PowGradKernel<plat::CPUDeviceContext, ops::PowGradFunctor<double>>);
-/* ==========================================================================
- */
+/* ========================================================================== */

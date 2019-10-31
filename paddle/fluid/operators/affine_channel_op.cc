@@ -298,13 +298,14 @@ class AffineChannelNoNeedBufferVarsInference
  public:
   using framework::NoNeedBufferVarsInference::NoNeedBufferVarsInference;
 
-  std::unordered_set<std::string> operator()(
+  const std::unordered_set<std::string>& operator()(
       const framework::InferNoNeedBufferVarsContext& ctx) const final {
+    static const std::unordered_set<std::string> kX({"X"});
     if (!ctx.HasOutput(framework::GradVarName("Scale")) &&
         !ctx.HasOutput(framework::GradVarName("Bias"))) {
-      return {"X"};
+      return kX;
     } else {
-      return {};
+      return Empty();
     }
   }
 };

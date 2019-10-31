@@ -70,9 +70,17 @@ class DyGraphInferNoNeedBufferVarsContext final
 class NoNeedBufferVarsInference {
  public:
   virtual ~NoNeedBufferVarsInference() = default;
-  virtual std::unordered_set<std::string> operator()(
+  virtual const std::unordered_set<std::string> &operator()(
       const InferNoNeedBufferVarsContext &ctx) const = 0;
+
+ protected:
+  static const std::unordered_set<std::string> &Empty() {
+    static std::unordered_set<std::string> empty;
+    return empty;
+  }
 };
+
+class NoNeedBufferVarsInferenceWithContext {};
 
 #define DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(class_type, ...)        \
   class class_type final                                              \
@@ -81,16 +89,17 @@ class NoNeedBufferVarsInference {
     using ::paddle::framework::NoNeedBufferVarsInference::            \
         NoNeedBufferVarsInference;                                    \
                                                                       \
-    std::unordered_set<std::string> operator()(                       \
+    const std::unordered_set<std::string> &operator()(                \
         const ::paddle::framework::InferNoNeedBufferVarsContext &ctx) \
         const final {                                                 \
-      return {__VA_ARGS__};                                           \
+      static std::unordered_set<std::string> __ret__{__VA_ARGS__};    \
+      return __ret__;                                                 \
     }                                                                 \
   }
 
 class InferNoNeedBufferVarsFN {
  public:
-  inline std::unordered_set<std::string> operator()(
+  inline const std::unordered_set<std::string> &operator()(
       const VariableNameMap &inputs, const VariableNameMap &outputs,
       const AttributeMap &attrs) const {
     PADDLE_ENFORCE_NOT_NULL(inferer_);
@@ -98,7 +107,7 @@ class InferNoNeedBufferVarsFN {
     return (*inferer_)(ctx);
   }
 
-  inline std::unordered_set<std::string> operator()(
+  inline const std::unordered_set<std::string> &operator()(
       const imperative::NameVarBaseMap &inputs,
       const imperative::NameVarBaseMap &outputs,
       const AttributeMap &attrs) const {
