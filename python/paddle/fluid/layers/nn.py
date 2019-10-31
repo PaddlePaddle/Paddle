@@ -2745,9 +2745,11 @@ def conv2d(input,
                 padding = padding[1:3]
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 4, 'padding')
+            if utils._is_symmetric_padding(padding, 2):
+                padding = [padding[0], padding[2]]
+
         else:
             padding = utils.convert_to_list(padding, 2, 'padding')
-            padding = [padding[0], padding[0], padding[1], padding[1]]
 
         return padding
 
@@ -2760,10 +2762,10 @@ def conv2d(input,
                 str(padding))
         if padding == "VALID":
             padding_algorithm = "VALID"
-            padding = [0, 0, 0, 0]
+            padding = [0, 0]
         elif padding == "SAME":
             padding_algorithm = "SAME"
-            padding = [0, 0, 0, 0]
+            padding = [0, 0]
 
     padding = _update_padding(padding, data_format)
 
@@ -2989,15 +2991,14 @@ def conv3d(input,
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 6, 'padding')
-
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
         elif is_list_or_tuple(padding) and len(padding) == 6:
             padding = utils.convert_to_list(padding, 6, 'padding')
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
         else:
             padding = utils.convert_to_list(padding, 3, 'padding')
-            padding = [
-                padding[0], padding[0], padding[1], padding[1], padding[2],
-                padding[2]
-            ]
 
         return padding
 
@@ -3010,10 +3011,10 @@ def conv3d(input,
                 str(padding))
         if padding == "VALID":
             padding_algorithm = "VALID"
-            padding = [0, 0, 0, 0, 0, 0]
+            padding = [0, 0, 0]
         elif padding == "SAME":
             padding_algorithm = "SAME"
-            padding = [0, 0, 0, 0, 0, 0]
+            padding = [0, 0, 0]
 
     padding = _update_padding(padding, data_format)
 
@@ -3556,6 +3557,8 @@ def pool2d(input,
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 4, 'padding')
 
+            if utils._is_symmetric_padding(padding, 2):
+                padding = [padding[0], padding[2]]
         else:
             padding = utils.convert_to_list(padding, 2, 'padding')
 
@@ -3570,14 +3573,14 @@ def pool2d(input,
                 % str(pool_padding))
         if pool_padding == "VALID":
             padding_algorithm = "VALID"
-            pool_padding = [0, 0, 0, 0]
+            pool_padding = [0, 0]
             if ceil_mode != False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode) must be False. "
                     "Received ceil_mode: True.")
         elif pool_padding == "SAME":
             padding_algorithm = "SAME"
-            pool_padding = [0, 0, 0, 0]
+            pool_padding = [0, 0]
 
     pool_padding = update_padding(pool_padding, data_format)
 
@@ -3760,10 +3763,13 @@ def pool3d(input,
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 6, 'padding')
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
 
         elif is_list_or_tuple(padding) and len(padding) == 6:
             padding = utils.convert_to_list(padding, 6, 'padding')
-
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
         else:
             padding = utils.convert_to_list(padding, 3, 'padding')
 
@@ -3778,14 +3784,14 @@ def pool3d(input,
                 % str(pool_padding))
         if pool_padding == "VALID":
             padding_algorithm = "VALID"
-            pool_padding = [0, 0, 0, 0, 0, 0]
+            pool_padding = [0, 0, 0]
             if ceil_mode != False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", ceil_mode must be False. "
                     "Received ceil_mode: True.")
         elif pool_padding == "SAME":
             padding_algorithm = "SAME"
-            pool_padding = [0, 0, 0, 0, 0, 0]
+            pool_padding = [0, 0, 0]
 
     pool_padding = update_padding(pool_padding, data_format)
 
@@ -5125,6 +5131,9 @@ def conv2d_transpose(input,
         filter_size = utils.convert_to_list(filter_size, 2,
                                             'conv2d_transpose.filter_size')
 
+    if len(padding) == 4 and utils._is_symmetric_padding(padding, 2):
+        padding = [padding[0], padding[2]]
+
     if output_size is None:
         output_size = []
     elif isinstance(output_size, list) or isinstance(output_size, int):
@@ -5360,13 +5369,13 @@ def conv3d_transpose(input,
 
         elif is_list_or_tuple(padding) and len(padding) == 6:
             padding = utils.convert_to_list(padding, 6, 'padding')
+
         else:
             padding = utils.convert_to_list(padding, 3, 'padding')
             padding = [
                 padding[0], padding[0], padding[1], padding[1], padding[2],
                 padding[2]
             ]
-
         return padding
 
     padding_algorithm = "EXPLICIT"
@@ -5405,6 +5414,9 @@ def conv3d_transpose(input,
     else:
         filter_size = utils.convert_to_list(filter_size, 3,
                                             'conv3d_transpose.filter_size')
+
+    if len(padding) == 6 and utils._is_symmetric_padding(padding, 3):
+        padding = [padding[0], padding[2], padding[4]]
 
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
