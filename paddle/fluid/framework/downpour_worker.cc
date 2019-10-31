@@ -89,9 +89,6 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   if (desc.dump_param_size() != 0) {
     need_dump_param_ = true;
   }
-  for (int i = 0; i < desc.check_nan_var_names_size(); ++i) {
-    check_nan_var_names_.push_back(desc.check_nan_var_names(i));
-  }
 }
 
 void DownpourWorker::SetChannelWriter(ChannelObject<std::string>* queue) {
