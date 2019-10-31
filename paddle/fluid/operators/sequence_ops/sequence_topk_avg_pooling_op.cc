@@ -48,6 +48,19 @@ class SequenceTopkAvgPoolingOp : public framework::OperatorWithKernel {
     vec_out_shape.push_back(row_shape_0);
     vec_out_shape.push_back(channel_num * num_k);
 
+    if (!ctx->IsRuntime()) {
+      // Check the lod_level for compile-time.
+      PADDLE_ENFORCE_GT(ctx->GetLoDLevel("X"), 0,
+                        "The LoD level Input(X) of sequence_topk_avg_pooling "
+                        "should be larger than 0.");
+      PADDLE_ENFORCE_GT(ctx->GetLoDLevel("ROW"), 0,
+                        "The LoD level Input(ROW) of sequence_topk_avg_pooling "
+                        "should be larger than 0.");
+      PADDLE_ENFORCE_GT(ctx->GetLoDLevel("COLUMN"), 0,
+                        "The LoD level Input(COLUMN) of "
+                        "sequence_topk_avg_pooling should be larger than 0.");
+    }
+
     ctx->SetOutputDim("Out", framework::make_ddim(vec_out_shape));
     ctx->ShareLoD("X", "Out");
   }

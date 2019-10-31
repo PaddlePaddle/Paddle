@@ -31,7 +31,17 @@ class SequenceEraseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(x_dims.size() == 2 && x_dims[1] == 1,
                    "Input(X) of SequenceEraseOp should be a 2-D LoDTensor "
                    "with the 2nd dimension equal to 1.");
+
     ctx->SetOutputDim("Out", x_dims);
+
+    if (!ctx->IsRuntime()) {
+      // Check the lod_level for compile-time.
+      PADDLE_ENFORCE_GT(
+          ctx->GetLoDLevel("X"), 0,
+          "The LoD level Input(X) of sequence_erase should be larger than 0.");
+      // Runtime LoD infershape will be computed in Kernel.
+      ctx->ShareLoD("X", "Out");
+    }
   }
 };
 

@@ -107,6 +107,11 @@ class SequenceScatterOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(updates_lod.size(), 1,
                         "Currently only level 1 LoD "
                         "could be processed by sequence scatter op.");
+    } else {
+      // Check the lod_level for compile-time.
+      PADDLE_ENFORCE_GT(ctx->GetLoDLevel("Ids"), 0,
+                        "The LoD level Input(X) of sequence_scatter should be "
+                        "larger than 0.");
     }
   }
 

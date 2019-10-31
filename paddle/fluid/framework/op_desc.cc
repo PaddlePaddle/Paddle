@@ -92,6 +92,23 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
 
+  int GetLoDLevel(const std::string &in, size_t i = 0) const override {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size(), "There are only %d inputs.",
+                      Inputs(in).size());
+    PADDLE_ENFORCE_NE(Inputs(in)[i], framework::kEmptyVarName,
+                      "Input %s[%d] is @EMPTY@", in, i);
+    auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
+    PADDLE_ENFORCE_NOT_NULL(in_var, "Input %s[%d] should not be nullptr.", in,
+                            i);
+    if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
+        in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
+      VLOG(3) << "Input " << in << "[" << i
+              << "] is not LoDTensor or LoDTensorArray.";
+      return 0;
+    }
+    return in_var->GetLoDLevel();
+  }
+
   void DecreaseLoDLevel(const std::string &in, const std::string &out,
                         size_t i = 0, size_t j = 0) const override {
     // When in is a LoDTensor and out is a LoDTensorArray, there may need to

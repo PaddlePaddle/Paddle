@@ -67,8 +67,12 @@ class SeqConcatShapeInferer : public framework::InferShapeBase {
     }
     out_dims[0] = batch_size;
     context->SetOutputDim("Out", framework::make_ddim(out_dims));
-    if (!context->IsRuntime()) {  // Runtime LoD infershape will be computed
-      // in Kernel.
+    if (!context->IsRuntime()) {
+      // Check the lod_level for compile-time.
+      PADDLE_ENFORCE_GT(
+          context->GetLoDLevel("X"), 0,
+          "The LoD level Input(X) of sequence_pool should be larger than 0.");
+      // Runtime LoD infershape will be computed in Kernel.
       context->ShareLoD("X", "Out");
     }
   }

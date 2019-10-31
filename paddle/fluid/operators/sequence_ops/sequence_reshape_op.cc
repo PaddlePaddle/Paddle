@@ -37,6 +37,12 @@ class SequenceReshapeOp : public framework::OperatorWithKernel {
     } else {
       // when compiling, the batch size is undetermined, just set to -1
       ctx->SetOutputDim("Out", {-1, static_cast<int64_t>(new_dim)});
+      // Check the lod_level for compile-time.
+      PADDLE_ENFORCE_GT(ctx->GetLoDLevel("X"), 0,
+                        "The LoD level Input(X) of sequence_reshape should be "
+                        "larger than 0.");
+      // Runtime LoD infershape will be computed in Kernel.
+      ctx->ShareLoD("X", "Out");
     }
   }
 };

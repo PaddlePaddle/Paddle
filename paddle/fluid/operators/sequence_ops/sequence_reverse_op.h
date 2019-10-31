@@ -34,6 +34,13 @@ class SequenceReverseOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(x_dim.size(), 2,
                       "Rank of Input(X) must be not less than 2.");
 
+    if (!ctx->IsRuntime()) {
+      // Check the lod_level for compile-time.
+      PADDLE_ENFORCE_GT(ctx->GetLoDLevel("X"), 0,
+                        "The LoD level Input(X) of sequence_reverse should be "
+                        "larger than 0.");
+    }
+
     ctx->SetOutputDim("Y", x_dim);
     ctx->ShareLoD("X", "Y");
   }

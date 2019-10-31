@@ -67,6 +67,11 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
       out_dims[0] = out_first_dim;
     } else {
       out_dims[0] = -1;
+
+      // Check the lod_level for compile-time.
+      PADDLE_ENFORCE_GT(ctx->GetLoDLevel("Y"), 0,
+                        "The LoD level Input(X) of sequence_expand_as should "
+                        "be larger than 0.");
     }
 
     ctx->SetOutputDim("Out", out_dims);

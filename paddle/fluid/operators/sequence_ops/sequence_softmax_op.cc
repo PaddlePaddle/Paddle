@@ -28,6 +28,13 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SequenceSoftmaxOp should not be null.");
 
+    if (!ctx->IsRuntime()) {
+      // Check the lod_level for compile-time.
+      PADDLE_ENFORCE_GT(ctx->GetLoDLevel("X"), 0,
+                        "The LoD level Input(X) of sequence_softmax should be "
+                        "larger than 0.");
+    }
+
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }

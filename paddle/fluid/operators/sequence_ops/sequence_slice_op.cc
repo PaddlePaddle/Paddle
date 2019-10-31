@@ -43,6 +43,13 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
         length_dim.size(), 2UL,
         "Only support one level sequence now, The rank of Length must be 2.");
 
+    if (!ctx->IsRuntime()) {
+      // Check the lod_level for compile-time.
+      PADDLE_ENFORCE_GT(
+          ctx->GetLoDLevel("X"), 0,
+          "The LoD level Input(X) of sequence_slice should be larger than 0.");
+    }
+
     // Initialize the output's dims to maximum,
     // and re-set to real dims by the value of Offset and Length at kernel
     ctx->SetOutputDim("Out", input_dims);

@@ -71,6 +71,13 @@ class SequenceConvOp : public framework::OperatorWithKernel {
           "and 'context_length'.");
     }
 
+    if (!ctx->IsRuntime()) {
+      // Check the lod_level for compile-time.
+      PADDLE_ENFORCE_GT(
+          ctx->GetLoDLevel("X"), 0,
+          "The LoD level Input(X) of sequence_conv should be larger than 0.");
+    }
+
     in_dims[1] = filter_dims[1];
     ctx->SetOutputDim("Out", in_dims);
     ctx->ShareLoD("X", "Out");

@@ -29,6 +29,13 @@ class SequenceEnumerateOp : public framework::OperatorWithKernel {
         ctx->HasOutput("Out"),
         "Output(X) of SequenceEnumerate operator should not be null.");
 
+    if (!ctx->IsRuntime()) {
+      // Check the lod_level for compile-time.
+      PADDLE_ENFORCE_GT(ctx->GetLoDLevel("X"), 0,
+                        "The LoD level Input(X) of sequence_enumerate should "
+                        "be larger than 0.");
+    }
+
     const auto x_dims = ctx->GetInputDim("X");
     const auto win_size = ctx->Attrs().Get<int>("win_size");
     ctx->SetOutputDim("Out", {x_dims[0], win_size});
