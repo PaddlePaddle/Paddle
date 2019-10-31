@@ -105,14 +105,15 @@ class InplaceABNOpMaker : public paddle::operators::BatchNormOpMaker {
   }
 };
 
-class InplaceABNOpGradMaker : public paddle::operators::BatchNormGradMaker {
+template <typename T>
+class InplaceABNOpGradMaker : public paddle::operators::BatchNormGradMaker<T> {
  public:
-  using paddle::operators::BatchNormGradMaker::BatchNormGradMaker;
+  using paddle::operators::BatchNormGradMaker<T>::BatchNormGradMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op = BatchNormGradMaker::Apply();
-    op->SetInput("Y", Output("Y"));
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op = paddle::operators::BatchNormGradMaker<T>::Apply();
+    op->SetInput("Y", this->Output("Y"));
     return op;
   }
 };
@@ -167,8 +168,9 @@ DECLARE_INPLACE_OP_INFERER(InplaceABNGradInplaceInferer,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(inplace_abn, ops::InplaceABNOp, ops::InplaceABNOpMaker,
-                  ops::InplaceABNOpGradMaker, ops::InplaceABNInplaceInferer,
-                  ops::BatchNormOpInferVarType)
+                  ops::InplaceABNOpGradMaker<paddle::framework::OpDesc>,
+                  ops::InplaceABNOpGradMaker<paddle::imperative::OpBase>,
+                  ops::InplaceABNInplaceInferer, ops::BatchNormOpInferVarType)
 REGISTER_OPERATOR(inplace_abn_grad, ops::InplaceABNGradOp,
                   ops::InplaceABNGradInplaceInferer)
 
