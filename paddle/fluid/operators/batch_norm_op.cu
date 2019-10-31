@@ -340,12 +340,6 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    GradCompute(ctx, nullptr);
-  }
-
- protected:
-  void GradCompute(const framework::ExecutionContext &ctx,
-                   const Tensor *y) const {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
@@ -359,7 +353,11 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
-    bool is_inplace = (y != nullptr && x->data<T>() == y->data<T>());
+    bool is_inplace = false;
+    if (ctx.HasInput("Y")) {
+      auto *y = ctx.Input<Tensor>("Y");
+      is_inplace = (y != nullptr && x->data<T>() == y->data<T>());
+    }
 
     const auto &x_dims = x->dims();
 
