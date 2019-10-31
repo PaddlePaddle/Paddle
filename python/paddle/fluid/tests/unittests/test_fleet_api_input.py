@@ -108,6 +108,7 @@ class FleetTest(unittest.TestCase):
             role=role_maker.Role.SERVER,
             worker_num=2,
             server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
+        # for test without init(role)
         # fleet.init(role)
         batch_size = 128
         is_sparse = True
