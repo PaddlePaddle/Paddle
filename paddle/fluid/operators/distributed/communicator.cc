@@ -212,8 +212,15 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
       auto height_section =
           boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      auto merge_add = boost::get<bool>(op->GetNullableAttr("merge_add"));
+      if (!merge_add) {
+        merge_add = FLAGS_communicator_is_sgd_optimizer;
+      }
+      auto use_send_handler =
+          boost::get<bool>(op->GetNullableAttr("use_send_handler"));
       send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
-          send_var_name, send_varnames, epmap, height_section, trainer_id);
+          send_var_name, send_varnames, epmap, height_section, trainer_id,
+          merge_add, use_send_handler);
       VLOG(3) << "find and init an send op: "
               << send_varname_to_ctx[send_var_name];
     } else if (op->Type() == "recv") {
@@ -290,20 +297,36 @@ void AsyncCommunicator::SendThread() {
             }
           }
           auto before_merge = GetCurrentUS();
+<<<<<<< HEAD
           MergeVars(var_name, vars, send_scope_.get());
 
           auto var_str =
               operators::GetTensorDetails(*(send_scope_.get()), var_name);
           VLOG(1) << var_str;
 
+=======
+          auto &ctx = send_varname_to_ctx_.at(var_name);
+          if (ctx.use_send_handler) {
+            MergeVars<float>(var_name, vars, send_scope_.get(), ctx.merge_add);
+          } else {
+            MergeVars<int64_t>(var_name, vars, send_scope_.get(),
+                               ctx.merge_add);
+          }
+>>>>>>> 20cdff0e02... Optimize decay (#20816)
           auto after_merge = GetCurrentUS();
           VLOG(3) << "merge " << merged_var_num << " " << var_name
                   << " use time " << after_merge - before_merge;
 
           auto send_functor = distributed::ParameterSend<float>();
+<<<<<<< HEAD
           auto &ctx = send_varname_to_ctx_.at(var_name);
           send_functor(ctx, *send_scope_, true, 1);
 
+=======
+          if (!FLAGS_communicator_fake_rpc) {
+            send_functor(ctx, *send_scope_, true, 1);
+          }
+>>>>>>> 20cdff0e02... Optimize decay (#20816)
           auto after_send = GetCurrentUS();
           VLOG(3) << "send " << var_name << " use time "
                   << after_send - after_merge;
