@@ -679,10 +679,10 @@ void MultiSlotDataset::MergeByInsId() {
       j++;
     }
     if (merge_size_ > 0 && j - i != merge_size_) {
-      i = j;
       drop_ins_num += j - i;
       LOG(WARNING) << "drop ins " << recs[i].ins_id_ << " size=" << j - i
                    << ", because merge_size=" << merge_size_;
+      i = j;
       continue;
     }
 
