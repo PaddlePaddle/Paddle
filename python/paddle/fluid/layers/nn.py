@@ -15106,22 +15106,23 @@ def sigmoid_cross_entropy_with_logits(x,
 
 
 @templatedoc()
-def maxout(x, groups, name=None):
+def maxout(x, groups, name=None, axis=1):
     """
     ${comment}
 
     Args:
         x(${x_type}): ${x_comment}
-        groups(${groups_type}): ${groups_comment}
+        groups(int): ${groups_comment}
+        axis(int, optional): ${axis_comment}
         name(str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default.
 
     Returns:
-        Variable:
+        Variable: ${out_comment}
 
-        out(${out_type}): ${out_comment}
-
+    Raises:
+        ValueError: If `axis` is not 1, -1 or 3.
 
     Examples:
         .. code-block:: python
@@ -15134,6 +15135,12 @@ def maxout(x, groups, name=None):
             out = fluid.layers.maxout(input, groups=2)
     """
     helper = LayerHelper("maxout", **locals())
+    if axis not in [1, -1, 3]:
+        raise ValueError(
+            "Attr(axis) should be 1 when data format is NCHW, -1 or 3 when data format is NHWC. Received "
+            "Attr(axis): %s." % str(axis))
+    if axis == -1:
+        axis = 3
 
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -15144,7 +15151,8 @@ def maxout(x, groups, name=None):
     helper.append_op(
         type="maxout",
         inputs={"X": x},
-        attrs={"groups": groups},
+        attrs={"groups": groups,
+               "axis": axis},
         outputs={"Out": out})
     return out
 
