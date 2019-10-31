@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 #include <Python.h>
-#include <numpy/arrayobject.h>
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -99,7 +98,7 @@ void PyCPUTensorSetFromArray(
 template <>
 // This following specialization maps uint16_t in the parameter type to
 // platform::float16.
-void PyCPUTensorSetFromArray(
+inline void PyCPUTensorSetFromArray(
     framework::Tensor *self,
     pybind11::array_t<uint16_t,
                       pybind11::array::c_style | pybind11::array::forcecast>
