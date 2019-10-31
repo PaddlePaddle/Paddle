@@ -332,9 +332,10 @@ MatchIndices elements with value -1.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mine_hard_examples, ops::MineHardExamplesOp,
-                  ops::MineHardExamplesOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    mine_hard_examples, ops::MineHardExamplesOp, ops::MineHardExamplesOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
     mine_hard_examples,
