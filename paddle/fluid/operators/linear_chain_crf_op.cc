@@ -274,30 +274,32 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class LinearChainCRFGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LinearChainCRFGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("linear_chain_crf_grad");
-    op->SetAttrMap(Attrs());
-    op->SetInput("Emission", Input("Emission"));
-    op->SetInput("Transition", Input("Transition"));
-    op->SetInput("Label", Input("Label"));
-    op->SetInput("Alpha", Output("Alpha"));
-    op->SetInput("EmissionExps", Output("EmissionExps"));
-    op->SetInput("TransitionExps", Output("TransitionExps"));
-    if (ForwardOp().Inputs().count("Length") > 0) {
-      op->SetInput("Length", Input("Length"));
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("Emission", this->Input("Emission"));
+    op->SetInput("Transition", this->Input("Transition"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput("Alpha", this->Output("Alpha"));
+    op->SetInput("EmissionExps", this->Output("EmissionExps"));
+    op->SetInput("TransitionExps", this->Output("TransitionExps"));
+    if (this->HasInput("Length")) {
+      op->SetInput("Length", this->Input("Length"));
     }
     op->SetInput(framework::GradVarName("LogLikelihood"),
-                 OutputGrad("LogLikelihood"));
+                 this->OutputGrad("LogLikelihood"));
 
-    op->SetOutput(framework::GradVarName("Emission"), InputGrad("Emission"));
+    op->SetOutput(framework::GradVarName("Emission"),
+                  this->InputGrad("Emission"));
     op->SetOutput(framework::GradVarName("Transition"),
-                  InputGrad("Transition"));
+                  this->InputGrad("Transition"));
 
     return op;
   }
@@ -311,7 +313,9 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(linear_chain_crf, ops::LinearChainCRFOp,
-                  ops::LinearChainCRFOpMaker, ops::LinearChainCRFGradDescMaker);
+                  ops::LinearChainCRFOpMaker,
+                  ops::LinearChainCRFGradMaker<paddle::framework::OpDesc>,
+                  ops::LinearChainCRFGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(linear_chain_crf_grad, ops::LinearChainCRFGradOp,
                   ops::LinearChainCRFGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(

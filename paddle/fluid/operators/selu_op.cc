@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/selu_op.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -87,18 +86,19 @@ or not. And the output shares the LoD information with input `X`.
   }
 };
 
-class SeluGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SeluGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("selu_grad");
-    grad_op->SetInput("Out", Output("Out"));
-    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    grad_op->SetInput("Out", this->Output("Out"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -128,7 +128,8 @@ class SeluGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(selu, ops::SeluOp, ops::SeluOpMaker, ops::SeluOpInferVarType,
-                  ops::SeluGradMaker);
+                  ops::SeluGradMaker<paddle::framework::OpDesc>,
+                  ops::SeluGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(selu_grad, ops::SeluGradOp);
 REGISTER_OP_CPU_KERNEL(
     selu, ops::SeluKernel<paddle::platform::CPUDeviceContext, float>,

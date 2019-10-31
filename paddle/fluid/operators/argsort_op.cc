@@ -80,8 +80,10 @@ Output(Indices) gives the sorted order along the given axis Attr(axis).
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(argsort, ops::ArgsortOp, ops::ArgsortOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    argsort, ops::ArgsortOp, ops::ArgsortOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(argsort,
                        ops::ArgsortKernel<paddle::platform::CPUPlace, float>,
                        ops::ArgsortKernel<paddle::platform::CPUPlace, double>);
