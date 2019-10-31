@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <Python.h>
+#include <numpy/arrayobject.h>
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -71,7 +72,7 @@ void PyCPUTensorSetFromArray(
     framework::Tensor *self,
     pybind11::array_t<T, pybind11::array::c_style | pybind11::array::forcecast>
         array,
-    paddle::platform::CPUPlace place) {
+    paddle::platform::CPUPlace place, bool zero_copy = true) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
@@ -79,31 +80,31 @@ void PyCPUTensorSetFromArray(
   }
   self->Resize(framework::make_ddim(dims));
 
-  array.inc_ref();
-  auto holder = std::make_shared<memory::allocation::NumpyAllocation>(
-      std::make_shared<pybind11::array>(static_cast<pybind11::array>(array)),
-      sizeof(T) * (array.size()), place);
-  self->ResetHolder(holder);
-}
-
-template <>
-// This following specialization maps uint16_t in the parameter type to
-// platform::float16.
-inline void PyCPUTensorSetFromArray(
-    framework::Tensor *self,
-    pybind11::array_t<uint16_t,
-                      pybind11::array::c_style | pybind11::array::forcecast>
-        array,
-    paddle::platform::CPUPlace place) {
-  std::vector<int64_t> dims;
-  dims.reserve(array.ndim());
-  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
+  if (!zero_copy) {
+    // without zero copy
+    void *dst = nullptr;
+    if (std::is_same<T, uint16_t>::value) {
+      // maps uint16_t in the parameter type to platform::float16.
+      dst = self->mutable_data<platform::float16>(place);
+    } else {
+      dst = self->mutable_data<T>(place);
+    }
+    std::memcpy(dst, array.data(), sizeof(T) * array.size());
+  } else {
+    // numpy bridge
+    array.inc_ref();
+    auto holder = std::make_shared<memory::allocation::NumpyAllocation>(
+        std::make_shared<pybind11::array>(static_cast<pybind11::array>(array)),
+        sizeof(T) * (array.size()), place);
+    self->ResetHolder(holder);
+    if (std::is_same<T, uint16_t>::value) {
+      std::type_index dtype = std::type_index(typeid(platform::float16));
+      self->ResetType(framework::ToDataType(dtype));
+    } else {
+      std::type_index dtype = std::type_index(typeid(T));
+      self->ResetType(framework::ToDataType(dtype));
+    }
   }
-
-  self->Resize(framework::make_ddim(dims));
-  auto *dst = self->mutable_data<platform::float16>(place);
-  std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
 
 template <typename T, size_t D>

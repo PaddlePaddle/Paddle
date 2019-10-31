@@ -458,21 +458,21 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_clear", &Tensor::clear)
       .def("set", PyCPUTensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
+           py::arg("place"), py::arg("zero_copy"))
       .def("set", PyCPUTensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
+           py::arg("place"), py::arg("zero_copy"))
       .def("set", PyCPUTensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
+           py::arg("place"), py::arg("zero_copy"))
       .def("set", PyCPUTensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
+           py::arg("place"), py::arg("zero_copy"))
       .def("set", PyCPUTensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
+           py::arg("place"), py::arg("zero_copy"))
       .def("set", PyCPUTensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
+           py::arg("place"), py::arg("zero_copy"))
       .def("set", PyCPUTensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
+           py::arg("place"), py::arg("zero_copy"))
       .def("set", PyCPUTensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"))
+           py::arg("place"), py::arg("zero_copy"))
 #ifdef PADDLE_WITH_CUDA
       .def("set", PyCUDATensorSetFromArray<float>, py::arg("array"),
            py::arg("place"))
