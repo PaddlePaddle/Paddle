@@ -28,6 +28,25 @@ class TestDistMnistFleetSave(TestDistBase):
         self._gpu_fleet_api = True
         self._save_model = True
 
+    def _rm_temp_files(self, dirname):
+        fluid_model_path = os.path.join(dirname, 'fluid_persistables')
+        fleet_model_path = os.path.join(dirname, 'fleet_persistables')
+        fluid_infer_path = os.path.join(dirname, 'fluid_infer')
+        fleet_infer_path = os.path.join(dirname, 'fleet_infer')
+        fluid_model_path_2 = os.path.join(dirname, 'fluid_persistables_2')
+        fleet_model_path_2 = os.path.join(dirname, 'fleet_persistables_2')
+        fluid_infer_path_2 = os.path.join(dirname, 'fluid_infer_2')
+        fleet_infer_path_2 = os.path.join(dirname, 'fleet_infer_2')
+
+        shutil.rmtree(fluid_model_path)
+        shutil.rmtree(fleet_model_path)
+        shutil.rmtree(fluid_infer_path)
+        shutil.rmtree(fleet_infer_path)
+        shutil.rmtree(fluid_model_path_2)
+        shutil.rmtree(fleet_model_path_2)
+        shutil.rmtree(fluid_infer_path_2)
+        shutil.rmtree(fleet_infer_path_2)
+
     def _test_saved_files(self, dirname):
         fluid_model_path = os.path.join(dirname, 'fluid_persistables')
         fluid_persistables = sorted(os.listdir(fluid_model_path))
@@ -39,36 +58,21 @@ class TestDistMnistFleetSave(TestDistBase):
         fleet_infer_files = sorted(os.listdir(fleet_infer_path))
 
         if len(fluid_persistables) != len(fleet_persistables):
-            shutil.rmtree(fluid_model_path)
-            shutil.rmtree(fleet_model_path)
-            shutil.rmtree(fluid_infer_path)
-            shutil.rmtree(fleet_infer_path)
+            _rm_temp_files(dirname)
             raise ValueError("Test Failed.")
         for i in range(len(fluid_persistables)):
             if fluid_persistables[i] != fleet_persistables[i]:
-                shutil.rmtree(fluid_model_path)
-                shutil.rmtree(fleet_model_path)
-                shutil.rmtree(fluid_infer_path)
-                shutil.rmtree(fleet_infer_path)
+                _rm_temp_files(dirname)
                 raise ValueError("Test Failed.")
 
         if len(fluid_infer_files) != len(fleet_infer_files):
-            shutil.rmtree(fluid_model_path)
-            shutil.rmtree(fleet_model_path)
-            shutil.rmtree(fluid_infer_path)
-            shutil.rmtree(fleet_infer_path)
+            _rm_temp_files(dirname)
             raise ValueError("Test Failed.")
         for i in range(len(fluid_infer_files)):
             if fluid_infer_files[i] != fleet_infer_files[i]:
-                shutil.rmtree(fluid_model_path)
-                shutil.rmtree(fleet_model_path)
-                shutil.rmtree(fluid_infer_path)
-                shutil.rmtree(fleet_infer_path)
+                _rm_temp_files(dirname)
                 raise ValueError("Test Failed.")
-        shutil.rmtree(fluid_model_path)
-        shutil.rmtree(fleet_model_path)
-        shutil.rmtree(fluid_infer_path)
-        shutil.rmtree(fleet_infer_path)
+        _rm_temp_files(dirname)
         return True
 
     def check_with_place(self,
