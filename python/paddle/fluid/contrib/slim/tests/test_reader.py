@@ -13,7 +13,6 @@
 # limitations under the license.
 
 import os
-import shutil
 import paddle
 import unittest
 import paddle.fluid as fluid
@@ -40,9 +39,6 @@ class TestReader(unittest.TestCase):
         return [('img', image.name), ('label', label.name)]
 
     def quan(self, config_file):
-        if os.path.exists('./checkpoints_quan'):
-            shutil.rmtree('./checkpoints_quan')
-
         if not fluid.core.is_compiled_with_cuda():
             return
         class_dim = 10
@@ -119,7 +115,7 @@ class TestReader1(TestReader):
         return loader
 
     def test_compression(self):
-        self.quan("./quantization/compress_1.yaml")
+        self.quan("./quantization/test_reader.yaml")
 
 
 if __name__ == '__main__':
