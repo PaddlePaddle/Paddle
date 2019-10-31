@@ -32,7 +32,7 @@ from paddle.fluid.layers.control_flow import StaticRNN as PaddingRNN
 os.environ["CPU_NUM"] = "1"
 
 
-class RnnConfig(object):
+class RNNConfig(object):
     def __init__(self, model_type, rnn_model):
         self.model_type = model_type
         self.rnn_model = rnn_model
@@ -478,11 +478,12 @@ def lm_model(hidden_size,
         return loss, last_hidden, last_cell, feeding_list
 
 
-class EagerDeletionPaddingRnnTest(unittest.TestCase):
+class PaddingRNNTestBase(unittest.TestCase):
     def setUp(self):
         self.reader = Reader()
+        self.device_count = 1
 
-    def prepare_program(self, config):
+    def prepare_program(self, config, parallel=True):
         self.main_program = fluid.Program()
         self.startup_program = fluid.Program()
         self.startup_program.random_seed = config.random_seed
@@ -517,21 +518,23 @@ class EagerDeletionPaddingRnnTest(unittest.TestCase):
         self.exe = Executor(fluid.CPUPlace())
         self.exe.run(self.startup_program)
 
-        self.device_count = 1
-        exec_strategy = fluid.ExecutionStrategy()
-        exec_strategy.num_threads = self.device_count
-        exec_strategy.num_iteration_per_drop_scope = 100
+        if parallel:
+            exec_strategy = fluid.ExecutionStrategy()
+            exec_strategy.num_threads = self.device_count
+            exec_strategy.num_iteration_per_drop_scope = 100
 
-        build_strategy = fluid.BuildStrategy()
-        build_strategy.enable_inplace = True
-        build_strategy.memory_optimize = False
-        build_strategy.fuse_all_optimizer_ops = True
+            build_strategy = fluid.BuildStrategy()
+            build_strategy.enable_inplace = True
+            build_strategy.memory_optimize = False
+            build_strategy.fuse_all_optimizer_ops = True
 
-        self.train_program = fluid.compiler.CompiledProgram(
-            self.main_program).with_data_parallel(
-                loss_name=self.loss.name,
-                build_strategy=build_strategy,
-                exec_strategy=exec_strategy)
+            self.train_program = fluid.compiler.CompiledProgram(
+                self.main_program).with_data_parallel(
+                    loss_name=self.loss.name,
+                    build_strategy=build_strategy,
+                    exec_strategy=exec_strategy)
+        else:
+            self.train_program = self.main_program
 
     def generate_init_data(self):
         init_hidden = np.zeros(
@@ -572,7 +575,7 @@ class EagerDeletionPaddingRnnTest(unittest.TestCase):
             res['learning_rate'] = self.generate_new_lr(epoch_id, device_count)
         return res
 
-    def train_an_epoch(self, epoch_id, batch_times):
+    def train_an_epoch(self, epoch_id, batch_times, use_program_cache=True):
         train_data_iter = self.reader.get_data_iter(self.config)
 
         total_loss = 0
@@ -597,7 +600,7 @@ class EagerDeletionPaddingRnnTest(unittest.TestCase):
                                           self.last_hidden.name,
                                           self.last_cell.name
                                       ],
-                                      use_program_cache=True)
+                                      use_program_cache=use_program_cache)
             batch_time = time.time() - batch_start_time
             batch_times.append(batch_time)
 
@@ -613,47 +616,53 @@ class EagerDeletionPaddingRnnTest(unittest.TestCase):
             ppl = np.append(ppl, batch_ppl)
         return ppl
 
-    def train(self, config):
+    def train(self, config, parallel=True, use_program_cache=True):
         self.config = config
-        self.prepare_program(config)
+        self.prepare_program(config, parallel)
         total_time = 0.0
         ppl = np.zeros(shape=(0, config.batch_size))
         for epoch_id in range(config.max_epoch):
             batch_times = []
             epoch_start_time = time.time()
-            train_ppl = self.train_an_epoch(epoch_id, batch_times)
+            train_ppl = self.train_an_epoch(epoch_id, batch_times,
+                                            use_program_cache)
             epoch_time = time.time() - epoch_start_time
             total_time += epoch_time
             ppl = np.append(ppl, train_ppl)
         return ppl
 
-    def compare_padding_static_mode(self):
+    def compare_padding_static_mode(self, parallel=True,
+                                    use_program_cache=True):
         '''
-          Test that train ppl of padding mode is same to that of static mode 
+        Test that train ppl of padding mode is same to that of static mode 
         '''
-        config = RnnConfig('test', 'padding')
+        config = RNNConfig('test', 'padding')
         with fluid.scope_guard(fluid.Scope()):
-            padding_rnn_ppl = self.train(config)
-        config = RnnConfig('test', 'static')
+            padding_rnn_ppl = self.train(config, parallel, use_program_cache)
+        config = RNNConfig('test', 'static')
         with fluid.scope_guard(fluid.Scope()):
-            static_rnn_ppl = self.train(config)
+            static_rnn_ppl = self.train(config, parallel, use_program_cache)
         self.assertTrue(
             np.isclose(
                 padding_rnn_ppl, static_rnn_ppl, rtol=0.001).all())
 
+
+class EagerDeletionPaddingRNNTest(PaddingRNNTestBase):
     def test_padding_mode_no_eager_deletion(self):
         '''
-           Test that train ppl of padding mode is same to that of static mode without eager deletion
+        Test that train ppl of padding mode is same to that of static mode without eager deletion
         '''
         fluid.core._set_eager_deletion_mode(-1.0, 1.0, True)
-        self.compare_padding_static_mode()
+        # When parallel is True, use_program_cache does not make a difference.
+        self.compare_padding_static_mode(parallel=True, use_program_cache=True)
 
     def test_padding_mode_eager_deletion(self):
         '''
-          Test that train ppl of padding mode is same to that of static mode under eager deletion
+        Test that train ppl of padding mode is same to that of static mode under eager deletion
         '''
         fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
-        self.compare_padding_static_mode()
+        # When parallel is True, use_program_cache does not make a difference.
+        self.compare_padding_static_mode(parallel=True, use_program_cache=True)
 
 
 if __name__ == '__main__':
