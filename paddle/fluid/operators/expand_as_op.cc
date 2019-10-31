@@ -90,19 +90,20 @@ class ExpandAsGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class ExpandAsGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ExpandAsGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("expand_as_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("target_tensor", Input("target_tensor"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("target_tensor", this->Input("target_tensor"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -114,7 +115,8 @@ class ExpandAsGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(expand_as, ops::ExpandAsOp, ops::ExpandAsOpMaker,
-                  ops::ExpandAsGradOpDescMaker);
+                  ops::ExpandAsGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ExpandAsGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(expand_as_grad, ops::ExpandAsGradOp);
 REGISTER_OP_CPU_KERNEL(
     expand_as, ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, float>,

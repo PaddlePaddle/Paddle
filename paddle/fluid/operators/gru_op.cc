@@ -380,8 +380,10 @@ class GRUCPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(gru, ops::GRUOp, ops::GRUOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    gru, ops::GRUOp, ops::GRUOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>)
 REGISTER_OPERATOR(gru_grad, ops::GRUGradOp);
 REGISTER_OP_CPU_KERNEL(gru, ops::GRUCPUKernel<float>,
                        ops::GRUCPUKernel<double>);

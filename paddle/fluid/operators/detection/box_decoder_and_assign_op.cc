@@ -162,9 +162,11 @@ output_assign_box is the same as PriorBox.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(box_decoder_and_assign, ops::BoxDecoderAndAssignOp,
-                  ops::BoxDecoderAndAssignOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    box_decoder_and_assign, ops::BoxDecoderAndAssignOp,
+    ops::BoxDecoderAndAssignOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     box_decoder_and_assign,
     ops::BoxDecoderAndAssignKernel<paddle::platform::CPUDeviceContext, float>,

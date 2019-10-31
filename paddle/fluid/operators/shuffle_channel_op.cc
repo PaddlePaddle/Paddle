@@ -90,17 +90,18 @@ class ShuffleChannelGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class ShuffleChannelGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ShuffleChannelGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("shuffle_channel_grad");
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -110,7 +111,9 @@ class ShuffleChannelGradDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(shuffle_channel, ops::ShuffleChannelOp,
-                  ops::ShuffleChannelOpMaker, ops::ShuffleChannelGradDescMaker);
+                  ops::ShuffleChannelOpMaker,
+                  ops::ShuffleChannelGradMaker<paddle::framework::OpDesc>,
+                  ops::ShuffleChannelGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(shuffle_channel_grad, ops::ShuffleChannelGradOp);
 

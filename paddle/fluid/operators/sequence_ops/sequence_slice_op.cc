@@ -116,20 +116,21 @@ NOTE: The first dimension size of input, the size of offset and Length, should b
   }
 };
 
-class SequenceSliceGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequenceSliceGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("sequence_slice_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Offset", Input("Offset"));
-    op->SetInput("Length", Input("Length"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Offset", this->Input("Offset"));
+    op->SetInput("Length", this->Input("Length"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -142,7 +143,9 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_slice, ops::SequenceSliceOp,
-                  ops::SequenceSliceOpMaker, ops::SequenceSliceGradOpDescMaker);
+                  ops::SequenceSliceOpMaker,
+                  ops::SequenceSliceGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequenceSliceGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_slice_grad, ops::SequenceSliceGradOp,
                   ops::SequenceSliceGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(

@@ -657,7 +657,18 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void DecreaseLoDLevel(const std::string& in, const std::string& out,
                         size_t i = 0, size_t j = 0) const override {
-    PADDLE_THROW("DecreaseLoDLevel is only used in compile time.");
+    PADDLE_THROW(
+        "DecreaseLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
+  }
+
+  void IncreaseLoDLevel(const std::string& in, const std::string& out,
+                        size_t i = 0, size_t j = 0) const override {
+    PADDLE_THROW(
+        "IncreaseLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
   }
 
   bool IsRuntime() const override { return true; }
@@ -1160,7 +1171,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto& input : this->inputs_) {
+  for (auto& input : ctx.Context().inputs) {
     ParseInputDataType(ctx, input.first, &data_type);
   }
   PADDLE_ENFORCE_NE(data_type, dafault_data_type,

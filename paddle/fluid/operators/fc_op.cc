@@ -123,8 +123,11 @@ The size of each dimension of the parameters checked in the infer-shape.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fc, ops::FCOp, ops::FCOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+
+REGISTER_OPERATOR(
+    fc, ops::FCOp, ops::FCOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     fc, ops::FCOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FCOpKernel<paddle::platform::CPUDeviceContext, double>);

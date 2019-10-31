@@ -254,18 +254,19 @@ class Squeeze2OpMaker : public SqueezeOpMaker {
   }
 };
 
-class Squeeze2GradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Squeeze2GradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("squeeze2_grad");
-    grad_op->SetInput("XShape", Output("XShape"));
-    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -278,12 +279,16 @@ DECLARE_INPLACE_OP_INFERER(SequeezeGradInplaceInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(squeeze, ops::SqueezeOp, ops::SqueezeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    squeeze, ops::SqueezeOp, ops::SqueezeOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(squeeze_grad, ops::SqueezeGradOp);
 
 REGISTER_OPERATOR(squeeze2, ops::Squeeze2Op, ops::Squeeze2OpMaker,
-                  ops::Squeeze2GradOpMaker, ops::SequeezeInplaceInferer);
+                  ops::Squeeze2GradOpMaker<paddle::framework::OpDesc>,
+                  ops::Squeeze2GradOpMaker<paddle::imperative::OpBase>,
+                  ops::SequeezeInplaceInferer);
 REGISTER_OPERATOR(squeeze2_grad, ops::Squeeze2GradOp,
                   ops::SequeezeGradInplaceInferer);
 

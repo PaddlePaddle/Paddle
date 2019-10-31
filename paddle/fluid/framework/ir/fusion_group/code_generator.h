@@ -11,10 +11,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #pragma once
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/ir/codegen_helper.h"
+#include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -23,8 +24,11 @@ namespace ir {
 class CodeGenerator {
  public:
   explicit CodeGenerator(CodeTemplate code_template);
+
   std::string GenerateCode(TemplateVariable template_var);
-  // TODO(wangchao66) std::string GenerateCode(const Graph& graph)
+
+  // TODO(wangchao): add a more general interface
+  // std::string Generate(const std::string name, const SubGraph& subgraph);
 
  private:
   CodeTemplate code_template_;
