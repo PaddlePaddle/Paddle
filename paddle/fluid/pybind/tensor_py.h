@@ -82,13 +82,7 @@ void PyCPUTensorSetFromArray(
 
   if (!zero_copy) {
     // without zero copy
-    void *dst = nullptr;
-    if (std::is_same<T, uint16_t>::value) {
-      // maps uint16_t in the parameter type to platform::float16.
-      dst = self->mutable_data<platform::float16>(place);
-    } else {
-      dst = self->mutable_data<T>(place);
-    }
+    auto dst = self->mutable_data<T>(place);
     std::memcpy(dst, array.data(), sizeof(T) * array.size());
   } else {
     // numpy bridge
@@ -97,13 +91,40 @@ void PyCPUTensorSetFromArray(
         std::make_shared<pybind11::array>(static_cast<pybind11::array>(array)),
         sizeof(T) * (array.size()), place);
     self->ResetHolder(holder);
-    if (std::is_same<T, uint16_t>::value) {
-      std::type_index dtype = std::type_index(typeid(platform::float16));
-      self->ResetType(framework::ToDataType(dtype));
-    } else {
-      std::type_index dtype = std::type_index(typeid(T));
-      self->ResetType(framework::ToDataType(dtype));
-    }
+    std::type_index dtype = std::type_index(typeid(T));
+    self->ResetType(framework::ToDataType(dtype));
+  }
+}
+
+template <>
+// This following specialization maps uint16_t in the parameter type to
+// platform::float16.
+void PyCPUTensorSetFromArray(
+    framework::Tensor *self,
+    pybind11::array_t<uint16_t,
+                      pybind11::array::c_style | pybind11::array::forcecast>
+        array,
+    paddle::platform::CPUPlace place, bool zero_copy) {
+  std::vector<int64_t> dims;
+  dims.reserve(array.ndim());
+  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
+    dims.push_back(static_cast<int>(array.shape()[i]));
+  }
+  self->Resize(framework::make_ddim(dims));
+
+  if (!zero_copy) {
+    // without zero copy
+    auto dst = self->mutable_data<platform::float16>(place);
+    std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
+  } else {
+    // numpy bridge
+    array.inc_ref();
+    auto holder = std::make_shared<memory::allocation::NumpyAllocation>(
+        std::make_shared<pybind11::array>(static_cast<pybind11::array>(array)),
+        sizeof(uint16_t) * (array.size()), place);
+    self->ResetHolder(holder);
+    std::type_index dtype = std::type_index(typeid(platform::float16));
+    self->ResetType(framework::ToDataType(dtype));
   }
 }
 
