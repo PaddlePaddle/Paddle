@@ -21,11 +21,11 @@ namespace imperative {
 
 static std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
-std::shared_ptr<Tracer>& GetCurrentTracer() { return current_tracer; }
+const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
 
-void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_) {
-  current_tracer = tracer_;
-  VLOG(6) << "Set current tracer: " <<  current_tracer;
+void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer) {
+  g_current_tracer = tracer;
+  VLOG(6) << "Set current tracer: " << g_current_tracer;
 }
 
 struct OpBaseCmp {
