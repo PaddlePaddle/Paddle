@@ -185,8 +185,10 @@ box will broadcast to target box along the assigned axis.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(box_coder, ops::BoxCoderOp, ops::BoxCoderOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    box_coder, ops::BoxCoderOp, ops::BoxCoderOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     box_coder, ops::BoxCoderKernel<paddle::platform::CPUDeviceContext, float>,
     ops::BoxCoderKernel<paddle::platform::CPUDeviceContext, double>);

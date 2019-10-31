@@ -153,19 +153,20 @@ class SplitOpKernel : public framework::OpKernel<T> {
   }
 };
 
-class SplitGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SplitGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto op = new T();
     op->SetType("concat");
-    op->SetInput("X", OutputGrad("Out"));
-    op->SetInput("AxisTensor", Input("AxisTensor"));
-    op->SetOutput("Out", InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetInput("X", this->OutputGrad("Out"));
+    op->SetInput("AxisTensor", this->Input("AxisTensor"));
+    op->SetOutput("Out", this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(op);
   }
 };
 

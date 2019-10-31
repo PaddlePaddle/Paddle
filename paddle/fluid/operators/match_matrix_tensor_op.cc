@@ -316,9 +316,11 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(match_matrix_tensor, ops::MatchMatrixTensorOP,
-                  ops::MatchMatrixTensorOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    match_matrix_tensor, ops::MatchMatrixTensorOP,
+    ops::MatchMatrixTensorOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>)
 REGISTER_OPERATOR(match_matrix_tensor_grad, ops::MatchMatrixTensorOpGrad);
 
 REGISTER_OP_CPU_KERNEL(match_matrix_tensor,

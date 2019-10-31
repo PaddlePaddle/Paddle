@@ -60,7 +60,7 @@ __device__ __inline__ void KernelDepthwiseConv(ARG_DEFINE_KernelDepthwiseConv) {
       const int w_in_end = w_in_start + filter_width * dilate_width;
 
       int in_offset;
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout != DataLayout::kNHWC) {
         in_offset =
             ((batch * input_channels + c_in) * input_height) * input_width;
       } else {
@@ -78,7 +78,7 @@ __device__ __inline__ void KernelDepthwiseConv(ARG_DEFINE_KernelDepthwiseConv) {
           if (h_in >= h_start && h_in < h_end && w_in >= w_start &&
               w_in < w_end) {
             int offset;
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout != DataLayout::kNHWC) {
               offset = in_offset + h_in * input_width + w_in;
             } else {
               offset = in_offset +
@@ -94,7 +94,7 @@ __device__ __inline__ void KernelDepthwiseConv(ARG_DEFINE_KernelDepthwiseConv) {
         }
       }
       int index;
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout != DataLayout::kNHWC) {
         index = ((batch * gridDim.x + c_out) * output_height + h_out) *
                     output_width +
                 w_out;
@@ -131,7 +131,7 @@ __device__ __inline__ void KernelDepthwiseConvCFilter(
       const int w_in_end = w_in_start + c_filter * dilate_width;
 
       int in_offset;
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout != DataLayout::kNHWC) {
         in_offset =
             ((batch * input_channels + c_in) * input_height) * input_width;
       } else {
@@ -150,7 +150,7 @@ __device__ __inline__ void KernelDepthwiseConvCFilter(
           if (h_in >= 0 && h_in < input_height && w_in >= 0 &&
               w_in < input_width) {
             int offset;
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout != DataLayout::kNHWC) {
               offset = in_offset + h_in * input_width + w_in;
             } else {
               offset = in_offset +
@@ -166,7 +166,7 @@ __device__ __inline__ void KernelDepthwiseConvCFilter(
         }
       }
       int index;
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout != DataLayout::kNHWC) {
         index = ((batch * gridDim.x + c_out) * output_height + h_out) *
                     output_width +
                 w_out;
@@ -252,7 +252,7 @@ __device__ __inline__ void KernelDepthwiseConvInputGrad(
 
       T value = 0;
       int index;
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout != DataLayout::kNHWC) {
         index =
             ((batch * gridDim.x + c_in) * input_height + h_in) * input_width +
             w_in;
@@ -283,7 +283,7 @@ __device__ __inline__ void KernelDepthwiseConvInputGrad(
                 s_h_out >= 0 && s_h_out < output_height && s_w_out >= 0 &&
                 s_w_out < output_width) {
               int output_grad_offset;
-              if (data_layout == DataLayout::kNCHW) {
+              if (data_layout != DataLayout::kNHWC) {
                 output_grad_offset =
                     ((batch * output_channels + c_out) * output_height +
                      s_h_out) *
@@ -335,7 +335,7 @@ __device__ __inline__ void KernelDepthwiseConvInputGradCFilter(
 
       T value = 0;
       int index;
-      if (data_layout == DataLayout::kNCHW) {
+      if (data_layout != DataLayout::kNHWC) {
         index =
             ((batch * gridDim.x + c_in) * input_height + h_in) * input_width +
             w_in;
@@ -363,7 +363,7 @@ __device__ __inline__ void KernelDepthwiseConvInputGradCFilter(
                 s_h_out >= 0 && s_h_out < output_height && s_w_out >= 0 &&
                 s_w_out < output_width) {
               int output_grad_offset;
-              if (data_layout == DataLayout::kNCHW) {
+              if (data_layout != DataLayout::kNHWC) {
                 output_grad_offset =
                     ((batch * output_channels + c_out) * output_height +
                      s_h_out) *
@@ -449,7 +449,7 @@ __device__ __inline__ void KernelDepthwiseConvFilterGrad(
 #define gaid_nhwc(N, H, W, C) \
   ((((N)*output_height + (H)) * output_width + (W)) * gridDim.z + (C))
         int input_id;
-        if (data_layout == DataLayout::kNCHW) {
+        if (data_layout != DataLayout::kNHWC) {
           input_id = ((bid * (gridDim.z / filter_multiplier) +
                        kernel_id / filter_multiplier) *
                           input_height +
@@ -528,19 +528,19 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T,
                   const DataLayout data_layout = DataLayout::kNCHW) {
     const int batch_size = input.dims()[0];
     const int input_channels =
-        (data_layout == DataLayout::kNCHW ? input.dims()[1] : input.dims()[3]);
+        (data_layout != DataLayout::kNHWC ? input.dims()[1] : input.dims()[3]);
     const int input_height =
-        (data_layout == DataLayout::kNCHW ? input.dims()[2] : input.dims()[1]);
+        (data_layout != DataLayout::kNHWC ? input.dims()[2] : input.dims()[1]);
     const int input_width =
-        (data_layout == DataLayout::kNCHW ? input.dims()[3] : input.dims()[2]);
+        (data_layout != DataLayout::kNHWC ? input.dims()[3] : input.dims()[2]);
     const int output_channels =
-        (data_layout == DataLayout::kNCHW ? output->dims()[1]
+        (data_layout != DataLayout::kNHWC ? output->dims()[1]
                                           : output->dims()[3]);
     const int output_height =
-        (data_layout == DataLayout::kNCHW ? output->dims()[2]
+        (data_layout != DataLayout::kNHWC ? output->dims()[2]
                                           : output->dims()[1]);
     const int output_width =
-        (data_layout == DataLayout::kNCHW ? output->dims()[3]
+        (data_layout != DataLayout::kNHWC ? output->dims()[3]
                                           : output->dims()[2]);
     const int ksize_height = filter.dims()[2];
     const int ksize_width = filter.dims()[3];
@@ -614,19 +614,19 @@ class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext, T,
                   const DataLayout data_layout = DataLayout::kNCHW) {
     const int batch_size = input.dims()[0];
     const int input_channels =
-        (data_layout == DataLayout::kNCHW ? input.dims()[1] : input.dims()[3]);
+        (data_layout != DataLayout::kNHWC ? input.dims()[1] : input.dims()[3]);
     const int input_height =
-        (data_layout == DataLayout::kNCHW ? input.dims()[2] : input.dims()[1]);
+        (data_layout != DataLayout::kNHWC ? input.dims()[2] : input.dims()[1]);
     const int input_width =
-        (data_layout == DataLayout::kNCHW ? input.dims()[3] : input.dims()[2]);
+        (data_layout != DataLayout::kNHWC ? input.dims()[3] : input.dims()[2]);
     const int output_channels =
-        (data_layout == DataLayout::kNCHW ? output_grad.dims()[1]
+        (data_layout != DataLayout::kNHWC ? output_grad.dims()[1]
                                           : output_grad.dims()[3]);
     const int output_height =
-        (data_layout == DataLayout::kNCHW ? output_grad.dims()[2]
+        (data_layout != DataLayout::kNHWC ? output_grad.dims()[2]
                                           : output_grad.dims()[1]);
     const int output_width =
-        (data_layout == DataLayout::kNCHW ? output_grad.dims()[3]
+        (data_layout != DataLayout::kNHWC ? output_grad.dims()[3]
                                           : output_grad.dims()[2]);
     const int ksize_height = filter.dims()[2];
     const int ksize_width = filter.dims()[3];
@@ -702,19 +702,19 @@ class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext, T,
                   const DataLayout data_layout = DataLayout::kNCHW) {
     const int batch_size = input.dims()[0];
     const int input_channels =
-        (data_layout == DataLayout::kNCHW ? input.dims()[1] : input.dims()[3]);
+        (data_layout != DataLayout::kNHWC ? input.dims()[1] : input.dims()[3]);
     const int input_height =
-        (data_layout == DataLayout::kNCHW ? input.dims()[2] : input.dims()[1]);
+        (data_layout != DataLayout::kNHWC ? input.dims()[2] : input.dims()[1]);
     const int input_width =
-        (data_layout == DataLayout::kNCHW ? input.dims()[3] : input.dims()[2]);
+        (data_layout != DataLayout::kNHWC ? input.dims()[3] : input.dims()[2]);
     const int output_channels =
-        (data_layout == DataLayout::kNCHW ? output_grad.dims()[1]
+        (data_layout != DataLayout::kNHWC ? output_grad.dims()[1]
                                           : output_grad.dims()[3]);
     const int output_height =
-        (data_layout == DataLayout::kNCHW ? output_grad.dims()[2]
+        (data_layout != DataLayout::kNHWC ? output_grad.dims()[2]
                                           : output_grad.dims()[1]);
     const int output_width =
-        (data_layout == DataLayout::kNCHW ? output_grad.dims()[3]
+        (data_layout != DataLayout::kNHWC ? output_grad.dims()[3]
                                           : output_grad.dims()[2]);
     const int ksize_height = filter_grad->dims()[2];
     const int ksize_width = filter_grad->dims()[3];
