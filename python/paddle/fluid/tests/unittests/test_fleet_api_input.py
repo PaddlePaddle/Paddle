@@ -99,7 +99,9 @@ class FleetTest(unittest.TestCase):
             main_program=compiled_prog)
         self.assertRaises(Exception, fleet._transpile, "config")
 
-    def set_program(self, optimizer, avg_cost):
+    def set_program(self, avg_cost, strategy):
+        optimizer = fluid.optimizer.SGD(0.1)
+        optimizer = fleet.distributed_optimizer(optimizer, strategy)
         optimizer.minimize(avg_cost)
 
     def test_init_role(self):
@@ -118,10 +120,8 @@ class FleetTest(unittest.TestCase):
         strategy.geo_sgd_mode = True
         strategy.geo_sgd_need_push_nums = 5
         avg_cost, _, _ = train_network(batch_size, is_distribute, is_sparse)
-        optimizer = fluid.optimizer.SGD(0.1)
-        optimizer = fleet.distributed_optimizer(optimizer, strategy)
 
-        self.assertRaises(Exception, self.set_program, optimizer, avg_cost)
+        self.assertRaises(Exception, self.set_program, avg_cost, strategy)
 
 
 class TranspilerOptimizerTest(unittest.TestCase):
