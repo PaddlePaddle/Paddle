@@ -108,8 +108,11 @@ $$param\_out = param - learning\_rate * grad$$
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sgd, ops::SGDOp, ops::SGDOpMaker,
-                  paddle::framework::EmptyGradOpMaker, ops::SGDOpInferVarType);
+REGISTER_OPERATOR(
+    sgd, ops::SGDOp, ops::SGDOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::SGDOpInferVarType);
 REGISTER_OP_CPU_KERNEL(
     sgd, ops::SGDOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SGDOpKernel<paddle::platform::CPUDeviceContext, double>);

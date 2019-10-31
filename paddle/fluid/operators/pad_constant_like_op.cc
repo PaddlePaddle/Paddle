@@ -193,19 +193,20 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class PadConstantLikeOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class PadConstantLikeOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *bind = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *bind = new T();
     bind->SetType("pad_constant_like_grad");
-    bind->SetInput("Y", Input("Y"));
-    bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    bind->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    bind->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(bind);
+    bind->SetInput("Y", this->Input("Y"));
+    bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    bind->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    bind->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(bind);
   }
 };
 
@@ -215,7 +216,9 @@ class PadConstantLikeOpGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(pad_constant_like, ops::PadConstantLikeOp,
-                  ops::PadConstantLikeOpMaker, ops::PadConstantLikeOpGradMaker);
+                  ops::PadConstantLikeOpMaker,
+                  ops::PadConstantLikeOpGradMaker<paddle::framework::OpDesc>,
+                  ops::PadConstantLikeOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(pad_constant_like_grad, ops::PadConstantLikeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

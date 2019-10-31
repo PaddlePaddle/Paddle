@@ -148,18 +148,19 @@ class UnfoldGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class UnfoldGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class UnfoldGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("unfold_grad");
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetInput("X", Input("X"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetInput("X", this->Input("X"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -172,7 +173,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(UnfoldGradOpNoNeedBufferVarsInference,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(unfold, ops::UnfoldOp, ops::UnfoldOpMaker,
-                  ops::UnfoldGradDescMaker);
+                  ops::UnfoldGradMaker<paddle::framework::OpDesc>,
+                  ops::UnfoldGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(unfold_grad, ops::UnfoldGradOp,
                   ops::UnfoldGradOpNoNeedBufferVarsInference);
 

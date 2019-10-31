@@ -316,21 +316,26 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
 
 namespace ops = paddle::operators;
 
-#define REGISTER_REDUCE_OP(op_name)                                      \
+#define REGISTER_REDUCE_OP(op_name)                                           \
+  class __##op_name##Maker__ : public ops::ReduceOpMaker {                    \
+   protected:                                                                 \
+    virtual std::string GetName() const { return #op_name; }                  \
+    virtual std::string GetOpType() const { return "Reduce " #op_name; }      \
+  };                                                                          \
+  REGISTER_OPERATOR(                                                          \
+      op_name, ops::ReduceOp, __##op_name##Maker__,                           \
+      paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>, \
+      paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase,       \
+                                            true>);                           \
+  REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)
+
+#define REGISTER_REDUCE_OP_WITHOUT_GRAD(op_name, ...)                    \
   class __##op_name##Maker__ : public ops::ReduceOpMaker {               \
    protected:                                                            \
     virtual std::string GetName() const { return #op_name; }             \
     virtual std::string GetOpType() const { return "Reduce " #op_name; } \
   };                                                                     \
-  REGISTER_OPERATOR(op_name, ops::ReduceOp, __##op_name##Maker__,        \
-                    paddle::framework::DefaultGradOpDescMaker<true>);    \
-  REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)
-
-#define REGISTER_REDUCE_OP_WITHOUT_GRAD(op_name, ...)                          \
-  class __##op_name##Maker__ : public ops::ReduceOpMaker {                     \
-   protected:                                                                  \
-    virtual std::string GetName() const { return #op_name; }                   \
-    virtual std::string GetOpType() const { return "Reduce " #op_name; }       \
-  };                                                                           \
-  REGISTER_OPERATOR(op_name, ops::ReduceOp##__VA_ARGS__, __##op_name##Maker__, \
-                    paddle::framework::EmptyGradOpMaker);
+  REGISTER_OPERATOR(                                                     \
+      op_name, ops::ReduceOp##__VA_ARGS__, __##op_name##Maker__,         \
+      paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,    \
+      paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

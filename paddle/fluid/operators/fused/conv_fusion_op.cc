@@ -103,6 +103,8 @@ class Conv2DFusionOpInferShape : public framework::InferShapeBase {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(conv2d_fusion, ops::ConvOp, ops::Conv2DFusionOpMaker,
-                  ops::Conv2DFusionOpInferShape, ops::ConvOpInferVarType,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    conv2d_fusion, ops::ConvOp, ops::Conv2DFusionOpMaker,
+    ops::Conv2DFusionOpInferShape, ops::ConvOpInferVarType,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
