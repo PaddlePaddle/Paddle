@@ -194,8 +194,11 @@ class DownpourWorker : public HogwildWorker {
   void PushGradients();
   void CollectLabelInfo(size_t table_id);
   void AdjustInsWeight();
+  void DumpParam();
 
  private:
+  bool need_dump_param_;
+  std::vector<std::string> dump_param_;
   bool need_to_push_dense_;
   bool need_dump_field_;
   bool dump_slot_;
