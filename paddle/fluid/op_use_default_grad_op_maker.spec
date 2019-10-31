@@ -1,9 +1,6 @@
-conv_shift
 cos_sim
-fc
 flatten
 fsp
-fused_embedding_seq_pool
 gru
 lrn
 lstm_unit
@@ -11,12 +8,10 @@ match_matrix_tensor
 max_pool2d_with_index
 max_pool3d_with_index
 maxout
-modified_huber_loss
 nce
 pool2d
 pool3d
 prelu
-rank_loss
 reduce_max
 reduce_min
 reduce_prod

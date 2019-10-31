@@ -189,8 +189,10 @@ void FusedAllReduceOpHandle::GetGradLoDTensor(
     auto var = local_scope->FindVar(var_name);
     PADDLE_ENFORCE_NOT_NULL(var, "%s is not found in local scope.", var_name);
     auto &lod_tensor = var->Get<LoDTensor>();
-    PADDLE_ENFORCE_EQ(lod_tensor.place(), places_.at(scope_idx),
-                      "%s(%d) is not in the right place.", var_name, scope_idx);
+
+    PADDLE_ENFORCE_EQ(
+        platform::is_same_place(lod_tensor.place(), places_.at(scope_idx)),
+        true, "%s(%d) is not in the right place.", var_name, scope_idx);
     grad_tensor->emplace_back(std::make_pair(var_name, &lod_tensor));
   }
 }

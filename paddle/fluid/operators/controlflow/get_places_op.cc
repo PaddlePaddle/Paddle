@@ -111,6 +111,8 @@ class GetPlacesInferShape : public framework::InferShapeBase {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(get_places, ops::GetPlacesOp, ops::GetPlacesOpProtoMaker,
-                  ops::GetPlacesInferVarType, ops::GetPlacesInferShape,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    get_places, ops::GetPlacesOp, ops::GetPlacesOpProtoMaker,
+    ops::GetPlacesInferVarType, ops::GetPlacesInferShape,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

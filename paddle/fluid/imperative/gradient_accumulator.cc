@@ -105,10 +105,33 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
 void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
                                    size_t trace_id) {
   auto* dst_var = var_->MutableVar();
-  if (cur_cnt_ == 0) {
-    *dst_var = std::move(*(var->MutableVar()));
+  auto place = var->Var().Get<framework::LoDTensor>().place();
+  if (!var_->OverridedStopGradient()) {
+    VLOG(3) << "Sum Gradient for: " << var_->Name();
+    if (cur_cnt_ == 0) {
+      *dst_var = std::move(*(var->MutableVar()));
+    } else {
+      TensorAdd(var->Var(), dst_var);
+    }
   } else {
-    TensorAdd(var->Var(), dst_var);
+    if (!var_->Var().IsInitialized() ||
+        !var_->Var().Get<framework::LoDTensor>().IsInitialized()) {
+      VLOG(6) << "Set StopGradient Grad: " << var_->Name() << " as zero ";
+
+      auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      if (!var_->Var().IsInitialized()) {
+        auto* tensor = var_->MutableVar()->GetMutable<framework::LoDTensor>();
+        VLOG(6) << "Dims of " << var_->Name() << " is set as: "
+                << var->Var().Get<framework::LoDTensor>().dims();
+        tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
+        tensor->mutable_data(place, var->DataType());
+        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+      } else {
+        auto* tensor = var_->MutableVar()->GetMutable<framework::LoDTensor>();
+        tensor->mutable_data(place, var->DataType());
+        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+      }
+    }
   }
   ++cur_cnt_;
 }
@@ -116,30 +139,53 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
 void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
                                     size_t trace_id) {
   auto* dst_var = var_->MutableVar();
-  if (ref_cnt_ == 1) {
-    *dst_var = std::move(*(var->MutableVar()));
+  auto place = var->Var().Get<framework::LoDTensor>().place();
+  if (!var_->OverridedStopGradient()) {
+    if (ref_cnt_ == 1) {
+      *dst_var = std::move(*(var->MutableVar()));
+    } else {
+      if (tmp_grad_vars_.empty()) {
+        tmp_grad_vars_.reserve(ref_cnt_);
+      }
+
+      tmp_grad_vars_.emplace_back(std::move(var), trace_id);
+
+      if (tmp_grad_vars_.size() != ref_cnt_) {
+        return;
+      }
+
+      std::sort(tmp_grad_vars_.begin(), tmp_grad_vars_.end(),
+                [](const std::pair<std::shared_ptr<VarBase>, size_t>& p1,
+                   const std::pair<std::shared_ptr<VarBase>, size_t>& p2) {
+                  return p1.second > p2.second;
+                });
+
+      *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
+      for (size_t i = 1; i < tmp_grad_vars_.size(); ++i) {
+        TensorAdd(tmp_grad_vars_[i].first->Var(), dst_var);
+      }
+
+      tmp_grad_vars_.clear();
+    }
   } else {
-    if (tmp_grad_vars_.empty()) {
-      tmp_grad_vars_.reserve(ref_cnt_);
+    if (!var_->Var().IsInitialized() ||
+        !var_->Var().Get<framework::LoDTensor>().IsInitialized()) {
+      VLOG(6) << "Set StopGradient Grad: " << var->Name() << " as zero";
+      auto* dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      if (!var_->Var().IsInitialized()) {
+        auto* tensor = var_->MutableVar()->GetMutable<framework::LoDTensor>();
+        VLOG(6) << "Dims of " << var_->Name() << " is set as: "
+                << var->Var().Get<framework::LoDTensor>().dims();
+        tensor->Resize(var->Var().Get<framework::LoDTensor>().dims());
+        tensor->mutable_data(place, var->DataType());
+        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+      } else {
+        auto* tensor = var_->MutableVar()->GetMutable<framework::LoDTensor>();
+        tensor->mutable_data(place, var->DataType());
+        operators::math::set_constant(*dev_ctx, tensor, 0.0);
+      }
     }
-
-    tmp_grad_vars_.emplace_back(std::move(var), trace_id);
-
-    if (tmp_grad_vars_.size() != ref_cnt_) {
-      return;
-    }
-
-    std::sort(tmp_grad_vars_.begin(), tmp_grad_vars_.end(),
-              [](const std::pair<std::shared_ptr<VarBase>, size_t>& p1,
-                 const std::pair<std::shared_ptr<VarBase>, size_t>& p2) {
-                return p1.second > p2.second;
-              });
-
-    *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
-    for (size_t i = 1; i < tmp_grad_vars_.size(); ++i) {
-      TensorAdd(tmp_grad_vars_[i].first->Var(), dst_var);
-    }
-
+    // looks like tmp_grad_vars will not have any member but just in case
     tmp_grad_vars_.clear();
   }
 }

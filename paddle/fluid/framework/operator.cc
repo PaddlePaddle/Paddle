@@ -48,16 +48,6 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
-proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
-  if (var->IsType<framework::LoDTensor>()) {
-    return var->Get<framework::LoDTensor>().type();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    return var->Get<framework::SelectedRows>().value().type();
-  } else {
-    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
-  }
-}
-
 static DDim GetDimsDebug(const Scope& scope, const std::string& name,
                          bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
@@ -132,9 +122,6 @@ static LoD GetLoDDebug(const Scope& scope, const std::string& name) {
 
   if (var->IsType<LoDTensor>()) {
     const LoDTensor& tensor = var->Get<LoDTensor>();
-    if (UNLIKELY(!tensor.IsInitialized())) {
-      return default_lod;
-    }
     return tensor.lod();
   } else {
     return default_lod;
@@ -183,10 +170,17 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       RunImpl(scope, place);
     }
     VLOG(3) << place << " " << DebugStringEx(&scope);
-  } catch (platform::EnforceNotMet exception) {
+  } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
+  } catch (platform::EOFException&) {
+    std::rethrow_exception(std::current_exception());
+  } catch (std::exception& ex) {
+    LOG(WARNING) << Type() << " raises an exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    std::rethrow_exception(std::current_exception());
   } catch (...) {
+    LOG(WARNING) << Type() << " raises an unknown exception";
     std::rethrow_exception(std::current_exception());
   }
 }
@@ -238,8 +232,16 @@ const std::vector<std::string>& OperatorBase::Outputs(
 std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
+
+  std::unordered_set<std::string> no_need_buffer_vars;
+  if (info_ && info_->NoNeedBufferVarsInferer()) {
+    no_need_buffer_vars =
+        Info().NoNeedBufferVarsInferer()(Inputs(), Outputs(), Attrs());
+  }
+
   for (auto it = inputs_.begin(); it != inputs_.end();) {
     auto& input = *it;
+    bool is_no_need_buffer_var = (no_need_buffer_vars.count(input.first) > 0);
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
       auto var_name = input.second[i];
@@ -252,7 +254,9 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
           if (row_size >= 0) {
             ss << "[row_size=" << row_size << "]";
           }
-          std::string dtype = GetDtype(*scope, var_name);
+          std::string dtype = is_no_need_buffer_var
+                                  ? "unknown_dtype"
+                                  : GetDtype(*scope, var_name);
           ss << ":" << dtype;
           ss << "[" << GetDimsDebug(*scope, var_name, true) << "]";
           ss << "(" << GetLoDDebug(*scope, var_name) << ")";
@@ -410,34 +414,12 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
 }
 
 bool ExecutionContext::HasInput(const std::string& name) const {
-  if (!op_.HasInputs(name)) {
-    return false;
-  }
-  auto& ins = Inputs(name);
-  size_t length = ins.size();
-  if (length == 0) {
-    return false;
-  }
-  PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Input %s should not have more than one inputs", name);
-  auto arg = ins[0];
-  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  auto* var = InputVar(name);
   return var != nullptr;
 }
 
 bool ExecutionContext::HasOutput(const std::string& name) const {
-  if (!op_.HasOutputs(name)) {
-    return false;
-  }
-  auto& outs = Outputs(name);
-  size_t length = outs.size();
-  if (length == 0) {
-    return false;
-  }
-  PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Output %s should not have more than one inputs", name);
-  auto arg = outs[0];
-  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  auto* var = OutputVar(name);
   return var != nullptr;
 }
 
@@ -675,7 +657,18 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void DecreaseLoDLevel(const std::string& in, const std::string& out,
                         size_t i = 0, size_t j = 0) const override {
-    PADDLE_THROW("DecreaseLoDLevel is only used in compile time.");
+    PADDLE_THROW(
+        "DecreaseLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
+  }
+
+  void IncreaseLoDLevel(const std::string& in, const std::string& out,
+                        size_t i = 0, size_t j = 0) const override {
+    PADDLE_THROW(
+        "IncreaseLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
   }
 
   bool IsRuntime() const override { return true; }
@@ -1138,40 +1131,65 @@ Scope* OperatorWithKernel::PrepareData(
   return new_scope;
 }
 
+void OperatorWithKernel::ParseInputDataType(
+    const ExecutionContext& ctx, const std::string& name,
+    proto::VarType::Type* data_type) const {
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  const std::vector<const Variable*> vars = ctx.MultiInputVar(name);
+  for (size_t i = 0; i < vars.size(); ++i) {
+    const Variable* var = vars[i];
+    if (var != nullptr) {
+      const Tensor* t = nullptr;
+      if (var->IsType<Tensor>()) {
+        t = &var->Get<Tensor>();
+      } else if (var->IsType<LoDTensor>()) {
+        t = &var->Get<LoDTensor>();
+      } else if (var->IsType<SelectedRows>()) {
+        t = &(var->Get<SelectedRows>().value());
+      }
+      if (t != nullptr) {
+        PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
+                          "The Tensor in the %s Op's Input Variable %s(%s) is "
+                          "not initialized.",
+                          Type(), name, ctx.Inputs(name).at(i));
+        proto::VarType::Type tmp = t->type();
+        PADDLE_ENFORCE(tmp == *data_type || *data_type == dafault_data_type,
+                       "The DataType of %s Op's duplicable Variable %s must be "
+                       "consistent. The current variable type is (%s), but the "
+                       "previous variable type is (%s).",
+                       Type(), name, DataTypeToString(tmp),
+                       DataTypeToString(*data_type));
+        *data_type = tmp;
+      }
+    }
+  }
+}
+
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto& input : this->inputs_) {
-    const std::vector<const Variable*> vars = ctx.MultiInputVar(input.first);
-    for (size_t i = 0; i < vars.size(); ++i) {
-      const Variable* var = vars[i];
-      if (var != nullptr) {
-        const Tensor* t = nullptr;
-        if (var->IsType<Tensor>()) {
-          t = &var->Get<Tensor>();
-        } else if (var->IsType<LoDTensor>()) {
-          t = &var->Get<LoDTensor>();
-        } else if (var->IsType<SelectedRows>()) {
-          t = &(var->Get<SelectedRows>().value());
-        }
-        if (t != nullptr) {
-          PADDLE_ENFORCE(t->IsInitialized(), "Input %s(%lu) is not initialized",
-                         input.first, i);
-          proto::VarType::Type tmp = t->type();
-          PADDLE_ENFORCE(
-              tmp == data_type || data_type == dafault_data_type,
-              "DataType of Paddle Op %s %s must be the same. Get (%s) != (%s)",
-              Type(), input.first, DataTypeToString(data_type),
-              DataTypeToString(tmp));
-          data_type = tmp;
-        }
-      }
-    }
+  for (auto& input : ctx.Context().inputs) {
+    ParseInputDataType(ctx, input.first, &data_type);
   }
-  PADDLE_ENFORCE(data_type != dafault_data_type,
-                 "DataType should be indicated by input");
+  PADDLE_ENFORCE_NE(data_type, dafault_data_type,
+                    "DataType should be indicated by input Variable.");
+  return data_type;
+}
+
+proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
+    const ExecutionContext& ctx, const std::string& name) const {
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  proto::VarType::Type data_type = dafault_data_type;
+  ParseInputDataType(ctx, name, &data_type);
+  PADDLE_ENFORCE_NE(
+      data_type, dafault_data_type,
+      "The Input Variable(%s) of %s Op used to determine kernel data type "
+      "is empty or not LoDTensor or SelectedRows.",
+      name, Type());
   return data_type;
 }
 

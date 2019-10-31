@@ -85,6 +85,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
         core.VarDesc.VarType.LOD_TENSOR, core.VarDesc.VarType.SELECTED_ROWS,
         core.VarDesc.VarType.LOD_TENSOR_ARRAY
     ]
+
     for in_name in op.input_names:
         if src_dtype == core.VarDesc.VarType.FP32 and op.type == 'batch_norm':
             if in_name != 'X':
@@ -94,22 +95,25 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
             if in_var.type not in valid_types:
                 continue
             if in_var.dtype == src_dtype:
-                out_var = block.create_var(
-                    name=in_var.name + \
-                            '.cast_' + _dtype_to_str(dest_dtype),
-                    dtype=dest_dtype,
-                    persistable=False,
-                    stop_gradient=False)
-                block._insert_op(
-                    idx,
-                    type="cast",
-                    inputs={"X": in_var},
-                    outputs={"Out": out_var},
-                    attrs={
-                        "in_dtype": in_var.dtype,
-                        "out_dtype": out_var.dtype
-                    })
-                num_cast_ops += 1
+                cast_name = in_var.name + '.cast_' + _dtype_to_str(dest_dtype)
+                out_var = block.vars.get(cast_name)
+                if out_var is None or out_var.dtype != dest_dtype:
+                    out_var = block.create_var(
+                        name=cast_name,
+                        dtype=dest_dtype,
+                        persistable=False,
+                        stop_gradient=False)
+
+                    block._insert_op(
+                        idx,
+                        type="cast",
+                        inputs={"X": in_var},
+                        outputs={"Out": out_var},
+                        attrs={
+                            "in_dtype": in_var.dtype,
+                            "out_dtype": out_var.dtype
+                        })
+                    num_cast_ops += 1
                 _rename_arg(op, in_var.name, out_var.name)
             else:
                 if op.has_attr('in_dtype'):
@@ -129,12 +133,42 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     return num_cast_ops
 
 
-def find_true_prev_op(ops, var_name):
+def find_true_prev_op(ops, cur_op, var_name):
+    """
+    Find the true prev op that outputs var_name variable.
+
+    Args:
+        ops (list): A list of ops.
+        cur_op (Operator): Current operator which has var_name variable.
+        var_name (string): Variable name.
+    """
+    prev_op = []
     for op in ops:
+        if op == cur_op:
+            break
         for out_name in op.output_names:
             for out_var_name in op.output(out_name):
                 if out_var_name == var_name:
-                    return op
+                    prev_op.append(op)
+    if prev_op:
+        if not len(prev_op) == 1:
+            raise ValueError("There must be only one previous op "
+                             "that outputs {0} variable".format(var_name))
+        else:
+            return prev_op[0]
+    return None
+
+
+def _is_in_black_varnames(op, amp_lists):
+    for in_name in op.input_arg_names:
+        if in_name in amp_lists.black_varnames:
+            return True
+
+    for out_name in op.output_arg_names:
+        if out_name in amp_lists.black_varnames:
+            return True
+
+    return False
 
 
 def rewrite_program(main_prog, amp_lists):
@@ -161,8 +195,12 @@ def rewrite_program(main_prog, amp_lists):
     ops = block.ops
     white_op_set = set()
     black_op_set = set()
-    for i in range(len(ops)):
-        op = ops[i]
+    for op in ops:
+        if amp_lists.black_varnames is not None and _is_in_black_varnames(
+                op, amp_lists):
+            black_op_set.add(op)
+            continue
+
         if op.type in amp_lists.black_list:
             black_op_set.add(op)
         elif op.type in amp_lists.white_list:
@@ -178,15 +216,17 @@ def rewrite_program(main_prog, amp_lists):
                         # this in_var isn't the output of other op
                         if in_var.op is None:
                             continue
-                        if in_var.op is op:
-                            prev_op = find_true_prev_op(ops, in_var_name)
+                        elif in_var.op is op:
+                            prev_op = find_true_prev_op(ops, op, in_var_name)
+                            if prev_op is None:
+                                continue
                         else:
                             prev_op = in_var.op
                         # if it's one of inputs
                         if prev_op in black_op_set or \
                                 prev_op.type in amp_lists.black_list:
                             is_black_op = True
-                        if prev_op in white_op_set or \
+                        elif prev_op in white_op_set or \
                                 prev_op.type in amp_lists.white_list:
                             is_white_op = True
             if is_black_op:
@@ -216,6 +256,45 @@ def rewrite_program(main_prog, amp_lists):
             pass
 
         idx += num_cast_ops + 1
+
+
+def update_role_var_grad(main_prog, params_grads):
+    """
+    Update op_role_var attr for some ops to make sure the gradients
+    transfered across gpus is FP16.
+    1. Check whether the op that outputs gradient is cast or not.
+    2. If op is cast and gradient is FP32, remove the op_role_var
+       and find the prev op which outputs FP16 gradient
+    3. Update the op_role_var of the prev op.
+
+    Args:
+        main_prog (Program): The main program for training.
+        params_grads (list): A list of params and grads.
+    """
+    block = main_prog.global_block()
+    BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
+    OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+    for p, g in params_grads:
+        op = g.op
+        if g.dtype == core.VarDesc.VarType.FP32 and op.type == 'cast':
+            role = op.attr('op_role')
+            if role & int(BACKWARD) and op.has_attr('op_role_var'):
+                op.desc.remove_attr("op_role_var")
+            else:
+                raise ValueError("The cast op {0} must be in BACKWARD role "
+                                 "and have op_role_var attr.".format(op))
+
+            fp16_grad_name = op.input(op.input_names[0])[0]
+            op_for_fp16_grad = find_true_prev_op(block.ops, op, fp16_grad_name)
+            op_role_var_attr_name = \
+                core.op_proto_and_checker_maker.kOpRoleVarAttrName()
+            attr_val = [p.name, fp16_grad_name]
+            if op_for_fp16_grad.has_attr(op_role_var_attr_name):
+                attr_val.extend(op_for_fp16_grad.attr(op_role_var_attr_name))
+            op_for_fp16_grad._set_attr(op_role_var_attr_name, attr_val)
+
+            # maximize the allreduce overlap
+            op._set_attr('op_role', OPTIMIZE)
 
 
 def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,

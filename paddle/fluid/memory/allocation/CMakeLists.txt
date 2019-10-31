@@ -14,12 +14,6 @@ endif()
 
 if (WITH_GPU)
   nv_library(cuda_allocator SRCS cuda_allocator.cc DEPS allocator cuda_device_guard)
-  nv_library(cuda_device_context_allocation SRCS cuda_device_context_allocation.cc
-      DEPS allocator enforce place ${MKLDNN_CTX_DEPS})
-  nv_library(cuda_device_context_allocator SRCS cuda_device_context_allocator.cc 
-      DEPS allocator enforce place cuda_device_context_allocation ${MKLDNN_CTX_DEPS})
-  nv_library(cuda_device_context_allocator_pool SRCS cuda_device_context_allocator_pool.cc
-      DEPS allocator enforce place cuda_device_context_allocation cuda_device_context_allocator ${MKLDNN_CTX_DEPS})
 endif()
 
 cc_library(retry_allocator SRCS retry_allocator.cc DEPS allocator)

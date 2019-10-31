@@ -68,7 +68,7 @@ class CollectFpnProposalsOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type =
-        framework::GetDataTypeOfVar(ctx.MultiInputVar("MultiLevelRois")[0]);
+        OperatorWithKernel::IndicateVarDataType(ctx, "MultiLevelRois");
     return framework::OpKernelType(data_type, ctx.GetPlace());
   }
 };
@@ -100,9 +100,11 @@ by objectness confidence. Select the post_nms_topN RoIs in
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(collect_fpn_proposals, ops::CollectFpnProposalsOp,
-                  ops::CollectFpnProposalsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    collect_fpn_proposals, ops::CollectFpnProposalsOp,
+    ops::CollectFpnProposalsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(collect_fpn_proposals,
                        ops::CollectFpnProposalsOpKernel<float>,
                        ops::CollectFpnProposalsOpKernel<double>);

@@ -156,9 +156,23 @@ class SplitLoDTensorInferShape : public framework::InferShapeBase {
                    "SplitLoDTensorOp must has output OutFalse.");
 
     auto mask_dim = context->GetInputDim("Mask");
-    PADDLE_ENFORCE_EQ(mask_dim.size(), 2);
+    PADDLE_ENFORCE_EQ(mask_dim.size(), 2,
+                      "If you are using IfElse OP:"
+                      "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
+                      "ie.true_block():\n    out_1 = ie.input(x)\n\n"
+                      "Please ensure that the cond should be a 2-D tensor and "
+                      "the second dim size of cond should be 1. "
+                      "But now the cond's shape is [",
+                      *mask_dim.Get(), "].\n");
     if (context->IsRuntime()) {
-      PADDLE_ENFORCE_EQ(mask_dim[1], 1);
+      PADDLE_ENFORCE_EQ(mask_dim[1], 1,
+                        "If you are using IfElse OP:"
+                        "\n\nie = fluid.layers.IfElse(cond=cond)\nwith "
+                        "ie.true_block():\n    out_1 = ie.input(x)\n\n"
+                        "Please ensure that the cond should be a 2-D tensor "
+                        "and the second dim size of cond should be 1. "
+                        "But now the cond's shape is [",
+                        *mask_dim.Get(), "].\n");
     }
 
     context->SetOutputDim("OutTrue", context->GetInputDim("X"));
@@ -166,21 +180,22 @@ class SplitLoDTensorInferShape : public framework::InferShapeBase {
   }
 };
 
-class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("merge_lod_tensor");
-    grad_op->SetInput("InTrue", OutputGrad("OutTrue"));
-    grad_op->SetInput("InFalse", OutputGrad("OutFalse"));
-    grad_op->SetInput("Mask", Input("Mask"));
-    grad_op->SetInput("X", Input("X"));
-    grad_op->SetOutput("Out", InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("InTrue", this->OutputGrad("OutTrue"));
+    grad_op->SetInput("InFalse", this->OutputGrad("OutFalse"));
+    grad_op->SetInput("Mask", this->Input("Mask"));
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -188,7 +203,8 @@ class SplitLoDTensorArrayGradMaker : public framework::SingleGradOpDescMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(split_lod_tensor, ops::SplitLoDTensorOp,
-                  ops::SplitLoDTensorOpProtoMaker,
-                  ops::SplitLoDTensorInferShape,
-                  ops::SplitLoDTensorArrayGradMaker);
+REGISTER_OPERATOR(
+    split_lod_tensor, ops::SplitLoDTensorOp, ops::SplitLoDTensorOpProtoMaker,
+    ops::SplitLoDTensorInferShape,
+    ops::SplitLoDTensorArrayGradMaker<paddle::framework::OpDesc>,
+    ops::SplitLoDTensorArrayGradMaker<paddle::imperative::OpBase>);

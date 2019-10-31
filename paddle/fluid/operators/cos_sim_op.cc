@@ -73,8 +73,12 @@ class CosSimOp : public framework::OperatorWithKernel {
 class CosSimOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The 1st input of cos_sim op.");
-    AddInput("Y", "The 2nd input of cos_sim op.");
+    AddInput("X",
+             "The 1st input of cos_sim op, LoDTensor with shape ``[N_1, N_2, "
+             "..., N_k]``, the data type is float32.");
+    AddInput("Y",
+             "The 2nd input of cos_sim op, Tensor with shape ``[N_1 or 1, N_2, "
+             "..., N_k]``, the data type is float32.");
     AddOutput("Out", "The output of cos_sim op.");
     AddOutput("XNorm",
               "Norm of the first input, reduced along the 1st "
@@ -165,8 +169,10 @@ class CosSimOpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(cos_sim, ops::CosSimOp, ops::CosSimOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    cos_sim, ops::CosSimOp, ops::CosSimOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(cos_sim_grad, ops::CosSimOpGrad);
 REGISTER_OP_CPU_KERNEL(
     cos_sim, ops::CosSimKernel<paddle::platform::CPUDeviceContext, float>);

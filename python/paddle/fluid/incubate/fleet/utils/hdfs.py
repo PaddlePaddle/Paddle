@@ -24,9 +24,19 @@ import copy
 import errno
 
 import logging
-from paddle.fluid.log_helper import get_logger
 
 __all__ = ["HDFSClient"]
+
+
+def get_logger(name, level, fmt):
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    handler = logging.FileHandler('hdfs.log', mode='w')
+    formatter = logging.Formatter(fmt=fmt)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    return logger
+
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
@@ -34,10 +44,10 @@ _logger = get_logger(
 
 class HDFSClient(object):
     """
-    A tool of HDFS 
+    A tool of HDFS
 
     Args:
-        hadoop_home (string): hadoop_home 
+        hadoop_home (string): hadoop_home
         configs (dict): hadoop config, it is a dict, please contain \
             key "fs.default.name" and "hadoop.job.ugi"
         Can be a float value
@@ -457,11 +467,11 @@ class HDFSClient(object):
 
         self.make_local_dirs(local_path)
 
-        all_files = client.ls(hdfs_path)
+        all_files = self.ls(hdfs_path)
 
         procs = []
         for i in range(multi_processes):
-            process_datas = HDFSClient.split_flies(all_files, i,
+            process_datas = HDFSClient.split_files(all_files, i,
                                                    multi_processes)
             p = multiprocessing.Process(
                 target=__subprocess_download,
@@ -551,7 +561,7 @@ class HDFSClient(object):
 
         procs = []
         for i in range(multi_processes):
-            process_datas = HDFSClient.split_flies(all_files, i,
+            process_datas = HDFSClient.split_files(all_files, i,
                                                    multi_processes)
             p = multiprocessing.Process(
                 target=__subprocess_upload, args=(

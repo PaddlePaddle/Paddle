@@ -46,8 +46,9 @@ class LoDResetOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -172,24 +173,25 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
-class LoDResetGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LoDResetGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("lod_reset_grad");
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetInput("X", Input("X"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("X", this->Input("X"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -202,7 +204,9 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(LoDResetGradNoNeedBufferVarInference,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lod_reset, ops::LoDResetOp, ops::LoDResetOpMaker,
-                  ops::LoDResetGradDescMaker, ops::LoDResetOpVarTypeInference);
+                  ops::LoDResetGradMaker<paddle::framework::OpDesc>,
+                  ops::LoDResetGradMaker<paddle::imperative::OpBase>,
+                  ops::LoDResetOpVarTypeInference);
 REGISTER_OPERATOR(lod_reset_grad, ops::LoDResetGradOp,
                   ops::LoDResetGradNoNeedBufferVarInference);
 
