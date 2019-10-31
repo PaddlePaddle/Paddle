@@ -262,23 +262,24 @@ class SliceOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class SliceOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SliceOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *bind = new framework::OpDesc();
-    bind->SetInput("Input", Input("Input"));
-    bind->SetInput("StartsTensor", Input("StartsTensor"));
-    bind->SetInput("EndsTensor", Input("EndsTensor"));
-    bind->SetInput("StartsTensorList", Input("StartsTensorList"));
-    bind->SetInput("EndsTensorList", Input("EndsTensorList"));
-    bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    bind->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
-    bind->SetAttrMap(Attrs());
+  std::unique_ptr<T> Apply() const override {
+    auto *bind = new T();
+    bind->SetInput("Input", this->Input("Input"));
+    bind->SetInput("StartsTensor", this->Input("StartsTensor"));
+    bind->SetInput("EndsTensor", this->Input("EndsTensor"));
+    bind->SetInput("StartsTensorList", this->Input("StartsTensorList"));
+    bind->SetInput("EndsTensorList", this->Input("EndsTensorList"));
+    bind->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    bind->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    bind->SetAttrMap(this->Attrs());
     bind->SetType("slice_grad");
-    return std::unique_ptr<framework::OpDesc>(bind);
+    return std::unique_ptr<T>(bind);
   }
 };
 
@@ -290,7 +291,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SliceOpGradNoNeedBufferVarsInference,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(slice, ops::SliceOp, ops::SliceOpMaker,
-                  ops::SliceOpGradMaker);
+                  ops::SliceOpGradMaker<paddle::framework::OpDesc>,
+                  ops::SliceOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad,
                   ops::SliceOpGradNoNeedBufferVarsInference);
 

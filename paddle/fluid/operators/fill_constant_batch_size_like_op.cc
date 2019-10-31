@@ -56,11 +56,12 @@ obtained from the `input` tensor.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fill_constant_batch_size_like,
-                  ops::FillConstantBatchSizeLikeOp,
-                  paddle::framework::EmptyGradOpMaker,
-                  ops::FillConstantBatchSizeLikeOpMaker,
-                  ops::BatchSizeLikeNoNeedBufferVarsInference);
+REGISTER_OPERATOR(
+    fill_constant_batch_size_like, ops::FillConstantBatchSizeLikeOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::FillConstantBatchSizeLikeOpMaker,
+    ops::BatchSizeLikeNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     fill_constant_batch_size_like,
     ops::FillConstantBatchSizeLikeOpKernel<paddle::platform::CPUDeviceContext,
