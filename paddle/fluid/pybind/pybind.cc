@@ -61,6 +61,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
+#include "paddle/fluid/pybind/global_value_getter_setter.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
@@ -1091,10 +1092,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("has_infer_inplace", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
   });
-  m.def("get_flags_use_mkldnn", []() { return FLAGS_use_mkldnn; });
-#ifdef PADDLE_WITH_NGRAPH
-  m.def("get_flags_use_ngraph", []() { return FLAGS_use_ngraph; });
-#endif
 
   m.def("prune", [](const ProgramDesc &origin,
                     const std::set<std::string> &feeded_var_names,
@@ -2157,6 +2154,8 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef PADDLE_WITH_DISTRIBUTE
   BindCommunicator(&m);
 #endif
+
+  BindGlobalValueGetterSetters(&m);
 }
 }  // namespace pybind
 }  // namespace paddle

@@ -33,6 +33,12 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 
+core.set_global_var('FLAGS_fraction_of_cpu_memory_to_use', 0)
+
+if fluid.is_compiled_with_cuda():
+    core.set_global_var('FLAGS_fraction_of_gpu_memory_to_use', 0)
+    core.set_global_var('FLAGS_fraction_of_cuda_pinned_memory_to_use', 0)
+
 
 def randomize_probability(batch_size, class_num, dtype='float32'):
     prob = np.random.uniform(
@@ -705,7 +711,7 @@ class OpTest(unittest.TestCase):
             else:
                 # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn/ngraph
                 # skip op that use_mkldnn and use_ngraph currently
-                flags_use_mkldnn = fluid.core.get_flags_use_mkldnn()
+                flags_use_mkldnn = fluid.core.get_global_var('FLAGS_use_mkldnn')
                 attrs_use_mkldnn = hasattr(
                     self,
                     'attrs') and bool(self.attrs.get('use_mkldnn', False))
@@ -715,7 +721,7 @@ class OpTest(unittest.TestCase):
                     )
                     continue
                 use_ngraph = fluid.core.is_compiled_with_ngraph(
-                ) and fluid.core.get_flags_use_ngraph()
+                ) and fluid.core.get_global_var('FLAGS_use_ngraph')
                 if use_ngraph:
                     warnings.warn(
                         "check inplace_grad for ops using ngraph is not supported"
@@ -858,7 +864,7 @@ class OpTest(unittest.TestCase):
         places = [fluid.CPUPlace()]
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
         use_ngraph = fluid.core.is_compiled_with_ngraph(
-        ) and fluid.core.get_flags_use_ngraph()
+        ) and fluid.core.get_global_var('FLAGS_use_ngraph')
         if use_ngraph:
             cpu_only = True
         if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type)\

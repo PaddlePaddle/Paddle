@@ -16,6 +16,7 @@ set(PYBIND_SRCS
   protobuf.cc
   const_value.cc
   reader_py.cc
+  global_value_getter_setter.cc
   fleet_wrapper_py.cc
   box_helper_py.cc
   nccl_wrapper_py.cc
