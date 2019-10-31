@@ -53,7 +53,18 @@ static framework::VariableNameMap CreateVarNameMap(
     const framework::OpInfo& op_info, const std::string& op_type,
     const NameVarBaseMap& varbase_map, bool is_input) {
   if (op_info.proto_ == nullptr) {
-    return {};
+    framework::VariableNameMap result;
+
+    for (auto& it : varbase_map) {
+      auto& var_vector = it.second;
+      std::vector<std::string> args;
+      args.reserve(var_vector.size());
+      for (auto& var_base : var_vector) {
+        args.emplace_back(var_base->Name());
+      }
+      result[it.first] = std::move(args);
+    }
+    return result;
   }
 
   framework::VariableNameMap result;
@@ -220,21 +231,20 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
 }
 // create OpBase from optype
 OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
-               const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
                const platform::Place& place)
-    : id_(id), place_(place) {
+    : id_(id), place_(place), attrs_(attrs) {
   const auto& info = framework::OpInfoMap::Instance().Get(type);
 
   // Step 1: Run forward
   if (info.Checker() != nullptr) {
-    info.Checker()->Check(&attrs);
+    info.Checker()->Check(&attrs_);
   }
 
   auto input_name_map = CreateVarNameMap(info, type, ins, true);
   auto output_name_map = CreateVarNameMap(info, type, outs, false);
   op_ = framework::OpRegistry::CreateOp(type, std::move(input_name_map),
-                                        std::move(output_name_map),
-                                        std::move(attrs));
+                                        std::move(output_name_map), attrs);
   VLOG(3) << "Construct Op: " << type << std::endl;
 }
 
@@ -243,6 +253,18 @@ OpBase::OpBase(size_t id, const framework::OpDesc& op_desc,
                const platform::Place& place)
     : id_(id), op_(framework::OpRegistry::CreateOp(op_desc)), place_(place) {
   VLOG(3) << "Construct Op: " << op_desc.Type() << std::endl;
+}
+
+void OpBase::CreateOperatorBase() {
+  const auto& info = framework::OpInfoMap::Instance().Get(type_);
+  if (info.Checker() != nullptr) {
+    info.Checker()->Check(&attrs_);
+  }
+
+  auto input_name_map = CreateVarNameMap(info, type_, ins_, true);
+  auto output_name_map = CreateVarNameMap(info, type_, outs_, false);
+  op_ = framework::OpRegistry::CreateOp(type_, std::move(input_name_map),
+                                        std::move(output_name_map), attrs_);
 }
 
 void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {

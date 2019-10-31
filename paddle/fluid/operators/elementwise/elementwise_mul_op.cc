@@ -70,44 +70,45 @@ class ElementwiseMulOpMaker : public ElementwiseOpMaker {
   }
 };
 
-class ElementwiseMulOpGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ElementwiseMulOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("elementwise_mul_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetAttrMap(Attrs());
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetAttrMap(this->Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
     return op;
   }
 };
 
-class ElementwiseMulDoubleGradDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ElementwiseMulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("elementwise_mul_grad_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput("DOut", Input(framework::GradVarName("Out")));
-    op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-    op->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DDY", this->OutputGrad(framework::GradVarName("Y")));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
     return op;
   }
 };
@@ -118,9 +119,13 @@ class ElementwiseMulDoubleGradDescMaker
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseOp,
                   ops::ElementwiseMulOpMaker, ops::ElementwiseOpInferVarType,
-                  ops::ElementwiseMulOpGradDescMaker);
-REGISTER_OPERATOR(elementwise_mul_grad, ops::ElementwiseOpGrad,
-                  ops::ElementwiseMulDoubleGradDescMaker);
+                  ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    elementwise_mul_grad, ops::ElementwiseOpGrad,
+    ops::ElementwiseMulDoubleGradMaker<paddle::framework::OpDesc>,
+    ops::ElementwiseMulDoubleGradMaker<paddle::imperative::OpBase>);
+
 REGISTER_OPERATOR(elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad,
                   ops::ElementwiseMulDoubleGradOpInplace);
 

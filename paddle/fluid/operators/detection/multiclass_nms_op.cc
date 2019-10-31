@@ -590,13 +590,15 @@ class MultiClassNMS2OpMaker : public MultiClassNMSOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(multiclass_nms, ops::MultiClassNMSOp,
-                  ops::MultiClassNMSOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    multiclass_nms, ops::MultiClassNMSOp, ops::MultiClassNMSOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(multiclass_nms, ops::MultiClassNMSKernel<float>,
                        ops::MultiClassNMSKernel<double>);
-REGISTER_OPERATOR(multiclass_nms2, ops::MultiClassNMS2Op,
-                  ops::MultiClassNMS2OpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    multiclass_nms2, ops::MultiClassNMS2Op, ops::MultiClassNMS2OpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(multiclass_nms2, ops::MultiClassNMSKernel<float>,
                        ops::MultiClassNMSKernel<double>);

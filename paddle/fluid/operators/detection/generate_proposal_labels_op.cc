@@ -583,9 +583,11 @@ Finally BboxInsideWeights and BboxOutsideWeights are used to specify whether it 
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(generate_proposal_labels, ops::GenerateProposalLabelsOp,
-                  ops::GenerateProposalLabelsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    generate_proposal_labels, ops::GenerateProposalLabelsOp,
+    ops::GenerateProposalLabelsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(generate_proposal_labels,
                        ops::GenerateProposalLabelsKernel<float>,
                        ops::GenerateProposalLabelsKernel<double>);

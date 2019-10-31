@@ -85,6 +85,8 @@ class FetchBarrierOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(fetch_barrier, ops::FetchBarrierOp,
-                  paddle::framework::EmptyGradOpMaker, ops::FetchBarrierOpMaker,
-                  ops::FetchBarrierOpShapeInference);
+REGISTER_OPERATOR(
+    fetch_barrier, ops::FetchBarrierOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::FetchBarrierOpMaker, ops::FetchBarrierOpShapeInference);
