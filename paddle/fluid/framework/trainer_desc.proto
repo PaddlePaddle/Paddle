@@ -39,6 +39,7 @@ message TrainerDesc {
   optional string dump_fields_path = 12;
   repeated string dump_fields = 13;
   optional string dump_converter = 14;
+  repeated string dump_param = 15;
 
   optional int32 mpi_size = 16 [ default = -1 ];
   optional int32 dump_file_num = 17 [ default = 16 ];
