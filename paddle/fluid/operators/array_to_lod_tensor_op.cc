@@ -192,7 +192,21 @@ class ArrayToLoDTensorInferShape : public framework::InferShapeBase {
                    "ArrayToLoDTensorOp must has input X.");
     PADDLE_ENFORCE(context->HasInput("RankTable"),
                    "ArrayToLoDTensorOp must has input RankTable.");
+    // For compile-time, the first dim of input X and output Out should be -1.
+    // For runtime, the first dim of output Out should be the sum of all
+    // elements's first dim in input X. The output's dims will be re-computed in
+    // detail kernel implementation.
     context->SetOutputDim("Out", context->GetInputDim("X"));
+
+    // The output LoDTensor's lod_level should be input X's lod_level + 1.
+    // For compile-time, we call IncreaseLoDLevel to set output's lod_level.
+    // For runtime, output LoDTensor's lod is determined by input X's lod and
+    // the level specified by input RandTable.
+    // We cannot get X's detail lod and RankTable's level in this function, so
+    // leave this work to the detail kernel implementation.
+    if (!context->IsRuntime()) {
+      context->IncreaseLoDLevel("X", /*->*/ "Out");
+    }
   }
 };
 

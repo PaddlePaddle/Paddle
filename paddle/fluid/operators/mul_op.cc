@@ -49,6 +49,12 @@ class MulOp : public framework::OperatorWithKernel {
             << " x_num_col_dims=" << x_num_col_dims
             << " y_num_col_dims=" << y_num_col_dims;
 
+    PADDLE_ENFORCE_NE(framework::product(y_dims), 0,
+                      "Maybe the Input variable Y(%s) has not "
+                      "been initialized. You may need to confirm "
+                      "if you put exe.run(startup_program) "
+                      "after optimizer.minimize function.",
+                      ctx->Inputs("Y").front());
     PADDLE_ENFORCE_GT(x_dims.size(), x_num_col_dims,
                       "ShapeError: The input tensor X's dimensions of MulOp "
                       "should be larger than x_num_col_dims. But received X's "
