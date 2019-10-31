@@ -64,6 +64,12 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override;
 };
 
+template <typename T>
+class BatchNormGradMaker : public framework::SingleGradOpMaker<T> {
+ protected:
+  std::unique_ptr<T> Apply() const override;
+};
+
 class BatchNormOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
