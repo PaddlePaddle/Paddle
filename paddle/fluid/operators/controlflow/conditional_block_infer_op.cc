@@ -69,6 +69,8 @@ class ConditionalBlockInferOp : public ConditionalOp {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(conditional_block_infer, ops::ConditionalBlockInferOp,
-                  ops::ConditionalBlockOpProtoMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    conditional_block_infer, ops::ConditionalBlockInferOp,
+    ops::ConditionalBlockOpProtoMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

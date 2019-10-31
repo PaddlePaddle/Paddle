@@ -1182,7 +1182,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto& input : this->inputs_) {
+  for (auto& input : ctx.Context().inputs) {
     ParseInputDataType(ctx, input.first, &data_type);
   }
   PADDLE_ENFORCE_NE(data_type, dafault_data_type,

@@ -402,6 +402,7 @@ class ExecutionContext {
 
     return vec_temp;
   }
+  const RuntimeContext& Context() const { return ctx_; }
 
  private:
   const OperatorBase& op_;

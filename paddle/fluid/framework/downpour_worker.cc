@@ -82,6 +82,14 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     dump_fields_[i] = desc.dump_fields(i);
   }
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
+  need_dump_param_ = false;
+  dump_param_.resize(desc.dump_param_size());
+  for (int i = 0; i < desc.dump_param_size(); ++i) {
+    dump_param_[i] = desc.dump_param(i);
+  }
+  if (desc.dump_param_size() != 0) {
+    need_dump_param_ = true;
+  }
   for (int i = 0; i < desc.check_nan_var_names_size(); ++i) {
     check_nan_var_names_.push_back(desc.check_nan_var_names(i));
   }
@@ -161,6 +169,22 @@ bool CheckValidOutput(LoDTensor* tensor, int batch_size) {
     }
   }
   return true;
+}
+
+void DownpourWorker::DumpParam() {
+  std::string os;
+  for (auto& param : dump_param_) {
+    os.clear();
+    os = param;
+    Variable* var = thread_scope_->FindVar(param);
+    if (var == nullptr) {
+      continue;
+    }
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    int64_t len = tensor->numel();
+    os += PrintLodTensor(tensor, 0, len);
+    writer_ << os;
+  }
 }
 
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {
@@ -813,6 +837,9 @@ void DownpourWorker::TrainFiles() {
           continue;
         }
         writer_ << ars[i];
+      }
+      if (need_dump_param_ && thread_id_ == 0) {
+        DumpParam();
       }
     }
 

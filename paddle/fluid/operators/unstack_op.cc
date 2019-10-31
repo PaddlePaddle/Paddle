@@ -69,17 +69,18 @@ class UnStackOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class UnStackGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class UnStackGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("unstack_grad");
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -123,7 +124,8 @@ namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(unstack, ops::UnStackOp, ops::UnStackOpMaker,
-                  ops::UnStackGradOpDescMaker);
+                  ops::UnStackGradOpMaker<paddle::framework::OpDesc>,
+                  ops::UnStackGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(unstack_grad, ops::UnStackGradOp);
 
