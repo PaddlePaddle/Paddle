@@ -78,8 +78,9 @@ class TransposeOp : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout_, library_);
   }
 };
 
@@ -164,9 +165,9 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace(), layout_, library_);
   }
 };
 
@@ -210,8 +211,9 @@ class Transpose2Op : public TransposeOp {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout_, library_);
   }
 };
 
@@ -223,18 +225,19 @@ class Transpose2OpMaker : public TransposeOpMaker {
   }
 };
 
-class Transpose2GradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Transpose2GradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("transpose2_grad");
-    grad_op->SetInput("XShape", Output("XShape"));
-    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -268,9 +271,9 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace(), layout_, library_);
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace(), layout_, library_);
   }
 };
 
@@ -278,8 +281,10 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(transpose, ops::TransposeOp, ops::TransposeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    transpose, ops::TransposeOp, ops::TransposeOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
@@ -291,7 +296,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OPERATOR(transpose2, ops::Transpose2Op, ops::Transpose2OpMaker,
-                  ops::Transpose2GradMaker);
+                  ops::Transpose2GradMaker<paddle::framework::OpDesc>,
+                  ops::Transpose2GradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(transpose2_grad, ops::Transpose2OpGrad);
 
 REGISTER_OP_CPU_KERNEL(

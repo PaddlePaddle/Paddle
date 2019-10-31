@@ -222,7 +222,7 @@ def concat(input, axis=0, name=None):
     Args:
         input(list): List of input Tensors with data type float32, float64, int32,
             int64.
-        axis(int, optional): Axis to compute indices along. The effective range
+        axis(int32|Variable, optional):  A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
             as axis+R. Default is 0.
         name (str, optional): The default value is None. Normally there is no
@@ -280,12 +280,21 @@ def concat(input, axis=0, name=None):
             raise TypeError(
                 "The data type of x in 'input' in concat must be float16(only support on GPU), float32, float64, int32, int64, but received %s."
                 % (convert_dtype(x.dtype)))
+    if not isinstance(axis, (int, Variable)):
+        raise TypeError(
+            "The type of 'axis' in concat must be int or Variable, but "
+            "received %s." % (type(axis)))
+    inputs = {'X': input}
+    attrs = {}
+    if isinstance(axis, Variable):
+        axis.stop_gradient = True
+        inputs['AxisTensor'] = axis
+    else:
+        attrs['axis'] = axis
+
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     helper.append_op(
-        type='concat',
-        inputs={'X': input},
-        outputs={'Out': [out]},
-        attrs={'axis': axis})
+        type='concat', inputs=inputs, outputs={'Out': [out]}, attrs=attrs)
     return out
 
 

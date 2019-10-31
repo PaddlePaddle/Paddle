@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/op_proto_maker.h"
 
@@ -92,6 +93,14 @@ struct Layers {
     return unary_op("relu", x, out);
   }
 
+  VarDesc* sigmoid(VarDesc* x, VarDesc* out = nullptr) {
+    return unary_op("sigmoid", x, out);
+  }
+
+  VarDesc* tanh(VarDesc* x, VarDesc* out = nullptr) {
+    return unary_op("tanh", x, out);
+  }
+
   VarDesc* fc(VarDesc* input, VarDesc* w, VarDesc* bias,
               int in_num_col_dims = 1, std::string activation_type = "") {
     VarDesc* out = lod_tensor(unique_name());
@@ -117,6 +126,10 @@ struct Layers {
 
   VarDesc* elementwise_add(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
     return binary_op("elementwise_add", x, y, out);
+  }
+
+  VarDesc* elementwise_mul(VarDesc* x, VarDesc* y, VarDesc* out = nullptr) {
+    return binary_op("elementwise_mul", x, y, out);
   }
 
   VarDesc* dropout(VarDesc* x, float dropout_prob,
@@ -399,10 +412,9 @@ static std::string DebugString(Node* node) {
   return os.str();
 }
 
-static std::string DebugString(const std::unique_ptr<Graph>& graph) {
+static std::string DebugString(const std::unordered_set<Node*>& nodes) {
   std::ostringstream os;
-  os << "Graph: {\n";
-  for (auto* node : graph->Nodes()) {
+  for (auto* node : nodes) {
     if (node->IsOp() && node->Op()) {
       os << "  ";
     } else if (node->IsVar() && node->Var()) {
@@ -410,7 +422,12 @@ static std::string DebugString(const std::unique_ptr<Graph>& graph) {
     }
     os << DebugString(node) << "\n";
   }
-  os << "}\n";
+  return os.str();
+}
+
+static std::string DebugString(const std::unique_ptr<Graph>& graph) {
+  std::ostringstream os;
+  os << "Graph: {\n" << DebugString(graph->Nodes()) << "}\n";
   return os.str();
 }
 

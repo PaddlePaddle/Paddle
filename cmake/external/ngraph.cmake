@@ -12,26 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_library(ngraph INTERFACE)
-
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
-        "Windows or Mac is not supported with nGraph in Paddle yet."
-        "Force WITH_NGRAPH=OFF")
-    SET(WITH_NGRAPH OFF CACHE STRING "Disable nGraph in Windows and MacOS" FORCE)
-ENDIF()
-
-IF(${WITH_NGRAPH} AND NOT ${WITH_MKLDNN})
-    MESSAGE(WARNING
-        "nGraph needs mkl-dnn to be enabled."
-        "Force WITH_NGRAPH=OFF")
-    SET(WITH_NGRAPH OFF CACHE STRING "Disable nGraph if mkl-dnn is disabled" FORCE)
-ENDIF()
-
-IF(NOT ${WITH_NGRAPH})
-    return()
-ENDIF()
-
 INCLUDE(GNUInstallDirs)
 
 INCLUDE(ExternalProject)
@@ -79,6 +59,7 @@ ExternalProject_Add(
     CMAKE_ARGS               -NGRAPH_USE_LEGACY_MKLDNN=TRUE
 )
 
+add_library(ngraph INTERFACE)
 add_dependencies(ngraph ${NGRAPH_PROJECT})
 target_compile_definitions(ngraph INTERFACE -DPADDLE_WITH_NGRAPH)
 target_include_directories(ngraph INTERFACE ${NGRAPH_INC_DIR})

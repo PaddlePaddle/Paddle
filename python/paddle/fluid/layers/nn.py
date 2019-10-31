@@ -2745,9 +2745,11 @@ def conv2d(input,
                 padding = padding[1:3]
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 4, 'padding')
+            if utils._is_symmetric_padding(padding, 2):
+                padding = [padding[0], padding[2]]
+
         else:
             padding = utils.convert_to_list(padding, 2, 'padding')
-            padding = [padding[0], padding[0], padding[1], padding[1]]
 
         return padding
 
@@ -2760,10 +2762,10 @@ def conv2d(input,
                 str(padding))
         if padding == "VALID":
             padding_algorithm = "VALID"
-            padding = [0, 0, 0, 0]
+            padding = [0, 0]
         elif padding == "SAME":
             padding_algorithm = "SAME"
-            padding = [0, 0, 0, 0]
+            padding = [0, 0]
 
     padding = _update_padding(padding, data_format)
 
@@ -2989,15 +2991,14 @@ def conv3d(input,
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 6, 'padding')
-
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
         elif is_list_or_tuple(padding) and len(padding) == 6:
             padding = utils.convert_to_list(padding, 6, 'padding')
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
         else:
             padding = utils.convert_to_list(padding, 3, 'padding')
-            padding = [
-                padding[0], padding[0], padding[1], padding[1], padding[2],
-                padding[2]
-            ]
 
         return padding
 
@@ -3010,10 +3011,10 @@ def conv3d(input,
                 str(padding))
         if padding == "VALID":
             padding_algorithm = "VALID"
-            padding = [0, 0, 0, 0, 0, 0]
+            padding = [0, 0, 0]
         elif padding == "SAME":
             padding_algorithm = "SAME"
-            padding = [0, 0, 0, 0, 0, 0]
+            padding = [0, 0, 0]
 
     padding = _update_padding(padding, data_format)
 
@@ -3556,6 +3557,8 @@ def pool2d(input,
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 4, 'padding')
 
+            if utils._is_symmetric_padding(padding, 2):
+                padding = [padding[0], padding[2]]
         else:
             padding = utils.convert_to_list(padding, 2, 'padding')
 
@@ -3570,14 +3573,14 @@ def pool2d(input,
                 % str(pool_padding))
         if pool_padding == "VALID":
             padding_algorithm = "VALID"
-            pool_padding = [0, 0, 0, 0]
+            pool_padding = [0, 0]
             if ceil_mode != False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode) must be False. "
                     "Received ceil_mode: True.")
         elif pool_padding == "SAME":
             padding_algorithm = "SAME"
-            pool_padding = [0, 0, 0, 0]
+            pool_padding = [0, 0]
 
     pool_padding = update_padding(pool_padding, data_format)
 
@@ -3760,10 +3763,13 @@ def pool3d(input,
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 6, 'padding')
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
 
         elif is_list_or_tuple(padding) and len(padding) == 6:
             padding = utils.convert_to_list(padding, 6, 'padding')
-
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
         else:
             padding = utils.convert_to_list(padding, 3, 'padding')
 
@@ -3778,14 +3784,14 @@ def pool3d(input,
                 % str(pool_padding))
         if pool_padding == "VALID":
             padding_algorithm = "VALID"
-            pool_padding = [0, 0, 0, 0, 0, 0]
+            pool_padding = [0, 0, 0]
             if ceil_mode != False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", ceil_mode must be False. "
                     "Received ceil_mode: True.")
         elif pool_padding == "SAME":
             padding_algorithm = "SAME"
-            pool_padding = [0, 0, 0, 0, 0, 0]
+            pool_padding = [0, 0, 0]
 
     pool_padding = update_padding(pool_padding, data_format)
 
@@ -5125,6 +5131,9 @@ def conv2d_transpose(input,
         filter_size = utils.convert_to_list(filter_size, 2,
                                             'conv2d_transpose.filter_size')
 
+    if len(padding) == 4 and utils._is_symmetric_padding(padding, 2):
+        padding = [padding[0], padding[2]]
+
     if output_size is None:
         output_size = []
     elif isinstance(output_size, list) or isinstance(output_size, int):
@@ -5360,13 +5369,13 @@ def conv3d_transpose(input,
 
         elif is_list_or_tuple(padding) and len(padding) == 6:
             padding = utils.convert_to_list(padding, 6, 'padding')
+
         else:
             padding = utils.convert_to_list(padding, 3, 'padding')
             padding = [
                 padding[0], padding[0], padding[1], padding[1], padding[2],
                 padding[2]
             ]
-
         return padding
 
     padding_algorithm = "EXPLICIT"
@@ -5405,6 +5414,9 @@ def conv3d_transpose(input,
     else:
         filter_size = utils.convert_to_list(filter_size, 3,
                                             'conv3d_transpose.filter_size')
+
+    if len(padding) == 6 and utils._is_symmetric_padding(padding, 3):
+        padding = [padding[0], padding[2], padding[4]]
 
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
@@ -6669,62 +6681,117 @@ def split(input, num_or_sections, dim=-1, name=None):
 
     Args:
         input (Variable): The input variable which is an N-D Tensor or LoDTensor, data type being float32, float64, int32 or int64.
-        num_or_sections (int|list): Integer or list of Integers. If :attr:`num_or_sections` is an integer,
+        num_or_sections (int|list|tuple): If :attr:`num_or_sections` is an integer,
             then the integer indicates the number of equal sized sub-Tensors
             that the Tensor will be divided into. If :attr:`num_or_sections`
-            is a list of integers, the length of list indicates the number of
-            sub-Tensors and the integers indicate the sizes of sub-Tensors'
-            :attr:`dim` dimension orderly. The the length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
-        dim (int): The dimension along which to split. If :math:`dim < 0`, the
-            dimension to split along is :math:`rank(input) + dim`.
+            is a list or tuple, the length of it indicates the number of
+            sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
+            :attr:`dim` dimension orderly. The length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
+        dim (int32|Varible, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. The dimension along which to split. If :math:`dim < 0`, the
+            dimension to split along is :math:`rank(input) + dim`. Default is -1.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
         list(Variable): The list of segmented Tensor variables.
+
+    Raises:
+        TypeError: num_or_sections is not int, list or tuple.
+        TypeError: dim is not int or Variable.
 
     Example:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            # input is a variable which shape is [-1, 3, 9, 5]
-            input = fluid.layers.data(
+            # input is a variable which shape is [3, 9, 5]
+            input = fluid.data(
                  name="input", shape=[3, 9, 5], dtype="float32")
 
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=2)
-            # x0.shape [-1, 3, 3, 5]
-            # x1.shape [-1, 3, 3, 5]
-            # x2.shape [-1, 3, 3, 5]
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=1)
+            # x0.shape [3, 3, 5]
+            # x1.shape [3, 3, 5]
+            # x2.shape [3, 3, 5]
 
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=[2, 3, 4], dim=2)
-            # x0.shape [-1, 3, 2, 5]
-            # x1.shape [-1, 3, 3, 5]
-            # x2.shape [-1, 3, 4, 5]
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=[2, 3, 4], dim=1)
+            # x0.shape [3, 2, 5]
+            # x1.shape [3, 3, 5]
+            # x2.shape [3, 4, 5]
+
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=[2, 3, -1], dim=1)
+            # x0.shape [3, 2, 5]
+            # x1.shape [3, 3, 5]
+            # x2.shape [3, 4, 5]
     """
+    if not isinstance(num_or_sections, (int, list, tuple)):
+        raise TypeError(
+            "The type of 'num_or_sections' in split must be int, list or "
+            "tuple, but received %s." % (type(num_or_sections)))
+    if not isinstance(dim, (int, Variable)):
+        raise TypeError(
+            "The type of 'dim' in split must be int or Variable, but "
+            "received %s." % (type(dim)))
+
     helper = LayerHelper('split', **locals())
     input_shape = input.shape
-    dim = (len(input_shape) + dim) if dim < 0 else dim
+    inputs = {'X': input}
+    attrs = {'num': num_or_sections if isinstance(num_or_sections, int) else 0}
+
+    def _get_SectionsTensorList(one_list):
+        tensor_list = []
+        unk_dim_idx = -1
+        for idx, dim_size in enumerate(one_list):
+            if isinstance(dim_size, Variable):
+                dim_size.stop_gradient = True
+                tensor_list.append(dim_size)
+            else:
+                assert (isinstance(dim_size, int))
+                if dim_size == -1:
+                    assert unk_dim_idx == -1, (
+                        "Only one value of 'num_or_section' in split can "
+                        "be -1. But received num_or_section[%d] is also -1." %
+                        idx)
+                    unk_dim_idx = idx
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant(
+                    [1], 'int32', dim_size, force_cpu=True, out=temp_out)
+                tensor_list.append(temp_out)
+        return tensor_list
+
+    if isinstance(dim, Variable):
+        dim.stop_gradient = True
+        inputs['AxisTensor'] = dim
+    else:
+        dim = (len(input_shape) + dim) if dim < 0 else dim
+        attrs['axis'] = dim
+
     if isinstance(num_or_sections, int):
         assert num_or_sections > 1, 'num_or_sections must be more than 1.'
+        if isinstance(dim, int) and input_shape[dim] > 0:
+            assert input_shape[dim] % num_or_sections ==0, \
+                "The input's size along the split dimension " \
+                "must be evenly divisible by Attr(num_or_sections). " \
+                "But %d is not evenly divisible by %d. " % (num_or_sections,input_shape[dim])
         num = num_or_sections
     else:
-        assert len(num_or_sections) <= input_shape[
-            dim], 'len(num_or_sections) must not be more than input.shape[dim].'
+        if isinstance(dim, int) and input_shape[dim] > 0:
+            assert len(num_or_sections) <= input_shape[
+                dim], 'len(num_or_sections) must not be more than input.shape[dim].'
         num = len(num_or_sections)
+        attrs['sections'] = list(
+            map(lambda ele: -1 if isinstance(ele, Variable) else ele,
+                num_or_sections))
+        contain_var = not all(not isinstance(ele, Variable)
+                              for ele in num_or_sections)
+        if contain_var:
+            inputs['SectionsTensorList'] = _get_SectionsTensorList(
+                num_or_sections)
+
     outs = [
         helper.create_variable_for_type_inference(dtype=helper.input_dtype())
         for i in range(num)
     ]
     helper.append_op(
-        type='split',
-        inputs={'X': input},
-        outputs={'Out': outs},
-        attrs={
-            'num': num_or_sections if isinstance(num_or_sections, int) else 0,
-            'sections': num_or_sections
-            if isinstance(num_or_sections, list) else [],
-            'axis': dim
-        })
+        type='split', inputs=inputs, outputs={'Out': outs}, attrs=attrs)
     return outs
 
 
@@ -6914,11 +6981,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if transpose_y:
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
-            raise ValueError(
-                "After performing an optional transpose, Input X's width should be "
-                "equal to Y's width for multiplication "
-                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %
-                (x_shape, y_shape))
+            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
+                "After performing an optional transpose, Input X's width should be "   \
+                "equal to Y's width for multiplication "                               \
+                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
+                (x_shape, y_shape)
 
         if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
@@ -8997,7 +9064,7 @@ def unsqueeze(input, axes, name=None):
 
     Args:
         input (Variable): The input Tensor to be unsqueezed. It is a N-D Tensor of data types float32, float64, int32.
-        axes (list): List of integers, indicating the dimensions to be inserted.
+        axes (int|list|tuple|Variable): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
         name (str|None): Name for this layer.
 
     Returns:
@@ -9011,13 +9078,45 @@ def unsqueeze(input, axes, name=None):
             y = fluid.layers.unsqueeze(input=x, axes=[1])
 
     """
-    helper = LayerHelper("unsqueeze", **locals())
+    if not isinstance(axes, (int, list, tuple, Variable)):
+        raise TypeError(
+            "The type of 'axes' in unsqueeze must be int, list, tuple or Variable, but "
+            "received %s." % (type(axes)))
+    helper = LayerHelper("unsqueeze2", **locals())
+    inputs = {"X": input}
+    attrs = {}
+
+    def _to_Variable_list(one_list):
+        Variable_list = []
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                ele.stop_gradient = True
+                Variable_list.append(ele)
+            else:
+                assert (isinstance(ele, int))
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', ele, force_cpu=True, out=temp_out)
+                Variable_list.append(temp_out)
+        return Variable_list
+
+    if isinstance(axes, int):
+        axes = [axes]
+    if isinstance(axes, Variable):
+        axes.stop_gradient = True
+        inputs["AxesTensor"] = axes
+    elif isinstance(axes, (list, tuple)):
+        contain_var = not all(not isinstance(ele, Variable) for ele in axes)
+        if contain_var:
+            inputs["AxesTensorList"] = _to_Variable_list(axes)
+        else:
+            attrs["axes"] = axes
+
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type="unsqueeze2",
-        inputs={"X": input},
-        attrs={"axes": axes},
+        inputs=inputs,
+        attrs=attrs,
         outputs={"Out": out,
                  "XShape": x_shape})
 
@@ -11391,7 +11490,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
 
         * Case 1 (input is a 2-D Tensor):
             Input:
-                X.shape = [3. 5]
+                X.shape = [3, 5]
                 X.data = [[0, 1, 2, 0, 0],
                           [0, 3, 4, 0, 0],
                           [0, 0, 0, 0, 0]]
@@ -11399,8 +11498,9 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
                 shape = [2, 2]
                 offsets = [0, 1]
             Output:
-                Out = [[1, 2],
-                       [3, 4]]
+                Out.shape = [2, 2]
+                Out.data = [[1, 2],
+                            [3, 4]]
         * Case 2 (input is a 3-D Tensor):
             Input:
                 X.shape = [2, 3, 4]
@@ -11411,24 +11511,23 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
                             [0, 6, 7, 8],
                             [0, 0, 0, 0]]]
             Parameters:
-                shape = [2, 2, 3]
+                shape = [2, 2, -1]
                 offsets = [0, 0, 1]
             Output:
-                Out = [[[1, 2, 3],
-                        [5, 6, 7]],
-                       [[3, 4, 5],
-                        [6, 7, 8]]]
+                Out.shape = [2, 2, 3]
+                Out.data  = [[[1, 2, 3],
+                              [5, 6, 7]],
+                             [[3, 4, 5],
+                              [6, 7, 8]]]
 
     Parameters:
-        x (Variable): 1-D to 6-D Tensor, the data type is float32 or float64.
+        x (Variable): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
         shape (list|tuple|Variable): The output shape is specified
             by `shape`. Its data type is int32. If a list/tuple, it's length must be
             the same as the dimension size of `x`. If a Variable, it shoule be a 1-D Tensor.
             When it is a list, each element can be an integer or a Tensor of shape: [1].
-            If Variable contained, it is suitable for the case that the shape may 
-            be changed each iteration. Only the first element of list/tuple can be 
-            set to -1, it means that the first dimension's size of the output is the same 
-            as the input.
+            If Variable contained, it is suitable for the case that the shape may
+            be changed each iteration.
         offsets (list|tuple|Variable, optional): Specifies the cropping
             offsets at each dimension. Its data type is int32. If a list/tuple, it's length
             must be the same as the dimension size of `x`. If a Variable, it shoule be a 1-D
@@ -11442,8 +11541,12 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
         Variable: The cropped Tensor has same data type with `x`.
 
     Raises:
-        ValueError: If shape is not a list, tuple or Variable.
-        ValueError: If offsets is not None and not a list, tuple or Variable.
+        TypeError: If the data type of `x` is not in: float32, float64, int32, int64.
+        TypeError: If `shape` is not a list, tuple or Variable.
+        TypeError: If the data type of `shape` is not int32.
+        TypeError: If `offsets` is not None and not a list, tuple or Variable.
+        TypeError: If the data type of `offsets` is not int32.
+        ValueError: If the element in `offsets` is less than zero.
 
     Examples:
 
@@ -11459,7 +11562,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
             # crop0.shape = [-1, -1, -1], it means crop0.shape[0] = x.shape[0] in runtime.
 
             # or shape is a list in which each element is a constant
-            crop1 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3])
+            crop1 = fluid.layers.crop_tensor(x, shape=[-1, -1, 3], offsets=[0, 1, 0])
             # crop1.shape = [-1, 2, 3]
 
             # or shape is a list in which each element is a constant or Variable
@@ -11481,70 +11584,98 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
     """
     helper = LayerHelper('crop_tensor', **locals())
 
+    if convert_dtype(x.dtype) not in ['float32', 'float64', 'int32', 'int64']:
+        raise TypeError(
+            "Input(x)'s dtype of Op(crop_tensor) must be float32, float64, int32 or int64, "
+            "but received %s." % (convert_dtype(x.dtype)))
+
     if not (isinstance(shape, list) or isinstance(shape, tuple) or \
             isinstance(shape, Variable)):
-        raise ValueError("The shape should be a list, tuple or Variable.")
+        raise TypeError(
+            "Attr(shape) of Op(crop_tensor) should be a list, tuple or Variable."
+        )
 
     if offsets is None:
         offsets = [0] * len(x.shape)
 
     if not (isinstance(offsets, list) or isinstance(offsets, tuple) or \
             isinstance(offsets, Variable)):
-        raise ValueError("The offsets should be a list, tuple or Variable.")
+        raise TypeError(
+            "Attr(offsets) of Op(crop_tensor) should be a list, tuple or Variable."
+        )
 
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x}
     attrs = {}
 
-    def contain_var(input_list):
+    def _contain_var(input_list):
         for ele in input_list:
             if isinstance(ele, Variable):
                 return True
         return False
 
+    def _attr_shape_check(shape_val):
+        if not isinstance(shape_val, int):
+            raise TypeError(
+                "Attr(shape)'s dtype of Op(crop_tensor) should be int32, but received: %s."
+                % type(shape_val))
+        if shape_val == 0:
+            raise ValueError(
+                "Attr(shape) of Op(crop_tensor) should not be zero, but received: %s."
+                % str(shape_val))
+        if shape_val < -1:
+            raise ValueError(
+                "When the element in Attr(shape) of Op(crop_tensor) is negative, only -1 is supported, but received: %s."
+                % str(shape_val))
+
+    def _attr_offsets_check(offset_val):
+        if not isinstance(offset_val, int):
+            raise TypeError(
+                "Attr(offsets)'s dtype of Op(crop_tensor) should be int32, but received: %s."
+                % type(offset_val))
+        if offset_val < 0:
+            raise ValueError(
+                "Attr(offsets) of Op(crop_tensor) should be greater or equal to zero, but received: %s."
+                % str(offset_val))
+
     if isinstance(offsets, Variable):
         offsets.stop_gradient = True
         ipts['Offsets'] = offsets
-    elif contain_var(offsets):
+        attrs['offsets'] = [-1] * len(x.shape)
+    elif _contain_var(offsets):
         new_offsets_tensor = []
+        offsets_attr = []
         for dim in offsets:
             if isinstance(dim, Variable):
                 dim.stop_gradient = True
                 new_offsets_tensor.append(dim)
+                offsets_attr.append(-1)
             else:
-                assert (isinstance(dim, int))
-                assert dim >= 0, ("offsets should be greater or equal to zero.")
+                _attr_offsets_check(dim)
                 temp_out = helper.create_variable_for_type_inference('int32')
                 fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
                 new_offsets_tensor.append(temp_out)
+                offsets_attr.append(dim)
         ipts['OffsetsTensor'] = new_offsets_tensor
+        attrs['offsets'] = offsets_attr
     else:
+        for offset in offsets:
+            _attr_offsets_check(offset)
         attrs['offsets'] = offsets
 
-    unk_dim_idx = -1
     if isinstance(shape, Variable):
         shape.stop_gradient = True
         ipts['Shape'] = shape
-    elif contain_var(shape):
+    elif _contain_var(shape):
         new_shape_tensor = []
         shape_attr = []
-        for dim_idx, dim_size in enumerate(shape):
+        for dim_size in shape:
             if isinstance(dim_size, Variable):
                 dim_size.stop_gradient = True
                 new_shape_tensor.append(dim_size)
-                shape_attr.append(-1)
+                shape_attr.append(0)
             else:
-                assert (isinstance(dim_size, int))
-                if dim_size == -1:
-                    assert unk_dim_idx == -1, (
-                        "Only one element in shape can be unknown.")
-                    assert dim_idx == 0, (
-                        "Only the first element in shape can be -1.")
-                    unk_dim_idx = dim_idx
-                else:
-                    assert dim_size > 0, (
-                        "Each dimension size given in shape must be greater than zero."
-                    )
+                _attr_shape_check(dim_size)
                 temp_out = helper.create_variable_for_type_inference('int32')
                 fill_constant(
                     [1], 'int32', dim_size, force_cpu=True, out=temp_out)
@@ -11553,6 +11684,8 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
         ipts['ShapeTensor'] = new_shape_tensor
         attrs['shape'] = shape_attr
     else:
+        for dim_size in shape:
+            _attr_shape_check(dim_size)
         attrs['shape'] = shape
 
     helper.append_op(
@@ -14985,22 +15118,23 @@ def sigmoid_cross_entropy_with_logits(x,
 
 
 @templatedoc()
-def maxout(x, groups, name=None):
+def maxout(x, groups, name=None, axis=1):
     """
     ${comment}
 
     Args:
         x(${x_type}): ${x_comment}
-        groups(${groups_type}): ${groups_comment}
+        groups(int): ${groups_comment}
+        axis(int, optional): ${axis_comment}
         name(str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default.
 
     Returns:
-        Variable:
+        Variable: ${out_comment}
 
-        out(${out_type}): ${out_comment}
-
+    Raises:
+        ValueError: If `axis` is not 1, -1 or 3.
 
     Examples:
         .. code-block:: python
@@ -15013,6 +15147,12 @@ def maxout(x, groups, name=None):
             out = fluid.layers.maxout(input, groups=2)
     """
     helper = LayerHelper("maxout", **locals())
+    if axis not in [1, -1, 3]:
+        raise ValueError(
+            "Attr(axis) should be 1 when data format is NCHW, -1 or 3 when data format is NHWC. Received "
+            "Attr(axis): %s." % str(axis))
+    if axis == -1:
+        axis = 3
 
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -15023,7 +15163,8 @@ def maxout(x, groups, name=None):
     helper.append_op(
         type="maxout",
         inputs={"X": x},
-        attrs={"groups": groups},
+        attrs={"groups": groups,
+               "axis": axis},
         outputs={"Out": out})
     return out
 
@@ -16872,9 +17013,9 @@ def deformable_conv(input,
             float32, float64.
         offset (Variable): The input coordinate offset of deformable convolution layer.
             A Tensor with type float32, float64.
-        Mask (Variable, Optional): The input mask of deformable covolution layer.
-            A Tensor with type float32, float64.It should be None when you use
-            deformable_conv_v2.
+        Mask (Variable, Optional): The input mask of deformable convolution layer.
+            A Tensor with type float32, float64. It should be None when you use
+            deformable convolution v1.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple): The filter size. If filter_size is a tuple,
@@ -17589,8 +17730,8 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     Args:
         shape (list|tuple|Variable): The shape of the output Tensor,  if the shape is a list or tuple, 
                                      its elements can be an integer
-                                     or a Tensor with the shape [1], and the type of the Tensor is int64. 
-                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor is int64.
+                                     or a Tensor with the shape [1], and the type of the Tensor must be int32 or int64. 
+                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor must be int32 or int64.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the output Tensor. Supported data types: float32, float64.
                                                   Default: float32.
         min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
@@ -17618,12 +17759,17 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
             # example 2:
             # attr shape is a list which contains tensor Variable.
             dim_1 = fluid.layers.fill_constant([1],"int64",3)
-            result_2 = fluid.layers.uniform_random(shape=[dim_1, 5])
+            dim_2 = fluid.layers.fill_constant([1],"int32",5)
+            result_2 = fluid.layers.uniform_random(shape=[dim_1, dim_2])
 
             # example 3:
-            # attr shape is a Variable, the data type must be int64
+            # attr shape is a Variable, the data type must be int64 or int32.
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
             result_3 = fluid.layers.uniform_random(var_shape)
+            var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
+            result_4 = fluid.layers.uniform_random(var_shape_int32)
+             
+
 
     """
     if not (isinstance(shape, (list, tuple, Variable))):
