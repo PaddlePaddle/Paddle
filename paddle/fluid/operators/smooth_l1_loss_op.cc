@@ -154,24 +154,25 @@ class SmoothL1LossGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class SmoothL1LossGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SmoothL1LossGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
     op->SetType("smooth_l1_loss_grad");
-    op->SetInput("InsideWeight", Input("InsideWeight"));
-    op->SetInput("OutsideWeight", Input("OutsideWeight"));
-    op->SetInput("Diff", Output("Diff"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("InsideWeight", this->Input("InsideWeight"));
+    op->SetInput("OutsideWeight", this->Input("OutsideWeight"));
+    op->SetInput("Diff", this->Output("Diff"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -180,7 +181,8 @@ class SmoothL1LossGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(smooth_l1_loss, ops::SmoothL1LossOp, ops::SmoothL1LossOpMaker,
-                  ops::SmoothL1LossGradMaker);
+                  ops::SmoothL1LossGradMaker<paddle::framework::OpDesc>,
+                  ops::SmoothL1LossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(smooth_l1_loss_grad, ops::SmoothL1LossGradOp);
 REGISTER_OP_CPU_KERNEL(
     smooth_l1_loss,

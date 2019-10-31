@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
@@ -53,6 +54,12 @@ using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
     const OpDesc&, const std::unordered_set<std::string>& /*no_grad_set*/,
     std::unordered_map<std::string, std::string>* /*grad_to_var*/,
     const std::vector<BlockDesc*>& grad_block)>;
+
+using DygraphGradOpMakerFN =
+    std::function<std::vector<std::unique_ptr<imperative::OpBase>>(
+        const imperative::OpBase* fw_op_base,
+        const imperative::NameVarBaseMap& var_base_map_in,
+        const imperative::NameVarBaseMap& var_base_map_out)>;
 
 using InferVarTypeFN =
     std::function<void(framework::InferVarTypeContext* /*context*/)>;

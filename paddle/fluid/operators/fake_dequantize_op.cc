@@ -183,17 +183,21 @@ Notes: In general, the per-channel quantization is only applied to weights and t
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
 
-REGISTER_OPERATOR(fake_dequantize_max_abs, ops::FakeDequantizeMaxAbsOp,
-                  ops::FakeDequantizeMaxAbsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    fake_dequantize_max_abs, ops::FakeDequantizeMaxAbsOp,
+    ops::FakeDequantizeMaxAbsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(fake_dequantize_max_abs,
                        ops::FakeDequantizeMaxAbsKernel<CPU, float>,
                        ops::FakeDequantizeMaxAbsKernel<CPU, double>);
 
-REGISTER_OPERATOR(fake_channel_wise_dequantize_max_abs,
-                  ops::FakeChannelWiseDequantizeMaxAbsOp,
-                  ops::FakeChannelWiseDequantizeMaxAbsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    fake_channel_wise_dequantize_max_abs,
+    ops::FakeChannelWiseDequantizeMaxAbsOp,
+    ops::FakeChannelWiseDequantizeMaxAbsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(fake_channel_wise_dequantize_max_abs,
                        ops::FakeChannelWiseDequantizeMaxAbsKernel<CPU, float>,
                        ops::FakeChannelWiseDequantizeMaxAbsKernel<CPU, double>);

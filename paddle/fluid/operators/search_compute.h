@@ -21,7 +21,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/platform/dynload/mklml.h"
 
 namespace paddle {
 namespace operators {
@@ -100,6 +99,22 @@ inline void avx_axpy(const T* x, T* y, size_t len, const T alpha) {
 
   for (; jjj < len; jjj++) {
     y[jjj] += alpha * x[jjj];
+  }
+}
+
+template <typename T>
+inline void avx_axpy_noadd(const T* x, T* y, size_t len, const T alpha) {
+  unsigned int jjj, lll;
+  jjj = lll = 0;
+
+  lll = len & ~AVX_CUT_LEN_MASK;
+  __m256x mm_alpha = _mm256_broadcast_sx(&alpha);
+  for (jjj = 0; jjj < lll; jjj += AVX_STEP_SIZE) {
+    _mm256_store_px(y + jjj, _mm256_mul_px(mm_alpha, _mm256_load_px(x + jjj)));
+  }
+
+  for (; jjj < len; jjj++) {
+    y[jjj] = alpha * x[jjj];
   }
 }
 
