@@ -154,7 +154,7 @@ class DistributedTranspiler(Fleet):
             raise ValueError("optimizer must be an instance of Optimizer")
         if not fleet._is_initialized:
             raise ValueError(
-                "use fleet.init(role) to initialize the role of current node before optimizer.minimize(loss)"
+                "use fleet.init(role) to initialize the role before use fleet.distributed_optimizer()"
             )
         self._optimizer = TranspilerOptimizer(optimizer, strategy)
         return self._optimizer
