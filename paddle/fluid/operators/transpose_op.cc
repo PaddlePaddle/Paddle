@@ -88,7 +88,7 @@ class TransposeOp : public framework::OperatorWithKernel {
 #endif
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        layout_, library_);
+        layout_, library_, customized_type_value);
   }
 };
 
@@ -236,7 +236,7 @@ class Transpose2Op : public TransposeOp {
 #endif
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        layout_, library_);
+        layout_, library_, customized_type_value);
   }
 };
 
