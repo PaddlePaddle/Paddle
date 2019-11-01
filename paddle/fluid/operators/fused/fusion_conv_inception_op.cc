@@ -107,6 +107,8 @@ class ConvInceptionFusionOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(conv2d_inception_fusion, ops::ConvInceptionFusionOp,
-                  ops::ConvInceptionFusionOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    conv2d_inception_fusion, ops::ConvInceptionFusionOp,
+    ops::ConvInceptionFusionOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

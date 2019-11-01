@@ -19,6 +19,7 @@ import errno
 import warnings
 import six
 import logging
+import pickle
 from functools import reduce
 
 import numpy as np
@@ -40,9 +41,19 @@ from .. import compat as cpt
 batch = paddle.batch
 
 __all__ = [
-    'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model',
-    'batch', 'save', 'load'
+    'save_vars',
+    'save_params',
+    'save_persistables',
+    'load_vars',
+    'load_params',
+    'load_persistables',
+    'save_inference_model',
+    'load_inference_model',
+    'batch',
+    'save',
+    'load',
+    'load_program_state',
+    'set_program_state',
 ] + reader.__all__ + paddle.reader.__all__
 
 _logger = get_logger(
@@ -96,7 +107,10 @@ def is_persistable(var):
 
 
 def is_belong_to_optimizer(var):
-    return var.belong_to_optimizer
+    if not isinstance(var, Parameter):
+        return is_persistable(var)
+
+    return False
 
 
 def _clone_var_in_block_(block, var):
@@ -1505,15 +1519,21 @@ def save(program, model_path):
     assert base_name != "", \
             "model_path MUST be format of dirname/filename [dirname\\filename in Window], Now filename is empty str"
 
+    def get_tensor(var):
+        t = global_scope().find_var(var.name).get_tensor()
+        return np.array(t)
+
     parameter_list = list(filter(is_parameter, program.list_vars()))
-    paddle.fluid.core._save_static_dict(model_path + ".pdparams",
-                                        parameter_list, global_scope())
+    param_dict = {p.name: get_tensor(p) for p in parameter_list}
+    with open(model_path + ".pdparams", 'wb') as f:
+        pickle.dump(param_dict, f)
 
     optimizer_var_list = list(
         filter(is_belong_to_optimizer, program.list_vars()))
 
-    paddle.fluid.core._save_static_dict(model_path + ".pdopt",
-                                        optimizer_var_list, global_scope())
+    opt_dict = {p.name: get_tensor(p) for p in optimizer_var_list}
+    with open(model_path + ".pdopt", 'wb') as f:
+        pickle.dump(opt_dict, f)
 
     main_program = program.clone()
     program.desc.flush()
@@ -1524,16 +1544,16 @@ def save(program, model_path):
         f.write(program.desc.serialize_to_string())
 
 
-def load(program, model_path):
+def load(program, model_path, executor=None):
     """
     This function filter out parameters and optimizer information from program, and then get corresponding value from file.
-    An exception will throw if shape or dtype of the parameters is not match between program and loaded file.
-
-    NOTICE: This function MUST called after run start_up_program
+    An exception will throw if shape or dtype of the parameters is not match.
 
     Args: 
-        program: The program to be load
-        model_path: The file prefix store the program
+        program(Program): The program will be loaded
+        model_path(str): The file prefix store the program
+        executor(Executor, optional): The executor used for initialize the parameter 
+                                      When startup program is not run.
 
     Returns:
         None
@@ -1550,13 +1570,39 @@ def load(program, model_path):
 
     """
 
+    assert executor is None or isinstance(executor, Executor)
+
     parameter_file_name = model_path + ".pdparams"
     assert os.path.exists(parameter_file_name), \
-            "Parameter file [{}] not exits".format( parameter_file_name)
+            "Parameter file [{}] not exits".format(parameter_file_name)
+
+    def set_var(var, ndarray):
+        t = global_scope().find_var(var.name).get_tensor()
+        p = t._place()
+        if p.is_cpu_place():
+            place = paddle.fluid.CPUPlace()
+        elif p.is_cuda_pinned_place():
+            place = paddle.fluid.CUDAPinnedPlace()
+        else:
+            p = paddle.fluid.core.Place()
+            p.set_place(t._place())
+            place = paddle.fluid.CUDAPlace(p.gpu_device_id())
+
+        t.set(ndarray, place)
 
     parameter_list = list(filter(is_parameter, program.list_vars()))
-    paddle.fluid.core._load_static_dict(parameter_file_name, parameter_list,
-                                        global_scope())
+
+    if executor:
+        paddle.fluid.core._create_loaded_parameter(parameter_list,
+                                                   global_scope(),
+                                                   executor._default_executor)
+    with open(parameter_file_name, 'rb') as f:
+        load_dict = pickle.load(f)
+    for v in parameter_list:
+        assert v.name in load_dict, \
+            "Can not find [{}] in model file [{}]".format(
+                v.name, parameter_file_name)
+        set_var(v, load_dict[v.name])
 
     optimizer_var_list = list(
         filter(is_belong_to_optimizer, program.list_vars()))
@@ -1565,5 +1611,138 @@ def load(program, model_path):
         opt_file_name = model_path + ".pdopt"
         assert os.path.exists(opt_file_name), \
                 "Optimizer file [{}] not exits".format( opt_file_name)
-        paddle.fluid.core._load_static_dict(opt_file_name, optimizer_var_list,
-                                            global_scope())
+
+        if executor:
+            paddle.fluid.core._create_loaded_parameter(
+                optimizer_var_list, global_scope(), executor._default_executor)
+
+        with open(opt_file_name, 'rb') as f:
+            load_dict = pickle.load(f)
+        for v in optimizer_var_list:
+            assert v.name in load_dict, \
+                "Can not find [{}] in model file [{}]".format(
+                    v.name, opt_file_name)
+            set_var(v, load_dict[v.name])
+
+
+def load_program_state(model_path):
+    """
+    Load program state from local file
+    
+    Args:
+        model_path(str): The file prefix store the program
+    Returns:
+        state_dict(dict): the dict store Parameter and optimizer information
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.data( name="x", shape=[10, 10], dtype='float32')
+            y = fluid.layers.fc( x, 10)
+            z = fluid.layers.fc( y, 10)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run( fluid.default_startup_program() )
+            prog = fluid.default_main_program()
+
+            fluid.save( prog, "./temp")
+            program_state = fluid.load_program_state( "./temp")
+            
+            fluid.set_program_state( prog, program_state)
+
+    """
+    parameter_file_name = model_path + ".pdparams"
+    assert os.path.exists(parameter_file_name), \
+            "Parameter file [{}] not exits".format( parameter_file_name)
+
+    with open(parameter_file_name, 'rb') as f:
+        para_dict = pickle.load(f)
+
+    opt_file_name = model_path + ".pdopt"
+    if os.path.exists(opt_file_name):
+        with open(opt_file_name, 'rb') as f:
+            opti_dict = pickle.load(f)
+
+        para_dict.update(opti_dict)
+
+    return para_dict
+
+
+def set_program_state(program, state_dict):
+    """
+    Set program parameter from state_dict
+
+    An exception will throw if shape or dtype of the parameters is not match. 
+
+    NOTICE: This function MUST called after run start_up_program
+
+    Args:
+        program(Program): The program to be set
+        state_dict(dict): the dict store Parameter and optimizer information
+    Returns: 
+        None
+    
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            x = fluid.data( name="x", shape=[10, 10], dtype='float32')
+            y = fluid.layers.fc( x, 10)
+            z = fluid.layers.fc( y, 10)
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run( fluid.default_startup_program() )
+            prog = fluid.default_main_program()
+
+            fluid.save( prog, "./temp")
+            program_state = fluid.load_program_state( "./temp")
+
+    """
+    parameter_list = list(filter(is_persistable, program.list_vars()))
+
+    used_para_list = {}
+    for para in parameter_list:
+        var_temp = paddle.fluid.global_scope().find_var(para.name)
+        assert var_temp != None, \
+                "Variable [ {} ] Not found, Please make sure run startup program".format( para.name )
+        if para.name in state_dict:
+            # set value from state dict
+            orig_para_np = np.array(var_temp.get_tensor())
+            new_para_np = state_dict[para.name]
+            assert orig_para_np.shape == new_para_np.shape,  \
+                    "Shape not matching: the Program requires a parameter with a shape of ({}), " \
+                    "while the loaded parameter (namely [ {} ]) has a shape of  ({})." \
+                    .format(orig_para_np.shape, para.name, new_para_np.shape)
+            assert orig_para_np.dtype == new_para_np.dtype,  \
+                    "Dtype not matching: the Program requires a parameter with a dtype of ({}), " \
+                    "while the loaded parameter (namely [ {} ]) has a dtype of  ({})." \
+                    .format(orig_para_np.dtype, para.name, new_para_np.dtype)
+
+            ten = var_temp.get_tensor()
+            ten_place = ten._place()
+
+            assert ten_place.is_gpu_place() or ten_place.is_cpu_place(), \
+                    "Place not support, only support CPUPlace and GPUPlace, now is {}".format( str(ten_place))
+            py_place = paddle.fluid.CPUPlace()
+            if ten_place.is_cuda_pinned_place():
+                place = paddle.fluid.CUDAPinnedPlace()
+            elif ten_place.is_gpu_place():
+                p = paddle.fluid.core.Place()
+                p.set_place(ten_place)
+                py_place = paddle.fluid.CUDAPlace(p.gpu_device_id())
+
+            ten.set(new_para_np, py_place)
+
+            used_para_list[para.name] = 1
+
+    unused_para_list = []
+    for k, v in state_dict.items():
+        if k not in used_para_list:
+            unused_para_list.append(k)
+    if len(unused_para_list) > 0:
+        warnings.warn(
+            "This list is not set, Because of Paramerter not found in program. There are: {}".
+            format(" ".join(unused_para_list)))

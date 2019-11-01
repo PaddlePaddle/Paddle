@@ -21,6 +21,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/imperative/dygraph_grad_maker.h"
+#include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace framework {
@@ -97,6 +100,8 @@ class GradOpDescMakerBase {
     return ret_val;
   }
 
+  std::vector<std::string> Empty() const { return {}; }
+
   std::vector<std::string> InputNames() const {
     return this->fwd_op_.InputNames();
   }
@@ -132,7 +137,9 @@ class GradOpDescMakerBase {
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
 
  protected:
-  const OpDesc& ForwardOp() const { return fwd_op_; }
+  bool HasInput(const std::string& name) const {
+    return (fwd_op_.Inputs().count(name) > 0);
+  }
 
  private:
   const OpDesc& fwd_op_;
@@ -143,11 +150,24 @@ class GradOpDescMakerBase {
   std::vector<BlockDesc*> grad_block_;
 };
 
-class SingleGradOpDescMaker : public GradOpDescMakerBase {
+template <typename T>
+class SingleGradOpMaker {
+ public:
+  std::vector<std::unique_ptr<T>> operator()() const {
+    PADDLE_ENFORCE(false, "should not call this function");
+    return {};
+  }
+
+ protected:
+  virtual std::unique_ptr<T> Apply() const = 0;
+};
+
+template <>
+class SingleGradOpMaker<OpDesc> : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<std::unique_ptr<OpDesc>> operator()() const final {
+  std::vector<std::unique_ptr<OpDesc>> operator()() const {
     std::vector<std::unique_ptr<OpDesc>> retv;
     retv.emplace_back(this->Apply());
     return retv;
@@ -157,14 +177,32 @@ class SingleGradOpDescMaker : public GradOpDescMakerBase {
   virtual std::unique_ptr<OpDesc> Apply() const = 0;
 };
 
-template <bool DropEmptyIG = true>
-class DefaultGradOpDescMaker final : public SingleGradOpDescMaker {
+template <>
+class SingleGradOpMaker<imperative::OpBase>
+    : public imperative::GradOpBaseMakerBase {
  public:
-  using SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using GradOpBaseMakerBase::GradOpBaseMakerBase;
+
+ public:
+  std::vector<std::unique_ptr<imperative::OpBase>> operator()() const {
+    std::vector<std::unique_ptr<imperative::OpBase>> retv;
+    retv.emplace_back(this->Apply());
+
+    return retv;
+  }
 
  protected:
-  std::unique_ptr<OpDesc> Apply() const final {
-    auto* grad = new OpDesc();
+  virtual std::unique_ptr<imperative::OpBase> Apply() const = 0;
+};
+
+template <typename T, bool DropEmptyIG = true>
+class DefaultGradOpMaker final : public SingleGradOpMaker<T> {
+ public:
+  using SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const final {
+    auto* grad = new T();
     grad->SetType(this->ForwardOpType() + "_grad");
 
     for (auto& input_param : this->InputNames()) {
@@ -180,14 +218,34 @@ class DefaultGradOpDescMaker final : public SingleGradOpDescMaker {
 
     grad->SetAttrMap(this->Attrs());
 
-    return std::unique_ptr<OpDesc>(grad);
+    return std::unique_ptr<T>(grad);
   }
 };
 
-class EmptyGradOpMaker final : public GradOpDescMakerBase {
+template <typename T>
+class EmptyGradOpMaker {
+ public:
+  virtual std::vector<std::unique_ptr<T>> operator()()
+      const final { /* NOLINT */
+    return {};
+  }
+};
+
+template <>
+class EmptyGradOpMaker<OpDesc> final : public GradOpDescMakerBase {
  public:
   using GradOpDescMakerBase::GradOpDescMakerBase;
   std::vector<std::unique_ptr<OpDesc>> operator()() const final { return {}; }
+};
+
+template <>
+class EmptyGradOpMaker<imperative::OpBase> final
+    : public imperative::GradOpBaseMakerBase {
+ public:
+  using GradOpBaseMakerBase::GradOpBaseMakerBase;
+  std::vector<std::unique_ptr<imperative::OpBase>> operator()() const final {
+    return {};
+  }
 };
 
 }  // namespace framework

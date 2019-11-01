@@ -32,6 +32,7 @@ __all__ = [
     'tree_conv',
     'fused_embedding_seq_pool',
     'multiclass_nms2',
+    'search_pyramid_hash',
 ]
 
 
@@ -625,3 +626,99 @@ def multiclass_nms2(bboxes,
     if return_index:
         return output, index
     return output
+
+
+def search_pyramid_hash(input,
+                        num_emb,
+                        space_len,
+                        pyramid_layer,
+                        rand_len,
+                        drop_out_percent,
+                        is_training,
+                        use_filter,
+                        white_list_len,
+                        black_list_len,
+                        seed,
+                        lr,
+                        param_attr=None,
+                        param_attr_wl=None,
+                        param_attr_bl=None,
+                        name=None,
+                        dtype='float32'):
+    """
+    **Pyramid hash embedding**
+
+    Args:
+        input (Variable): LoDTensor<int32> Variable contained the IDs' information.
+        num_emb (int): The embedding size of output.
+        space_len (int): The length of pyramid hash embedding space.
+        pyramid_layer (int): The number of pyramid layers. It should be greater than 2.
+        rand_len (int): The minimum length of pyramid hash cell.
+        drop_out_percent (float): The probability of dropping out the input token randomly.
+            It should satisfy: [0., 1.]
+        is_training (bool): Whether in training or testing phrase.
+        use_filter(bool): If set True, the white filter and black filter should be given by
+            :attr:`param_attr_wl` and :attr:`param_attr_bl` .
+        white_list_len(int): If set :math:`white_list_len>0` , white filter with shape [white_list_len, 1]
+            should be provided by param_attr_wl.
+        black_list_len(int): If set :math:`black_list_len>0` , black filter with shape [black_list_len, 1]
+            should be provided by param_attr_bl.
+        seed(int): The number of random seed.
+        lr(float): The learning rate of weight created by :attr:`param_attr` with shape [space_len+rand_len, 1]
+            in this layer.
+        param_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        param_attr_wl(ParamAttr): Specified parameters of white filter.
+        param_attr_bl(ParamAttr): Specified parameters of black filter.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+        dtype(str): The data type of output variable, float32.
+    Returns:
+        Variable: LoDTensor of pyramid hash embedding.
+    """
+    helper = LayerHelper('search_pyramid_hash', **locals())
+
+    w_shape = [space_len + rand_len, 1]
+    w = helper.create_parameter(
+        attr=param_attr, shape=w_shape, dtype=dtype, is_bias=False)
+    w.stop_gradient = True
+
+    input_vars = {'X': input, 'W': w}
+    if white_list_len > 0:
+        wl_shape = [white_list_len, 1]
+        white_list = helper.create_parameter(
+            attr=param_attr_wl, shape=wl_shape, dtype=dtype, is_bias=False)
+        white_list.stop_gradient = True
+        input_vars['WhiteList'] = white_list
+
+    if black_list_len >= 0:
+        bl_shape = [black_list_len, 1]
+        black_list = helper.create_parameter(
+            attr=param_attr_bl, shape=bl_shape, dtype=dtype, is_bias=False)
+        black_list.stop_gradient = True
+        input_vars['BlackList'] = black_list
+
+    res = helper.create_variable_for_type_inference(dtype)
+    drop_pos = helper.create_variable_for_type_inference(dtype)
+    x_temp_out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='pyramid_hash',
+        inputs=input_vars,
+        outputs={"Out": res,
+                 "X_Temp_Out": x_temp_out,
+                 'DropPos': drop_pos},
+        attrs={
+            'num_emb': num_emb,
+            'space_len': space_len,
+            'pyramid_layer': pyramid_layer,
+            'rand_len': rand_len,
+            'drop_out_percent': drop_out_percent,
+            'is_training': is_training,
+            'use_filter': use_filter,
+            'white_list_len': white_list_len,
+            'black_list_len': black_list_len,
+            'seed': seed,
+            'lr': lr,
+        })
+
+    return res
