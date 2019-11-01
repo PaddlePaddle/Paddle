@@ -17,11 +17,7 @@
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
-DEFINE_string(allocator_strategy, "naive_best_fit",
-              "The allocation strategy. naive_best_fit means the original best "
-              "fit allocator of Fluid. "
-              "auto_growth means the experimental auto-growth allocator. "
-              "Enum in [naive_best_fit, auto_growth].");
+DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {

@@ -57,17 +57,19 @@ class BoxDecoderAndAssignOp : public framework::OperatorWithKernel {
                       "The rank of Input of TargetBox must be 2");
     PADDLE_ENFORCE_EQ(box_score_dims.size(), 2,
                       "The rank of Input of BoxScore must be 2");
-    PADDLE_ENFORCE_EQ(prior_box_dims[0], target_box_dims[0],
-                      "The first dim of prior_box and target_box is roi nums "
-                      "and should be same!");
-    PADDLE_ENFORCE_EQ(prior_box_dims[0], box_score_dims[0],
-                      "The first dim of prior_box and box_score is roi nums "
-                      "and should be same!");
-    PADDLE_ENFORCE_EQ(target_box_dims[1], box_score_dims[1] * prior_box_dims[1],
-                      "The shape of target_box is [N, classnum * 4], The shape "
-                      "of box_score is [N, classnum], The shape of prior_box "
-                      "is [N, 4]");
-
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(prior_box_dims[0], target_box_dims[0],
+                        "The first dim of prior_box and target_box is roi nums "
+                        "and should be same!");
+      PADDLE_ENFORCE_EQ(prior_box_dims[0], box_score_dims[0],
+                        "The first dim of prior_box and box_score is roi nums "
+                        "and should be same!");
+      PADDLE_ENFORCE_EQ(
+          target_box_dims[1], box_score_dims[1] * prior_box_dims[1],
+          "The shape of target_box is [N, classnum * 4], The shape "
+          "of box_score is [N, classnum], The shape of prior_box "
+          "is [N, 4]");
+    }
     ctx->SetOutputDim("DecodeBox", framework::make_ddim({target_box_dims[0],
                                                          target_box_dims[1]}));
     ctx->ShareLoD("TargetBox", /*->*/ "DecodeBox");
@@ -160,9 +162,11 @@ output_assign_box is the same as PriorBox.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(box_decoder_and_assign, ops::BoxDecoderAndAssignOp,
-                  ops::BoxDecoderAndAssignOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    box_decoder_and_assign, ops::BoxDecoderAndAssignOp,
+    ops::BoxDecoderAndAssignOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     box_decoder_and_assign,
     ops::BoxDecoderAndAssignKernel<paddle::platform::CPUDeviceContext, float>,

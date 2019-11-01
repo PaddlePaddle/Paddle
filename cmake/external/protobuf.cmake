@@ -15,7 +15,7 @@
 INCLUDE(ExternalProject)
 # Always invoke `FIND_PACKAGE(Protobuf)` for importing function protobuf_generate_cpp
 IF(NOT WIN32)
-FIND_PACKAGE(Protobuf QUIET)
+    FIND_PACKAGE(Protobuf QUIET)
 ENDIF(NOT WIN32)
 macro(UNSET_VAR VAR_NAME)
     UNSET(${VAR_NAME} CACHE)
@@ -198,7 +198,9 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         SET(OPTIONAL_CACHE_ARGS "-DZLIB_ROOT:STRING=${ZLIB_ROOT}")
     ENDIF()
     IF(WIN32)
-        SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} "-DCMAKE_GENERATOR_PLATFORM=x64")
+        SET(OPTIONAL_ARGS ${OPTIONAL_ARGS} 
+            "-DCMAKE_GENERATOR=${CMAKE_GENERATOR}"
+            "-DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}")
     ENDIF()
 
     SET(PROTOBUF_REPO "https://github.com/protocolbuffers/protobuf.git")
@@ -214,20 +216,21 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         GIT_TAG         ${PROTOBUF_TAG}
         CONFIGURE_COMMAND
         ${CMAKE_COMMAND} ${PROTOBUF_SOURCES_DIR}/src/${TARGET_NAME}/cmake
-            ${OPTIONAL_ARGS}
-            -Dprotobuf_BUILD_TESTS=OFF
-            -DCMAKE_SKIP_RPATH=ON
-            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-            -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
-            -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
-            -DCMAKE_INSTALL_LIBDIR=lib
-            -DBUILD_SHARED_LIBS=OFF
+                        ${OPTIONAL_ARGS}
+                        -Dprotobuf_BUILD_TESTS=OFF
+                        -DCMAKE_SKIP_RPATH=ON
+                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                        -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
+                        -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
+                        -DCMAKE_INSTALL_LIBDIR=lib
+                        -DBUILD_SHARED_LIBS=OFF
+                        -Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}
         CMAKE_CACHE_ARGS
-            -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
-            -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
-            -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
-            -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
-            ${OPTIONAL_CACHE_ARGS}
+                        -DCMAKE_INSTALL_PREFIX:PATH=${PROTOBUF_INSTALL_DIR}
+                        -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
+                        -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
+                        -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
+                        ${OPTIONAL_CACHE_ARGS}
     )
 ENDFUNCTION()
 

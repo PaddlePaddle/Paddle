@@ -33,6 +33,12 @@ class ConditionalOp : public framework::OperatorBase {
                 const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
+  static const char kInputs[];
+  static const char kOutputs[];
+  static const char kCondition[];
+  static const char kScope[];
+  static const char kSkipEagerDeletionVars[];
+
  protected:
   std::vector<const framework::LoDTensor *> InputTensors(
       const framework::Scope &scope, const std::string &in_name) const {
@@ -78,13 +84,15 @@ class ConditionalOp : public framework::OperatorBase {
 class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Cond",
+    AddInput(ConditionalOp::kCondition,
              "The conditional variable of this operator. If Cond is empty, the "
              "whole sub-block will not be executed.")
         .AsDuplicable();
-    AddInput("Input", "The input variables of the sub-block.").AsDuplicable();
-    AddOutput("Out", "The output variables of the sub-block.").AsDuplicable();
-    AddOutput("Scope",
+    AddInput(ConditionalOp::kInputs, "The input variables of the sub-block.")
+        .AsDuplicable();
+    AddOutput(ConditionalOp::kOutputs, "The output variables of the sub-block.")
+        .AsDuplicable();
+    AddOutput(ConditionalOp::kScope,
               "(std::vector<Scope*>) The step scope of conditional block. To "
               "unify the conditional block, rnn and while op, the type of "
               "scope is std::vector<Scope*>");
@@ -94,6 +102,10 @@ class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                   "The conditional variable (Cond) is used as scalar "
                   "condition.")
         .SetDefault(false);
+    AddAttr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars,
+                                      "Vars that would not be deleted when "
+                                      "garbage collection strategy enables")
+        .SetDefault(std::vector<std::string>());
     AddComment(R"DOC(Conditional block operator
 
 If `is_scalar_condition` is True, the conditional variable (Cond) is a scalar,

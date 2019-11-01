@@ -31,6 +31,9 @@ void Analyzer::RunAnalysis(Argument *argument) {
                  "analsis_passes is not valid in the argument.");
   for (auto &pass : argument->analysis_passes()) {
     string::PrettyLogH1("--- Running analysis [%s]", pass);
+    if (!argument->enable_analysis_optim() && pass == "ir_analysis_pass")
+      continue;
+
     auto *ptr = PassRegistry::Global().Retreive(pass);
     PADDLE_ENFORCE_NOT_NULL(ptr, "no analysis pass called %s", pass);
     ptr->Run(argument);

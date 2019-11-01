@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/norm_utils.h"
 
 namespace paddle {
 namespace operators {
@@ -63,18 +64,6 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override;
 };
 
-class BatchNormGradMaker : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-
- protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override;
-
-  virtual std::string GradOpType() const {
-    return this->ForwardOpType() + "_grad";
-  }
-};
-
 class BatchNormOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
@@ -95,27 +84,6 @@ class BatchNormGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override;
 };
-
-inline void ExtractNCWHD(const framework::DDim &dims,
-                         const DataLayout &data_layout, int *N, int *C, int *H,
-                         int *W, int *D) {
-  *N = dims[0];
-  if (dims.size() == 2) {
-    *C = dims[1];
-    *H = 1;
-    *W = 1;
-    *D = 1;
-  } else {
-    *C = data_layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-    *H = data_layout == DataLayout::kNCHW ? dims[2] : dims[1];
-    *W = dims.size() > 3
-             ? (data_layout == DataLayout::kNCHW ? dims[3] : dims[2])
-             : 1;
-    *D = dims.size() > 4
-             ? (data_layout == DataLayout::kNCHW ? dims[4] : dims[3])
-             : 1;
-  }
-}
 
 }  // namespace operators
 }  // namespace paddle

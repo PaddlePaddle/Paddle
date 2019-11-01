@@ -25,22 +25,22 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceUnpadOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Length"),
-                   "Input(Length) of SequenceUnpadOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of SequenceUnpadOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of SequenceUnpadOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Length"), true,
+                      "Input(Length) of SequenceUnpadOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of SequenceUnpadOp should not be null.");
 
     auto x_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
                       "The rank of Input(X) can't be less than 2.");
 
     auto len_dims = ctx->GetInputDim("Length");
-    PADDLE_ENFORCE(len_dims.size() == 2 && len_dims[1] == 1,
-                   "The shape of Input(Length) should be [batch_size, 1].");
-    PADDLE_ENFORCE(
-        len_dims[0] == x_dims[0],
+    PADDLE_ENFORCE_EQ(len_dims.size(), 1,
+                      "The shape of Input(Length) should be [batch_size].");
+    PADDLE_ENFORCE_EQ(
+        len_dims[0], x_dims[0],
         "Input(X) and Input(Length) should have the same first dimension.");
 
     int64_t out_dim_0 = -1;
@@ -57,12 +57,17 @@ class SequenceUnpadOp : public framework::OperatorWithKernel {
       }
     }
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
+    if (!ctx->IsRuntime()) {
+      framework::VarDesc* out_desc =
+          boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+      out_desc->SetLoDLevel(1);
+    }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("X"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -96,7 +101,7 @@ class SequenceUnpadOpMaker : public framework::OpProtoAndCheckerMaker {
       in which there are 3 sequences padded to length 5, and the acutal length 
       specified by Input(Length):
 
-          Length.data = [[2], [3], [4]],
+          Length.data = [2, 3, 4],
 
       after unpadding, Output(Out) will be:
 
@@ -112,10 +117,10 @@ class SequenceUnpadGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of SequenceUnpadGradOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasInput(framework::GradVarName("Out")),
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of SequenceUnpadGradOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
         "Input(Out@GRAD) of SequenceUnpadGradOp should not be null.");
 
     if (ctx->HasOutput(framework::GradVarName("X"))) {
@@ -127,24 +132,25 @@ class SequenceUnpadGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(
-        ctx.InputVar(framework::GradVarName("Out")));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
-class SequenceUnpadGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequenceUnpadGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("sequence_unpad_grad");
-    op->SetAttrMap(Attrs());
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     return op;
   }
 };
@@ -157,7 +163,9 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_unpad, ops::SequenceUnpadOp,
-                  ops::SequenceUnpadOpMaker, ops::SequenceUnpadGradOpDescMaker);
+                  ops::SequenceUnpadOpMaker,
+                  ops::SequenceUnpadGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequenceUnpadGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(sequence_unpad_grad, ops::SequenceUnpadGradOp,
                   ops::SequenceUnpadGradOpNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(

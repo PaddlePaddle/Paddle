@@ -22,8 +22,9 @@ class RandomCropOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -56,7 +57,7 @@ class RandomCropOpInferShape : public framework::InferShapeBase {
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     auto x_dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GT(x_dim.size(), static_cast<int64_t>(shape.size()));
-    auto out_dim = framework::vectorize2int(x_dim);
+    auto out_dim = framework::vectorize<int>(x_dim);
     for (size_t i = 1; i <= shape.size(); ++i) {
       size_t x_i = x_dim.size() - i;
       size_t shape_i = shape.size() - i;
@@ -74,8 +75,11 @@ class RandomCropOpInferShape : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 namespace f = paddle::framework;
-REGISTER_OPERATOR(random_crop, ops::RandomCropOp, ops::RandomCropOpMaker,
-                  ops::RandomCropOpInferShape, f::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    random_crop, ops::RandomCropOp, ops::RandomCropOpMaker,
+    ops::RandomCropOpInferShape,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 template <typename T>
 using Kernel = ops::RandomCropKernel<paddle::platform::CPUDeviceContext, T>;

@@ -131,6 +131,46 @@ class TestElementwiseDivOp_broadcast_3(ElementwiseDivOp):
         }
 
 
+class TestElementwiseDivOp_broadcast_4(ElementwiseDivOp):
+    def setUp(self):
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [2, 1, 4]).astype("float32")
+        }
+        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseDivOp_broadcast_5(ElementwiseDivOp):
+    def setUp(self):
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 1, 5]).astype("float32")
+        }
+        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseDivOp_INT(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_div"
+        self.dtype = np.int32
+        self.init_dtype()
+        self.inputs = {
+            'X': np.random.randint(
+                1, 5, size=[2, 3]).astype(self.dtype),
+            'Y': np.random.randint(
+                1, 5, size=[2, 3]).astype(self.dtype)
+        }
+        self.outputs = {'Out': self.inputs['X'] // self.inputs['Y']}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def init_dtype(self):
+        pass
+
+
 class TestElementwiseDivOpFp16(ElementwiseDivOp):
     def init_dtype(self):
         self.dtype = np.float16

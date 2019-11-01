@@ -63,6 +63,17 @@ class WhileOp : public framework::OperatorBase {
     auto step_scopes =
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
 
+    if (step_scopes->size() > 0) {
+      platform::DeviceContextPool::Instance().Get(dev_place)->Wait();
+      for (auto &s : *step_scopes) {
+        if (scope.HasKid(s)) {
+          scope.DeleteScope(s);
+        }
+      }
+      step_scopes->clear();
+    }
+
+    PADDLE_ENFORCE_EQ(step_scopes->size(), 0, "The StepScope should be empty.");
     PADDLE_ENFORCE(platform::is_cpu_place(cond.place()),
                    "Condition of while op must in CPU memory.");
 
@@ -197,17 +208,22 @@ class WhileGradOp : public framework::OperatorBase {
           inside_tensor.set_lod(outside_tensor.lod());
           inside_tensor.ShareDataWith(outside_tensor);
         } else if (og_outside.IsType<framework::LoDTensorArray>()) {
-          auto &outside_array = og_outside.Get<framework::LoDTensorArray>();
+          auto outside_array =
+              og_outside.GetMutable<framework::LoDTensorArray>();
           auto &inside_array =
               detail::Ref(og_inside.GetMutable<framework::LoDTensorArray>());
-          VLOG(8) << outside_og_name << " size = " << outside_array.size();
-          inside_array.resize(outside_array.size());
+          inside_array.clear();
+          inside_array.resize(outside_array->size());
+          VLOG(8) << outside_og_name << " size = " << outside_array->size();
 
           for (size_t j = 0; j < inside_array.size(); ++j) {
-            VLOG(8) << j << " " << outside_array[j].numel();
-            if (outside_array[j].numel() != 0) {
-              inside_array[j].set_lod(outside_array[j].lod());
-              inside_array[j].ShareDataWith(outside_array[j]);
+            if (!outside_array->at(j).IsInitialized()) {
+              outside_array->at(j).Resize({0});
+            }
+            VLOG(8) << j << " " << outside_array->at(j).numel();
+            if (outside_array->at(j).numel() != 0) {
+              inside_array[j].set_lod(outside_array->at(j).lod());
+              inside_array[j].ShareDataWith(outside_array->at(j));
             } else {
               PADDLE_ENFORCE_EQ(inside_array[j].numel(), 0);
             }
@@ -276,7 +292,7 @@ class WhileGradOp : public framework::OperatorBase {
             auto &inside_tensor = var->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
             attrs["dtype"] = inside_tensor.type();
-            attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
+            attrs["shape"] = framework::vectorize<int>(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
             auto var_name = pg_ig_names[param_id];
@@ -300,20 +316,22 @@ class WhileGradOp : public framework::OperatorBase {
       dev_ctx.Wait();
       const_cast<framework::Scope &>(scope).DeleteScope(&cur_scope);
     }
+    step_scopes->clear();
   }
 };
 
-class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class WhileGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *while_grad = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *while_grad = new T();
     while_grad->SetType("while_grad");
-    while_grad->SetInput(kX, Input(kX));
-    while_grad->SetInput(kOutputs, Output(kOutputs));
-    while_grad->SetInput(kStepScopes, Output(kStepScopes));
+    while_grad->SetInput(kX, this->Input(kX));
+    while_grad->SetInput(kOutputs, this->Output(kOutputs));
+    while_grad->SetInput(kStepScopes, this->Output(kStepScopes));
 
     auto *grad_block = this->grad_block_[0];
     auto *fwd_block = grad_block->ForwardBlock();
@@ -327,7 +345,8 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
         inner_op_outputs.insert(oname);
       }
     }
-    auto igs = InputGrad(kX, /*do not drop empty gradient*/ false);
+    auto igs = this->InputGrad(kX, /*do not drop empty gradient*/ false);
+
     for (auto &each_ig : igs) {
       if (inner_op_outputs.find(each_ig) == inner_op_outputs.end()) {
         VLOG(8) << "Ignore " << each_ig;
@@ -339,11 +358,11 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     // OG should be re-calculated by step blocks, since many outputs of while op
     // do not need to calculate gradients.
     std::unordered_set<std::string> block_ins;
-    block_ins.reserve(Input(kX).size() + Output(kOutputs).size());
-    for (auto &p : Input(kX)) {
+    block_ins.reserve(this->Input(kX).size() + this->Output(kOutputs).size());
+    for (auto &p : this->Input(kX)) {
       block_ins.insert(p);
     }
-    for (auto &o : Output(kOutputs)) {
+    for (auto &o : this->Output(kOutputs)) {
       block_ins.insert(o);
     }
     std::unordered_set<std::string> output_grads;
@@ -381,7 +400,7 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
     while_grad->SetAttr(kSkipEagerDeletionVars, std::vector<std::string>());
 
-    return std::unique_ptr<framework::OpDesc>(while_grad);
+    return std::unique_ptr<T>(while_grad);
   }
 };
 
@@ -451,9 +470,9 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(while, paddle::operators::WhileOp,
-                  paddle::operators::WhileOpMaker,
-                  paddle::operators::WhileGradOpDescMaker);
+REGISTER_OPERATOR(
+    while, paddle::operators::WhileOp, paddle::operators::WhileOpMaker,
+    paddle::operators::WhileGradOpMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(while_grad, paddle::operators::WhileGradOp,
                   paddle::operators::WhileGradOpShapeInference,
                   paddle::operators::WhileGradOpVarTypeInference);

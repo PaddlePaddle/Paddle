@@ -80,7 +80,7 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Rois"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Rois");
     return framework::OpKernelType(data_type, platform::CPUPlace());
   }
 };
@@ -305,10 +305,10 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(gt_segms->lod()[0].size() - 1, n);
 
     int mask_dim = num_classes * resolution * resolution;
-
-    mask_rois->mutable_data<T>({rois->numel(), kBoxDim}, ctx.GetPlace());
-    roi_has_mask_int32->mutable_data<int>({rois->numel(), 1}, ctx.GetPlace());
-    mask_int32->mutable_data<int>({rois->numel(), mask_dim}, ctx.GetPlace());
+    int roi_num = rois->lod().back()[n];
+    mask_rois->mutable_data<T>({roi_num, kBoxDim}, ctx.GetPlace());
+    roi_has_mask_int32->mutable_data<int>({roi_num, 1}, ctx.GetPlace());
+    mask_int32->mutable_data<int>({roi_num, mask_dim}, ctx.GetPlace());
 
     framework::LoD lod;
     std::vector<size_t> lod0(1, 0);
@@ -434,8 +434,10 @@ K classes. This mask targets are used to compute loss of mask branch.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(generate_mask_labels, ops::GenerateMaskLabelsOp,
-                  ops::GenerateMaskLabelsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    generate_mask_labels, ops::GenerateMaskLabelsOp,
+    ops::GenerateMaskLabelsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(generate_mask_labels,
                        ops::GenerateMaskLabelsKernel<float>);

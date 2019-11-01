@@ -81,19 +81,20 @@ class ScaleOpVarTypeInference : public framework::VarTypeInference {
   }
 };
 
-class ScaleGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("scale");
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetOutput("Out", InputGrad("X"));
-    grad_op->SetAttr("scale", GetAttr("scale"));
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetAttr("scale", this->GetAttr("scale"));
     grad_op->SetAttr("bias", 0.0f);
     grad_op->SetAttr("bias_after_scale", true);
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -103,10 +104,15 @@ using ScaleOpInplace = framework::SingleOpInplaceInToOut;
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker, ops::ScaleGradMaker,
+REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker,
+                  ops::ScaleGradMaker<paddle::framework::OpDesc>,
+                  ops::ScaleGradMaker<paddle::imperative::OpBase>,
                   ops::ScaleOpVarTypeInference, ops::ScaleOpInplace);
 REGISTER_OP_CPU_KERNEL(
     scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int8_t>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, int64_t>);

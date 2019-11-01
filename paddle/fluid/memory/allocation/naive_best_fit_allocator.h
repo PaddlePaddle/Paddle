@@ -28,6 +28,8 @@ class NaiveBestFitAllocator : public Allocator {
  public:
   explicit NaiveBestFitAllocator(const platform::Place &p) : place_(p) {}
 
+  bool IsAllocThreadSafe() const override { return true; }
+
  protected:
   Allocation *AllocateImpl(size_t size) override;
   void FreeImpl(Allocation *allocation) override;

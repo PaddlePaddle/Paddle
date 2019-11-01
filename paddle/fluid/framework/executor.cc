@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/trainer_factory.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/distributed/distributed.h"
@@ -38,11 +39,11 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_NGRAPH
 #include "paddle/fluid/operators/ngraph/ngraph_engine.h"
-DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 #endif
 
 DECLARE_bool(benchmark);
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
+DEFINE_bool(use_ngraph, false, "Use NGRAPH to run");
 
 namespace paddle {
 namespace framework {
@@ -58,9 +59,30 @@ ExecutorPrepareContext::ExecutorPrepareContext(
 
 void ExecutorPrepareContext::PrepareUnusedVars(
     const std::vector<std::string>& keep_vars, bool force_disable_gc) {
+#ifdef PADDLE_WITH_NGRAPH
+  if (FLAGS_use_ngraph) {
+    // FIXME(zjl): There is difference when ngraph and gc are both enabled
+    // in unittests. I do not know why it happens. Maybe ngraph engine
+    // would cache some variables?
+    LOG_FIRST_N(WARNING, 1)
+        << "FLAGS_use_ngraph=True, garbage collection strategy is "
+           "disabled in Executor";
+    force_disable_gc = true;
+  }
+#endif
   force_disable_gc_ = force_disable_gc;
   if (GetEagerDeletionThreshold() < 0 || force_disable_gc_) {
     return;
+  }
+
+  // If gc is enabled and block size > 1
+  if (prog_.Size() > 1) {
+    operators::PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
+        prog_, block_id_, ops_);
+    operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(prog_, block_id_,
+                                                               ops_);
+    operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
+        prog_, block_id_, ops_);
   }
   unused_vars_ = GetUnusedVars(prog_.Block(block_id_), ops_, keep_vars);
 }
@@ -70,6 +92,20 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 }
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
+
+Executor::~Executor() {
+#ifdef PADDLE_WITH_MKLDNN
+  // Clear mkl-dnn cache, unless explicitly
+  // (as set in constructor) marked not to do so
+  // this is needed to have mkl-dnn unit tests working
+  if (platform::is_cpu_place(place_)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::MKLDNNDeviceContext* dev_ctx =
+        (platform::MKLDNNDeviceContext*)pool.Get(place_);
+    dev_ctx->ResetBlobMap();
+  }
+#endif
+}
 
 void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -118,14 +154,14 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
   }
 }
 
-void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
-                              Dataset* dataset,
-                              const std::string& trainer_desc_str) {
+std::shared_ptr<TrainerBase> Executor::InitForDataset(
+    const ProgramDesc& main_program, const std::string& trainer_desc_str,
+    Scope* scope, Dataset* dataset) {
   VLOG(3) << "Start to RunFromDataset in executor";
   TrainerDesc trainer_desc;
   bool success = trainer_desc.ParseFromString(trainer_desc_str);
-  PADDLE_ENFORCE(success, "Fail to parse TrainerDesc from string:\n%s",
-                 trainer_desc_str.c_str());
+  PADDLE_ENFORCE_EQ(success, true, "Fail to parse TrainerDesc from string:\n%s",
+                    trainer_desc_str.c_str());
   VLOG(3) << "Going to create trainer, trainer class is "
           << trainer_desc.class_name();
   std::shared_ptr<TrainerBase> trainer;
@@ -140,12 +176,17 @@ void Executor::RunFromDataset(const ProgramDesc& main_program, Scope* scope,
   trainer->InitTrainerEnv(main_program, place_);
   VLOG(3) << "Try to init other environment";
   trainer->InitOtherEnv(main_program);
+  return trainer;
+}
+
+void Executor::RunFromDataset(std::shared_ptr<TrainerBase> trainer) {
+  PADDLE_ENFORCE_NE(trainer, nullptr,
+                    "Trainer is nullptr, invoke InitForDataset first");
   // training and finalize training
   VLOG(3) << "Trainer starts to run";
   trainer->Run();
   VLOG(3) << "Trainer going to finalize";
   trainer->Finalize();
-  return;
 }
 
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
@@ -244,12 +285,6 @@ static bool has_fetch_operators(
   }
 
   return fetch_count > 0;
-}
-
-std::unique_ptr<ExecutorPrepareContext> Executor::PrepareCtxCache(
-    const ProgramDesc& program, int block_id,
-    const std::vector<std::string>& skip_ref_cnt_vars, bool force_disable_gc) {
-  return Prepare(program, block_id, skip_ref_cnt_vars, force_disable_gc);
 }
 
 void Executor::Run(const ProgramDesc& program, Scope* scope,
@@ -388,8 +423,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
-  // FIXME(zjl): recurrent_op is rather complex, we would
-  // disable gc forcely in recurrent_op
   if (!ctx->force_disable_gc_ && max_memory_size >= 0) {
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {
@@ -407,13 +440,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 #ifdef PADDLE_WITH_CUDA
     }
 #endif
-    // If gc is enabled and block size > 1
-    if (gc && ctx->prog_.Size() > 1) {
-      operators::PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(ctx->block_id_,
-                                                                 ctx->ops_);
-      operators::PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
-          ctx->block_id_, ctx->ops_);
-    }
   }
 
   for (auto& op : ctx->ops_) {

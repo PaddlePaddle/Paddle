@@ -63,29 +63,31 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       LoDTensor* output = ctx.Output<LoDTensor>("Out");
       T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
-      std::vector<int> dst_tz = framework::vectorize2int(output->dims());
+      auto dst_tz = framework::vectorize<int>(output->dims());
       auto src_tz = dst_tz;
-      memory::format output_format{memory::format::format_undef};
+      MKLDNNMemoryFormat output_format{MKLDNNMemoryFormat::format_undef};
       std::vector<float> scales;
       std::vector<memory::primitive_desc> srcs_mpd;
       std::vector<mkldnn::memory> srcs_mem;
 
-      PADDLE_ENFORCE(in_vars[0]->IsType<LoDTensor>(),
-                     "Input[0] must be LoDTensors");
+      PADDLE_ENFORCE_EQ(in_vars[0]->IsType<LoDTensor>(), true,
+                        "Input[0] must be LoDTensors");
       auto& input0 = in_vars[0]->Get<LoDTensor>();
-      PADDLE_ENFORCE(input0.layout() == DataLayout::kMKLDNN &&
-                         input0.format() != memory::format::format_undef,
-                     "Wrong layout/format for inputs[0]");
+      PADDLE_ENFORCE_EQ(input0.layout(), DataLayout::kMKLDNN,
+                        "Wrong layout set for inputs[0] tensor");
+      PADDLE_ENFORCE_NE(input0.format(), MKLDNNMemoryFormat::format_undef,
+                        "Wrong format set for inputs[0] tensor");
 
-      memory::format input_format = input0.format();
+      MKLDNNMemoryFormat input_format = input0.format();
 
       for (int i = 0; i < N; i++) {
-        PADDLE_ENFORCE(in_vars[i]->IsType<LoDTensor>(),
-                       "all inputs must be all LoDTensors");
+        PADDLE_ENFORCE_EQ(in_vars[i]->IsType<LoDTensor>(), true,
+                          "all inputs must be all LoDTensors");
         auto& input = in_vars[i]->Get<LoDTensor>();
-        PADDLE_ENFORCE(input.layout() == DataLayout::kMKLDNN &&
-                           input.format() != memory::format::format_undef,
-                       "Wrong layout/format for inputs");
+        PADDLE_ENFORCE_EQ(input.layout(), DataLayout::kMKLDNN,
+                          "Wrong layout set for inputs");
+        PADDLE_ENFORCE_NE(input.format(), MKLDNNMemoryFormat::format_undef,
+                          "Wrong format set for inputs");
 
         if (input.numel() == 0) {
           continue;
@@ -103,7 +105,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       }
 
       auto dst_md =
-          memory::desc(dst_tz, memory::data_type::f32, memory::format::any);
+          memory::desc(dst_tz, memory::data_type::f32, MKLDNNMemoryFormat::any);
 
       auto sum_pd = sum::primitive_desc(dst_md, scales, srcs_mpd);
 
@@ -119,7 +121,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       }
 
       auto sum_prim = mkldnn::sum(sum_pd, inputs, *dst_mem);
-      output_format = (memory::format)platform::GetMKLDNNFormat(sum_pd);
+      output_format = (MKLDNNMemoryFormat)platform::GetMKLDNNFormat(sum_pd);
 
       primitive reorder_prim;
       std::shared_ptr<memory> target_mem;
@@ -139,7 +141,6 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       output->set_layout(DataLayout::kMKLDNN);
       output->set_format(output_format);
     } else {  // Fallback to naive version
-      // TODO(@mozga-intel) Add MKLDNN SelectedRows & LoDTensorArray support
       SumKernel<CPUDeviceContext, T> reference_kernel;
       reference_kernel.Compute(ctx);
     }

@@ -23,6 +23,7 @@ from paddle.fluid.optimizer import SGD
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
+from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecison
 
 
 class Mode:
@@ -148,8 +149,10 @@ class Fleet(object):
     def split_files(self, files):
         """
         split files before distributed training,
-        for example, files is [a, b, c ,d, e]  and trainer_num = 2,
-        then trainer 0 gets [a, b, c] and trainer 1 gets [d, e]
+        example 1: files is [a, b, c ,d, e]  and trainer_num = 2, then trainer
+                   0 gets [a, b, c] and trainer 1 gets [d, e].
+        example 2: files is [a, b], and trainer_num = 3, then trainer 0 gets
+                   [a], trainer 1 gets [b],  trainer 2 gets []
 
         Args:
             files(list): file list need to be read.
@@ -157,11 +160,11 @@ class Fleet(object):
         Returns:
             list: files belongs to this worker.
         """
+        if not isinstance(files, list):
+            raise TypeError("files should be a list of file need to be read.")
+
         trainer_id = self.worker_index()
         trainers = self.worker_num()
-
-        if len(files) < trainers:
-            raise ValueError("file number must gather or equal trainer number")
 
         remainder = len(files) % trainers
         blocksize = len(files) / trainers
@@ -193,7 +196,7 @@ class Fleet(object):
         self._executor = Executor(fluid.CPUPlace())
 
         if role_maker and not isinstance(role_maker, RoleMakerBase):
-            raise ValueError("role_maker must be an instance of RoleMakerBase")
+            raise TypeError("role_maker must be an instance of RoleMakerBase")
 
         self._role_maker = role_maker
         self._role_maker.generate_role()
@@ -255,8 +258,9 @@ class DistributedOptimizer(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, optimizer, strategy=None):
-        if not isinstance(optimizer, SGD.__bases__):
-            raise ValueError("optimizer must be an instance of Optimizer")
+        if not isinstance(optimizer, SGD.__bases__) \
+                 and not isinstance(optimizer, OptimizerWithMixedPrecison):
+            raise TypeError("optimizer must be an instance of Optimizer")
 
         self._optimizer = optimizer
         self._strategy = strategy

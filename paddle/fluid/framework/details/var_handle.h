@@ -21,6 +21,7 @@
 #include <utility>
 
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -74,11 +75,15 @@ struct VarHandleBase {
 
   OpHandleBase* GeneratedOp() { return generated_op_; }
 
+  const OpHandleBase* GeneratedOp() const { return generated_op_; }
+
   const std::unordered_set<OpHandleBase*>& PendingOps() const {
     return pending_ops_;
   }
 
   ir::Node* Node() { return node_; }
+
+  const ir::Node* Node() const { return node_; }
 
  protected:
   // The operator who generate this variable. nullptr if the variable
@@ -96,6 +101,9 @@ struct VarHandleBase {
 //
 // NOTE: runtime variables have place.
 struct VarHandle : public VarHandleBase {
+  DISABLE_COPY_AND_ASSIGN(VarHandle);
+
+ public:
   virtual ~VarHandle();
 
   std::string DebugString() const override;

@@ -25,6 +25,7 @@
 #include "paddle/fluid/operators/distributed/request_handler.h"
 
 DECLARE_int32(rpc_deadline);
+DECLARE_int32(rpc_retry_times);
 
 namespace paddle {
 namespace operators {
@@ -77,6 +78,11 @@ class RPCClient {
 
   virtual VarHandlePtr AsyncCheckpointNotify(
       const std::string& ep, const std::string& dir,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
+
+  virtual VarHandlePtr AsyncDistributeNotify(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
       int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual VarHandlePtr AsyncSendComplete(

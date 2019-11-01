@@ -32,6 +32,7 @@ TEST(AnalysisPredictor, use_gpu) {
   std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
   AnalysisConfig config;
   config.EnableUseGpu(100, 0);
+  config.EnableCUDNN();
   config.SetModel(model_dir);
   config.pass_builder()->TurnOnDebug();
 

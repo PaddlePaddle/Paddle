@@ -81,7 +81,7 @@ class DataNormOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = ctx.Input<Tensor>("X")->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
     // and var tensors should both be float. (For float or float16 input tensor)
     // or double (For double input tensor).
@@ -89,12 +89,14 @@ class DataNormOp : public framework::OperatorWithKernel {
     if (input_data_type == framework::proto::VarType::FP64) {
       dn_param_type = framework::proto::VarType::FP64;
     }
-    PADDLE_ENFORCE_EQ(dn_param_type, ctx.Input<Tensor>("BatchSize")->type(),
-                      "BatchSize input should be of float type");
-    PADDLE_ENFORCE_EQ(dn_param_type, ctx.Input<Tensor>("BatchSum")->type(),
-                      "BatchSum input should be of float type");
     PADDLE_ENFORCE_EQ(dn_param_type,
-                      ctx.Input<Tensor>("BatchSquareSum")->type(),
+                      OperatorWithKernel::IndicateVarDataType(ctx, "BatchSize"),
+                      "BatchSize input should be of float type");
+    PADDLE_ENFORCE_EQ(dn_param_type,
+                      OperatorWithKernel::IndicateVarDataType(ctx, "BatchSum"),
+                      "BatchSum input should be of float type");
+    PADDLE_ENFORCE_EQ(dn_param_type, OperatorWithKernel::IndicateVarDataType(
+                                         ctx, "BatchSquareSum"),
                       "BatchSquareSum input should be of float type");
 
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
@@ -124,6 +126,9 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
                          "'epsilon' should be between 0.0 and 0.001.");
         });
     AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
     AddInput("X", "The input tensor");
     AddInput("BatchSize",
              "BatchSize is a 1-dimensional tensor of size C "
@@ -224,7 +229,6 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("Scales"), "");
 
     // check output
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("X")), "");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("BatchSize")), "");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("BatchSum")), "");
     PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("BatchSquareSum")),
@@ -237,7 +241,9 @@ class DataNormGradOp : public framework::OperatorWithKernel {
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
 
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    if (ctx->HasOutput(framework::GradVarName("X"))) {
+      ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    }
     ctx->SetOutputDim(framework::GradVarName("BatchSize"), {C});
     ctx->SetOutputDim(framework::GradVarName("BatchSum"), {C});
     ctx->SetOutputDim(framework::GradVarName("BatchSquareSum"), {C});
@@ -272,8 +278,9 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout, library);
   }
 };
 
@@ -304,7 +311,10 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
                                           : x_dims[x_dims.size() - 1]);
 
     // init output
-    auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    Tensor *d_x = nullptr;
+    if (ctx.HasOutput(framework::GradVarName("X"))) {
+      d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    }
     auto *d_batch_size =
         ctx.Output<Tensor>(framework::GradVarName("BatchSize"));
     auto *d_batch_sum = ctx.Output<Tensor>(framework::GradVarName("BatchSum"));
@@ -331,10 +341,12 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
         ConstEigenVectorArrayMap<T> means_arr(means->data<T>(), C);
         ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N);
-        EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C, N);
-        d_x_arr.setZero();
-        for (int nc = 0; nc < N; ++nc) {
-          d_x_arr.col(nc) = d_y_arr.col(nc) * scales_arr;
+        if (d_x != nullptr) {
+          EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C, N);
+          d_x_arr.setZero();
+          for (int nc = 0; nc < N; ++nc) {
+            d_x_arr.col(nc) = d_y_arr.col(nc) * scales_arr;
+          }
         }
 
         // calculate data sum and squre sum
@@ -363,32 +375,35 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
-class DataNormGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class DataNormGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *op = new T();
     op->SetType("data_norm_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 
-    op->SetInput("BatchSize", Input("BatchSize"));
-    op->SetInput("BatchSum", Input("BatchSum"));
-    op->SetInput("BatchSquareSum", Input("BatchSquareSum"));
-    op->SetInput("Scales", Output("Scales"));
-    op->SetInput("Means", Output("Means"));
+    op->SetInput("BatchSize", this->Input("BatchSize"));
+    op->SetInput("BatchSum", this->Input("BatchSum"));
+    op->SetInput("BatchSquareSum", this->Input("BatchSquareSum"));
+    op->SetInput("Scales", this->Output("Scales"));
+    op->SetInput("Means", this->Output("Means"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("BatchSize"), InputGrad("BatchSize"));
-    op->SetOutput(framework::GradVarName("BatchSum"), InputGrad("BatchSum"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("BatchSize"),
+                  this->InputGrad("BatchSize"));
+    op->SetOutput(framework::GradVarName("BatchSum"),
+                  this->InputGrad("BatchSum"));
     op->SetOutput(framework::GradVarName("BatchSquareSum"),
-                  InputGrad("BatchSquareSum"));
+                  this->InputGrad("BatchSquareSum"));
 
-    return std::unique_ptr<framework::OpDesc>(op);
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -397,7 +412,8 @@ class DataNormGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(data_norm, ops::DataNormOp, ops::DataNormOpMaker,
-                  ops::DataNormGradMaker);
+                  ops::DataNormGradMaker<paddle::framework::OpDesc>,
+                  ops::DataNormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(data_norm_grad, ops::DataNormGradOp);
 
 REGISTER_OP_CPU_KERNEL(

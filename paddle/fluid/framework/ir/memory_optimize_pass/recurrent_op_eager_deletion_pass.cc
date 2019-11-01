@@ -40,7 +40,8 @@ void RecurrentOpEagerDeletionPass::ApplyImpl(Graph *graph) const {
     // Prepare safe eager deletion on different devices because the garbage
     // collection may be different across devices
     OpAndGradOpPair &op_pair = entry.second;
-    PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(&op_pair);
+    PrepareSafeEagerDeletionOnRecurrentOpAndRecurrentGradOp(
+        graph->OriginProgram(), &op_pair);
   }
 }
 

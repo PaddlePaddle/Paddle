@@ -12,32 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_library(ngraph INTERFACE)
-
-IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
-        "Windows or Mac is not supported with nGraph in Paddle yet."
-        "Force WITH_NGRAPH=OFF")
-    SET(WITH_NGRAPH OFF CACHE STRING "Disable nGraph in Windows and MacOS" FORCE)
-ENDIF()
-
-IF(${WITH_NGRAPH} AND NOT ${WITH_MKLDNN})
-    MESSAGE(WARNING
-        "nGraph needs mkl-dnn to be enabled."
-        "Force WITH_NGRAPH=OFF")
-    SET(WITH_NGRAPH OFF CACHE STRING "Disable nGraph if mkl-dnn is disabled" FORCE)
-ENDIF()
-
-IF(NOT ${WITH_NGRAPH})
-    return()
-ENDIF()
-
 INCLUDE(GNUInstallDirs)
 
 INCLUDE(ExternalProject)
 
 SET(NGRAPH_PROJECT         "extern_ngraph")
-SET(NGRAPH_GIT_TAG         "4ec94acc11084a5d53418f565529310fa584899a")
+SET(NGRAPH_GIT_TAG         "e26d602a756f5f83e6c8220f910b61d7089fa951")
 SET(NGRAPH_SOURCES_DIR     ${THIRD_PARTY_PATH}/ngraph)
 SET(NGRAPH_INSTALL_DIR     ${THIRD_PARTY_PATH}/install/ngraph)
 SET(NGRAPH_INC_DIR         ${NGRAPH_INSTALL_DIR}/include)
@@ -76,8 +56,10 @@ ExternalProject_Add(
     CMAKE_ARGS               -DMKLDNN_INCLUDE_DIR=${MKLDNN_INC_DIR}
     CMAKE_ARGS               -DMKLDNN_LIB_DIR=${MKLDNN_INSTALL_DIR}/${CMAKE_INSTALL_LIBDIR}
     CMAKE_ARGS               -DMKLML_LIB_DIR=${MKLML_INSTALL_DIR}/lib
+    CMAKE_ARGS               -NGRAPH_USE_LEGACY_MKLDNN=TRUE
 )
 
+add_library(ngraph INTERFACE)
 add_dependencies(ngraph ${NGRAPH_PROJECT})
 target_compile_definitions(ngraph INTERFACE -DPADDLE_WITH_NGRAPH)
 target_include_directories(ngraph INTERFACE ${NGRAPH_INC_DIR})
