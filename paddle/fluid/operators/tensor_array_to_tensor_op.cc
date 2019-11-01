@@ -278,10 +278,11 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
 USE_OP(concat);
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(tensor_array_to_tensor, ops::LoDTensorArray2TensorOp,
-                  ops::LoDTensorArray2TensorOpMaker,
-                  ops::LoDTensorArray2TensorOpInferShape,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    tensor_array_to_tensor, ops::LoDTensorArray2TensorOp,
+    ops::LoDTensorArray2TensorOpMaker, ops::LoDTensorArray2TensorOpInferShape,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(tensor_array_to_tensor_grad, ops::LoDTensorArray2TensorGradOp,
                   ops::LoDTensorArray2TensorGradInferShape,
                   ops::LoDTensorArray2TensorGradInferVarType);

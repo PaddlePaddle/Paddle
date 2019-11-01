@@ -116,13 +116,13 @@ class SplitOpKernel : public framework::OpKernel<T> {
     bool need_resize_outs_dims = false;
     if (ctx.HasInput("AxisTensor")) {
       auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
-      axis = GetDataFromTensor<int>(axis_tensor)[0];
+      axis = GetDataFromTensor(axis_tensor)[0];
       need_resize_outs_dims = true;
     }
     auto sections_tensor_list =
         ctx.MultiInput<framework::Tensor>("SectionsTensorList");
     if (sections_tensor_list.size() > 0) {
-      sections = GetDataFromTensorList<int>(sections_tensor_list);
+      sections = GetDataFromTensorList(sections_tensor_list);
       need_resize_outs_dims = true;
     }
 
@@ -153,19 +153,20 @@ class SplitOpKernel : public framework::OpKernel<T> {
   }
 };
 
-class SplitGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SplitGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto op = new T();
     op->SetType("concat");
-    op->SetInput("X", OutputGrad("Out"));
-    op->SetInput("AxisTensor", Input("AxisTensor"));
-    op->SetOutput("Out", InputGrad("X"));
-    op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetInput("X", this->OutputGrad("Out"));
+    op->SetInput("AxisTensor", this->Input("AxisTensor"));
+    op->SetOutput("Out", this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(op);
   }
 };
 

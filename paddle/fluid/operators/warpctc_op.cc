@@ -134,25 +134,26 @@ http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf).
   }
 };
 
-class WarpCTCGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class WarpCTCGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
 
     op->SetType("warpctc_grad");
 
-    op->SetInput("WarpCTCGrad", Output("WarpCTCGrad"));
-    op->SetInput("Logits", Input("Logits"));
-    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+    op->SetInput("WarpCTCGrad", this->Output("WarpCTCGrad"));
+    op->SetInput("Logits", this->Input("Logits"));
+    op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
 
-    op->SetInput("LogitsLength", Input("LogitsLength"));
+    op->SetInput("LogitsLength", this->Input("LogitsLength"));
 
-    op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
+    op->SetOutput(framework::GradVarName("Logits"), this->InputGrad("Logits"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -185,7 +186,8 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
-                  ops::WarpCTCGradOpDescMaker);
+                  ops::WarpCTCGradOpMaker<paddle::framework::OpDesc>,
+                  ops::WarpCTCGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp);
 REGISTER_OP_CPU_KERNEL(
     warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>);

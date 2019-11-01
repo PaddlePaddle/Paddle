@@ -457,55 +457,12 @@ PYBIND11_MODULE(core_noavx, m) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_clear", &Tensor::clear)
-      .def("set", PyCPUTensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"))
-#ifdef PADDLE_WITH_CUDA
-      .def("set", PyCUDATensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"), R"DOC(
+      .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
+           py::arg("array"), py::arg("place"))
+      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPlace>,
+           py::arg("array"), py::arg("place"))
+      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
+           py::arg("array"), py::arg("place"), R"DOC(
         Set the data of LoDTensor on place with given numpy array.
         
         Args:
@@ -525,7 +482,7 @@ PYBIND11_MODULE(core_noavx, m) {
                 t = fluid.LoDTensor()
                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
           )DOC")
-#endif
+
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); }, R"DOC(
            Return the shape of LoDTensor.
 
@@ -1389,7 +1346,7 @@ All parameter, weight, gradient are variables in Paddle.
                                      create_local_scope, create_vars,
                                      feed_holder_name, fetch_holder_name);
            })
-      .def("run_cached_prepared_ctx",
+      .def("run_prepared_ctx",
            [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
               bool create_local_scope = true, bool create_vars = true,
               bool keep_kids = false) {
@@ -1397,10 +1354,16 @@ All parameter, weight, gradient are variables in Paddle.
              self.RunPreparedContext(ctx, scope, create_local_scope,
                                      create_vars, keep_kids);
            })
-      .def("prepare_ctx_cache", &Executor::PrepareCtxCache,
-           py::call_guard<py::gil_scoped_release>())
-      .def("create_variables", &Executor::CreateVariables,
-           py::call_guard<py::gil_scoped_release>())
+      .def("prepare",
+           [](Executor &self, const ProgramDesc &program, int block_id,
+              const std::vector<std::string> &skip_ref_cnt_vars =
+                  std::vector<std::string>(),
+              bool force_disable_gc = false) {
+             pybind11::gil_scoped_release release;
+             return self.Prepare(program, block_id, skip_ref_cnt_vars,
+                                 force_disable_gc);
+           })
+      .def("create_variables", &Executor::CreateVariables)
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
                      int block_id, bool create_local_scope, bool create_vars,
                      const std::vector<std::string> &fetch_vars) {

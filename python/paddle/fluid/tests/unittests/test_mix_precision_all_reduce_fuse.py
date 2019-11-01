@@ -71,7 +71,7 @@ class TestResnet(TestParallelExecutorBase):
     def check_model(self, use_cuda):
         img, label = init_data(
             batch_size=batch_size, img_shape=img_shape, label_range=9)
-        img = np.float16(img).view(np.uint16)
+        img = np.float16(img)
         feed_dict = {"image": img, "label": label}
 
         TestParallelExecutorBase.check_network_convergence(
