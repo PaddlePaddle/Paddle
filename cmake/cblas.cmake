@@ -1,3 +1,17 @@
+# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 # Find the CBlas and lapack libraries
 #
 # It will search MKLML, atlas, OpenBlas, reference-cblas in order.
@@ -7,6 +21,15 @@
 #    CBLAS_INC_DIR   # the include directory for cblas.
 #    CBLAS_LIBS      # a list of libraries should be linked by paddle.
 #                    # Each library should be full path to object file.
+
+set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
+file(WRITE ${dummyfile} "const char *dummy_cblas = \"${dummyfile}\";")
+add_library(cblas STATIC ${dummyfile})
+
+if(WITH_LIBXSMM)
+  target_link_libraries(cblas ${LIBXSMM_LIBS})
+  add_dependencies(cblas extern_libxsmm)
+endif()
 
 set(CBLAS_FOUND OFF)
 
@@ -20,64 +43,66 @@ if(WITH_MKLML AND MKLML_INC_DIR AND MKLML_LIB)
   add_definitions(-DPADDLE_WITH_MKLML)
   add_definitions(-DLAPACK_FOUND)
 
+  add_dependencies(cblas mklml)
+  target_link_libraries(cblas dynload_mklml)
+
   message(STATUS "Found cblas and lapack in MKLML "
     "(include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
-  return()
 endif()
 
 ## Then find openblas.
-set(OPENBLAS_ROOT $ENV{OPENBLAS_ROOT} CACHE PATH "Folder contains Openblas")
-set(OPENBLAS_INCLUDE_SEARCH_PATHS
-        ${OPENBLAS_ROOT}/include
-        /usr/include
-        /usr/include/openblas
-        /usr/local/opt/openblas/include)
-set(OPENBLAS_LIB_SEARCH_PATHS
-        ${OPENBLAS_ROOT}/lib
-        /usr/lib
-        /usr/lib/blas/openblas
-        /usr/lib/openblas
-        /usr/local/opt/openblas/lib)
+if(NOT CBLAS_FOUND)
+  set(OPENBLAS_ROOT $ENV{OPENBLAS_ROOT} CACHE PATH "Folder contains Openblas")
+  set(OPENBLAS_INCLUDE_SEARCH_PATHS
+          ${OPENBLAS_ROOT}/include
+          /usr/include
+          /usr/include/openblas
+          /usr/local/opt/openblas/include)
+  set(OPENBLAS_LIB_SEARCH_PATHS
+          ${OPENBLAS_ROOT}/lib
+          /usr/lib
+          /usr/lib/blas/openblas
+          /usr/lib/openblas
+          /usr/local/opt/openblas/lib)
 
-find_path(OPENBLAS_INC_DIR NAMES cblas.h
-  PATHS ${OPENBLAS_INCLUDE_SEARCH_PATHS} NO_DEFAULT_PATH)
-find_path(OPENBLAS_LAPACKE_INC_DIR NAMES lapacke.h
-  PATHS ${OPENBLAS_INCLUDE_SEARCH_PATHS})
-find_library(OPENBLAS_LIB NAMES openblas
-  PATHS ${OPENBLAS_LIB_SEARCH_PATHS})
+  find_path(OPENBLAS_INC_DIR NAMES cblas.h
+    PATHS ${OPENBLAS_INCLUDE_SEARCH_PATHS} NO_DEFAULT_PATH)
+  find_path(OPENBLAS_LAPACKE_INC_DIR NAMES lapacke.h
+    PATHS ${OPENBLAS_INCLUDE_SEARCH_PATHS})
+  find_library(OPENBLAS_LIB NAMES openblas
+    PATHS ${OPENBLAS_LIB_SEARCH_PATHS})
 
-if(OPENBLAS_LAPACKE_INC_DIR AND OPENBLAS_INC_DIR AND OPENBLAS_LIB)
-  set(CBLAS_FOUND ON)
-  set(CBLAS_PROVIDER OPENBLAS)
-  set(CBLAS_INC_DIR ${OPENBLAS_INC_DIR} ${OPENBLAS_LAPACKE_INC_DIR})
-  set(CBLAS_LIBRARIES ${OPENBLAS_LIB})
+  if(OPENBLAS_LAPACKE_INC_DIR AND OPENBLAS_INC_DIR AND OPENBLAS_LIB)
+    set(CBLAS_FOUND ON)
+    set(CBLAS_PROVIDER OPENBLAS)
+    set(CBLAS_INC_DIR ${OPENBLAS_INC_DIR} ${OPENBLAS_LAPACKE_INC_DIR})
+    set(CBLAS_LIBRARIES ${OPENBLAS_LIB})
 
-  add_definitions(-DPADDLE_USE_OPENBLAS)
-  add_definitions(-DLAPACK_FOUND)
+    add_definitions(-DPADDLE_USE_OPENBLAS)
+    add_definitions(-DLAPACK_FOUND)
 
-  message(STATUS "Found OpenBLAS (include: ${OPENBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
-  message(STATUS "Found lapack in OpenBLAS (include: ${OPENBLAS_LAPACKE_INC_DIR})")
-  return()
+    message(STATUS "Found OpenBLAS (include: ${OPENBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+    message(STATUS "Found lapack in OpenBLAS (include: ${OPENBLAS_LAPACKE_INC_DIR})")
+  endif()
 endif()
 
+## Then find the reference-cblas if WITH_SYSTEM_BLAS.  www.netlib.org/blas/
+if(NOT CBLAS_FOUND AND WITH_SYSTEM_BLAS)
+  message("======found system blas")
+  set(REFERENCE_CBLAS_ROOT $ENV{REFERENCE_CBLAS_ROOT} CACHE PATH
+    "Folder contains reference-cblas")
+  set(REFERENCE_CBLAS_INCLUDE_SEARCH_PATHS
+    ${REFERENCE_CBLAS_ROOT}/include
+    /usr/include
+    /usr/include/cblas
+  )
+  set(REFERENCE_CBLAS_LIB_SEARCH_PATHS
+    ${REFERENCE_CBLAS_ROOT}/lib
+    /usr/lib
+    /usr/lib/blas/reference/
+    /usr/lib/reference/
+  )
 
-## Then find the reference-cblas.  www.netlib.org/blas/
-set(REFERENCE_CBLAS_ROOT $ENV{REFERENCE_CBLAS_ROOT} CACHE PATH
-  "Folder contains reference-cblas")
-set(REFERENCE_CBLAS_INCLUDE_SEARCH_PATHS
-  ${REFERENCE_CBLAS_ROOT}/include
-  /usr/include
-  /usr/include/cblas
-)
-
-set(REFERENCE_CBLAS_LIB_SEARCH_PATHS
-  ${REFERENCE_CBLAS_ROOT}/lib
-  /usr/lib
-  /usr/lib/blas/reference/
-  /usr/lib/reference/
-)
-
-if(WITH_SYSTEM_BLAS)
   find_path(REFERENCE_CBLAS_INCLUDE_DIR NAMES cblas.h PATHS
         ${REFERENCE_CBLAS_INCLUDE_SEARCH_PATHS})
   find_library(REFERENCE_CBLAS_LIBRARY NAMES cblas PATHS
@@ -91,4 +116,22 @@ if(WITH_SYSTEM_BLAS)
     add_definitions(-DPADDLE_USE_REFERENCE_CBLAS)
     message(STATUS "Found reference-cblas (include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
   endif()
+endif()
+
+## Then build openblas by external_project
+if(NOT CBLAS_FOUND)
+  include(external/openblas)        # download, build, install openblas
+  set(CBLAS_PROVIDER openblas)
+  add_dependencies(cblas extern_openblas)
+  add_definitions(-DPADDLE_USE_OPENBLAS)
+  message(STATUS "Build OpenBLAS by External Project "
+    "(include: ${CBLAS_INC_DIR}, library: ${CBLAS_LIBRARIES})")
+endif()
+
+# FIXME(gangliao): generate cblas target to track all high performance
+# linear algebra libraries for cc_library(xxx SRCS xxx.c DEPS cblas)
+
+include_directories(${CBLAS_INC_DIR})
+if(NOT "${CBLAS_PROVIDER}" STREQUAL "MKLML")
+  target_link_libraries(cblas ${CBLAS_LIBRARIES})
 endif()

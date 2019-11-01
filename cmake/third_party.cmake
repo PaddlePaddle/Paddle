@@ -88,7 +88,7 @@ if(WITH_MKLML)
     include(external/mklml)     # download, install mklml package
     list(APPEND third_party_deps mklml)
 endif()
-include(external/openblas)      # find first, then download, build, install openblas
+include(cblas)      # find first, then download, build, install openblas
 if(NOT CBLAS_FOUND)
     list(APPEND third_party_deps extern_openblas)
 endif()
