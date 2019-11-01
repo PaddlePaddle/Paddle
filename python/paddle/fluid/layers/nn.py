@@ -2523,6 +2523,12 @@ def batch_norm(input,
     check_type_and_dtype(input, 'input', Variable,
                          ['float16', 'float32', 'float64'], 'batch_norm')
     dtype = helper.input_dtype()
+
+    has_reserve_space = False
+    if data_layout == 'NHWC' and os.environ.get(
+            'FLAGS_cudnn_batchnorm_spatial_persistent'):
+        has_reserve_space = True
+
     # use fp32 for bn parameter
     if dtype == core.VarDesc.VarType.FP16:
         dtype = core.VarDesc.VarType.FP32
@@ -2577,6 +2583,11 @@ def batch_norm(input,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
 
+    reserve_space = None
+    if has_reserve_space:
+        reserve_space = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
+
     batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
         dtype)
 
@@ -2599,16 +2610,21 @@ def batch_norm(input,
         inputs['MomemtumTensor'] = momentum
     else:
         attrs['momentum'] = momentum
+
+    outputs = {
+        "Y": batch_norm_out,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out,
+        "SavedMean": saved_mean,
+        "SavedVariance": saved_variance
+    }
+    if reserve_space is not None:
+        outputs["ReserveSpace"] = reserve_space
+
     helper.append_op(
         type="batch_norm",
         inputs=inputs,
-        outputs={
-            "Y": batch_norm_out,
-            "MeanOut": mean_out,
-            "VarianceOut": variance_out,
-            "SavedMean": saved_mean,
-            "SavedVariance": saved_variance
-        },
+        outputs=outputs,
         attrs=attrs)
 
     return helper.append_activation(batch_norm_out)
