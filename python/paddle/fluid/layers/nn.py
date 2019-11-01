@@ -221,7 +221,8 @@ def fc(input,
        bias_attr=None,
        act=None,
        is_test=False,
-       name=None):
+       name=None,
+       test_flag=None):
     """
     **Fully Connected Layer**
 
