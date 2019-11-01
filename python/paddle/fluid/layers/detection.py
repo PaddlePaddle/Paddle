@@ -3160,9 +3160,9 @@ def locality_aware_nms(bboxes,
                        name=None):
     """
     **Local Aware NMS**
-
-    This operator is to do locality-aware non maximum suppression (LANMS) on
-    boxes and scores.
+    
+    `Local Aware NMS <https://arxiv.org/abs/1704.03155>`_ is to do locality-aware non maximum
+    suppression (LANMS) on boxes and scores.
 
     Firstly, this operator merge box and score according their IOU
     (intersection over union). In the NMS step, this operator greedily selects a
