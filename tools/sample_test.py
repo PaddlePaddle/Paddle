@@ -69,13 +69,11 @@ def check_indent(cdline):
 
 
 # srccom: raw comments in the source,including ''' and original indent
-
-
 def sampcd_extract_and_run(srccom,
                            name,
                            htype="def",
                            hname="",
-                           show_details=False):
+                           python_version="3"):
     """
     Extract and run sample codes from source comment and
     the result will be returned.
@@ -105,8 +103,6 @@ def sampcd_extract_and_run(srccom,
         name(str): the name of the API.
         htype(str): the type of hint banners, def/class/method.
         hname(str): the name of the hint  banners , e.t. def hname.
-        show_details(bool):  Set it to False to print wrong sample
-                             codes only.
 
     Returns:
         list: the status code of all the sample codes found in srccom.
@@ -193,17 +189,20 @@ def sampcd_extract_and_run(srccom,
             tfname = name + "_example_" + str(y) + ".py"
         else:
             tfname = name + "_example" + ".py"
-
         tempf = open("samplecode_temp/" + tfname, 'w')
         tempf.write(sampcd)
         tempf.close()
-
-        cmd = ["python3", "samplecode_temp/" + tfname]
+        if python_version == '2':
+            cmd = ["python", "samplecode_temp/" + tfname]
+        elif python_version == '3':
+            cmd = ["python3", "samplecode_temp/" + tfname]
+        else:
+            print("fail to parse python version!")
+            exit(1)
 
         subprc = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, error = subprc.communicate()
-
         msg = "".join(output.decode(encoding='utf-8'))
         err = "".join(error.decode(encoding='utf-8'))
 
@@ -219,11 +218,6 @@ def sampcd_extract_and_run(srccom,
         # It works!
         else:
             status.append(0)
-            if show_details:
-                sampcd_header_print(name, sampcd, htype, hname)
-                print("subprocess return code: ", str(subprc.returncode))
-                print("status code for all sample codes in ", name, " : ",
-                      str(status))
         # msg is the returned code execution report
         os.remove("samplecode_temp/" + tfname)
     return status
@@ -287,11 +281,7 @@ def print_header(htype, name):
     print("-----------------------")
 
 
-def show_alllist(alllist):
-    print("__all__:", str(alllist), "\n")
-
-
-def srccoms_extract(srcfile, status_all, wlist, show_details):
+def srccoms_extract(srcfile, status_all, wlist, python_version):
     """
     Given a source file ``srcfile``, this function will
     extract its API(doc comments) and run sample codes in the
@@ -301,8 +291,7 @@ def srccoms_extract(srcfile, status_all, wlist, show_details):
         srcfile(file): the source file
         status_all(dict): record all the sample code execution states.
         wlist(list): white list
-        show_details(bool): if show_details is True, the whole process will be printed for you
-        to debug it locally
+        python_version: python version to run the check program.
 
     Returns:
 
@@ -318,42 +307,26 @@ def srccoms_extract(srcfile, status_all, wlist, show_details):
     srcfile.seek(0, 0)
     srcls = srcfile.readlines()  # source lines
 
-    if show_details:
-        print("source file name:", srcfile.name)
-        print("---------------------------------------------------")
-
     # 1. fetch__all__ list
     allidx = srcc.find("__all__")
 
     if allidx != -1:
-
         alllist = []
-
         # get all list for layers/ops.py
         if srcfile.name.find("ops.py") != -1:
-
             for ai in range(0, len(srcls)):
-
                 if srcls[ai].startswith("__all__"):
-
                     lb = srcls[ai].find('[')
                     rb = srcls[ai].find(']')
                     if lb == -1:
                         continue
                     allele = srcls[ai][lb + 1:rb].replace("'", '').replace(
                         " ", '').replace("\"", '')
-
                     alllist.append(allele)
-
             if '' in alllist:
                 alllist.remove('')
-
-            if show_details:
-                show_alllist(alllist)
-
         else:
             alllist_b = allidx + len("__all__")
-
             allstr = srcc[alllist_b + srcc[alllist_b:].find("[") + 1:alllist_b +
                           srcc[alllist_b:].find("]")]
             allstr = allstr.replace("\n", '').replace(" ", '').replace(
@@ -361,82 +334,48 @@ def srccoms_extract(srcfile, status_all, wlist, show_details):
             alllist = allstr.split(',')
             if '' in alllist:
                 alllist.remove('')
-
-            if show_details:
-                show_alllist(alllist)
-
         api_alllist_count = len(alllist)
         api_count = 0
-
         handled = []
 
         # get src contents in layers/ops.py
         if srcfile.name.find("ops.py") != -1:
-
             for i in range(0, len(srcls)):
-
                 if srcls[i].find("__doc__") != -1:
-
                     opname = srcls[i][:srcls[i].find("__doc__") - 1]
-
                     if opname in wlist:
-
                         status_all[srcfile.name + '/' + opname] = [-2]
-
-                        if show_details:
-                            print_header("def", opname)
-                            print(opname, " is in white list, thus skipped")
-                            print(status_all[srcfile.name + '/' + opname])
-
                         continue
-
                     comstart = i
                     for j in range(i, len(srcls)):
                         if srcls[j].find("\"\"\"") != -1:
                             comstart = i
-
                     opcom = ""
                     for j in range(comstart + 1, len(srcls)):
                         opcom += srcls[j]
                         if srcls[j].find("\"\"\"") != -1:
                             break
-
                     status = sampcd_extract_and_run(opcom, opname, "def",
-                                                    opname, show_details)
+                                                    opname, python_version)
                     api_count += 1
                     status_all[srcfile.name + '/' + opname] = status
-
                     handled.append(
                         opname)  # ops.py also has normal formatted functions
                     # use list 'handled'  to mark the functions have been handled here
                     # which will be ignored in the following step
 
         for i in range(0, len(srcls)):
-
             if srcls[i].startswith(
                     'def '):  # a function header is detected in line i
-
                 f_header = srcls[i].replace(" ", '')
                 fn = f_header[len('def'):f_header.find('(')]  # function name
-
                 if fn in handled:
                     continue
-
                 if fn in alllist:
-
                     api_count += 1
-
                     if fn in wlist or fn + "@" + srcfile.name in wlist:
-
                         status_all[srcfile.name + '/' + fn] = [-2]
-
-                        if show_details:
-                            print_header("def", fn)
-                            print(fn, " is in white list, thus skipped")
-                            print(status_all[srcfile.name + '/' + fn])
-
                         continue
-
                     fcombody = single_defcom_extract(i, srcls)
                     if fcombody == "":  # if no comment
                         print_header("def", fn)
@@ -444,61 +383,36 @@ def srccoms_extract(srcfile, status_all, wlist, show_details):
                               ", but it deserves.")
                         status_all[srcfile.name + '/' + fn] = [-1]
                         print(status_all[srcfile.name + '/' + fn])
-
                         continue
                     else:
                         status = sampcd_extract_and_run(fcombody, fn, "def", fn,
-                                                        show_details)
+                                                        python_version)
                         status_all[srcfile.name + '/' + fn] = status
-
-                else:
-                    if show_details:
-                        print_header("def", fn)
-                        print(fn, " not in __all__ list")
-
             if srcls[i].startswith('class '):
-
                 c_header = srcls[i].replace(" ", '')
                 cn = c_header[len('class'):c_header.find('(')]  # class name
-
                 if cn in handled:
                     continue
-
                 if cn in alllist:
-
                     api_count += 1
-
                     if cn in wlist or cn + "@" + srcfile.name in wlist:
-
                         status_all[srcfile.name + '/' + cn] = [-2]
-
-                        if show_details:
-                            print(cn, " is in white list, thus skipped")
-
-                            print(status_all[srcfile.name + '/' + cn])
-
                         continue
-
                     # class comment
                     classcom = single_defcom_extract(i, srcls, True)
-
                     if classcom != "":
-
                         status = sampcd_extract_and_run(classcom, cn, "class",
-                                                        cn, show_details)
+                                                        cn, python_version)
                         status_all[srcfile.name + '/' + cn] = status
-
                     else:
                         print("WARNING: no comments in class itself ", cn,
                               ", but it deserves.\n")
                         status_all[srcfile.name + '/' + cn] = [-1]
                         print(status_all[srcfile.name + '/' + cn])
-
                     # handling methods in class bodies
                     for x in range(
                             i + 1,
                             len(srcls)):  # from the next line of class header
-
                         if (srcls[x].startswith('def ') or
                                 srcls[x].startswith('class ')):
                             break
@@ -507,38 +421,18 @@ def srccoms_extract(srcfile, status_all, wlist, show_details):
                             srcls[x] = srcls[x].replace('\t', '    ')
                             if (srcls[x].startswith(
                                     '    def ')):  # detect a mehtod header..
-
                                 thisl = srcls[x]
                                 indent = len(thisl) - len(thisl.lstrip())
                                 mn = thisl[indent + len('def '):thisl.find(
                                     '(')]  # method name
-
                                 name = cn + "." + mn  # full name
-
                                 if mn.startswith('_'):
-
-                                    if show_details:
-                                        print(
-                                            mn,
-                                            " is hidden, not visible to users\n")
-
                                     continue
-
                                 if name in wlist or name + "@" + srcfile.name in wlist:
-
                                     status_all[srcfile.name + '/' + name] = [-2]
-
-                                    if show_details:
-                                        print(name,
-                                              " is in white list, thus skipped")
-                                        print(status_all[srcfile.name + '/' +
-                                                         name])
-
                                     continue
-
                                 thismethod = [thisl[indent:]
                                               ]  # method body lines
-
                                 # get all the lines of a single method body
                                 # into thismethod(list)
                                 # and send it to single_defcom_extract
@@ -553,41 +447,24 @@ def srccoms_extract(srcfile, status_all, wlist, show_details):
                                         break
                                     else:
                                         thismethod.append(srcls[y][indent:])
-
                                 thismtdcom = single_defcom_extract(0,
                                                                    thismethod)
-
                                 if thismtdcom != "":
                                     status = sampcd_extract_and_run(
                                         thismtdcom, name, "method", name,
-                                        show_details)
+                                        python_version)
                                     status_all[srcfile.name + '/' +
                                                name] = status
-
-                                else:
-
-                                    if show_details:
-                                        print("no comments in method ", name,
-                                              "\n")
-                                        status_all[srcfile.name + '/' +
-                                                   name] = [-1]
-                                        print(status_all[srcfile.name + '/' +
-                                                         name])
-
-                else:
-                    if show_details:
-                        print(cn, " is not in __all__ list")
-
     return [
         srcfile.name + " all list length: " + str(api_alllist_count),
         "analysed api count: " + str(api_count)
     ]
 
 
-def test(file_list):
+def test(file_list, python_version):
     for file in file_list:
         src = open(file, 'r')
-        counts = srccoms_extract(src, status_all, wlist, show_details)
+        counts = srccoms_extract(src, status_all, wlist, python_version)
         src.close()
 
 
@@ -597,32 +474,46 @@ Important constant lists:
     filenames : the modules pending for check .
     wlist : a list of API that should not trigger the example check .
             It is composed of wlist_temp + wlist_inneed + wlist_ignore.
-    show_details: a boolean value to indicate whether it should be run
-                  in debugging mode.
     status_all: a status list containing all the execution status of all
                 APIs
     srcfile: the source .py code file
 '''
 
 filenames = [
-    "layers/control_flow.py", "layers/io.py", "layers/nn.py", "layers/ops.py",
-    "layers/tensor.py", "layers/learning_rate_scheduler.py",
-    "layers/detection.py", "layers/metric_op.py"
+    "../python/paddle/fluid/layers/control_flow.py",
+    "../python/paddle/fluid/layers/io.py",
+    "../python/paddle/fluid/layers/nn.py",
+    "../python/paddle/fluid/layers/ops.py",
+    "../python/paddle/fluid/layers/tensor.py",
+    "../python/paddle/fluid/layers/learning_rate_scheduler.py",
+    "../python/paddle/fluid/layers/detection.py",
+    "../python/paddle/fluid/layers/metric_op.py"
 ]
 filenames += [
-    "dygraph/layers.py", "dygraph/base.py", "dygraph/nn.py",
-    "dygraph/tracer.py", "dygraph/profiler.py", "dygraph/parallel.py",
-    "dygraph/checkpoint.py", "dygraph/learning_rate_scheduler.py",
-    "dygraph/backward_strategy.py"
+    "../python/paddle/fluid/dygraph/layers.py",
+    "../python/paddle/fluid/dygraph/base.py",
+    "../python/paddle/fluid/dygraph/nn.py",
+    "../python/paddle/fluid/dygraph/tracer.py",
+    "../python/paddle/fluid/dygraph/profiler.py",
+    "../python/paddle/fluid/dygraph/parallel.py",
+    "../python/paddle/fluid/dygraph/checkpoint.py",
+    "../python/paddle/fluid/dygraph/learning_rate_scheduler.py",
+    "../python/paddle/fluid/dygraph/backward_strategy.py"
 ]
-
 filenames += [
-    "data_feeder.py", "dataset.py", "clip.py", "metrics.py", "executor.py",
-    "initializer.py", "io.py", "nets.py", "optimizer.py", "profiler.py",
-    "regularizer.py", "backward.py", "average.py", "unique_name.py",
-    "framework.py", "evaluator.py", "param_attr.py"
+    "../python/paddle/fluid/data_feeder.py",
+    "../python/paddle/fluid/dataset.py", "../python/paddle/fluid/clip.py",
+    "../python/paddle/fluid/metrics.py", "../python/paddle/fluid/executor.py",
+    "../python/paddle/fluid/initializer.py", "../python/paddle/fluid/io.py",
+    "../python/paddle/fluid/nets.py", "../python/paddle/fluid/optimizer.py",
+    "../python/paddle/fluid/profiler.py",
+    "../python/paddle/fluid/regularizer.py",
+    "../python/paddle/fluid/backward.py", "../python/paddle/fluid/average.py",
+    "../python/paddle/fluid/unique_name.py",
+    "../python/paddle/fluid/framework.py",
+    "../python/paddle/fluid/evaluator.py",
+    "../python/paddle/fluid/param_attr.py"
 ]
-
 wlist_inneed = [
     "append_LARS", "BuildStrategy.debug_graphviz_path",
     "BuildStrategy.enable_sequential_execution",
@@ -654,7 +545,6 @@ wlist_inneed = [
     'StaticRNN.output', "cuda_places", "CUDAPinnedPlace", "CUDAPlace",
     "Program.parse_from_string"
 ]
-
 wlist_temp = [
     'ChunkEvaluator',
     'EditDistance',
@@ -753,7 +643,6 @@ wlist_ignore = [
     'Precision.update', 'WeightedAverage.eval', 'Conv3D.forward',
     'Embedding.forward', 'Recall.eval', 'FC.forward', 'While.block'
 ]
-
 # only white on CPU
 gpu_not_white = [
     "deformable_conv", "cuda_places", "CUDAPinnedPlace", "CUDAPlace",
@@ -761,19 +650,16 @@ gpu_not_white = [
 ]
 
 wlist = wlist_temp + wlist_inneed + wlist_ignore
+python_version = 3
 
-if len(sys.argv) < 2:
+if len(sys.argv) < 3:
     print("Error: inadequate number of arguments")
     print('''If you are going to run it on 
         "CPU: >>> python sampcd_processor.py cpu
         "GPU: >>> python sampcd_processor.py gpu
         ''')
     sys.exit("lack arguments")
-
 else:
-
-    show_details = False
-
     if sys.argv[1] == "gpu":
         for _gnw in gpu_not_white:
             wlist.remove(_gnw)
@@ -781,31 +667,23 @@ else:
         print("Unrecognized argument:'", sys.argv[1], "' , 'cpu' or 'gpu' is ",
               "desired\n")
         sys.exit("Invalid arguments")
-
-    if len(sys.argv) == 3:
-        if sys.argv[2] == "sd":
-            show_details = True
-        else:
-            print("Unrecognized argument:'", sys.argv[2], "' , 'sd' is ",
-                  "desired\n")
-            sys.exit("Invalid arguments")
-
+    if sys.argv[2] == "2":
+        python_version = 2
+    elif sys.arg[2] == "3":
+        python_version = 3
     print("API check -- Example Code")
-
+    print("sample_test running under python", python_version)
     status_all = {}
-
     # a temp directory to store temporary sample code file
     # subprocess needs a single file to run the code
-
     if not os.path.isdir("./samplecode_temp"):
         os.mkdir("./samplecode_temp")
 
-    one_part_filenum = math.ceil(len(filenames) / 10)
+    one_part_filenum = int(math.ceil(len(filenames) / 10))
     divided_file_list = [
         filenames[i:i + one_part_filenum]
         for i in range(0, len(filenames), one_part_filenum)
     ]
-
     po = multiprocessing.Pool(10)
     for file_list in divided_file_list:
         po.apply_async(test, (file_list, ))
@@ -816,50 +694,28 @@ else:
     for root, dirs, files in os.walk("./samplecode_temp"):
         for fntemp in files:
             os.remove("./samplecode_temp/" + fntemp)
-
     os.rmdir("./samplecode_temp")
 
     status_groups = {-2: [], -1: [], 0: [], 1: [], 2: [], 3: []}
 
     ci_pass = True
-
     for key in status_all:
         statusl = status_all[key]
         for ele in statusl:
             if ele != 0 and ele != -2 and ele != -1:
                 ci_pass = False
                 break
-
         if len(statusl) == 1:
             status_groups[statusl[0]].append(key)
         else:
             for u in range(0, len(statusl)):
                 status_groups[statusl[u]].append(key + '_' + str(u + 1))
-
-    print(
-        "\n\n------------------End of the Check-------------------------------------------\n\n"
-    )
-
+    print("----------------End of the Check--------------------")
     errorapisl = status_groups[1] + status_groups[2] + status_groups[3]
     if len(errorapisl) > 0:
         print("Error raised from: ", str(errorapisl))
-
     if not ci_pass:
         print("Mistakes found in sample codes")
-        print('''
-- NOTE:
-
-    Please ensure your are using 
-
-        .. code-block:: python 
-
-            [sample code starts here]
-
-    ONLY 1 BLANKSPACE between '::' and 'python'
-
-              ''')
-
         exit(1)
     else:
-
         print("Sample code check is successful!")
