@@ -179,7 +179,7 @@ class PostTrainingQuantization(object):
         self._data_loader.set_sample_generator(
             self._data_reader,
             batch_size=self._batch_size,
-            drop_last=False,
+            drop_last=True,
             places=self._place)
 
         #collect the variable names for sampling
