@@ -63,19 +63,14 @@ def crop_image(img, target_size, center):
 
 def process_image(sample, mode, color_jitter, rotate):
     img_path = sample[0]
-
     img = Image.open(img_path)
-
     img = resize_short(img, target_size=256)
     img = crop_image(img, target_size=DATA_DIM, center=True)
-
     if img.mode != 'RGB':
         img = img.convert('RGB')
-
     img = np.array(img).astype('float32').transpose((2, 0, 1)) / 255
     img -= img_mean
     img /= img_std
-
     return img, sample[1]
 
 
@@ -90,7 +85,6 @@ def _reader_creator(file_list,
             full_lines = [line.strip() for line in flist]
             if shuffle:
                 np.random.shuffle(full_lines)
-
             lines = full_lines
 
             for line in lines:
@@ -197,40 +191,14 @@ class TestPostTrainingQuantization(unittest.TestCase):
     def download_model(self):
         pass
 
-    def run_program(self, model_path, generate_int8=False, algo="KL"):
+    def run_program(self, model_path):
         image_shape = [3, 224, 224]
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        scope = fluid.global_scope()
         [infer_program, feed_dict, fetch_targets] = \
             fluid.io.load_inference_model(model_path, exe)
         val_reader = paddle.batch(val(), self.batch_size)
         iterations = self.infer_iterations
-
-        if generate_int8:
-            self.int8_model = os.path.join(os.getcwd(),
-                                           "post_training_" + self.timestamp)
-            iterations = self.sample_iterations
-            try:
-                os.system("mkdir " + self.int8_model)
-            except Exception as e:
-                print("Failed to create {} due to {}".format(self.int8_model,
-                                                             str(e)))
-                sys.exit(-1)
-
-            quantizable_op_type = [
-                "conv2d", "depthwise_conv2d", "mul", "pool2d", "elementwise_add"
-            ]
-            ptq = PostTrainingQuantization(
-                place=place,
-                executor=exe,
-                scope=scope,
-                program=infer_program,
-                feed_var_names=feed_dict,
-                fetch_list=fetch_targets,
-                save_model_path=self.int8_model,
-                algo=algo,
-                quantizable_op_type=quantizable_op_type)
 
         test_info = []
         cnt = 0
@@ -251,9 +219,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
             period = t2 - t1
             periods.append(period)
 
-            if generate_int8:
-                ptq.sample_data()
-
             test_info.append(np.mean(acc1) * len(data))
             cnt += len(data)
 
@@ -263,13 +228,38 @@ class TestPostTrainingQuantization(unittest.TestCase):
             if (batch_id + 1) == iterations:
                 break
 
-        if generate_int8:
-            ptq.save_quant_model()
-        else:
-            throughput = cnt / np.sum(periods)
-            latency = np.average(periods)
-            acc1 = np.sum(test_info) / cnt
-            return (throughput, latency, acc1)
+        throughput = cnt / np.sum(periods)
+        latency = np.average(periods)
+        acc1 = np.sum(test_info) / cnt
+        return (throughput, latency, acc1)
+
+    def generate_quantized_model(self, model_path, algo="KL"):
+        self.int8_model = os.path.join(os.getcwd(),
+                                       "post_training_" + self.timestamp)
+        try:
+            os.system("mkdir " + self.int8_model)
+        except Exception as e:
+            print("Failed to create {} due to {}".format(self.int8_model,
+                                                         str(e)))
+            sys.exit(-1)
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        scope = fluid.global_scope()
+        val_reader = val()
+        quantizable_op_type = [
+            "conv2d", "depthwise_conv2d", "mul", "pool2d", "elementwise_add"
+        ]
+
+        ptq = PostTrainingQuantization(
+            executor=exe,
+            scope=scope,
+            model_path=model_path,
+            data_reader=val_reader,
+            algo=algo,
+            quantizable_op_type=quantizable_op_type)
+        ptq.quantize_model()
+        ptq.save_quantized_model(self.int8_model)
 
 
 class TestPostTrainingForResnet50(TestPostTrainingQuantization):
@@ -284,8 +274,9 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
         self.model = "ResNet-50"
         self.algo = "KL"
 
-    def test_resnet50(self):
+    def test_post_training_resnet50(self):
         self.download_model()
+
         print("Start FP32 inference for {0} on {1} images ...".format(
             self.model, self.infer_iterations * self.batch_size))
         (fp32_throughput, fp32_latency,
@@ -293,8 +284,8 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
 
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(self.model, self.sample_iterations * self.batch_size))
-        self.run_program(
-            self.model_cache_folder + "/model", True, algo=self.algo)
+        self.generate_quantized_model(
+            self.model_cache_folder + "/model", algo=self.algo)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
             self.model, self.infer_iterations * self.batch_size))
@@ -327,8 +318,9 @@ class TestPostTrainingForMobilenetv1(TestPostTrainingQuantization):
         self.model = "MobileNet-V1"
         self.algo = "KL"
 
-    def test_mobilenetv1(self):
+    def test_post_training_mobilenetv1(self):
         self.download_model()
+
         print("Start FP32 inference for {0} on {1} images ...".format(
             self.model, self.infer_iterations * self.batch_size))
         (fp32_throughput, fp32_latency,
@@ -336,8 +328,8 @@ class TestPostTrainingForMobilenetv1(TestPostTrainingQuantization):
 
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(self.model, self.sample_iterations * self.batch_size))
-        self.run_program(
-            self.model_cache_folder + "/model", True, algo=self.algo)
+        self.generate_quantized_model(
+            self.model_cache_folder + "/model", algo=self.algo)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
             self.model, self.infer_iterations * self.batch_size))
