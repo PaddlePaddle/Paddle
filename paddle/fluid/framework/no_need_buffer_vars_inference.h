@@ -80,8 +80,6 @@ class NoNeedBufferVarsInference {
   }
 };
 
-class NoNeedBufferVarsInferenceWithContext {};
-
 #define DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(class_type, ...)        \
   class class_type final                                              \
       : public ::paddle::framework::NoNeedBufferVarsInference {       \
