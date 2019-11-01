@@ -26,7 +26,7 @@ from . import unique_name
 from .backward import append_backward, _some_in_set_, _append_grad_suffix_
 from .clip import append_gradient_clip_ops, error_clip_callback
 from .framework import program_guard
-from .framework import Variable, OpProtoHolder, in_dygraph_mode, _dygraph_tracer, _current_expected_place, _var_base_to_np, default_main_program
+from .framework import in_dygraph_mode
 from .initializer import Constant
 from .layer_helper import LayerHelper
 from .layers import ops
@@ -531,13 +531,13 @@ class Optimizer(object):
                     continue
                 if param._ivar._grad_ivar() is not None:
                     # create gradient variable
-                    grad_var = Variable(
-                        #block=loss.block,
-                        block=param.block,
-                        name=param._ivar._grad_name(),
-                        stop_gradient=True,
-                        ivar=param._ivar._grad_ivar())
-                    params_grads.append((param, grad_var))
+                    # grad_var = Variable(
+                    #     #block=loss.block,
+                    #     block=param.block,
+                    #     name=param._ivar._grad_name(),
+                    #     stop_gradient=True,
+                    #     ivar=param._ivar._grad_ivar())
+                    params_grads.append((param, param._ivar._grad_ivar()))
         else:
             if callbacks is None:
                 callbacks = [error_clip_callback]
@@ -765,15 +765,11 @@ class SGDOptimizer(Optimizer):
             }
             out = param_and_grad[0]._ivar if isinstance(
                 param_and_grad[0], Variable) else param_and_grad[0]
-            out_names = {'ParamOut': [param_and_grad[0].name]}
-            outs = core.ops.sgd(_dygraph_tracer(), inputs, attrs,
-                                _current_expected_place(), {}, trace_backward,
-                                {'ParamOut': [out]})
+            outs = core.ops.sgd(inputs, attrs, {'ParamOut': [out]})
             param_and_grad[0]._ivar = outs['ParamOut'][0]
             return outs['ParamOut'][0]
-            # TODO(cql): activation
 
-        # create the optimize op
+# create the optimize op
         sgd_op = block.append_op(
             type=self.type,
             inputs={
@@ -1535,7 +1531,30 @@ class AdamOptimizer(Optimizer):
                                               param_and_grad[0])
         beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                               param_and_grad[0])
-
+        if framework.in_dygraph_mode():
+            inputs = {
+                "Param": [param_and_grad[0]._ivar],
+                "Grad": [param_and_grad[1]],
+                "LearningRate": [self._create_param_lr(param_and_grad)._ivar],
+                "Moment1": [moment1._ivar],
+                "Moment2": [moment2._ivar],
+                "Beta1Pow": [beta1_pow_acc._ivar],
+                "Beta2Pow": [beta2_pow_acc._ivar]
+            }
+            attrs = {
+                "beta1": self._beta1,
+                "beta2": self._beta2,
+                "epsilon": self._epsilon,
+                "lazy_mode": self._lazy_mode,
+                "min_row_size_to_use_multithread": 1000
+            }
+            outputs = {
+                "ParamOut": [param_and_grad[0]._ivar],
+                "Moment1Out": [moment1._ivar],
+                "Moment2Out": [moment2._ivar]
+            }
+            core.ops.adam(inputs, attrs, outputs)
+            return None
         # create the adam optimize op
         adam_op = block.append_op(
             type=self.type,

@@ -258,7 +258,7 @@ class GradClipByGlobalNorm(GradClipBase):
     def _clip(self, para_and_grad):
 
         out = []
-
+        # para is Variable and grad is ivar now
         norm_arr = []
         for p, g in para_and_grad:
             if g is None:

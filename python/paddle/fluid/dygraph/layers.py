@@ -177,9 +177,9 @@ class Layer(core.Layer):
                 if parallel_helper._is_data_parallel_mode():
                     parallel_helper._broadcast_parameters(
                         self._parameters.values())
+            self._built = True
 
         outputs = self.forward(*inputs, **kwargs)
-        self._built = True
         return outputs
 
     def forward(self, *inputs, **kwargs):

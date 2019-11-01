@@ -19,8 +19,8 @@ from six.moves import reduce
 from .. import core
 from ..layers import utils
 from . import layers
-from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, _current_expected_place, _var_base_to_np, default_main_program
 from ..param_attr import ParamAttr
+from ..framework import Variable
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
 import logging
@@ -233,6 +233,39 @@ class Conv2D(layers.Layer):
         self._bias_param = value
 
     def forward(self, input):
+        inputs = {
+            'Input': [input],
+            'Filter': [self._filter_param._ivar],
+        }
+        attrs = {
+            'strides': self._stride,
+            'paddings': self._padding,
+            'dilations': self._dilation,
+            'groups': self._groups if self._groups else 1,
+            'use_cudnn': self._use_cudnn,
+            'use_mkldnn': False,
+        }
+        outs = core.ops.conv2d(inputs, attrs)
+        pre_bias = outs['Output'][0]
+
+        if self._bias_param is not None:
+            inputs = {
+                'X': [pre_bias],
+                'Y': [self._bias_param._ivar],
+            }
+            outs = core.ops.elementwise_add(inputs, {'axis': 1})
+            pre_act = outs['Out'][0]
+        else:
+            pre_act = pre_bias
+
+        if self._act is None:
+            return pre_act
+        else:
+            op = getattr(core.ops, self._act)
+            outs = op({'X': [pre_act]})
+            return outs['Out'][0]
+
+        # original
         pre_bias = self._helper.create_variable_for_type_inference(
             dtype=self._dtype)
 
@@ -897,6 +930,22 @@ class Pool2D(layers.Layer):
         self._l_type = 'pool2d'
 
     def forward(self, input):
+        attrs = {
+            "pooling_type": self._pool_type,
+            "ksize": self._pool_size,
+            "global_pooling": self._global_pooling,
+            "strides": self._pool_stride,
+            "paddings": self._pool_padding,
+            "use_cudnn": self._use_cudnn,
+            "ceil_mode": self._ceil_mode,
+            "use_mkldnn": False,
+            "exclusive": self._exclusive,
+        }
+        inputs = {'X': [input]}
+        outs = core.ops.pool2d(inputs, attrs)
+        return outs['Out'][0]
+
+        # original
         pool_out = self._helper.create_variable_for_type_inference(self._dtype)
 
         self._helper.append_op(
@@ -1089,6 +1138,46 @@ class FC(layers.Layer):
         self._b = value
 
     def forward(self, input):
+        i = 0
+        mul_results = list()
+        for inp, param in self._helper.iter_inputs_and_params(input,
+                                                              self._param_attr):
+            attrs = {
+                "x_num_col_dims": self._num_flatten_dims,
+                "y_num_col_dims": 1
+            }
+            inputs = {'X': [inp], 'Y': [self.__w[i]._ivar]}
+            outs = core.ops.mul(inputs, attrs)
+            tmp = outs['Out'][0]
+            i += 1
+            mul_results.append(tmp)
+
+        if len(mul_results) == 1:
+            pre_bias = mul_results[0]
+        else:
+            inputs = {'X': mul_results}
+            outs = core.ops.sum(inouts, {"use_mkldnn": False})
+            pre_bias = outs['Out'][0]
+        if self._b:
+            inputs = {
+                'X': [pre_bias],
+                'Y': [self._b._ivar],
+            }
+            outs = core.ops.elementwise_add(inputs,
+                                            {'axis': self._num_flatten_dims})
+            pre_act = outs['Out'][0]
+        else:
+            pre_act = pre_bias
+
+        if self._act is None:
+            return pre_act
+        else:
+            op = getattr(core.ops, self._act)
+            inuts = {'X': [pre_act]}
+            outs = op(inputs)
+            return outs['Out'][0]
+
+        # original
         mul_results = list()
         i = 0
         for inp, param in self._helper.iter_inputs_and_params(input,
@@ -1503,13 +1592,19 @@ class Embedding(layers.Layer):
             'remote_prefetch': self._remote_prefetch,
             'padding_idx': self._padding_idx
         }
-        trace_backward = _dygraph_tracer()._train_mode
-        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
         w = self._w._ivar if isinstance(self._w, Variable) else self._w
-        outs = core.ops.lookup_table(
-            _dygraph_tracer(), {'Ids': [input],
-                                'W': [w]}, attrs,
-            _current_expected_place(), out_names, trace_backward, {})
+        outs = core.ops.lookup_table({'Ids': [input], 'W': [w]}, attrs)
+        return outs['Out'][0]
+
+        # original
+        attrs = {
+            'is_sparse': self._is_sparse,
+            'is_distributed': self._is_distributed,
+            'remote_prefetch': self._remote_prefetch,
+            'padding_idx': self._padding_idx
+        }
+        w = self._w._ivar if isinstance(self._w, Variable) else self._w
+        outs = core.ops.lookup_table({'Ids': [input], 'W': [w]}, attrs)
         return outs['Out'][0]
 
         out = self._helper.create_variable_for_type_inference(self._dtype)

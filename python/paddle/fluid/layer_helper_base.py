@@ -73,6 +73,8 @@ class LayerHelperBase(object):
         elif isinstance(value, Variable):
             #return value
             return value._ivar
+        elif isinstance(value, core.VarBase):
+            return value
 
     def _create_weight_normalize(self, attr, shape, dtype):
         from .layers import elementwise_mul, elementwise_div, reshape

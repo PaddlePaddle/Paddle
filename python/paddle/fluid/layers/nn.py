@@ -617,12 +617,7 @@ def embedding(input,
             'remote_prefetch': remote_prefetch,
             'padding_idx': padding_idx
         }
-        trace_backward = _dygraph_tracer()._train_mode
-        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
-        outs = core.ops.lookup_table(
-            _dygraph_tracer(), {'Ids': [input],
-                                'W': [w]}, attrs,
-            _current_expected_place(), out_names, trace_backward, {})
+        outs = core.ops.lookup_table({'Ids': [input], 'W': [w]}, attrs)
         return outs['Out'][0]
 
     helper = LayerHelper('embedding', **locals())
@@ -1834,11 +1829,7 @@ def dropout(x,
             'seed': seed if seed is not None else 0,
             'dropout_implementation': dropout_implementation,
         }
-        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
-        trace_backward = _dygraph_tracer()._train_mode
-        outs = core.ops.dropout(_dygraph_tracer(), {'X': [x]}, attrs,
-                                _current_expected_place(), out_names,
-                                trace_backward, {})
+        outs = core.ops.dropout({'X': [x]}, attrs)
         return outs['Out'][0]
 
     helper = LayerHelper('dropout', **locals())
@@ -1928,6 +1919,14 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
             predict = fluid.layers.fc(input=x, size=class_num, act='softmax')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
+    if in_dygraph_mode():
+        if not soft_label:
+            return cross_entropy2(input, label, ignore_index)
+        inputs = {'X': [input], 'Label': [label]}
+        attrs = {"soft_label": soft_label, "ignore_index": ignore_index}
+        outs = core.ops.cross_entropy(inputs, attrs)
+        return outs['Y'][0]
+
     if not isinstance(input, Variable):
         raise TypeError(
             "The type of 'input' in cross_entropy must be Variable, but received %s"
@@ -1956,6 +1955,12 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
 
 
 def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
+    if in_dygraph_mode():
+        inputs = {'X': [input], 'Label': [label]}
+        attrs = {"ignore_index": ignore_index}
+        outs = core.ops.cross_entropy2(inputs, attrs)
+        return outs['Y'][0]
+
     helper = LayerHelper('cross_entropy2', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     xshape = helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -6313,11 +6318,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         }
-        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
-        trace_backward = _dygraph_tracer()._train_mode
-        outs = core.ops.reduce_sum(_dygraph_tracer(), {'X': [input]}, attrs,
-                                   _current_expected_place(), out_names,
-                                   trace_backward, {})
+        outs = core.ops.reduce_sum({'X': [input]}, attrs)
         return outs['Out'][0]
 
     helper = LayerHelper('reduce_sum', **locals())
@@ -6402,11 +6403,7 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             'keep_dim': keep_dim,
             'reduce_all': True if dim == None else False
         }
-        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
-        trace_backward = _dygraph_tracer()._train_mode
-        outs = core.ops.reduce_mean(_dygraph_tracer(), {'X': [input]}, attrs,
-                                    _current_expected_place(), out_names,
-                                    trace_backward, {})
+        outs = core.ops.reduce_mean({'X': [input]}, attrs)
         return outs['Out'][0]
 
     helper = LayerHelper('reduce_mean', **locals())
@@ -6797,14 +6794,7 @@ def split(input, num_or_sections, dim=-1, name=None):
             if isinstance(num_or_sections, list) else [],
             'axis': dim
         }
-        out_names = {
-            'Out':
-            [unique_name.generate_with_ignorable_key() for i in range(num)]
-        }
-        trace_backward = _dygraph_tracer()._train_mode
-        outs = core.ops.split(_dygraph_tracer(), {'X': [input]}, attrs,
-                              _current_expected_place(), out_names,
-                              trace_backward, {})
+        outs = core.ops.split({'X': [input]}, attrs, {}, {'Out': num})
         return outs['Out']
 
     if not isinstance(num_or_sections, (int, list, tuple)):
@@ -7043,12 +7033,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         }
         x = x if isinstance(x, list) else [x]
         y = y if isinstance(y, list) else [y]
-        trace_backward = _dygraph_tracer()._train_mode
-        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
-        outs = core.ops.matmul(_dygraph_tracer(), {'X': x,
-                                                   'Y': y}, attrs,
-                               _current_expected_place(), out_names,
-                               trace_backward, {})
+        outs = core.ops.matmul({'X': x, 'Y': y}, attrs)
         return outs['Out'][0]
 
     def __check_input(x, y):
@@ -7183,6 +7168,17 @@ def topk(input, k, name=None):
             vk_values, vk_indices = layers.topk(input2, k=vk) #vk_values.shape=[None, 13, k], vk_indices.shape=[None, 13, k]
 
     """
+    if in_dygraph_mode():
+        inputs = {"X": [input]}
+        attrs = {}
+        if isinstance(k, core.VarBase):
+            inputs['K'] = k
+        else:
+            attrs = {'k': k}
+        outs = core.ops.top_k(inputs, attrs)
+        outs['Out'][0].stop_gradient = True
+        outs['Indices'][0].stop_gradient = True
+        return outs['Out'][0], outs['Indices'][0]
     helper = LayerHelper("top_k", **locals())
     values = helper.create_variable_for_type_inference(dtype=input.dtype)
     indices = helper.create_variable_for_type_inference(dtype="int64")
@@ -8106,14 +8102,7 @@ def transpose(x, perm, name=None):
     """
     if in_dygraph_mode():
         attrs = {'axis': perm}
-        trace_backward = _dygraph_tracer()._train_mode
-        out_names = {
-            'Out': [unique_name.generate_with_ignorable_key()],
-            'XShape': [unique_name.generate_with_ignorable_key()]
-        }
-        outs = core.ops.transpose2(_dygraph_tracer(), {'X': [x]}, attrs,
-                                   _current_expected_place(), out_names,
-                                   trace_backward, {})
+        outs = core.ops.transpose2({'X': [x]}, attrs)
         return outs['Out'][0]
 
     if not isinstance(x, Variable):
@@ -8515,19 +8504,15 @@ def softmax_with_cross_entropy(logits,
             'numeric_stable_mode': numeric_stable_mode,
             'axis': axis
         }
-        trace_backward = _dygraph_tracer()._train_mode
-        out_names = {
-            'Softmax': [unique_name.generate_with_ignorable_key()],
-            'Loss': [unique_name.generate_with_ignorable_key()],
-        }
-        outs = core.ops.softmax_with_cross_entropy(
-            _dygraph_tracer(), {'Logits': [logits],
-                                'Label': [label]}, attrs,
-            _current_expected_place(), out_names, trace_backward, {})
+        outs = core.ops.softmax_with_cross_entropy({
+            'Logits': [logits],
+            'Label': [label]
+        }, attrs)
+
         if return_softmax:
-            return outs['Loss'], outs['Softmax']
+            return outs['Loss'][0], outs['Softmax'][0]
         else:
-            return outs['Loss']
+            return outs['Loss'][0]
 
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
@@ -8997,15 +8982,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
     if in_dygraph_mode():
         inputs = {'X': x}
         attrs = {'shape': shape}
-
-        trace_backward = _dygraph_tracer()._train_mode
-        out_names = {
-            'Out': [unique_name.generate_with_ignorable_key()],
-            'XShape': [unique_name.generate_with_ignorable_key()]
-        }
-        outs = core.ops.reshape2(
-            _dygraph_tracer(), {'X': x if isinstance(x, list) else [x]}, attrs,
-            _current_expected_place(), out_names, trace_backward, {})
+        outs = core.ops.reshape2({'X': [x]}, attrs)
 
         return outs['Out'][0]
         # TODO(cql): refine append_activation
@@ -11395,11 +11372,7 @@ def relu(x, name=None):
 """
     if in_dygraph_mode():
         attrs = {}
-        trace_backward = _dygraph_tracer()._train_mode
-        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
-        outs = core.ops.relu(_dygraph_tracer(), {'X': [x]}, attrs,
-                             _current_expected_place(), out_names,
-                             trace_backward, {})
+        outs = core.ops.relu({'X': [x]})
         return outs['Out'][0]
 
     helper = LayerHelper('relu', **locals())
@@ -13710,13 +13683,7 @@ def slice(input, axes, starts, ends):
             'ends': ends,
             'infer_flags': infer_flags
         }
-
-        trace_backward = _dygraph_tracer()._train_mode
-        input = input if isinstance(input, list) else [input]
-        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
-        outs = core.ops.slice(_dygraph_tracer(), {'Input': input}, attrs,
-                              _current_expected_place(), out_names,
-                              trace_backward, {})
+        outs = core.ops.slice({'Input': [input]}, attrs)
         return outs['Out'][0]
 
     else:
@@ -14263,12 +14230,7 @@ Examples:
             'axis': axis,
             'use_mkldnn': False  # TODO(cql): change this 
         }
-        trace_backward = _dygraph_tracer()._train_mode
-        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
-        outs = core.ops.elementwise_add(
-            _dygraph_tracer(), {'X': [x],
-                                'Y': [y]}, attrs,
-            _current_expected_place(), out_names, trace_backward, {})
+        outs = core.ops.elementwise_add({'X': [x], 'Y': [y]}, attrs)
         return outs['Out'][0]
         # TODO(cql): activation
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
@@ -14353,14 +14315,7 @@ Examples:
             'axis': axis,
             'use_mkldnn': False  # TODO(cql): change this 
         }
-        trace_backward = _dygraph_tracer()._train_mode
-        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
-        x = x._ivar if isinstance(x, Variable) else x
-        y = y._ivar if isinstance(y, Variable) else y
-        outs = core.ops.elementwise_div(
-            _dygraph_tracer(), {'X': [x],
-                                'Y': [y]}, attrs,
-            _current_expected_place(), out_names, trace_backward, {})
+        outs = core.ops.elementwise_div({'X': [x], 'Y': [y]}, attrs)
         return outs['Out'][0]
     return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
@@ -14521,14 +14476,7 @@ Examples:
             'axis': axis,
             'use_mkldnn': False  # TODO(cql): change this 
         }
-        trace_backward = _dygraph_tracer()._train_mode
-        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
-        x = x._ivar if isinstance(x, Variable) else x
-        y = y._ivar if isinstance(y, Variable) else y
-        outs = core.ops.elementwise_mul(
-            _dygraph_tracer(), {'X': [x],
-                                'Y': [y]}, attrs,
-            _current_expected_place(), out_names, trace_backward, {})
+        outs = core.ops.elementwise_mul({'X': [x], 'Y': [y]}, attrs)
         return outs['Out'][0]
         # TODO(cql): activation
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
@@ -14590,14 +14538,7 @@ Examples:
             'axis': axis,
             'use_mkldnn': False  # TODO(cql): change this 
         }
-        trace_backward = _dygraph_tracer()._train_mode
-        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
-        x = x._ivar if isinstance(x, Variable) else x
-        y = y._ivar if isinstance(y, Variable) else y
-        outs = core.ops.elementwise_max(
-            _dygraph_tracer(), {'X': [x],
-                                'Y': [y]}, attrs,
-            _current_expected_place(), out_names, trace_backward, {})
+        outs = core.ops.elementwise_max({'X': [x], 'Y': [y]}, attrs)
         return outs['Out'][0]
     return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
@@ -15145,6 +15086,9 @@ def mean(x, name=None):
                 name='data', shape=[2, 3], dtype='float32')
             mean = fluid.layers.mean(input)
     """
+    if in_dygraph_mode():
+        outs = core.ops.mean({"X": [x]})
+        return outs['Out'][0]
 
     helper = LayerHelper("mean", **locals())
 

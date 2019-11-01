@@ -25,69 +25,48 @@
 
 const int BUFFER_SIZE = 4096;
 
-const char* UNIQUE_NAME_GENERATOR = R"(std::string UniqueName(std::string key){
-  auto now = std::chrono::steady_clock::now();
-  auto count = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-  auto id = std::to_string(count);
-  return key + "_" + id;
-}
-)";
-
-const char* TRACER_TYPE = R"(imperative::Tracer)";
 const char* INPUT_TYPE = R"(imperative::NameVarBaseMap)";
 const char* ARGS_TYPE = R"(framework::AttributeMap)";
 
-const char* CUDA_PLACE_TYPE = R"(platform::CUDAPlace)";
-const char* CPU_PLACE_TYPE = R"(platform::CPUPlace)";
-
-const char* OUT_VAR_NUM_TYPE = R"(std::map<std::string, int>)";
+const char* OUT_VAR_NUM_TYPE = R"(std::map<std::string, size_t>)";
 const char* RETURN_TYPE = R"(imperative::NameVarBaseMap)";
 
 const char* OUTS_INITIALIZER =
     R"({{"out": VarBase("mul_out")}, "XX": VarBase("mul_xx")}})";
 
 const char* OUT_INITIALIZER_TEMPLATE =
-    R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(UniqueName("%s_%s"))) } })";
-
-// const char* VAR_BASE_INITIALIZER_TEMPLATE =
-// R"({std::shared_ptr<imperative::VarBase>(new imperative::VarBase("%s_%s_%d"))
-// })";
+    R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName())) } })";
 
 const char* OP_FUNCTION_TEMPLATE =
-    R"([](%s &tracer, %s &ins, %s &attrs, %s place, const std::map<std::string, std::vector<std::string>> &out_names={}, bool trace_backward=true, %s outs={}) -> %s
-{
-  std::string op_type = "%s";
-
-  if (outs.size() == 0 && out_names.size() != 0) {
-    // unlikely update outs accroding to given out_var_num
-    for (auto &pair : out_names) {
-      for (auto &name : pair.second) {
-        //std::string name = op_type + "_" + pair.first + "_" + std::to_string(i); 
-        outs[pair.first].emplace_back(std::shared_ptr<imperative::VarBase>(new imperative::VarBase(name)));
+    R"([](const imperative::NameVarBaseMap& ins, const framework::AttributeMap& attrs, 
+    imperative::NameVarBaseMap outs, const std::map<std::string, size_t>& out_nums)
+  {
+    auto tracer = imperative::GetCurrentTracer();
+    if (outs.size() == 0) {
+      if (out_nums.size() == 0) {
+        imperative::NameVarBaseMap outs_ = %s;
+        outs = std::move(outs_);
+      } else {
+        for (auto &pair : out_nums) {
+          for (size_t i = 0; i < pair.second; i ++) {
+            auto var_base_name = tracer->GenerateUniqueName();
+            auto out = new imperative::VarBase(var_base_name);
+            outs[pair.first].emplace_back(std::shared_ptr<imperative::VarBase>(out));
+          }
+        }
       }
     }
-  }
-  
-   
-  {
-    py::gil_scoped_release release;
-    tracer.TraceOp(op_type, std::move(ins), std::move(outs), std::move(attrs), std::move(place), trace_backward);
-    return outs;
-  }
-})";
+    
+    {
+      py::gil_scoped_release release;
+      tracer->TraceOp("%s", std::move(ins), std::move(outs), std::move(attrs));
+      return outs;
+    }
+  }, py::arg("ins"), py::arg("attrs")=framework::AttributeMap(), 
+  py::arg("outs")=imperative::NameVarBaseMap(), 
+  py::arg("out_nums")=std::map<std::string, size_t>())";
 
 const char* PYBIND_TEMPLATE = R"(%s.def("%s", %s);)";
-
-// const std::string PYBIND_OP_TEMPLATE = "
-//  []($(TRACER_TYPE) &tracer, $(INPUT_TYPE) &ins, $(ARGS_TYPE) args,
-//  $(PLACE_TYPE) place, bool trace_backward) -> $(RETURN_TYPE)
-// {
-//   $(RETURN_TYPE) outs = $(OUT_INITIALIZER);
-//   {
-//     py::gil_scoped_release release;
-//     tracer.TracerOp($(OP_TYPE), ins, outs, attrs, place, trace_backward);
-//   }
-// }";
 
 static std::string RefineName(std::string name) {
   for (auto& e : name) {
@@ -99,7 +78,7 @@ static std::string RefineName(std::string name) {
 }
 
 static std::vector<std::string> GenerateOpFunctions(
-    const std::string& module_name, const char* place_type) {
+    const std::string& module_name) {
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
 
   std::vector<std::string> op_function_list;
@@ -129,9 +108,8 @@ static std::vector<std::string> GenerateOpFunctions(
 
     // generate op funtcion body
     char op_function_buf[BUFFER_SIZE];
-    snprintf(op_function_buf, BUFFER_SIZE, OP_FUNCTION_TEMPLATE, TRACER_TYPE,
-             INPUT_TYPE, ARGS_TYPE, place_type, RETURN_TYPE, RETURN_TYPE,
-             op_type.c_str(), outs_initializer.c_str());
+    snprintf(op_function_buf, BUFFER_SIZE, OP_FUNCTION_TEMPLATE,
+             outs_initializer.c_str(), op_type.c_str());
 
     // generate pybind line
     char pybind_buf[BUFFER_SIZE];
@@ -172,11 +150,9 @@ int main(int argc, char* argv[]) {
       << "  auto m = module->def_submodule(\"ops\");\n\n";
 
   // all op functions
-  auto op_funcs1 = GenerateOpFunctions("m", CUDA_PLACE_TYPE);
-  auto op_funcs2 = GenerateOpFunctions("m", CPU_PLACE_TYPE);
+  auto op_funcs = GenerateOpFunctions("m");
 
-  out << paddle::string::join_strings(op_funcs1, '\n');
-  out << paddle::string::join_strings(op_funcs2, '\n');
+  out << paddle::string::join_strings(op_funcs, '\n');
 
   out << "}\n\n"
       << "} // namespace pybind\n"

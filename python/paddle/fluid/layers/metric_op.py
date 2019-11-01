@@ -20,10 +20,11 @@ from __future__ import print_function
 import warnings
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
-from ..framework import Variable
+from ..framework import Variable, in_dygraph_mode
 from ..param_attr import ParamAttr
 from . import nn
 from ..data_feeder import convert_dtype
+from paddle.fluid import core
 
 __all__ = ['accuracy', 'auc']
 
@@ -71,6 +72,17 @@ def accuracy(input, label, k=1, correct=None, total=None):
 
             #[array([0.6666667], dtype=float32)]
     """
+    if in_dygraph_mode():
+        topk_out, topk_indices = nn.topk(input, k=k)
+        inputs = {
+            "Out": [topk_out],
+            "Indices": [topk_indices],
+            "Label": [label]
+        }
+        outs = core.ops.accuracy(inputs)
+        return outs['Accuracy'][0]
+
+    # original
     helper = LayerHelper("accuracy", **locals())
     if not isinstance(input, Variable):
         raise TypeError(

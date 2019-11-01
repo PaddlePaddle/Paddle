@@ -17,7 +17,7 @@ from six.moves import reduce
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
-from ..framework import Variable, OpProtoHolder, in_dygraph_mode, _dygraph_tracer, _current_expected_place, _var_base_to_np
+from ..framework import in_dygraph_mode
 from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
@@ -264,11 +264,7 @@ def concat(input, axis=0, name=None):
     """
     if in_dygraph_mode():
         attrs = {'axis': axis}
-        trace_backward = _dygraph_tracer()._train_mode
-        out_names = {'Out': [unique_name.generate_with_ignorable_key()]}
-        outs = core.ops.concat(_dygraph_tracer(), {'X': input}, attrs,
-                               _current_expected_place(), out_names,
-                               trace_backward, {})
+        outs = core.ops.concat({'X': input}, attrs)
         return outs['Out'][0]
 
     helper = LayerHelper('concat', **locals())
@@ -581,6 +577,30 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           shape = fluid.layers.fill_constant([1,2], "int32", 2) # shape=[2,2]
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
     """
+    if in_dygraph_mode():
+        attrs = {
+            'value': float(value),
+            'force_cpu': force_cpu or force_init_on_cpu(),
+            'shape': shape
+        }
+
+        if out is None:
+            outs = {}
+            attrs['dtype'] = convert_np_dtype_to_dtype_(dtype) if isinstance(
+                dtype, str) else dtype
+        else:
+            if not (convert_dtype(dtype) == convert_dtype(out.dtype)):
+                raise TypeError(
+                    "The create data type in op must be same with out type"
+                    "but received %s and out dtype %s." % (convert_dtype(
+                        (dtype), convert_dtype(out.dtype))))
+            outs = {'Out': [out]}
+            attrs['dtype'] = out.dtype
+
+        outs = core.ops.fill_constant({}, attrs, outs)
+        outs['Out'][0].stop_gradient = True
+        return outs['Out'][0]
+
     helper = LayerHelper("fill_constant", **locals())
     if convert_dtype(dtype) not in [
             'bool', 'float16', 'float32', 'float64', 'int32', 'int64'
