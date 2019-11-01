@@ -57,14 +57,26 @@ class Layer : public imperative::Layer {
 
 template <typename P>
 static void InitVarBaseFromNumpy(imperative::VarBase *self,
+                                 const py::array &array,
                                  const std::string &name, bool persistable,
-                                 const py::array &array, const P &place) {
-  new (self) imperative::VarBase(name);
-  self->SetPersistable(persistable);
-  auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
-  SetTensorFromPyArray<P>(tensor, array, place);
-  self->SetType(framework::proto::VarType::LOD_TENSOR);
-  self->SetDataType(tensor->type());
+                                 const P &place, const py::kwargs &kwargs) {
+  if (kwargs) {
+    new (self)
+        imperative::VarBase(py::getattr(kwargs, "name").cast<std::string>());
+    self->SetPersistable(py::getattr(kwargs, "persistable").cast<bool>());
+    auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+    SetTensorFromPyArray<P>(
+        tensor, py::getattr(kwargs, "value").cast<py::array>(), place);
+    self->SetType(framework::proto::VarType::LOD_TENSOR);
+    self->SetDataType(tensor->type());
+  } else {
+    new (self) imperative::VarBase(name);
+    self->SetPersistable(persistable);
+    auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+    SetTensorFromPyArray<P>(tensor, array, place);
+    self->SetType(framework::proto::VarType::LOD_TENSOR);
+    self->SetDataType(tensor->type());
+  }
 }
 
 static std::string GetTypeName(const imperative::VarBase &var) {
@@ -153,13 +165,13 @@ void BindImperative(py::module *m_ptr) {
              }
            })
       .def("__init__", InitVarBaseFromNumpy<platform::CPUPlace>,
-           py::arg("name"), py::arg("persistable"), py::arg("value"),
+           py::arg("value"), py::arg("name"), py::arg("persistable"),
            py::arg("place"))
       .def("__init__", InitVarBaseFromNumpy<platform::CUDAPlace>,
-           py::arg("name"), py::arg("persistable"), py::arg("value"),
+           py::arg("value"), py::arg("name"), py::arg("persistable"),
            py::arg("place"))
       .def("__init__", InitVarBaseFromNumpy<platform::CUDAPinnedPlace>,
-           py::arg("name"), py::arg("persistable"), py::arg("value"),
+           py::arg("value"), py::arg("name"), py::arg("persistable"),
            py::arg("place"))
       .def("numpy",
            [](imperative::VarBase &self) -> py::array {
