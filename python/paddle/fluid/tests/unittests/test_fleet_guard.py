@@ -49,10 +49,10 @@ class TestCloudRoleMaker(unittest.TestCase):
         return dist_strategy
 
     def fleet_optimize(self, cost, num_threads):
-        fleet = Collective()
-        with fluid.fleet_guard(fleet_a):
+        new_fleet = Collective()
+        with fluid.fleet_guard(new_fleet):
             role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-            fleet.init(role)  # use fleet_a
+            fleet.init(role)  # use defined fleet
 
             strategy = get_dist_strategy(num_threads=num_threads)
 
@@ -60,7 +60,7 @@ class TestCloudRoleMaker(unittest.TestCase):
             optimizer = fleet.distributed_optimizer(optimizer, strategy)
             optimizer.minimize(cost)
 
-        return fleet, optimizer
+        return new_fleet, optimizer
 
     def test_guard(self):
         start_up = fluid.Program()
