@@ -380,6 +380,7 @@ class OpTest(unittest.TestCase):
                             feed=feed_map,
                             fetch_list=fetch_list,
                             return_numpy=False)
+        self.program = original_program
         if for_inplace_test:
             return outs, fetch_list, feed_map, original_program, op.desc
         else:
@@ -844,6 +845,36 @@ class OpTest(unittest.TestCase):
         self.check_inplace_output_with_place(
             place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
+        if check_dygraph:
+            return outs, dygraph_outs, fetch_list
+        else:
+            return outs, fetch_list
+
+    def check_compile_vs_runtime(self, fetch_list, fetch_outs):
+        outputs = self._get_outputs(self.program.global_block())
+        for i, name in enumerate(fetch_list):
+            out = fetch_outs[i]
+            if isinstance(out, core.LoDTensor):
+                lod_level_runtime = len(out.lod())
+            else:
+                lod_level_runtime = 0
+            if outputs.has_key(name):
+                print(name)
+                var = outputs[name]
+                if var.type == core.VarDesc.VarType.LOD_TENSOR:
+                    lod_level_compile = var.lod_level
+                else:
+                    lod_level_compile = 0
+                self.assertEqual(
+                    lod_level_compile, lod_level_runtime,
+                    "The lod_level of Output (" + name +
+                    ") is different between compile-time and runtime (" +
+                    str(lod_level_compile) + " vs " + str(lod_level_runtime) +
+                    ")")
+            else:
+                raise AssertionError("%s is a output of operator %s", name,
+                                     self.op_type)
+
     def _get_places(self):
         if self.dtype == np.float16:
             if core.is_compiled_with_cuda() and core.op_support_gpu(
@@ -871,11 +902,18 @@ class OpTest(unittest.TestCase):
                      no_check_set=None,
                      equal_nan=False,
                      check_dygraph=False,
-                     inplace_atol=None):
+                     inplace_atol=None,
+                     check_compile_vs_runtime=True):
         places = self._get_places()
         for place in places:
-            self.check_output_with_place(place, atol, no_check_set, equal_nan,
-                                         check_dygraph)
+            res = self.check_output_with_place(place, atol, no_check_set,
+                                               equal_nan, check_dygraph)
+            if check_dygraph:
+                outs, dygraph_outs, fetch_list = res
+            else:
+                outs, fetch_list = res
+            if check_compile_vs_runtime:
+                self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker):
         places = self._get_places()
