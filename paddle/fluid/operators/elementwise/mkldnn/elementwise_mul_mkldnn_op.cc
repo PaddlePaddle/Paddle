@@ -52,8 +52,10 @@ static void ReorderInput(framework::Tensor* tensor,
   framework::Tensor out_tensor;
   out_tensor.Resize(tensor->dims());
   auto dims_size = dims.size();
-  out_tensor.set_format(dims_size==4 ? MKLDNNMemoryFormat::nchw : 
-  (dims_size==3 ? MKLDNNMemoryFormat::ncw : MKLDNNMemoryFormat::nc));
+  out_tensor.set_format(dims_size == 4
+                            ? MKLDNNMemoryFormat::nchw
+                            : (dims_size == 3 ? MKLDNNMemoryFormat::ncw
+                                              : MKLDNNMemoryFormat::nc));
   out_tensor.set_layout(tensor->layout());
   mkldnn::memory input_memory = {
       {{dims, platform::MKLDNNGetDataType<T>(), tensor->format()}, engine},
@@ -151,9 +153,11 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
         auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
         const auto& mkldnn_engine = dev_ctx.GetEngine();
         if (!(is_x_nchw || is_x_ncw || is_x_nwc || is_x_nc || is_x_x))
-          ReorderInput<T>(const_cast<Tensor*>(x), ctx.GetPlace(), mkldnn_engine);
-        if (!(is_y_nchw || is_y_ncw ||is_y_nwc || is_y_nc || is_y_x))
-          ReorderInput<T>(const_cast<Tensor*>(y), ctx.GetPlace(), mkldnn_engine);
+          ReorderInput<T>(const_cast<Tensor*>(x), ctx.GetPlace(),
+                          mkldnn_engine);
+        if (!(is_y_nchw || is_y_ncw || is_y_nwc || is_y_nc || is_y_x))
+          ReorderInput<T>(const_cast<Tensor*>(y), ctx.GetPlace(),
+                          mkldnn_engine);
       }
 
       auto mul_func = [](T a, T b) -> T { return a * b; };
