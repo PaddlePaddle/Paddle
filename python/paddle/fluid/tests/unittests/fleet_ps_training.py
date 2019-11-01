@@ -36,7 +36,7 @@ if fleet.is_server():
 elif fleet.is_worker():
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
-    exe.run(fluid.default_startup_program())
+    exe.run(fleet.startup_program)
     step = 1001
     for i in range(step):
         cost_val = exe.run(program=fleet.main_program,
