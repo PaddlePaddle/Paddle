@@ -28,12 +28,6 @@ void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer) {
   VLOG(6) << "Set current tracer: " << g_current_tracer;
 }
 
-struct OpBaseCmp {
-  bool operator()(OpBase* first, OpBase* second) {
-    return first->id() > second->id();
-  }
-};
-
 static std::vector<std::unique_ptr<OpBase>> CreateGradOpBases(
     const OpBase* fw_op_base, const NameVarBaseMap& in,
     const NameVarBaseMap& out) {
