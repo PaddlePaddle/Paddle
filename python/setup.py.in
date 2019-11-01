@@ -365,10 +365,10 @@ if sys.platform != 'win32':
     @contextmanager
     def redirect_stdout():
         with open('${SETUP_LOG_FILE}', 'w') as f:
-            orign_stdout = sys.stdout
+            origin_stdout = sys.stdout
             sys.stdout = f
             yield
-            sys.stdout = orign_stdout
+            sys.stdout = origin_stdout
 else:
     @contextmanager
     def redirect_stdout():
