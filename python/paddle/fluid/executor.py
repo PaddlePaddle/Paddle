@@ -996,11 +996,6 @@ class Executor(object):
 
         dataset._prepare_to_run()
 
-        if fetch_handler is not None:
-            fetch_instance = fetch_handler
-        else:
-            fetch_instance = FetchHandler([])
-
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -1015,17 +1010,26 @@ class Executor(object):
         trainer._gen_trainer_desc()
 
         self._dump_debug_info(program=program, trainer=trainer)
+        dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_instance = self._default_executor.init_for_dataset(
             program.desc, trainer._desc(), scope, dataset.dataset)
 
-        scope0 = trainer_instance.get_worker_scope(0)
+        if fetch_handler is not None:
+            scope0 = trainer_instance.get_worker_scope(0)
+            fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
+            fetch_monitor.start()
 
-        fetch_monitor = FetchHandlerMonitor(scope0, fetch_instance)
-        fetch_monitor.start()
-        self._default_executor.run_from_dataset(trainer_instance)
-        fetch_monitor.stop()
+            self._default_executor.run_from_dataset(trainer_instance)
+
+            fetch_monitor.stop()
+        else:
+
+            self._default_executor.run_from_dataset(trainer_instance)
+
+        dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
+
         return None
 
     def infer_from_dataset(self,

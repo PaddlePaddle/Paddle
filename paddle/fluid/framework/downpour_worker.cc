@@ -81,6 +81,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
     dump_fields_[i] = desc.dump_fields(i);
   }
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
+
   need_dump_param_ = false;
   dump_param_.resize(desc.dump_param_size());
   for (int i = 0; i < desc.dump_param_size(); ++i) {
@@ -88,6 +89,9 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   }
   if (desc.dump_param_size() != 0) {
     need_dump_param_ = true;
+
+  for (int i = 0; i < desc.check_nan_var_names_size(); ++i) {
+    check_nan_var_names_.push_back(desc.check_nan_var_names(i));
   }
 }
 
@@ -492,6 +496,22 @@ void DownpourWorker::TrainFilesWithProfiler() {
       }
     }
 
+    // check inf and nan
+    for (std::string& var_name : check_nan_var_names_) {
+      Variable* var = thread_scope_->FindVar(var_name);
+      if (var == nullptr) {
+        continue;
+      }
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (tensor == nullptr) {
+        continue;
+      }
+      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
+                        "Tensor %s contains Inf", var_name);
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
+                        "Tensor %s contains NAN", var_name);
+    }
+
     if (need_to_push_sparse_) {
       for (int i = 0; i < param_.program_config(0).push_sparse_table_id_size();
            ++i) {
@@ -677,6 +697,22 @@ void DownpourWorker::TrainFiles() {
       if (!need_skip) {
         op->Run(*thread_scope_, place_);
       }
+    }
+
+    // check inf and nan
+    for (std::string& var_name : check_nan_var_names_) {
+      Variable* var = thread_scope_->FindVar(var_name);
+      if (var == nullptr) {
+        continue;
+      }
+      LoDTensor* tensor = var->GetMutable<LoDTensor>();
+      if (tensor == nullptr) {
+        continue;
+      }
+      PADDLE_ENFORCE_EQ(framework::TensorContainsInf(*tensor), false,
+                        "Tensor %s contains Inf", var_name);
+      PADDLE_ENFORCE_EQ(framework::TensorContainsNAN(*tensor), false,
+                        "Tensor %s contains NAN", var_name);
     }
 
     if (need_to_push_sparse_) {
