@@ -209,8 +209,8 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       }
     } else {
       // Execute default kernel when broadcast is needed
-      ElemwiseExplicitGradCompute<paddle::platform::CPUDeviceContext, T,
-                                  IdentityGrad<T>, IdentityGrad<T>>(
+      ElemwiseGradCompute<paddle::platform::CPUDeviceContext, T,
+                          IdentityGrad<T>, IdentityGrad<T>>(
           ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),
           IdentityGrad<T>());
     }

@@ -70,6 +70,27 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
 };
 
 template <typename T>
+class ElementwiseSubGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType("elementwise_sub_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+
+    op->SetAttrMap(this->Attrs());
+
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    return op;
+  }
+};
+
+template <typename T>
 class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -94,12 +115,13 @@ class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_ELEMWISE_GRAD_MAKER(elementwise_sub, Sub);
-REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_sub, Sub);
 
+REGISTER_OPERATOR(elementwise_sub, ops::ElementwiseOp,
+                  ops::ElementwiseSubOpMaker, ops::ElementwiseOpInferVarType,
+                  ops::ElementwiseSubGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseSubGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
     elementwise_sub_grad, ops::ElementwiseOpExplicitGrad,
-    ops::ElementwiseGradOpInplace, ops::ElementwiseGradNoBufVarsInference,
     ops::ElementwiseSubDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseSubDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(elementwise_sub_grad_grad,

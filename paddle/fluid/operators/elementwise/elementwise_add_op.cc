@@ -71,6 +71,27 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
 };
 
 template <typename T>
+class ElementwiseAddGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType("elementwise_add_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+
+    op->SetAttrMap(this->Attrs());
+
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    return op;
+  }
+};
+
+template <typename T>
 class ElementwiseAddDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
@@ -94,16 +115,18 @@ class ElementwiseAddDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_ELEMWISE_GRAD_MAKER(elementwise_add, Add);
-REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_add, Add);
-
 namespace ops = paddle::operators;
+
+REGISTER_OPERATOR(elementwise_add, ops::ElementwiseOp,
+                  ops::ElementwiseAddOpMaker, ops::ElementwiseOpInferVarType,
+                  ops::ElementwiseAddGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ElementwiseAddGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
     elementwise_add_grad, ops::ElementwiseOpExplicitGrad,
-    ops::ElementwiseGradOpInplace, ops::ElementwiseGradNoBufVarsInference,
+    // ops::ElementwiseGradOpInplace,
+    // ops::ElementwiseGradNoBufVarsInference,
     ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>);
-
 REGISTER_OPERATOR(elementwise_add_grad_grad,
                   ops::ElementwiseOpDoubleGradWithoutDXDY,
                   ops::ElementwiseDoubleGradOpInplace,
