@@ -272,6 +272,7 @@ class TestDataset(unittest.TestCase):
                     self.assertTrue(False)
 
         dataset.set_merge_by_lineid(2)
+        dataset.set_parse_ins_id(False)
         dataset.set_fleet_send_sleep_seconds(2)
         dataset.preload_into_memory()
         dataset.wait_preload_done()
