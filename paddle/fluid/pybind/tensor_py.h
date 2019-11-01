@@ -158,7 +158,7 @@ template <typename T, typename P>
 void SetTensorFromPyArrayT(
     framework::Tensor *self,
     const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
-    const P &place) {
+    const P &place, bool zero_copy) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
@@ -167,15 +167,17 @@ void SetTensorFromPyArrayT(
   self->Resize(framework::make_ddim(dims));
 
   if (paddle::platform::is_cpu_place(place)) {
-    array.inc_ref();
-    auto holder = std::make_shared<details::NumpyAllocation>(
-        std::make_shared<py::array>(static_cast<py::array>(array)),
-        sizeof(T) * (array.size()), place);
-    self->ResetHolder(holder);
-    self->ResetType(framework::ToDataType(std::type_index(typeid(T))));
-
-    //    auto dst = self->mutable_data<T>(place);
-    //    std::memcpy(dst, array.data(), array.nbytes());
+    if (zero_copy) {
+      array.inc_ref();
+      auto holder = std::make_shared<details::NumpyAllocation>(
+          std::make_shared<py::array>(static_cast<py::array>(array)),
+          sizeof(T) * (array.size()), place);
+      self->ResetHolder(holder);
+      self->ResetType(framework::ToDataType(std::type_index(typeid(T))));
+    } else {
+      auto dst = self->mutable_data<T>(place);
+      std::memcpy(dst, array.data(), array.nbytes());
+    }
   } else {
 #ifdef PADDLE_WITH_CUDA
     auto dst = self->mutable_data<T>(place);
@@ -197,28 +199,29 @@ void SetTensorFromPyArrayT(
 }
 
 template <typename P>
-void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
-                          const P &place) {
-  auto array = obj.cast<py::array>();
+void SetTensorFromPyArray(framework::Tensor *self, const py::array &array,
+                          const P &place, bool zero_copy) {
   if (py::isinstance<py::array_t<float>>(array)) {
-    SetTensorFromPyArrayT<float, P>(self, array, place);
+    SetTensorFromPyArrayT<float, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<int>>(array)) {
-    SetTensorFromPyArrayT<int, P>(self, array, place);
+    SetTensorFromPyArrayT<int, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<int64_t>>(array)) {
-    SetTensorFromPyArrayT<int64_t, P>(self, array, place);
+    SetTensorFromPyArrayT<int64_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<double>>(array)) {
-    SetTensorFromPyArrayT<double, P>(self, array, place);
+    SetTensorFromPyArrayT<double, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<int8_t>>(array)) {
-    SetTensorFromPyArrayT<int8_t, P>(self, array, place);
+    SetTensorFromPyArrayT<int8_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<uint8_t>>(array)) {
-    SetTensorFromPyArrayT<uint8_t, P>(self, array, place);
+    SetTensorFromPyArrayT<uint8_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
-    SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place);
+    SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
+                                                        zero_copy);
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
     // TODO(cql): temporary keeping uint16, should be depracated later
-    SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place);
+    SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
+                                                        zero_copy);
   } else if (py::isinstance<py::array_t<bool>>(array)) {
-    SetTensorFromPyArrayT<bool, P>(self, array, place);
+    SetTensorFromPyArrayT<bool, P>(self, array, place, zero_copy);
   } else {
     PADDLE_THROW(
         "Incompatible data or style type: tensor.set() supports bool, float16, "
