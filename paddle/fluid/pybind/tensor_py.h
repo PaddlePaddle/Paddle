@@ -199,8 +199,9 @@ void SetTensorFromPyArrayT(
 }
 
 template <typename P>
-void SetTensorFromPyArray(framework::Tensor *self, const py::array &array,
+void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
                           const P &place, bool zero_copy) {
+  auto array = obj.cast<py::array>();
   if (py::isinstance<py::array_t<float>>(array)) {
     SetTensorFromPyArrayT<float, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<int>>(array)) {
