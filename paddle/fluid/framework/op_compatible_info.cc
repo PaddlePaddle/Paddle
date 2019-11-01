@@ -234,8 +234,8 @@ bool ProgOptimUnsupported(std::shared_ptr<framework::ProgramDesc> program) {
     }
     if (op.HasAttr("data_format")) {
       auto data_format = boost::get<std::string>(op.GetAttr("data_format"));
-      if (data_format != "NCHW") {
-        VLOG(3) << "== data_format is not NCHW.";
+      if (data_format == "NHWC" || data_format == "NDHWC") {
+        VLOG(3) << "== data_format is NHWC or NDHWC.";
         return true;
       }
     }
