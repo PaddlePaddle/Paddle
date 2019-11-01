@@ -266,12 +266,7 @@ void OpBase::CreateOperatorBase() {
   if (info.Checker() != nullptr) {
     info.Checker()->Check(&attrs_);
   }
-
-  // auto input_name_map = CreateVarNameMap(info, type_, ins_, true);
-  // auto output_name_map = CreateVarNameMap(info, type_, outs_, false);
-  // op_ = framework::OpRegistry::CreateOp(type_, std::move(input_name_map),
-  //                                      std::move(output_name_map), attrs_);
-  op_ = framework::OpRegistry::CreateOp(type_, {}, {}, {});
+  op_ = framework::OpRegistry::CreateOp(type_, {}, {}, {}, false);
 }
 
 void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
@@ -291,7 +286,6 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
 
   VLOG(3) << "Running Op " << Type();
   VLOG(5) << LayerDebugString(Type(), ins, outs);
-  // auto runtime_ctx = PrepareRuntimeContext(ins, outs);
   framework::RuntimeContext runtime_ctx({}, {});
   auto prepared_op =
       PreparedOp::Prepare(ins, outs, *op_kernel, place(), &attrs_);

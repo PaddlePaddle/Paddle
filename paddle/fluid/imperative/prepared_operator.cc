@@ -89,10 +89,6 @@ PreparedOp PreparedOp::Prepare(const NameVarBaseMap& ins,
 
   auto& kernels = kernels_iter->second;
 
-  // auto expected_kernel_key =
-  //    op.GetExpectedKernelType(framework::ExecutionContext(
-  //        op, framework::Scope(), *dev_ctx, ctx, nullptr));
-  //
   framework::RuntimeContext ctx({}, {});
   auto expected_kernel_key = op.GetExpectedKernelType(DygraphExecutionContext(
       op, framework::Scope(), *dev_ctx, ctx, nullptr, ins, outs, attrs));
@@ -130,8 +126,6 @@ void PreparedOp::Run(const NameVarBaseMap* in, const NameVarBaseMap* out,
 
   func_(DygraphExecutionContext(op_, scope, *dev_ctx_, ctx_, kernel_configs_,
                                 *in, *out, attrs));
-  // func_(framework::ExecutionContext(op_, scope, *dev_ctx_, ctx_,
-  //                                  kernel_configs_));
 }
 
 }  // namespace imperative

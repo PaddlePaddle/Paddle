@@ -517,11 +517,6 @@ Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
     const std::string& name) const {
-  // auto it = ctx_.outputs.find(name);
-  // if (it == ctx_.outputs.end()) {
-  //  return {};
-  //}
-  // const std::vector<Variable*>& vars = it->second;
   auto vars = MultiOutputVar(name);
 
   if (vars.size() == 0) {
@@ -1213,22 +1208,6 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  /*
-  try {
-    data_type = ctx.IndicateDataType();
-  } catch (platform::EnforceNotMet& exp) {
-    PADDLE_THROW("Operator [%s] GetExpectedKernelType Failed, error is: [%s]",
-                 type_, exp.what());
-  } catch (...) {
-    PADDLE_THROW(
-        "Operator [%s] GetExpectedKernelType Failed, error type UnExcepted");
-  }
-
-  PADDLE_ENFORCE(data_type != dafault_data_type,
-                 "Operator [%s] GetExpectedKernelType Failed, the input of the "
-                 "Operator maybe empty",
-                 type_);
-  */
   for (auto& input : ctx.InNameList()) {
     ParseInputDataType(ctx, input, &data_type);
   }

@@ -304,11 +304,6 @@ class TypedAttrChecker {
                      "Attribute '%s' is required!", attr_name_);
       // default_value_setter_ has no more than one element
       attr_map->emplace(attr_name_, default_value_setter_[0]());
-      /*
-      T val;
-      (default_value_setter_[0])(&val);
-      (*attr_map)[attr_name_] = val;
-      */
     }
     it = attr_map->find(attr_name_);
     ExtractAttribute<T> extract_attr(attr_name_);

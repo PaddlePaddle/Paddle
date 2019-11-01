@@ -20,39 +20,6 @@
 namespace paddle {
 namespace imperative {
 
-/*
-static framework::VariableNameMap CreateVarNameMap(
-    const framework::OpInfo& op_info, const std::string& op_type,
-    const NameVarBaseMap& varbase_map, bool is_input) {
-  if (op_info.proto_ == nullptr) {
-    return {};
-  }
-
-  framework::VariableNameMap result;
-
-  for (auto& var :
-       is_input ? op_info.Proto().inputs() : op_info.Proto().outputs()) {
-    auto it = varbase_map.find(var.name());
-    if (it == varbase_map.end()) {
-      PADDLE_ENFORCE_EQ(
-          var.dispensable(), true,
-          "Var: %s not dispensable and there are no such var in inputs",
-          var.name());
-      result[var.name()] = {};
-    } else {
-      auto& var_vector = it->second;
-      std::vector<std::string> args;
-      args.reserve(var_vector.size());
-      for (auto& var_base : var_vector) {
-        args.emplace_back(var_base->Name());
-      }
-      result[var.name()] = std::move(args);
-    }
-  }
-  return result;
-}
-
-*/
 struct OpBaseCmp {
   bool operator()(OpBase* first, OpBase* second) {
     return first->id() > second->id();
