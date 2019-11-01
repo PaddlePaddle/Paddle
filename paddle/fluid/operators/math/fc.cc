@@ -27,7 +27,25 @@ class FCFunctor<platform::CPUDeviceContext, T> {
                   const int N, const int K, const T* X, const T* W, T* Y,
                   const T* B = nullptr, bool relu = false) {
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-    blas.MatMul(M, N, K, X, W, Y);
+    // This is to add padding for dimension 128 on concern of MKL performance
+    framework::Tensor X1;
+    framework::Tensor Y1;
+    X1.Resize({M * (K + 4)});
+    T* X1_data = X1.mutable_data<T>(platform::CPUPlace());
+    Y1.Resize({M * (N + 4)});
+    T* Y1_data = Y1.mutable_data<T>(platform::CPUPlace());
+    if (N % 128 == 0 && K % 128 == 0) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+      for (int i = 0; i < M; i++) {
+        memcpy(X1_data + i * (K + 4), X + i * K, K * sizeof(X[0]));
+      }
+
+      blas.MatMul(M, N, K, X1_data, W, Y1_data);
+    } else {
+      blas.MatMul(M, N, K, X, W, Y);
+    }
     if (B == NULL) {
       return;
     }
@@ -48,7 +66,12 @@ class FCFunctor<platform::CPUDeviceContext, T> {
 #endif
       for (int i = 0; i < M; i++) {
         T* dst = Y + i * N;
-        compute(B, dst, dst, N);
+        T* src = nullptr;
+        if (M % 128 == 0 && N % 128 == 0 && K % 128 == 0)
+          src = Y1_data + i * (N + 4);
+        else
+          src = dst;
+        compute(B, src, dst, N);
       }
     }
   }

@@ -70,6 +70,34 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
       relu_out = tmp_relu_out;
     }
 
+// add w padding
+// This is to add padding for dimension 128 on concern of MKL performance
+#ifdef PADDLE_WITH_MKLML
+    auto* scope = param_scope();
+    auto* weight = scope->FindVar(w->Name())->GetMutable<LoDTensor>();
+    auto weight_data = weight->data<float>();
+    auto weight_dims = weight->dims();
+    int weight_num = product(weight_dims);
+    int w_h = weight_dims[0];
+    int w_w = weight_dims[1];
+    if (w_h % 128 == 0 && w_w % 128 == 0) {
+      float* weight_data_tmp = new float[weight_num];
+#pragma omp parallel for
+      for (int i = 0; i < w_h; i++) {
+        memcpy(weight_data_tmp + i * w_w, weight_data + i * w_w,
+               w_w * sizeof(float));
+      }
+      weight->Resize(DDim{weight_dims[0] + 4, weight_dims[1] + 4});
+      auto weight_data_new = weight->mutable_data<float>(platform::CPUPlace());
+#pragma omp parallel for
+      for (int i = 0; i < w_h; i++) {
+        memcpy(weight_data_new + i * (w_w + 4), weight_data_tmp + i * w_w,
+               w_w * sizeof(float));
+      }
+      delete[] weight_data_tmp;
+    }
+#endif
+
     // Create an FC Node.
     OpDesc desc;
     desc.SetType("fc");

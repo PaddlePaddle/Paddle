@@ -724,9 +724,15 @@ void Blas<platform::CPUDeviceContext>::MatMul(const int M, const int N,
                      C, &N);
   return;
 #endif
-
+  // This is to add padding for dimension 128 on concern of MKL performance
+  int NN = N;
+  int KK = K;
+  if (N % 128 == 0 && K % 128 == 0) {
+    NN = N + 4;
+    KK = K + 4;
+  }
   CBlas<T>::GEMM(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K,
-                 static_cast<T>(1), A, K, B, N, static_cast<T>(0), C, N);
+                 static_cast<T>(1), A, KK, B, NN, static_cast<T>(0), C, NN);
 }
 
 template <typename DeviceContext>
