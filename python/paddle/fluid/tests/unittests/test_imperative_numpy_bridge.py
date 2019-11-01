@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 class TestImperativeNumpyBridge(unittest.TestCase):
     def test_tensor_from_numpy(self):
         data_np = np.array([[2, 3, 1]]).astype('float32')
-        with fluid.dygraph.guard():
+        with fluid.dygraph.guard(fluid.CPUPlace()):
             var = fluid.dygraph.to_variable(data_np, zero_copy=True)
             self.assertTrue(np.array_equal(var.numpy(), data_np))
             data_np[0][0] = 4
