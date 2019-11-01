@@ -173,6 +173,7 @@ void BasicEngine::PrepareDeps() {
 void BasicEngine::SumGradient(OpBase* op, std::shared_ptr<VarBase> src,
                               VarBase* dst) {
   auto iter = accumulators_.find(dst);
+
   PADDLE_ENFORCE_EQ(iter != accumulators_.end(), true,
                     "Cannot find gradient of variable %s", dst->Name());
   iter->second->Add(std::move(src), op->id());
@@ -195,16 +196,16 @@ void BasicEngine::Execute() {
     NameVarBaseMap tmp_outs;
     // A var may be coresponding to several grad var in one op
     std::unordered_map<VarBase*, std::vector<std::shared_ptr<VarBase>>> var_map;
-    size_t counter = 0;
     for (auto& bwd_out : bwd_outs) {
       auto& tmp_var_list = tmp_outs[bwd_out.first];
       tmp_var_list.reserve(bwd_out.second.size());
       for (auto& var : bwd_out.second) {
-        auto tmp_var = std::make_shared<VarBase>(
-            false, "Gtmp@" + std::to_string(counter++));  // Do not need grad
+        auto tmp_var =
+            std::make_shared<VarBase>(false, "Gtmp@");  // Do not need grad
         tmp_var_list.emplace_back(tmp_var);
         if (var) {
           var_map[var.get()].emplace_back(std::move(tmp_var));
+
           var->ClearGradOps();
         }
       }
@@ -227,6 +228,7 @@ void BasicEngine::Execute() {
     }
 
     // Step 3: Collect ready ops
+
     for (auto* grad_pending_op : cur_op->GradPendingOps()) {
       PADDLE_ENFORCE_NOT_NULL(grad_pending_op);
       auto iter = op_deps_.find(grad_pending_op);

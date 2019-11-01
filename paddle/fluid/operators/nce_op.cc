@@ -213,29 +213,30 @@ By default this operator uses a uniform distribution for sampling.
   }
 };
 
-class NCEGradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class NCEGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op = new framework::OpDesc();
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+  std::unique_ptr<T> Apply() const override {
+    auto *op = new T();
     op->SetType(this->ForwardOpType() + "_grad");
-    op->SetInput("Input", Input("Input"));
-    op->SetInput("Label", Input("Label"));
-    op->SetInput("Bias", Input("Bias"));
-    op->SetInput("Weight", Input("Weight"));
-    op->SetInput("Cost", Output("Cost"));
-    op->SetInput("SampleLogits", Output("SampleLogits"));
-    op->SetInput("SampleLabels", Output("SampleLabels"));
-    op->SetInput("SampleWeight", Input("SampleWeight"));
-    op->SetInput("CustomDistProbs", Input("CustomDistProbs"));
-    op->SetInput("CustomDistAlias", Input("CustomDistAlias"));
-    op->SetInput("CustomDistAliasProbs", Input("CustomDistAliasProbs"));
-    op->SetInput(framework::GradVarName("Cost"), OutputGrad("Cost"));
-    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
-    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
-    op->SetOutput(framework::GradVarName("Weight"), InputGrad("Weight"));
-    op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput("Bias", this->Input("Bias"));
+    op->SetInput("Weight", this->Input("Weight"));
+    op->SetInput("Cost", this->Output("Cost"));
+    op->SetInput("SampleLogits", this->Output("SampleLogits"));
+    op->SetInput("SampleLabels", this->Output("SampleLabels"));
+    op->SetInput("SampleWeight", this->Input("SampleWeight"));
+    op->SetInput("CustomDistProbs", this->Input("CustomDistProbs"));
+    op->SetInput("CustomDistAlias", this->Input("CustomDistAlias"));
+    op->SetInput("CustomDistAliasProbs", this->Input("CustomDistAliasProbs"));
+    op->SetInput(framework::GradVarName("Cost"), this->OutputGrad("Cost"));
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
+    op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -304,7 +305,9 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpMaker, ops::NCEGradOpMaker);
+REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpMaker,
+                  ops::NCEGradOpMaker<paddle::framework::OpDesc>,
+                  ops::NCEGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad, ops::NCEOpGradVarTypeInference);
 REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);

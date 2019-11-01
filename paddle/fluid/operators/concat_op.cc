@@ -32,58 +32,36 @@ class ConcatOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
                       "Inputs(X) of ConcatOp should not be empty.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ConcatOp should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of ConcatOp should not be null.");
 
-    auto ins = ctx->GetInputsDim("X");
-    size_t axis =
-        ComputeAxis(static_cast<int64_t>(ctx->Attrs().Get<int>("axis")),
-                    static_cast<int64_t>(ins[0].size()));
+    auto inputs_dims = ctx->GetInputsDim("X");
 
-    const size_t n = ins.size();
-    PADDLE_ENFORCE_GT(n, 0,
+    const size_t inputs_num = inputs_dims.size();
+    PADDLE_ENFORCE_GT(inputs_num, 0,
                       "ShapeError: Input tensors count should > 0. But "
                       "recevied inputs' length is 0.");
-    if (n == 1) {
+    if (inputs_num == 1) {
       VLOG(3) << "Warning: concat op have only one input, may waste memory";
     }
 
-    auto out_dims = ins[0];
-    size_t in_zero_dims_size = out_dims.size();
-    for (size_t i = 1; i < n; i++) {
-      for (size_t j = 0; j < in_zero_dims_size; j++) {
-        if (j == axis) {
-          if (ctx->IsRuntime()) {
-            out_dims[axis] += ins[i][j];
-          } else {
-            if (ins[i][j] == -1) {
-              out_dims[axis] = -1;
-            } else {
-              out_dims[axis] += ins[i][j];
-            }
-          }
-        } else {
-          bool check_shape =
-              ctx->IsRuntime() || (out_dims[j] > 0 && ins[i][j] > 0);
-          if (check_shape) {
-            // check all shape in run time
-            PADDLE_ENFORCE_EQ(
-                out_dims[j], ins[i][j],
-                "ShapeError: Input tensors should have same "
-                "dimensions(or specific dimension = -1) except the axis. "
-                "But recevied axis = %s, input[0]'s shape = "
-                "[%s], input[%s]'s shape = [%s], the \"%s\" "
-                "dimension of input[%s] is unexpected",
-                axis, ins[0], i, ins[j], j, i);
-          }
-        }
+    if (ctx->HasInput("AxisTensor")) {
+      auto out_dims =
+          framework::make_ddim(std::vector<int>(inputs_dims[0].size(), -1));
+      ctx->SetOutputDim("Out", out_dims);
+      ctx->ShareLoD("X", /*->*/ "Out");
+    } else {
+      size_t axis =
+          ComputeAxis(static_cast<int64_t>(ctx->Attrs().Get<int>("axis")),
+                      static_cast<int64_t>(inputs_dims[0].size()));
+      framework::DDim out_dims =
+          ComputeAndCheckShape(ctx->IsRuntime(), inputs_dims, axis);
+      if (out_dims[axis] < 0) {
+        out_dims[axis] = -1;
       }
+      ctx->SetOutputDim("Out", out_dims);
+      ctx->ShareLoD("X", /*->*/ "Out");
     }
-    if (out_dims[axis] < 0) {
-      out_dims[axis] = -1;
-    }
-    ctx->SetOutputDim("Out", out_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:
@@ -111,6 +89,16 @@ class ConcatOp : public framework::OperatorWithKernel {
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "AxisTensor") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -128,6 +116,12 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
                  "interpreted as counting from the end of the rank."
                  "i.e., axis + rank(X) th dimension.")
         .SetDefault(0);
+    AddInput("AxisTensor",
+             "(Tensor) The axis along which the input tensors will be "
+             "concatenated.  "
+             "It has higher priority than Attr(axis). "
+             "The shape of AxisTensor must be [1].")
+        .AsDispensable();
     AddAttr<bool>("use_quantizer",
                   "(bool, default false) "
                   "Set to true for operators that should be quantized and use "
@@ -178,23 +172,35 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
                                        ctx, framework::GradVarName("Out")),
                                    ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "AxisTensor") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ConcatOpGradNoNeedBufferVarInference,
                                       "X");
 
-class ConcatGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("concat_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
-    op->SetAttrMap(Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("AxisTensor", this->Input("AxisTensor"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -204,7 +210,8 @@ class ConcatGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(concat, ops::ConcatOp, ops::ConcatOpMaker,
-                  ops::ConcatGradOpDescMaker);
+                  ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ConcatGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(concat_grad, ops::ConcatOpGrad,
                   ops::ConcatOpGradNoNeedBufferVarInference);
 REGISTER_OP_CPU_KERNEL(

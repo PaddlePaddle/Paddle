@@ -11,19 +11,20 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/framework/ir/codegen.h"
+
+#include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include <gtest/gtest.h>
 #include <cmath>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/ir/codegen_helper.h"
+#include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device_code.h"
 #include "paddle/fluid/platform/init.h"
-#ifdef PADDLE_WITH_CUDA
 
-TEST(codegen, cuda) {
+#ifdef PADDLE_WITH_CUDA
+TEST(code_generator, cuda) {
   std::vector<int> mul_input{1, 2};
   std::vector<int> add_input{3, 4};
   std::vector<int> sub_input{5, 6};

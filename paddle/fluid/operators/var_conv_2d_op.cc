@@ -283,26 +283,27 @@ class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
   }
 };
 
-class VarConv2dGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class VarConv2dGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
     op->SetType(this->ForwardOpType() + "_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("W", Input("W"));
-    op->SetInput("ROW", Input("ROW"));
-    op->SetInput("COLUMN", Input("COLUMN"));
-    op->SetInput("Col", Output("Col"));
-    op->SetInput("Out", Output("Out"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("W", this->Input("W"));
+    op->SetInput("ROW", this->Input("ROW"));
+    op->SetInput("COLUMN", this->Input("COLUMN"));
+    op->SetInput("Col", this->Output("Col"));
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("W"), InputGrad("W"));
-    op->SetAttrMap(Attrs());
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    op->SetAttrMap(this->Attrs());
 
-    return std::unique_ptr<framework::OpDesc>(op);
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -443,7 +444,8 @@ namespace ops = paddle::operators;
 namespace plt = paddle::platform;
 namespace frm = paddle::framework;
 REGISTER_OPERATOR(var_conv_2d, ops::VarConv2dOP, ops::VarConv2dOpMaker,
-                  ops::VarConv2dGradMaker);
+                  ops::VarConv2dGradMaker<paddle::framework::OpDesc>,
+                  ops::VarConv2dGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(var_conv_2d_grad, ops::VarConv2dOpGrad);
 
 REGISTER_OP_CPU_KERNEL(var_conv_2d,
