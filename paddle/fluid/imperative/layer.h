@@ -314,20 +314,22 @@ class DygraphExecutionContext : public framework::ExecutionContext {
 
   std::vector<std::string> InNameList() const {
     std::vector<std::string> vec_temp;
-    vec_temp.reverse(var_base_map_in_.size());
+    vec_temp.reserve(var_base_map_in_.size());
 
     for (auto& v : var_base_map_in_) {
-      vec_temp.emplace(v.first);
+      vec_temp.push_back(v.first);
     }
 
     return vec_temp;
   }
   bool HasInput(const std::string& name) const {
-    return var_base_map_in_.count(name) > 0;
+    auto it = var_base_map_in_.find(name);
+    return (it != var_base_map_in_.end() && it->second.size() > 0);
   }
 
   virtual bool HasOutput(const std::string& name) const {
-    return var_base_map_out_.count(name) > 0;
+    auto it = var_base_map_out_.find(name);
+    return (it != var_base_map_out_.end() && it->second.size() > 0);
   }
 
   size_t InputSize(const std::string& name) const {
@@ -661,7 +663,7 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
   // This part is only used for backward
   NameVarBaseMap ins_;
   NameVarBaseMap outs_;
-
+  std::string type_;
   framework::AttributeMap attrs_;
 };
 
@@ -726,6 +728,11 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       }
     }
     return true;
+  }
+
+  void IncreaseLoDLevel(const std::string& in, const std::string& out,
+                        size_t i = 0, size_t j = 0) const override {
+    PADDLE_THROW("IncreaseLoDLevel is only used in compile time.");
   }
 
   framework::AttrReader Attrs() const override {
@@ -931,9 +938,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
  private:
   const NameVarBaseMap* var_base_map_in_;
   const NameVarBaseMap* var_base_map_out_;
-  const framework::AttributeMap* attrs_;
   std::string type_;
-  framework::AttributeMap attrs_;
+  const framework::AttributeMap* attrs_;
 };
 
 }  // namespace imperative

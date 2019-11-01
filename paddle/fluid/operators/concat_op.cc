@@ -199,7 +199,9 @@ class ConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
     std::unique_ptr<T> op(new T());
     op->SetType("concat_grad");
     op->SetInput("X", this->Input("X"));
-    op->SetInput("AxisTensor", this->Input("AxisTensor"));
+    if (this->HasInput("AxisTensor")) {
+      op->SetInput("AxisTensor", this->Input("AxisTensor"));
+    }
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
     op->SetAttrMap(this->Attrs());

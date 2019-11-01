@@ -312,7 +312,7 @@ class ExecutionContext {
     vec_temp.reserve(ctx_.inputs.size());
 
     for (auto& input : ctx_.inputs) {
-      vec_temp.emplace(input.first);
+      vec_temp.push_back(input.first);
     }
 
     return vec_temp;

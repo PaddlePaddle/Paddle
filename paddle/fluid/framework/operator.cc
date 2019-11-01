@@ -1178,7 +1178,7 @@ void OperatorWithKernel::ParseInputDataType(
     proto::VarType::Type* data_type) const {
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
-  const std::vector<const Variable*> vars = ctx.MultiInputVar(name);
+  const std::vector<Variable*> vars = ctx.MultiInputVar(name);
   for (size_t i = 0; i < vars.size(); ++i) {
     const Variable* var = vars[i];
     if (var != nullptr) {
@@ -1194,7 +1194,7 @@ void OperatorWithKernel::ParseInputDataType(
         PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
                           "The Tensor in the %s Op's Input Variable %s(%s) is "
                           "not initialized.",
-                          Type(), name, ctx.Inputs(name).at(i));
+                          Type(), name, ctx.InputNames(name).at(i));
         proto::VarType::Type tmp = t->type();
         PADDLE_ENFORCE(tmp == *data_type || *data_type == dafault_data_type,
                        "The DataType of %s Op's duplicable Variable %s must be "
