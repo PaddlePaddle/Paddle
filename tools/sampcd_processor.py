@@ -203,9 +203,9 @@ def sampcd_extract_and_run(srccom,
         tempf = open("samplecode_temp/" + tfname, 'w')
         tempf.write(sampcd)
         tempf.close()
-        if python_version == '2':
+        if python_version == 2:
             cmd = ["python", "samplecode_temp/" + tfname]
-        elif python_version == '3':
+        elif python_version == 3:
             cmd = ["python3", "samplecode_temp/" + tfname]
         else:
             print("fail to parse python version!")
@@ -681,7 +681,7 @@ else:
         sys.exit("Invalid arguments")
     if sys.argv[2] == "2":
         python_version = 2
-    elif sys.arg[2] == "3":
+    elif sys.argv[2] == "3":
         python_version = 3
     print("API check -- Example Code")
     print("sample_test running under python", python_version)
@@ -698,7 +698,7 @@ else:
     ]
     po = multiprocessing.Pool(10)
     for file_list in divided_file_list:
-        po.apply_async(test, (file_list, ))
+        po.apply_async(test, (file_list, python_version, ))
     po.close()
     po.join()
 
