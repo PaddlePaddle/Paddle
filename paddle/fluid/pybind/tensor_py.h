@@ -64,6 +64,23 @@ namespace pybind {
 
 namespace details {
 
+class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
+ public:
+  explicit NumpyAllocation(std::shared_ptr<pybind11::array> arr, ssize_t size,
+                           paddle::platform::CPUPlace place)
+      : Allocation(
+            const_cast<void *>(reinterpret_cast<const void *>(arr->data())),
+            size, place),
+        arr_(arr) {}
+  ~NumpyAllocation() override {
+    py::gil_scoped_acquire gil;
+    arr_->dec_ref();
+  }
+
+ private:
+  std::shared_ptr<pybind11::array> arr_;
+};
+
 template <typename T>
 struct ValidDTypeToPyArrayChecker {
   static constexpr bool kValue = false;
@@ -148,12 +165,20 @@ void SetTensorFromPyArrayT(
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
   self->Resize(framework::make_ddim(dims));
-  auto dst = self->mutable_data<T>(place);
 
   if (paddle::platform::is_cpu_place(place)) {
-    std::memcpy(dst, array.data(), array.nbytes());
+    array.inc_ref();
+    auto holder = std::make_shared<details::NumpyAllocation>(
+        std::make_shared<py::array>(static_cast<py::array>(array)),
+        sizeof(T) * (array.size()), place);
+    self->ResetHolder(holder);
+    self->ResetType(framework::ToDataType(std::type_index(typeid(T))));
+
+    //    auto dst = self->mutable_data<T>(place);
+    //    std::memcpy(dst, array.data(), array.nbytes());
   } else {
 #ifdef PADDLE_WITH_CUDA
+    auto dst = self->mutable_data<T>(place);
     if (paddle::platform::is_cuda_pinned_place(place)) {
       std::memcpy(dst, array.data(), array.nbytes());
     } else if (paddle::platform::is_gpu_place(place)) {
