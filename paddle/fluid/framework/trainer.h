@@ -105,7 +105,6 @@ class DistMultiTrainer : public MultiTrainer {
   bool need_dump_field_;
   std::string dump_fields_path_;
   std::string dump_converter_;
-  std::vector<std::string> dump_fields_;
   int mpi_rank_;
   int mpi_size_;
   int dump_file_num_;

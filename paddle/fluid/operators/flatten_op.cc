@@ -190,18 +190,19 @@ class Flatten2OpMaker : public FlattenOpMaker {
   }
 };
 
-class Flatten2GradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Flatten2GradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("flatten2_grad");
-    grad_op->SetInput("XShape", Output("XShape"));
-    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -238,14 +239,18 @@ DECLARE_INPLACE_OP_INFERER(FlattenGradInplaceinToOut,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(flatten, ops::FlattenOp, ops::FlattenOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>,
-                  ops::FlattenOpInplaceInToOut);
+REGISTER_OPERATOR(
+    flatten, ops::FlattenOp, ops::FlattenOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
+    ops::FlattenOpInplaceInToOut);
 REGISTER_OPERATOR(flatten_grad, ops::FlattenGradOp,
                   ops::FlattenGradInplaceinToOut);
 
 REGISTER_OPERATOR(flatten2, ops::Flatten2Op, ops::Flatten2OpMaker,
-                  ops::Flatten2GradOpMaker, ops::FlattenOpInplaceInToOut);
+                  ops::Flatten2GradOpMaker<paddle::framework::OpDesc>,
+                  ops::Flatten2GradOpMaker<paddle::imperative::OpBase>,
+                  ops::FlattenOpInplaceInToOut);
 REGISTER_OPERATOR(flatten2_grad, ops::Flatten2GradOp,
                   ops::FlattenGradInplaceinToOut);
 

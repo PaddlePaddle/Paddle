@@ -101,25 +101,38 @@ size_t Used<platform::CPUPlace>(const platform::CPUPlace &place) {
 }
 
 #ifdef PADDLE_WITH_CUDA
-BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
-  static std::once_flag init_flag;
-  static detail::BuddyAllocator **a_arr = nullptr;
-  static std::vector<int> devices;
+class GPUBuddyAllocatorList {
+ private:
+  GPUBuddyAllocatorList() : devices_(platform::GetSelectedDevices()) {
+    auto gpu_num = devices_.size();
+    allocators_.resize(gpu_num);
+    init_flags_.reserve(gpu_num);
+    for (size_t i = 0; i < gpu_num; ++i) {
+      init_flags_.emplace_back(new std::once_flag());
+    }
+  }
 
-  std::call_once(init_flag, [gpu_id]() {
-    devices = platform::GetSelectedDevices();
-    int gpu_num = devices.size();
-    a_arr = new BuddyAllocator *[gpu_num];
+  static GPUBuddyAllocatorList *CreateNewInstance() {
+    return new GPUBuddyAllocatorList();
+  }
 
-    for (size_t i = 0; i < devices.size(); ++i) {
-      int dev_id = devices[i];
-      a_arr[i] = nullptr;
-      platform::SetDeviceId(dev_id);
-      a_arr[i] = new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
-                                        new detail::GPUAllocator(dev_id)),
-                                    platform::GpuMinChunkSize(),
-                                    platform::GpuMaxChunkSize());
+ public:
+  static GPUBuddyAllocatorList *Instance() {
+    static auto *instance = CreateNewInstance();
+    return instance;
+  }
 
+  BuddyAllocator *Get(int gpu_id) {
+    auto pos = std::distance(
+        devices_.begin(), std::find(devices_.begin(), devices_.end(), gpu_id));
+    PADDLE_ENFORCE_LT(pos, devices_.size());
+
+    std::call_once(*init_flags_[pos], [this, pos] {
+      platform::SetDeviceId(devices_[pos]);
+      allocators_[pos].reset(new BuddyAllocator(
+          std::unique_ptr<detail::SystemAllocator>(
+              new detail::GPUAllocator(devices_[pos])),
+          platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
       VLOG(10) << "\n\nNOTE:\n"
                << "You can set GFlags environment variable "
                << "'FLAGS_fraction_of_gpu_memory_to_use' "
@@ -132,13 +145,19 @@ BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
                << FLAGS_initial_gpu_memory_in_mb
                << ". Current 'FLAGS_reallocate_gpu_memory_in_mb' value is "
                << FLAGS_reallocate_gpu_memory_in_mb << "\n\n";
-    }
-    platform::SetDeviceId(gpu_id);
-  });
+    });
 
-  auto pos = std::distance(devices.begin(),
-                           std::find(devices.begin(), devices.end(), gpu_id));
-  return a_arr[pos];
+    return allocators_[pos].get();
+  }
+
+ private:
+  std::vector<int> devices_;
+  std::vector<std::unique_ptr<std::once_flag>> init_flags_;
+  std::vector<std::unique_ptr<BuddyAllocator>> allocators_;
+};
+
+BuddyAllocator *GetGPUBuddyAllocator(int gpu_id) {
+  return GPUBuddyAllocatorList::Instance()->Get(gpu_id);
 }
 #endif
 

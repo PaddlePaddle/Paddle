@@ -29,12 +29,16 @@ class AutoMixedPrecisionLists(object):
         custom_black_list (set): Users' custom black list.
     """
 
-    def __init__(self, custom_white_list=None, custom_black_list=None):
+    def __init__(self,
+                 custom_white_list=None,
+                 custom_black_list=None,
+                 custom_black_varnames=None):
         self._custom_white_list = custom_white_list
         self._custom_black_list = custom_black_list
         self.white_list = copy.copy(white_list)
         self.black_list = copy.copy(black_list)
         self.gray_list = copy.copy(gray_list)
+        self.black_varnames = copy.copy(custom_black_varnames)
         self._update_list()
 
     def _update_list(self):

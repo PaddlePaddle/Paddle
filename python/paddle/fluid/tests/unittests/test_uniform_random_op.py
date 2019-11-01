@@ -70,10 +70,57 @@ class TestUniformRandomOp_attr_tensorlist(OpTest):
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
 
 
+class TestUniformRandomOp_attr_tensorlist_int32(OpTest):
+    def setUp(self):
+        self.op_type = "uniform_random"
+        self.new_shape = (1000, 784)
+        shape_tensor = []
+        for index, ele in enumerate(self.new_shape):
+            shape_tensor.append(("x" + str(index), np.ones(
+                (1)).astype("int32") * ele))
+        self.inputs = {'ShapeTensorList': shape_tensor}
+        self.init_attrs()
+        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
+
+    def init_attrs(self):
+        self.attrs = {"min": -5.0, "max": 10.0, "seed": 10}
+        self.output_hist = output_hist
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        hist, prob = self.output_hist(np.array(outs[0]))
+        self.assertTrue(
+            np.allclose(
+                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+
 class TestUniformRandomOp_attr_tensor(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
         self.inputs = {"ShapeTensor": np.array([1000, 784]).astype("int64")}
+        self.init_attrs()
+        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
+
+    def init_attrs(self):
+        self.attrs = {"min": -5.0, "max": 10.0, "seed": 10}
+        self.output_hist = output_hist
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        hist, prob = self.output_hist(np.array(outs[0]))
+        self.assertTrue(
+            np.allclose(
+                hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+
+class TestUniformRandomOp_attr_tensor_int32(OpTest):
+    def setUp(self):
+        self.op_type = "uniform_random"
+        self.inputs = {"ShapeTensor": np.array([1000, 784]).astype("int32")}
         self.init_attrs()
         self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
 
@@ -235,12 +282,46 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
             dim_tensor = fluid.layers.fill_constant([1], "int64", 3)
             ret = fluid.layers.nn.uniform_random([1, dim_tensor, 2])
 
-            use_cuda = False
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            place = fluid.CPUPlace()
+            if fluid.core.is_compiled_with_cuda():
+                place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
 
             exe.run(startup_program)
             outs = exe.run(train_program, fetch_list=[ret])
+
+    def test_attr_tensorlist_int32_API(self):
+        startup_program = fluid.Program()
+        train_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            dim_1 = fluid.layers.fill_constant([1], "int64", 3)
+            dim_2 = fluid.layers.fill_constant([1], "int32", 2)
+            ret = fluid.layers.nn.uniform_random([1, dim_1, dim_2])
+
+            place = fluid.CPUPlace()
+            if fluid.core.is_compiled_with_cuda():
+                place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+
+            exe.run(startup_program)
+            outs = exe.run(train_program, fetch_list=[ret])
+
+    def test_attr_tensor_int32_API(self):
+        startup_program = fluid.Program()
+        train_program = fluid.Program()
+        with fluid.program_guard(train_program, startup_program):
+            shape = fluid.data(name='shape_tensor', shape=[2], dtype="int32")
+            ret = fluid.layers.nn.uniform_random(shape)
+
+            place = fluid.CPUPlace()
+            if fluid.core.is_compiled_with_cuda():
+                place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            Shape = np.array([2, 3]).astype('int32')
+            exe.run(startup_program)
+            outs = exe.run(train_program,
+                           feed={'shape_tensor': Shape},
+                           fetch_list=[ret])
 
 
 class TestUniformRandomOp_API_seed(unittest.TestCase):

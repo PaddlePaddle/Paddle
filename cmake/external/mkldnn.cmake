@@ -12,24 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_MKLDNN})
-  return()
-ENDIF(NOT ${WITH_MKLDNN})
-
 INCLUDE(ExternalProject)
 
 SET(MKLDNN_PROJECT        "extern_mkldnn")
 SET(MKLDNN_SOURCES_DIR    ${THIRD_PARTY_PATH}/mkldnn)
 SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
-
-IF(APPLE)
-    MESSAGE(WARNING
-        "Mac is not supported with MKLDNN in Paddle yet."
-        "Force WITH_MKLDNN=OFF")
-    SET(WITH_MKLDNN OFF CACHE STRING "Disable MKLDNN in MacOS" FORCE)
-    return()
-ENDIF()
 
 # Introduce variables:
 # * CMAKE_INSTALL_LIBDIR

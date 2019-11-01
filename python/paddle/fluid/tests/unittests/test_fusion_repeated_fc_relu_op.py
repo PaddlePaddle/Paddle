@@ -78,7 +78,7 @@ class TestFusionRepeatedFCReluOp(OpTest):
 class TestFusionRepeatedFCReluOpBS1(TestFusionRepeatedFCReluOp):
     def set_conf(self):
         self.bs = 1
-        self.oc = [4, 2, 7, 5]
+        self.oc = [4, 2, 7, 5, 512, 1024]
 
 
 if __name__ == '__main__':

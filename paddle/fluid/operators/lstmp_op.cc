@@ -272,39 +272,42 @@ Users can choose to use fully-connected operator before LSTMP operator.
   }
 };
 
-class LSTMPGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LSTMPGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* grad_op = new T();
     grad_op->SetType("lstmp_grad");
-    grad_op->SetInput("Weight", Input("Weight"));
-    grad_op->SetInput("ProjWeight", Input("ProjWeight"));
-    grad_op->SetInput("Bias", Input("Bias"));
+    grad_op->SetInput("Weight", this->Input("Weight"));
+    grad_op->SetInput("ProjWeight", this->Input("ProjWeight"));
+    grad_op->SetInput("Bias", this->Input("Bias"));
 
-    grad_op->SetInput("Projection", Output("Projection"));
-    grad_op->SetInput("Cell", Output("Cell"));
-    grad_op->SetInput("BatchGate", Output("BatchGate"));
-    grad_op->SetInput("BatchCellPreAct", Output("BatchCellPreAct"));
-    grad_op->SetInput("BatchHidden", Output("BatchHidden"));
-    grad_op->SetInput("H0", Input("H0"));
-    grad_op->SetInput("C0", Input("C0"));
+    grad_op->SetInput("Projection", this->Output("Projection"));
+    grad_op->SetInput("Cell", this->Output("Cell"));
+    grad_op->SetInput("BatchGate", this->Output("BatchGate"));
+    grad_op->SetInput("BatchCellPreAct", this->Output("BatchCellPreAct"));
+    grad_op->SetInput("BatchHidden", this->Output("BatchHidden"));
+    grad_op->SetInput("H0", this->Input("H0"));
+    grad_op->SetInput("C0", this->Input("C0"));
 
     grad_op->SetInput(framework::GradVarName("Projection"),
-                      OutputGrad("Projection"));
+                      this->OutputGrad("Projection"));
 
-    grad_op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
-    grad_op->SetOutput(framework::GradVarName("Weight"), InputGrad("Weight"));
+    grad_op->SetOutput(framework::GradVarName("Input"),
+                       this->InputGrad("Input"));
+    grad_op->SetOutput(framework::GradVarName("Weight"),
+                       this->InputGrad("Weight"));
     grad_op->SetOutput(framework::GradVarName("ProjWeight"),
-                       InputGrad("ProjWeight"));
-    grad_op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
-    grad_op->SetOutput(framework::GradVarName("H0"), InputGrad("H0"));
-    grad_op->SetOutput(framework::GradVarName("C0"), InputGrad("C0"));
+                       this->InputGrad("ProjWeight"));
+    grad_op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    grad_op->SetOutput(framework::GradVarName("H0"), this->InputGrad("H0"));
+    grad_op->SetOutput(framework::GradVarName("C0"), this->InputGrad("C0"));
 
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -357,7 +360,9 @@ class LSTMPGradOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lstmp, ops::LSTMPOp, ops::LSTMPOpMaker, ops::LSTMPGradMaker);
+REGISTER_OPERATOR(lstmp, ops::LSTMPOp, ops::LSTMPOpMaker,
+                  ops::LSTMPGradMaker<paddle::framework::OpDesc>,
+                  ops::LSTMPGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstmp_grad, ops::LSTMPGradOp);
 REGISTER_OP_CPU_KERNEL(
     lstmp, ops::LSTMPKernel<paddle::platform::CPUDeviceContext, float>,
