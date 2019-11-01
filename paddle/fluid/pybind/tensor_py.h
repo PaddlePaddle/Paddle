@@ -34,12 +34,13 @@ namespace pybind11 {
 namespace detail {
 
 // Note: use same enum number of float16 in numpy.
-// import numpy as np;
-// print np.dtype(np.float16).num
+// import numpy as np
+// print np.dtype(np.float16).num  # 23
 constexpr int NPY_FLOAT16_ = 23;
 
-// Note: Since float16 is not a builtin type in C++, we
+// Note: Since float16 is not a builtin type in C++, we register
 // paddle::platform::float16 as numpy.float16.
+// Ref: https://github.com/pybind/pybind11/issues/1776
 template <>
 struct npy_format_descriptor<paddle::platform::float16> {
   static py::dtype dtype() {
@@ -48,7 +49,8 @@ struct npy_format_descriptor<paddle::platform::float16> {
   }
   static std::string format() {
     // Note: "e" represents float16.
-    // Details https://docs.python.org/3/library/struct.html#format-characters.
+    // Details at:
+    // https://docs.python.org/3/library/struct.html#format-characters.
     return "e";
   }
   static PYBIND11_DESCR name() { return _("float16"); }

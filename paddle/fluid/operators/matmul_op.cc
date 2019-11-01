@@ -471,21 +471,22 @@ class MatMulOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class MatMulOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class MatMulOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *retv = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *retv = new T();
     retv->SetType("matmul_grad");
-    retv->SetInput("X", Input("X"));
-    retv->SetInput("Y", Input("Y"));
-    retv->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    retv->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    retv->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    retv->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(retv);
+    retv->SetInput("X", this->Input("X"));
+    retv->SetInput("Y", this->Input("Y"));
+    retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    retv->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    retv->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(retv);
   }
 };
 }  // namespace operators
@@ -493,7 +494,8 @@ class MatMulOpGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(matmul, ops::MatMulOp, ops::MatMulOpMaker,
-                  ops::MatMulOpGradMaker);
+                  ops::MatMulOpGradMaker<paddle::framework::OpDesc>,
+                  ops::MatMulOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(matmul_grad, ops::MatMulOpGrad);
 REGISTER_OP_CPU_KERNEL(
     matmul, ops::MatMulKernel<paddle::platform::CPUDeviceContext, float>,

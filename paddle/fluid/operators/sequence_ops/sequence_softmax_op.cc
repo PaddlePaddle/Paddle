@@ -158,9 +158,10 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_softmax, ops::SequenceSoftmaxOp,
-                  ops::SequenceSoftmaxOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    sequence_softmax, ops::SequenceSoftmaxOp, ops::SequenceSoftmaxOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(sequence_softmax_grad, ops::SequenceSoftmaxGradOp,
                   ops::SequenceSoftmaxGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(

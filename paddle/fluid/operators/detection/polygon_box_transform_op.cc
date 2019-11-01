@@ -98,9 +98,11 @@ the geometry output contains 2*n channels.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(polygon_box_transform, ops::PolygonBoxTransformOp,
-                  ops::PolygonBoxTransformOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    polygon_box_transform, ops::PolygonBoxTransformOp,
+    ops::PolygonBoxTransformOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     polygon_box_transform,
     ops::PolygonBoxTransformCPUKernel<paddle::platform::CPUPlace, float>,
