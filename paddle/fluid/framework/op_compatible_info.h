@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <map>
+#include <memory>
 #include <string>
 #include "paddle/fluid/framework/program_desc.h"
 
@@ -69,6 +70,10 @@ class OpCompatibleMap {
   std::map<std::string, CompatibleInfo> op_compatible_map_;
   std::string default_required_version_;
 };
+
+// Determine if the model contains operators that the optimization cannot
+// support.
+bool ProgOptimUnsupported(std::shared_ptr<framework::ProgramDesc> program);
 
 }  // namespace framework
 }  // namespace paddle
