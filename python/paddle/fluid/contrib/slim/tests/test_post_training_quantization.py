@@ -303,7 +303,7 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
         sys.stdout.flush()
 
         delta_value = fp32_acc1 - int8_acc1
-        self.assertLess(delta_value, 0.05)
+        self.assertLess(delta_value, 0.5)
 
 
 class TestPostTrainingForMobilenetv1(TestPostTrainingQuantization):
@@ -347,7 +347,7 @@ class TestPostTrainingForMobilenetv1(TestPostTrainingQuantization):
         sys.stdout.flush()
 
         delta_value = fp32_acc1 - int8_acc1
-        self.assertLess(delta_value, 0.05)
+        self.assertLess(delta_value, 0.5)
 
 
 if __name__ == '__main__':
