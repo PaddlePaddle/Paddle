@@ -380,6 +380,7 @@ class OpTest(unittest.TestCase):
                             feed=feed_map,
                             fetch_list=fetch_list,
                             return_numpy=False)
+        self.op = op
         self.program = original_program
         if for_inplace_test:
             return outs, fetch_list, feed_map, original_program, op.desc
@@ -851,16 +852,30 @@ class OpTest(unittest.TestCase):
             return outs, fetch_list
 
     def check_compile_vs_runtime(self, fetch_list, fetch_outs):
-        outputs = self._get_outputs(self.program.global_block())
-        for i, name in enumerate(fetch_list):
-            out = fetch_outs[i]
-            if isinstance(out, core.LoDTensor):
-                lod_level_runtime = len(out.lod())
-            else:
-                lod_level_runtime = 0
-            if outputs.has_key(name):
-                print(name)
-                var = outputs[name]
+        def find_fetch_index(target_name, fetch_list):
+            found = [
+                i for i, var_name in enumerate(fetch_list)
+                if var_name == target_name
+            ]
+            self.assertTrue(
+                len(found) == 1, "Found {} {}".format(len(found), target_name))
+            return found[0]
+
+        for name in self.op.desc.output_names():
+            var_names = self.op.desc.output(name)
+            for var_name in var_names:
+                i = find_fetch_index(var_name, fetch_list)
+                out = fetch_outs[i]
+                if isinstance(out, core.LoDTensor):
+                    lod_level_runtime = len(out.lod())
+                else:
+                    if isinstance(out, core.LoDTensorArray):
+                        warnings.warn(
+                            "The check of LoDTensorArray's lod_level is not implemented now!"
+                        )
+                    lod_level_runtime = 0
+
+                var = self.program.global_block().var(var_name)
                 if var.type == core.VarDesc.VarType.LOD_TENSOR:
                     lod_level_compile = var.lod_level
                 else:
@@ -871,9 +886,6 @@ class OpTest(unittest.TestCase):
                     ") is different between compile-time and runtime (" +
                     str(lod_level_compile) + " vs " + str(lod_level_runtime) +
                     ")")
-            else:
-                raise AssertionError("%s is a output of operator %s", name,
-                                     self.op_type)
 
     def _get_places(self):
         if self.dtype == np.float16:
