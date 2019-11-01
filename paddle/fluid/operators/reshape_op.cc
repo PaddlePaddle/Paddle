@@ -186,13 +186,16 @@ class ReshapeOp : public framework::OperatorWithKernel {
         output_shape[unk_dim_idx] = -1;
       }
     } else {
-      PADDLE_ENFORCE_EQ(
-          capacity, in_size,
-          "ShapeError: The 'shape' in ReshapeOp is invalid. "
-          "The input tensor X'size must be equal to the capacity of 'shape'. "
-          "But received X's shape = [%s], X's size = %d, 'shape' is [%s], the "
-          "capacity of 'shape' is %d.",
-          in_dims, in_size, framework::make_ddim(shape), capacity);
+      if (all_positive) {
+        PADDLE_ENFORCE_EQ(
+            capacity, in_size,
+            "ShapeError: The 'shape' in ReshapeOp is invalid. "
+            "The input tensor X'size must be equal to the capacity of 'shape'. "
+            "But received X's shape = [%s], X's size = %d, 'shape' is [%s], "
+            "the "
+            "capacity of 'shape' is %d.",
+            in_dims, in_size, framework::make_ddim(shape), capacity);
+      }
     }
     return framework::make_ddim(output_shape);
   }
