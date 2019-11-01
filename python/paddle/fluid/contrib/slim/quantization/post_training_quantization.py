@@ -14,25 +14,31 @@
 import math
 import logging
 import numpy as np
+from ....executor import global_scope
 from .... import io
 from .... import core
+from .... import framework
 from ....framework import IrGraph
+from ....log_helper import get_logger
 from .quantization_pass import QuantizationTransformPass
 from .quantization_pass import QuantizationFreezePass
 from .quantization_pass import AddQuantDequantPass
 
+
 __all__ = ['PostTrainingQuantization']
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
 
 class PostTrainingQuantization(object):
     def __init__(self,
-                 place,
                  executor,
-                 scope,
-                 program,
-                 feed_var_names,
-                 fetch_list,
-                 save_model_path,
+                 model_path,
+                 data_reader,
+                 batch_size=10,
+                 batch_nums=None,
+                 scope=None,
                  algo="KL",
                  quantizable_op_type=[
                      "conv2d", "depthwise_conv2d", "mul", "pool2d",
@@ -40,36 +46,61 @@ class PostTrainingQuantization(object):
                  ]):
         '''
         The class utilizes post training quantization methon to quantize the 
-        fp32 model. It saves the sample data, uses sample data to calculate 
-        the scale factor of quantized variables, and inserts fake quant/dequant 
-        op to obtain the quantized model.
+        fp32 model. It uses calibrate data to calculate the scale factor of 
+        quantized variables, and inserts fake quant/dequant op to obtain the 
+        quantized model.
 
         Args:
-            place(fluid.CPUPlace|fluid.CUDAPlace): The runtime place of 
-                the program
-            executor(Executor): Use the executor to save the quantized model
-            scope(fluid.Scope): The scope of the program, use it to load 
-                and save variables
-            program(Program): The fp32 program, which will be quantized
-            feed_var_names(list[str]): The feed var names of the program
-            fetch_list(list[str]): The fetch var names of the program
-            save_model_path(str): The path to save the quantized model
+            executor(fluid.Executor): The executor to load, run and save the 
+                quantized model.
+            model_path(str): The path of fp32 model that will be quantized.
+            data_reader(Reader): The data reader generates a simple every time,
+                and it provides calibrate data for DataLoader.
+            batch_size(int, optional): The batch size of DataLoader, default is 10.
+            batch_nums(int, optional): If set batch_nums, the number of calibrate 
+                data is batch_size*batch_nums. If batch_nums=None, use all data
+                provided by data_reader as calibrate data.
+            scope(fluid.Scope, optional): The scope of the program, use it to load 
+                and save variables. If scope=None, get scope by global_scope(). 
             algo(str, optional): If algo=KL, use KL-divergenc method to 
                 get the more precise scale factor. If algo='direct', use 
                 abs_max methon to get the scale factor. Default is KL.
             quantizable_op_type(list[str], optional): List the type of ops 
                 that will be quantized. Default is ["conv2d", "depthwise_conv2d", 
                 "mul", "pool2d", "elementwise_add"].
+        Examples:
+        .. code-block:: python
+            import paddle.fluid as fluid
+            from paddle.fluid.contrib.slim.quantization import PostTrainingQuantization
+            
+            exe = fluid.Executor(fluid.CPUPlace())
+            model_path = path_to_fp32_model
+            save_model_path = save_to_
+            data_reader =  your_data_reader
+            batch_size = 10
+            batch_nums = 10
+            algo = "KL"
+            quantizable_op_type = ["conv2d", \
+                "depthwise_conv2d", "mul", "pool2d", "elementwise_add"]
+            ptq = PostTrainingQuantization(
+                        executor=exe,
+                        model_path=model_path,
+                        data_reader=data_reader,
+                        batch_size=batch_size,
+                        batch_nums=batch_nums,
+                        algo=algo,
+                        quantizable_op_type=quantizable_op_type)
+            ptq.quantize_model()
+            ptq.save_quantized_model(save_model_path)
         '''
-        self._place = place
         self._executor = executor
-        self._scope = scope
-        self._program = program
-        self._feed_var_names = feed_var_names
-        self._fetch_list = fetch_list
-        self._save_model_path = save_model_path
-        self._algo = algo
+        self._model_path = model_path
+        self._data_reader = data_reader
+        self._batch_size = batch_size
+        self._batch_nums = batch_nums
+        self._scope = global_scope() if scope == None else scope
         self._quantizable_op_type = quantizable_op_type
+        self._algo = algo
         supported_quantizable_op_type = [
             "conv2d", "depthwise_conv2d", "mul", "pool2d", "elementwise_add"
         ]
@@ -77,44 +108,77 @@ class PostTrainingQuantization(object):
             assert op_type in supported_quantizable_op_type, \
                 op_type + " is not supported for quantization."
 
+        self._place = self._executor.place
+        self._program = None
+        self._feed_list = None
+        self._fetch_list = None
+        self._data_loader = None
+
         self._bit_length = 8
         self._quantized_weight_var_name = []
         self._quantized_act_var_name = []
         self._sampling_data = {}
         self._quantized_var_scale_factor = {}
 
+    def quantize_model(self):
+        '''
+        Quantize the fp32 model. Use calibrate data to calculate the scale factor of 
+        quantized variables, and inserts fake quant/dequant op to obtain the 
+        quantized model.
+        
+        Return:
+            the quantized program.
+        '''
         self._prepare()
+        
+        batch_id = 0
+        for data in self._data_loader():
+            self._executor.run(program=self._program, feed=data, fetch_list=self._fetch_list)
+            self._sample_data()
 
-    def sample_data(self):
-        '''
-        Sample the tensor data of quantized variables, 
-        applied in every iteration.
-        '''
-        for var_name in self._quantized_weight_var_name:
-            if var_name not in self._sampling_data:
-                var_tensor = self._load_var_value(var_name)
-                self._sampling_data[var_name] = var_tensor
-
-        for var_name in self._quantized_act_var_name:
-            if var_name not in self._sampling_data:
-                self._sampling_data[var_name] = []
-            var_tensor = self._load_var_value(var_name)
-            self._sampling_data[var_name].append(var_tensor)
-
-    def save_quant_model(self):
-        '''
-        Obtain scale factor, insert quant/dequant op into graph, 
-        and save quant model to disk.
-        '''
+            if batch_id % 10 == 0:
+                print("train:" + str(batch_id))
+            batch_id += 1
+            if self._batch_nums and batch_id > self._batch_nums:
+                break
+        
         self._calculate_scale_factor()
         self._update_program()
-        self._save_offline_model()
+
+        return self._program
+
+    def save_quantized_model(self, save_model_path):
+        '''
+        Save the quantized model to the disk.
+
+        Args:
+            save_model_path(str): The path to save the quantized model
+        Return:
+            None
+        '''
+        io.save_inference_model(
+            dirname=save_model_path,
+            feeded_var_names=self._feed_list,
+            target_vars=self._fetch_list,
+            executor=self._executor,
+            main_program=self._program)
 
     def _prepare(self):
         '''
-        Collect the variable names for sampling, 
+        Load model and set data loader, collect the variable names for sampling, 
         and set activation variables to be persistable.
         '''
+        # load model and set data loader
+        [self._program, self._feed_list, self._fetch_list] = \
+            io.load_inference_model(self._model_path, self._executor)
+        feed_vars = [framework._get_var(str(var_name), self._program) \
+            for var_name in self._feed_list]
+        self._data_loader = io.DataLoader.from_generator(
+            feed_list=feed_vars, capacity=3*self._batch_size, iterable=True)
+        self._data_loader.set_sample_generator(self._data_reader, 
+            batch_size=self._batch_size, drop_last = False, places=self._place)
+        
+        #collect the variable names for sampling
         persistable_var_names = []
         for var in self._program.list_vars():
             if var.persistable:
@@ -135,7 +199,7 @@ class PostTrainingQuantization(object):
                     if x_var_name not in persistable_var_names and \
                         y_var_name not in persistable_var_names:
                         op._set_attr("skip_quant", True)
-                        logging.warning("A mul op skip quant for two "
+                        _logger.warning("A mul op skip quant for two "
                                         "input variables are not persistable")
                     else:
                         self._quantized_act_var_name.append(x_var_name)
@@ -152,10 +216,26 @@ class PostTrainingQuantization(object):
                         self._quantized_act_var_name.append(y_var_name)
 
         # set activation variables to be persistable, 
-        # so we can obtain the tensor data in sample_data stage
+        # so can obtain the tensor data in sample_data stage
         for var in self._program.list_vars():
             if var.name in self._quantized_act_var_name:
                 var.persistable = True
+
+    def _sample_data(self):
+        '''
+        Sample the tensor data of quantized variables, 
+        applied in every iteration.
+        '''
+        for var_name in self._quantized_weight_var_name:
+            if var_name not in self._sampling_data:
+                var_tensor = self._load_var_value(var_name)
+                self._sampling_data[var_name] = var_tensor
+
+        for var_name in self._quantized_act_var_name:
+            if var_name not in self._sampling_data:
+                self._sampling_data[var_name] = []
+            var_tensor = self._load_var_value(var_name)
+            self._sampling_data[var_name].append(var_tensor)
 
     def _calculate_scale_factor(self):
         '''
@@ -234,17 +314,6 @@ class PostTrainingQuantization(object):
         freeze_pass.apply(graph)
         self._program = graph.to_program()
 
-    def _save_offline_model(self):
-        '''
-        Save the quantized model to the disk.
-        '''
-        io.save_inference_model(
-            dirname=self._save_model_path,
-            feeded_var_names=self._feed_var_names,
-            target_vars=self._fetch_list,
-            executor=self._executor,
-            main_program=self._program)
-
     def _load_var_value(self, var_name):
         '''
         Load variable value from scope
@@ -274,7 +343,7 @@ class PostTrainingQuantization(object):
             ending_iter = 2047
             starting_iter = int(ending_iter * 0.7)
         else:
-            logging.error("Please first apply abs to activation_blob.")
+            _logger.error("Please first apply abs to activation_blob.")
         bin_width = hist_edeges[1] - hist_edeges[0]
 
         P_sum = len(np.array(activation_blob).ravel())
