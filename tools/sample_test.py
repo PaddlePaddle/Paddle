@@ -17,6 +17,17 @@ import sys
 import subprocess
 import multiprocessing
 import math
+"""
+please make sure to run in the tools path
+usage: python sample_test.py {arg1} {arg2}
+arg1: the first arg defined running in gpu version or cpu version
+arg2: the second arg defined testing python2 or python3 
+
+for example, you can run cpu version python2 testing like this:
+    
+    python sample_test.py cpu 2
+    
+"""
 
 
 def find_all(srcstr, substr):
@@ -477,6 +488,7 @@ Important constant lists:
     status_all: a status list containing all the execution status of all
                 APIs
     srcfile: the source .py code file
+    python_version: the python version you want to test
 '''
 
 filenames = [
