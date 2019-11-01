@@ -339,7 +339,7 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
-      PADDLE_ENFORCE(ctx->HasInput("X"), "Input(Y) should not be null");
+      PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
       ctx->ShareDim("X", /*->*/ x_grad_name);
       ctx->ShareLoD("X", /*->*/ x_grad_name);
     }

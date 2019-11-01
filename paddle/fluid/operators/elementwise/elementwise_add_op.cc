@@ -122,7 +122,7 @@ REGISTER_OPERATOR(elementwise_add, ops::ElementwiseOp,
                   ops::ElementwiseAddGradOpMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseAddGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(
-    elementwise_add_grad, ops::ElementwiseOpExplicitGrad,
+    elementwise_add_grad, ops::ElementwiseOpGrad,
     // ops::ElementwiseGradOpInplace,
     // ops::ElementwiseGradNoBufVarsInference,
     ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
