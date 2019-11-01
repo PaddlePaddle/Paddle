@@ -66,8 +66,8 @@ namespace details {
 
 class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
  public:
-  explicit NumpyAllocation(std::shared_ptr<pybind11::array> arr, ssize_t size,
-                           paddle::platform::CPUPlace place)
+  explicit NumpyAllocation(std::shared_ptr<py::array> arr, size_t size,
+                           paddle::platform::Place place)
       : Allocation(
             const_cast<void *>(reinterpret_cast<const void *>(arr->data())),
             size, place),
@@ -78,7 +78,7 @@ class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
   }
 
  private:
-  std::shared_ptr<pybind11::array> arr_;
+  std::shared_ptr<py::array> arr_;
 };
 
 template <typename T>
