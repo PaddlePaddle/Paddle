@@ -173,32 +173,18 @@ class DistributedAdam(DistributedOptimizerImplBase):
         prog_id_to_param_grads = OrderedDict()
         # sparse_grads of each program
         prog_id_to_sparse_grads = OrderedDict()
-        prog_id_to_losses = OrderedDidt()
 
         sparse_table_to_index = OrderedDict()
         sparse_table_index = 0
-        for loss in losses:
-            prog_id = str(id(loss.block.program))
-            if prog_id not in prog_id_to_losses:
-                prog_id_to_losses[prog_id] = set()
-            prog_id_to_losses[prog_id].insert(loss)
+        # unique program set
         program_id_set = set()
         for loss in losses:
             sparse_table = self._find_multi_distributed_lookup_table([loss])
             prog_id = str(id(loss.block.program))
             if prog_id not in program_id_set:
                 #support multi spars table in one program
-                program_id_set.insert(prog_id)
-                if prog_id in prog_id_to_sparse_table:
-                    pass
-                else:
-                    prog_id_to_sparse_table[prog_id] = []
-                if sparse_table in prog_id_to_sparse_table[prog_id]:
-                    pass
-                else:
-                    prog_id_to_sparse_table[prog_id].extend(sparse_table)
-                # prog_id_to_sparse_table[prog_id] = sparse_table
-                program_id_set.insert(prog_id)
+                program_id_set.add(prog_id)
+                prog_id_to_sparse_table[prog_id] = sparse_table
 
 
                 # get inputs_dict
@@ -217,18 +203,20 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 grads_dict = self._find_distributed_lookup_table_grads(
                     loss.block.program, sparse_table)
                 prog_id_to_sparse_grads[prog_id] = grads_dict
-            # get sparse_table_to_index
-            for tn in sparse_table:
-                if sparse_table_to_index.get(tn) is None:
-                    sparse_table_to_index[tn] = sparse_table_index
-                    sparse_table_index += 1
+                # get sparse_table_to_index
+                for tn in sparse_table:
+                    if sparse_table_to_index.get(tn) is None:
+                        sparse_table_to_index[tn] = sparse_table_index
+                        sparse_table_index += 1
             # param_grads of program
             params_grads = sorted(
                 fluid.backward.append_backward(loss, parameter_list,
                                                no_grad_set),
                 key=lambda x: x[0].name)
             #prog_id_to_param_grads[prog_id] = params_grads
-            prog_id_to_param_grads[prog_id].append(params_grads)
+            if prog_id not in prog_id_to_param_grads:
+                prog_id_to_param_grads[prog_id] = []
+            prog_id_to_param_grads[prog_id].extend(params_grads)
         # if user specify a fleet_desc.prototxt file, then load the file
         # instead of creating default fleet_desc.prototxt.
         # user can specify server_param or trainer_param or fs_client_param.
@@ -266,7 +254,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         for loss in losses:
             prog_id = str(id(loss.block.program))
             if prog_id not in program_id_set:
-                program_id_set.insert(prog_id)
+                program_id_set.add(prog_id)
                 worker = prog_id_to_worker[prog_id]
                 inputs_dict = prog_id_to_inputs_dict[prog_id]
                 outputs_dict = prog_id_to_outputs_dict[prog_id]
@@ -285,7 +273,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         for loss_index in range(len(losses)):
             program_id = str(id(losses[loss_index].block.program))
             if program_id not in program_id_set:
-                program_id_set.insert(program_id)
+                program_id_set.add(program_id)
                 worker = prog_id_to_worker[program_id]
                 sparse_table_names = prog_id_to_sparse_table[program_id]
                 sparse_table_index = \
