@@ -3203,7 +3203,8 @@ def locality_aware_nms(bboxes,
         keep_top_k (int): Number of total bboxes to be kept per image after NMS
                           step. -1 means keeping all bboxes after NMS step.
         normalized (bool): Whether detections are normalized. Default: True
-        name(str): Name of the locality aware nms op. Default: None.
+        name(str): Name of the locality aware nms op, please refer to :ref:`api_guide_Name` .
+                          Default: None.
 
     Returns:
         Variable: A 2-D LoDTensor with shape [No, 6] represents the detections.
@@ -3215,7 +3216,7 @@ def locality_aware_nms(bboxes,
              images, lod will be set to {1} and Out only contains one value
              which is -1.
              (After version 1.3, when no boxes detected, the lod is changed
-             from {0} to {1})
+             from {0} to {1}). The data type is float32 or float64.
 
 
     Examples:
