@@ -30,13 +30,18 @@ limitations under the License. */
 #include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
-
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 namespace paddle {
 namespace pybind {
 
 namespace py = ::pybind11;
+
+template <typename P>
+extern void SetTensorFromPyArray(framework::Tensor *self, pybind11::array array,
+                                 P place);
+extern py::array TensorToPyArray(const framework::Tensor &tensor,
+                                 bool need_deep_copy = false);
 
 class Layer : public imperative::Layer {
  public:
@@ -50,117 +55,16 @@ class Layer : public imperative::Layer {
   }
 };
 
-// warper for pyobject to avoid imperative module depend on python
-// TODO(jiabin) Add OpBase's pybind interface back to enable backward hook
-class PYBIND11_HIDDEN PyCallableObject {
- public:
-  PyCallableObject(std::shared_ptr<py::object> py_obj_ptr)
-      : py_obj_ptr_(std::move(py_obj_ptr)) {}
-  ~PyCallableObject() {
-    py::call_guard<py::gil_scoped_acquire>();
-    py_obj_ptr_.reset();
-  }
-  void operator()() {
-    py::call_guard<py::gil_scoped_acquire>();
-    py_obj_ptr_->operator()(this);
-  }
-
- private:
-  std::shared_ptr<py::object> py_obj_ptr_;
-};
-
-// Function like obj.attr_name in Python.
-static PyObject *GetPythonAttribute(PyObject *obj, const char *attr_name) {
-  // NOTE(zjl): PyObject_GetAttrString would return nullptr when attr_name
-  // is not inside obj, but it would also set the error flag of Python.
-  // If the error flag is set in C++, C++ code would not raise Exception,
-  // but Python would raise Exception once C++ call ends.
-  // To avoid unexpected Exception raised in Python, we check whether
-  // attribute exists before calling PyObject_GetAttrString.
-  //
-  // Caution: PyObject_GetAttrString would increase reference count of PyObject.
-  // Developer should call Py_DECREF manually after the attribute is not used.
-  if (PyObject_HasAttrString(obj, attr_name)) {
-    return PyObject_GetAttrString(obj, attr_name);
-  } else {
-    return nullptr;
-  }
-}
-
-template <typename T>
-static T PyObjectCast(PyObject *obj) {
-  try {
-    return py::cast<T>(py::handle(obj));
-  } catch (py::cast_error &) {
-    PADDLE_THROW("Python object is not type of %s", typeid(T).name());
-  }
-}
-
-// NOTE(zjl): py::handle is a very light wrapper of PyObject *.
-// Unlike py::object, py::handle does not change reference count of PyObject *.
-static std::vector<std::shared_ptr<imperative::VarBase>>
-GetVarBaseListFromPyHandle(const py::handle &handle) {
-  PyObject *py_obj = handle.ptr();  // get underlying PyObject
-  // Python None is not nullptr in C++!
-  if (!py_obj || py_obj == Py_None) {
-    return {};
-  }
-
-  const char *kIVarField = "_ivar";
-  PyObject *py_ivar = GetPythonAttribute(py_obj, kIVarField);
-  std::vector<std::shared_ptr<imperative::VarBase>> result;
-
-  if (py_ivar) {  // Variable
-    result.emplace_back(
-        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
-    Py_DECREF(py_ivar);
-  } else if (PyList_Check(py_obj)) {  // List of Variable
-    size_t len = PyList_GET_SIZE(py_obj);
-    result.reserve(len);
-    for (size_t i = 0; i < len; ++i) {
-      PyObject *py_ivar =
-          PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kIVarField);
-      PADDLE_ENFORCE_NOT_NULL(py_ivar);
-      result.emplace_back(
-          PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
-      Py_DECREF(py_ivar);
-    }
-  } else if (PyTuple_Check(py_obj)) {  // Tuple of Variable
-    size_t len = PyTuple_GET_SIZE(py_obj);
-    result.reserve(len);
-    for (size_t i = 0; i < len; ++i) {
-      PyObject *py_ivar =
-          PyObject_GetAttrString(PyTuple_GET_ITEM(py_obj, i), kIVarField);
-      PADDLE_ENFORCE_NOT_NULL(py_ivar);
-      result.emplace_back(
-          PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
-      Py_DECREF(py_ivar);
-    }
-  } else {
-    PADDLE_THROW(
-        "unsupported type %s, must be Variable, list[Variable] or "
-        "tuple[Variable]",
-        py::str(handle));
-  }
-
-  return result;
-}
-
-using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
-
-static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
-    const PyNameVarBaseMap &map) {
-  imperative::NameVarBaseMap result;
-  for (auto &pair : map) {
-    auto var_vec = GetVarBaseListFromPyHandle(pair.second);
-    if (!var_vec.empty()) {
-      result.emplace(pair.first, std::move(var_vec));
-    }
-  }
-
-  PADDLE_ENFORCE_EQ(PyErr_Occurred() == nullptr, true,
-                    py::str(py::handle(PyErr_Occurred())));
-  return result;
+template <typename P>
+static void InitVarBaseFromNumpy(imperative::VarBase *self,
+                                 const std::string &name, bool persistable,
+                                 const py::array &array, const P &place) {
+  new (self) imperative::VarBase(name);
+  self->SetPersistable(persistable);
+  auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  SetTensorFromPyArray<P>(tensor, array, place);
+  self->SetType(framework::proto::VarType::LOD_TENSOR);
+  self->SetDataType(tensor->type());
 }
 
 static std::string GetTypeName(const imperative::VarBase &var) {
@@ -235,10 +139,9 @@ void BindImperative(py::module *m_ptr) {
       R"DOC()DOC")
       .def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
       .def("__init__",
-           [](imperative::VarBase &self, const std::string &name,
-              framework::proto::VarType::Type type,
-              framework::proto::VarType::Type dtype,
-              const std::vector<int> &dims, bool persistable) {
+           [](imperative::VarBase &self, framework::proto::VarType::Type dtype,
+              const std::vector<int> &dims, const std::string &name,
+              framework::proto::VarType::Type type, bool persistable) {
              new (&self) imperative::VarBase(name);
              self.SetPersistable(persistable);
              self.SetType(type);
@@ -249,6 +152,85 @@ void BindImperative(py::module *m_ptr) {
                tensor->Resize(framework::make_ddim(dims));
              }
            })
+      .def("__init__", InitVarBaseFromNumpy<platform::CPUPlace>,
+           py::arg("name"), py::arg("persistable"), py::arg("value"),
+           py::arg("place"))
+      .def("__init__", InitVarBaseFromNumpy<platform::CUDAPlace>,
+           py::arg("name"), py::arg("persistable"), py::arg("value"),
+           py::arg("place"))
+      .def("__init__", InitVarBaseFromNumpy<platform::CUDAPinnedPlace>,
+           py::arg("name"), py::arg("persistable"), py::arg("value"),
+           py::arg("place"))
+      .def("numpy",
+           [](imperative::VarBase &self) -> py::array {
+             const auto &tensor =
+                 self.MutableVar()->Get<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(tensor.IsInitialized(), true,
+                               "%s is Empty, Please check if it has no data in",
+                               self.Name());
+             return TensorToPyArray(tensor, true);
+           },
+           R"DOC(
+        **Notes**:
+            **This API is ONLY avaliable in Dygraph mode**
+
+        Returns a numpy array shows the value of current :ref:`api_guide_Variable_en`
+
+        Returns:
+            ndarray: The numpy value of current Variable.
+
+        Returns type:
+            ndarray: dtype is same as current Variable
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph.base import to_variable
+                from paddle.fluid.dygraph import FC
+                import numpy as np
+
+                data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
+                with fluid.dygraph.guard():
+                    fc = FC("fc", 64, num_flatten_dims=2)
+                    data = to_variable(data)
+                    x = fc(data)
+                    print(x.numpy())
+
+       )DOC")
+      .def("detach",
+           [](const imperative::VarBase &self) {
+             const auto &tensor = self.Var().Get<framework::LoDTensor>();
+             PADDLE_ENFORCE_EQ(tensor.IsInitialized(), true,
+                               "%s has not been initialized", self.Name());
+             return self.NewVarBase(tensor.place(), false);
+           },
+           py::return_value_policy::copy, R"DOC(
+        **Notes**:
+            **This API is ONLY avaliable in Dygraph mode**
+
+        Returns a new Variable, detached from the current graph.
+
+        Returns:
+             ( :ref:`api_guide_Variable_en` | dtype is same as current Variable): The detached Variable.
+
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph.base import to_variable
+                from paddle.fluid.dygraph import FC
+                import numpy as np
+
+                data = np.random.uniform(-1, 1, [30, 10, 32]).astype('float32')
+                with fluid.dygraph.guard():
+                    fc = FC("fc", 64, num_flatten_dims=2)
+                    data = to_variable(data)
+                    x = fc(data)
+                    y = x.detach()
+
+       )DOC")
       .def("_run_backward",
            [](imperative::VarBase &self,
               const imperative::detail::BackwardStrategy &bckst,
@@ -269,7 +251,39 @@ void BindImperative(py::module *m_ptr) {
              return self.MutableGradVar()->Get<framework::LoDTensor>();
            },
            py::return_value_policy::reference)
-      .def("_clear_gradient", &imperative::VarBase::ClearGradient)
+      .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
+
+        **Notes**:
+        **1. This API is ONLY avaliable in Dygraph mode**
+
+        **2. Use it only Variable has gradient, normally we use this for Parameters since other temporal Variable will be deleted by Python's GC**
+
+        Clear  (set to ``0`` ) the Gradient of Current Variable
+
+        Returns:  None
+
+        Examples:
+             .. code-block:: python
+
+                import paddle.fluid as fluid
+                import numpy as np
+
+                x = np.ones([2, 2], np.float32)
+                with fluid.dygraph.guard():
+                    inputs2 = []
+                    for _ in range(10):
+                         tmp = fluid.dygraph.base.to_variable(x)
+                         tmp.stop_gradient=False
+                         inputs2.append(tmp)
+                    ret2 = fluid.layers.sums(inputs2)
+                    loss2 = fluid.layers.reduce_sum(ret2)
+                    backward_strategy = fluid.dygraph.BackwardStrategy()
+                    backward_strategy.sort_sum_gradient = True
+                    loss2.backward(backward_strategy)
+                    print(loss2.gradient())
+                    loss2.clear_gradient()
+                    print("After clear {}".format(loss2.gradient()))
+      )DOC")
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
@@ -340,30 +354,27 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::reference)
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
-              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              const imperative::NameVarBaseMap &ins,
+              const imperative::NameVarBaseMap &outs,
               framework::AttributeMap attrs, const platform::CUDAPlace &place,
               bool trace_backward) {
-             auto ins_map = ConvertToNameVarBaseMap(ins);
-             auto outs_map = ConvertToNameVarBaseMap(outs);
              {
                py::gil_scoped_release release;
-               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
+               self.TraceOp(type, std::move(ins), std::move(outs),
                             std::move(attrs), place, trace_backward);
              }
            })
-      .def("trace",
-           [](imperative::Tracer &self, const std::string &type,
-              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
-              framework::AttributeMap attrs, const platform::CPUPlace &place,
-              bool trace_backward) {
-             auto ins_map = ConvertToNameVarBaseMap(ins);
-             auto outs_map = ConvertToNameVarBaseMap(outs);
-             {
-               py::gil_scoped_release release;
-               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
-                            std::move(attrs), place, trace_backward);
-             }
-           });
+      .def("trace", [](imperative::Tracer &self, const std::string &type,
+                       const imperative::NameVarBaseMap &ins,
+                       const imperative::NameVarBaseMap &outs,
+                       framework::AttributeMap attrs,
+                       const platform::CPUPlace &place, bool trace_backward) {
+        {
+          py::gil_scoped_release release;
+          self.TraceOp(type, std::move(ins), std::move(outs), std::move(attrs),
+                       place, trace_backward);
+        }
+      });
 
   // define parallel context
   py::class_<imperative::ParallelStrategy> parallel_strategy(

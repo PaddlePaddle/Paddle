@@ -260,19 +260,6 @@ def is_compiled_with_cuda():
     return core.is_compiled_with_cuda()
 
 
-def _var_base_to_np(var_base):
-    """
-    convert VarBase tp numpy
-    
-    Args:
-        var_base(VarBase) : the VarBase to convert
-    Returns (np.ndarray): the np.ndarray contain the value of VarBase
-
-    """
-    var = var_base._copy_to(core.CPUPlace(), True)
-    return np.array(var.value().get_tensor())
-
-
 def cuda_places(device_ids=None):
     """
     **Note**:
@@ -558,6 +545,19 @@ def _debug_string_(proto, throw_on_error=True):
     return proto.__str__()
 
 
+def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
+                     name=None,
+                     shape=None,
+                     dtype=None,
+                     persistable=None,
+                     **kwargs):
+
+    return core.VarBase(dtype if dtype else core.VarDesc.VarType.FP32,
+                        list(shape) if shape else [], name, type
+                        if type else core.VarDesc.VarType.LOD_TENSOR, True
+                        if persistable else False)
+
+
 class Variable(object):
     """
     **Notes**:
@@ -626,100 +626,83 @@ class Variable(object):
 
         self.belong_to_optimizer = belong_to_optimizer
 
-        if in_dygraph_mode():
-            # record vars in tracer rather than blocks
-            self._ivar = kwargs.get("ivar", None)
-            self.stop_gradient_ = kwargs.get("stop_gradient", True)
-            if not self._ivar:
-                self._ivar = core.VarBase(
-                    name, type
-                    if type else core.VarDesc.VarType.LOD_TENSOR, dtype
-                    if dtype else core.VarDesc.VarType.FP32,
-                    list(shape) if shape else [], True
-                    if persistable else False)
-            if persistable:
-                _dygraph_tracer().trace_var(name, self)
-            self.op = None
-        else:
-            self.error_clip = error_clip
+        self.error_clip = error_clip
 
-            is_new_var = False
-            name = cpt.to_text(name)
-            self.desc = self.block.desc.find_var(cpt.to_bytes(name))
+        is_new_var = False
+        name = cpt.to_text(name)
+        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
 
-            if self.desc is None:
-                self.desc = self.block.desc.var(cpt.to_bytes(name))
-                is_new_var = True
+        if self.desc is None:
+            self.desc = self.block.desc.var(cpt.to_bytes(name))
+            is_new_var = True
 
+        if is_new_var:
+            self.desc.set_type(type)
+        elif self.desc.type() != type:
+            raise ValueError("Variable {0} has been created before. The "
+                             "previous type is {1}; the new type is {2}. They"
+                             " are not matched".format(self.name,
+                                                       self.desc.type(), type))
+
+        if shape is not None:
             if is_new_var:
-                self.desc.set_type(type)
-            elif self.desc.type() != type:
-                raise ValueError(
-                    "Variable {0} has been created before. The "
-                    "previous type is {1}; the new type is {2}. They"
-                    " are not matched".format(self.name, self.desc.type(),
-                                              type))
+                self.desc.set_shape(shape)
+            else:
+                old_shape = self.shape
+                shape = tuple(shape)
+                if shape != old_shape:
+                    raise ValueError(
+                        "Variable {0} has been created before. the previous "
+                        "shape is {1}; the new shape is {2}. They are not "
+                        "matched.".format(self.name, old_shape, shape))
+        if dtype is not None:
+            if is_new_var:
+                self.desc.set_dtype(dtype)
+            else:
+                old_dtype = self.dtype
+                if dtype != old_dtype:
+                    raise ValueError("Variable {0} has been created before. "
+                                     "The previous data type is {1}; the new "
+                                     "data type is {2}. They are not "
+                                     "matched.".format(self.name, old_dtype,
+                                                       dtype))
 
-            if shape is not None:
-                if is_new_var:
-                    self.desc.set_shape(shape)
-                else:
-                    old_shape = self.shape
-                    shape = tuple(shape)
-                    if shape != old_shape:
-                        raise ValueError(
-                            "Variable {0} has been created before. the previous "
-                            "shape is {1}; the new shape is {2}. They are not "
-                            "matched.".format(self.name, old_shape, shape))
-            if dtype is not None:
-                if is_new_var:
-                    self.desc.set_dtype(dtype)
-                else:
-                    old_dtype = self.dtype
-                    if dtype != old_dtype:
-                        raise ValueError(
-                            "Variable {0} has been created before. "
-                            "The previous data type is {1}; the new "
-                            "data type is {2}. They are not "
-                            "matched.".format(self.name, old_dtype, dtype))
+        if lod_level is not None:
+            if is_new_var:
+                self.desc.set_lod_level(lod_level)
+            else:
+                if lod_level != self.lod_level:
+                    raise ValueError("Variable {0} has been created before. "
+                                     "The previous lod_level is {1}; the new "
+                                     "lod_level is {2}. They are not "
+                                     "matched".format(self.name, self.lod_level,
+                                                      lod_level))
+        if persistable is not None:
+            if is_new_var:
+                self.desc.set_persistable(persistable)
+            else:
+                if persistable != self.persistable:
+                    raise ValueError(
+                        "Variable {0} has been created before."
+                        "The previous persistable is {1}; the new "
+                        "persistable is {2}. They are not matched".format(
+                            self.name, self.persistable, persistable))
 
-            if lod_level is not None:
-                if is_new_var:
-                    self.desc.set_lod_level(lod_level)
-                else:
-                    if lod_level != self.lod_level:
-                        raise ValueError(
-                            "Variable {0} has been created before. "
-                            "The previous lod_level is {1}; the new "
-                            "lod_level is {2}. They are not "
-                            "matched".format(self.name, self.lod_level,
-                                             lod_level))
-            if persistable is not None:
-                if is_new_var:
-                    self.desc.set_persistable(persistable)
-                else:
-                    if persistable != self.persistable:
-                        raise ValueError(
-                            "Variable {0} has been created before."
-                            "The previous persistable is {1}; the new "
-                            "persistable is {2}. They are not matched".format(
-                                self.name, self.persistable, persistable))
+        if need_check_feed and is_new_var:
+            self.desc.set_need_check_feed(need_check_feed)
 
-            if need_check_feed and is_new_var:
-                self.desc.set_need_check_feed(need_check_feed)
+        if capacity is not None:
+            if is_new_var:
+                self.desc.set_capacity(capacity)
+            else:
+                # TODO(abhinavarora) : Compare with set capacity once,
+                # get_capacity is implemented
+                pass
 
-            if capacity is not None:
-                if is_new_var:
-                    self.desc.set_capacity(capacity)
-                else:
-                    # TODO(abhinavarora) : Compare with set capacity once,
-                    # get_capacity is implemented
-                    pass
-
-            self.block.vars[name] = self
-            self.op = None
-            self._stop_gradient = stop_gradient
-            self.is_data = is_data
+        self.block.vars[name] = self
+        self.op = None
+        self._stop_gradient = stop_gradient
+        self.is_data = is_data
 
     @dygraph_only
     def detach(self):
@@ -749,16 +732,7 @@ class Variable(object):
                     y = x.detach()
 
         """
-        if in_dygraph_mode():
-            new_var = self._cloneVar()
-            self.block.append_op(
-                type="assign",
-                inputs={'X': [self]},
-                outputs={'Out': [new_var]},
-                stop_gradient=True)
-            return new_var
-        else:
-            raise AttributeError("static graph model DO NOT supprt detach")
+        pass
 
     @dygraph_only
     def numpy(self):
@@ -790,12 +764,7 @@ class Variable(object):
                     print(x.numpy())
 
         """
-
-        if not self._ivar.value().get_tensor()._is_initialized():
-            raise ValueError("%s is Empty, Please check if it has no data in" %
-                             self.name)
-        new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
-        return np.array(new_ivar.value().get_tensor())
+        pass
 
     @dygraph_only
     def set_value(self, value):
@@ -826,25 +795,7 @@ class Variable(object):
                     out = fc(t)  # call with different weight
 
         """
-        assert isinstance(value, (Variable, np.ndarray, core.VarBase)), \
-                "Variable set_value function, arguments type only support Variable, numpy, VarBase"
-
-        value_np = value
-        if isinstance(value, Variable):
-            value_np = value.numpy()
-        elif isinstance(value, core.VarBase):
-            value_np = _var_base_to_np(value)
-        self_tensor = self._ivar.value().get_tensor()
-
-        self_tensor_np = np.array(self_tensor)
-
-        assert self_tensor_np.shape == value_np.shape,  \
-                                      "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format( self._ivar.name, self_tensor_np.shape, value_np.shape)
-
-        assert self_tensor_np.dtype == value_np.dtype,  \
-                                      "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format( self._ivar.name, self_tensor_np.dtype, value_np.dtype)
-
-        self_tensor.set(value_np, _current_expected_place())
+        pass
 
     @dygraph_only
     def backward(self, backward_strategy=None):
@@ -882,16 +833,7 @@ class Variable(object):
                     loss2.backward(backward_strategy)
 
         """
-        if in_dygraph_mode():
-            from .dygraph import BackwardStrategy
-            if backward_strategy is None:
-                backward_strategy = BackwardStrategy()
-                backward_strategy.sort_sum_gradient = False
-
-            self._ivar._run_backward(backward_strategy, _dygraph_tracer())
-        else:
-            raise ValueError(
-                "Variable.backward() is only avaliable in DyGraph mode")
+        pass
 
     @dygraph_only
     def gradient(self):
@@ -925,16 +867,7 @@ class Variable(object):
                     print(loss2.gradient())
 
         """
-        if self._ivar._grad_ivar() is None:
-            raise ValueError("%s has no grad, Please set Variable.stop_gradient=False, or " \
-                             "check if this is the first and only variable need grad, if so, please set its pre-Variable's " \
-                             "stop_gradient=False, to make sure it has gradient " % self.name)
-        if not self._ivar._grad_ivar().value().get_tensor()._is_initialized():
-            raise ValueError(
-                "%s's Grad is Empty, Please check if it has no data in" %
-                self.name)
-        new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
-        return np.array(new_ivar.value().get_tensor())
+        pass
 
     @dygraph_only
     def clear_gradient(self):
@@ -971,7 +904,7 @@ class Variable(object):
                     print("After clear {}".format(loss2.gradient()))
 
         """
-        self._ivar._clear_gradient()
+        pass
 
     def __str__(self):
         return self.to_string(True)
@@ -1004,14 +937,7 @@ class Variable(object):
                 print(new_variable.to_string(True, True))
         """
         if in_dygraph_mode():
-            # TODO(panyx0718): add more dygraph debug info.
-            tensor = self._ivar.value().get_tensor()
-            if tensor._is_initialized():
-                return 'name %s, dtype: %s shape: %s %s' % (
-                    self.name, self.dtype, self.shape, str(tensor))
-            else:
-                return 'name %s, shape: %s, not inited' % (self.name,
-                                                           self.shape)
+            pass
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -2298,9 +2224,12 @@ class Block(object):
                 if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
-        var = Variable(block=self, *args, **kwargs)
-        if 'initializer' in kwargs:
-            kwargs['initializer'](var, self)
+        if not in_dygraph_mode():
+            var = Variable(block=self, *args, **kwargs)
+            if 'initializer' in kwargs:
+                kwargs['initializer'](var, self)
+        else:
+            var = _varbase_creator(*args, **kwargs)
         return var
 
     def has_var(self, name):
@@ -4527,6 +4456,106 @@ class Parameter(Variable):
         else:
             res_str = Variable.to_string(self, throw_on_error, False)
         return res_str
+
+    __repr__ = __str__
+
+
+class ParamBase(core.VarBase):
+    """
+    ParamBase is derived from VarBase( Which is the Variable in Dygraph Mode ). A ParamBase is a persistable
+    VarBase, and will be updated by optimizers after each iteration.
+    The training of a neural network is essentially the updating of
+    its ParamBase.
+
+    Relative to a general Variable, a ParamBase has several its own
+    member variables:
+
+    Args:
+        trainable(bool): True if the ParamBase need to be updated after
+            iterations.
+        optimize_attr(map): ParamBase attributes related with optimizing.
+            Currently, it only contains 'learning_rate'.
+            Default: {'learning_rate': 1.0}
+        regularizer(WeightDecayRegularizer): The Regularizer which will
+            be applied on the ParamBase. Default: None
+        gradient_clip_attr(BaseGradientClipAttr): The gradint clip strategy
+            which will be applied on the ParamBase. Default: None
+        do_model_average(bool): True if the model average strategy will
+            be applied on this ParamBase.
+    """
+
+    @dygraph_only
+    def __init__(self, block, shape, dtype, **kwargs):
+        if shape is None:
+            raise ValueError("The shape of Parameter should not be None")
+        if dtype is None:
+            raise ValueError("The dtype of Parameter should not be None")
+
+        if len(shape) == 0:
+            raise ValueError(
+                "The dimensions of shape for Parameter must be greater than 0")
+
+        for each in shape:
+            if each < 0:
+                raise ValueError(
+                    "Each dimension of shape for Parameter must be greater than 0, but received %s"
+                    % list(shape))
+
+        if dtype is not None:
+            if not isinstance(dtype, core.VarDesc.VarType):
+                dtype = convert_np_dtype_to_dtype_(dtype)
+
+        super(ParamBase, self).__init__(
+            kwargs.get('name', unique_name.generate('_param_base')),
+            core.VarDesc.VarType.LOD_TENSOR, dtype
+            if dtype else core.VarDesc.VarType.FP32,
+            list(shape) if shape else [], True)
+
+        self.trainable = kwargs.get('trainable', True)
+
+        self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+
+        self.regularizer = kwargs.get('regularizer', None)
+
+        self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
+
+        self.do_model_average = kwargs.get('do_model_average', None)
+
+        self.is_distributed = False
+
+    def __str__(self):
+        return self.to_string(True)
+
+    def to_string(self, throw_on_error, with_details=False):
+        """
+        To debug string.
+
+        Args:
+            throw_on_error(bool): raise exception when self is not initialized
+                when throw_on_error is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+
+        Returns(str): The debug string.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                prog = fluid.default_main_program()
+                rlt = fluid.layers.data("fake_data", shape=[1,1], dtype='float32')
+                debug_str = prog.to_string(throw_on_error=True, with_details=False)
+                print(debug_str)
+        """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
+        tensor = self.value().get_tensor()
+        if tensor._is_initialized():
+            return 'name %s, dtype: %s shape: %s %s' % (self.name, self.dtype,
+                                                        self.shape, str(tensor))
+        else:
+            return 'name %s, shape: %s, not inited' % (self.name, self.shape)
 
     __repr__ = __str__
 

@@ -198,7 +198,11 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
 
   // TODO(Jiabin): change this after move unique_name generator to CXX
   auto new_var = std::make_shared<VarBase>(
-      false, "Itmp" + std::to_string(copied_counter_++));
+      false, Name() + std::to_string(copied_counter_++));
+
+  new_var->SetPersistable(Persistable());
+  new_var->SetDataType(DataType());
+  new_var->SetType(Type());
 
   auto* dst_tensor = new_var->var_.GetMutable<framework::LoDTensor>();
   dst_tensor->set_lod(src_tensor.lod());

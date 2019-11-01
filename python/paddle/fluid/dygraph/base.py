@@ -127,6 +127,7 @@ def guard(place=None):
     train = framework.Program()
     startup = framework.Program()
     tracer = Tracer()
+    VarBase = core.VarBase
 
     if place is None:
         if core.is_compiled_with_cuda():
@@ -187,19 +188,9 @@ def to_variable(value, block=None, name=None):
     if isinstance(value, np.ndarray):
         assert framework.in_dygraph_mode(
         ), "to_variable could only be called in dygraph mode"
+        py_var = core.VarBase(name, False, value,
+                              framework._current_expected_place())
 
-        if not block:
-            block = framework.default_main_program().current_block()
-        py_var = framework.Variable(
-            block,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            name=name,
-            shape=value.shape,
-            dtype=value.dtype,
-            stop_gradient=True)
-        var = py_var._ivar.value()
-        tensor = var.get_tensor()
-        tensor.set(value, framework._current_expected_place())
         return py_var
     elif isinstance(value, framework.Variable):
         return value

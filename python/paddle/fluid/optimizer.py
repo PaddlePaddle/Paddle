@@ -32,7 +32,6 @@ from .layers import ops
 from .regularizer import append_regularization_ops
 from .dygraph import base as imperative_base
 from .dygraph.learning_rate_scheduler import LearningRateDecay
-from .framework import _var_base_to_np
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
@@ -164,7 +163,7 @@ class Optimizer(object):
             global_step = state_dict['global_step']
 
             if isinstance(global_step, core.VarBase):
-                step_np = global_step._copy_to(core.CPUPlace(), True)
+                step_np = global_step.numpy()
                 step_np = np.array(step_np.value().get_tensor())
                 assert step_np.shape == (1,),  \
                         "global step shape is (1,), the shape is {}".format( step_np.shape )
@@ -198,7 +197,7 @@ class Optimizer(object):
                 if isinstance(load_para, Variable):
                     load_para_np = load_para.numpy()
                 elif isinstance(load_para, core.VarBase):
-                    load_para_np = _var_base_to_np(load_para)
+                    load_para_np = load_para.numpy()
                 elif isinstance(load_para, np.ndarray):
                     load_para_np = load_para
                 else:

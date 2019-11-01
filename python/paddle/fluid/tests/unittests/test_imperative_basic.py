@@ -177,6 +177,23 @@ class SimpleRNN(fluid.Layer):
 
 
 class TestImperative(unittest.TestCase):
+    def test_create_VarBase(self):
+        x = np.ones([2, 2], np.float32)
+        with fluid.dygraph.guard():
+            # inputs = []
+            # for _ in range(10):
+            tmp = fluid.core.VarBase("aaaaa", False, x, fluid.core.CPUPlace())
+            # tmp = fluid.dygraph.base.to_variable(x)
+            a = tmp.numpy()
+            b = tmp.detach()
+
+            print("{} 's Value is: {}".format(tmp.name, a))
+            #     tmp.stop_gradient = False
+            #     inputs.append(tmp)
+            # ret = fluid.layers.sums(inputs)
+            # loss = fluid.layers.reduce_sum(ret)
+            # loss.backward()
+
     def test_sum_op(self):
         x = np.ones([2, 2], np.float32)
         with fluid.dygraph.guard():
