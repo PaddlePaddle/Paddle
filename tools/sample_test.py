@@ -17,6 +17,7 @@ import sys
 import subprocess
 import multiprocessing
 import math
+import platform
 """
 please make sure to run in the tools path
 usage: python sample_test.py {arg1} {arg2}
@@ -80,11 +81,7 @@ def check_indent(cdline):
 
 
 # srccom: raw comments in the source,including ''' and original indent
-def sampcd_extract_and_run(srccom,
-                           name,
-                           htype="def",
-                           hname="",
-                           python_version="3"):
+def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
     """
     Extract and run sample codes from source comment and
     the result will be returned.
@@ -203,9 +200,9 @@ def sampcd_extract_and_run(srccom,
         tempf = open("samplecode_temp/" + tfname, 'w')
         tempf.write(sampcd)
         tempf.close()
-        if python_version == '2':
+        if platform.python_version()[0] == "2":
             cmd = ["python", "samplecode_temp/" + tfname]
-        elif python_version == '3':
+        elif platform.python_version()[0] == "3":
             cmd = ["python3", "samplecode_temp/" + tfname]
         else:
             print("fail to parse python version!")
@@ -292,7 +289,7 @@ def print_header(htype, name):
     print("-----------------------")
 
 
-def srccoms_extract(srcfile, status_all, wlist, python_version):
+def srccoms_extract(srcfile, status_all, wlist):
     """
     Given a source file ``srcfile``, this function will
     extract its API(doc comments) and run sample codes in the
@@ -302,7 +299,6 @@ def srccoms_extract(srcfile, status_all, wlist, python_version):
         srcfile(file): the source file
         status_all(dict): record all the sample code execution states.
         wlist(list): white list
-        python_version: python version to run the check program.
 
     Returns:
 
@@ -367,7 +363,7 @@ def srccoms_extract(srcfile, status_all, wlist, python_version):
                         if srcls[j].find("\"\"\"") != -1:
                             break
                     status = sampcd_extract_and_run(opcom, opname, "def",
-                                                    opname, python_version)
+                                                    opname)
                     api_count += 1
                     status_all[srcfile.name + '/' + opname] = status
                     handled.append(
@@ -396,8 +392,7 @@ def srccoms_extract(srcfile, status_all, wlist, python_version):
                         print(status_all[srcfile.name + '/' + fn])
                         continue
                     else:
-                        status = sampcd_extract_and_run(fcombody, fn, "def", fn,
-                                                        python_version)
+                        status = sampcd_extract_and_run(fcombody, fn, "def", fn)
                         status_all[srcfile.name + '/' + fn] = status
             if srcls[i].startswith('class '):
                 c_header = srcls[i].replace(" ", '')
@@ -413,7 +408,7 @@ def srccoms_extract(srcfile, status_all, wlist, python_version):
                     classcom = single_defcom_extract(i, srcls, True)
                     if classcom != "":
                         status = sampcd_extract_and_run(classcom, cn, "class",
-                                                        cn, python_version)
+                                                        cn)
                         status_all[srcfile.name + '/' + cn] = status
                     else:
                         print("WARNING: no comments in class itself ", cn,
@@ -462,8 +457,7 @@ def srccoms_extract(srcfile, status_all, wlist, python_version):
                                                                    thismethod)
                                 if thismtdcom != "":
                                     status = sampcd_extract_and_run(
-                                        thismtdcom, name, "method", name,
-                                        python_version)
+                                        thismtdcom, name, "method", name)
                                     status_all[srcfile.name + '/' +
                                                name] = status
     return [
@@ -472,10 +466,10 @@ def srccoms_extract(srcfile, status_all, wlist, python_version):
     ]
 
 
-def test(file_list, python_version):
+def test(file_list):
     for file in file_list:
         src = open(file, 'r')
-        counts = srccoms_extract(src, status_all, wlist, python_version)
+        counts = srccoms_extract(src, status_all, wlist)
         src.close()
 
 
@@ -488,7 +482,6 @@ Important constant lists:
     status_all: a status list containing all the execution status of all
                 APIs
     srcfile: the source .py code file
-    python_version: the python version you want to test
 '''
 
 filenames = [
@@ -662,9 +655,8 @@ gpu_not_white = [
 ]
 
 wlist = wlist_temp + wlist_inneed + wlist_ignore
-python_version = 3
 
-if len(sys.argv) < 3:
+if len(sys.argv) < 2:
     print("Error: inadequate number of arguments")
     print('''If you are going to run it on 
         "CPU: >>> python sampcd_processor.py cpu
@@ -679,12 +671,8 @@ else:
         print("Unrecognized argument:'", sys.argv[1], "' , 'cpu' or 'gpu' is ",
               "desired\n")
         sys.exit("Invalid arguments")
-    if sys.argv[2] == "2":
-        python_version = 2
-    elif sys.arg[2] == "3":
-        python_version = 3
     print("API check -- Example Code")
-    print("sample_test running under python", python_version)
+    print("sample_test running under python", platform.python_version())
     status_all = {}
     # a temp directory to store temporary sample code file
     # subprocess needs a single file to run the code
