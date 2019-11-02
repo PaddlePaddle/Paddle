@@ -90,7 +90,6 @@ inline void get_mid_dims(const framework::DDim &x_dims,
     (*post) *= x_dims[i];
   }
 }
-
 inline int GetElementwiseIndex(const int *x_dims_array, const int max_dim,
                                const int *index_array) {
   int index_ = 0;
@@ -1571,9 +1570,8 @@ void FusedElemwiseAndActComputeWithBroadcast(
   auto y_dim = trim_trailing_singular_dims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int pre, n, post;
-  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post);
-
+  int pre, n, post, is_run_common_broadcast;
+  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
   if (post == 1) {
     int h = pre;
     int w = n;
@@ -2085,8 +2083,8 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
   auto y_dim = trim_trailing_singular_dims(y_dim_untrimed);
   axis = (y_dim.size() == 0) ? x_dim.size() : axis;
 
-  int pre, n, post;
-  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post);
+  int pre, n, post, is_run_common_broadcast;
+  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post, &is_run_common_broadcast);
   if (post == 1) {
     int h = pre;
     int w = n;
@@ -2220,16 +2218,7 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
   } else {
     // Whether the shape of Y is a continuous subsequence of X,
     // For more information please refer to the op's introduction.
-    bool bcast_y = x.dims().size() >= y.dims().size();
-    if (x.dims().size() == y.dims().size()) {
-      for (int i = 0; i < x.dims().size(); ++i) {
-        if (x.dims()[i] < y.dims()[i]) {
-          bcast_y = false;
-          break;
-        }
-      }
-    }
-
+    bool bcast_y = x.numel() >= y.numel();
     // z = f1(x, f2(y))
     // z = f1(f2(x, y))
     if (bcast_y) {  // Y should be broadcast.
