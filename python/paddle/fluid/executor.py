@@ -988,11 +988,6 @@ class Executor(object):
 
         dataset._prepare_to_run()
 
-        if fetch_handler is not None:
-            fetch_instance = fetch_handler
-        else:
-            fetch_instance = FetchHandler([])
-
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -1018,12 +1013,21 @@ class Executor(object):
             fetch_monitor.start()
 
             self._default_executor.run_from_dataset(trainer_instance)
+<<<<<<< HEAD
 
             fetch_monitor.stop()
         else:
 
             self._default_executor.run_from_dataset(trainer_instance)
 
+=======
+
+            fetch_monitor.stop()
+        else:
+
+            self._default_executor.run_from_dataset(trainer_instance)
+
+>>>>>>> 3b96e3d20a... fix FetchHandler (#20900)
         dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
 
