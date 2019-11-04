@@ -13,6 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#ifndef NPY_NO_DEPRECATED_API
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#endif
+
 #include <Python.h>
 #include <numpy/arrayobject.h>
 #include <algorithm>
@@ -69,7 +74,9 @@ class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
  public:
   explicit NumpyAllocation(PyObject *arr, size_t size,
                            paddle::platform::Place place)
-      : Allocation(PyArray_DATA(arr), size, place), arr_(arr) {}
+      : Allocation(PyArray_DATA(reinterpret_cast<PyArrayObject *>(arr)), size,
+                   place),
+        arr_(arr) {}
   ~NumpyAllocation() override {
     py::gil_scoped_acquire gil;
     Py_XDECREF(arr_);
