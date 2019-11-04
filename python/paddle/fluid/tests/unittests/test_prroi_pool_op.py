@@ -19,6 +19,7 @@ import unittest
 from py_precise_roi_pool import PyPrRoIPool
 from op_test import OpTest
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 from paddle.fluid import compiler, Program, program_guard
 
 
@@ -82,18 +83,16 @@ class TestPRROIPoolOp(OpTest):
         self.check_output()
 
     def test_backward(self):
-        place = fluid.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'],
-            'Out',
-            max_relative_error=0.01,
-            numeric_grad_delta=0.005)
-        place = fluid.CPUPlace()
-        self.check_grad_with_place(
-            place, ['X'],
-            'Out',
-            max_relative_error=1.0,
-            numeric_grad_delta=0.005)
+        grad_diff = [1.0, 0.007]
+        places = [fluid.CPUPlace()]
+        if fluid.core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place, error in zip(places, grad_diff):
+            self.check_grad_with_place(
+                place, ['X'],
+                'Out',
+                max_relative_error=error,
+                numeric_grad_delta=0.005)
 
     def run_net(self, place):
         with program_guard(Program(), Program()):
@@ -206,18 +205,16 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
         self.check_output()
 
     def test_backward(self):
-        place = fluid.CUDAPlace(0)
-        self.check_grad_with_place(
-            place, ['X'],
-            'Out',
-            max_relative_error=0.01,
-            numeric_grad_delta=0.005)
-        place = fluid.CPUPlace()
-        self.check_grad_with_place(
-            place, ['X'],
-            'Out',
-            max_relative_error=1.0,
-            numeric_grad_delta=0.005)
+        places = [fluid.CPUPlace()]
+        grad_diff = [1.0, 0.007]
+        if fluid.core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place, error in zip(places, grad_diff):
+            self.check_grad_with_place(
+                place, ['X'],
+                'Out',
+                max_relative_error=error,
+                numeric_grad_delta=0.005)
 
     def run_net(self, place):
         with program_guard(Program(), Program()):
