@@ -3,8 +3,8 @@
 English | [简体中文](./README_cn.md)
 
 [![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
-[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org.cn/documentation/docs/en/1.5/beginners_guide/index_en.html)
-[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/beginners_guide/index_cn.html)
+[![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org.cn/documentation/docs/en/1.6/beginners_guide/index_en.html)
+[![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.6/beginners_guide/index_cn.html)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
@@ -18,17 +18,15 @@ learning to many products at Baidu.
 Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest feature of PaddlePaddle.
 
-### Latest PaddlePaddle Release: [v1.5.2](https://github.com/PaddlePaddle/Paddle/tree/release/1.5)
+### Latest PaddlePaddle Release: [v1.6](https://github.com/PaddlePaddle/Paddle/tree/release/1.6)
 ### Install Latest Stable Release:
 ```
 # Linux CPU
 pip install paddlepaddle
 # Linux GPU cuda10cudnn7
 pip install paddlepaddle-gpu
-# Linux GPU cuda8cudnn7
-pip install paddlepaddle-gpu==1.5.2.post87
 # Linux GPU cuda9cudnn7
-pip install paddlepaddle-gpu==1.5.2.post97
+pip install paddlepaddle-gpu==1.6.0.post97
 
 
 # For installation on other platform, refer to http://paddlepaddle.org/
@@ -77,26 +75,26 @@ Now our developers could acquire Tesla V100 online computing resources for free.
 
 ## Installation
 
-It is recommended to read [this doc](http://www.paddlepaddle.org.cn/documentation/docs/en/1.5/beginners_guide/index_en.html) on our website.
+It is recommended to read [this doc](http://www.paddlepaddle.org.cn/documentation/docs/en/1.6/beginners_guide/index_en.html) on our website.
 
 ## Documentation
 
-We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.5/beginners_guide/index_en.html) and
-[Chinese](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.5/beginners_guide/install/index_cn.html) documentation.
+We provide [English](http://www.paddlepaddle.org.cn/documentation/docs/en/1.6/beginners_guide/index_en.html) and
+[Chinese](http://www.paddlepaddle.org.cn/documentation/docs/zh/1.6/beginners_guide/install/index_cn.html) documentation.
 
 - [Deep Learning 101](https://github.com/PaddlePaddle/book)
 
   You might want to start from this online interactive book that can run in a Jupyter Notebook.
 
-- [Distributed Training](http://paddlepaddle.org.cn/documentation/docs/en/1.5/user_guides/howto/training/multi_node_en.html)
+- [Distributed Training](http://paddlepaddle.org.cn/documentation/docs/en/1.6/user_guides/howto/training/multi_node_en.html)
 
   You can run distributed training jobs on MPI clusters.
 
-- [Python API](http://paddlepaddle.org.cn/documentation/docs/en/1.5/api/index_en.html)
+- [Python API](http://paddlepaddle.org.cn/documentation/docs/en/1.6/api/index_en.html)
 
    Our new API enables much shorter programs.
 
-- [How to Contribute](http://paddlepaddle.org.cn/documentation/docs/en/1.5/advanced_usage/development/contribute_to_paddle/index_en.html)
+- [How to Contribute](http://paddlepaddle.org.cn/documentation/docs/en/1.6/advanced_usage/development/contribute_to_paddle/index_en.html)
 
    We appreciate your contributions!
 

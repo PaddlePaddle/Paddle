@@ -110,26 +110,27 @@ class TreeConvOp : public framework::OperatorWithKernel {
   }
 };
 
-class TreeConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class TreeConvGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
 
     op->SetType("tree_conv_grad");
 
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetInput("EdgeSet", Input("EdgeSet"));
-    op->SetInput("NodesVector", Input("NodesVector"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput("EdgeSet", this->Input("EdgeSet"));
+    op->SetInput("NodesVector", this->Input("NodesVector"));
 
     op->SetOutput(framework::GradVarName("NodesVector"),
-                  InputGrad("NodesVector"));
-    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+                  this->InputGrad("NodesVector"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -164,7 +165,8 @@ class TreeConvGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(tree_conv, ops::TreeConvOp, ops::TreeConvOpMaker,
-                  ops::TreeConvGradOpDescMaker);
+                  ops::TreeConvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::TreeConvGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(tree_conv_grad, ops::TreeConvGradOp);
 

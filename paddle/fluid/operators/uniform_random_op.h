@@ -24,15 +24,33 @@ using Tensor = framework::Tensor;
 
 inline std::vector<int64_t> GetNewDataFromShapeTensor(
     const Tensor *new_data_tensor) {
-  auto *new_data = new_data_tensor->data<int64_t>();
-  if (platform::is_gpu_place(new_data_tensor->place())) {
-    framework::Tensor cpu_starts_tensor;
-    TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
-    new_data = cpu_starts_tensor.data<int64_t>();
+  if (new_data_tensor->type() == framework::proto::VarType::INT64) {
+    auto *new_data = new_data_tensor->data<int64_t>();
+    if (platform::is_gpu_place(new_data_tensor->place())) {
+      framework::Tensor cpu_starts_tensor;
+      TensorCopySync(*new_data_tensor, platform::CPUPlace(),
+                     &cpu_starts_tensor);
+      new_data = cpu_starts_tensor.data<int64_t>();
+    }
+    std::vector<int64_t> vec_new_data(new_data,
+                                      new_data + new_data_tensor->numel());
+    return vec_new_data;
+  } else if (new_data_tensor->type() == framework::proto::VarType::INT32) {
+    auto *new_data = new_data_tensor->data<int32_t>();
+    std::vector<int64_t> vec_new_data;
+    if (platform::is_gpu_place(new_data_tensor->place())) {
+      framework::Tensor cpu_starts_tensor;
+      TensorCopySync(*new_data_tensor, platform::CPUPlace(),
+                     &cpu_starts_tensor);
+      new_data = cpu_starts_tensor.data<int32_t>();
+    }
+    for (size_t i = 0; i < new_data_tensor->numel(); ++i) {
+      vec_new_data.push_back(static_cast<int64_t>(*(new_data + i)));
+    }
+    return vec_new_data;
+  } else {
+    PADDLE_THROW("The dtype of shape tensor must be int32 or int64.");
   }
-  std::vector<int64_t> vec_new_data(new_data,
-                                    new_data + new_data_tensor->numel());
-  return vec_new_data;
 }
 
 inline std::vector<int64_t> GetNewDataFromShapeTensorList(
@@ -43,12 +61,25 @@ inline std::vector<int64_t> GetNewDataFromShapeTensorList(
     auto tensor = list_new_shape_tensor[i];
     PADDLE_ENFORCE_EQ(tensor->dims(), framework::make_ddim({1}),
                       "shape of dim tensor should be [1]");
-    if (platform::is_gpu_place(tensor->place())) {
-      framework::Tensor temp;
-      TensorCopySync(*tensor, platform::CPUPlace(), &temp);
-      vec_new_shape.push_back(*temp.data<int64_t>());
+
+    if (tensor->type() == framework::proto::VarType::INT32) {
+      if (platform::is_gpu_place(tensor->place())) {
+        framework::Tensor temp;
+        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        vec_new_shape.push_back(static_cast<int64_t>(*temp.data<int32_t>()));
+      } else {
+        vec_new_shape.push_back(static_cast<int64_t>(*tensor->data<int32_t>()));
+      }
+    } else if (tensor->type() == framework::proto::VarType::INT64) {
+      if (platform::is_gpu_place(tensor->place())) {
+        framework::Tensor temp;
+        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        vec_new_shape.push_back(*temp.data<int64_t>());
+      } else {
+        vec_new_shape.push_back(*tensor->data<int64_t>());
+      }
     } else {
-      vec_new_shape.push_back(*tensor->data<int64_t>());
+      PADDLE_THROW("The dtype of shape tensor must be int32 or int64.");
     }
   }
 
