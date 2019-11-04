@@ -258,7 +258,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             data_reader=val_reader,
             algo=algo,
             quantizable_op_type=quantizable_op_type)
-        ptq.quantize_model()
+        ptq.quantize()
         ptq.save_quantized_model(self.int8_model)
 
 

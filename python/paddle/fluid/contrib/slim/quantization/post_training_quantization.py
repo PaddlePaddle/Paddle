@@ -53,7 +53,7 @@ class PostTrainingQuantization(object):
             executor(fluid.Executor): The executor to load, run and save the 
                 quantized model.
             model_path(str): The path of fp32 model that will be quantized.
-            data_reader(Reader): The data reader generates a simple every time,
+            data_reader(Reader): The data reader generates a sample every time,
                 and it provides calibrate data for DataLoader.
             batch_size(int, optional): The batch size of DataLoader, default is 10.
             batch_nums(int, optional): If set batch_nums, the number of calibrate 
@@ -73,8 +73,8 @@ class PostTrainingQuantization(object):
             from paddle.fluid.contrib.slim.quantization import PostTrainingQuantization
             
             exe = fluid.Executor(fluid.CPUPlace())
-            model_path = path_to_fp32_model
-            save_model_path = save_to_
+            model_path = load_fp32_model_path
+            save_model_path = save_int8_path
             data_reader =  your_data_reader
             batch_size = 10
             batch_nums = 10
@@ -89,7 +89,7 @@ class PostTrainingQuantization(object):
                         batch_nums=batch_nums,
                         algo=algo,
                         quantizable_op_type=quantizable_op_type)
-            ptq.quantize_model()
+            ptq.quantize()
             ptq.save_quantized_model(save_model_path)
         '''
         self._executor = executor
@@ -119,14 +119,14 @@ class PostTrainingQuantization(object):
         self._sampling_data = {}
         self._quantized_var_scale_factor = {}
 
-    def quantize_model(self):
+    def quantize(self):
         '''
         Quantize the fp32 model. Use calibrate data to calculate the scale factor of 
         quantized variables, and inserts fake quant/dequant op to obtain the 
         quantized model.
         
         Return:
-            the quantized program.
+            the program of quantized model.
         '''
         self._prepare()
 
@@ -137,11 +137,12 @@ class PostTrainingQuantization(object):
                                fetch_list=self._fetch_list)
             self._sample_data()
 
-            if batch_id % 10 == 0:
-                print("train:" + str(batch_id))
+            if batch_id % 5 == 0:
+                _logger.info("run batch: " + str(batch_id))
             batch_id += 1
             if self._batch_nums and batch_id > self._batch_nums:
                 break
+        _logger.info("run batch: " + str(batch_id))
 
         self._calculate_scale_factor()
         self._update_program()
@@ -245,6 +246,8 @@ class PostTrainingQuantization(object):
         '''
         Calculate the scale factor of quantized variables.
         '''
+        _logger.info("calculate scale factor ...")
+
         for var_name in self._quantized_weight_var_name:
             data = self._sampling_data[var_name]
             scale_factor_per_channel = []
@@ -266,6 +269,8 @@ class PostTrainingQuantization(object):
         '''
         Insert fake_quantize/fake_dequantize op to the program.
         '''
+        _logger.info("update the program ...")
+
         for var in self._program.list_vars():
             if var.name in self._quantized_act_var_name:
                 var.persistable = False
