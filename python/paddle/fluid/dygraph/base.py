@@ -27,6 +27,17 @@ __all__ = [
 ]
 
 
+@signature_safe_contextmanager
+def program_desc_tracing_guard(enable):
+    tracer = framework._dygraph_tracer()
+    if tracer:
+        original_val = tracer._enable_program_desc_tracing
+        tracer._enable_program_desc_tracing = enable
+    yield
+    if tracer:
+        tracer._enable_program_desc_tracing = original_val
+
+
 # This function should be removed in V1.6, because it can easily lead to cyclic dependencies.
 def enabled():
     # Internal use only
@@ -188,8 +199,6 @@ def to_variable(value, block=None, name=None):
             stop_gradient=True)
         var = py_var._ivar.value()
         tensor = var.get_tensor()
-        if value.dtype == np.float16:
-            value = value.view(np.uint16)
         tensor.set(value, framework._current_expected_place())
         return py_var
     elif isinstance(value, framework.Variable):

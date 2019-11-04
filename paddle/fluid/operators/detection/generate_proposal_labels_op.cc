@@ -87,7 +87,7 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("RpnRois"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "RpnRois");
     return framework::OpKernelType(data_type, platform::CPUPlace());
   }
 };
@@ -583,9 +583,11 @@ Finally BboxInsideWeights and BboxOutsideWeights are used to specify whether it 
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(generate_proposal_labels, ops::GenerateProposalLabelsOp,
-                  ops::GenerateProposalLabelsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    generate_proposal_labels, ops::GenerateProposalLabelsOp,
+    ops::GenerateProposalLabelsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(generate_proposal_labels,
                        ops::GenerateProposalLabelsKernel<float>,
                        ops::GenerateProposalLabelsKernel<double>);

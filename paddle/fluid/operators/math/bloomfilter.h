@@ -18,6 +18,11 @@ limitations under the License. */
 #include <inttypes.h>
 #include <stdlib.h>
 
+#include <stdio.h>
+#include <string.h>
+
+#include <unistd.h>
+
 namespace paddle {
 namespace operators {
 namespace math {
@@ -33,32 +38,6 @@ struct bloomfilter {
 int bloomfilter_get(const struct bloomfilter *bloomfilter, const void *key,
                     size_t len);
 int bloomfilter_check(struct bloomfilter *filter);
-}  // namespace math
-}  // namespace operators
-}  // namespace paddle
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
-
-#include "bloomfilter.h"
-
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
-namespace paddle {
-namespace operators {
-namespace math {
 
 #define bit_get(v, n) ((v)[(n) >> 3] & (0x1 << (0x7 - ((n)&0x7))))
 #define ROTL64(x, r) (((x) << (r)) | ((x) >> (64 - (r))))
@@ -122,27 +101,46 @@ void murmurhash3_x64_128(const void *key, const int len, const uint32_t seed,
   const uint8_t *tail = (const uint8_t *)(data + nblocks * 16);
   uint64_t nk1 = 0;
   uint64_t nk2 = 0;
-  uint64_t tail0_64 = *(uint64_t *)(tail);
-  uint64_t tail_64 = *(uint64_t *)(tail + 8);
-  uint64_t mask0 = 0xffffffffffffffff;
-  uint64_t mask = 0x00ffffffffffffff;
-  int flag = len & 15;
-  if (flag && flag <= 8) {
-    tail0_64 &= (mask0 >> ((8 - flag) << 3));
-  } else if (flag > 8) {
-    tail_64 &= (mask >> ((15 - flag) << 3));
-    nk2 ^= tail_64;
-    nk2 *= c2;
-    nk2 = ROTL64(nk2, 33);
-    nk2 *= c1;
-    h2 ^= nk2;
-  }
-  if (flag) {
-    nk1 ^= tail0_64;
-    nk1 *= c1;
-    nk1 = ROTL64(nk1, 31);
-    nk1 *= c2;
-    h1 ^= nk1;
+  // no break here!!!
+  switch (len & 15) {
+    case 15:
+      nk2 ^= ((uint64_t)tail[14]) << 48;
+    case 14:
+      nk2 ^= ((uint64_t)tail[13]) << 40;
+    case 13:
+      nk2 ^= ((uint64_t)tail[12]) << 32;
+    case 12:
+      nk2 ^= ((uint64_t)tail[11]) << 24;
+    case 11:
+      nk2 ^= ((uint64_t)tail[10]) << 16;
+    case 10:
+      nk2 ^= ((uint64_t)tail[9]) << 8;
+    case 9:
+      nk2 ^= ((uint64_t)tail[8]) << 0;
+      nk2 *= c2;
+      nk2 = ROTL64(nk2, 33);
+      nk2 *= c1;
+      h2 ^= nk2;
+    case 8:
+      nk1 ^= ((uint64_t)tail[7]) << 56;
+    case 7:
+      nk1 ^= ((uint64_t)tail[6]) << 48;
+    case 6:
+      nk1 ^= ((uint64_t)tail[5]) << 40;
+    case 5:
+      nk1 ^= ((uint64_t)tail[4]) << 32;
+    case 4:
+      nk1 ^= ((uint64_t)tail[3]) << 24;
+    case 3:
+      nk1 ^= ((uint64_t)tail[2]) << 16;
+    case 2:
+      nk1 ^= ((uint64_t)tail[1]) << 8;
+    case 1:
+      nk1 ^= ((uint64_t)tail[0]) << 0;
+      nk1 *= c1;
+      nk1 = ROTL64(nk1, 31);
+      nk1 *= c2;
+      h1 ^= nk1;
   }
 
   //----------
@@ -160,8 +158,10 @@ void murmurhash3_x64_128(const void *key, const int len, const uint32_t seed,
   h1 += h2;
   h2 += h1;
 
-  ((uint64_t *)out)[0] = h1;
-  ((uint64_t *)out)[1] = h2;
+  //  ((uint64_t *)out)[0] = h1;
+  reinterpret_cast<uint64_t *>(out)[0] = h1;
+  //  ((uint64_t *)out)[1] = h2;
+  reinterpret_cast<uint64_t *>(out)[1] = h2;
 }
 
 int bloomfilter_check(struct bloomfilter *filter) {

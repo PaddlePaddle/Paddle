@@ -181,6 +181,7 @@ if avx_supported():
         from .core_avx import _load_static_dict
         from .core_avx import _save_dygraph_dict
         from .core_avx import _load_dygraph_dict
+        from .core_avx import _create_loaded_parameter
     except Exception as e:
         if has_avx_core:
             raise e
@@ -214,6 +215,7 @@ if load_noavx:
         from .core_noavx import _load_static_dict
         from .core_noavx import _save_dygraph_dict
         from .core_noavx import _load_dygraph_dict
+        from .core_noavx import _create_loaded_parameter
     except Exception as e:
         if has_noavx_core:
             sys.stderr.write(

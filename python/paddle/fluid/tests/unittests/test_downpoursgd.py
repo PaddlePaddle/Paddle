@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Testcases for Downpour."""
 
 from __future__ import print_function
 
@@ -25,15 +26,19 @@ import sys
 from op_test import OpTest
 from paddle.fluid.trainer_desc import DistMultiTrainer
 from paddle.fluid.device_worker import DownpourSGD
+from paddle.fluid.incubate.fleet.parameter_server.pslib.node import DownpourWorker
 from google.protobuf import text_format
 import paddle.fluid.incubate.fleet.parameter_server.pslib.ps_pb2 as pslib
 
 
 class TestListenAndServOp(OpTest):
+    """TestListenAndServOp."""
+
     def setUp(self):
         pass
 
     def test_device_work_use_cvm(self):
+        """test device work use_cvm."""
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             pass
         else:
@@ -77,6 +82,9 @@ class TestListenAndServOp(OpTest):
             opt_info["scale_datanorm"] = -1
             opt_info["dump_slot"] = False
             opt_info["stat_var_names"] = []
+            worker = DownpourWorker(None)
+            worker.get_desc().CopyFrom(ps_param.trainer_param[0])
+            opt_info["program_id_to_worker"] = {program_id: worker}
 
             main_program._fleet_opt = opt_info
             trainer = DistMultiTrainer()
@@ -90,6 +98,7 @@ class TestListenAndServOp(OpTest):
             os.system(cmd)
 
     def test_device_work(self):
+        """test devicve worker."""
         if sys.platform == 'win32' or sys.platform == 'sys.platform':
             pass
         else:
@@ -133,6 +142,9 @@ class TestListenAndServOp(OpTest):
             opt_info["scale_datanorm"] = -1
             opt_info["dump_slot"] = False
             opt_info["stat_var_names"] = []
+            worker = DownpourWorker(None)
+            worker.get_desc().CopyFrom(ps_param.trainer_param[0])
+            opt_info["program_id_to_worker"] = {program_id: worker}
 
             main_program._fleet_opt = opt_info
             trainer = DistMultiTrainer()

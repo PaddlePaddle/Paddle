@@ -72,6 +72,7 @@ option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
+OPTION(WITH_LIBXSMM     "Compile with libxsmm"                          OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(WITH_BOX_PS      "Compile with box_ps support"                   OFF)
@@ -81,7 +82,7 @@ option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_D
 option(WITH_INFERENCE_API_TEST   "Test fluid inference C++ high-level api interface"  OFF)
 option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
-option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
+option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ${WITH_DISTRIBUTE})
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
 
 # PY_VERSION
@@ -97,92 +98,23 @@ if(NOT CMAKE_BUILD_TYPE)
       FORCE)
 endif()
 
-if (APPLE)
-    set(WITH_MKL OFF CACHE STRING
-        "Disable MKL for building on mac" FORCE)
-endif()
-
-if (WIN32)
-    set(WITH_DISTRIBUTE OFF CACHE STRING
-            "Disable DISTRIBUTE when compiling for Windows" FORCE)
-endif()
-
-set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
-  "A path setting third party libraries download & build directories.")
-
-set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
-  "A path setting fluid shared and static libraries")
-
-set(FLUID_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_install_dir" CACHE STRING
-  "A path setting fluid inference shared and static libraries")
-
-set(THIRD_PARTY_BUILD_TYPE Release)
-
-set(WITH_MKLML ${WITH_MKL})
-if (NOT DEFINED WITH_MKLDNN)
-    if (WITH_MKL AND AVX2_FOUND)
-        set(WITH_MKLDNN ON)
-    else()
-        message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN")
-        set(WITH_MKLDNN OFF)
-    endif()
-endif()
-
-if (REPLACE_ENFORCE_GLOG)
+# Replace PADDLE_ENFORCE with glog/CHECK for better debug
+if(REPLACE_ENFORCE_GLOG)
   add_definitions("-DREPLACE_ENFORCE_GLOG")
 endif()
 
-if (SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
+# the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined. Default: OFF
+if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
   message("Choose the correct type of sanitizer")
   return()
 endif()
 
-########################################################################################
-
-include(external/mklml)     # download mklml package
-include(external/xbyak)     # download xbyak package
-include(external/libxsmm)   # download, build, install libxsmm
-include(external/zlib)      # download, build, install zlib
-include(external/gflags)    # download, build, install gflags
-include(external/glog)      # download, build, install glog
-include(external/gtest)     # download, build, install gtest
-include(external/protobuf)  # download, build, install protobuf
-include(external/python)    # download, build, install python
-include(external/openblas)  # download, build, install openblas
-include(external/mkldnn)    # download, build, install mkldnn
-include(external/ngraph)    # download, build, install nGraph
-include(external/boost)     # download boost
-include(external/eigen)     # download eigen3
-include(external/pybind11)  # download pybind11
-include(external/cares)
-include(external/cub)
-include(external/rocprim)
-include(external/xxhash)    # download xxhash
-include(external/dlpack)
-include(external/warpctc)   # download, build, install warpctc
-
-if (NOT WIN32)
-# there is no official support of nccl, cupti in windows
-include(cupti)
-endif (NOT WIN32)
-
-if(WITH_PSLIB)
-    include(external/libmct)
-    include(external/pslib_brpc)
-    include(external/pslib)
-endif(WITH_PSLIB)
-if(WITH_BOX_PS)
-    include(external/box_ps)
-endif(WITH_BOX_PS)
-
-if(WITH_DISTRIBUTE)
-    if(WITH_GRPC)
-        include(external/grpc)
-        message(STATUS "Use grpc framework.")
-    else()
-        message(STATUS "Use brpc framework.")
-        include(external/leveldb)
-        include(external/brpc)
+if(WIN32)
+    if(WITH_DISTRIBUTE)
+        MESSAGE(WARNING
+            "Disable DISTRIBUTE when compiling for Windows. Force WITH_DISTRIBUTE=OFF.")
+        set(WITH_DISTRIBUTE OFF CACHE STRING
+            "Disable DISTRIBUTE when compiling for Windows" FORCE)
     endif()
 endif()
 
@@ -196,29 +128,35 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
-include(anakin_subgraph)
+include(third_party)        # download, build, install third_party
 
-include(external/threadpool)
+if(WITH_DISTRIBUTE)
+    include(external/cares)
+    if(WITH_GRPC)
+        message(STATUS "Use grpc framework.")
+        include(external/grpc)
+    else()
+        message(STATUS "Use brpc framework.")
+        include(external/leveldb)
+        include(external/brpc)
+    endif()
+endif()
+
+# there is no official support of nccl, cupti in windows
+if(NOT WIN32)
+    include(cupti)
+endif()
+
+include(anakin_subgraph)
 include(flags)              # set paddle compile flags
 include(cudnn)              # set cudnn libraries, must before configure
-include(configure)          # add paddle env configuration
 
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
 endif()
 
-if(WIN32 OR APPLE OR NOT WITH_GPU OR ON_INFER)
-    set(WITH_DGC OFF)
-endif()
-
-if(WITH_DGC)
-    message(STATUS "add dgc lib.")
-    include(external/dgc)
-    add_definitions(-DPADDLE_WITH_DGC)
-endif()
-
-if (WITH_PROFILER)
+if(WITH_PROFILER)
     find_package(Gperftools REQUIRED)
     include_directories(${GPERFTOOLS_INCLUDE_DIR})
     add_definitions(-DWITH_GPERFTOOLS)
@@ -230,7 +168,7 @@ include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
 include(inference_lib)      # add paddle fluid inference libraries
-
+include(configure)          # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
 
@@ -244,7 +182,7 @@ set(PADDLE_PYTHON_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/python/build")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 
-if (ON_INFER)
+if(ON_INFER)
     message(STATUS "On inference mode, will take place some specific optimization.")
     add_definitions(-DPADDLE_ON_INFERENCE)
 else()

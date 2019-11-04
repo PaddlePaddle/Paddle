@@ -78,18 +78,19 @@ class ClipOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class ClipGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ClipGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("clip_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -104,7 +105,9 @@ DECLARE_INPLACE_OP_INFERER(ClipGradInplaceInferer,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(clip, ops::ClipOp, ops::ClipOpMaker<float>,
-                  ops::ClipGradOpDescMaker, ops::ClipInplaceInferer);
+                  ops::ClipGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ClipGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ClipInplaceInferer);
 REGISTER_OPERATOR(clip_grad, ops::ClipOpGrad, ops::ClipGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
     clip, ops::ClipKernel<paddle::platform::CPUDeviceContext, float>,
