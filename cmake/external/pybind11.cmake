@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(NOT WITH_PYTHON)
-    return()
-endif()
-
 include(ExternalProject)
 
 set(PYBIND_SOURCE_DIR ${THIRD_PARTY_PATH}/pybind)

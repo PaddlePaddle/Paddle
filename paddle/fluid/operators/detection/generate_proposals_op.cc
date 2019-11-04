@@ -494,8 +494,9 @@ boxes.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(generate_proposals, ops::GenerateProposalsOp,
-                  ops::GenerateProposalsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    generate_proposals, ops::GenerateProposalsOp, ops::GenerateProposalsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(generate_proposals, ops::GenerateProposalsKernel<float>,
                        ops::GenerateProposalsKernel<double>);

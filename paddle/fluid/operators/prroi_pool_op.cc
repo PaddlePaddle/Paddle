@@ -153,13 +153,14 @@ class PRROIPoolGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class PRROIPoolGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class PRROIPoolGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("prroi_pool_grad");
     op->SetInput("X", Input("X"));
     op->SetInput("Out", Output("Out"));
@@ -177,7 +178,8 @@ class PRROIPoolGradDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(prroi_pool, ops::PRROIPoolOp, ops::PRROIPoolOpMaker,
-                  ops::PRROIPoolGradDescMaker);
+                  ops::PRROIPoolGradMaker<paddle::framework::OpDesc>,
+                  ops::PRROIPoolGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(prroi_pool_grad, ops::PRROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(
     prroi_pool,

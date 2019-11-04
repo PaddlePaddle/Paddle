@@ -15,7 +15,7 @@
 INCLUDE(ExternalProject)
 # Always invoke `FIND_PACKAGE(Protobuf)` for importing function protobuf_generate_cpp
 IF(NOT WIN32)
-FIND_PACKAGE(Protobuf QUIET)
+    FIND_PACKAGE(Protobuf QUIET)
 ENDIF(NOT WIN32)
 macro(UNSET_VAR VAR_NAME)
     UNSET(${VAR_NAME} CACHE)

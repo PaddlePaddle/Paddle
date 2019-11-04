@@ -202,25 +202,29 @@ class IdentityInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     context->SetOutputDim("Out", context->GetInputDim("X"));
+    // X'lod and Out'lod is different on runtime, so there is no need to call
+    // ShareLoD for runtime. While the setting of Out's lod is done in detail
+    // kernel implementation.
     if (!context->IsRuntime()) {
       context->ShareLoD("X", /*->*/ "Out");
     }
   }
 };
 
+template <typename T>
 class ReorderLodTensorByRankGradOpMaker
-    : public framework::SingleGradOpDescMaker {
+    : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("reorder_lod_tensor_by_rank_grad");
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetOutput("Out", InputGrad("X"));
-    grad_op->SetInput("RankTable", Input("RankTable"));
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetInput("RankTable", this->Input("RankTable"));
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -265,10 +269,10 @@ class ReorderLoDTensorByRankGradOp : public ReorderLoDTensorByRankTableBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(reorder_lod_tensor_by_rank,
-                  ops::ReorderLoDTensorByRankTableOp,
-                  ops::ReorderLodTensorByRankGradOpMaker,
-                  ops::ReorderLoDTensorByRankTableOpProtoMaker,
-                  ops::IdentityInferShape);
+REGISTER_OPERATOR(
+    reorder_lod_tensor_by_rank, ops::ReorderLoDTensorByRankTableOp,
+    ops::ReorderLodTensorByRankGradOpMaker<paddle::framework::OpDesc>,
+    ops::ReorderLodTensorByRankGradOpMaker<paddle::imperative::OpBase>,
+    ops::ReorderLoDTensorByRankTableOpProtoMaker, ops::IdentityInferShape);
 REGISTER_OPERATOR(reorder_lod_tensor_by_rank_grad,
                   ops::ReorderLoDTensorByRankGradOp, ops::IdentityInferShape);
