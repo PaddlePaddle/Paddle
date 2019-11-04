@@ -19,28 +19,12 @@ set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
 
 set(THIRD_PARTY_BUILD_TYPE Release)
 
-set(WITH_MKLML ${WITH_MKL})
-if (NOT DEFINED WITH_MKLDNN)
-    if (WITH_MKL AND AVX2_FOUND)
-        set(WITH_MKLDNN ON)
-    else()
-        message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN")
-        set(WITH_MKLDNN OFF)
-    endif()
-endif()
-
 # Correction of flags on different Platform(WIN/MAC) and Print Warning Message
 if (APPLE)
     if(WITH_MKL)
         MESSAGE(WARNING 
             "Mac is not supported with MKL in Paddle yet. Force WITH_MKL=OFF.")
         set(WITH_MKL OFF CACHE STRING "Disable MKL for building on mac" FORCE)
-    endif()
-    
-    if(WITH_MKLML)
-        MESSAGE(WARNING
-            "Mac is not supported with MKLML in Paddle yet. Force WITH_MKLML=OFF.")
-        set(WITH_MKLML OFF CACHE STRING "Disable MKLML package in MacOS" FORCE)
     endif()
 endif()
 
@@ -64,6 +48,16 @@ if(WIN32 OR APPLE)
             "Windows or Mac is not supported with BOX_PS in Paddle yet."
             "Force WITH_BOX_PS=OFF")
         SET(WITH_BOX_PS OFF CACHE STRING "Disable BOX_PS package in Windows and MacOS" FORCE)
+    endif()
+endif()
+
+set(WITH_MKLML ${WITH_MKL})
+if (NOT DEFINED WITH_MKLDNN)
+    if (WITH_MKL AND AVX2_FOUND)
+        set(WITH_MKLDNN ON)
+    else()
+        message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN")
+        set(WITH_MKLDNN OFF)
     endif()
 endif()
 
@@ -93,10 +87,11 @@ endif()
 if(WITH_MKLML)
     include(external/mklml)     # download, install mklml package
     list(APPEND third_party_deps mklml)
-elseif (NOT CBLAS_FOUND OR WIN32)
+endif()
+include(external/openblas)      # find first, then download, build, install openblas
+if(NOT CBLAS_FOUND)
     list(APPEND third_party_deps extern_openblas)
 endif()
-include(external/openblas)  # find first, then download, build, install openblas
 
 if(WITH_MKLDNN)
     include(external/mkldnn)    # download, build, install mkldnn
