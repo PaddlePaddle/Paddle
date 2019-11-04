@@ -857,14 +857,21 @@ class OpTest(unittest.TestCase):
                 i for i, var_name in enumerate(fetch_list)
                 if var_name == target_name
             ]
-            self.assertTrue(
-                len(found) == 1, "Found {} {}".format(len(found), target_name))
-            return found[0]
+            if len(found) == 0:
+                return -1
+            else:
+                self.assertTrue(
+                    len(found) == 1,
+                    "Found {} {}".format(len(found), target_name))
+                return found[0]
 
         for name in self.op.desc.output_names():
             var_names = self.op.desc.output(name)
             for var_name in var_names:
                 i = find_fetch_index(var_name, fetch_list)
+                if i == -1:
+                    # The output is dispensiable or intermediate.
+                    break
                 out = fetch_outs[i]
                 if isinstance(out, core.LoDTensor):
                     lod_level_runtime = len(out.lod())
