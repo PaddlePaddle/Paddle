@@ -73,13 +73,13 @@ class TransposeOp : public framework::OperatorWithKernel {
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
     int customized_type_value =
         framework::OpKernelType::kDefaultCustomizedTypeValue;
-    auto input_data_type = ctx.Input<Tensor>("X")->type();
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       using framework::proto::VarType;
+      auto input_data_type = ctx.Input<Tensor>("X")->type();
       customized_type_value = (input_data_type == VarType::INT8 ||
                                input_data_type == VarType::UINT8)
                                   ? kTransposeMKLDNNINT8
@@ -220,7 +220,6 @@ class Transpose2Op : public TransposeOp {
     std::string data_format = ctx.Attr<std::string>("data_format");
     int customized_type_value =
         framework::OpKernelType::kDefaultCustomizedTypeValue;
-    auto input_data_type = ctx.Input<Tensor>("X")->type();
     framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_MKLDNN
     if (library_ == framework::LibraryType::kPlain &&
@@ -228,6 +227,7 @@ class Transpose2Op : public TransposeOp {
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
       using framework::proto::VarType;
+      auto input_data_type = ctx.Input<Tensor>("X")->type();
       customized_type_value = (input_data_type == VarType::INT8 ||
                                input_data_type == VarType::UINT8)
                                   ? kTransposeMKLDNNINT8

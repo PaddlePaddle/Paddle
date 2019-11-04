@@ -99,7 +99,7 @@ def get_numeric_gradient(place,
             shape = numpy_tensor.shape
             numpy_tensor = numpy_tensor.flatten()
             numpy_tensor[i] = e
-            numpy_tensor = numpy_tensor.reshape(shape).view(np.uint16)
+            numpy_tensor = numpy_tensor.reshape(shape)
             tensor.set(numpy_tensor, place)
         elif tensor_to_check_dtype == np.float32:
             tensor._set_float_element(i, e)
@@ -155,11 +155,6 @@ class OpTest(unittest.TestCase):
         if not self.call_once:
             self.call_once = True
             self.dtype = data_type
-            # See the comment of np_dtype_to_fluid_dtype
-            # If the input type is uint16, we assume use float16
-            # for lodtensor dtype.
-            if self.dtype == np.uint16:
-                self.dtype == np.float16
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def infer_dtype(numpy_dict):
@@ -188,25 +183,19 @@ class OpTest(unittest.TestCase):
                 for name, np_value in self.inputs[var_name]:
                     tensor = core.LoDTensor()
                     if isinstance(np_value, tuple):
-                        tensor.set(
-                            OpTest.np_value_to_fluid_value(np_value[0]), place)
+                        tensor.set(np_value[0], place)
                         tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
-                        tensor.set(
-                            OpTest.np_value_to_fluid_value(np_value), place)
+                        tensor.set(np_value, place)
                     feed_map[name] = tensor
             else:
                 tensor = core.LoDTensor()
                 if isinstance(self.inputs[var_name], tuple):
-                    tensor.set(
-                        OpTest.np_value_to_fluid_value(self.inputs[var_name][
-                            0]), place)
+                    tensor.set(self.inputs[var_name][0], place)
                     tensor.set_recursive_sequence_lengths(self.inputs[var_name][
                         1])
                 else:
-                    tensor.set(
-                        OpTest.np_value_to_fluid_value(self.inputs[var_name]),
-                        place)
+                    tensor.set(self.inputs[var_name], place)
                 feed_map[var_name] = tensor
 
         return feed_map
@@ -978,39 +967,14 @@ class OpTest(unittest.TestCase):
 
     @staticmethod
     def np_dtype_to_fluid_dtype(input):
-        """Change the dtype of float16 numpy array
-
-        numpy float16 is binded to paddle::platform::float16
-        in tensor_py.h via the help of uint16 data type since
-        the internal memory representation of float16 is
-        uint16_t in paddle and np.uint16 in numpy, which are
-        themselves binded together by pybind.
-
-        Args:
-            input: input numpy array
-
-        Returns:
-            input: The dtype of input will be changed to np.uint16 if
-                it is originally np.float16, such that the internal memory
-                of input will be reinterpreted as of dtype np.uint16.
-        """
-        if input.dtype == np.float16:
-            input.dtype = np.uint16
         return input
 
     @staticmethod
     def fluid_dtype_to_np_dtype(self, dtype):
-        """
-        See above, convert the dtype to normal type.
-        """
-        if dtype == np.uint16:
-            dtype = np.float16
         return dtype
 
     @staticmethod
     def np_value_to_fluid_value(input):
-        if input.dtype == np.float16:
-            input = input.view(np.uint16)
         return input
 
     def _get_gradient(self,

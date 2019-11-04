@@ -1002,8 +1002,7 @@ function build_document_preview() {
 function example() {
     pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     paddle version
-    cp ${PADDLE_ROOT}/tools/sampcd_processor.py ${PADDLE_ROOT}/python/paddle/fluid
-    cd ${PADDLE_ROOT}/python/paddle/fluid
+    cd ${PADDLE_ROOT}/tools
     python sampcd_processor.py cpu 
     if [ "$?" != "0" ];then
       echo "Code instance execution failed"
