@@ -40,14 +40,14 @@ from .wrapped_decorator import signature_safe_contextmanager
 from .. import compat as cpt
 
 __all__ = [
-    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'Dpsgd', 'DecayedAdagrad',
-    'Ftrl', 'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer',
-    'AdamOptimizer', 'AdamaxOptimizer', 'DpsgdOptimizer',
-    'DecayedAdagradOptimizer', 'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta',
-    'AdadeltaOptimizer', 'ModelAverage', 'LarsMomentum',
-    'LarsMomentumOptimizer', 'DGCMomentumOptimizer', 'LambOptimizer',
-    'ExponentialMovingAverage', 'PipelineOptimizer', 'LookaheadOptimizer',
-    'RecomputeOptimizer'
+    'SGD', 'Momentum', 'Adagrad', 'Adam', 'Amsgrad', 'Adamax', 'Dpsgd',
+    'DecayedAdagrad', 'Ftrl', 'SGDOptimizer', 'MomentumOptimizer',
+    'AdagradOptimizer', 'AdamOptimizer', 'AmsgradOptimizer', 'AdamaxOptimizer',
+    'DpsgdOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
+    'FtrlOptimizer', 'Adadelta', 'AdadeltaOptimizer', 'ModelAverage',
+    'LarsMomentum', 'LarsMomentumOptimizer', 'DGCMomentumOptimizer',
+    'LambOptimizer', 'ExponentialMovingAverage', 'PipelineOptimizer',
+    'LookaheadOptimizer', 'RecomputeOptimizer'
 ]
 
 
@@ -1564,6 +1564,206 @@ class AdamOptimizer(Optimizer):
                     stop_gradient=True)
 
 
+class AmsgradOptimizer(Optimizer):
+    """
+    The Amsgrad optimzier uses an optimization described at the end
+    of section 3 of `Amsgrad paper <https://openreview.net/pdf?id=ryQu7f-RZ>`_ ,
+    it can dynamically adjusts the learning rate of each parameter using
+    the 1st moment estimates and the 2nd moment estimates of the gradient.
+
+    It is a variant of the Adam optimizer. It considers the “long-term memory” of past gradients.
+    
+    The parameter ``param_out`` update rule with gradient ``grad``:
+
+    .. math::
+
+        t & = t + 1
+
+        moment\_1\_out & = {\\beta}_1 * moment\_1 + (1 - {\\beta}_1) * grad
+
+        moment\_2\_out & = {\\beta}_2 * moment\_2 + (1 - {\\beta}_2) * grad * grad
+
+        max_moment\_2\out & = max{max_moment\_2, moment\_2\_out}
+
+        learning\_rate & = learning\_rate * \\
+                          \\frac{\sqrt{1 - {\\beta}_2^t}}{1 - {\\beta}_1^t}
+
+        param\_out & = param - learning\_rate * \\frac{moment\_1}{\sqrt{max_moment\_2} + \epsilon}
+
+    Related paper: `On the Convergence of Adam and Beyond <https://openreview.net/pdf?id=ryQu7f-RZ>`_
+
+    Args:
+        learning_rate (float|Variable, optional): The learning rate used to update ``Parameter``.
+            It can be a float value or a ``Variable`` with a float type. The default value is 0.001.
+        beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
+            The default value is 0.9.
+        beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
+            The default value is 0.999.
+        epsilon (float, optional): A small float value for numerical stability.
+            The default value is 1e-08.
+        regularization (WeightDecayRegularizer, optional): A ``Regularizer``, such as
+             :ref:`api_fluid_regularizer_L2DecayRegularizer`. The default value is None.
+        name (str, optional): Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name`.
+            The default value is None.
+        lazy_mode (bool, optional): The official Adam algorithm has two moving-average accumulators.
+            The accumulators are updated at every step. Every element of the two moving-average
+            is updated in both dense mode and sparse mode. If the size of parameter is very large,
+            then the update may be very slow. The lazy mode only update the element that has
+            gradient in current mini-batch, so it will be much more faster. But this mode has
+            different semantics with the original Adam algorithm and may lead to different result.
+            The default value is False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.fluid as fluid
+
+            place = fluid.CPUPlace()
+            main = fluid.Program()
+            with fluid.program_guard(main):
+                x = fluid.data(name='x', shape=[None, 13], dtype='float32')
+                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                amsgrad_optimizer = fluid.optimizer.AmsgradOptimizer(0.01)
+                amsgrad_optimizer.minimize(avg_cost)
+
+                fetch_list = [avg_cost]
+                train_reader = paddle.batch(
+                    paddle.dataset.uci_housing.train(), batch_size=1)
+                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in train_reader():
+                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
+
+    """
+    _moment1_acc_str = "moment1"
+    _moment2_acc_str = "moment2"
+    _max_moment2_acc_str = "max_moment2"
+    _beta1_pow_acc_str = "beta1_pow_acc"
+    _beta2_pow_acc_str = "beta2_pow_acc"
+
+    def __init__(self,
+                 learning_rate=0.001,
+                 beta1=0.9,
+                 beta2=0.999,
+                 epsilon=1e-8,
+                 regularization=None,
+                 name=None,
+                 lazy_mode=False):
+        assert learning_rate is not None
+        assert beta1 is not None
+        assert beta2 is not None
+        assert epsilon is not None
+        super(AmsgradOptimizer, self).__init__(
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
+        self.type = "amsgrad"
+        self._beta1 = beta1
+        self._beta2 = beta2
+        self._epsilon = epsilon
+        self._lazy_mode = lazy_mode
+
+    def _create_accumulators(self, block, parameters):
+        assert isinstance(block, framework.Block)
+
+        # Create accumulator tensors for first and second moments
+        for p in parameters:
+            self._add_accumulator(self._moment1_acc_str, p)
+            self._add_accumulator(self._moment2_acc_str, p)
+            self._add_accumulator(self._max_moment2_acc_str, p)
+            self._add_accumulator(
+                name=self._beta1_pow_acc_str,
+                param=p,
+                dtype='float32',
+                fill_value=self._beta1,
+                shape=[1])
+            self._add_accumulator(
+                name=self._beta2_pow_acc_str,
+                param=p,
+                dtype='float32',
+                fill_value=self._beta2,
+                shape=[1])
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        moment1 = self._get_accumulator(self._moment1_acc_str,
+                                        param_and_grad[0])
+        moment2 = self._get_accumulator(self._moment2_acc_str,
+                                        param_and_grad[0])
+        max_moment2 = self._get_accumulator(self._max_moment2_acc_str,
+                                            param_and_grad[0])
+        beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
+                                              param_and_grad[0])
+        beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
+                                              param_and_grad[0])
+
+        # create the amsgrad optimize op
+        amsgrad_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "LearningRate": self._create_param_lr(param_and_grad),
+                "Moment1": moment1,
+                "Moment2": moment2,
+                "MaxMoment2": max_moment2,
+                "Beta1Pow": beta1_pow_acc,
+                "Beta2Pow": beta2_pow_acc
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "Moment1Out": moment1,
+                "Moment2Out": moment2,
+                "MaxMoment2Out": max_moment2,
+            },
+            attrs={
+                "beta1": self._beta1,
+                "beta2": self._beta2,
+                "epsilon": self._epsilon,
+                "lazy_mode": self._lazy_mode,
+                "min_row_size_to_use_multithread": 1000
+            },
+            stop_gradient=True)
+
+        return amsgrad_op
+
+    def _finish_update(self, block, param_and_grads):
+        """Update Beta1 and Beta2 Power accumulators
+        """
+        assert isinstance(block, framework.Block)
+        main_block = block.program.global_block()
+        for param, grad in param_and_grads:
+            if grad is None or param.trainable is False:
+                continue
+            with param.block.program._optimized_guard(
+                [param, grad]), name_scope("optimizer"):
+                beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
+                                                      param)
+                beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
+                                                      param)
+                main_block.append_op(
+                    type="scale",
+                    inputs={"X": beta1_pow_acc},
+                    outputs={"Out": beta1_pow_acc},
+                    attrs={"scale": self._beta1},
+                    stop_gradient=True)
+
+                main_block.append_op(
+                    type="scale",
+                    inputs={"X": beta2_pow_acc},
+                    outputs={"Out": beta2_pow_acc},
+                    attrs={"scale": self._beta2},
+                    stop_gradient=True)
+
+
 class AdamaxOptimizer(Optimizer):
     """
     The Adamax optimizer is implemented based on the Adamax Optimization 
@@ -2471,6 +2671,7 @@ SGD = SGDOptimizer
 Momentum = MomentumOptimizer
 Adagrad = AdagradOptimizer
 Adam = AdamOptimizer
+Amsgrad = AmsgradOptimizer
 Adamax = AdamaxOptimizer
 Dpsgd = DpsgdOptimizer
 DecayedAdagrad = DecayedAdagradOptimizer
