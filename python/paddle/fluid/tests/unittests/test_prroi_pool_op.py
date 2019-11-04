@@ -86,7 +86,13 @@ class TestPRROIPoolOp(OpTest):
         self.check_grad_with_place(
             place, ['X'],
             'Out',
-            max_relative_error=0.007,
+            max_relative_error=0.01,
+            numeric_grad_delta=0.005)
+        place = fluid.CPUPlace()
+        self.check_grad_with_place(
+            place, ['X'],
+            'Out',
+            max_relative_error=1.0,
             numeric_grad_delta=0.005)
 
     def run_net(self, place):
@@ -204,7 +210,13 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
         self.check_grad_with_place(
             place, ['X'],
             'Out',
-            max_relative_error=0.007,
+            max_relative_error=0.01,
+            numeric_grad_delta=0.005)
+        place = fluid.CPUPlace()
+        self.check_grad_with_place(
+            place, ['X'],
+            'Out',
+            max_relative_error=1.0,
             numeric_grad_delta=0.005)
 
     def run_net(self, place):
