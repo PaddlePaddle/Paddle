@@ -20,18 +20,18 @@
 namespace paddle {
 namespace imperative {
 
-static void ClearNoNeedBufferInputs(const OpBase& op, NameVarBaseMap* ins,
-                                    const NameVarBaseMap& outs,
-                                    const framework::AttributeMap& attrs) {
-  auto& inferer = op.Info().NoNeedBufferVarsInferer();
+static void ClearNoNeedBufferInputs(OpBase* op) {
+  auto& inferer = op->Info().NoNeedBufferVarsInferer();
   if (!inferer) return;
-  const auto& no_need_buffer_slots = inferer(*ins, outs, attrs);
+  auto* ins = op->GetMutableInsMap();
+  const auto& no_need_buffer_slots =
+      inferer(*ins, op->GetOutsMap(), op->Attrs());
   if (no_need_buffer_slots.empty()) return;
 
   for (auto& slot : no_need_buffer_slots) {
     auto iter = ins->find(slot);
     if (iter == ins->end()) continue;
-    VLOG(2) << "Clear data buffer of " << slot << " in " << op.Type();
+    VLOG(2) << "Clear data buffer of " << slot << " in " << op->Type();
 
     for (auto& each_var : iter->second) {
       if (!each_var) continue;
@@ -49,12 +49,6 @@ static void ClearNoNeedBufferInputs(const OpBase& op, NameVarBaseMap* ins,
     }
   }
 }
-
-struct OpBaseCmp {
-  bool operator()(OpBase* first, OpBase* second) {
-    return first->id() > second->id();
-  }
-};
 
 static std::vector<std::unique_ptr<OpBase>> CreateGradOpBases(
     const OpBase* fw_op_base, const NameVarBaseMap& in,
@@ -160,7 +154,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
       }
     }
 
-    std::set<OpBase*, OpBaseCmp> visited_preceding_ops;
+    std::set<OpBase*> visited_preceding_ops;
     for (auto& grad_out_it : grad_out) {
       bool flag_clear_list = false;
       for (auto& var_base_it : grad_out_it.second) {
@@ -187,8 +181,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
 
     // this OpBase* is just used to manage op's life time
     engine_->InsertOp(grad_op.get(), grad_op);
-    ClearNoNeedBufferInputs(*grad_op, grad_op->GetMutableInsMap(),
-                            grad_op->GetOutsMap(), grad_op->Attrs());
+    ClearNoNeedBufferInputs(grad_op.get());
   }
 }
 

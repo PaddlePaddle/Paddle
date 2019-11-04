@@ -105,6 +105,12 @@ class FuseAllReduceOpPass : public ir::Pass {
         auto *all_reduce_op_handle = dynamic_cast<details::AllReduceOpHandle *>(
             &node->Wrapper<details::OpHandleBase>());
         if (all_reduce_op_handle) {
+#if defined(PADDLE_WITH_DGC)
+          PADDLE_ENFORCE_NE(
+              all_reduce_op_handle->Name(), "sparse_all_reduce",
+              "DGC doesn't support fuse for now, if you want to use DGC "
+              "you need set strategy.fuse_all_reduce_ops = False.");
+#endif
           auto inputs = details::DynamicCast<details::VarHandle>(
               all_reduce_op_handle->Inputs());
           PADDLE_ENFORCE_EQ(inputs.size(), num_place);
