@@ -241,7 +241,7 @@ class ExecutionContext {
 
   const OperatorBase& op() const { return op_; }
 
-  const Scope& scope() const { return scope_; }
+  // const Scope& scope() const { return scope_; }
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
