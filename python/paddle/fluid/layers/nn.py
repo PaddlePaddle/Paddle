@@ -1213,7 +1213,8 @@ def conv2d(input,
         name(str|None): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
-        data_format (str): The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
+        data_format (str): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
 
@@ -1222,6 +1223,19 @@ def conv2d(input,
         same with input. If act is None, the tensor variable storing the convolution 
         result, and if act is not None, the tensor variable storing convolution 
         and non-linearity activation result.
+
+    Raises:
+        ValueError: If the type of `use_cudnn` is not bool.
+        ValueError: If `data_format` is not "NCHW" or "NHWC".
+        ValueError: If the channel dimmention of the input is less than or equal to zero.
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+            or the element corresponding to the input's channel is not 0.
+        ShapeError: If the input is not 4-D or 5-D tensor.
+        ShapeError: If the input's dimension size and filter's dimension size not equal.
+        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
+        ShapeError: If the number of input channels is not equal to filter's channels * groups.
+        ShapeError: If the number of output channels is not be divided by groups.
 
     Examples:
         .. code-block:: python
@@ -1467,15 +1481,29 @@ def conv3d(input,
         name(str|None): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
-        data_format (str): The data format of the input and output data. An optional string from: `"NCDHW"`, `"NDHWC"`.
-            The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_depth, input_height, input_width]`.
+        data_format (str): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
         A Variable holding Tensor representing the conv3d, whose data type is 
         the same with input. If act is None, the tensor variable storing the 
         convolution result, and if act is not None, the tensor variable storing 
         convolution and non-linearity activation result.
+
+    Raises:
+        ValueError: If the type of `use_cudnn` is not bool.
+        ValueError: If `data_format` is not "NCHW" or "NHWC".
+        ValueError: If the channel dimmention of the input is less than or equal to zero.
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+            or the element corresponding to the input's channel is not 0.
+        ShapeError: If the input is not 5-D tensor.
+        ShapeError: If the input's dimension size and filter's dimension size not equal.
+        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
+        ShapeError: If the number of input channels is not equal to filter's channels * groups.
+        ShapeError: If the number of output channels is not be divided by groups.
 
     Examples:
         .. code-block:: python
@@ -3240,9 +3268,10 @@ def conv2d_transpose(input,
         name(str, optional): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
-        data_format(str, optional): The data format of the input and output data. An optional string
-            from: `"NCHW"`, `"NHWC"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`. Default: 'NCHW'.
+        data_format (str): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
         A Variable holding Tensor representing the conv2d_transpose, whose 
@@ -3253,8 +3282,17 @@ def conv2d_transpose(input,
         result.
 
     Raises:
-        ValueError: If the shapes of output, input, filter_size, stride, padding and
-                    groups mismatch.
+        ValueError: If the type of `use_cudnn` is not bool.
+        ValueError: If `data_format` is not "NCHW" or "NHWC".
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+            or the element corresponding to the input's channel is not 0.
+        ValueError: If `output_size` and filter_size are None at the same time.
+        ShapeError: If the input is not 4-D Tensor.
+        ShapeError: If the input's dimension size and filter's dimension size not equal.
+        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
+        ShapeError: If the number of input channels is not equal to filter's channels.
+        ShapeError: If the size of `output_size` is not equal to that of `stride`.
 
     Examples:
        .. code-block:: python
@@ -3519,9 +3557,10 @@ def conv3d_transpose(input,
         name(str, optional): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
-        data_format(str, optional):The data format of the input and output data. An optional string from: `"NCHW"`, `"NHWC"`.
-            When it is `"NCHW"`, the data is stored in the order of: `[batch_size, input_channels, input_height, input_width]`.
-            Default: 'NCDHW'.
+        data_format (str): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
         A Variable holding Tensor representing the conv3d_transpose, whose data 
@@ -3531,8 +3570,17 @@ def conv3d_transpose(input,
         variable storing transposed convolution and non-linearity activation result.
 
     Raises:
-        ValueError: If the shapes of output, input, filter_size, stride, padding and
-                    groups mismatch.
+        ValueError: If the type of `use_cudnn` is not bool.
+        ValueError: If `data_format` is not "NCHW" or "NHWC".
+        ValueError: If `padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
+            or the element corresponding to the input's channel is not 0.
+        ValueError: If `output_size` and filter_size are None at the same time.
+        ShapeError: If the input is not 5-D Tensor.
+        ShapeError: If the input's dimension size and filter's dimension size not equal.
+        ShapeError: If the dimension size of input minus the size of `stride` is not 2.
+        ShapeError: If the number of input channels is not equal to filter's channels.
+        ShapeError: If the size of `output_size` is not equal to that of `stride`.
 
     Examples:
        .. code-block:: python
