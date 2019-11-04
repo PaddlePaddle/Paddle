@@ -140,9 +140,9 @@ class PostTrainingQuantization(object):
             if batch_id % 5 == 0:
                 _logger.info("run batch: " + str(batch_id))
             batch_id += 1
-            if self._batch_nums and batch_id > self._batch_nums:
+            if self._batch_nums and batch_id >= self._batch_nums:
                 break
-        _logger.info("run batch: " + str(batch_id))
+        _logger.info("all run batch: " + str(batch_id))
 
         self._calculate_scale_factor()
         self._update_program()
