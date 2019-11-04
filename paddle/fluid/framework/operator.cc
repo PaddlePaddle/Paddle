@@ -655,6 +655,19 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_tensor->set_layout(in_tensor.layout());
   }
 
+  int GetLoDLevel(const std::string& in, size_t i = 0) const override {
+    auto iter = ctx_.inputs.find(in);
+    PADDLE_ENFORCE_EQ(iter != ctx_.inputs.end() && iter->second.size() > i,
+                      true, "Inputs %s should have %llu argument", in, i);
+    Variable* in_var = iter->second.at(i);
+    if (!in_var->IsType<LoDTensor>()) {
+      VLOG(3) << "Input " << in << "[" << i << "] is not LoDTensor.";
+      return 0;
+    }
+    auto& in_tensor = in_var->Get<LoDTensor>();
+    return in_tensor.lod().size();
+  }
+
   void DecreaseLoDLevel(const std::string& in, const std::string& out,
                         size_t i = 0, size_t j = 0) const override {
     PADDLE_THROW(
