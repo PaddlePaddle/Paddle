@@ -234,6 +234,13 @@ struct EnforceNotMet : public std::exception {
         ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
   } while (0)
 
+// This macro only used to throw a catched exception
+#define PADDLE_THROW_EXCEPTION(EXCEPTION_PTR)                          \
+  do {                                                                 \
+    throw ::paddle::platform::EnforceNotMet((EXCEPTION_PTR), __FILE__, \
+                                            __LINE__);                 \
+  } while (0)
+
 #if defined(__CUDA_ARCH__)
 // For cuda, the assertions can affect performance and it is therefore
 // recommended to disable them in production code

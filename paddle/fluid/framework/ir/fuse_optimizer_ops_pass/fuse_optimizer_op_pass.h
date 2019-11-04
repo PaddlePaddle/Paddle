@@ -55,7 +55,7 @@ class FuseOptimizerOpPass : public ir::Pass {
       const std::unordered_map<std::string, std::string> &fused_vars_name,
       const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const = 0;
 
-  void GetSpecifiedOpsAndVars(
+  void GetFusingVarNamesMap(
       const std::vector<std::string> &aux_vars_name,
       const std::vector<ir::Node *> &opt_nodes,
       std::unordered_map<std::string, std::vector<std::string>> *aux_args_name)
@@ -82,6 +82,10 @@ class FuseOptimizerOpPass : public ir::Pass {
 
   std::unordered_map<std::string, std::vector<Node *>> GetVarInfo(
       const Graph &result) const;
+
+  bool GradGeneratedOpSupportGPU(
+      const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
+      const std::string &grad_var_name) const;
 
   proto::VarType::Type GetDtypeOfVar(
       const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,

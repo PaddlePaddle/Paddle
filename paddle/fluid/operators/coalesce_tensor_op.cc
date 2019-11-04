@@ -32,24 +32,39 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
     auto &in_vars = context.MultiInputVar("Input");
     auto out_vars = context.MultiOutputVar("Output");
 
-    PADDLE_ENFORCE_GT(in_var_names.size(), static_cast<size_t>(0));
-    PADDLE_ENFORCE_EQ(in_var_names.size(), out_var_names.size());
+    PADDLE_ENFORCE_GT(in_var_names.size(), static_cast<size_t>(0),
+                      "The CoalesceTensorOp has no input.");
+    PADDLE_ENFORCE_EQ(
+        in_var_names.size(), out_var_names.size(),
+        "The number of CoalesceTensorOp's input and output is not match.");
 
+    // Input & Output check: only support LoDTensor
     for (size_t i = 0; i < in_var_names.size(); ++i) {
-      // Only support LoDTensor
-      PADDLE_ENFORCE_NOT_NULL(in_vars[i], "%s should not be nullptr,",
-                              in_var_names[i]);
-      PADDLE_ENFORCE_NOT_NULL(out_vars[i], "%s should not be nullptr,",
-                              out_var_names[i]);
-      PADDLE_ENFORCE(in_vars[i]->IsType<framework::LoDTensor>());
-      PADDLE_ENFORCE(out_vars[i]->IsType<framework::LoDTensor>());
+      PADDLE_ENFORCE_NOT_NULL(
+          in_vars[i],
+          "The input variable %s of CoalesceTensorOp does not exist.",
+          in_var_names[i]);
+      PADDLE_ENFORCE_NOT_NULL(
+          out_vars[i],
+          "The output variable %s of CoalesceTensorOp does not exist.",
+          out_var_names[i]);
+      PADDLE_ENFORCE(
+          in_vars[i]->IsType<framework::LoDTensor>(),
+          "The input variable %s of CoalesceTensorOp is not LoDTensor.",
+          in_var_names[i]);
+      PADDLE_ENFORCE(
+          out_vars[i]->IsType<framework::LoDTensor>(),
+          "The output variable %s of CoalesceTensorOp is not LoDTensor.",
+          in_var_names[i]);
     }
 
     auto in_tensors = context.MultiInput<framework::LoDTensor>("Input");
 
     if (context.Attr<bool>("check_name")) {
       for (size_t i = 0; i < in_var_names.size(); ++i) {
-        PADDLE_ENFORCE_EQ(in_var_names[i], out_var_names[i]);
+        PADDLE_ENFORCE_EQ(
+            in_var_names[i], out_var_names[i],
+            "The input and output variable of CoalesceTensorOp is different.");
       }
     } else {
       // Init the output as input
@@ -92,6 +107,8 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
       math::SetConstant<DeviceContext, T> set_constant;
       set_constant(dev_ctx, fused_tensor,
                    static_cast<T>(context.Attr<float>("constant")));
+    } else {
+      PADDLE_THROW("Output tensor data fill method is not set.");
     }
 
     // Make the outputs point to the continuous space.
@@ -206,7 +223,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CPU_KERNEL(
     coalesce_tensor,
-    ops::CoalesceTensorOp<paddle::platform::CPUDeviceContext, plat::float16>,
     ops::CoalesceTensorOp<paddle::platform::CPUDeviceContext, int>,
     ops::CoalesceTensorOp<paddle::platform::CPUDeviceContext, float>,
     ops::CoalesceTensorOp<paddle::platform::CPUDeviceContext, double>);
