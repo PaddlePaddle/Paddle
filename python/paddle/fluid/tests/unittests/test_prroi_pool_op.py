@@ -82,7 +82,12 @@ class TestPRROIPoolOp(OpTest):
         self.check_output()
 
     def test_backward(self):
-        self.check_grad(['X'], 'Out', max_relative_error=1.0)
+        place = fluid.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'],
+            'Out',
+            max_relative_error=0.007,
+            numeric_grad_delta=0.005)
 
     def run_net(self, place):
         with program_guard(Program(), Program()):
@@ -193,10 +198,6 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
 
     def test_check_output(self):
         self.check_output()
-        place = fluid.CPUPlace()
-        self.check_output_with_place(place, 1e-5, None, False, False)
-        place = fluid.CUDAPlace(0)
-        self.check_output_with_place(place, 1e-5, None, False, False)
 
     def test_backward(self):
         place = fluid.CUDAPlace(0)
