@@ -28,9 +28,8 @@ struct DequantizeFunctor<platform::CPUDeviceContext, T> {
     const T* input_data = in->data<T>();
     float* output_data = out->mutable_data<float>(dev_ctx.GetPlace());
     int ind = in->numel();
-    float tmp = scale_factor[0] / max_range;
     for (size_t i = 0; i < (unsigned)ind; i++) {
-      output_data[i] = tmp * input_data[i];
+      output_data[i] = scale_factor[0] * input_data[i] / max_range;
     }
   }
 };
