@@ -65,7 +65,7 @@ namespace operators {
 inline void get_mid_dims(const framework::DDim &x_dims,
                          const framework::DDim &y_dims, const int axis,
                          int *pre, int *n, int *post,
-                         int *is_run_common_broadcast = NULL) {
+                         int *is_run_common_broadcast) {
   *pre = 1;
   *n = 1;
   *post = 1;
