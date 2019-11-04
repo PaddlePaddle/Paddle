@@ -61,24 +61,25 @@ class TeacherStudentSigmoidLossOp : public framework::OperatorWithKernel {
   }
 };
 
-class TeacherStudentSigmoidLossGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class TeacherStudentSigmoidLossGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
 
     op->SetType("teacher_student_sigmoid_loss_grad");
 
-    op->SetInput("X", Input("X"));
-    op->SetInput("Label", Input("Label"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -177,10 +178,11 @@ we add another label(z') to original.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(teacher_student_sigmoid_loss,
-                  ops::TeacherStudentSigmoidLossOp,
-                  ops::TeacherStudentSigmoidLossOpMaker,
-                  ops::TeacherStudentSigmoidLossGradOpDescMaker);
+REGISTER_OPERATOR(
+    teacher_student_sigmoid_loss, ops::TeacherStudentSigmoidLossOp,
+    ops::TeacherStudentSigmoidLossOpMaker,
+    ops::TeacherStudentSigmoidLossGradOpMaker<paddle::framework::OpDesc>,
+    ops::TeacherStudentSigmoidLossGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(teacher_student_sigmoid_loss_grad,
                   ops::TeacherStudentSigmoidLossGradientOp);
