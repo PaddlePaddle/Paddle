@@ -253,21 +253,24 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    framework::Tensor rois_batch_id_list_gpu;
-    framework::TensorCopy(rois_batch_id_list, ctx.GetPlace(),
-                          ctx.device_context(), &rois_batch_id_list_gpu);
-
     int output_size = out->numel();
     int blocks = NumBlocks(output_size);
     int threads = kNumCUDAThreads;
 
+    auto cplace = platform::CPUPlace();
+    auto& dev_ctx = ctx.cuda_device_context();
+    int bytes = rois_batch_id_list.numel() * sizeof(int);
+    auto roi_ptr = memory::Alloc(dev_ctx, bytes);
+    int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
+    const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    memory::Copy(gplace, roi_id_data, cplace, rois_batch_id_data, bytes,
+                 dev_ctx.stream());
+
     // call cuda kernel function
-    GPUPRROIPoolForward<
-        T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
+    GPUPRROIPoolForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
         output_size, in->data<T>(), rois->data<T>(), spatial_scale,
         input_channels, height, width, output_channels, pooled_height,
-        pooled_width, rois_batch_id_list_gpu.data<int>(),
-        out->mutable_data<T>(ctx.GetPlace()));
+        pooled_width, roi_id_data, out->mutable_data<T>(ctx.GetPlace()));
   }
 };
 
@@ -326,9 +329,14 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
         }
       }
 
-      framework::Tensor rois_batch_id_list_gpu;
-      framework::TensorCopy(rois_batch_id_list, ctx.GetPlace(),
-                            ctx.device_context(), &rois_batch_id_list_gpu);
+      auto cplace = platform::CPUPlace();
+      auto& dev_ctx = ctx.cuda_device_context();
+      int bytes = rois_batch_id_list.numel() * sizeof(int);
+      auto roi_ptr = memory::Alloc(dev_ctx, bytes);
+      int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
+      const auto gplace = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+      memory::Copy(gplace, roi_id_data, cplace, rois_batch_id_data, bytes,
+                   dev_ctx.stream());
 
       input_grad->mutable_data<T>(ctx.GetPlace());
       math::SetConstant<DeviceContext, T> set_zero;
@@ -341,12 +349,10 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
       int threads = kNumCUDAThreads;
 
       if (output_grad_size > 0) {
-        GPUPRROIPoolBackward<
-            T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
+        GPUPRROIPoolBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
             output_grad_size, in->data<T>(), rois->data<T>(),
             output_grad->data<T>(), spatial_scale, input_channels, height,
-            width, output_channels, pooled_height, pooled_width,
-            rois_batch_id_list_gpu.data<int>(),
+            width, output_channels, pooled_height, pooled_width, roi_id_data,
             input_grad->mutable_data<T>(ctx.GetPlace()), out->data<T>(),
             input_roi_grad->mutable_data<T>(ctx.GetPlace()));
       }
