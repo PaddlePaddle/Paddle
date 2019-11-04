@@ -1,3 +1,4 @@
+# -*- coding:utf-8  -*-
 # Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -1571,7 +1572,7 @@ class AmsgradOptimizer(Optimizer):
     it can dynamically adjusts the learning rate of each parameter using
     the 1st moment estimates and the 2nd moment estimates of the gradient.
 
-    It is a variant of the Adam optimizer. It considers the “long-term memory” of past gradients.
+    It is a variant of the Adam optimizer. It considers the “long term memory” of past gradients.
 
     The parameter ``param_out`` update rule with gradient ``grad``:
 
