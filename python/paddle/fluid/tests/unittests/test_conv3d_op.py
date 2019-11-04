@@ -75,11 +75,7 @@ def conv3d_forward_naive(input,
         pad = [0, 0, 0, 0, 0, 0]
     elif padding_algorithm == "SAME":
         dilation = [1, 1, 1]
-        input_data_shape = []
-        if data_format == "NCDHW":
-            input_data_shape = input.shape[2:5]
-        elif data_format == "NDHWC":
-            input_data_shape = input.shape[1:4]
+        input_data_shape = input.shape[2:5]
         pad = _get_padding_with_SAME(input_data_shape, ksize, stride)
 
     pad_d_0, pad_d_1 = pad[0], pad[0]
@@ -597,6 +593,13 @@ class TestConv3dOp_2(OpTest):
 
 
 class TestConv3dOp_AsyPadding(TestConv3dOp_2):
+    def init_test_case(self):
+        self.stride = [1, 1, 2]
+        self.input_size = [2, 3, 4, 4, 4]  # NCDHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3, 3]
+
     def init_paddings(self):
         self.pad = [1, 0, 1, 0, 0, 2]
         self.padding_algorithm = "EXPLICIT"
