@@ -58,12 +58,8 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
     if padding_algorithm == "VALID":
         pad = [0, 0, 0, 0, 0, 0]
     elif padding_algorithm == "SAME":
-        dilation = [1, 1, 1]
-        input_data_shape = []
-        if attrs['data_format'] == "NCHW":
-            input_data_shape = input_.shape[2:5]
-        elif attrs['data_format'] == "NHWC":
-            input_data_shape = input_.shape[1:4]
+        dilations = [1, 1, 1]
+        input_data_shape = input_.shape[2:5]
         pad = _get_padding_with_SAME(input_data_shape, ksize, stride)
 
     pad_d_0, pad_d_1 = pad[0], pad[0]
@@ -226,7 +222,7 @@ class TestWithAsymmetricPad(TestConv3dTransposeOp):
 
 class TestWithSAMEPad(TestConv3dTransposeOp):
     def init_test_case(self):
-        self.stride = [1, 1, 1]
+        self.stride = [1, 1, 2]
         self.dilations = [1, 1, 1]
         self.groups = 1
         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
@@ -237,7 +233,7 @@ class TestWithSAMEPad(TestConv3dTransposeOp):
 
 class TestWithVALIDPad(TestConv3dTransposeOp):
     def init_test_case(self):
-        self.stride = [1, 1, 1]
+        self.stride = [2, 1, 1]
         self.dilations = [1, 1, 1]
         self.groups = 1
         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
@@ -398,7 +394,7 @@ class TestCUDNNWithAsymmetricPad(TestWithAsymmetricPad):
                  "core is not compiled with CUDA")
 class TestCUDNNWithSAMEPad(TestWithSAMEPad):
     def init_test_case(self):
-        self.stride = [1, 1, 1]
+        self.stride = [1, 1, 2]
         self.dilations = [1, 1, 1]
         self.groups = 1
         self.input_size = [2, 3, 5, 5, 5]  # NCDHW

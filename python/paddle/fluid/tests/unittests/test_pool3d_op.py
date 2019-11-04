@@ -211,6 +211,8 @@ class TestPool3d_Op(OpTest):
         self.init_kernel_type()
         self.dtype = np.float32
         self.init_test_case()
+        self.padding_algorithm = "EXPLICIT"
+        self.init_paddings()
         self.init_global_pool()
         self.init_kernel_type()
         self.init_pool_type()
@@ -224,7 +226,7 @@ class TestPool3d_Op(OpTest):
         output = pool3D_forward_naive(
             input, self.ksize, self.strides, self.paddings, self.global_pool,
             self.ceil_mode, self.exclusive, self.adaptive, self.data_format,
-            self.pool_type).astype(self.dtype)
+            self.pool_type, self.padding_algorithm).astype(self.dtype)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
 
@@ -238,7 +240,8 @@ class TestPool3d_Op(OpTest):
             'ceil_mode': self.ceil_mode,
             'data_format': self.data_format,
             'exclusive': self.exclusive,
-            'adaptive': self.adaptive
+            'adaptive': self.adaptive,
+            "padding_algorithm": self.padding_algorithm,
         }
 
         self.outputs = {'Out': output}
@@ -272,11 +275,13 @@ class TestPool3d_Op(OpTest):
     def init_test_case(self):
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
+
+    def init_paddings(self):
         self.paddings = [0, 0, 0]
+        self.padding_algorithm = "EXPLICIT"
 
     def init_kernel_type(self):
         self.use_cudnn = False
-        #pass
 
     def init_pool_type(self):
         self.pool_type = "avg"
@@ -300,7 +305,9 @@ class TestCase1(TestPool3d_Op):
 
     def init_test_case(self):
         self.ksize = [3, 3, 3]
-        self.strides = [1, 1, 1]
+        self.strides = [1, 2, 1]
+
+    def init_paddings(self):
         self.paddings = [0, 0, 0]
 
     def init_pool_type(self):
@@ -316,7 +323,9 @@ class TestCase2(TestPool3d_Op):
 
     def init_test_case(self):
         self.ksize = [3, 3, 3]
-        self.strides = [1, 1, 1]
+        self.strides = [1, 3, 2]
+
+    def init_paddings(self):
         self.paddings = [1, 1, 1]
 
     def init_pool_type(self):
@@ -446,12 +455,12 @@ class TestAvgPoolAdaptive(TestCase1):
 
 
 #-------test pool3d with asymmetric padding------
-
-
 class TestPool3d_Op_AsyPadding(TestPool3d_Op):
     def init_test_case(self):
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
+
+    def init_paddings(self):
         self.paddings = [0, 0, 0, 2, 3, 0]
 
     def init_shape(self):
@@ -462,6 +471,8 @@ class TestCase1_AsyPadding(TestCase1):
     def init_test_case(self):
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
+
+    def init_paddings(self):
         self.paddings = [1, 0, 2, 1, 2, 1]
 
     def init_shape(self):
@@ -472,6 +483,8 @@ class TestCase2_AsyPadding(TestCase2):
     def init_test_case(self):
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
+
+    def init_paddings(self):
         self.paddings = [1, 2, 1, 1, 1, 0]
 
     def init_shape(self):
@@ -482,6 +495,8 @@ class TestCase3_AsyPadding(TestCase3):
     def init_test_case(self):
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
+
+    def init_paddings(self):
         self.paddings = [1, 0, 0, 0, 1, 0]
 
     def init_shape(self):
@@ -492,6 +507,8 @@ class TestCase4_AsyPadding(TestCase4):
     def init_test_case(self):
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
+
+    def init_paddings(self):
         self.paddings = [1, 0, 2, 1, 2, 1]
 
     def init_shape(self):
@@ -500,9 +517,10 @@ class TestCase4_AsyPadding(TestCase4):
 
 class TestCase5_AsyPadding(TestCase5):
     def init_test_case(self):
-        self.shape = [2, 7, 7, 7, 3]
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
+
+    def init_paddings(self):
         self.paddings = [1, 2, 1, 1, 1, 0]
 
     def init_shape(self):
@@ -537,6 +555,8 @@ class TestAvgInclude_AsyPadding(TestCase2):
     def init_test_case(self):
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
+
+    def init_paddings(self):
         self.paddings = [1, 2, 1, 1, 1, 0]
 
     def init_shape(self):
@@ -555,6 +575,8 @@ class TestCUDNNAvgInclude_AsyPadding(TestCase2):
     def init_test_case(self):
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
+
+    def init_paddings(self):
         self.paddings = [1, 0, 0, 0, 0, 0]
 
     def init_shape(self):
@@ -568,6 +590,8 @@ class TestAvgPoolAdaptive_AsyPadding(TestCase1):
     def init_test_case(self):
         self.ksize = [3, 3, 3]
         self.strides = [1, 1, 1]
+
+    def init_paddings(self):
         self.paddings = [1, 0, 2, 1, 2, 1]
 
     def init_shape(self):
@@ -781,7 +805,7 @@ class TestAvgPoolAdaptive_AsyPadding_channel_last(
 def create_test_padding_SAME_class(parent):
     class TestPaddingSMAECase(parent):
         def init_paddings(self):
-            self.paddings = [0, 0]
+            self.paddings = [0, 0, 0]
             self.padding_algorithm = "SAME"
 
     cls_name = "{0}_{1}".format(parent.__name__, "PaddingSAMEOp")
@@ -812,7 +836,7 @@ def create_test_cudnn_padding_SAME_class(parent):
             self.use_cudnn = True
 
         def init_paddings(self):
-            self.paddings = [1, 1]
+            self.paddings = [1, 1, 1]
             self.padding_algorithm = "SAME"
 
     cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingSAMEOp")
@@ -838,7 +862,7 @@ create_test_cudnn_padding_SAME_class(TestCase5_channel_last)
 def create_test_padding_VALID_class(parent):
     class TestPaddingVALIDCase(parent):
         def init_paddings(self):
-            self.paddings = [1, 1]
+            self.paddings = [1, 1, 1]
             self.padding_algorithm = "VALID"
 
     cls_name = "{0}_{1}".format(parent.__name__, "PaddingVALIDOp")
@@ -869,7 +893,7 @@ def create_test_cudnn_padding_VALID_class(parent):
             self.use_cudnn = True
 
         def init_paddings(self):
-            self.paddings = [1, 1]
+            self.paddings = [1, 1, 1]
             self.padding_algorithm = "VALID"
 
     cls_name = "{0}_{1}".format(parent.__name__, "CudnnPaddingVALIDOp")
@@ -963,6 +987,7 @@ class TestPool3dAPI(OpTest):
         out_7 = fluid.layers.pool3d(
             input=input_NDHWC,
             pool_size=ksize,
+            pool_stride=[1, 1, 2],
             pool_type="avg",
             pool_padding="SAME",
             use_cudnn=False,
@@ -1058,7 +1083,7 @@ class TestPool3dAPI(OpTest):
                 x=x_NDHWC,
                 ksize=ksize,
                 pool_type="avg",
-                strides=[1, 1, 1],
+                strides=[1, 1, 2],
                 paddings=[10, 20],
                 padding_algorithm="SAME",
                 data_format="NDHWC"))
