@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <Python.h>
+#include <numpy/arrayobject.h>
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -66,19 +67,16 @@ namespace details {
 
 class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
  public:
-  explicit NumpyAllocation(std::shared_ptr<py::array> arr, size_t size,
+  explicit NumpyAllocation(PyObject *arr, size_t size,
                            paddle::platform::Place place)
-      : Allocation(
-            const_cast<void *>(reinterpret_cast<const void *>(arr->data())),
-            size, place),
-        arr_(arr) {}
+      : Allocation(PyArray_DATA(arr), size, place), arr_(arr) {}
   ~NumpyAllocation() override {
     py::gil_scoped_acquire gil;
-    arr_->dec_ref();
+    Py_XDECREF(arr_);
   }
 
  private:
-  std::shared_ptr<py::array> arr_;
+  PyObject *arr_;
 };
 
 template <typename T>
@@ -170,8 +168,7 @@ void SetTensorFromPyArrayT(
     if (zero_copy) {
       array.inc_ref();
       auto holder = std::make_shared<details::NumpyAllocation>(
-          std::make_shared<py::array>(static_cast<py::array>(array)),
-          sizeof(T) * (array.size()), place);
+          array.ptr(), sizeof(T) * (array.size()), place);
       self->ResetHolder(holder);
       self->ResetType(framework::ToDataType(std::type_index(typeid(T))));
     } else {
