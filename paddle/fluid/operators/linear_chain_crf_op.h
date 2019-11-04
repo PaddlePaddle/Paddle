@@ -27,9 +27,9 @@ static inline T NormalizeL1(T* x, size_t len) {
   // (This comment is from the old LinearChainCRFLayer.)
   // Right now, we just bet that sum won't be zero. If this really happens, we
   // will figure out what should be done then.
-  PADDLE_ENFORCE(sum,
-                 "The unnormalized probabilities of all possible unfinished "
-                 "sequences must be greater than 0.");
+  PADDLE_ENFORCE_GT(sum, 0,
+                    "The unnormalized probabilities of all possible unfinished "
+                    "sequences must be greater than 0.");
   T s = 1. / sum;
   for (size_t i = 0; i < len; ++i) x[i] *= s;
   return sum;
