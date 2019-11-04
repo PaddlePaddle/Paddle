@@ -48,6 +48,9 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto *x = ctx.Input<framework::LoDTensor>("X");
     auto *y = ctx.Input<framework::LoDTensor>("Y");
     auto *z = ctx.Output<framework::LoDTensor>("Out");
+    if (z->Holder() == x->Holder() && x->numel() < y->numel()) {
+      z->clear();
+    }
     z->mutable_data<T>(ctx.GetPlace());
     auto dims_equal = x->dims() == y->dims();
     if (dims_equal) {

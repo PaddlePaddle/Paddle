@@ -120,10 +120,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(elementwise_add, ops::ElementwiseOp,
                   ops::ElementwiseAddOpMaker, ops::ElementwiseOpInferVarType,
                   ops::ElementwiseAddGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ElementwiseAddGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ElementwiseAddGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ElementwiseGradOpInplace);
 REGISTER_OPERATOR(
-    elementwise_add_grad, ops::ElementwiseOpGrad,
-    // ops::ElementwiseGradOpInplace,
+    elementwise_add_grad, ops::ElementwiseOpGrad, ops::ElementwiseGradOpInplace,
     ops::ElementwiseGradNoBufVarsInference,
     ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>);
