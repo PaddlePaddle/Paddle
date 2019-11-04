@@ -1494,7 +1494,7 @@ def conv3d(input,
 
     Raises:
         ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCHW" or "NHWC".
+        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
         ValueError: If the channel dimmention of the input is less than or equal to zero.
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
@@ -3571,7 +3571,7 @@ def conv3d_transpose(input,
 
     Raises:
         ValueError: If the type of `use_cudnn` is not bool.
-        ValueError: If `data_format` is not "NCHW" or "NHWC".
+        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
             or the element corresponding to the input's channel is not 0.
