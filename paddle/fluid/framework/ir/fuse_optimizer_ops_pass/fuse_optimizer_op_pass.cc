@@ -260,9 +260,11 @@ bool FuseOptimizerOpPass::GradGeneratedOpSupportGPU(
       grad_var_name);
   auto grad_var_node = grad_var_nodes.front();
   for (auto in_node : grad_var_node->inputs) {
-    if (in_node->IsOp() && in_node->Op() &&
-        !framework::OpSupportGPU(in_node->Op()->Type())) {
-      return false;
+    if (in_node->IsOp() && in_node->Op()) {
+      VLOG(6) << "Op kernel suport GPU check: " << in_node->Op()->Type();
+      if (!framework::OpSupportGPU(in_node->Op()->Type())) {
+        return false;
+      }
     }
   }
   return true;

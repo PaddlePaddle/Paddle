@@ -452,7 +452,6 @@ class CoalesceGradTensorPass : public ir::Pass {
               backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
         }
       } catch (boost::bad_get &e) {
-        PADDLE_THROW_EXCEPTION(std::current_exception());
       }
     }
   }

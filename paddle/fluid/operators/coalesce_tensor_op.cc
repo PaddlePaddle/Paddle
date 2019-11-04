@@ -108,7 +108,7 @@ class CoalesceTensorOp : public framework::OpKernel<T> {
       set_constant(dev_ctx, fused_tensor,
                    static_cast<T>(context.Attr<float>("constant")));
     } else {
-      PADDLE_THROW("Output tensor data fill method is not set.");
+      math::set_constant(dev_ctx, fused_tensor, 0.0);
     }
 
     // Make the outputs point to the continuous space.
