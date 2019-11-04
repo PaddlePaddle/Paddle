@@ -1134,13 +1134,13 @@ class Variable(object):
     @property
     def grad_name(self):
         """
-       Indicating name of the gradient Variable of current Variable.
+        Indicating name of the gradient Variable of current Variable.
 
-       **Notes: This is a read-only property. It simply returns name of
+        **Notes: This is a read-only property. It simply returns name of
           gradient Variable from a naming convention but doesn't guarantee
           the gradient exists.**
        
-       Examples:
+        Examples:
           .. code-block:: python
 
           import paddle.fluid as fluid
@@ -1148,7 +1148,7 @@ class Variable(object):
           x = fluid.data(name="x", shape=[-1, 23, 48], dtype='float32')
           print(x.grad_name) # output is "x@GRAD"
 
-       """
+        """
         return self.name + "@GRAD"
 
     @name.setter
