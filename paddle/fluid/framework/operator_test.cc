@@ -494,3 +494,38 @@ TEST(IndicateVarDataTypeTest, other) {
   }
   ASSERT_TRUE(caught);
 }
+
+TEST(ExecutionContextAttrAndInOut, new_api) {
+  paddle::framework::InitDevices(true);
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("test_operator");
+  BuildVar("input", {"IN1"}, op_desc.add_inputs());
+  BuildVar("output", {"OUT1"}, op_desc.add_outputs());
+
+  auto attr = op_desc.mutable_attrs()->Add();
+  attr->set_name("scale");
+  attr->set_type(paddle::framework::proto::AttrType::FLOAT);
+  attr->set_f(3.14);
+
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto* var = scope.Var("OUT1");
+  var->GetMutable<paddle::framework::LoDTensorArray>();
+
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(cpu_place);
+
+  paddle::framework::RuntimeContext ctx({}, {});
+  paddle::framework::ExecutionContext exe_context(*(op.get()), scope, *dev_ctx,
+                                                  ctx, nullptr);
+
+  ASSERT_EQ(exe_context.InputSize("input"), 1u);
+  ASSERT_EQ(exe_context.OutputSize("output"), 1u);
+
+  auto attr_map = exe_context.Attrs();
+  ASSERT_EQ(boost::get<float>(attr_map["scale"]), 3.14f);
+  ASSERT_EQ(exe_context.Type(), "test_operator");
+}

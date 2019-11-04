@@ -47,6 +47,7 @@ class Engine {
     grad_ops_.erase(iter);
   }
 
+  virtual void CleanEngine() {}
   void InsertOp(OpBase* op, std::shared_ptr<OpBase> op_shared) {
     grad_ops_[op] = std::move(op_shared);
   }
@@ -89,6 +90,7 @@ class BasicEngine : public Engine {
 
   // TODO(jiabin): maybe we can optimize the performance of engine by cache the
   // result
+ public:
   void CleanEngine() {
     init_ops_.clear();
     op_deps_.clear();

@@ -246,21 +246,6 @@ OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
   VLOG(3) << "Construct Op: " << type << std::endl;
 }
 
-// create OpBase from opdesc
-OpBase::OpBase(size_t id, const framework::OpDesc& op_desc,
-               const platform::Place& place)
-    : id_(id),
-      op_(framework::OpRegistry::CreateOp(op_desc.Type(), {}, {}, {}, false)),
-      place_(place),
-      attrs_(op_desc.GetAttrMap()) {
-  const auto& info = framework::OpInfoMap::Instance().Get(op_desc.Type());
-
-  if (info.Checker() != nullptr) {
-    info.Checker()->Check(&attrs_);
-  }
-  VLOG(3) << "Construct Op: " << op_desc.Type() << std::endl;
-}
-
 void OpBase::CreateOperatorBase() {
   const auto& info = framework::OpInfoMap::Instance().Get(type_);
   if (info.Checker() != nullptr) {
