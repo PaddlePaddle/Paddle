@@ -279,6 +279,12 @@ class TestDataset(unittest.TestCase):
         dataset.release_memory()
         dataset.preload_into_memory(1)
         dataset.wait_preload_done()
+        dataset.dataset.merge_by_lineid()
+        dataset.release_memory()
+        dataset.set_merge_by_lineid(3)
+        dataset.set_parse_ins_id(False)
+        dataset.load_into_memory()
+        dataset.dataset.merge_by_lineid()
         fleet_ptr = fluid.core.Fleet()
         fleet_ptr.set_client2client_config(1, 1, 1)
 
