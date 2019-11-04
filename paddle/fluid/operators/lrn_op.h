@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -21,12 +23,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using DataLayout = framework::DataLayout;
+
 template <typename place, typename T>
 struct LRNFunctor {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor& input, framework::Tensor* out,
                   framework::Tensor* mid, int N, int C, int H, int W, int n,
-                  T k, T alpha, T beta);
+                  T k, T alpha, T beta,
+                  const DataLayout data_layout = DataLayout::kAnyLayout);
 };
 
 template <typename DeviceContext, typename T>
@@ -42,11 +47,14 @@ class LRNKernel : public framework::OpKernel<T> {
     const Tensor& x = *ctx.Input<Tensor>("X");
     auto x_dims = x.dims();
 
+    const std::string data_layout_str = ctx.Attr<std::string>("data_format");
+    const framework::DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
     // NCHW
     int N = x_dims[0];
-    int C = x_dims[1];
-    int H = x_dims[2];
-    int W = x_dims[3];
+    int C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
+    int H = (data_layout != DataLayout::kNHWC ? x_dims[2] : x_dims[1]);
+    int W = (data_layout != DataLayout::kNHWC ? x_dims[3] : x_dims[2]);
 
     Tensor* out = ctx.Output<Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
@@ -65,7 +73,7 @@ class LRNKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(k >= 0.0, "k should >= 0.0");
 
     LRNFunctor<DeviceContext, T> f;
-    f(ctx, x, out, mid, N, C, H, W, n, k, alpha, beta);
+    f(ctx, x, out, mid, N, C, H, W, n, k, alpha, beta, data_layout);
   }
 };
 
@@ -75,7 +83,8 @@ struct LRNGradFunctor {
                   const framework::Tensor& x, const framework::Tensor& out,
                   const framework::Tensor& mid, framework::Tensor* x_g,
                   const framework::Tensor& out_g, int N, int C, int H, int W,
-                  int n, T alpha, T beta);
+                  int n, T alpha, T beta,
+                  const DataLayout data_layout = DataLayout::kAnyLayout);
 };
 
 /**
@@ -106,15 +115,18 @@ class LRNGradKernel : public framework::OpKernel<T> {
     const Tensor& out = *ctx.Input<Tensor>("Out");
     const Tensor& out_g = *ctx.Input<Tensor>(framework::GradVarName("Out"));
     const Tensor& mid = *ctx.Input<Tensor>("MidOut");
+    const std::string data_layout_str = ctx.Attr<std::string>("data_format");
+    const framework::DataLayout data_layout =
+        framework::StringToDataLayout(data_layout_str);
 
     auto x_g = ctx.Output<Tensor>(framework::GradVarName("X"));
     x_g->mutable_data<T>(ctx.GetPlace());
 
     auto x_dims = x.dims();
     int N = x_dims[0];
-    int C = x_dims[1];
-    int H = x_dims[2];
-    int W = x_dims[3];
+    int C = (data_layout != DataLayout::kNHWC ? x_dims[1] : x_dims[3]);
+    int H = (data_layout != DataLayout::kNHWC ? x_dims[2] : x_dims[1]);
+    int W = (data_layout != DataLayout::kNHWC ? x_dims[3] : x_dims[2]);
 
     int n = ctx.Attr<int>("n");
     T alpha = ctx.Attr<T>("alpha");
@@ -125,7 +137,7 @@ class LRNGradKernel : public framework::OpKernel<T> {
         "is_test attribute should be set to False in training phase.");
 
     LRNGradFunctor<DeviceContext, T> f;
-    f(ctx, x, out, mid, x_g, out_g, N, C, H, W, n, alpha, beta);
+    f(ctx, x, out, mid, x_g, out_g, N, C, H, W, n, alpha, beta, data_layout);
   }
 };
 

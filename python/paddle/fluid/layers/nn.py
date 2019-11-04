@@ -9277,7 +9277,8 @@ def lod_append(x, level):
     return out
 
 
-def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
+def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None,
+        data_format='NCHW'):
     """
     This operator implements the Local Response Normalization Layer.
     This layer performs a type of "lateral inhibition" by normalizing over local input regions.
@@ -9298,13 +9299,18 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
 
     Args:
-        input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W], where N is the batch size, C is the input channel, H is Height, W is weight. The data type is float32. The rank of this tensor must be 4, otherwise it will raise ValueError.
+        input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W] or [N, H, W, C], 
+            where N is the batch size, C is the input channel, H is Height, W is weight. The data 
+            type is float32. The rank of this tensor must be 4, otherwise it will raise ValueError.
         n (int, optional): The number of channels to sum over. Default: 5
         k (float, optional): An offset, positive. Default: 1.0
         alpha (float, optional): The scaling parameter, positive. Default:1e-4
         beta (float, optional): The exponent, positive. Default:0.75
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` 
-
+        name (str, optional): The default value is None. Normally there is no need for user to set 
+            this property. For more information, please refer to :ref:`api_guide_Name` 
+        data_format(str, optional): The data format of the input and output data. An optional string
+            from: `"NCHW"`, `"NHWC"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. Default: 'NCHW'.
     Returns:
         Variable: A tensor variable storing the transformation result with the same shape and data type as input.
 
@@ -9327,8 +9333,12 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
     if dims != 4:
         raise ValueError(
-            "dims of input must be 4(not %d), and it's order must be NCHW" %
+            "Input's dimension size of Op(lrn) must be 4, but received %d." %
             (dims))
+    if data_format not in ['NCHW', 'NHWC']:
+        raise ValueError(
+            "Attr(data_format) of Op(lrn) got wrong value: received " +
+            data_format + " but only NCHW or NHWC supported.")
 
     mid_out = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
@@ -9340,10 +9350,13 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
             "Out": lrn_out,
             "MidOut": mid_out,
         },
-        attrs={"n": n,
-               "k": k,
-               "alpha": alpha,
-               "beta": beta})
+        attrs={
+            "n": n,
+            "k": k,
+            "alpha": alpha,
+            "beta": beta,
+            "data_format": data_format
+        })
 
     return lrn_out
 
