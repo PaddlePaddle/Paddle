@@ -89,6 +89,8 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   VLOG(0) << "communicator_fake_rpc: " << FLAGS_communicator_fake_rpc;
   VLOG(0) << "communicator_merge_sparse_grad: "
           << FLAGS_communicator_merge_sparse_grad;
+  VLOG(0) << "communicator_is_sgd_optimizer: "
+          << FLAGS_communicator_is_sgd_optimizer;
 
   if (send_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be send, will not start send_thread";
@@ -128,8 +130,15 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
       auto height_section =
           boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      auto merge_add = boost::get<bool>(op->GetNullableAttr("merge_add"));
+      if (!merge_add) {
+        merge_add = FLAGS_communicator_is_sgd_optimizer;
+      }
+      auto use_send_handler =
+          boost::get<bool>(op->GetNullableAttr("use_send_handler"));
       send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
-          send_var_name, send_varnames, epmap, height_section, trainer_id);
+          send_var_name, send_varnames, epmap, height_section, trainer_id,
+          merge_add, use_send_handler);
       VLOG(3) << "find and init an send op: "
               << send_varname_to_ctx[send_var_name];
     } else if (op->Type() == "recv") {
@@ -206,12 +215,17 @@ void AsyncCommunicator::SendThread() {
             }
           }
           auto before_merge = GetCurrentUS();
-          MergeVars(var_name, vars, send_scope_.get());
+          auto &ctx = send_varname_to_ctx_.at(var_name);
+          if (ctx.use_send_handler) {
+            MergeVars<float>(var_name, vars, send_scope_.get(), ctx.merge_add);
+          } else {
+            MergeVars<int64_t>(var_name, vars, send_scope_.get(),
+                               ctx.merge_add);
+          }
           auto after_merge = GetCurrentUS();
           VLOG(3) << "merge " << merged_var_num << " " << var_name
                   << " use time " << after_merge - before_merge;
           auto send_functor = distributed::ParameterSend<float>();
-          auto &ctx = send_varname_to_ctx_.at(var_name);
           if (!FLAGS_communicator_fake_rpc) {
             send_functor(ctx, *send_scope_, true, 1);
           }

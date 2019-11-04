@@ -134,8 +134,9 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
-                                 layout_, library_);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+      layout_, library_);
 }
 
 void PoolOpGrad::InferShape(framework::InferShapeContext* ctx) const {
@@ -164,7 +165,7 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
   }
 #endif
 
-  auto input_data_type = ctx.Input<Tensor>("X")->type();
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(library_, framework::LibraryType::kCUDNN,
                       "float16 can only be used when CUDNN is used");
@@ -570,9 +571,10 @@ Example:
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(pool2d, ops::PoolOp, ops::Pool2dOpMaker,
-                  ops::PoolOpInferVarType,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    pool2d, ops::PoolOp, ops::Pool2dOpMaker, ops::PoolOpInferVarType,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
@@ -582,9 +584,10 @@ REGISTER_OP_CPU_KERNEL(
     pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);
 
-REGISTER_OPERATOR(pool3d, ops::PoolOp, ops::Pool3dOpMaker,
-                  ops::PoolOpInferVarType,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    pool3d, ops::PoolOp, ops::Pool3dOpMaker, ops::PoolOpInferVarType,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(pool3d_grad, ops::PoolOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

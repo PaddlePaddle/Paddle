@@ -36,6 +36,7 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2
+DIST_UT_PORT = 0
 
 
 def print_to_out(out_losses):
@@ -247,6 +248,9 @@ class TestDistRunnerBase(object):
                 "do nothing about main program, just use it")
             trainer_prog = fluid.default_main_program()
             print_to_err(type(self).__name__, "use main program done.")
+
+        # FIXME(gongwb):wait pserver initialization.
+        time.sleep(1)
 
         if args.use_cuda:
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
@@ -486,8 +490,6 @@ class TestDistBase(unittest.TestCase):
         self._trainers = 2
         self._pservers = 2
         self._port_set = set()
-        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-            self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
         self._sync_mode = True
         self._hogwild_mode = False
@@ -512,6 +514,20 @@ class TestDistBase(unittest.TestCase):
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
         self._setup_config()
+
+        global DIST_UT_PORT
+        if DIST_UT_PORT == 0 and os.getenv("PADDLE_DIST_UT_PORT"):
+            DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
+
+        if DIST_UT_PORT == 0:
+            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+                self._find_free_port(), self._find_free_port())
+        else:
+            print("set begin_port:", DIST_UT_PORT)
+            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+                DIST_UT_PORT, DIST_UT_PORT + 1)
+            DIST_UT_PORT += 2
+
         self._after_setup_config()
 
     def _find_free_port(self):
@@ -790,8 +806,16 @@ class TestDistBase(unittest.TestCase):
                            check_error_log, log_name):
         if self._use_hallreduce:
             self._ps_endpoints = ""
-            for i in range(0, 4):
-                self._ps_endpoints += "127.0.0.1:%s," % (self._find_free_port())
+
+            global DIST_UT_PORT
+            if DIST_UT_PORT == 0:
+                for i in range(0, 4):
+                    self._ps_endpoints += "127.0.0.1:%s," % (
+                        self._find_free_port())
+            else:
+                for i in range(0, 4):
+                    self._ps_endpoints += "127.0.0.1:%s," % (DIST_UT_PORT + i)
+                DIST_UT_PORT += 4
             self._ps_endpoints = self._ps_endpoints[:-1]
 
         # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
@@ -858,7 +882,7 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_vmodule"] = \
                 "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
-                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10"
+                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,nccl_helper=10,grpc_client=10,grpc_server=10,request_handler_impl=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         required_envs.update(need_envs)

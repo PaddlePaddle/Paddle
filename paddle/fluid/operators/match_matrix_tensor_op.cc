@@ -286,8 +286,8 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
             auto* r_data = bottom_r_data + (offset_r[b] + j) * dim_in;
             auto* r_diff = bottom_r_diff + (offset_r[b] + j) * dim_in;
             if (diff != 0.0) {
-              sse_axpy(r_data, l_trans_diff, dim_in, diff);
-              sse_axpy(l_trans_data, r_diff, dim_in, diff);
+              avx_axpy(r_data, l_trans_diff, dim_in, diff);
+              avx_axpy(l_trans_data, r_diff, dim_in, diff);
             }
           }
         }
@@ -316,9 +316,11 @@ class CPUMatchMatrixTensorOPGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(match_matrix_tensor, ops::MatchMatrixTensorOP,
-                  ops::MatchMatrixTensorOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    match_matrix_tensor, ops::MatchMatrixTensorOP,
+    ops::MatchMatrixTensorOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>)
 REGISTER_OPERATOR(match_matrix_tensor_grad, ops::MatchMatrixTensorOpGrad);
 
 REGISTER_OP_CPU_KERNEL(match_matrix_tensor,

@@ -115,19 +115,20 @@ class HuberLossGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class HuberLossGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class HuberLossGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("huber_loss_grad");
-    op->SetInput("Residual", Output("Residual"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("Residual", this->Output("Residual"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -137,7 +138,8 @@ class HuberLossGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(huber_loss, ops::HuberLossOp, ops::HuberLossOpMaker<float>,
-                  ops::HuberLossGradOpDescMaker);
+                  ops::HuberLossGradOpMaker<paddle::framework::OpDesc>,
+                  ops::HuberLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(huber_loss_grad, ops::HuberLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     huber_loss, ops::HuberLossKernel<paddle::platform::CPUDeviceContext, float>,

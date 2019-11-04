@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/gru_unit_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -200,33 +201,34 @@ class GRUUnitGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class GRUUnitGradOpMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class GRUUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
     op->SetType("gru_unit_grad");
 
-    op->SetInput("Input", Input("Input"));
-    op->SetInput("HiddenPrev", Input("HiddenPrev"));
-    op->SetInput("Weight", Input("Weight"));
-    op->SetInput("Bias", Input("Bias"));
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("HiddenPrev", this->Input("HiddenPrev"));
+    op->SetInput("Weight", this->Input("Weight"));
+    op->SetInput("Bias", this->Input("Bias"));
 
-    op->SetInput("Hidden", Output("Hidden"));
-    op->SetInput("Gate", Output("Gate"));
-    op->SetInput("ResetHiddenPrev", Output("ResetHiddenPrev"));
-    op->SetInput(framework::GradVarName("Hidden"), OutputGrad("Hidden"));
+    op->SetInput("Hidden", this->Output("Hidden"));
+    op->SetInput("Gate", this->Output("Gate"));
+    op->SetInput("ResetHiddenPrev", this->Output("ResetHiddenPrev"));
+    op->SetInput(framework::GradVarName("Hidden"), this->OutputGrad("Hidden"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     op->SetOutput(framework::GradVarName("HiddenPrev"),
-                  InputGrad("HiddenPrev"));
-    op->SetOutput(framework::GradVarName("Weight"), InputGrad("Weight"));
-    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
-    return std::unique_ptr<framework::OpDesc>(op);
+                  this->InputGrad("HiddenPrev"));
+    op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -236,7 +238,8 @@ class GRUUnitGradOpMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(gru_unit, ops::GRUUnitOp, ops::GRUUnitOpMaker,
-                  ops::GRUUnitGradOpMaker);
+                  ops::GRUUnitGradOpMaker<paddle::framework::OpDesc>,
+                  ops::GRUUnitGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(gru_unit_grad, ops::GRUUnitGradOp);
 
 REGISTER_OP_CPU_KERNEL(

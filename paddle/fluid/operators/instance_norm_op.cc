@@ -70,7 +70,7 @@ void InstanceNormOp::InferShape(framework::InferShapeContext *ctx) const {
 
 framework::OpKernelType InstanceNormOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
-  auto input_data_type = ctx.Input<Tensor>("X")->type();
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   // By default, the type of the scale, bias, mean,
   // and var tensors should both be float. (For float or float16 input tensor)
   // or double (For double input tensor).
@@ -236,8 +236,8 @@ framework::OpKernelType InstanceNormGradOp::GetExpectedKernelType(
   if (t == nullptr) {
     PADDLE_THROW("cannot find Y@GRAD");
   }
-  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                 ctx.GetPlace());
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
 }
 
 template <typename T>
@@ -331,25 +331,6 @@ class InstanceNormGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
-std::unique_ptr<framework::OpDesc> InstanceNormGradMaker::Apply() const {
-  auto *op = new framework::OpDesc();
-  op->SetType("instance_norm_grad");
-  op->SetInput("X", Input("X"));
-  op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-
-  op->SetInput("Scale", Input("Scale"));
-  op->SetInput("Bias", Input("Bias"));
-  op->SetInput("SavedMean", Output("SavedMean"));
-  op->SetInput("SavedVariance", Output("SavedVariance"));
-
-  op->SetAttrMap(Attrs());
-  op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-  op->SetOutput(framework::GradVarName("Scale"), InputGrad("Scale"));
-  op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
-
-  return std::unique_ptr<framework::OpDesc>(op);
-}
-
 void InstanceNormDoubleGradOp::InferShape(
     framework::InferShapeContext *ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null");
@@ -396,27 +377,8 @@ framework::OpKernelType InstanceNormDoubleGradOp::GetExpectedKernelType(
   if (t == nullptr) {
     PADDLE_THROW("cannot find Y@GRAD");
   }
-  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                 ctx.GetPlace());
-}
-
-std::unique_ptr<framework::OpDesc> InstanceNormDoubleGradMaker::Apply() const {
-  auto *op = new framework::OpDesc();
-  op->SetType("instance_norm_grad_grad");
-  op->SetInput("X", Input("X"));
-  op->SetInput("Scale", Input("Scale"));
-  op->SetInput("SavedMean", Input("SavedMean"));
-  op->SetInput("SavedVariance", Input("SavedVariance"));
-  op->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-  op->SetInput("DDScale", OutputGrad(framework::GradVarName("Scale")));
-  op->SetInput("DDBias", OutputGrad(framework::GradVarName("Bias")));
-  op->SetInput("DY", Input(framework::GradVarName("Y")));
-
-  op->SetAttrMap(Attrs());
-  op->SetOutput("DX", InputGrad("X"));
-  op->SetOutput("DScale", InputGrad("Scale"));
-  op->SetOutput("DDY", InputGrad(framework::GradVarName("Y")));
-  return std::unique_ptr<framework::OpDesc>(op);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
 }
 
 template <typename T>
@@ -624,9 +586,12 @@ DECLARE_INPLACE_OP_INFERER(InstanceNormDoubleGradOpInplaceInference,
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(instance_norm, ops::InstanceNormOp, ops::InstanceNormOpMaker,
-                  ops::InstanceNormOpInferVarType, ops::InstanceNormGradMaker);
+                  ops::InstanceNormOpInferVarType,
+                  ops::InstanceNormGradMaker<paddle::framework::OpDesc>,
+                  ops::InstanceNormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(instance_norm_grad, ops::InstanceNormGradOp,
-                  ops::InstanceNormDoubleGradMaker);
+                  ops::InstanceNormDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::InstanceNormDoubleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(instance_norm_grad_grad, ops::InstanceNormDoubleGradOp,
                   ops::InstanceNormDoubleGradOpInplaceInference);
 

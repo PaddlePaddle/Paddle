@@ -129,7 +129,60 @@ class TestMatmulOpError(OpTest):
             fluid.layers.matmul(input3, input3)
 
 
-# Generate test cases for all possibilities
+# Negative dimension generation
+def generate_negative_dims(in_shape):
+    from itertools import combinations
+    size = len(in_shape)
+    indexs = list()
+    shapes = list()
+    for i in range(size):
+        indexs.extend(list(combinations([j for j in range(size)], i + 1)))
+    for idx in indexs:
+        shapes.append(
+            [in_shape[i] if i not in idx else -1 for i in range(size)])
+    return shapes
+
+
+# Build program with inputs sizes that contain negative numbers
+def test_negative_dims_program(obj):
+    for shape_x in generate_negative_dims(obj.shape_X):
+        for shape_y in generate_negative_dims(obj.shape_Y):
+            X = np.random.random(obj.shape_X).astype("float32")
+            Y = np.random.random(obj.shape_Y).astype("float32")
+            Ref = reference_matmul(X, Y, obj.transpose_X, obj.transpose_Y)
+            with program_guard(Program(), Program()):
+                x = fluid.data(name='x', shape=shape_x, dtype='float32')
+                y = fluid.data(name='y', shape=shape_y, dtype='float32')
+                output = fluid.layers.matmul(x, y, obj.transpose_X,
+                                             obj.transpose_Y)
+                obj.assertEqual(len(Ref.shape), len(output.shape))
+                for idx in range(len(Ref.shape)):
+                    if output.shape[idx] != -1:
+                        obj.assertEqual(Ref.shape[idx], output.shape[idx])
+                exe = fluid.Executor(fluid.CPUPlace())
+                res, = exe.run(fluid.default_main_program(),
+                               feed={'x': X,
+                                     'y': Y},
+                               fetch_list=[output])
+                np.allclose(res, Ref, atol=1e-5)
+
+
+# Generate program api cases for all negative possibilities
+def api_test(dim_x, dim_y, trans_x, trans_y):
+    test_name = ('TestMatMulAPI_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
+        dim_x, dim_y, trans_x, trans_y))
+    shape_x, shape_y = generate_compatible_shapes(dim_x, dim_y, trans_x,
+                                                  trans_y)
+    globals()[test_name] = type(test_name, (OpTest, ), {
+        'shape_X': shape_x,
+        'shape_Y': shape_y,
+        'transpose_X': trans_x,
+        'transpose_Y': trans_y,
+        'test_propram': test_negative_dims_program,
+    })
+
+
+# Generate operators cases for all possibilities
 def inject_test(dim_x, dim_y, trans_x, trans_y):
     test_name = ('TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
         dim_x, dim_y, trans_x, trans_y))
@@ -148,6 +201,7 @@ for dim_X in (1, 2, 3):
         for transose_x in (False, True):
             for transose_y in (False, True):
                 inject_test(dim_X, dim_Y, transose_x, transose_y)
+                api_test(dim_X, dim_Y, transose_x, transose_y)
 
 
 # Test case n-dim

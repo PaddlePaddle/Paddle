@@ -80,8 +80,9 @@ class FCOp : public framework::OperatorWithKernel {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
     }
-    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                   ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+        layout, library);
   }
 };
 
@@ -122,8 +123,11 @@ The size of each dimension of the parameters checked in the infer-shape.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fc, ops::FCOp, ops::FCOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+
+REGISTER_OPERATOR(
+    fc, ops::FCOp, ops::FCOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     fc, ops::FCOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FCOpKernel<paddle::platform::CPUDeviceContext, double>);

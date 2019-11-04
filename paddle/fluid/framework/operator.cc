@@ -48,16 +48,6 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
-proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
-  if (var->IsType<framework::LoDTensor>()) {
-    return var->Get<framework::LoDTensor>().type();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    return var->Get<framework::SelectedRows>().value().type();
-  } else {
-    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
-  }
-}
-
 static DDim GetDimsDebug(const Scope& scope, const std::string& name,
                          bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
@@ -180,10 +170,17 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       RunImpl(scope, place);
     }
     VLOG(3) << place << " " << DebugStringEx(&scope);
-  } catch (platform::EnforceNotMet exception) {
+  } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
+  } catch (platform::EOFException&) {
+    std::rethrow_exception(std::current_exception());
+  } catch (std::exception& ex) {
+    LOG(WARNING) << Type() << " raises an exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    std::rethrow_exception(std::current_exception());
   } catch (...) {
+    LOG(WARNING) << Type() << " raises an unknown exception";
     std::rethrow_exception(std::current_exception());
   }
 }
@@ -417,34 +414,12 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
 }
 
 bool ExecutionContext::HasInput(const std::string& name) const {
-  if (!op_.HasInputs(name)) {
-    return false;
-  }
-  auto& ins = Inputs(name);
-  size_t length = ins.size();
-  if (length == 0) {
-    return false;
-  }
-  PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Input %s should not have more than one inputs", name);
-  auto arg = ins[0];
-  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  auto* var = InputVar(name);
   return var != nullptr;
 }
 
 bool ExecutionContext::HasOutput(const std::string& name) const {
-  if (!op_.HasOutputs(name)) {
-    return false;
-  }
-  auto& outs = Outputs(name);
-  size_t length = outs.size();
-  if (length == 0) {
-    return false;
-  }
-  PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Output %s should not have more than one inputs", name);
-  auto arg = outs[0];
-  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  auto* var = OutputVar(name);
   return var != nullptr;
 }
 
@@ -682,7 +657,18 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void DecreaseLoDLevel(const std::string& in, const std::string& out,
                         size_t i = 0, size_t j = 0) const override {
-    PADDLE_THROW("DecreaseLoDLevel is only used in compile time.");
+    PADDLE_THROW(
+        "DecreaseLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
+  }
+
+  void IncreaseLoDLevel(const std::string& in, const std::string& out,
+                        size_t i = 0, size_t j = 0) const override {
+    PADDLE_THROW(
+        "IncreaseLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
   }
 
   bool IsRuntime() const override { return true; }
@@ -1185,7 +1171,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto& input : this->inputs_) {
+  for (auto& input : ctx.Context().inputs) {
     ParseInputDataType(ctx, input.first, &data_type);
   }
   PADDLE_ENFORCE_NE(data_type, dafault_data_type,

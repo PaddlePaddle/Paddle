@@ -86,7 +86,7 @@ from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from . import install_check
 from .dygraph.nn import *
 from .dygraph.layers import *
-from .io import save, load
+from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 
 Tensor = LoDTensor
@@ -206,6 +206,7 @@ def __bootstrap__():
         read_env_flags.append('communicator_fake_rpc')
         read_env_flags.append('communicator_send_wait_times')
         read_env_flags.append('communicator_merge_sparse_grad')
+        read_env_flags.append('communicator_is_sgd_optimizer')
         if core.is_compiled_with_brpc():
             read_env_flags.append('max_body_size')
             #set brpc max body size
