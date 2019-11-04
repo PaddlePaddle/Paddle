@@ -281,7 +281,7 @@ class TestDataset(unittest.TestCase):
         dataset.wait_preload_done()
         dataset.dataset.merge_by_lineid()
         dataset.release_memory()
-        dataset.set_merge_by_lineid(3)
+        dataset.set_merge_by_lineid(30)
         dataset.set_parse_ins_id(False)
         dataset.load_into_memory()
         dataset.dataset.merge_by_lineid()
