@@ -92,7 +92,7 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
     if (is_x_format_correct && is_y_format_correct && are_dims_divisable &&
         is_avx512_enabled) {
       int pre, n, post, is_run_common_broadcast;
-      get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post,
+      get_mid_dims(x_dims, y_dims_untrimmed, axis, &pre, &n, &post,
                    &is_run_common_broadcast);
 
       if (post == 1) {
