@@ -109,7 +109,7 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       axis = (y_dims.size() == 0) ? x_dims.size() : axis;
 
       int pre, n, post, is_run_common_broadcast;
-      get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post,
+      get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post,
                    &is_run_common_broadcast);
 
       if (post == 1) {
