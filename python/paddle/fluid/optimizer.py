@@ -1572,7 +1572,7 @@ class AmsgradOptimizer(Optimizer):
     the 1st moment estimates and the 2nd moment estimates of the gradient.
 
     It is a variant of the Adam optimizer. It considers the “long-term memory” of past gradients.
-    
+
     The parameter ``param_out`` update rule with gradient ``grad``:
 
     .. math::
