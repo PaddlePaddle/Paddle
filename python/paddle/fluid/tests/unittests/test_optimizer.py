@@ -343,6 +343,84 @@ class TestAdamOptimizer(unittest.TestCase):
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
 
 
+class TestAmsgradOptimizer(unittest.TestCase):
+    class MockAmsgrad(optimizer.AmsgradOptimizer):
+        def get_accumulators(self):
+            return self._accumulators
+
+        def get_moment1_str(self):
+            return self._moment1_acc_str
+
+        def get_moment2_str(self):
+            return self._moment2_acc_str
+
+        def get_max_moment2_str(self):
+            return self._max_moment2_acc_str
+
+    def test_amsgrad_optimizer(self):
+        init_program = framework.Program()
+        program = framework.Program()
+        block = program.global_block()
+        mul_x = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="mul.x",
+            optimize_attr={'learning_rate': 1.1})
+        mul_y = block.create_var(
+            dtype="float32", shape=[10, 8], lod_level=0, name="mul.y")
+        mul_out = block.create_var(
+            dtype="float32", shape=[5, 8], lod_level=0, name="mul.out")
+        block.append_op(
+            type="mul",
+            inputs={"X": mul_x,
+                    "Y": mul_y},
+            outputs={"Out": mul_out},
+            attrs={"x_num_col_dims": 1})
+        mean_out = block.create_var(
+            dtype="float32", shape=[1], lod_level=0, name="mean.out")
+        block.append_op(
+            type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
+        learning_rate = 0.01
+        amsgrad_optimizer = self.MockAmsgrad(
+            learning_rate=learning_rate, beta1=0.9, beta2=0.999)
+        params_grads = append_backward(mean_out)
+        self.assertEqual(len(params_grads), 1)
+        self.assertEqual(len(amsgrad_optimizer.get_accumulators()), 0)
+        with framework.program_guard(program, init_program):
+            opts = amsgrad_optimizer.apply_gradients(params_grads)
+        self.assertEqual(len(opts), 4)
+        self.assertEqual([op.type for op in opts],
+                         ["scale", "amsgrad", "scale", "scale"])
+
+        # Check accumulators
+        accumulators = amsgrad_optimizer.get_accumulators()
+        self.assertEqual(len(accumulators), 5)
+
+        self.assertTrue(amsgrad_optimizer.get_moment1_str() in accumulators)
+        self.assertTrue(amsgrad_optimizer.get_moment2_str() in accumulators)
+        self.assertTrue(amsgrad_optimizer.get_max_moment2_str() in accumulators)
+
+        moment1_acc = accumulators[amsgrad_optimizer.get_moment1_str()]
+        moment2_acc = accumulators[amsgrad_optimizer.get_moment2_str()]
+        max_moment2_acc = accumulators[amsgrad_optimizer.get_max_moment2_str()]
+
+        self.assertEqual(len(moment1_acc), 1)
+        self.assertEqual(len(moment2_acc), 1)
+        self.assertEqual(len(max_moment2_acc), 1)
+
+        self.assertTrue(mul_x.name in moment1_acc)
+        self.assertTrue(mul_x.name in moment2_acc)
+        self.assertTrue(mul_x.name in max_moment2_acc)
+
+        # Check init_program
+        init_ops = init_program.global_block().ops
+
+        self.assertEqual(len(init_ops), 6)
+        self.assertEqual(init_ops[0].type, "fill_constant")
+        self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
+
+
 class TestAdamaxOptimizer(unittest.TestCase):
     class MockAdamax(optimizer.AdamaxOptimizer):
         def get_accumulators(self):
