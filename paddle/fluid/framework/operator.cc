@@ -658,16 +658,18 @@ class RuntimeInferShapeContext : public InferShapeContext {
   }
 
   int GetLoDLevel(const std::string& in, size_t i = 0) const override {
-    auto iter = ctx_.inputs.find(in);
-    PADDLE_ENFORCE_EQ(iter != ctx_.inputs.end() && iter->second.size() > i,
-                      true, "Inputs %s should have %llu argument", in, i);
-    Variable* in_var = iter->second.at(i);
-    if (!in_var->IsType<LoDTensor>()) {
-      VLOG(3) << "Input " << in << "[" << i << "] is not LoDTensor.";
-      return 0;
-    }
-    auto& in_tensor = in_var->Get<LoDTensor>();
-    return in_tensor.lod().size();
+    PADDLE_THROW(
+        "GetLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
+  }
+
+  void SetLoDLevel(const std::string& out, int lod_level,
+                   size_t j = 0) const override {
+    PADDLE_THROW(
+        "SetLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
   }
 
   void DecreaseLoDLevel(const std::string& in, const std::string& out,

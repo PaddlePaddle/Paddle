@@ -93,20 +93,45 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   int GetLoDLevel(const std::string &in, size_t i = 0) const override {
-    PADDLE_ENFORCE_LT(i, Inputs(in).size(), "There are only %d inputs.",
-                      Inputs(in).size());
+    PADDLE_ENFORCE_LT(i, Inputs(in).size(),
+                      "Input %s of operator %s only has %d elements.", in,
+                      op_.Type(), Inputs(in).size());
     PADDLE_ENFORCE_NE(Inputs(in)[i], framework::kEmptyVarName,
-                      "Input %s[%d] is @EMPTY@", in, i);
+                      "Input %s[%d] of operator %s is @EMPTY@", in, op_.Type(),
+                      i);
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
-    PADDLE_ENFORCE_NOT_NULL(in_var, "Input %s[%d] should not be nullptr.", in,
-                            i);
+    PADDLE_ENFORCE_NOT_NULL(
+        in_var, "Input %s[%d] of operator %s should not be nullptr.", in,
+        op_.Type(), i);
     if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
         in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
-      VLOG(3) << "Input " << in << "[" << i
-              << "] is not LoDTensor or LoDTensorArray.";
+      VLOG(3) << "Input " << in << "[" << i << "] of operator " << op_.Type()
+              << " is not LoDTensor or LoDTensorArray.";
       return 0;
     }
     return in_var->GetLoDLevel();
+  }
+
+  void SetLoDLevel(const std::string &out, int lod_level,
+                   size_t j = 0) const override {
+    PADDLE_ENFORCE_LT(j, Outputs(out).size(),
+                      "Output %s of operator %s only has %d elements.", out,
+                      op_.Type(), Outputs(out).size());
+    PADDLE_ENFORCE_NE(Outputs(out)[j], framework::kEmptyVarName,
+                      "Output %s[%d] of operator %s is @EMPTY@", out,
+                      op_.Type(), j);
+    auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
+    PADDLE_ENFORCE_NOT_NULL(
+        out_var, "Output %s[%d] of operator %s should not be nullptr.", out,
+        op_.Type(), j);
+    if (out_var->GetType() != proto::VarType::LOD_TENSOR &&
+        out_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
+      VLOG(3) << "Output " << out << "[" << j << "] of operator " << op_.Type()
+              << " is not LoDTensor or LoDTensorArray.";
+    }
+    if (lod_level > 0) {
+      out_var->SetLoDLevel(lod_level);
+    }
   }
 
   void DecreaseLoDLevel(const std::string &in, const std::string &out,
