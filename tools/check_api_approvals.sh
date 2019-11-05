@@ -89,7 +89,7 @@ for API_FILE in ${API_FILES[*]}; do
           echo_list=(${echo_list[@]}$failed_num "." $echo_line)
         elif [ "${API_FILE}" == "CMakeLists.txt" ];then
           failed_num=`expr $failed_num + 1`
-          echo_line="You must have one RD (luotao1 or chengduoZH or XiaoguangHu01) approval for CMakeLists.txt, which manages the compilation parameter.\n"
+          echo_line="You must have one RD (luotao1 or XiaoguangHu01) approval for CMakeLists.txt, which manages the compilation parameter.\n"
           echo_list=(${echo_list[@]}$failed_num "." $echo_line)
         elif [ "${API_FILE}" == "python/requirements.txt" ];then
           failed_num=`expr $failed_num + 1`
@@ -105,7 +105,7 @@ for API_FILE in ${API_FILES[*]}; do
           echo_list=(${echo_list[@]}$failed_num "." $echo_line)
         else
           failed_num=`expr $failed_num + 1`
-          echo_line="You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
+          echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           echo_list=(${echo_list[@]}$failed_num "." $echo_line)
         fi
       fi
@@ -119,7 +119,7 @@ if [ ${HAS_CONST_CAST} ] && [ "${GIT_PR_ID}" != "" ]; then
     echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
     if [ "${APPROVALS}" == "FALSE" ]; then
         failed_num=`expr $failed_num + 1`
-        echo_line="You must have one RD (XiaoguangHu01,chengduoZH,Xreki,luotao1,sneaxiy,tensor-tang) approval for the usage (either add or delete) of const_cast.\n"
+        echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for the usage (either add or delete) of const_cast.\n"
         echo_list=(${echo_list[@]}$failed_num "." $echo_line)
     fi
 fi
