@@ -179,7 +179,8 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   for (auto grad_var_name : fusing_grad_var_names) {
     if (!GradGeneratedOpSupportGPU(vars_info, grad_var_name)) {
       VLOG(6) << "Currently the fuse_optimizer_ops strategy is risky when "
-                 "gradient generated operator doesn't support GPU device.";
+                 "gradient generated operator doesn't support GPU device, so "
+                 "close it.";
       return;
     }
   }
@@ -254,16 +255,15 @@ bool FuseOptimizerOpPass::GradGeneratedOpSupportGPU(
     const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
     const std::string &grad_var_name) const {
   auto grad_var_nodes = vars_info.at(grad_var_name);
-  PADDLE_ENFORCE_EQ(
-      grad_var_nodes.size(), 1,
-      "The gradient variable %s has multiple generated operators.",
-      grad_var_name);
-  auto grad_var_node = grad_var_nodes.front();
-  for (auto in_node : grad_var_node->inputs) {
-    if (in_node->IsOp() && in_node->Op()) {
-      VLOG(6) << "Op kernel suport GPU check: " << in_node->Op()->Type();
-      if (!framework::OpSupportGPU(in_node->Op()->Type())) {
-        return false;
+  for (auto var_node : grad_var_nodes) {
+    for (auto in_node : var_node->inputs) {
+      if (in_node->IsOp() && in_node->Op()) {
+        VLOG(6) << "Check (" << var_node->Var()->Name() << ")'s generated Op ("
+                << in_node->Op()->Type() << ") whether to support GPU.";
+        if (!framework::OpSupportGPU(in_node->Op()->Type())) {
+          VLOG(6) << "Op " << in_node->Op()->Type() << " doesn't support GPU.";
+          return false;
+        }
       }
     }
   }
