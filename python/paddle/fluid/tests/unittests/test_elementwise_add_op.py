@@ -41,30 +41,25 @@ class TestElementwiseAddOp(OpTest):
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
 
-    '''
     def test_check_output(self):
         self.check_output()
-    '''
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
             return
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
 
-    '''
     def test_check_grad_ingore_x(self):
         if self.dtype == np.float16:
             return
         self.check_grad(
             ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
-    '''
-    '''
+
     def test_check_grad_ingore_y(self):
         if self.dtype == np.float16:
             return
         self.check_grad(
             ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
-    '''
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -78,7 +73,6 @@ class TestElementwiseAddOp(OpTest):
         pass
 
 
-'''
 class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
     def init_dtype(self):
         self.dtype = np.float16
@@ -312,7 +306,6 @@ class TestFP16ElementwiseAddOp_channelwise_add(TestFP16ElementwiseAddOp):
 
     def init_axis(self):
         self.axis = -1
-'''
 
 
 class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
@@ -325,7 +318,6 @@ class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
         self.axis = -1
 
 
-'''
 class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 1, 5).astype(self.dtype)
@@ -362,6 +354,6 @@ class TestElementwiseAddOpError(OpTest):
             y2 = fluid.layers.data(name='y2', shape=[3, 4, 5, 6], dtype="uint8")
             self.assertRaises(TypeError, fluid.layers.elementwise_add, x2, y2)
 
-'''
+
 if __name__ == '__main__':
     unittest.main()
