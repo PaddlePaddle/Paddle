@@ -20,7 +20,6 @@ limitations under the License. */
 
 extern "C" {
 #include "math/bloomfilter.h"
-// void* memcpy1(void* dst, void* src, uint32_t length);
 }
 
 namespace paddle {

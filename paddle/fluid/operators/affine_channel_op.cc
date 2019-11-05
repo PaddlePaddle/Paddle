@@ -298,24 +298,14 @@ class AffineChannelNoNeedBufferVarsInference
  public:
   using framework::NoNeedBufferVarsInference::NoNeedBufferVarsInference;
 
- private:
-  inline bool HasOutput(const std::string& name) const {
-    auto& outputs = Outputs();
-    auto iter = outputs.find(name);
-    if (iter == outputs.end() || iter->second.empty()) {
-      return false;
+  const std::unordered_set<std::string>& operator()(
+      const framework::InferNoNeedBufferVarsContext& ctx) const final {
+    static const std::unordered_set<std::string> kX({"X"});
+    if (!ctx.HasOutput(framework::GradVarName("Scale")) &&
+        !ctx.HasOutput(framework::GradVarName("Bias"))) {
+      return kX;
     } else {
-      return iter->second[0] != framework::kEmptyVarName;
-    }
-  }
-
- public:
-  std::unordered_set<std::string> operator()() const override {
-    if (!HasOutput(framework::GradVarName("Scale")) &&
-        !HasOutput(framework::GradVarName("Bias"))) {
-      return {"X"};
-    } else {
-      return {};
+      return Empty();
     }
   }
 };
