@@ -31,11 +31,6 @@ namespace operators {
 
 using paddle::framework::Tensor;
 
-template <typename GradFunctor>
-static constexpr bool CanInplaceAct() {
-  return GradFunctor::FwdDeps() == kDepOut || GradFunctor::FwdDeps() == kNoDeps;
-}
-
 #define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                    \
   class OP_NAME##OpMaker                                                     \
       : public ::paddle::framework::OpProtoAndCheckerMaker {                 \
@@ -903,8 +898,7 @@ namespace plat = paddle::platform;
                                  paddle::framework::OpDesc>,                \
       ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),       \
                                  paddle::imperative::OpBase>,               \
-      std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(),      \
-                       ops::ActFwdInplaceInferer, void>::type);             \
+      ops::ActFwdInplaceInferer);                                           \
   REGISTER_OPERATOR(KERNEL_TYPE##_grad, ops::ActivationOpGrad,              \
                     ops::ActivationGradOpInplaceInference);
 
@@ -1044,12 +1038,11 @@ REGISTER_OP_CPU_KERNEL(
 
 /* ==========================   pow register  ============================ */
 
-REGISTER_OPERATOR(
-    pow, ops::PowOp, ops::PowOpMaker, ops::ActivationOpInferVarType,
-    ops::PowGradOpMaker<paddle::framework::OpDesc>,
-    ops::PowGradOpMaker<paddle::imperative::OpBase>,
-    std::conditional<ops::CanInplaceAct<ops::PowGradFunctor<float>>(),
-                     ops::ActFwdInplaceInferer, void>::type);
+REGISTER_OPERATOR(pow, ops::PowOp, ops::PowOpMaker,
+                  ops::ActivationOpInferVarType,
+                  ops::PowGradOpMaker<paddle::framework::OpDesc>,
+                  ops::PowGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(pow_grad, ops::PowOpGrad,
                   ops::ActivationGradOpInplaceInference);
 
