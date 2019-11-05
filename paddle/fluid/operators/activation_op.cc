@@ -888,6 +888,7 @@ class PowOpGrad : public framework::OperatorWithKernel {
                                    tensor.place(), tensor.layout());
   }
 };
+DECLARE_INPLACE_OP_INFERER(ActFwdInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
@@ -903,8 +904,7 @@ namespace plat = paddle::platform;
       ops::ActivationGradOpMaker<ops::grad_functor<float>::FwdDeps(),       \
                                  paddle::imperative::OpBase>,               \
       std::conditional<ops::CanInplaceAct<ops::grad_functor<float>>(),      \
-                       ::paddle::framework::SingleOpInplaceInToOut,         \
-                       void>::type);                                        \
+                       ops::ActFwdInplaceInferer, void>::type);             \
   REGISTER_OPERATOR(KERNEL_TYPE##_grad, ops::ActivationOpGrad,              \
                     ops::ActivationGradOpInplaceInference);
 
@@ -932,7 +932,7 @@ REGISTER_OPERATOR(
                                paddle::framework::OpDesc>,
     ops::ActivationGradOpMaker<ops::ReluGradFunctor<float>::FwdDeps(),
                                paddle::imperative::OpBase>,
-    paddle::framework::SingleOpInplaceInToOut);
+    ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(relu_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInference,
                   ops::ReluDoubleGradMaker<paddle::framework::OpDesc>,
@@ -962,7 +962,7 @@ REGISTER_OPERATOR(
                                paddle::framework::OpDesc>,
     ops::ActivationGradOpMaker<ops::LeakyReluGradFunctor<float>::FwdDeps(),
                                paddle::imperative::OpBase>,
-    paddle::framework::SingleOpInplaceInToOut);
+    ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(leaky_relu_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInference,
                   ops::LeakyReluDoubleGradMaker<paddle::framework::OpDesc>,
@@ -991,7 +991,7 @@ REGISTER_OPERATOR(
                                paddle::framework::OpDesc>,
     ops::ActivationGradOpMaker<ops::SqrtGradFunctor<float>::FwdDeps(),
                                paddle::imperative::OpBase>,
-    paddle::framework::SingleOpInplaceInToOut);
+    ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(sqrt_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInference,
                   ops::SqrtDoubleGradMaker<paddle::framework::OpDesc>,
@@ -1019,7 +1019,7 @@ REGISTER_OPERATOR(
                                paddle::framework::OpDesc>,
     ops::ActivationGradOpMaker<ops::SquareGradFunctor<float>::FwdDeps(),
                                paddle::imperative::OpBase>,
-    paddle::framework::SingleOpInplaceInToOut);
+    ops::ActFwdInplaceInferer);
 REGISTER_OPERATOR(square_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInference,
                   ops::SquareDoubleGradMaker<paddle::framework::OpDesc>,
@@ -1049,7 +1049,7 @@ REGISTER_OPERATOR(
     ops::PowGradOpMaker<paddle::framework::OpDesc>,
     ops::PowGradOpMaker<paddle::imperative::OpBase>,
     std::conditional<ops::CanInplaceAct<ops::PowGradFunctor<float>>(),
-                     ::paddle::framework::SingleOpInplaceInToOut, void>::type);
+                     ops::ActFwdInplaceInferer, void>::type);
 REGISTER_OPERATOR(pow_grad, ops::PowOpGrad,
                   ops::ActivationGradOpInplaceInference);
 

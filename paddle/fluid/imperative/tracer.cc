@@ -20,6 +20,36 @@
 namespace paddle {
 namespace imperative {
 
+static void ClearNoNeedBufferInputs(OpBase* op) {
+  auto& inferer = op->Info().NoNeedBufferVarsInferer();
+  if (!inferer) return;
+  auto* ins = op->GetMutableInsMap();
+  const auto& no_need_buffer_slots =
+      inferer(*ins, op->GetOutsMap(), op->Attrs());
+  if (no_need_buffer_slots.empty()) return;
+
+  for (auto& slot : no_need_buffer_slots) {
+    auto iter = ins->find(slot);
+    if (iter == ins->end()) continue;
+    VLOG(2) << "Clear data buffer of " << slot << " in " << op->Type();
+
+    for (auto& each_var : iter->second) {
+      if (!each_var) continue;
+
+      auto& var = each_var->Var();
+      PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(), true,
+                        "Only support LoDTensor");
+      // TODO(zjl): support higher order derivatives
+      auto new_var = new VarBase(false, each_var->Name());
+      auto* new_tensor =
+          new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto& old_tensor = var.Get<framework::LoDTensor>();
+      new_tensor->Resize(old_tensor.dims());
+      each_var.reset(new_var);
+    }
+  }
+}
+
 static std::vector<std::unique_ptr<OpBase>> CreateGradOpBases(
     const OpBase* fw_op_base, const NameVarBaseMap& in,
     const NameVarBaseMap& out) {
@@ -151,6 +181,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
 
     // this OpBase* is just used to manage op's life time
     engine_->InsertOp(grad_op.get(), grad_op);
+    ClearNoNeedBufferInputs(grad_op.get());
   }
 }
 
