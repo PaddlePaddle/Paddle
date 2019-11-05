@@ -61,19 +61,20 @@ class FuseOptimizerOpPass : public ir::Pass {
       std::unordered_map<std::string, std::vector<std::string>> *aux_args_name)
       const;
 
-  void AppendAllocContinuousSpace(const std::vector<std::string> &in_args,
-                                  const std::vector<std::string> &out_args,
-                                  const std::string &fused_out_arg,
-                                  const proto::VarType::Type &dtype,
-                                  BlockDesc *global_block, bool copy_data,
-                                  bool check_name = true) const;
+  void AppendCoalesceTensorOp(const std::vector<std::string> &in_args,
+                              const std::vector<std::string> &out_args,
+                              const std::string &fused_out_arg,
+                              const proto::VarType::Type &dtype,
+                              BlockDesc *global_block, bool copy_data,
+                              bool check_name = true) const;
 
-  void InitFusedGradsAndAllocSpaceForGrads(
-      const std::vector<std::string> &params,
-      const std::vector<std::string> &grads, const std::string &fused_grad_name,
-      const proto::VarType::Type &dtype, ir::Graph *result) const;
+  void FuseGradientsToContinuousSpace(const std::vector<std::string> &params,
+                                      const std::vector<std::string> &grads,
+                                      const std::string &fused_grad_name,
+                                      const proto::VarType::Type &dtype,
+                                      ir::Graph *result) const;
 
-  void InitFusedVarsAndAllocSpaceForVars(
+  void FuseVarsToContinuousSpace(
       const std::vector<std::string> &aux_var_names,
       const std::unordered_map<std::string, std::vector<std::string>>
           &aux_var_set,

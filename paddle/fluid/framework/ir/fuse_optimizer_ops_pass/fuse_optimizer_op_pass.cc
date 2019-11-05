@@ -60,6 +60,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     auto &opt_type = result.Get<details::FusedOptType>(details::kFusedOptType);
     VLOG(6) << "Currently only support fusing one type optimizer op. "
             << opt_type << " has been fused.";
+    return;
   }
 
   // There should not have no-ctr-var between the opt_nodes that link the
@@ -135,9 +136,9 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
       PADDLE_ENFORCE_NE(fused_grad.size(), 0,
                         "The fused gradient should not be empty.");
       if (fused_grad.size() > 1) {
-        VLOG(6) << "Because the dtype of those gradients "
-                   "is not unified, so the number of fused gradients is "
-                   "more than one, but it is not supported currently.";
+        VLOG(6) << "Because the dtype of those gradients is not unified, so "
+                   "the number of fused gradients is more than one, but it is "
+                   "not supported currently.";
         return;
       }
       auto &fused_vars = result.Get<details::FusedVars>(details::kFusedVars);
@@ -194,13 +195,13 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   // Moment1, Moment2, Beta1Pow, Beta2Pow) of all the optimizer ops
   // separately.
   if (!grad_fused) {
-    InitFusedGradsAndAllocSpaceForGrads(
+    FuseGradientsToContinuousSpace(
         aux_var_map.at(kParam), aux_var_map.at(kGrad),
         fused_vars_name.at(kGrad), fusing_var_dtype, &result);
   }
   aux_var_names.pop_back();
-  InitFusedVarsAndAllocSpaceForVars(aux_var_names, aux_var_map, fused_vars_name,
-                                    fusing_var_dtype, &result);
+  FuseVarsToContinuousSpace(aux_var_names, aux_var_map, fused_vars_name,
+                            fusing_var_dtype, &result);
 
   // Step 5: Fuse optimizer Ops and Scale Ops
   auto *fused_opt_node =
@@ -296,7 +297,7 @@ void FuseOptimizerOpPass::GradientsFilter(
   std::swap(*opt_nodes, sorted_ops);
 }
 
-void FuseOptimizerOpPass::InitFusedGradsAndAllocSpaceForGrads(
+void FuseOptimizerOpPass::FuseGradientsToContinuousSpace(
     const std::vector<std::string> &params,
     const std::vector<std::string> &grads, const std::string &fused_grad_name,
     const proto::VarType::Type &dtype, ir::Graph *result) const {
@@ -326,8 +327,8 @@ void FuseOptimizerOpPass::InitFusedGradsAndAllocSpaceForGrads(
   ProgramDesc &program_desc =
       result->Get<details::ProgramDescs>(details::kProgramDescs).back();
   auto *global_block = program_desc.MutableBlock(0);
-  AppendAllocContinuousSpace(params, grads, fused_grad_name, dtype,
-                             global_block, false, false);
+  AppendCoalesceTensorOp(params, grads, fused_grad_name, dtype, global_block,
+                         false, false);
 }
 
 std::unordered_map<std::string, std::vector<Node *>>
@@ -375,7 +376,7 @@ proto::VarType::Type FuseOptimizerOpPass::GetTypeOfVar(
   return var_desc->GetType();
 }
 
-void FuseOptimizerOpPass::InitFusedVarsAndAllocSpaceForVars(
+void FuseOptimizerOpPass::FuseVarsToContinuousSpace(
     const std::vector<std::string> &aux_var_names,
     const std::unordered_map<std::string, std::vector<std::string>>
         &aux_var_map,
@@ -387,9 +388,9 @@ void FuseOptimizerOpPass::InitFusedVarsAndAllocSpaceForVars(
       result->Get<details::ProgramDescs>(details::kProgramDescs).back();
   auto *global_block = program_desc.MutableBlock(0);
   for (auto &var_name : aux_var_names) {
-    AppendAllocContinuousSpace(
-        aux_var_map.at(var_name), aux_var_map.at(var_name),
-        fused_vars_name.at(var_name), dtype, global_block, true);
+    AppendCoalesceTensorOp(aux_var_map.at(var_name), aux_var_map.at(var_name),
+                           fused_vars_name.at(var_name), dtype, global_block,
+                           true);
   }
 }
 
@@ -453,7 +454,7 @@ void FuseOptimizerOpPass::GetFusingVarNamesMap(
   }
 }
 
-void FuseOptimizerOpPass::AppendAllocContinuousSpace(
+void FuseOptimizerOpPass::AppendCoalesceTensorOp(
     const std::vector<std::string> &in_args,
     const std::vector<std::string> &out_args, const std::string &fused_out_arg,
     const proto::VarType::Type &dtype, BlockDesc *global_block, bool copy_data,
