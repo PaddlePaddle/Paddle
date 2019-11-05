@@ -49,9 +49,6 @@ class ElementwiseSubKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<framework::LoDTensor>("X");
     auto* y = ctx.Input<framework::LoDTensor>("Y");
     auto* z = ctx.Output<framework::LoDTensor>("Out");
-    if (z->Holder() == x->Holder() && x->numel() < y->numel()) {
-      z->clear();
-    }
     z->mutable_data<T>(ctx.GetPlace());
 
     auto dims_equal = x->dims() == y->dims();
@@ -83,7 +80,7 @@ elementwise_sub_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy) {
   int axis = ctx.Attr<int>("axis");
-  ElemwiseGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
+  ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
       ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(), SubGradDY<T>());
 }
 
@@ -118,7 +115,7 @@ class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
     if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
       elementwise_sub_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
     } else {
-      ElemwiseGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
+      ElemwiseExplicitGradCompute<DeviceContext, T, SubGradDX<T>, SubGradDY<T>>(
           ctx, *x, *y, *out, *dout, axis, dx, dy, SubGradDX<T>(),
           SubGradDY<T>());
     }

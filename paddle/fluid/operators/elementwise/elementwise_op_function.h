@@ -270,6 +270,10 @@ void CommonGradBroadcastCPU(
     int *y_dims_array, int *out_dims_array, int max_dim,
     const platform::CPUDeviceContext &ctx, DX_OP dx_op, DY_OP dy_op) {
   std::vector<int> index_array(max_dim, 0);
+  // VLOG(3) << "=CommonGradBroadcastCPU  y:" << y << "\tout:" << out
+  // <<"\tdout:" << dout ;
+  VLOG(3) << "= memory_size  y:" << y.memory_size()
+          << "\tout:" << out.memory_size() << "\tdout:" << dout.memory_size();
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();
   const T *out_data = out.data<T>();
@@ -1097,6 +1101,13 @@ void CommonElementwiseBroadcastBackward(
                          y_dims_array.data(), out_dims_array.data(), max_dim,
                          axis);
 
+  // for inplace strategy. memset will make dx and dout clear and get wrong
+  // result.
+  if (dx && dout.Holder() == dx->Holder()) {
+    dx->clear();
+    dx->mutable_data<T>(x_dims, ctx.GetPlace());
+  }
+
   if (platform::is_gpu_place(ctx.GetPlace())) {
 #ifdef __NVCC__
     CommonGradBroadcastCUDA<T, DX_OP, DY_OP>(
@@ -1258,6 +1269,29 @@ void ElemwiseGradCompute(const framework::ExecutionContext &ctx,
   } else {
     ElemwiseGradComputeWithBroadcast<DeviceContext, T, DX_OP, DY_OP>(
         ctx, x_dim, y_dim, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
+  }
+}
+
+// NOTE(dzhwinter): Only used in elementwise_add, elementwise_sub.
+// explicit gradient can cut off X, Y, Out from gradient op
+// In elementwise_add, elementwise_sub, we use dout as fake X, Y, Out to reuse
+// elementwise code.
+template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
+void ElemwiseExplicitGradCompute(const framework::ExecutionContext &ctx,
+                                 const framework::Tensor &x,
+                                 const framework::Tensor &y,
+                                 const framework::Tensor &out,
+                                 const framework::Tensor &dout, int axis,
+                                 framework::Tensor *dx, framework::Tensor *dy,
+                                 DX_OP dx_op, DY_OP dy_op) {
+  const framework::DDim &x_dim = x.dims();
+  const framework::DDim &y_dim = y.dims();
+  if (x.dims() == y.dims()) {
+    ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP>(
+        ctx, x_dim, y_dim, dout, dout, out, dout, axis, dx, dy, dx_op, dy_op);
+  } else {
+    ElemwiseGradComputeWithBroadcast<DeviceContext, T, DX_OP, DY_OP>(
+        ctx, x_dim, y_dim, dout, dout, out, dout, axis, dx, dy, dx_op, dy_op);
   }
 }
 

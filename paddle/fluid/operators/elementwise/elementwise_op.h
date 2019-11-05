@@ -338,6 +338,7 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(ElementwiseOpInplace, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(ElementwiseGradOpInplace,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
@@ -350,3 +351,34 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ElementwiseDoubleGradNoBufVarsInference,
 
 }  // namespace operators
 }  // namespace paddle
+#define REGISTER_ELEMWISE_GRAD_MAKER(kernel_type, op_name)              \
+  template <typename T>                                                 \
+  class kernel_type##GradMaker                                          \
+      : public paddle::framework::SingleGradOpMaker<T> {                \
+   public:                                                              \
+    using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker; \
+                                                                        \
+   protected:                                                           \
+    std::unique_ptr<T> Apply() const override {                         \
+      auto *op = new T();                                               \
+      op->SetType(#kernel_type "_grad");                                \
+      op->SetInput("X", this->Input("X"));                              \
+      op->SetInput("Y", this->Input("Y"));                              \
+      op->SetInput(::paddle::framework::GradVarName("Out"),             \
+                   this->OutputGrad("Out"));                            \
+      op->SetAttrMap(this->Attrs());                                    \
+      op->SetOutput(::paddle::framework::GradVarName("X"),              \
+                    this->InputGrad("X"));                              \
+      op->SetOutput(::paddle::framework::GradVarName("Y"),              \
+                    this->InputGrad("Y"));                              \
+      return std::unique_ptr<T>(op);                                    \
+    }                                                                   \
+  }
+
+#define REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(op_type, op_name)    \
+  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,        \
+                    ::paddle::operators::Elementwise##op_name##OpMaker, \
+                    ::paddle::operators::ElementwiseOpInferVarType,     \
+                    op_type##GradMaker<::paddle::framework::OpDesc>,    \
+                    op_type##GradMaker<::paddle::imperative::OpBase>,   \
+                    ::paddle::operators::ElementwiseOpInplace);

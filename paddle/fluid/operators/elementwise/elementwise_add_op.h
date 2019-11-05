@@ -48,10 +48,8 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto *x = ctx.Input<framework::LoDTensor>("X");
     auto *y = ctx.Input<framework::LoDTensor>("Y");
     auto *z = ctx.Output<framework::LoDTensor>("Out");
-    if (z->Holder() == x->Holder() && x->numel() < y->numel()) {
-      z->clear();
-    }
     z->mutable_data<T>(ctx.GetPlace());
+
     auto dims_equal = x->dims() == y->dims();
     if (dims_equal) {
       SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;
@@ -77,9 +75,10 @@ void default_elementwise_add_grad(const framework::ExecutionContext &ctx,
                                   framework::Tensor *dy) {
   int axis = ctx.Attr<int>("axis");
 
-  ElemwiseGradCompute<DeviceContext, T, IdentityGrad<T>, IdentityGrad<T>>(
-      ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),
-      IdentityGrad<T>());
+  ElemwiseExplicitGradCompute<DeviceContext, T, IdentityGrad<T>,
+                              IdentityGrad<T>>(ctx, *x, *y, *out, *dout, axis,
+                                               dx, dy, IdentityGrad<T>(),
+                                               IdentityGrad<T>());
 }
 
 template <typename DeviceContext, typename T>
