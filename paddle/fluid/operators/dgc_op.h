@@ -88,6 +88,13 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto g_e = framework::EigenVector<T>::Flatten(*g);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto& eigen_ctx = *dev_ctx.eigen_device();
+
+    if (static_cast<int>(*current_step) ==
+        static_cast<int>(rampup_begin_step)) {
+      // for 32 cards
+      u_out_e.device(eigen_ctx) = (1.0 / 32) * u_e;
+    }
+
     if (use_nesterov) {
       // u = m * (u + g)
       u_out_e.device(eigen_ctx) = m * (u_e + g_e);
