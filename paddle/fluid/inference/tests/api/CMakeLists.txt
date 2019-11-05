@@ -21,10 +21,14 @@ function(download_model_and_data install_dir model_name data_name)
     download_data(${install_dir} ${data_name})
 endfunction()
 
+function(download_result install_dir result_name)
+    download_data(${install_dir} ${result_name})
+endfunction()
+
 function(inference_analysis_api_test target install_dir filename)
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
-        ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt)
+        ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt --refer_result=${install_dir}/result.txt)
 endfunction()
 
 function(inference_analysis_api_int8_test_build TARGET_NAME filename)
@@ -130,8 +134,9 @@ download_model_and_data(${PYRAMID_DNN_INSTALL_DIR} "PyramidDNN_model.tar.gz" "Py
 inference_analysis_api_test(test_analyzer_pyramid_dnn ${PYRAMID_DNN_INSTALL_DIR} analyzer_pyramid_dnn_tester.cc)
 
 #Ernie
-set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ernie")
-download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_model.tar.gz" "Ernie_data.txt.tar.gz")
+set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
+download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_model.tar.gz" "Ernie_data.txt.tar.gz" "Ernie_result.txt.tar.gz")
+download_result(${ERNIE_INSTALL_DIR} "Ernie_result.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_tester.cc)
 
 # text_classification
