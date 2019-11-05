@@ -1231,7 +1231,7 @@ def conv2d(input,
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
             or the element corresponding to the input's channel is not 0.
-        ShapeError: If the input is not 4-D or 5-D tensor.
+        ShapeError: If the input is not 4-D Tensor.
         ShapeError: If the input's dimension size and filter's dimension size not equal.
         ShapeError: If the dimension size of input minus the size of `stride` is not 2.
         ShapeError: If the number of input channels is not equal to filter's channels * groups.
@@ -1499,7 +1499,7 @@ def conv3d(input,
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is a tuple, but the element corresponding to the input's batch size is not 0 
             or the element corresponding to the input's channel is not 0.
-        ShapeError: If the input is not 5-D tensor.
+        ShapeError: If the input is not 5-D Tensor.
         ShapeError: If the input's dimension size and filter's dimension size not equal.
         ShapeError: If the dimension size of input minus the size of `stride` is not 2.
         ShapeError: If the number of input channels is not equal to filter's channels * groups.

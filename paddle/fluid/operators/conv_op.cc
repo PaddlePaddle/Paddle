@@ -52,19 +52,16 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
   PADDLE_ENFORCE_EQ(
       in_dims.size() == 4 || in_dims.size() == 5, true,
-      "ShapeError: the input of Op(conv) should be 4-D or 5-D tensor. But "
-      "received: %u-D Tensor,"
-      "the shape of input is [%s].",
+      "ShapeError: the input of Op(conv) should be 4-D or 5-D Tensor. But "
+      "received: %u-D Tensor, the shape of input is [%s].",
       in_dims.size(), in_dims);
 
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
       "ShapeError: the input's dimension size and filter's dimension size of "
-      "Op(conv) should be "
-      "equal."
-      "But received: the shape of input is [%s], the dimension size of input "
-      "is [%d], "
-      "the shape of filter is [%s],  the dimension size of filter is [%d].",
+      "Op(conv) should be equal. But received: the shape of input is [%s], "
+      "the dimension size of input is [%d], the shape of filter is [%s],  "
+      "the dimension size of filter is [%d].",
       in_dims, in_dims.size(), filter_dims, filter_dims.size());
 
   int in_sub_stride_size = in_dims.size() - strides.size();
@@ -87,8 +84,8 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
       "channels * groups for Op(conv). But received: the input's channels is "
       "[%d], the shape "
       "of input is [%s], the filter's channel is [%d], the shape of filter is "
-      "[%s], the groups is [%d], the data_format is %s. The error may have "
-      "originated from wrong data_format setting.",
+      "[%s], the groups is [%d], the data_format is %s. The error may come "
+      "from wrong data_format setting.",
       input_channels, in_dims, filter_dims[1], filter_dims, groups,
       data_format);
   PADDLE_ENFORCE_EQ(

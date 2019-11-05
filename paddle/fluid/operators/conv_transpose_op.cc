@@ -53,25 +53,21 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
 
   PADDLE_ENFORCE_EQ(in_dims.size() == 4 || in_dims.size() == 5, true,
                     "ShapeError: input of Op(conv_transpose) should be 4-D or "
-                    "5-D tensor. But "
-                    "received: %u-D Tensor,"
+                    "5-D Tensor. But received: %u-D Tensor, "
                     "the shape of input is [%s]",
                     in_dims.size(), in_dims);
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
       "ShapeError: the input's dimension size and filter's dimension size of "
-      "Op (conv_transpose) should be "
-      "equal."
-      "But received: the shape of input is [%s], the dimension size of input "
-      "is [%d], "
-      "the shape of filter is [%s],  the dimension size of filter is [%d].",
+      "Op (conv_transpose) should be equal. But received: the shape of input "
+      "is [%s], the dimension size of input is [%d], the shape of filter is "
+      "[%s],  the dimension size of filter is [%d]. ",
       in_dims, in_dims.size(), filter_dims, filter_dims.size());
   int in_sub_stride_size = in_dims.size() - strides.size();
   PADDLE_ENFORCE_EQ(
       in_dims.size() - strides.size(), 2U,
       "ShapeError: the input's dimension size minus Attr(stride)'s size must "
-      "be euqal to 2 for Op(conv_transpose)."
-      "But received: [%d], the "
+      "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
       "input's dimension size is [%d], the shape of input "
       "is [%s], the Attr(stride)'s size is [%d].",
       in_sub_stride_size, in_dims.size(), in_dims, strides.size());
@@ -88,10 +84,9 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
       C, filter_dims[0],
       "ShapeError: The number of input channels should be equal to filter "
       "channels for Op(conv_transpose). But received: the input's channels is "
-      "[%d], the shape"
-      "of input is [%s], the filter's channels is [%d], the shape of filter is "
-      "[%s]. The data_format is %s."
-      "The error may have originated from wrong data_format setting.",
+      "[%d], the shape of input is [%s], the filter's channels is [%d], the "
+      "shape of filter is [%s]. The data_format is %s."
+      "The error may come from wrong data_format setting.",
       C, in_dims, filter_dims[0], filter_dims, data_layout_str);
 
   framework::DDim in_data_dims;
