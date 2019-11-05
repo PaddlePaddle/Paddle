@@ -25,21 +25,23 @@
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_pass_builder.h"
 
 namespace py = pybind11;
 
 namespace paddle {
 namespace pybind {
-using paddle::PaddleDType;
-using paddle::PaddleBuf;
-using paddle::PaddleTensor;
-using paddle::PaddlePlace;
-using paddle::PaddlePredictor;
+namespace {
+using paddle::AnalysisPredictor;
 using paddle::NativeConfig;
 using paddle::NativePaddlePredictor;
-using paddle::AnalysisPredictor;
-
-namespace {
+using paddle::PaddleBuf;
+using paddle::PaddleDType;
+using paddle::PaddlePassBuilder;
+using paddle::PaddlePlace;
+using paddle::PaddlePredictor;
+using paddle::PaddleTensor;
+using paddle::PassStrategy;
 void BindPaddleDType(py::module *m);
 void BindPaddleBuf(py::module *m);
 void BindPaddleTensor(py::module *m);
@@ -49,11 +51,36 @@ void BindNativeConfig(py::module *m);
 void BindNativePredictor(py::module *m);
 void BindAnalysisConfig(py::module *m);
 void BindAnalysisPredictor(py::module *m);
+void BindPaddlePassBuilder(py::module *m);
 
 #ifdef PADDLE_WITH_MKLDNN
 void BindMkldnnQuantizerConfig(py::module *m);
 #endif
+}  // namespace
 
+void BindInferenceApi(py::module *m) {
+  BindPaddleDType(m);
+  BindPaddleBuf(m);
+  BindPaddleTensor(m);
+  BindPaddlePlace(m);
+  BindPaddlePredictor(m);
+  BindNativeConfig(m);
+  BindNativePredictor(m);
+  BindAnalysisConfig(m);
+  BindAnalysisPredictor(m);
+  BindPaddlePassBuilder(m);
+#ifdef PADDLE_WITH_MKLDNN
+  BindMkldnnQuantizerConfig(m);
+#endif
+
+  m->def("create_paddle_predictor",
+         &paddle::CreatePaddlePredictor<AnalysisConfig>);
+  m->def("create_paddle_predictor",
+         &paddle::CreatePaddlePredictor<NativeConfig>);
+  m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
+}
+
+namespace {
 template <typename T>
 PaddleBuf PaddleBufCreate(py::array_t<T> data) {
   PaddleBuf buf(data.size() * sizeof(T));
@@ -128,29 +155,7 @@ py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
   }
   return py::array(dt, {tensor.shape}, tensor.data.data());
 }
-}  // namespace
 
-void BindInferenceApi(py::module *m) {
-  BindPaddleDType(m);
-  BindPaddleBuf(m);
-  BindPaddleTensor(m);
-  BindPaddlePlace(m);
-  BindPaddlePredictor(m);
-  BindNativeConfig(m);
-  BindNativePredictor(m);
-  BindAnalysisConfig(m);
-  BindAnalysisPredictor(m);
-#ifdef PADDLE_WITH_MKLDNN
-  BindMkldnnQuantizerConfig(m);
-#endif
-  m->def("create_paddle_predictor",
-         &paddle::CreatePaddlePredictor<AnalysisConfig>);
-  m->def("create_paddle_predictor",
-         &paddle::CreatePaddlePredictor<NativeConfig>);
-  m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
-}
-
-namespace {
 void BindPaddleDType(py::module *m) {
   py::enum_<PaddleDType>(*m, "PaddleDType")
       .value("FLOAT32", PaddleDType::FLOAT32)
@@ -424,6 +429,33 @@ void BindAnalysisPredictor(py::module *m) {
            py::return_value_policy::reference)
       .def("SaveOptimModel", &AnalysisPredictor::SaveOptimModel,
            py::arg("dir"));
+}
+
+void BindPaddlePassBuilder(py::module *m) {
+  py::class_<PaddlePassBuilder>(*m, "PaddlePassBuilder")
+      .def(py::init<const std::vector<std::string> &>())
+      .def("set_passes", &PaddlePassBuilder::SetPasses)
+      .def("append_pass", &PaddlePassBuilder::AppendPass)
+      .def("insert_pass", &PaddlePassBuilder::InsertPass)
+      .def("delete_pass",
+           [](PaddlePassBuilder &self, size_t idx) { self.DeletePass(idx); })
+      .def("delete_pass",
+           [](PaddlePassBuilder &self, const std::string &pass_type) {
+             self.DeletePass(pass_type);
+           })
+      .def("append_analysis_pass", &PaddlePassBuilder::AppendAnalysisPass)
+      .def("turn_on_debug", &PaddlePassBuilder::TurnOnDebug)
+      .def("debug_string", &PaddlePassBuilder::DebugString)
+      .def("all_passes", &PaddlePassBuilder::AllPasses)
+      .def("analysis_passes", &PaddlePassBuilder::AnalysisPasses);
+
+  py::class_<PassStrategy, PaddlePassBuilder>(*m, "pass_strategy")
+      .def(py::init<const std::vector<std::string> &>())
+      .def("enable_cudnn", &PassStrategy::EnableCUDNN)
+      .def("enable_mkldnn", &PassStrategy::EnableMKLDNN)
+      .def("enable_ngraph", &PassStrategy::EnableNgraph)
+      .def("enable_mkldnn_quantizer", &PassStrategy::EnableMkldnnQuantizer)
+      .def("use_gpu", &PassStrategy::use_gpu);
 }
 }  // namespace
 }  // namespace pybind
