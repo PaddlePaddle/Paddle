@@ -937,8 +937,9 @@ void GeoSgdCommunicator::RpcSend(const std::string &origin_var_name,
   auto &cpu_ctx_send = *pool.Get(platform::CPUPlace());
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
-  rpc_client->AsyncSendVar(endpoint, cpu_ctx_send, *delta_scope_.get(),
-                           splited_var_name);
+  auto handle = rpc_client->AsyncSendVar(endpoint, cpu_ctx_send,
+                                         *delta_scope_.get(), splited_var_name);
+  handle->Wait();
 }
 
 void GeoSgdCommunicator::RpcRecv(const std::string &var_name,
@@ -951,8 +952,10 @@ void GeoSgdCommunicator::RpcRecv(const std::string &var_name,
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(train_id);
   pserver_scope_->Var(splited_var_name);
-  rpc_client->AsyncGetVar(endpoint, cpu_ctx_recv, *pserver_scope_.get(),
-                          splited_var_name, splited_var_name, splited_var_name);
+  auto handle = rpc_client->AsyncGetVar(endpoint, cpu_ctx_recv,
+                                        *pserver_scope_.get(), splited_var_name,
+                                        splited_var_name, splited_var_name);
+  handle->Wait();
 }
 
 void GeoSgdCommunicator::Recv() {}

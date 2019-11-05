@@ -176,6 +176,7 @@ if avx_supported():
         from .core_avx import _set_fuse_parameter_memory_size
         from .core_avx import _is_dygraph_debug_enabled
         from .core_avx import _dygraph_debug_level
+        from .core_avx import _switch_tracer
         from .core_avx import _set_paddle_lib_path
         from .core_avx import _save_static_dict
         from .core_avx import _load_static_dict
@@ -210,6 +211,7 @@ if load_noavx:
         from .core_noavx import _set_fuse_parameter_memory_size
         from .core_noavx import _is_dygraph_debug_enabled
         from .core_noavx import _dygraph_debug_level
+        from .core_noavx import _switch_tracer
         from .core_noavx import _set_paddle_lib_path
         from .core_noavx import _save_static_dict
         from .core_noavx import _load_static_dict
