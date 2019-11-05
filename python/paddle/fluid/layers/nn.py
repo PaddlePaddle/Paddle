@@ -2972,9 +2972,10 @@ def group_norm(input,
             Default: None, the default bias parameter attribute is used. For more information, please
             refer to :ref:`api_guide_ParamAttr` .
         act(str, optional): Activation to be applied to the output of group normalizaiton.
-        data_layout(str, optional): The data format of the input and output data. An optional string
-            from: `"NCHW"`, `"NHWC"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, channels, height, width]`. Default: "NCHW".
+        data_layout(str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
         name (str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name` .
 
@@ -2983,6 +2984,12 @@ def group_norm(input,
 
     Raises:
         ValueError: If `data_layout` is neither 'NCHW' nor 'NHWC'.
+        ValueError: If `groups` is greater than the number of input channels.
+        ValueError: If `groups` is less than 1.
+        ShapeError: If the param_attr(Scale) is not 1-D Tensor.
+        ShapeError: If the param_attr(Scale)'s first dimension size is not equal to the input channels.
+        ShapeError: If the bias_attr(Bias) is not 1-D Tensor.
+        ShapeError: If the bias_attr(Bias)'s first dimension size is not equal to the input channels.
 
     Examples:
        .. code-block:: python
