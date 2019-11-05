@@ -221,20 +221,9 @@ class SoftmaxOpGradMaker : public framework::SingleGradOpMaker<T> {
 
 DECLARE_INPLACE_OP_INFERER(SoftmaxInplaceInferer, {"X", "Out"});
 
-class SoftmaxGradInplaceInferer final : public framework::InplaceOpInference {
- public:
-  using framework::InplaceOpInference::InplaceOpInference;
-
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc& op_desc, bool use_cuda) const final {
-    if (use_cuda) {
-      return {{"Out", framework::GradVarName("X")}};
-    } else {
-      // NOTE(zjl): AVX implementation of SoftmaxGrad does not support in-place
-      return {};
-    }
-  }
-};
+// NOTE(zjl): AVX implementation of SoftmaxGrad does not support in-place
+DECLARE_CUDA_ONLY_INPLACE_OP_INFERER(SoftmaxGradInplaceInferer,
+                                     {"Out", framework::GradVarName("X")});
 
 }  // namespace operators
 }  // namespace paddle
