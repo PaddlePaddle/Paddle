@@ -317,6 +317,7 @@ class Optimizer(object):
     def _add_accumulator(self,
                          name,
                          param,
+                         type=None,
                          dtype=None,
                          fill_value=0.0,
                          shape=None):
@@ -349,7 +350,7 @@ class Optimizer(object):
             name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
-            type=param.type,
+            type=param.type if type is None else type,
             shape=shape,
             belong_to_optimizer=True)
         self.helper.set_variable_initializer(
@@ -1448,12 +1449,14 @@ class AdamOptimizer(Optimizer):
             self._add_accumulator(
                 name=self._beta1_pow_acc_str,
                 param=p,
+                type=core.VarDesc.VarType.LOD_TENSOR,
                 dtype='float32',
                 fill_value=self._beta1,
                 shape=[1])
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
+                type=core.VarDesc.VarType.LOD_TENSOR,
                 dtype='float32',
                 fill_value=self._beta2,
                 shape=[1])

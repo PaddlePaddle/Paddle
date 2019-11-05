@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <math.h>  // for sqrt in CPU and CUDA
 #include <Eigen/Dense>
+#include <algorithm>
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
@@ -315,6 +316,29 @@ struct SparseAdamFunctor<T, CPUAdam> {
     param_out_[i] = p;
   }
 
+  inline HOSTDEVICE void adam_update(size_t m1_i, size_t m2_i, size_t p_i,
+                                     T g) const {
+    // The following code is the same as dense
+    T mom1 = moment1_[m1_i];
+    T mom2 = moment2_[m2_i];
+    T lr = *lr_;
+    T beta1_pow = *beta1_pow_;
+    T beta2_pow = *beta2_pow_;
+    T p = param_[p_i];
+
+    // Calculation
+    lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
+
+    mom1 = beta1_ * mom1 + (1 - beta1_) * g;
+    mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
+    p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
+
+    // Write back to global memory
+    moment1_out_[m1_i] = mom1;
+    moment2_out_[m2_i] = mom2;
+    param_out_[p_i] = p;
+  }
+
   inline void operator()(size_t numel) const {
     // lr could be reuse
     T lr = *lr_;
@@ -362,6 +386,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
                    framework::ToTypeName(param_var->Type()));
 
     using paddle::framework::LoDTensor;
+    using paddle::framework::SelectedRows;
     using paddle::operators::detail::Ref;
 
     int64_t min_row_size_to_use_multithread =
@@ -370,72 +395,232 @@ class AdamOpKernel : public framework::OpKernel<T> {
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
-    auto& param = Ref(ctx.Input<LoDTensor>("Param"), "Must set Param");
-    // auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
-    auto* grad_var = ctx.InputVar("Grad");
-    auto& mom1 = Ref(ctx.Input<LoDTensor>("Moment1"), "Must set Moment1");
-    auto& mom2 = Ref(ctx.Input<LoDTensor>("Moment2"), "Must set Moment2");
-    auto& lr =
-        Ref(ctx.Input<LoDTensor>("LearningRate"), "Must set LearningRate");
 
-    auto& beta1_pow =
-        Ref(ctx.Input<LoDTensor>("Beta1Pow"), "Must set Beta1Pow");
-    auto& beta2_pow =
-        Ref(ctx.Input<LoDTensor>("Beta2Pow"), "Must set Beta2Pow");
+    if (param_var->IsType<framework::LoDTensor>()) {
+      auto& param = Ref(ctx.Input<LoDTensor>("Param"), "Must set Param");
+      auto* grad_var = ctx.InputVar("Grad");
+      auto& mom1 = Ref(ctx.Input<LoDTensor>("Moment1"), "Must set Moment1");
+      auto& mom2 = Ref(ctx.Input<LoDTensor>("Moment2"), "Must set Moment2");
+      auto& lr =
+          Ref(ctx.Input<LoDTensor>("LearningRate"), "Must set LearningRate");
 
-    auto& param_out =
-        Ref(ctx.Output<LoDTensor>("ParamOut"), "Must set ParamOut");
-    auto& mom1_out =
-        Ref(ctx.Output<LoDTensor>("Moment1Out"), "Must set Moment1Out");
-    auto& mom2_out =
-        Ref(ctx.Output<LoDTensor>("Moment2Out"), "Must set Moment1Out");
+      auto& beta1_pow =
+          Ref(ctx.Input<LoDTensor>("Beta1Pow"), "Must set Beta1Pow");
+      auto& beta2_pow =
+          Ref(ctx.Input<LoDTensor>("Beta2Pow"), "Must set Beta2Pow");
 
-    if (grad_var->IsType<framework::LoDTensor>()) {
-      auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
+      auto& param_out =
+          Ref(ctx.Output<LoDTensor>("ParamOut"), "Must set ParamOut");
+      auto& mom1_out =
+          Ref(ctx.Output<LoDTensor>("Moment1Out"), "Must set Moment1Out");
+      auto& mom2_out =
+          Ref(ctx.Output<LoDTensor>("Moment2Out"), "Must set Moment2Out");
 
-      if (platform::is_cpu_place(ctx.GetPlace())) {
-        AdamFunctor<T, CPUAdam> functor(
-            beta1, beta2, epsilon, beta1_pow.template data<T>(),
-            beta2_pow.template data<T>(), mom1.template data<T>(),
-            mom1_out.template mutable_data<T>(ctx.GetPlace()),
-            mom2.template data<T>(),
-            mom2_out.template mutable_data<T>(ctx.GetPlace()),
-            lr.template data<T>(), grad.template data<T>(),
-            param.template data<T>(),
-            param_out.template mutable_data<T>(ctx.GetPlace()));
-        functor(param.numel());
-      } else if (platform::is_gpu_place(ctx.GetPlace())) {
-        AdamFunctor<T, GPUAdam> functor(
-            beta1, beta2, epsilon, beta1_pow.template data<T>(),
-            beta2_pow.template data<T>(), mom1.template data<T>(),
-            mom1_out.template mutable_data<T>(ctx.GetPlace()),
-            mom2.template data<T>(),
-            mom2_out.template mutable_data<T>(ctx.GetPlace()),
-            lr.template data<T>(), grad.template data<T>(),
-            param.template data<T>(),
-            param_out.template mutable_data<T>(ctx.GetPlace()));
+      if (grad_var->IsType<framework::LoDTensor>()) {
+        auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
 
-        platform::ForRange<DeviceContext> for_range(
-            static_cast<const DeviceContext&>(ctx.device_context()),
-            param.numel());
-        for_range(functor);
+        if (platform::is_cpu_place(ctx.GetPlace())) {
+          AdamFunctor<T, CPUAdam> functor(
+              beta1, beta2, epsilon, beta1_pow.template data<T>(),
+              beta2_pow.template data<T>(), mom1.template data<T>(),
+              mom1_out.template mutable_data<T>(ctx.GetPlace()),
+              mom2.template data<T>(),
+              mom2_out.template mutable_data<T>(ctx.GetPlace()),
+              lr.template data<T>(), grad.template data<T>(),
+              param.template data<T>(),
+              param_out.template mutable_data<T>(ctx.GetPlace()));
+          functor(param.numel());
+        } else if (platform::is_gpu_place(ctx.GetPlace())) {
+          AdamFunctor<T, GPUAdam> functor(
+              beta1, beta2, epsilon, beta1_pow.template data<T>(),
+              beta2_pow.template data<T>(), mom1.template data<T>(),
+              mom1_out.template mutable_data<T>(ctx.GetPlace()),
+              mom2.template data<T>(),
+              mom2_out.template mutable_data<T>(ctx.GetPlace()),
+              lr.template data<T>(), grad.template data<T>(),
+              param.template data<T>(),
+              param_out.template mutable_data<T>(ctx.GetPlace()));
+
+          platform::ForRange<DeviceContext> for_range(
+              static_cast<const DeviceContext&>(ctx.device_context()),
+              param.numel());
+          for_range(functor);
+        }
+      } else if (grad_var->IsType<framework::SelectedRows>()) {
+        auto& grad =
+            Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
+
+        if (grad.rows().size() == 0) {
+          VLOG(3) << "grad row size is 0!!";
+          return;
+        }
+
+        std::vector<int64_t> cpu_rows(grad.rows().begin(), grad.rows().end());
+        bool is_strict_sorted = true;
+
+        for (size_t i = 1; i < cpu_rows.size(); ++i) {
+          if (cpu_rows[i - 1] >= cpu_rows[i]) {
+            is_strict_sorted = false;
+            break;
+          }
+        }
+
+        framework::SelectedRows tmp_grad_merge;
+        const framework::SelectedRows* grad_merge_ptr;
+        if (is_strict_sorted) {
+          grad_merge_ptr = &grad;
+        } else {
+          // merge duplicated rows if any.
+          // The rows of grad_merge have been sorted inside MergeAdd functor
+          scatter::MergeAdd<DeviceContext, T> merge_func;
+          merge_func(ctx.template device_context<DeviceContext>(), grad,
+                     &tmp_grad_merge, true);
+          grad_merge_ptr = &tmp_grad_merge;
+        }
+
+        auto& grad_merge = *grad_merge_ptr;
+        auto& grad_tensor = grad_merge.value();
+        const T* grad_data = grad_tensor.template data<T>();
+        const int64_t* rows = grad_merge.rows().Data(ctx.GetPlace());
+        auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
+
+        if (platform::is_cpu_place(ctx.GetPlace())) {
+          SparseAdamFunctor<T, CPUAdam> functor(
+              beta1, beta2, epsilon, beta1_pow.template data<T>(),
+              beta2_pow.template data<T>(), mom1.template data<T>(),
+              mom1_out.template mutable_data<T>(ctx.GetPlace()),
+              mom2.template data<T>(),
+              mom2_out.template mutable_data<T>(ctx.GetPlace()),
+              lr.template data<T>(), grad_data, param.template data<T>(),
+              param_out.template mutable_data<T>(ctx.GetPlace()), rows,
+              row_numel, grad_merge.rows().size(), lazy_mode);
+          if (lazy_mode) {
+            VLOG(3) << "run cpu lazy mode";
+            size_t row_count = grad_merge.rows().size();
+            std::vector<int64_t> cpu_rows(grad_merge.rows());
+            for (size_t row_index = 0; row_index < row_count; ++row_index) {
+              for (size_t offset = 0; offset < row_numel; ++offset) {
+                size_t i = cpu_rows[row_index] * row_numel + offset;
+                functor.adam_update(i,
+                                    grad_data[row_index * row_numel + offset]);
+              }
+            }
+          }
+#ifndef _WIN32
+          else if (FLAGS_inner_op_parallelism > 1 &&  // NOLINT
+                   min_row_size_to_use_multithread > 0 &&
+                   param.dims()[0] > min_row_size_to_use_multithread) {
+            VLOG(3) << "use multi thread, inner_op_parallelism="
+                    << FLAGS_inner_op_parallelism
+                    << " min_row_size_to_use_multithread="
+                    << min_row_size_to_use_multithread;
+            if (FLAGS_inner_op_parallelism > 10) {
+              VLOG(1) << "FLAGS_inner_op_parallelism "
+                      << FLAGS_inner_op_parallelism << " is two large!";
+            }
+            auto& grad_rows = grad_merge.rows();
+            std::unordered_map<size_t, int> row_id_to_grad_row_offset;
+            size_t param_row_count = param.numel() / row_numel;
+            if (param_row_count < 1000) {
+              VLOG(1) << "param_row_count should be larger then 1000 to use "
+                         "multi thread, currently "
+                      << param_row_count;
+            }
+            for (size_t i = 0; i < grad_rows.size(); ++i) {
+              row_id_to_grad_row_offset[grad_rows[i]] = i;
+            }
+            std::vector<std::future<void>> fs;
+            int64_t line_in_each_thread =
+                param_row_count / FLAGS_inner_op_parallelism + 1;
+            for (int i = 0; i < FLAGS_inner_op_parallelism; ++i) {
+              int64_t start = i * line_in_each_thread;
+              int64_t end = (i + 1) * line_in_each_thread;
+              if (start >= static_cast<int64_t>(param_row_count)) {
+                break;
+              }
+              if (end > static_cast<int64_t>(param_row_count)) {
+                end = static_cast<int64_t>(param_row_count);
+              }
+              fs.push_back(
+                  framework::Async([&functor, &row_id_to_grad_row_offset,
+                                    &grad_data, row_numel, start, end]() {
+                    for (int64_t row_id = start; row_id < end; ++row_id) {
+                      auto iter = row_id_to_grad_row_offset.find(row_id);
+                      if (iter != row_id_to_grad_row_offset.end()) {
+                        for (size_t row_offset = 0U; row_offset < row_numel;
+                             ++row_offset) {
+                          functor.adam_update(
+                              row_id * row_numel + row_offset,
+                              grad_data[iter->second * row_numel + row_offset]);
+                        }
+                      } else {
+                        for (size_t row_offset = 0U; row_offset < row_numel;
+                             ++row_offset) {
+                          functor.adam_update(row_id * row_numel + row_offset,
+                                              0);
+                        }
+                      }
+                    }
+                  }));
+            }
+            for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
+          }
+#endif            // !_WIN32
+          else {  // NOLINT
+            functor(param.numel());
+          }
+        } else if (platform::is_gpu_place(ctx.GetPlace())) {
+          SparseAdamFunctor<T, GPUAdam> functor(
+              beta1, beta2, epsilon, beta1_pow.template data<T>(),
+              beta2_pow.template data<T>(), mom1.template data<T>(),
+              mom1_out.template mutable_data<T>(ctx.GetPlace()),
+              mom2.template data<T>(),
+              mom2_out.template mutable_data<T>(ctx.GetPlace()),
+              lr.template data<T>(), grad_data, param.template data<T>(),
+              param_out.template mutable_data<T>(ctx.GetPlace()), rows,
+              row_numel, grad_merge.rows().size(), lazy_mode);
+
+          // FIXME(minqiyang): remove BinarySearch in GPU later
+          platform::ForRange<DeviceContext> for_range(
+              static_cast<const DeviceContext&>(ctx.device_context()),
+              param.numel());
+          for_range(functor);
+        }
+      } else {
+        PADDLE_THROW("Variable type not supported by adam_op");
       }
-    } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto& grad =
-          Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
+    } else {
+      if (platform::is_gpu_place(ctx.GetPlace())) {
+        PADDLE_THROW("Variable type SelectedRows not supported by GPU");
+      }
+
+      auto& param = Ref(ctx.Input<SelectedRows>("Param"), "Must set Param");
+      auto& grad = Ref(ctx.Input<SelectedRows>("Grad"), "Must set Grad");
+      auto& mom1 = Ref(ctx.Input<SelectedRows>("Moment1"), "Must set Moment1");
+      auto& mom2 = Ref(ctx.Input<SelectedRows>("Moment2"), "Must set Moment2");
+
+      auto& lr =
+          Ref(ctx.Input<LoDTensor>("LearningRate"), "Must set LearningRate");
+
+      auto& beta1_pow =
+          Ref(ctx.Input<LoDTensor>("Beta1Pow"), "Must set Beta1Pow");
+      auto& beta2_pow =
+          Ref(ctx.Input<LoDTensor>("Beta2Pow"), "Must set Beta2Pow");
+
+      auto& param_out =
+          Ref(ctx.Output<SelectedRows>("ParamOut"), "Must set ParamOut");
+      auto& mom1_out =
+          Ref(ctx.Output<SelectedRows>("Moment1Out"), "Must set Moment1Out");
+      auto& mom2_out =
+          Ref(ctx.Output<SelectedRows>("Moment2Out"), "Must set Moment2Out");
+
       if (grad.rows().size() == 0) {
         VLOG(3) << "grad row size is 0!!";
         return;
       }
 
       std::vector<int64_t> cpu_rows(grad.rows().begin(), grad.rows().end());
-      bool is_strict_sorted = true;
-      for (size_t i = 1; i < cpu_rows.size(); ++i) {
-        if (cpu_rows[i - 1] >= cpu_rows[i]) {
-          is_strict_sorted = false;
-          break;
-        }
-      }
+      bool is_strict_sorted = std::is_sorted(cpu_rows.begin(), cpu_rows.end());
 
       framework::SelectedRows tmp_grad_merge;
       const framework::SelectedRows* grad_merge_ptr;
@@ -456,108 +641,32 @@ class AdamOpKernel : public framework::OpKernel<T> {
       const int64_t* rows = grad_merge.rows().Data(ctx.GetPlace());
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
-      if (platform::is_cpu_place(ctx.GetPlace())) {
-        SparseAdamFunctor<T, CPUAdam> functor(
-            beta1, beta2, epsilon, beta1_pow.template data<T>(),
-            beta2_pow.template data<T>(), mom1.template data<T>(),
-            mom1_out.template mutable_data<T>(ctx.GetPlace()),
-            mom2.template data<T>(),
-            mom2_out.template mutable_data<T>(ctx.GetPlace()),
-            lr.template data<T>(), grad_data, param.template data<T>(),
-            param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
-            grad_merge.rows().size(), lazy_mode);
-        if (lazy_mode) {
-          VLOG(3) << "run cpu lazy mode";
-          size_t row_count = grad_merge.rows().size();
-          std::vector<int64_t> cpu_rows(grad_merge.rows());
-          for (size_t row_index = 0; row_index < row_count; ++row_index) {
-            for (size_t offset = 0; offset < row_numel; ++offset) {
-              size_t i = cpu_rows[row_index] * row_numel + offset;
-              functor.adam_update(i, grad_data[row_index * row_numel + offset]);
-            }
-          }
-        }
-#ifndef _WIN32
-        else if (FLAGS_inner_op_parallelism > 1 &&  // NOLINT
-                 min_row_size_to_use_multithread > 0 &&
-                 param.dims()[0] > min_row_size_to_use_multithread) {
-          VLOG(3) << "use multi thread, inner_op_parallelism="
-                  << FLAGS_inner_op_parallelism
-                  << " min_row_size_to_use_multithread="
-                  << min_row_size_to_use_multithread;
-          if (FLAGS_inner_op_parallelism > 10) {
-            VLOG(1) << "FLAGS_inner_op_parallelism "
-                    << FLAGS_inner_op_parallelism << " is two large!";
-          }
-          auto& grad_rows = grad_merge.rows();
-          std::unordered_map<size_t, int> row_id_to_grad_row_offset;
-          size_t param_row_count = param.numel() / row_numel;
-          if (param_row_count < 1000) {
-            VLOG(1) << "param_row_count should be larger then 1000 to use "
-                       "multi thread, currently "
-                    << param_row_count;
-          }
-          for (size_t i = 0; i < grad_rows.size(); ++i) {
-            row_id_to_grad_row_offset[grad_rows[i]] = i;
-          }
-          std::vector<std::future<void>> fs;
-          int64_t line_in_each_thread =
-              param_row_count / FLAGS_inner_op_parallelism + 1;
-          for (int i = 0; i < FLAGS_inner_op_parallelism; ++i) {
-            int64_t start = i * line_in_each_thread;
-            int64_t end = (i + 1) * line_in_each_thread;
-            if (start >= static_cast<int64_t>(param_row_count)) {
-              break;
-            }
-            if (end > static_cast<int64_t>(param_row_count)) {
-              end = static_cast<int64_t>(param_row_count);
-            }
-            fs.push_back(
-                framework::Async([&functor, &row_id_to_grad_row_offset,
-                                  &grad_data, row_numel, start, end]() {
-                  for (int64_t row_id = start; row_id < end; ++row_id) {
-                    auto iter = row_id_to_grad_row_offset.find(row_id);
-                    if (iter != row_id_to_grad_row_offset.end()) {
-                      for (size_t row_offset = 0U; row_offset < row_numel;
-                           ++row_offset) {
-                        functor.adam_update(
-                            row_id * row_numel + row_offset,
-                            grad_data[iter->second * row_numel + row_offset]);
-                      }
-                    } else {
-                      for (size_t row_offset = 0U; row_offset < row_numel;
-                           ++row_offset) {
-                        functor.adam_update(row_id * row_numel + row_offset, 0);
-                      }
-                    }
-                  }
-                }));
-          }
-          for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
-        }
-#endif          // !_WIN32
-        else {  // NOLINT
-          functor(param.numel());
-        }
-      } else if (platform::is_gpu_place(ctx.GetPlace())) {
-        SparseAdamFunctor<T, GPUAdam> functor(
-            beta1, beta2, epsilon, beta1_pow.template data<T>(),
-            beta2_pow.template data<T>(), mom1.template data<T>(),
-            mom1_out.template mutable_data<T>(ctx.GetPlace()),
-            mom2.template data<T>(),
-            mom2_out.template mutable_data<T>(ctx.GetPlace()),
-            lr.template data<T>(), grad_data, param.template data<T>(),
-            param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
-            grad_merge.rows().size(), lazy_mode);
+      size_t row_count = grad_merge.rows().size();
 
-        // FIXME(minqiyang): remove BinarySearch in GPU later
-        platform::ForRange<DeviceContext> for_range(
-            static_cast<const DeviceContext&>(ctx.device_context()),
-            param.numel());
-        for_range(functor);
+      SparseAdamFunctor<T, CPUAdam> functor(
+          beta1, beta2, epsilon, beta1_pow.template data<T>(),
+          beta2_pow.template data<T>(), mom1.value().template data<T>(),
+          mom1_out.value().template mutable_data<T>(ctx.GetPlace()),
+          mom2.value().template data<T>(),
+          mom2_out.value().template mutable_data<T>(ctx.GetPlace()),
+          lr.template data<T>(), grad_data, param.value().template data<T>(),
+          param_out.value().template mutable_data<T>(ctx.GetPlace()), rows,
+          row_numel, grad_merge.rows().size(), lazy_mode);
+
+      std::vector<int64_t> cpurows(grad_merge.rows());
+      for (size_t row_index = 0; row_index < row_count; ++row_index) {
+        auto sparse_id = cpurows[row_index];
+        auto param_val_idx = param_out->AutoGrownIndex(sparse_id, false);
+        auto moment_1_idx = mom1_out->AutoGrownIndex(sparse_id, true);
+        auto moment_2_idx = mom2_out->AutoGrownIndex(sparse_id, true);
+
+        for (size_t offset = 0; offset < row_numel; ++offset) {
+          size_t i = cpurows[row_index] * row_numel + offset;
+          functor.adam_update(moment_1_idx + offset, moment_2_idx + offset,
+                              param_val_idx + offset,
+                              grad_data[row_index * row_numel + offset]);
+        }
       }
-    } else {
-      PADDLE_THROW("Variable type not supported by adam_op");
     }
   }
 };
