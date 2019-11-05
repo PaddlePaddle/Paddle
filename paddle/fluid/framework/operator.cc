@@ -672,14 +672,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
         "set in the runtime kernel.");
   }
 
-  void DecreaseLoDLevel(const std::string& in, const std::string& out,
-                        size_t i = 0, size_t j = 0) const override {
-    PADDLE_THROW(
-        "DecreaseLoDLevel is only used in compile time. The calculation of "
-        "output's actual lod is different among operators so that should be "
-        "set in the runtime kernel.");
-  }
-
   bool IsRuntime() const override { return true; }
 
   // TODO(paddle-dev): Can this be template?
