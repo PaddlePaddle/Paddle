@@ -1213,7 +1213,7 @@ def conv2d(input,
         name(str|None): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
-        data_format (str): Specify the data format of the input, and the data format of the output 
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
@@ -1481,7 +1481,7 @@ def conv3d(input,
         name(str|None): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
-        data_format (str): Specify the data format of the input, and the data format of the output 
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
@@ -2454,7 +2454,10 @@ def batch_norm(input,
 	     will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr. 
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
 	     Default: None.
-        data_layout(str, default NCHW): the data_layout of input, is NCHW or NHWC.
+        data_layout (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. 
             Usually name is no need to set and None by default. 
@@ -2728,7 +2731,10 @@ def data_norm(input,
         act(string, Default None): Activation type, linear|relu|prelu|...
         epsilon(float, Default 1e-05):
         param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
-        data_layout(string, default NCHW): NCHW|NHWC
+        data_layout (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
@@ -3275,7 +3281,7 @@ def conv2d_transpose(input,
         name(str, optional): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
-        data_format (str): Specify the data format of the input, and the data format of the output 
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
@@ -3564,7 +3570,7 @@ def conv3d_transpose(input,
         name(str, optional): For detailed information, please refer 
            to :ref:`api_guide_Name`. Usually name is no need to set and 
            None by default.
-        data_format (str): Specify the data format of the input, and the data format of the output 
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
             `[batch_size, input_channels, input_height, input_width]`.
@@ -5797,9 +5803,11 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None,
         beta (float, optional): The exponent, positive. Default:0.75
         name (str, optional): The default value is None. Normally there is no need for user to set 
             this property. For more information, please refer to :ref:`api_guide_Name` 
-        data_format(str, optional): The data format of the input and output data. An optional string
-            from: `"NCHW"`, `"NHWC"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`. Default: 'NCHW'.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
+        
     Returns:
         Variable: A tensor variable storing the transformation result with the same shape and data type as input.
 
@@ -6431,11 +6439,11 @@ def image_resize(input,
         align_mode(int)  :  An optional for bilinear interpolation. can be \'0\' 
                             for src_idx = scale*(dst_indx+0.5)-0.5 , can be \'1\' for 
                             src_idx = scale*dst_index.
-        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
-                                    NHWC(num_batches, height, width, channels) for 4-D Tensor,
-                                    NCDHW(num_batches, channels, depth, height, width) or 
-                                    NDHWC(num_batches, depth, height, width, channels) for 5-D Tensor.
-                                    Default: 'NCHW'.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`, `"NCDHW"`,
+            `"NDHWC"`. The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. When it is `"NCHW"`, the data is stored 
+            in the order of: `[batch_size, input_channels, input_depth, input_height, input_width]`.
 
     Returns:
         A 4-D Tensor of the shape (num_batches, channels, out_h, out_w) or (num_batches, out_h, out_w, channels),
@@ -6751,8 +6759,10 @@ def resize_bilinear(input,
                                 Default: None
         align_corners(bool): ${align_corners_comment}
         align_mode(bool): ${align_mode_comment}
-        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
-                                    NHWC(num_batches, height, width, channels). Default: 'NCHW'.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
@@ -6913,9 +6923,10 @@ def resize_trilinear(input,
                                 Default: None
         align_corners(bool): ${align_corners_comment}
         align_mode(bool): ${align_mode_comment}
-        data_format(str, optional): NCDHW(num_batches, channels, depth, height, width) or 
-                                    NDHWC(num_batches, depth, height, width, channels).
-                                    Default: 'NCDHW'.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCDHW"`, `"NDHWC"`.
+            The default is `"NCDHW"`. When it is `"NCDHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_depth, input_height, input_width]`.
 
     Returns:
         Variable: A 5-D Tensor(NCDHW or NDHWC) 
@@ -7065,9 +7076,10 @@ def resize_nearest(input,
                                 errors would be occured in graph constructing stage.
                                 Default: None
         align_corners(bool): ${align_corners_comment}
-        data_format(str, optional): NCHW(num_batches, channels, height, width) or 
-                                    NHWC(num_batches, height, width, channels).
-                                    Default: 'NCHW'.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`.
 
     Returns:
 	Variable: 4-D tensor(NCHW or NHWC).
@@ -11319,8 +11331,11 @@ def affine_channel(x,
         bias (Variable): 1D input of shape (C), the c-th element is the bias
             of the affine transformation for the c-th channel of the input.
             The data type is float32 or float64.
-        data_layout (str, default NCHW): NCHW or NHWC. If input is 2D
-            tensor, you can ignore data_layout.
+        data_layout (str, optional): Specify the data format of the input, and the data format of the output 
+            will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
+            The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. If input is 2D Tensor, you can ignore 
+            data_layout.
         name (str, default None): The name of this layer. For more information,
             please refer to :ref:`api_guide_Name` .
         act (str, default None): Activation to be applied to the output of this layer.
