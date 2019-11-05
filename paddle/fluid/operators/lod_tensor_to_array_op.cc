@@ -212,7 +212,7 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
     // We cannot get X's detail lod and RankTable's level in this function, so
     // leave this work to the detail kernel implementation.
     if (!context->IsRuntime()) {
-      context->SetLoDLevel("Out", context->GetLoDLevel("Out") - 1);
+      context->SetLoDLevel("Out", context->GetLoDLevel("X") - 1);
     }
   }
 };
