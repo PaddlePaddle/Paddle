@@ -83,7 +83,7 @@ class MergeSelectedVarOp : public framework::OperatorBase {
     if (platform::is_cpu_place(mask.place())) {
       return mask.data<int>()[0];
     }
-    // when platform::is_gpu_place(mask.place()) is ture
+    // when platform::is_gpu_place(mask.place()) is true
     std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
 #ifdef PADDLE_WITH_CUDA
     framework::TensorCopy(mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
@@ -121,7 +121,7 @@ specifying the output branchi.
 class MergeSelectedVarInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"),
+    PADDLE_ENFORCE(context->HasInputs("X"),
                    "MergeSelectedVarOp must has input X.");
     PADDLE_ENFORCE(context->HasInput("Mask"),
                    "MergeLoDTensorOp must has input Mask.");
@@ -138,10 +138,11 @@ class MergeSelectedVarGradMaker : public framework::SingleGradOpMaker<T> {
  protected:
   std::unique_ptr<T> Apply() const override {
     auto *grad_op = new T();
-    grad_op->SetType("split_selected_tensor");
+    grad_op->SetType("split_selected_var");
     grad_op->SetInput("X", this->OutputGrad("Out"));
     grad_op->SetInput("Mask", this->Input("Mask"));
-    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetOutput("Out",
+                       this->InputGrad("X", /* drop_empty_grad */ false));
     grad_op->SetAttrMap(this->Attrs());
     return std::unique_ptr<T>(grad_op);
   }
@@ -152,7 +153,7 @@ class MergeSelectedVarGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(merge_selected_tensor, ops::MergeSelectedVarOp,
+REGISTER_OPERATOR(merge_selected_var, ops::MergeSelectedVarOp,
                   ops::MergeSelectedVarOpProtoMaker,
                   ops::MergeSelectedVarInferShape,
                   ops::MergeSelectedVarGradMaker<paddle::framework::OpDesc>,

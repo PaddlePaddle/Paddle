@@ -35,6 +35,41 @@ __all__ = [
 ]
 
 
+def split_selected_var(input, output, mask):
+    """
+    TODO(huihuangzheng): this API is not tested in control flow APIs yet. I
+    will add doc and probably change this API after I tested it in control
+    flow APIs
+    """
+    helper = LayerHelper('split_selected_var', **locals())
+    helper.append_op(
+        type='split_selected_var',
+        inputs={'X': input,
+                'Mask': mask},
+        outputs={'Out': output})
+    return output
+
+
+def merge_selected_var(inputs, mask):
+    """
+    TODO(huihuangzheng): this API is not tested in control flow APIs yet. I
+    will add doc and probably change this API after I tested it in control
+    flow APIs
+    """
+    helper = LayerHelper('merge_selected_var', **locals())
+    if isinstance(inputs, list) or isinstance(inputs, tuple):
+        input_dtype = inputs[0].dtype
+    else:
+        input_dtype = inputs.dtype
+    out = helper.create_variable(dtype=input_dtype)
+    helper.append_op(
+        type='merge_selected_var',
+        inputs={'X': inputs,
+                'Mask': mask},
+        outputs={'Out': out})
+    return out
+
+
 def split_lod_tensor(input, mask, level=0):
     """
     This function takes in an input that contains the complete lod information,

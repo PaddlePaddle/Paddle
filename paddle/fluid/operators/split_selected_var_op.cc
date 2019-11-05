@@ -120,8 +120,8 @@ class SplitSelectedVarInferShape : public framework::InferShapeBase {
                    "SplitSelectedVarOp must has input X.");
     PADDLE_ENFORCE(context->HasInput("Mask"),
                    "SplitSelectedVarOp must has input Mask.");
-    PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "SplitSelectedVarOp must has output OutTrue.");
+    PADDLE_ENFORCE(context->HasOutputs("Out"),
+                   "SplitSelectedVarOp must has output Out.");
   }
 };
 
@@ -146,7 +146,7 @@ class SplitSelectedVarGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(split_lod_tensor, ops::SplitSelectedVarOp,
+REGISTER_OPERATOR(split_selected_var, ops::SplitSelectedVarOp,
                   ops::SplitSelectedVarOpProtoMaker,
                   ops::SplitSelectedVarInferShape,
                   ops::SplitSelectedVarGradMaker<paddle::framework::OpDesc>,
