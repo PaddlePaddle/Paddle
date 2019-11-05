@@ -27,7 +27,7 @@ class SequenceConvOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SequenceConvOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Filter"),
@@ -82,7 +82,7 @@ class SequenceConvGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Gradient of output(Out) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"), "The input(X) should not be null.");
@@ -209,11 +209,13 @@ class SequenceConvGradNoNeedBufferVarsInference
  public:
   using framework::NoNeedBufferVarsInference::NoNeedBufferVarsInference;
 
-  std::unordered_set<std::string> operator()() const override {
-    if (!boost::get<bool>(Attrs().at("paddingTrainable"))) {
-      return {"PaddingData"};
+  const std::unordered_set<std::string> &operator()(
+      const framework::InferNoNeedBufferVarsContext &ctx) const final {
+    static const std::unordered_set<std::string> kPaddingData({"PaddingData"});
+    if (!boost::get<bool>(ctx.GetAttr("paddingTrainable"))) {
+      return kPaddingData;
     } else {
-      return {};
+      return Empty();
     }
   }
 };

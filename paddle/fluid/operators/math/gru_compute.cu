@@ -31,29 +31,41 @@ struct GRUUnitFunctor<platform::CUDADeviceContext, T> {
     dim3 grid;
     if (batch_size == 1) {
       if (context.GetComputeCapability() >= 70) {
-        auto ComputeTiledSize = [](int frame_size) {
-          if (frame_size >= 16)
-            return 16;
-          else if (frame_size < 16)
-            return 8;
-        };
+        if (frame_size < 16) {
+          constexpr int tiled_size = 8;
+          int frame_blocks = (frame_size * 2 + tiled_size - 1) / tiled_size;
+          threads = dim3(tiled_size, 1);
+          grid = dim3(frame_blocks, 1);
+          detail::KeFastCollectiveGruGate<
+              T, tiled_size><<<grid, threads, 0, stream>>>(
+              value.gate_value, value.prev_out_value, value.gate_weight,
+              value.reset_output_value, frame_size, active_gate);
 
-        auto tiled_size = ComputeTiledSize(frame_size);
-        int frame_blocks = (frame_size * 2 + tiled_size - 1) / tiled_size;
-        threads = dim3(tiled_size, 1);
-        grid = dim3(frame_blocks, 1);
+          frame_blocks = (frame_size + tiled_size - 1) / tiled_size;
+          grid = dim3(frame_blocks, 1);
+          detail::KeFastCollectiveGruOut<
+              T, tiled_size><<<grid, threads, 0, stream>>>(
+              value.state_weight, value.prev_out_value, value.output_value,
+              value.gate_value, value.reset_output_value, frame_size,
+              active_node, origin_mode);
+        } else {
+          constexpr int tiled_size = 16;
+          int frame_blocks = (frame_size * 2 + tiled_size - 1) / tiled_size;
+          threads = dim3(tiled_size, 1);
+          grid = dim3(frame_blocks, 1);
+          detail::KeFastCollectiveGruGate<
+              T, tiled_size><<<grid, threads, 0, stream>>>(
+              value.gate_value, value.prev_out_value, value.gate_weight,
+              value.reset_output_value, frame_size, active_gate);
 
-        detail::KeFastCollectiveGruGate<T><<<grid, threads, 0, stream>>>(
-            value.gate_value, value.prev_out_value, value.gate_weight,
-            value.reset_output_value, frame_size, active_gate);
-
-        frame_blocks = (frame_size + tiled_size - 1) / tiled_size;
-        grid = dim3(frame_blocks, 1);
-        detail::KeFastCollectiveGruOut<T><<<grid, threads, 0, stream>>>(
-            value.state_weight, value.prev_out_value, value.output_value,
-            value.gate_value, value.reset_output_value, frame_size, active_node,
-            origin_mode);
-
+          frame_blocks = (frame_size + tiled_size - 1) / tiled_size;
+          grid = dim3(frame_blocks, 1);
+          detail::KeFastCollectiveGruOut<
+              T, tiled_size><<<grid, threads, 0, stream>>>(
+              value.state_weight, value.prev_out_value, value.output_value,
+              value.gate_value, value.reset_output_value, frame_size,
+              active_node, origin_mode);
+        }
         return;
       } else {
         int frame_per_block = frame_size <= 1024 ? frame_size : 1024;
