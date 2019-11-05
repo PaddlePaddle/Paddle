@@ -161,7 +161,7 @@ def _print_debug_msg(limit=5, is_test=False):
 
 
 @framework.dygraph_only
-def to_variable(value, block=None, name=None):
+def to_variable(value, name=None):
     """
     The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 
@@ -188,11 +188,14 @@ def to_variable(value, block=None, name=None):
     if isinstance(value, np.ndarray):
         assert framework.in_dygraph_mode(
         ), "to_variable could only be called in dygraph mode"
-        py_var = core.VarBase(name, False, value,
-                              framework._current_expected_place())
+        py_var = core.VarBase(
+            value=value,
+            name=name,
+            persistable=False,
+            place=framework._current_expected_place())
 
         return py_var
-    elif isinstance(value, framework.Variable):
+    elif isinstance(value, (core.VarBase, framework.Variable)):
         return value
     else:
         raise TypeError(

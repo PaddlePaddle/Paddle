@@ -56,27 +56,35 @@ class Layer : public imperative::Layer {
 };
 
 template <typename P>
-static void InitVarBaseFromNumpy(imperative::VarBase *self,
-                                 const py::array &array,
-                                 const std::string &name, bool persistable,
-                                 const P &place, const py::kwargs &kwargs) {
-  if (kwargs) {
-    new (self)
-        imperative::VarBase(py::getattr(kwargs, "name").cast<std::string>());
-    self->SetPersistable(py::getattr(kwargs, "persistable").cast<bool>());
-    auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
-    SetTensorFromPyArray<P>(
-        tensor, py::getattr(kwargs, "value").cast<py::array>(), place);
-    self->SetType(framework::proto::VarType::LOD_TENSOR);
-    self->SetDataType(tensor->type());
-  } else {
-    new (self) imperative::VarBase(name);
-    self->SetPersistable(persistable);
-    auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
-    SetTensorFromPyArray<P>(tensor, array, place);
-    self->SetType(framework::proto::VarType::LOD_TENSOR);
-    self->SetDataType(tensor->type());
-  }
+static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
+                                           const py::kwargs &kwargs) {
+  PADDLE_ENFORCE_EQ(kwargs.contains("value"), true, "Missing arguments: value");
+  new (self) imperative::VarBase(
+      (kwargs.contains("name") && py::isinstance<std::string>(kwargs["name"]))
+          ? kwargs["name"].cast<std::string>()
+          : imperative::UniqueNameGenerator("generated_var_").Generate());
+  self->SetPersistable(kwargs.contains("persistable")
+                           ? kwargs["persistable"].cast<bool>()
+                           : false);
+  auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  SetTensorFromPyArray<P>(tensor, kwargs["value"].cast<py::array>(),
+                          kwargs["place"].cast<P>());
+  self->SetType(framework::proto::VarType::LOD_TENSOR);
+  self->SetDataType(tensor->type());
+}
+
+template <typename P>
+static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
+                                        const py::array &array, const P &place,
+                                        const std::string &name,
+                                        bool persistable) {
+  // 0: value, 1: place, 2: name 3: persistable
+  new (self) imperative::VarBase(name);
+  self->SetPersistable(persistable);
+  auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  SetTensorFromPyArray<P>(tensor, array, place);
+  self->SetType(framework::proto::VarType::LOD_TENSOR);
+  self->SetDataType(tensor->type());
 }
 
 static std::string GetTypeName(const imperative::VarBase &var) {
@@ -87,6 +95,69 @@ static std::string GetTypeName(const imperative::VarBase &var) {
   } else {
     return framework::ToTypeName(var.Var().Type());
   }
+}
+using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
+
+template <typename T>
+static T PyObjectCast(PyObject *obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error &) {
+    PADDLE_THROW("Python object is not type of %s", typeid(T).name());
+  }
+}
+
+// NOTE(zjl): py::handle is a very light wrapper of PyObject *.
+// Unlike py::object, py::handle does not change reference count of PyObject *.
+static std::vector<std::shared_ptr<imperative::VarBase>>
+GetVarBaseListFromPyHandle(const py::handle &handle) {
+  PyObject *py_obj = handle.ptr();  // get underlying PyObject
+  // Python None is not nullptr in C++!
+  if (!py_obj || py_obj == Py_None) {
+    return {};
+  }
+
+  std::vector<std::shared_ptr<imperative::VarBase>> result;
+
+  if (PyList_Check(py_obj)) {  // List of VarBase
+    size_t len = PyList_GET_SIZE(py_obj);
+    result.reserve(len);
+    for (size_t i = 0; i < len; ++i) {
+      PyObject *py_ivar = PyList_GET_ITEM(py_obj, i);
+      PADDLE_ENFORCE_NOT_NULL(py_ivar);
+      result.emplace_back(
+          PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
+    }
+  } else if (PyTuple_Check(py_obj)) {  // Tuple of VarBase
+    size_t len = PyTuple_GET_SIZE(py_obj);
+    result.reserve(len);
+    for (size_t i = 0; i < len; ++i) {
+      PyObject *py_ivar = PyTuple_GET_ITEM(py_obj, i);
+      PADDLE_ENFORCE_NOT_NULL(py_ivar);
+      result.emplace_back(
+          PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
+    }
+  } else {  // VarBase
+    result.emplace_back(
+        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_obj));
+  }
+
+  return result;
+}
+
+static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
+    const PyNameVarBaseMap &map) {
+  imperative::NameVarBaseMap result;
+  for (auto &pair : map) {
+    auto var_vec = GetVarBaseListFromPyHandle(pair.second);
+    if (!var_vec.empty()) {
+      result.emplace(pair.first, std::move(var_vec));
+    }
+  }
+
+  PADDLE_ENFORCE_EQ(PyErr_Occurred() == nullptr, true,
+                    py::str(py::handle(PyErr_Occurred())));
+  return result;
 }
 
 // Bind Methods
@@ -164,15 +235,44 @@ void BindImperative(py::module *m_ptr) {
                tensor->Resize(framework::make_ddim(dims));
              }
            })
-      .def("__init__", InitVarBaseFromNumpy<platform::CPUPlace>,
-           py::arg("value"), py::arg("name"), py::arg("persistable"),
-           py::arg("place"))
-      .def("__init__", InitVarBaseFromNumpy<platform::CUDAPlace>,
-           py::arg("value"), py::arg("name"), py::arg("persistable"),
-           py::arg("place"))
-      .def("__init__", InitVarBaseFromNumpy<platform::CUDAPinnedPlace>,
-           py::arg("value"), py::arg("name"), py::arg("persistable"),
-           py::arg("place"))
+      .def("__init__", InitVarBaseFromNumpyWithArg<platform::CPUPlace>,
+           py::arg("value"), py::arg("place"),
+           py::arg("name") =
+               imperative::UniqueNameGenerator("generated_var_").Generate(),
+           py::arg("persistable") = false)
+      .def("__init__", InitVarBaseFromNumpyWithArg<platform::CUDAPlace>,
+           py::arg("value"), py::arg("place"),
+           py::arg("name") =
+               imperative::UniqueNameGenerator("generated_var_").Generate(),
+           py::arg("persistable") = false)
+      .def("__init__", InitVarBaseFromNumpyWithArg<platform::CUDAPinnedPlace>,
+           py::arg("value"), py::arg("place"),
+           py::arg("name") =
+               imperative::UniqueNameGenerator("generated_var_").Generate(),
+           py::arg("persistable") = false)
+      .def(
+          "__init__",
+          [](imperative::VarBase &self, const py::kwargs &kwargs) {
+            if (kwargs.contains("place")) {
+              if (py::isinstance<platform::CPUPlace>(kwargs["place"])) {
+                InitVarBaseFromNumpyWithKwargs<platform::CPUPlace>(&self,
+                                                                   kwargs);
+              } else if (py::isinstance<platform::CUDAPlace>(kwargs["place"])) {
+                InitVarBaseFromNumpyWithKwargs<platform::CUDAPlace>(&self,
+                                                                    kwargs);
+              } else if (py::isinstance<platform::CUDAPinnedPlace>(
+                             kwargs["place"])) {
+                InitVarBaseFromNumpyWithKwargs<platform::CUDAPinnedPlace>(
+                    &self, kwargs);
+              } else {
+                PADDLE_THROW(
+                    "place arguments should ONLY be one of "
+                    "CUDAPinnedPlace/CUDAPlace/CPUPlace");
+              }
+            } else {
+              VLOG(6) << "No Place Info passed should Add Default here";
+            }
+          })
       .def("numpy",
            [](imperative::VarBase &self) -> py::array {
              const auto &tensor =
@@ -369,27 +469,30 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::reference)
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
-              const imperative::NameVarBaseMap &ins,
-              const imperative::NameVarBaseMap &outs,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs, const platform::CUDAPlace &place,
               bool trace_backward) {
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
              {
                py::gil_scoped_release release;
-               self.TraceOp(type, std::move(ins), std::move(outs),
+               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
                             std::move(attrs), place, trace_backward);
              }
            })
-      .def("trace", [](imperative::Tracer &self, const std::string &type,
-                       const imperative::NameVarBaseMap &ins,
-                       const imperative::NameVarBaseMap &outs,
-                       framework::AttributeMap attrs,
-                       const platform::CPUPlace &place, bool trace_backward) {
-        {
-          py::gil_scoped_release release;
-          self.TraceOp(type, std::move(ins), std::move(outs), std::move(attrs),
-                       place, trace_backward);
-        }
-      });
+      .def("trace",
+           [](imperative::Tracer &self, const std::string &type,
+              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+              framework::AttributeMap attrs, const platform::CPUPlace &place,
+              bool trace_backward) {
+             auto ins_map = ConvertToNameVarBaseMap(ins);
+             auto outs_map = ConvertToNameVarBaseMap(outs);
+             {
+               py::gil_scoped_release release;
+               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
+                            std::move(attrs), place, trace_backward);
+             }
+           });
 
   // define parallel context
   py::class_<imperative::ParallelStrategy> parallel_strategy(

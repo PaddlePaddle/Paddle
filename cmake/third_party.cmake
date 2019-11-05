@@ -93,10 +93,12 @@ endif()
 if(WITH_MKLML)
     include(external/mklml)     # download, install mklml package
     list(APPEND third_party_deps mklml)
-elseif (NOT CBLAS_FOUND OR WIN32)
-    list(APPEND third_party_deps extern_openblas)
 endif()
 include(external/openblas)  # find first, then download, build, install openblas
+if (NOT CBLAS_FOUND OR WIN32)
+    list(APPEND third_party_deps extern_openblas)
+endif()
+
 
 if(WITH_MKLDNN)
     include(external/mkldnn)    # download, build, install mkldnn
