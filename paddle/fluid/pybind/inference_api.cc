@@ -438,11 +438,9 @@ void BindPaddlePassBuilder(py::module *m) {
       .def("append_pass", &PaddlePassBuilder::AppendPass)
       .def("insert_pass", &PaddlePassBuilder::InsertPass)
       .def("delete_pass",
-           [](PaddlePassBuilder &self, size_t idx) { self.DeletePass(idx); })
-      .def("delete_pass",
-           [](PaddlePassBuilder &self, const std::string &pass_type) {
-             self.DeletePass(pass_type);
-           })
+           py::overload_cast<size_t>(&PaddlePassBuilder::DeletePass))
+      .def("delete_pass", py::overload_cast<const std::string &>(
+                              &PaddlePassBuilder::DeletePass))
       .def("append_analysis_pass", &PaddlePassBuilder::AppendAnalysisPass)
       .def("turn_on_debug", &PaddlePassBuilder::TurnOnDebug)
       .def("debug_string", &PaddlePassBuilder::DebugString)
