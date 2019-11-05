@@ -140,7 +140,8 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
 template <typename T, typename P>
 void SetTensorFromPyArrayT(
     framework::Tensor *self,
-    py::array_t<T, py::array::c_style | py::array::forcecast> array, P place) {
+    const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
+    const P &place) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
@@ -171,8 +172,9 @@ void SetTensorFromPyArrayT(
 }
 
 template <typename P>
-void SetTensorFromPyArray(framework::Tensor *self, pybind11::array array,
-                          P place) {
+void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
+                          const P &place) {
+  auto array = obj.cast<py::array>();
   if (py::isinstance<py::array_t<float>>(array)) {
     SetTensorFromPyArrayT<float, P>(self, array, place);
   } else if (py::isinstance<py::array_t<int>>(array)) {
@@ -200,42 +202,6 @@ void SetTensorFromPyArray(framework::Tensor *self, pybind11::array array,
         "int8, int32, int64 and uint8, uint16, but got %s!",
         array.dtype());
   }
-}
-
-template <typename T>
-void PyCPUTensorSetFromArray(
-    framework::Tensor *self,
-    pybind11::array_t<T, pybind11::array::c_style | pybind11::array::forcecast>
-        array,
-    paddle::platform::CPUPlace place) {
-  std::vector<int64_t> dims;
-  dims.reserve(array.ndim());
-  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
-  }
-
-  self->Resize(framework::make_ddim(dims));
-  auto *dst = self->mutable_data<T>(place);
-  std::memcpy(dst, array.data(), sizeof(T) * array.size());
-}
-
-template <>
-// This following specialization maps uint16_t in the parameter type to
-// platform::float16.
-inline void PyCPUTensorSetFromArray(
-    framework::Tensor *self,
-    pybind11::array_t<uint16_t,
-                      pybind11::array::c_style | pybind11::array::forcecast>
-        array,
-    paddle::platform::CPUPlace place) {
-  std::vector<int64_t> dims;
-  dims.reserve(array.ndim());
-  for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
-    dims.push_back(static_cast<int>(array.shape()[i]));
-  }
-  self->Resize(framework::make_ddim(dims));
-  auto *dst = self->mutable_data<platform::float16>(place);
-  std::memcpy(dst, array.data(), sizeof(uint16_t) * array.size());
 }
 
 template <typename T, size_t D>

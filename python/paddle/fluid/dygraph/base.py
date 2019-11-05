@@ -128,12 +128,14 @@ def guard(place=None):
     startup = framework.Program()
     tracer = Tracer()
     VarBase = core.VarBase
+    core._switch_tracer(tracer)
 
     if place is None:
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
+    tracer._expected_place = place
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
