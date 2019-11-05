@@ -118,7 +118,7 @@ cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
 device_context)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute glog)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
-cc_library(no_need_buffer_vars_inference SRCS no_need_buffer_vars_inference.cc DEPS attribute)
+cc_library(no_need_buffer_vars_inference SRCS no_need_buffer_vars_inference.cc DEPS attribute device_context)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto no_need_buffer_vars_inference)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
 
