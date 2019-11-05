@@ -88,6 +88,7 @@ struct AlphaFunctor<T, prelu::ChannelMode> {
                                  bool use_spatial_size, size_t idx) const {
     T ret = alpha[blockIdx.x % channel];
     if (use_spatial_size) ret = alpha[spatial_size / plane_size];
+    return ret
   }
 };
 
