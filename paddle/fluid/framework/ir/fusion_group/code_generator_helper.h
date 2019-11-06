@@ -31,16 +31,6 @@ static std::vector<std::string> replaced_element_in_order = {"@", "$"};
 static std::vector<std::string> kernel_template = {"$name", "$parameter",
                                                    "$compute"};
 
-static std::unordered_map<std::string, std::string> support_table = {
-    {"elementwise_add", "var@ + var$"},
-    {"elementwise_sub", "var@ - var$"},
-    {"elementwise_mul", "var@ * var$"},
-    {"elementwise_div", "var@ / var$"},
-    {"elementwise_min", "real_min(var@, var$)"},
-    {"elementwise_max", "real_max(var@, var$)"},
-    {"relu", "real_max(var@, 0)"},
-    {"sigmoid", "1.0 / (1.0 + real_exp(-var@))"}};
-
 // Paddle elementwise op consist the broacast op and elementwise op
 // op computation is composed by single or many operation
 // here we only generate the simple expression code so we
@@ -52,7 +42,7 @@ class OperationExpression {
   std::string GetExpression();
   std::vector<int> GetInputIds() { return input_ids_; }
   int GetOutputId() { return output_id_; }
-  bool SupportState();
+  bool IsSupport();
   // in oreder to make offset more flexible we add stride and basic offset
   std::string GetRHSTemplate();
   std::string GetLHSTemplate();

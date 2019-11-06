@@ -51,6 +51,17 @@ class OperationMap {
 
   std::unordered_set<std::string> Find(int type, int num_operands = -1);
 
+  bool Has(std::string op_type) {
+    return operations_.find(op_type) != operations_.end();
+  }
+
+  Operation Get(std::string op_type) {
+    auto iter = operations_.find(op_type);
+    PADDLE_ENFORCE_NE(iter, operations_.end(),
+                      "Operation %s is not supported yet.", op_type);
+    return iter->second;
+  }
+
  private:
   void Insert(int type, int num_operands, std::string op_type, std::string expr,
               std::vector<std::string> grad_exprs);

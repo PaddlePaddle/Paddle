@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
+#include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device_code.h"
@@ -27,6 +28,8 @@ limitations under the License. */
 namespace fusion_group = paddle::framework::ir::fusion_group;
 
 TEST(code_generator, cuda) {
+  fusion_group::OperationMap::Init();
+
   std::vector<int> mul_input{1, 2};
   std::vector<int> add_input{3, 4};
   std::vector<int> sub_input{5, 6};

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/ir/fusion_group/operation.h"
 
 namespace paddle {
 namespace framework {
@@ -33,7 +34,7 @@ OperationExpression::OperationExpression(std::vector<int> input_ids,
 std::string OperationExpression::GetRHSTemplate() {
   std::stringstream ret;
   std::string rhs_end = ";";
-  auto rhs = support_table[op_];
+  auto rhs = OperationMap::Instance().Get(op_).expr;
   for (size_t i = 0; i < input_ids_.size(); i++) {
     auto replaced_str = replaced_element_in_order[i];
     auto pos = rhs.find(replaced_str);
@@ -50,15 +51,15 @@ std::string OperationExpression::GetLHSTemplate() {
   return ret.str();
 }
 
-bool OperationExpression::SupportState() {
-  return (support_table.find(op_) == support_table.end());
+bool OperationExpression::IsSupport() {
+  return OperationMap::Instance().Has(op_);
 }
 
 // we Traverse the graph and get the group , all input id and output id is
 // unique for the node which belong the group
 std::string OperationExpression::GetExpression() {
   std::stringstream ret;
-  if (!SupportState()) {
+  if (!IsSupport()) {
     ret << GetLHSTemplate() << GetRHSTemplate();
   }
 
