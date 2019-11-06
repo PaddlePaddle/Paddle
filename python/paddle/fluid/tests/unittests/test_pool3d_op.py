@@ -1086,7 +1086,7 @@ class TestPool3dAPI_Error(OpTest):
             dtype="float32")
         ksize = [3, 3, 3]
 
-        # cudnn value error
+        # cudnn type error
         def run_1():
             out_1 = fluid.layers.pool3d(
                 input=input_NDHWC,
@@ -1096,7 +1096,7 @@ class TestPool3dAPI_Error(OpTest):
                 use_cudnn=[0],
                 data_format="NDHWC")
 
-        self.assertRaises(ValueError, run_1)
+        self.assertRaises(TypeError, run_1)
 
         # data_format value error
         def run_2():
