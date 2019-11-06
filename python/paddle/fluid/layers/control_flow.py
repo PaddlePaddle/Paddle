@@ -35,35 +35,58 @@ __all__ = [
 ]
 
 
-def split_selected_var(input, output, mask):
+def select_output(input, outputs, mask):
     """
+    
     TODO(huihuangzheng): this API is not tested in control flow APIs yet. I
     will add doc and probably change this API after I tested it in control
     flow APIs
     """
-    helper = LayerHelper('split_selected_var', **locals())
+    helper = LayerHelper('select_output', **locals())
     helper.append_op(
-        type='split_selected_var',
+        type='select_output',
         inputs={'X': input,
                 'Mask': mask},
-        outputs={'Out': output})
-    return output
+        outputs={'Out': outputs})
+    return outputs
 
 
-def merge_selected_var(inputs, mask):
+def select_input(inputs, mask):
     """
-    TODO(huihuangzheng): this API is not tested in control flow APIs yet. I
-    will add doc and probably change this API after I tested it in control
-    flow APIs
+    **select_input**
+    
+    This API takes in multiple inputs and uses an integer mask to select one
+    input to output. It is used in control flow.
+
+    Args:
+        inputs(tuple|list): The input variables
+        mask(Variable): A tensor containing 1 integer number selecting which
+            input to output
+
+    Returns:
+        Variable: The selected input variable
+
+    Examples:
+        .. code-block:: python
+
+          import paddle.fluid as fluid
+          x = fluid.layers.data(name='x', shape=[1])
+          x.persistable = True
+
+          y = fluid.layers.data(name='y', shape=[1])
+          y.persistable = True
+
+          out_true, out_false = fluid.layers.split_lod_tensor(
+                input=x, mask=y, level=level)
     """
-    helper = LayerHelper('merge_selected_var', **locals())
+    helper = LayerHelper('select_input', **locals())
     if isinstance(inputs, list) or isinstance(inputs, tuple):
         input_dtype = inputs[0].dtype
     else:
         input_dtype = inputs.dtype
     out = helper.create_variable(dtype=input_dtype)
     helper.append_op(
-        type='merge_selected_var',
+        type='select_input',
         inputs={'X': inputs,
                 'Mask': mask},
         outputs={'Out': out})
