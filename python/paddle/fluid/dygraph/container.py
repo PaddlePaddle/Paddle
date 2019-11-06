@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from ..framework import Parameter
 from .layers import Layer
 
-__all__ = ['Sequential']
+__all__ = ['Sequential', 'ParameterList']
 
 
 class Sequential(Layer):
@@ -83,3 +84,89 @@ class Sequential(Layer):
         for layer in self._sub_layers.values():
             input = layer(input)
         return input
+
+
+class ParameterList(Layer):
+    """ParameterList Container.
+
+    This container acts like a Python list, but parameters it contains will be properly added.
+
+    Parameters:
+        name_scope(str): The name of this class
+        parameters (iterable, optional): Iterable Parameters to be added
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+
+            class MyLayer(fluid.Layer):
+                def __init__(self, name_scope, num_stacked_param):
+                    super(MyLayer, self).__init__(name_scope)
+                    # create ParameterList with iterable Parameters
+                    self.params = fluid.dygraph.ParameterList(
+                        'params',
+                        [fluid.layers.create_parameter(
+                            shape=[2, 2], dtype='float32')] * num_stacked_param)
+
+                def forward(self, x):
+                    for i, p in enumerate(self.params):
+                        tmp = self._helper.create_variable_for_type_inference('float32')
+                        self._helper.append_op(
+                            type="mul",
+                            inputs={"X": x,
+                                    "Y": p},
+                            outputs={"Out": tmp},
+                            attrs={"x_num_col_dims": 1,
+                                   "y_num_col_dims": 1})
+                        x = tmp
+                    return x
+
+            data_np = np.random.uniform(-1, 1, [5, 2]).astype('float32')
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(data_np)
+                num_stacked_param = 4
+                model = MyLayer('cust_layer', num_stacked_param)
+                print(len(model.params))  # 4
+                res = model(x)
+                print(res.shape)  # [5, 2]
+
+                replaced_param = fluid.layers.create_parameter(shape=[2, 3], dtype='float32')
+                model.params[num_stacked_param - 1] = replaced_param  # replace last param
+                res = model(x)
+                print(res.shape)  # [5, 3]
+                model.params.append(fluid.layers.create_parameter(shape=[3, 4], dtype='float32'))  # append param
+                print(len(model.params))  # 5
+                res = model(x)
+                print(res.shape)  # [5, 4]
+    """
+
+    def __init__(self, name_scope, parameters=None):
+        super(ParameterList, self).__init__(name_scope)
+        for idx, param in enumerate(parameters):
+            assert isinstance(param, Parameter)
+            self.add_parameter(str(idx), param)
+
+    def __getitem__(self, idx):
+        return self._parameters[str(idx)]
+
+    def __setitem__(self, idx, param):
+        assert isinstance(param, Parameter)
+        setattr(self, str(idx), param)
+
+    def __len__(self):
+        return len(self._parameters)
+
+    def __iter__(self):
+        return iter(self._parameters.values())
+
+    def append(self, parameter):
+        """Appends a given parameter at the end of the list.
+
+        Parameters:
+            parameter (Parameter): parameter to append
+        """
+        idx = len(self._parameters)
+        self.add_parameter(str(idx), parameter)
+        return self
