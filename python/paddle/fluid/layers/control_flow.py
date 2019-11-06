@@ -36,35 +36,54 @@ __all__ = [
 ]
 
 
-def split_selected_var(input, output, mask):
+def select_output(input, outputs, mask):
     """
-    TODO(huihuangzheng): this API is not tested in control flow APIs yet. I
-    will add doc and probably change this API after I tested it in control
-    flow APIs
+    **select_output**    
+    This API takes in one input and multiple outputs and an integer mask. It
+    selects the output specified by the mask and copy the input to selected
+    output. It is useful in control flow.
+
+    Args:
+        input(Variable): The input variable
+        outputs(tuple|list): The output variables
+        mask(Variable): A tensor containing 1 integer number selecting which
+            output to be copied with input
+
+    Returns:
+        Variable: The outputs variables
     """
-    helper = LayerHelper('split_selected_var', **locals())
+    helper = LayerHelper('select_output', **locals())
     helper.append_op(
-        type='split_selected_var',
+        type='select_output',
         inputs={'X': input,
                 'Mask': mask},
-        outputs={'Out': output})
-    return output
+        outputs={'Out': outputs})
+    return outputs
 
 
-def merge_selected_var(inputs, mask):
+def select_input(inputs, mask):
     """
-    TODO(huihuangzheng): this API is not tested in control flow APIs yet. I
-    will add doc and probably change this API after I tested it in control
-    flow APIs
+    **select_input**
+    
+    This API takes in multiple inputs and uses an integer mask to select one
+    input to output. It is useful in control flow.
+
+    Args:
+        inputs(tuple|list): The input variables
+        mask(Variable): A tensor containing 1 integer number selecting which
+            input to output
+
+    Returns:
+        Variable: The selected input variable
     """
-    helper = LayerHelper('merge_selected_var', **locals())
+    helper = LayerHelper('select_input', **locals())
     if isinstance(inputs, list) or isinstance(inputs, tuple):
         input_dtype = inputs[0].dtype
     else:
         input_dtype = inputs.dtype
     out = helper.create_variable(dtype=input_dtype)
     helper.append_op(
-        type='merge_selected_var',
+        type='select_input',
         inputs={'X': inputs,
                 'Mask': mask},
         outputs={'Out': out})

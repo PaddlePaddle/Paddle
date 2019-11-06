@@ -22,8 +22,7 @@ import paddle.fluid.layers as layers
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.layers.control_flow import merge_selected_var
-from paddle.fluid.layers.control_flow import split_selected_var
+from paddle.fluid.layers.control_flow import select_input, select_output
 
 
 class TestSplitMergeSelectedVarOps(unittest.TestCase):
@@ -41,8 +40,8 @@ class TestSplitMergeSelectedVarOps(unittest.TestCase):
                     dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR)
                 outputs.append(out)
 
-            split_selected_var(x, outputs, mask)
-            y = merge_selected_var(outputs, mask)
+            select_output(x, outputs, mask)
+            y = select_input(outputs, mask)
             mean = layers.mean(y)
             append_backward(mean)
 
