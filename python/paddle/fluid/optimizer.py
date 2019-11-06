@@ -1532,10 +1532,12 @@ class AdamOptimizer(Optimizer):
         beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                               param_and_grad[0])
         if framework.in_dygraph_mode():
+            lr = self._create_param_lr(param_and_grad)
+            lr = lr._ivar if isinstance(lr, Variable) else lr
             inputs = {
                 "Param": [param_and_grad[0]._ivar],
                 "Grad": [param_and_grad[1]],
-                "LearningRate": [self._create_param_lr(param_and_grad)._ivar],
+                "LearningRate": [lr],
                 "Moment1": [moment1._ivar],
                 "Moment2": [moment2._ivar],
                 "Beta1Pow": [beta1_pow_acc._ivar],

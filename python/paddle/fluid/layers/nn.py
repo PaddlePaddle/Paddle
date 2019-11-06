@@ -2561,6 +2561,11 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
                              fetch_list=[result[0]])
             print(output)
     """
+    if in_dygraph_mode():
+        attrs = {"axis": axis, "use_cudnn": use_cudnn}
+        outs = core.ops.softmax({"X": [input]}, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper('softmax', **locals())
     if not isinstance(input, Variable):
         raise TypeError(
@@ -8516,11 +8521,8 @@ def softmax_with_cross_entropy(logits,
             'numeric_stable_mode': numeric_stable_mode,
             'axis': axis
         }
-        outs = core.ops.softmax_with_cross_entropy({
-            'Logits': [logits],
-            'Label': [label]
-        }, attrs)
-
+        inputs = {'Logits': [logits], 'Label': [label]}
+        outs = core.ops.softmax_with_cross_entropy(inputs, attrs)
         if return_softmax:
             return outs['Loss'][0], outs['Softmax'][0]
         else:
@@ -8831,6 +8833,13 @@ def one_hot(input, depth, allow_out_of_range=False):
             label = fluid.data(name="label", shape=[4, 1], dtype="int64")
             one_hot_label = fluid.layers.one_hot(input=label, depth=4)
     """
+    if in_dygraph_mode():
+        inputs = {'X': [input]}
+        attrs = {'depth': depth}
+        outs = core.ops.one_hot(inputs, attrs)
+        outs['Out'][0].stop_gradient = True
+        return outs['Out'][0]
+
     helper = LayerHelper("one_hot", **locals())
 
     one_hot_out = helper.create_variable_for_type_inference(dtype='float32')
@@ -9711,8 +9720,20 @@ def label_smooth(label,
             smooth_label = layers.label_smooth(
                 label=one_hot_label, epsilon=0.1, dtype="float32")
     """
+
     if epsilon > 1. or epsilon < 0.:
         raise ValueError("The value of epsilon must be between 0 and 1.")
+    if in_dygraph_mode():
+        inputs = {
+            "X": [label],
+            "PriorDist": [prior_dist]
+        } if prior_dist else {
+            "X": [label]
+        }
+        attrs = {"epsilon": float(epsilon)}
+        outs = core.ops.label_smooth(inputs, attrs)
+        return outs['Out'][0]
+
     helper = LayerHelper("label_smooth", **locals())
     label.stop_gradient = True
     smooth_label = helper.create_variable_for_type_inference(dtype)
@@ -14156,6 +14177,15 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
     """
+    if in_dygraph_mode():
+        attrs = {
+            'scale': float(scale),
+            'bias': float(bias),
+            'bias_after_scale': bias_after_scale
+        }
+        outs = core.ops.scale({"X": [x]}, attrs)
+        return outs['Out'][0]
+        #TODO(cql): handle name and act
 
     helper = LayerHelper('scale', **locals())
     if name is None:
@@ -14501,6 +14531,9 @@ Examples:
             'axis': axis,
             'use_mkldnn': False  # TODO(cql): change this 
         }
+        if not isinstance(y, core.VarBase):
+            return scale(x, y)
+
         outs = core.ops.elementwise_mul({'X': [x], 'Y': [y]}, attrs)
         return outs['Out'][0]
         # TODO(cql): activation
@@ -14617,6 +14650,13 @@ Examples:
 
         print(z_value)#[[[[0., 0., 0., 0., 0.] .... [0., 0., 0., 0., 0.]]]]
     """
+    if in_dygraph_mode():
+        attrs = {
+            'axis': axis,
+            'use_mkldnn': False  # TODO(cql): change this 
+        }
+        outs = core.ops.elementwise_min({'X': [x], 'Y': [y]}, attrs)
+        return outs['Out'][0]
 
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
@@ -15209,6 +15249,15 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
             
 
     """
+    if in_dygraph_mode():
+        inputs = {"X": [x], "Y": [y]}
+        attrs = {
+            "x_num_col_dims": x_num_col_dims,
+            "y_num_col_dims": y_num_col_dims
+        }
+        outs = core.ops.mul(inputs, attrs)
+        return outs['Out'][0]
+        # TODO(cql): handle name
 
     helper = LayerHelper("mul", **locals())
 

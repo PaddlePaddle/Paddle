@@ -1735,11 +1735,34 @@ class LayerNorm(layers.Layer):
 
     def forward(self, input):
         inputs = dict()
+        inputs['X'] = [input]
+        if self._scale:
+            inputs['Scale'] = [self._scale_w._ivar]
+        if self._shift:
+            inputs['Bias'] = [self._bias_w._ivar]
+        attrs = {
+            "epsilon": self._epsilon,
+            "begin_norm_axis": self._begin_norm_axis
+        }
+        outs = core.ops.layer_norm(inputs, attrs)
+        layer_norm_out = outs['Y'][0]
+        pre_act = layer_norm_out
+
+        if self._act is None:
+            return pre_act
+        else:
+            op = getattr(core.ops, self._act)
+            outs = op({'X': [pre_act]})
+            return outs['Out'][0]
+
+        #original
+        inputs = dict()
         inputs['X'] = input
         if self._scale:
             inputs['Scale'] = self._scale_w
         if self._shift:
             inputs['Bias'] = self._bias_w
+
         # create output
         mean_out = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
