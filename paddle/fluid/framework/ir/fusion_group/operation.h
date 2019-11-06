@@ -26,11 +26,29 @@ namespace ir {
 namespace fusion_group {
 
 struct Operation {
+  Operation() {}
+  Operation(int t, int n, std::string o, std::vector<std::string> e)
+      : type(t), num_operands(n), op_type(o), exprs(e) {}
+
+  bool IsGradOp() {
+    std::string suffix = "_grad";
+    return op_type.rfind(suffix) == (op_type.length() - suffix.length());
+  }
+
+  bool IsValid() {
+    if (!IsGradOp() && exprs.size() != 1U) {
+      return false;
+    }
+    if (IsGradOp() && exprs.size() != static_cast<size_t>(num_operands)) {
+      return false;
+    }
+    return true;
+  }
+
   int type;
   int num_operands;
   std::string op_type;
-  std::string expr;
-  std::vector<std::string> grad_exprs;
+  std::vector<std::string> exprs;
 };
 
 class OperationMap {
@@ -55,7 +73,7 @@ class OperationMap {
     return operations_.find(op_type) != operations_.end();
   }
 
-  Operation Get(std::string op_type) {
+  Operation& Get(std::string op_type) {
     auto iter = operations_.find(op_type);
     PADDLE_ENFORCE_NE(iter, operations_.end(),
                       "Operation %s is not supported yet.", op_type);

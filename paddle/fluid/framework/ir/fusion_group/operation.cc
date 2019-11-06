@@ -40,13 +40,17 @@ std::unordered_set<std::string> OperationMap::Find(int type, int num_operands) {
 void OperationMap::Insert(int type, int num_operands, std::string op_type,
                           std::string expr,
                           std::vector<std::string> grad_exprs) {
-  Operation t;
-  t.type = type;
-  t.num_operands = num_operands;
-  t.op_type = op_type;
-  t.expr = expr;
-  t.grad_exprs = grad_exprs;
-  operations_[op_type] = t;
+  Operation op(type, num_operands, op_type, {expr});
+  PADDLE_ENFORCE_EQ(op.IsValid(), true, "Operation %s is invalid.", op_type);
+  operations_[op_type] = op;
+
+  if (grad_exprs.size() > 0U) {
+    std::string grad_op_type = op_type + "_grad";
+    Operation grad_op(type, num_operands, grad_op_type, grad_exprs);
+    PADDLE_ENFORCE_EQ(grad_op.IsValid(), true, "Operation %s is invalid.",
+                      grad_op_type);
+    operations_[grad_op_type] = grad_op;
+  }
 }
 
 void OperationMap::InsertUnaryElementwiseOperations() {

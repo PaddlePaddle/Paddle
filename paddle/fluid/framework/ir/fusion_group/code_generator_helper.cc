@@ -24,17 +24,10 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-OperationExpression::OperationExpression(std::vector<int> input_ids,
-                                         int output_id, std::string op) {
-  input_ids_ = input_ids;
-  output_id_ = output_id;
-  op_ = op;
-}
-
-std::string OperationExpression::GetRHSTemplate() {
+std::string OperationExpression::GetRHSTemplate(size_t i) {
   std::stringstream ret;
   std::string rhs_end = ";";
-  auto rhs = OperationMap::Instance().Get(op_).expr;
+  auto rhs = OperationMap::Instance().Get(op_).exprs[i];
   for (size_t i = 0; i < input_ids_.size(); i++) {
     auto replaced_str = replaced_element_in_order[i];
     auto pos = rhs.find(replaced_str);
@@ -45,9 +38,9 @@ std::string OperationExpression::GetRHSTemplate() {
   return ret.str();
 }
 
-std::string OperationExpression::GetLHSTemplate() {
+std::string OperationExpression::GetLHSTemplate(size_t i) {
   std::stringstream ret;
-  ret << "var" << output_id_ << R"([idx] = )";
+  ret << "var" << output_ids_[i] << R"([idx] = )";
   return ret.str();
 }
 
@@ -59,76 +52,10 @@ bool OperationExpression::IsSupport() {
 // unique for the node which belong the group
 std::string OperationExpression::GetExpression() {
   std::stringstream ret;
-  if (!IsSupport()) {
+  if (IsSupport()) {
     ret << GetLHSTemplate() << GetRHSTemplate();
   }
 
-  return ret.str();
-}
-
-std::string EmitUniqueName(std::vector<OperationExpression> expression) {
-  std::stringstream ret;
-  ret << "fused_kernel";
-  for (size_t i = 0; i < expression.size(); i++) {
-    ret << expression[i].GetOutputId();
-  }
-  return ret.str();
-}
-
-// we get the parameter list code for the expression information
-std::string EmitDeclarationCode(std::vector<OperationExpression> expression,
-                                std::string type) {
-  std::stringstream ret;
-
-  std::set<int> input_ids;
-  std::set<int> output_ids;
-
-  for (size_t i = 0; i < expression.size(); i++) {
-    std::vector<int> tmp_input = expression[i].GetInputIds();
-    for (size_t j = 0; j < tmp_input.size(); j++) {
-      int id = tmp_input[j];
-      input_ids.insert(id);
-    }
-    int tmp_output = expression[i].GetOutputId();
-    output_ids.insert(tmp_output);
-  }
-
-  std::set<int>::iterator it = input_ids.begin();
-  while (it != input_ids.end()) {
-    int var_index = *it;
-    if (output_ids.find(var_index) != output_ids.end()) {
-      input_ids.erase(it++);
-    } else {
-      it++;
-    }
-  }
-
-  ret << "int N, ";
-  for (it = input_ids.begin(); it != input_ids.end(); it++) {
-    int var_index = *it;
-    ret << type << R"(* var)" << var_index;
-    ret << ", ";
-  }
-
-  size_t count_index = 0;
-  for (it = output_ids.begin(); it != output_ids.end(); it++) {
-    int var_index = *it;
-    ret << type << R"(* var)" << var_index;
-    if (count_index != output_ids.size() - 1) {
-      ret << ", ";
-    }
-    count_index++;
-  }
-
-  return ret.str();
-}
-
-std::string EmitComputeCode(std::vector<OperationExpression> expression) {
-  // get the right experssion code using suffix expression
-  std::stringstream ret;
-  for (size_t i = 0; i < expression.size(); i++) {
-    ret << expression[i].GetExpression();
-  }
   return ret.str();
 }
 
