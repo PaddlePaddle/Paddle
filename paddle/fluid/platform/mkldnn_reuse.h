@@ -1036,17 +1036,19 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
           dev_ctx_.GetBlob(key_conv_pd));
       if (conv_pd_ == nullptr) {
         mkldnn::memory::dims stride_dims = strides;
-        mkldnn::memory::dims padding_dims = paddings;
+
+        auto mkldnn_paddings = ToMkldnnPadding(paddings);
 
         auto conv_desc =
-            bias ? typename forward_t::desc(
-                       fwd_prop_kind, convolutional_algorithm<forward_t>::T,
-                       src, weights, *bias, dst, stride_dims, padding_dims,
-                       padding_dims, mkldnn::padding_kind::zero)
-                 : typename forward_t::desc(
-                       fwd_prop_kind, convolutional_algorithm<forward_t>::T,
-                       src, weights, dst, stride_dims, padding_dims,
-                       padding_dims, mkldnn::padding_kind::zero);
+            bias
+                ? typename forward_t::desc(
+                      fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
+                      weights, *bias, dst, stride_dims, mkldnn_paddings[0],
+                      mkldnn_paddings[1], mkldnn::padding_kind::zero)
+                : typename forward_t::desc(
+                      fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
+                      weights, dst, stride_dims, mkldnn_paddings[0],
+                      mkldnn_paddings[1], mkldnn::padding_kind::zero);
 
         mkldnn::primitive_attr conv_attr =
             CreatePostOps(fuse_activation, fuse_alpha, fuse_beta,
