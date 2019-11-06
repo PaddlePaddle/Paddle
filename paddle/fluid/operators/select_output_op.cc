@@ -74,11 +74,12 @@ specify which output branch should copy the input.
 class SelectOutputInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"), "SelectOutputOp must have input X.");
-    PADDLE_ENFORCE(context->HasInput("Mask"),
-                   "SelectOutputOp must have input Mask.");
-    PADDLE_ENFORCE(context->HasOutputs("Out"),
-                   "SelectOutputOp must have output Out.");
+    PADDLE_ENFORCE_EQ(context->HasInput("X"), true,
+                      "SelectOutputOp must have input X.");
+    PADDLE_ENFORCE_EQ(context->HasInput("Mask"), true,
+                      "SelectOutputOp must have input Mask.");
+    PADDLE_ENFORCE_EQ(context->HasOutputs("Out"), true,
+                      "SelectOutputOp must have output Out.");
   }
 };
 
