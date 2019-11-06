@@ -585,6 +585,7 @@ class Compressor(object):
         ]:
             return None
         start = context.epoch_id
+        exception_catched = None
         for epoch in range(start, self.epoch):
             context.epoch_id = epoch
             try:
@@ -596,9 +597,12 @@ class Compressor(object):
                 self._save_checkpoint(context)
                 for strategy in self.strategies:
                     strategy.on_epoch_end(context)
-            except Exception:
+            except Exception as e:
+                exception_catched = e
                 _logger.error(traceback.print_exc())
                 continue
         for strategy in self.strategies:
             strategy.on_compression_end(context)
+        if exception_catched is not None:
+            raise RuntimeError(exception_catched)
         return context.eval_graph
