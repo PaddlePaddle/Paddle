@@ -36,7 +36,7 @@ if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
   APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 38231817`
   if [ "${APPROVALS}" == "FALSE" ]; then
     failed_num=`expr $failed_num + 1`
-    echo_line="You must have Dianhai approval for change 20+ files or add than 1000+ lines of content\n"
+    echo_line="You must have Dianhai approval for change 20+ files or add than 1000+ lines of content.\n"
     echo_list=(${echo_list[@]}$failed_num "." $echo_line)
   fi
 fi    
@@ -46,7 +46,7 @@ if [ "$api_spec_diff" != "" ]; then
     APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 46782768 47554610 2870059` 
     if [ "${APPROVALS}" == "FALSE" ]; then
         failed_num=`expr $failed_num + 1`
-        echo_line="You must have one RD (XiaoguangHu01 or lanxianghit or saxon-zh)approval for the api change for the management reason of API interface."
+        echo_line="You must have one RD (XiaoguangHu01 or lanxianghit or saxon-zh)approval for the api change for the management reason of API interface.\n"
         echo_list=(${echo_list[@]}$failed_num "." $echo_line)
     fi
 fi
@@ -56,7 +56,7 @@ if [ "$api_doc_spec_diff" != "" ]; then
     APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 46782768 7534971 14105589 12605721 3064195 328693 47554610 39645414 11195205 20274488 45024560`
     if [ "${APPROVALS}" == "FALSE" ]; then
         failed_num=`expr $failed_num + 1`
-        echo_line="You must have two RD (XiaoguangHu01 or wanghaoshuang or guoshengCS or heavengate or kuke or Superjomn or lanxianghit or cyj1986 or hutuxian or frankwhzhang or nepeplwu) approval for the api change for the management reason of API document."
+        echo_line="You must have two RD (XiaoguangHu01 or wanghaoshuang or guoshengCS or heavengate or kuke or Superjomn or lanxianghit or cyj1986 or hutuxian or frankwhzhang or nepeplwu) approval for the api change for the management reason of API document.\n"
         echo_list=(${echo_list[@]}$failed_num "." $echo_line)
     fi
 fi
