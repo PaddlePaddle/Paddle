@@ -204,7 +204,9 @@ class Context(object):
                     results.append(result)
                     if batch_id % 20 == 0:
                         _logger.info("batch-{}; {}={}".format(
-                            batch_id, eval_graph.out_nodes.keys(), result))
+                            batch_id,
+                            eval_graph.out_nodes.keys(
+                            ), [round(r, 6) for r in result]))
                     batch_id += 1
             except EOFException:
                 reader.reset()
@@ -214,13 +216,15 @@ class Context(object):
                 result = [np.mean(r) for r in result]
                 results.append(result)
                 if batch_id % 20 == 0:
-                    _logger.info("batch-{}; {}={}".format(
-                        batch_id, eval_graph.out_nodes.keys(), result))
+                    _logger.info(
+                        "batch-{}; {}={}".format(batch_id,
+                                                 eval_graph.out_nodes.keys(),
+                                                 [round(r, 6) for r in result]))
                 batch_id += 1
 
         result = np.mean(np.array(results), axis=0)
         _logger.info("Final eval result: {}={}".format(
-            eval_graph.out_nodes.keys(), result))
+            eval_graph.out_nodes.keys(), [round(r, 6) for r in result]))
         if not isinstance(result, Iterable):
             result = [result]
         _logger.info('Finish evaluation')
@@ -503,7 +507,7 @@ class Compressor(object):
                         _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
                             context.epoch_id, context.batch_id,
                             context.optimize_graph.out_nodes.keys(
-                            ), [round(r, 3) for r in results]))
+                            ), [round(r, 6) for r in results]))
                     for strategy in self.strategies:
                         strategy.on_batch_end(context)
                     context.batch_id += 1
@@ -523,7 +527,7 @@ class Compressor(object):
                     _logger.info("epoch:{}; batch_id:{}; {} = {}".format(
                         context.epoch_id, context.batch_id,
                         context.optimize_graph.out_nodes.keys(
-                        ), [round(r, 3) for r in results]))
+                        ), [round(r, 6) for r in results]))
                 for strategy in self.strategies:
                     strategy.on_batch_end(context)
                 context.batch_id += 1
