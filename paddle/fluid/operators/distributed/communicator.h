@@ -280,7 +280,7 @@ class Communicator {
 };
 
 using SparseIdsMap =
-    std::unordered_map<std::string, std::vector<std::unordered_set<int64_t>>>;
+    std::unordered_map<std::string, std::vector<std::vector<int64_t>>>;
 
 class AsyncCommunicator : public Communicator {
  public:
@@ -360,14 +360,14 @@ class GeoSgdCommunicator : public Communicator {
 
  private:
   void SendThread();
-  std::unordered_set<int64_t> SparseIdsMerge(
+  std::vector<int64_t> SparseIdsMerge(
       const std::vector<SparseIdsMap>& ids_send_vec,
       const std::string& var_name, const std::string& splited_var_name);
 
   void SendUpdateDenseVars(const std::string& var_name);
   void SendUpdateSparseVars(const std::string& var_name,
                             const std::string& splited_var_name,
-                            const std::unordered_set<int64_t>& ids_table);
+                            const std::vector<SparseIdsMap>& ids_send_vec);
 
   void RecvUpdateDenseVars(const std::string& var_name);
   void RecvUpdateSparseVars(const std::string& var_name,
