@@ -27,6 +27,55 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+inline std::string GetTensorDetails(const framework::SelectedRows &var_t, const std::string &var_name) {
+
+  std::stringstream ss;
+  ss << "------------  " << var_name << "  ---------------\n";
+
+    auto &rows = var_t.rows();
+
+    std::vector<int64_t> rs(rows.begin(), rows.end());
+    std::sort(rs.begin(), rs.end());
+
+    auto &values = var_t.value();
+
+    ss << "ROWS: \n";
+    for (auto &id : rows) {
+      ss << id << " ";
+    }
+
+    ss << "\n ROWS SORT:\n";
+    for (auto &id : rs) {
+      ss << id << " ";
+    }
+
+    ss << "\n ROWS: " << rs.size() << " VALUES: " <<  values.numel() << "\n";
+
+    ss << "\nVALUES: \n";
+
+    const auto *data = values.data<float>();
+    const auto dim = values.numel() / rs.size();
+
+    std::vector<int64_t> print_r{570, 342789, 499868, 999497};
+
+    for(int64_t i=0; i< rows.size(); i++) {
+      if (std::find(print_r.begin(), print_r.end(), rows[i]) == print_r.end()) {
+        continue;
+      }
+
+      ss << "row: " << rows[i] << " val: ";
+      for(int x=0; x<dim; x++) {
+        ss << data[i*dim + x] << " ";
+      }
+      ss << "\n";
+    }
+
+  ss << "\n------------------------------------------------\n";
+
+  return ss.str();
+}
+
+
 namespace scatter = paddle::operators::math::scatter;
 
 class AdamOp : public framework::OperatorWithKernel {
@@ -449,6 +498,9 @@ class AdamOpKernel : public framework::OpKernel<T> {
                    &tmp_grad_merge, true);
         grad_merge_ptr = &tmp_grad_merge;
       }
+
+      const std::string var_name("selected_at_adam");
+      VLOG(1) << GetTensorDetails(*grad_merge_ptr, var_name);
 
       auto& grad_merge = *grad_merge_ptr;
       auto& grad_tensor = grad_merge.value();
