@@ -89,8 +89,9 @@ class AssignOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -130,17 +131,18 @@ raise error if the type is not listed above.
   }
 };
 
-class AssignGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class AssignGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *op = new T();
     op->SetType("assign");
-    op->SetInput("X", OutputGrad("Out"));
-    op->SetOutput("Out", InputGrad("X"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetInput("X", this->OutputGrad("Out"));
+    op->SetOutput("Out", this->InputGrad("X"));
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -150,8 +152,11 @@ DECLARE_INPLACE_OP_INFERER(AssignOpInplaceInferer, {"X", "Out"});
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(assign, ops::AssignOp, ops::AssignGradMaker,
+REGISTER_OPERATOR(assign, ops::AssignOp,
+                  ops::AssignGradMaker<paddle::framework::OpDesc>,
+                  ops::AssignGradMaker<paddle::imperative::OpBase>,
                   ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer);
+
 REGISTER_OP_CPU_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
                                ops::AssignKernel, int, ops::AssignKernel,
                                int64_t, ops::AssignKernel, bool,

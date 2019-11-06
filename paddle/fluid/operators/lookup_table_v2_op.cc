@@ -58,7 +58,7 @@ class LookupTableV2Op : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -121,23 +121,24 @@ or not. And the output only shares the LoD information with input Ids.
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(LookupTableV2GradOpNoBuffer, "W");
 
-class LookupTableV2GradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class LookupTableV2GradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
 
     op->SetType("lookup_table_v2_grad");
 
-    op->SetInput("W", Input("W"));
-    op->SetInput("Ids", Input("Ids"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("W", this->Input("W"));
+    op->SetInput("Ids", this->Input("Ids"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
-    op->SetOutput(framework::GradVarName("W"), InputGrad("W"));
+    op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -154,8 +155,8 @@ class LookupTableV2OpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(
-        ctx.InputVar(framework::GradVarName("Out")));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -184,7 +185,9 @@ class LookupTableV2OpGradVarTypeInference : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lookup_table_v2, ops::LookupTableV2Op,
-                  ops::LookupTableV2OpMaker, ops::LookupTableV2GradOpDescMaker);
+                  ops::LookupTableV2OpMaker,
+                  ops::LookupTableV2GradOpMaker<paddle::framework::OpDesc>,
+                  ops::LookupTableV2GradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(lookup_table_v2_grad, ops::LookupTableV2OpGrad,
                   ops::LookupTableV2GradOpNoBuffer,

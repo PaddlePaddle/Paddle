@@ -189,33 +189,47 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
         self.check_output()
 
 
-# # Test python API
+# Test python API
 class TestFillConstantAPI(OpTest):
     def test_api(self):
-        positive_2 = fluid.layers.fill_constant([1], "int32", 2)
-        shape_tensor = fluid.layers.data(
-            name="shape_tensor",
-            shape=[2],
-            append_batch_size=False,
-            dtype="int32")
+        positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2)
+
+        positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
+        shape_tensor_int32 = fluid.data(
+            name="shape_tensor_int32", shape=[2], dtype="int32")
+
+        shape_tensor_int64 = fluid.data(
+            name="shape_tensor_int64", shape=[2], dtype="int64")
 
         out_1 = fluid.layers.fill_constant(
             shape=[1, 2], dtype="float32", value=1.1)
+
         out_2 = fluid.layers.fill_constant(
-            shape=[1, positive_2], dtype="float32", value=1.1)
+            shape=[1, positive_2_int32], dtype="float32", value=1.1)
 
         out_3 = fluid.layers.fill_constant(
-            shape=shape_tensor, dtype="float32", value=1.1)
+            shape=[1, positive_2_int64], dtype="float32", value=1.1)
+
+        out_4 = fluid.layers.fill_constant(
+            shape=shape_tensor_int32, dtype="float32", value=1.1)
+
+        out_5 = fluid.layers.fill_constant(
+            shape=shape_tensor_int64, dtype="float32", value=1.1)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1, res_2, res_3 = exe.run(
+        res_1, res_2, res_3, res_4, res_5 = exe.run(
             fluid.default_main_program(),
-            feed={"shape_tensor": np.array([1, 2]).astype("int32")},
-            fetch_list=[out_1, out_2, out_3])
+            feed={
+                "shape_tensor_int32": np.array([1, 2]).astype("int32"),
+                "shape_tensor_int64": np.array([1, 2]).astype("int64"),
+            },
+            fetch_list=[out_1, out_2, out_3, out_4, out_5])
 
         assert np.array_equal(res_1, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_2, np.full([1, 2], 1.1, dtype="float32"))
         assert np.array_equal(res_3, np.full([1, 2], 1.1, dtype="float32"))
+        assert np.array_equal(res_4, np.full([1, 2], 1.1, dtype="float32"))
+        assert np.array_equal(res_5, np.full([1, 2], 1.1, dtype="float32"))
 
 
 class TestFillConstantOpError(OpTest):
@@ -236,7 +250,8 @@ class TestFillConstantOpError(OpTest):
                 value=5,
                 dtype='int16',
                 out=x1)
-            # The input dtype of fill_constant must be one of bool, float16,
+
+            # The argument dtype of fill_constant_op must be one of bool, float16,
             #float32, float64, int32 or int64
             x2 = fluid.layers.data(name='x2', shape=[1], dtype="int32")
 
@@ -254,16 +269,34 @@ class TestFillConstantOpError(OpTest):
                 dtype='float64',
                 out=x2)
 
-            # test Error of Shape
+            # The argument shape's type of fill_constant_op must be list, tuple or Variable.
             def test_shape_type():
                 fluid.layers.fill_constant(shape=1, dtype="float32", value=1)
 
             self.assertRaises(TypeError, test_shape_type)
 
+            # The argument shape's size of fill_constant_op must not be 0.
             def test_shape_size():
                 fluid.layers.fill_constant(shape=[], dtype="float32", value=1)
 
             self.assertRaises(AssertionError, test_shape_size)
+
+            # The shape dtype of fill_constant_op must be int32 or int64.
+            def test_shape_tensor_dtype():
+                shape = fluid.data(
+                    name="shape_tensor", shape=[2], dtype="float32")
+                fluid.layers.fill_constant(
+                    shape=shape, dtype="float32", value=1)
+
+            self.assertRaises(TypeError, test_shape_tensor_dtype)
+
+            def test_shape_tensor_list_dtype():
+                shape = fluid.data(
+                    name="shape_tensor_list", shape=[1], dtype="bool")
+                fluid.layers.fill_constant(
+                    shape=[shape, 2], dtype="float32", value=1)
+
+            self.assertRaises(TypeError, test_shape_tensor_list_dtype)
 
 
 if __name__ == "__main__":

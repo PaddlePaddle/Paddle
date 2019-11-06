@@ -105,7 +105,8 @@ class Pool2dDirectCUDAFunctor {
                   const std::vector<int>& ksize,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings, PoolProcess pool_compute,
-                  bool exclusive, T* output, cudaStream_t stream);
+                  bool exclusive, bool adaptive, T* output,
+                  cudaStream_t stream);
 };
 #endif
 

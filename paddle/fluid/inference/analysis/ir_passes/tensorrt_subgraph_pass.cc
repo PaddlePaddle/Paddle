@@ -213,7 +213,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   for (auto *x : node->inputs) {
     if (x->IsVar() && x->Var()) {
       framework::VarDesc *var = x->Var();
-      SetAttr(op_desc->Proto(), var->Name() + "_shape", var->GetShape());
+      op_desc->SetAttr(var->Name() + "_shape", var->GetShape());
     }
   }
 

@@ -49,6 +49,12 @@ class MulOp : public framework::OperatorWithKernel {
             << " x_num_col_dims=" << x_num_col_dims
             << " y_num_col_dims=" << y_num_col_dims;
 
+    PADDLE_ENFORCE_NE(framework::product(y_dims), 0,
+                      "Maybe the Input variable Y(%s) has not "
+                      "been initialized. You may need to confirm "
+                      "if you put exe.run(startup_program) "
+                      "after optimizer.minimize function.",
+                      ctx->Inputs("Y").front());
     PADDLE_ENFORCE_GT(x_dims.size(), x_num_col_dims,
                       "ShapeError: The input tensor X's dimensions of MulOp "
                       "should be larger than x_num_col_dims. But received X's "
@@ -92,7 +98,7 @@ class MulOp : public framework::OperatorWithKernel {
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     int customized_type_value =
         framework::OpKernelType::kDefaultCustomizedTypeValue;
-    auto input_data_type = ctx.Input<Tensor>("X")->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
 #ifdef PADDLE_WITH_MKLDNN
     if (library == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
@@ -219,20 +225,21 @@ class MulGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class MulOpGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class MulOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> retv(new T());
     retv->SetType("mul_grad");
-    retv->SetInput("X", Input("X"));
-    retv->SetInput("Y", Input("Y"));
-    retv->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    retv->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    retv->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    retv->SetAttrMap(Attrs());
+    retv->SetInput("X", this->Input("X"));
+    retv->SetInput("Y", this->Input("Y"));
+    retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    retv->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    retv->SetAttrMap(this->Attrs());
     return retv;
   }
 };
@@ -259,32 +266,32 @@ class MulDoubleGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class MulDoubleGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class MulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> retv(new T());
     retv->SetType("mul_grad_grad");
 
-    retv->SetInput("X", Input("X"));
-    retv->SetInput("Y", Input("Y"));
-    retv->SetInput("DOut", Input(framework::GradVarName("Out")));
-    retv->SetInput("DDX", OutputGrad(framework::GradVarName("X")));
-    retv->SetInput("DDY", OutputGrad(framework::GradVarName("Y")));
+    retv->SetInput("X", this->Input("X"));
+    retv->SetInput("Y", this->Input("Y"));
+    retv->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    retv->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    retv->SetInput("DDY", this->OutputGrad(framework::GradVarName("Y")));
 
-    auto ddx = OutputGrad(framework::GradVarName("X"));
-    auto ddw = OutputGrad(framework::GradVarName("Y"));
-    std::vector<std::string> empty_str = {};
+    auto ddx = this->OutputGrad(framework::GradVarName("X"));
+    auto ddw = this->OutputGrad(framework::GradVarName("Y"));
 
     if (!ddx.empty() || !ddw.empty()) {
-      retv->SetOutput("DDOut", InputGrad(framework::GradVarName("Out")));
+      retv->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
     }
-    retv->SetOutput("DX", ddw.empty() ? empty_str : InputGrad("X"));
-    retv->SetOutput("DY", ddx.empty() ? empty_str : InputGrad("Y"));
+    retv->SetOutput("DX", ddw.empty() ? this->Empty() : this->InputGrad("X"));
+    retv->SetOutput("DY", ddx.empty() ? this->Empty() : this->InputGrad("Y"));
 
-    retv->SetAttrMap(Attrs());
+    retv->SetAttrMap(this->Attrs());
     return retv;
   }
 };
@@ -294,9 +301,12 @@ class MulDoubleGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpInferVarType,
-                  ops::MulOpGradMaker);
+                  ops::MulOpGradMaker<paddle::framework::OpDesc>,
+                  ops::MulOpGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(mul_grad, ops::MulGradOp, ops::MulDoubleGradMaker);
+REGISTER_OPERATOR(mul_grad, ops::MulGradOp,
+                  ops::MulDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::MulDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(mul_grad_grad, ops::MulDoubleGradOp);
 

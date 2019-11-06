@@ -1131,6 +1131,26 @@ class Variable(object):
         else:
             return cpt.to_text(self.desc.name())
 
+    @property
+    def grad_name(self):
+        """
+        Indicating name of the gradient Variable of current Variable.
+
+        **Notes: This is a read-only property. It simply returns name of
+          gradient Variable from a naming convention but doesn't guarantee
+          the gradient exists.**
+       
+        Examples:
+          .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          x = fluid.data(name="x", shape=[-1, 23, 48], dtype='float32')
+          print(x.grad_name) # output is "x@GRAD"
+
+        """
+        return self.name + "@GRAD"
+
     @name.setter
     def name(self, new_name):
         if in_dygraph_mode():
@@ -1414,9 +1434,11 @@ class Variable(object):
         slice_axis = []
         slice_start = []
         slice_end = []
+        slice_step = []
+        use_strided_slice = False
         reverse_axis = []
 
-        def fill_constant(shape, dtype, value, force_cpu=False, out=None):
+        def fill_constant(shape, value, force_cpu=False, out=None):
             self.block.append_op(
                 type='fill_constant',
                 inputs={},
@@ -1425,7 +1447,7 @@ class Variable(object):
                     'shape': shape,
                     'dtype': out.dtype,
                     'value': float(value),
-                    'force_cpu': force_cpu or force_init_on_cpu()
+                    'force_cpu': force_cpu
                 },
                 stop_gradient=True)
             out.stop_gradient = True
@@ -1435,15 +1457,17 @@ class Variable(object):
             if isinstance(slice_item, slice):
                 start = slice_item.start
                 end = slice_item.stop
-                step = slice_item.step if slice_item.step else 1
+                step = slice_item.step
 
-                assert (step == 1 or step == -1)
+                if start is None and end is None and step is None:
+                    continue
 
-                if step == -1:
-                    reverse_axis.append(dim)
-                    assert (start is None and end is None)
+                if step is None:
+                    step = 1
 
                 if start is None and end is None:
+                    assert (step == -1)
+                    reverse_axis.append(dim)
                     continue
 
                 if start is None:
@@ -1452,16 +1476,21 @@ class Variable(object):
                 if end is None:
                     end = 10000000
 
+                if step != 1:
+                    use_strided_slice = True
+
                 slice_axis.append(dim)
                 slice_start.append(start)
                 slice_end.append(end)
+                slice_step.append(step)
             else:
                 decrease_axis.append(dim)
                 slice_axis.append(dim)
                 slice_start.append(slice_item)
+                slice_step.append(1)
                 if isinstance(slice_item, Variable):
                     temp_1 = self.block.create_var(dtype='int32')
-                    fill_constant([1], 'int32', 1, force_cpu=True, out=temp_1)
+                    fill_constant([1], 1, force_cpu=True, out=temp_1)
                     temp_end = self.block.create_var(dtype='int32')
                     self.block.append_op(
                         type='elementwise_add',
@@ -1489,8 +1518,7 @@ class Variable(object):
                 else:
                     assert (isinstance(dim, int))
                     temp_out = self.block.create_var(dtype='int32')
-                    fill_constant(
-                        [1], 'int32', dim, force_cpu=True, out=temp_out)
+                    fill_constant([1], dim, force_cpu=True, out=temp_out)
                     new_list_tensor.append(temp_out)
             return new_list_tensor
 
@@ -1501,8 +1529,9 @@ class Variable(object):
             'ends': [],
             'decrease_axis': decrease_axis
         }
+        if (use_strided_slice == True):
+            attrs['strides'] = []
         infer_flags = list(1 for i in range(len(slice_axis)))
-
         # starts
         if not contain_var(slice_start):
             attrs['starts'] = slice_start
@@ -1525,11 +1554,23 @@ class Variable(object):
                     infer_flags[i] = -1
                 else:
                     attrs['ends'].append(dim)
+        # strides
+        if use_strided_slice == True:
+            if not contain_var(slice_step):
+                attrs['strides'] = slice_step
+            else:
+                inputs['StridesTensorList'] = get_new_list_tensor(slice_step)
+                for i, dim in enumerate(slice_step):
+                    if isinstance(dim, Variable):
+                        attrs['strides'].append(-1)
+                        infer_flags[i] = -1
+                    else:
+                        attrs['strides'].append(dim)
         # infer_flags
         attrs['infer_flags'] = infer_flags
 
         out = self
-        if len(slice_axis) > 0:
+        if use_strided_slice == False and len(slice_axis) > 0:
             # append slice_op here
             slice_out_var = self.block.create_var(
                 name=unique_name.generate_with_ignorable_key(self.name +
@@ -1543,6 +1584,18 @@ class Variable(object):
                 attrs=attrs)
 
             out = slice_out_var
+        elif use_strided_slice == True and len(slice_axis) > 0:
+            strided_slice_out_var = self.block.create_var(
+                name=unique_name.generate_with_ignorable_key(self.name +
+                                                             "_strided_slice"),
+                dtype=self.dtype)
+            self.block.append_op(
+                type="strided_slice",
+                inputs=inputs,
+                outputs={'Out': [strided_slice_out_var]},
+                attrs=attrs)
+
+            out = strided_slice_out_var
 
         if len(reverse_axis) > 0:
             reverse_out_var = self.block.create_var(
@@ -1756,9 +1809,12 @@ class Operator(object):
                             elif isinstance(arg, Variable):
                                 in_arg_names.append(cpt.to_text(arg.name))
                             else:
-                                raise ValueError(
-                                    "not suprt args type , should be[ string_type, binary_type, Varibale]"
-                                )
+                                raise TypeError(
+                                    "The type of '%s' in operator %s should be "
+                                    "one of [basestring(), str, Varibale] in python2, "
+                                    "or one of [str, bytes, Variable] in python3."
+                                    "but received : " % (in_proto.name, type),
+                                    arg)
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
