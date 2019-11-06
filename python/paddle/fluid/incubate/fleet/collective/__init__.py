@@ -34,8 +34,8 @@ class LambConfig(object):
 
 
 class DistFCConfig(object):
-    def __init__(self):
-        pass
+    def __init__(self, batch_size):
+        self._batch_size = batch_size
 
 
 class Collective(Fleet):
@@ -196,6 +196,8 @@ class CollectiveOptimizer(DistributedOptimizer):
                 use_local_sgd=strategy.use_local_sgd,
                 use_lamb=main_program._use_lamb)
             assert strategy.dist_fc_config is not None, "DistributedStrategy.dist_fc_config should be set"
+            assert isinstance(strategy.dist_fc_config, DistFCConfig), \
+                "DistributedStrategy.dist_fc_config should be an instance of DistFCConfig."
 
         if strategy._ut4grad_allreduce:
             strategy.mode = "collective"
@@ -360,11 +362,81 @@ class CollectiveOptimizer(DistributedOptimizer):
                 fluid.optimizer.RecomputeOptimizer(self._optimizer)
             self._optimizer._set_checkpoints(self.recompute_checkpoints)
 
-        optimize_ops, param_grads = self._optimizer.minimize(
-            loss,
-            startup_program=startup_program,
-            parameter_list=parameter_list,
-            no_grad_set=no_grad_set)
+        if self.use_dist_fc:
+            batch_size = self.dist_fc_config.batch_size
+            assert self._loss._get_info('shard_logit')
+            shard_logit = self._loss._get_info('shard_logit')
+            shard_prob = self._loss._get_info('shard_prob')
+            shard_label = self._loss._get_info('shard_label')
+            shard_dim = self._loss._get_info('shard_dim')
+
+            op_maker = fluid.core.op_proto_and_checker_maker
+            op_role_key = op_maker.kOpRoleAttrName()
+            op_role_var_key = op_maker.kOpRoleVarAttrName()
+            backward_role = int(op_maker.OpRole.Backward)
+            loss_backward_role = int(op_maker.OpRole.Loss) | int(
+                op_maker.OpRole.Backward)
+
+            # minimize a scalar of reduce_sum to generate the backward network
+            scalar = fluid.layers.reduce_sum(shard_logit)
+            optimize_ops, param_grads = self._optimizer.minimize(
+                scalar,
+                startup_program=startup_program,
+                parameter_list=parameter_list,
+                no_grad_set=no_grad_set)
+
+            block = self._loss.block
+            # remove the unnecessary ops
+            index = 0
+            for i, op in enumerate(block.ops):
+                if op.all_attrs()[op_role_key] == loss_backward_role:
+                    index = i
+                    break
+
+            assert block.ops[index - 1].type == 'reduce_sum'
+            assert block.ops[index].type == 'fill_constant'
+            assert block.ops[index + 1].type == 'reduce_sum_grad'
+            block._remove_op(index + 1)
+            block._remove_op(index)
+            block._remove_op(index - 1)
+
+            # insert the calculated gradient
+            dtype = shard_logit.dtype
+            shard_one_hot = fluid.layers.create_tensor(
+                dtype, name='shard_one_hot')
+            block._insert_op(
+                index - 1,
+                type='one_hot',
+                inputs={'X': shard_label},
+                outputs={'Out': shard_one_hot},
+                attrs={
+                    'depth': shard_dim,
+                    'allow_out_of_range': True,
+                    op_role_key: backward_role
+                })
+            shard_logit_grad = fluid.layers.create_tensor(
+                dtype,
+                name=fluid.backward._append_grad_suffix_(shard_logit.name))
+            block._insert_op(
+                index,
+                type='elementwise_sub',
+                inputs={'X': shard_prob,
+                        'Y': shard_one_hot},
+                outputs={'Out': shard_logit_grad},
+                attrs={op_role_key: backward_role})
+            block._insert_op(
+                index + 1,
+                type='scale',
+                inputs={'X': shard_logit_grad},
+                outputs={'Out': shard_logit_grad},
+                attrs={'scale': 1.0 / batch_size,
+                       op_role_key: backward_role})
+        else:
+            optimize_ops, param_grads = self._optimizer.minimize(
+                loss,
+                startup_program=startup_program,
+                parameter_list=parameter_list,
+                no_grad_set=no_grad_set)
 
         fleet._origin_program = main_program.clone(for_test=False)
         fleet._transpiled_program = main_program

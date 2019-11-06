@@ -136,6 +136,10 @@ class TestDistRunnerBase(object):
             dist_strategy.use_local_sgd = True
         if args.ut4grad_allreduce:
             dist_strategy._ut4grad_allreduce = True
+        if args.use_dist_fc:
+            dist_strategy.use_dist_fc = True
+            dist_strategy.dist_fc_config = DistFCConfig(
+                batch_size=args.batch_size)
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
@@ -423,6 +427,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_hallreduce', action='store_true')
     parser.add_argument('--gpu_fleet_api', action='store_true')
     parser.add_argument('--use_local_sgd', action='store_true')
+    parser.add_argument('--use_dist_fc', action='store_true')
     parser.add_argument('--ut4grad_allreduce', action='store_true')
     parser.add_argument(
         '--hallreduce_inter_nranks', type=int, required=False, default=2)
@@ -771,6 +776,8 @@ class TestDistBase(unittest.TestCase):
 
         if self._gpu_fleet_api:
             tr_cmd += " --gpu_fleet_api"
+            if self._use_dist_fc:
+                tr_cmd += " --use_dist_fc"
             if self._use_local_sgd:
                 tr_cmd += " --use_local_sgd"
             if self._ut4grad_allreduce:
