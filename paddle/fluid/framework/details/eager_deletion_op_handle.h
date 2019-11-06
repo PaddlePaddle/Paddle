@@ -39,7 +39,7 @@ class EagerDeletionOpHandle : public OpHandleBase {
                         const std::unordered_set<ir::MemOptVarInfo *> &vars,
                         GarbageCollector *gc);
 
-  ~EagerDeletionOpHandle();
+  ~EagerDeletionOpHandle() PADDLE_MAY_THROW;
 
   std::string Name() const override;
 

@@ -56,7 +56,7 @@ EagerDeletionOpHandle::EagerDeletionOpHandle(
   }
 }
 
-EagerDeletionOpHandle::~EagerDeletionOpHandle() {
+EagerDeletionOpHandle::~EagerDeletionOpHandle() PADDLE_MAY_THROW {
 #ifdef PADDLE_WITH_CUDA
   if (event_) {
     auto gpu_place = boost::get<platform::CUDAPlace>(dev_ctx_->GetPlace());

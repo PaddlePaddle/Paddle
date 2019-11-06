@@ -65,7 +65,7 @@ class ReaderBase {
   // This function returns whether you have the check shape for this Reader.
   const std::vector<bool>& NeedCheckFeed() const { return need_check_feed_; }
 
-  virtual ~ReaderBase();
+  virtual ~ReaderBase() PADDLE_MAY_THROW {}
 
  protected:
   virtual void ReadNextImpl(std::vector<LoDTensor>* out) {}

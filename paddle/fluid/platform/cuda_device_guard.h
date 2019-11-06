@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
@@ -28,7 +29,7 @@ class CUDADeviceGuard {
     }
   }
 
-  inline ~CUDADeviceGuard() {
+  inline ~CUDADeviceGuard() PADDLE_MAY_THROW {
     if (prev_id_ != -1) {
       platform::SetDeviceId(prev_id_);
     }

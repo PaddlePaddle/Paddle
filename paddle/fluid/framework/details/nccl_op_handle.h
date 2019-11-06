@@ -44,7 +44,7 @@ class NCCLOpHandleBase : public OpHandleBase {
       this->SetDeviceContext(p, default_nccl_ctxs->DevCtx(p));
     }
   }
-  virtual ~NCCLOpHandleBase() {
+  virtual ~NCCLOpHandleBase() PADDLE_MAY_THROW {
     for (auto& ev : inter_events_) {
       PADDLE_ENFORCE(cudaEventDestroy(ev.second));
     }

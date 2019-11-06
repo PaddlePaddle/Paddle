@@ -226,7 +226,7 @@ class ScopedTensorDescriptor {
   ScopedTensorDescriptor() {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateTensorDescriptor(&desc_));
   }
-  ~ScopedTensorDescriptor() {
+  ~ScopedTensorDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyTensorDescriptor(desc_));
   }
 
@@ -287,7 +287,7 @@ class ScopedFilterDescriptor {
   ScopedFilterDescriptor() {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateFilterDescriptor(&desc_));
   }
-  ~ScopedFilterDescriptor() {
+  ~ScopedFilterDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyFilterDescriptor(desc_));
   }
 
@@ -329,7 +329,7 @@ class ScopedConvolutionDescriptor {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnCreateConvolutionDescriptor(&desc_));
   }
-  ~ScopedConvolutionDescriptor() {
+  ~ScopedConvolutionDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnDestroyConvolutionDescriptor(desc_));
   }
@@ -377,7 +377,7 @@ class ScopedPoolingDescriptor {
   ScopedPoolingDescriptor() {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreatePoolingDescriptor(&desc_));
   }
-  ~ScopedPoolingDescriptor() {
+  ~ScopedPoolingDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyPoolingDescriptor(desc_));
   }
 
@@ -405,7 +405,7 @@ class ScopedSpatialTransformerDescriptor {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnCreateSpatialTransformerDescriptor(&desc_));
   }
-  ~ScopedSpatialTransformerDescriptor() {
+  ~ScopedSpatialTransformerDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnDestroySpatialTransformerDescriptor(desc_));
   }
@@ -429,7 +429,7 @@ class ScopedActivationDescriptor {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnCreateActivationDescriptor(&desc_));
   }
-  ~ScopedActivationDescriptor() {
+  ~ScopedActivationDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnDestroyActivationDescriptor(desc_));
   }
@@ -495,7 +495,7 @@ class ScopedCTCLossDescriptor {
   ScopedCTCLossDescriptor() {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateCTCLossDescriptor(&desc_));
   }
-  ~ScopedCTCLossDescriptor() {
+  ~ScopedCTCLossDescriptor() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyCTCLossDescriptor(desc_));
   }
 

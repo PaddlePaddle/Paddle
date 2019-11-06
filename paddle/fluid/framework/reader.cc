@@ -67,8 +67,6 @@ void ReaderBase::Start() {
   }
 }
 
-ReaderBase::~ReaderBase() {}
-
 DecoratedReader::~DecoratedReader() {
   VLOG(1) << "~DecoratedReader";
   reader_->Shutdown();
