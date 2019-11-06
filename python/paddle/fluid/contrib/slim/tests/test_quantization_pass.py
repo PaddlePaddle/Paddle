@@ -505,6 +505,52 @@ class TestQuantizationFreezePass(unittest.TestCase):
                 for_ci=True)
 
 
+def quant_dequant_residual_block(num, quant_skip_pattern=None):
+    def conv_bn_layer(input,
+                      ch_out,
+                      filter_size,
+                      stride,
+                      padding,
+                      act='relu',
+                      bias_attr=False):
+        tmp = fluid.layers.conv2d(
+            input=input,
+            filter_size=filter_size,
+            num_filters=ch_out,
+            stride=stride,
+            padding=padding,
+            act=None,
+            bias_attr=bias_attr)
+        return fluid.layers.batch_norm(input=tmp, act=act)
+
+    data = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    hidden = data
+    for _ in six.moves.xrange(num):
+        conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
+        short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
+        hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
+
+    if quant_skip_pattern:
+        with fluid.name_scope(quant_skip_pattern):
+            pool1 = fluid.layers.pool2d(
+                input=hidden, pool_size=2, pool_type='avg', pool_stride=2)
+            pool2 = fluid.layers.pool2d(
+                input=hidden, pool_size=2, pool_type='max', pool_stride=2)
+            pool_add = fluid.layers.elementwise_add(
+                x=pool1, y=pool2, act='relu')
+    else:
+        pool1 = fluid.layers.pool2d(
+            input=hidden, pool_size=2, pool_type='avg', pool_stride=2)
+        pool2 = fluid.layers.pool2d(
+            input=hidden, pool_size=2, pool_type='max', pool_stride=2)
+        pool_add = fluid.layers.elementwise_add(x=pool1, y=pool2, act='relu')
+    fc = fluid.layers.fc(input=pool_add, size=10)
+    loss = fluid.layers.cross_entropy(input=fc, label=label)
+    loss = fluid.layers.mean(loss)
+    return loss
+
+
 class TestAddQuantDequantPass(unittest.TestCase):
     def setUp(self):
         self._target_ops = {'elementwise_add', 'pool2d'}
@@ -535,7 +581,7 @@ class TestAddQuantDequantPass(unittest.TestCase):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
-            loss = residual_block(2, skip_pattern)
+            loss = quant_dequant_residual_block(2, skip_pattern)
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
         place = fluid.CPUPlace()
