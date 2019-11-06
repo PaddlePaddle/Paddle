@@ -32,6 +32,7 @@ from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import DataParallel
 
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
+#from paddle.fluid.incubate.fleet.collective import DistFCConfig
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 RUN_STEP = 5
@@ -138,8 +139,8 @@ class TestDistRunnerBase(object):
             dist_strategy._ut4grad_allreduce = True
         if args.use_dist_fc:
             dist_strategy.use_dist_fc = True
-            dist_strategy.dist_fc_config = DistFCConfig(
-                batch_size=args.batch_size)
+            #dist_strategy.dist_fc_config = DistFCConfig(
+            #    batch_size=args.batch_size)
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
@@ -147,8 +148,10 @@ class TestDistRunnerBase(object):
         # "fleet.node_id:", fleet.node_id(),
         # "fleet.trainer_num:", fleet.worker_num())
 
+        print_to_err("wow0")
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
             self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
+        print_to_err("wow1")
 
         trainer_prog = fleet._origin_program
         dist_prog = fleet.main_program
@@ -157,8 +160,10 @@ class TestDistRunnerBase(object):
         place = fluid.CUDAPlace(device_id)
 
         exe = fluid.Executor(place)
+        print_to_err("wow2")
         exe.run(fluid.default_startup_program())
         eprint(type(self).__name__, "run worker startup program done.")
+        print_to_err("wow3")
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
@@ -181,6 +186,7 @@ class TestDistRunnerBase(object):
 
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
+        print_to_err("wow5")
         for i in six.moves.xrange(RUN_STEP):
             loss, = exe.run(dist_prog,
                             fetch_list=[avg_cost.name],
@@ -193,6 +199,7 @@ class TestDistRunnerBase(object):
             print(pickle.dumps(out_losses))
         else:
             sys.stdout.buffer.write(pickle.dumps(out_losses))
+        print_to_err("wow6")
 
     def run_trainer(self, args):
         self.lr = args.lr
@@ -514,6 +521,7 @@ class TestDistBase(unittest.TestCase):
         self._enable_backward_deps = False
         self._gpu_fleet_api = False
         self._use_local_sgd = False
+        self._use_dist_fc = False
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
         self._setup_config()
