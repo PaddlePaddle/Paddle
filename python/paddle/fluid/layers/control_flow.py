@@ -1741,7 +1741,7 @@ def copy_scope_var_to_global(var, layer_helper):
 
 def cond(pred, true_fn=None, false_fn=None, name=None):
     """
-    
+    TODO
     """
     helper = LayerHelper('cond', **locals())
     true_output = None
@@ -1786,7 +1786,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     #flatten_false_output = flatten(false_output)
 
     mask = cast(pred, dtype='int32')
-    merge_func = lambda false_var, true_var : merge_selected_var([false_var, true_var], mask)
+    merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)
     merged_output = map_structure(merge_func, false_output, true_output)
     # merged_output = [merge_selected_var([y, x], mask) for (x, y) in zip(flatten_true_output, flatten_false_output)]
     return merged_output
