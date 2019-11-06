@@ -533,10 +533,10 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
       auto splited_var_nums =
           recv_varname_to_ctx_[sparse_var_tables[i]].splited_var_names.size();
       ids_table->insert(
-          std::pair<std::string, std::vector<std::unordered_set<int64_t>>>(
+          std::pair<std::string, std::vector<std::vector<int64_t>>>(
               sparse_var_tables[i],
-              std::vector<std::vector<int64_t>{element_number}>{
-                  splited_var_nums}));
+              std::vector<std::vector<int64_t>>(
+                  splited_var_nums, std::vector<int64_t>(element_number, 0))));
     }
     // insert ids which has not been record
     for (size_t j = 0; j < element_number; j++) {
@@ -745,13 +745,15 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
 
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   std::vector<std::vector<float>> update_delta;
+  std::vector<int64_t> send_rows;
   std::unordered_map<int64_t, bool> id_exist;
-  for (int x = 0; x < ids_send_vec.size(); x++) {
-    auto ids_map = ids_send_vec[i][origin_var_name][splited_var_index];
-    for (int y = 0; y < ids_map.size(); y++) {
-      auto ids = ids_map[y];
+  for (auto ids_map : ids_send_vec) {
+    auto ids_vec = ids_map[origin_var_name][splited_var_index];
+    for (int y = 0; y < ids_vec.size(); y++) {
+      auto ids = ids_vec[y];
       if (id_exist.find(ids) == id_exist.end()) {
         id_exist.insert(std::pair<int64_t, bool>(ids, true));
+        send_rows.push_back(ids - absolute_section_[origin_var_name][splited_var_index]);
       } else {
         continue;
       }
@@ -780,13 +782,6 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   VLOG(0) << "run send update sparse var " << splited_var_name << " use time "
           << after_run_send_sparse - before_run_send_sparse;
 
-  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
-  std::vector<int64_t> send_rows;
-  send_rows.reserve(new_rows.size());
-  for (auto idx : new_rows) {
-    send_rows.push_back(idx -
-                        absolute_section_[origin_var_name][splited_var_index]);
-  }
   var_z_select_rows->set_rows(send_rows);
   var_z_select_rows->set_height(
       send_varname_to_ctx_[var_name].height_sections[splited_var_index]);
@@ -794,7 +789,7 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   auto before_send_sparse = GetCurrentUS();
   RpcSend(var_name, splited_var_name, splited_var_index);
   auto after_send_sparse = GetCurrentUS();
-  VLOG(0) << "send " << splited_var_name << " has nums " << new_rows.size()
+  VLOG(0) << "send " << splited_var_name << " has nums " << send_rows.size()
           << " use time " << after_send_sparse - before_send_sparse;
 }
 
