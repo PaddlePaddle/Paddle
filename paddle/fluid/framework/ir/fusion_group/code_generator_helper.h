@@ -24,6 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace fusion_group {
 
 static std::vector<std::string> replaced_element_in_order = {"@", "$"};
 
@@ -239,6 +240,7 @@ extern "C" __global__ void $name($parameter){
 }
 )";
 
+}  // namespace fusion_group
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

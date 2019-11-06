@@ -20,6 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace fusion_group {
 
 class CodeGenerator {
  public:
@@ -33,6 +34,8 @@ class CodeGenerator {
  private:
   CodeTemplate code_template_;
 };
+
+}  // namespace fusion_group
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

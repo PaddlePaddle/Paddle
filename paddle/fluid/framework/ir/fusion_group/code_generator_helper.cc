@@ -21,6 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace fusion_group {
 
 OperationExpression::OperationExpression(std::vector<int> input_ids,
                                          int output_id, std::string op) {
@@ -64,6 +65,7 @@ std::string OperationExpression::GetExpression() {
   return ret.str();
 }
 
+}  // namespace fusion_group
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

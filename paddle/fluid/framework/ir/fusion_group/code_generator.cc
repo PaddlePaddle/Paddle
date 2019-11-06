@@ -20,6 +20,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace fusion_group {
 
 CodeGenerator::CodeGenerator(CodeTemplate code_template) {
   code_template_ = code_template;
@@ -31,6 +32,8 @@ std::string CodeGenerator::GenerateCode(TemplateVariable template_var) {
   auto cuda_kernel = kernel_function + code_template_.Format(template_var);
   return cuda_kernel;
 }
+
+}  // namespace fusion_group
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

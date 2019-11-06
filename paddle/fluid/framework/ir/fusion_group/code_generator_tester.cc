@@ -24,6 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 
 #ifdef PADDLE_WITH_CUDA
+namespace fusion_group = paddle::framework::ir::fusion_group;
+
 TEST(code_generator, cuda) {
   std::vector<int> mul_input{1, 2};
   std::vector<int> add_input{3, 4};
@@ -42,19 +44,18 @@ TEST(code_generator, cuda) {
   std::string op3 = "elementwise_sub";
   std::string op4 = "relu";
   std::string op5 = "sigmoid";
-  paddle::framework::ir::OperationExpression opexp1(mul_input, mul_out, op1);
-  paddle::framework::ir::OperationExpression opexp2(add_input, add_out, op2);
-  paddle::framework::ir::OperationExpression opexp3(sub_input, sub_out, op3);
-  paddle::framework::ir::OperationExpression opexp4(relu_input, relu_out, op4);
-  paddle::framework::ir::OperationExpression opexp5(sigmoid_input, sigmoid_out,
-                                                    op5);
+  fusion_group::OperationExpression opexp1(mul_input, mul_out, op1);
+  fusion_group::OperationExpression opexp2(add_input, add_out, op2);
+  fusion_group::OperationExpression opexp3(sub_input, sub_out, op3);
+  fusion_group::OperationExpression opexp4(relu_input, relu_out, op4);
+  fusion_group::OperationExpression opexp5(sigmoid_input, sigmoid_out, op5);
 
-  std::vector<paddle::framework::ir::OperationExpression> fused_op = {
+  std::vector<fusion_group::OperationExpression> fused_op = {
       opexp1, opexp2, opexp3, opexp4, opexp5};
-  paddle::framework::ir::CodeTemplate code_template(
-      paddle::framework::ir::kernel_elementwise_template);
-  paddle::framework::ir::CodeGenerator codegen(code_template);
-  paddle::framework::ir::TemplateVariable template_var;
+  fusion_group::CodeTemplate code_template(
+      fusion_group::kernel_elementwise_template);
+  fusion_group::CodeGenerator codegen(code_template);
+  fusion_group::TemplateVariable template_var;
   template_var.Add("$name", EmitUniqueName(fused_op));
   template_var.Add("$parameter", EmitDeclarationCode(fused_op, "float"));
   template_var.Add("$compute", EmitComputeCode(fused_op));
