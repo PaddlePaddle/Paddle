@@ -137,17 +137,13 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
 }
 
-void profile(bool use_mkldnn = false, bool use_ngraph = false) {
+void profile(bool use_mkldnn = false) {
   AnalysisConfig config;
   SetConfig(&config);
 
   if (use_mkldnn) {
     config.EnableMKLDNN();
     config.pass_builder()->AppendPass("fc_mkldnn_pass");
-  }
-
-  if (use_ngraph) {
-    config.EnableNgraph();
   }
 
   std::vector<std::vector<PaddleTensor>> outputs;
@@ -159,11 +155,7 @@ void profile(bool use_mkldnn = false, bool use_ngraph = false) {
 
 TEST(Analyzer_ernie, profile) { profile(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_ernie, profile_mkldnn) { profile(true, false); }
-#endif
-
-#ifdef PADDLE_WITH_NGRAPH
-TEST(Analyzer_ernie, profile_ngraph) { profile(false, true); }
+TEST(Analyzer_ernie, profile_mkldnn) { profile(true); }
 #endif
 
 // Check the model by gpu
@@ -192,16 +184,12 @@ TEST(Analyzer_Ernie, fuse_statis) {
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-void compare(bool use_mkldnn = false, bool use_ngraph = false) {
+void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
     cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-  }
-
-  if (use_ngraph) {
-    cfg.EnableNgraph();
   }
 
   std::vector<std::vector<PaddleTensor>> inputs;
@@ -212,15 +200,7 @@ void compare(bool use_mkldnn = false, bool use_ngraph = false) {
 
 TEST(Analyzer_ernie, compare) { compare(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_ernie, compare_mkldnn) {
-  compare(true, false /* use_mkldnn, no use_ngraph */);
-}
-#endif
-
-#ifdef PADDLE_WITH_NGRAPH
-TEST(Analyzer_ernie, compare_ngraph) {
-  compare(false, true /* no use_mkldnn, use_ngraph */);
-}
+TEST(Analyzer_ernie, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 
 // Compare Deterministic result
