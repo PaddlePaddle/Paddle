@@ -73,15 +73,36 @@ class Conv2DFusionOpInferShape : public framework::InferShapeBase {
     std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
     std::vector<int> dilations =
         ctx->Attrs().Get<std::vector<int>>("dilations");
+    std::string padding_algorithm =
+        ctx->Attrs().Get<std::string>("padding_algorithm");
 
-    std::vector<int64_t> oshape({in_dims[0], filter_dims[0]});
-    for (size_t i = 0; i < strides.size(); ++i) {
-      oshape.push_back(ConvOutputSize(in_dims[i + 2], filter_dims[i + 2],
-                                      dilations[i], paddings[i], strides[i]));
+    framework::DDim in_data_dims;
+    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+
+    framework::DDim filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             in_data_dims, strides, ksize);
+
+    std::vector<int64_t> output_shape({in_dims[0]});
+    output_shape.push_back(filter_dims[0]);
+
+    for (size_t i = 0; i < in_data_dims.size(); ++i) {
+      if ((!ctx->IsRuntime()) &&
+          (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
+        output_shape.push_back(-1);
+      } else {
+        output_shape.push_back(
+            ConvOutputSize(in_data_dims[i], filter_dims[i + 2], dilations[i],
+                           paddings[2 * i], paddings[2 * i + 1], strides[i]));
+      }
     }
+
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Output"), true,
                       "Output(Output) of ConvOp should not be null.");
-    ctx->SetOutputDim("Output", framework::make_ddim(oshape));
+    ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
+
     std::vector<int> channels =
         ctx->Attrs().Get<std::vector<int>>("split_channels");
     if (channels.size()) {
@@ -90,7 +111,8 @@ class Conv2DFusionOpInferShape : public framework::InferShapeBase {
       std::vector<framework::DDim> oshapes;
       oshapes.reserve(channels.size());
       for (size_t i = 0; i < channels.size(); ++i) {
-        oshapes.push_back({oshape[0], channels[i], oshape[2], oshape[3]});
+        oshapes.push_back(
+            {output_shape[0], channels[i], output_shape[2], output_shape[3]});
       }
       ctx->SetOutputsDim("Outputs", oshapes);
     }
