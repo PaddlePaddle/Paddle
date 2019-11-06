@@ -133,72 +133,13 @@ class CodeTemplate {
   std::string template_str_;
 };
 
-static std::string EmitUniqueName(std::vector<OperationExpression> expression) {
-  std::stringstream ret;
-  ret << "fused_kernel";
-  for (size_t i = 0; i < expression.size(); i++) {
-    ret << expression[i].GetOutputId();
-  }
-  return ret.str();
-}
+std::string EmitUniqueName(std::vector<OperationExpression> expression);
 
 // we get the parameter list code for the expression information
-static std::string EmitDeclarationCode(
-    std::vector<OperationExpression> expression, std::string type) {
-  std::stringstream ret;
+std::string EmitDeclarationCode(std::vector<OperationExpression> expression,
+                                std::string type);
 
-  std::set<int> input_ids;
-  std::set<int> output_ids;
-
-  for (size_t i = 0; i < expression.size(); i++) {
-    std::vector<int> tmp_input = expression[i].GetInputIds();
-    for (size_t j = 0; j < tmp_input.size(); j++) {
-      int id = tmp_input[j];
-      input_ids.insert(id);
-    }
-    int tmp_output = expression[i].GetOutputId();
-    output_ids.insert(tmp_output);
-  }
-
-  std::set<int>::iterator it = input_ids.begin();
-  while (it != input_ids.end()) {
-    int var_index = *it;
-    if (output_ids.find(var_index) != output_ids.end()) {
-      input_ids.erase(it++);
-    } else {
-      it++;
-    }
-  }
-
-  ret << "int N, ";
-  for (it = input_ids.begin(); it != input_ids.end(); it++) {
-    int var_index = *it;
-    ret << type << R"(* var)" << var_index;
-    ret << ", ";
-  }
-
-  size_t count_index = 0;
-  for (it = output_ids.begin(); it != output_ids.end(); it++) {
-    int var_index = *it;
-    ret << type << R"(* var)" << var_index;
-    if (count_index != output_ids.size() - 1) {
-      ret << ", ";
-    }
-    count_index++;
-  }
-
-  return ret.str();
-}
-
-static std::string EmitComputeCode(
-    std::vector<OperationExpression> expression) {
-  // get the right experssion code using suffix expression
-  std::stringstream ret;
-  for (size_t i = 0; i < expression.size(); i++) {
-    ret << expression[i].GetExpression();
-  }
-  return ret.str();
-}
+std::string EmitComputeCode(std::vector<OperationExpression> expression);
 
 static const char kernel_function[] = R"(
 __device__ float real_exp(float x) { return ::expf(x); }
