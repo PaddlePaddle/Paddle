@@ -223,11 +223,11 @@ class TestWithAsymmetricPad(TestConv3dTransposeOp):
 class TestWithSAMEPad(TestConv3dTransposeOp):
     def init_test_case(self):
         self.stride = [1, 1, 2]
-        self.dilations = [1, 1, 1]
+        self.dilations = [1, 2, 1]
         self.groups = 1
-        self.input_size = [2, 3, 5, 5, 5]  # NCDHW
+        self.input_size = [2, 3, 5, 5, 6]  # NCDHW
         f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3, 3]
+        self.filter_size = [f_c, 6, 3, 3, 4]
         self.padding_algorithm = 'SAME'
 
 
@@ -238,7 +238,7 @@ class TestWithVALIDPad(TestConv3dTransposeOp):
         self.groups = 1
         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3, 3]
+        self.filter_size = [f_c, 6, 3, 4, 3]
         self.padding_algorithm = 'VALID'
 
 
@@ -395,11 +395,11 @@ class TestCUDNNWithAsymmetricPad(TestWithAsymmetricPad):
 class TestCUDNNWithSAMEPad(TestWithSAMEPad):
     def init_test_case(self):
         self.stride = [1, 1, 2]
-        self.dilations = [1, 1, 1]
+        self.dilations = [1, 2, 1]
         self.groups = 1
         self.input_size = [2, 3, 5, 5, 5]  # NCDHW
         f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3, 3]
+        self.filter_size = [f_c, 6, 3, 4, 3]
         self.padding_algorithm = 'SAME'
 
     def init_op_type(self):

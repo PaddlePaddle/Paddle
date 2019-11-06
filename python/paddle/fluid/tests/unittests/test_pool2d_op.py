@@ -955,6 +955,9 @@ class TestCase1_strides(TestCase1):
         self.ksize = [3, 3]
         self.strides = [1, 2]
 
+    def init_shape(self):
+        self.shape = [2, 3, 4, 5]
+
 
 create_test_cudnn_class(TestCase1_strides)
 create_test_padding_SAME_class(TestCase1_strides)

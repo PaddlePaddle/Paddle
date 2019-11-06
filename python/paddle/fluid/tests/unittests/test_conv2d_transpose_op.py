@@ -230,9 +230,9 @@ class TestWithSAMEPad(TestConv2dTransposeOp):
         self.stride = [2, 1]
         self.dilations = [1, 2]
         self.groups = 1
-        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.input_size = [2, 3, 6, 5]  # NCHW
         f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
+        self.filter_size = [f_c, 6, 4, 3]
         self.padding_algorithm = 'SAME'
 
 
