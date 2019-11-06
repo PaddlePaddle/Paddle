@@ -543,7 +543,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
       auto ep_idx = GetSectionIndex(var_mutable_data[j],
                                     absolute_section_[sparse_var_tables[i]]);
       ids_table->at(sparse_var_tables[i])[ep_idx][j] = var_mutable_data[j];
-      VLOG(3) << "Sparse var " << sparse_var_tables[i] << " insert "
+      VLOG(0) << "Sparse var " << sparse_var_tables[i] << " insert "
               << var_mutable_data[j];
     }
   }
