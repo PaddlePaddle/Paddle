@@ -25,8 +25,7 @@ namespace operators {
 
 // Returns the integer in mask whose numel must be 1. The integer means the
 // selected branch number.
-inline int GetBranchNumber(const framework::LoDTensor &mask,
-                           const platform::DeviceContext &dev_ctx) {
+inline int GetBranchNumber(const framework::LoDTensor &mask) {
   PADDLE_ENFORCE_EQ(mask.numel(), 1,
                     "Mask in SelectOutputOp must have numel 1.");
   if (platform::is_cpu_place(mask.place())) {
@@ -35,7 +34,7 @@ inline int GetBranchNumber(const framework::LoDTensor &mask,
   // when platform::is_gpu_place(mask.place()) is ture
   std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
 #ifdef PADDLE_WITH_CUDA
-  framework::TensorCopy(mask, platform::CPUPlace(), dev_ctx, cpu_mask.get());
+  framework::TensorCopySync(mask, platform::CPUPlace(), cpu_mask.get());
 #else
   PADDLE_THROW(
       "This version of PaddlePaddle doen NOT support GPU but got GPU tensor "

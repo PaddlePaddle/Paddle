@@ -37,7 +37,7 @@ class SelectInputOp : public framework::OperatorBase {
     auto &dev_ctx = *pool.Get(dev_place);
 
     auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
-    size_t output_branch = static_cast<size_t>(GetBranchNumber(mask, dev_ctx));
+    size_t output_branch = static_cast<size_t>(GetBranchNumber(mask));
 
     const std::vector<std::string> &x_names = Inputs("X");
     PADDLE_ENFORCE_LT(output_branch, x_names.size(),
