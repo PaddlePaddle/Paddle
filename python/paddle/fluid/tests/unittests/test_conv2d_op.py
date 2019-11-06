@@ -775,7 +775,7 @@ class TestConv2dOp_v2(OpTest):
         self.input_size = [2, 3, 5, 5]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [6, f_c, 4, 3]
 
     def init_dilation(self):
         self.dilations = [1, 1]

@@ -270,11 +270,11 @@ class TestPool3d_Op(OpTest):
         self.data_format = "NCDHW"
 
     def init_shape(self):
-        self.shape = [2, 3, 5, 5, 5]
+        self.shape = [2, 3, 5, 6, 5]
 
     def init_test_case(self):
-        self.ksize = [3, 3, 3]
-        self.strides = [1, 1, 1]
+        self.ksize = [2, 3, 1]
+        self.strides = [2, 2, 3]
 
     def init_paddings(self):
         self.paddings = [0, 0, 0]
@@ -319,10 +319,10 @@ class TestCase1(TestPool3d_Op):
 
 class TestCase2(TestPool3d_Op):
     def init_shape(self):
-        self.shape = [2, 3, 7, 7, 7]
+        self.shape = [2, 3, 6, 7, 7]
 
     def init_test_case(self):
-        self.ksize = [3, 3, 3]
+        self.ksize = [3, 3, 4]
         self.strides = [1, 3, 2]
 
     def init_paddings(self):
@@ -457,26 +457,26 @@ class TestAvgPoolAdaptive(TestCase1):
 #-------test pool3d with asymmetric padding------
 class TestPool3d_Op_AsyPadding(TestPool3d_Op):
     def init_test_case(self):
-        self.ksize = [3, 3, 3]
-        self.strides = [1, 1, 1]
+        self.ksize = [3, 4, 3]
+        self.strides = [1, 1, 2]
 
     def init_paddings(self):
         self.paddings = [0, 0, 0, 2, 3, 0]
 
     def init_shape(self):
-        self.shape = [2, 3, 5, 5, 5]
+        self.shape = [2, 3, 5, 5, 6]
 
 
 class TestCase1_AsyPadding(TestCase1):
     def init_test_case(self):
-        self.ksize = [3, 3, 3]
-        self.strides = [1, 1, 1]
+        self.ksize = [3, 3, 4]
+        self.strides = [1, 1, 2]
 
     def init_paddings(self):
         self.paddings = [1, 0, 2, 1, 2, 1]
 
     def init_shape(self):
-        self.shape = [2, 3, 7, 7, 7]
+        self.shape = [2, 3, 7, 7, 6]
 
 
 class TestCase2_AsyPadding(TestCase2):
@@ -552,15 +552,8 @@ class TestAvgInclude_AsyPadding(TestCase2):
     def init_exclusive(self):
         self.exclusive = False
 
-    def init_test_case(self):
-        self.ksize = [3, 3, 3]
-        self.strides = [1, 1, 1]
-
     def init_paddings(self):
         self.paddings = [1, 2, 1, 1, 1, 0]
-
-    def init_shape(self):
-        self.shape = [2, 3, 7, 7, 7]
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -571,10 +564,6 @@ class TestCUDNNAvgInclude_AsyPadding(TestCase2):
 
     def init_exclusive(self):
         self.exclusive = False
-
-    def init_test_case(self):
-        self.ksize = [3, 3, 3]
-        self.strides = [1, 1, 1]
 
     def init_paddings(self):
         self.paddings = [1, 0, 0, 0, 0, 0]
@@ -587,15 +576,8 @@ class TestAvgPoolAdaptive_AsyPadding(TestCase1):
     def init_adaptive(self):
         self.adaptive = True
 
-    def init_test_case(self):
-        self.ksize = [3, 3, 3]
-        self.strides = [1, 1, 1]
-
     def init_paddings(self):
         self.paddings = [1, 0, 2, 1, 2, 1]
-
-    def init_shape(self):
-        self.shape = [2, 3, 7, 7, 7]
 
 
 # ------------ test channel_last --------------
@@ -604,7 +586,7 @@ class TestPool3d_channel_last(TestPool3d_Op):
         self.data_format = "NDHWC"
 
     def init_shape(self):
-        self.shape = [2, 5, 5, 5, 3]
+        self.shape = [2, 5, 5, 6, 3]
 
 
 class TestCase1_channel_last(TestCase1):
@@ -612,7 +594,7 @@ class TestCase1_channel_last(TestCase1):
         self.data_format = "NDHWC"
 
     def init_shape(self):
-        self.shape = [2, 7, 7, 7, 3]
+        self.shape = [2, 6, 7, 7, 3]
 
 
 class TestCase2_channel_last(TestCase2):
@@ -620,7 +602,7 @@ class TestCase2_channel_last(TestCase2):
         self.data_format = "NDHWC"
 
     def init_shape(self):
-        self.shape = [2, 7, 7, 7, 3]
+        self.shape = [2, 7, 7, 5, 3]
 
 
 class TestCase3_channel_last(TestCase3):
@@ -628,7 +610,7 @@ class TestCase3_channel_last(TestCase3):
         self.data_format = "NDHWC"
 
     def init_shape(self):
-        self.shape = [2, 5, 5, 5, 3]
+        self.shape = [2, 5, 6, 5, 3]
 
 
 class TestCase4_channel_last(TestCase4):
@@ -636,7 +618,7 @@ class TestCase4_channel_last(TestCase4):
         self.data_format = "NDHWC"
 
     def init_shape(self):
-        self.shape = [2, 7, 7, 7, 3]
+        self.shape = [2, 7, 6, 7, 3]
 
 
 class TestCase5_channel_last(TestCase5):
@@ -714,7 +696,7 @@ class TestPool3d_Op_AsyPadding_channel_last(TestPool3d_Op_AsyPadding):
         self.data_format = "NDHWC"
 
     def init_shape(self):
-        self.shape = [2, 5, 5, 5, 3]
+        self.shape = [2, 5, 5, 6, 3]
 
 
 class TestCase1_AsyPadding_channel_last(TestCase1_AsyPadding):
@@ -722,7 +704,7 @@ class TestCase1_AsyPadding_channel_last(TestCase1_AsyPadding):
         self.data_format = "NDHWC"
 
     def init_shape(self):
-        self.shape = [2, 7, 7, 7, 3]
+        self.shape = [2, 7, 6, 8, 3]
 
 
 class TestCase2_AsyPadding_channel_last(TestCase2_AsyPadding):
@@ -730,7 +712,7 @@ class TestCase2_AsyPadding_channel_last(TestCase2_AsyPadding):
         self.data_format = "NDHWC"
 
     def init_shape(self):
-        self.shape = [2, 7, 7, 7, 3]
+        self.shape = [2, 6, 8, 7, 3]
 
 
 class TestCase3_AsyPadding_channel_last(TestCase3_AsyPadding):
@@ -738,7 +720,7 @@ class TestCase3_AsyPadding_channel_last(TestCase3_AsyPadding):
         self.data_format = "NDHWC"
 
     def init_shape(self):
-        self.shape = [2, 5, 5, 5, 3]
+        self.shape = [2, 5, 7, 5, 3]
 
 
 class TestCase4_AsyPadding_channel_last(TestCase4_AsyPadding):
@@ -746,7 +728,7 @@ class TestCase4_AsyPadding_channel_last(TestCase4_AsyPadding):
         self.data_format = "NDHWC"
 
     def init_shape(self):
-        self.shape = [2, 7, 7, 7, 3]
+        self.shape = [2, 6, 7, 7, 3]
 
 
 class TestCase5_AsyPadding_channel_last(TestCase5_AsyPadding):
@@ -754,7 +736,7 @@ class TestCase5_AsyPadding_channel_last(TestCase5_AsyPadding):
         self.data_format = "NDHWC"
 
     def init_shape(self):
-        self.shape = [2, 7, 7, 7, 3]
+        self.shape = [2, 7, 8, 6, 3]
 
 
 create_test_cudnn_class(TestPool3d_Op_AsyPadding_channel_last)
@@ -775,9 +757,6 @@ class TestAvgInclude_AsyPadding_channel_last(TestAvgInclude_AsyPadding):
     def init_data_format(self):
         self.data_format = "NDHWC"
 
-    def init_shape(self):
-        self.shape = [2, 7, 7, 7, 3]
-
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
@@ -786,22 +765,14 @@ class TestCUDNNAvgInclude_AsyPadding_channel_last(
     def init_data_format(self):
         self.data_format = "NDHWC"
 
-    def init_shape(self):
-        self.shape = [2, 5, 5, 5, 3]
-
 
 class TestAvgPoolAdaptive_AsyPadding_channel_last(
         TestAvgPoolAdaptive_AsyPadding):
     def init_data_format(self):
         self.data_format = "NDHWC"
 
-    def init_shape(self):
-        self.shape = [2, 7, 7, 7, 3]
-
 
 #test padding = SAME VALID
-
-
 def create_test_padding_SAME_class(parent):
     class TestPaddingSMAECase(parent):
         def init_paddings(self):

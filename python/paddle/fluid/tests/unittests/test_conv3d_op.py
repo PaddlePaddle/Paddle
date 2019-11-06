@@ -605,6 +605,24 @@ class TestConv3dOp_AsyPadding(TestConv3dOp_2):
         self.padding_algorithm = "EXPLICIT"
 
 
+class TestConv3dOp_DiffDataInDiffDim(TestConv3dOp_2):
+    def init_test_case(self):
+        self.stride = [1, 1, 2]
+        self.input_size = [2, 3, 4, 5, 5]  # NCDHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 4, 3]
+
+    def init_paddings(self):
+        self.pad = [1, 0, 1, 0, 0, 2]
+        self.padding_algorithm = "EXPLICIT"
+
+
+create_test_padding_SAME_class(TestConv3dOp_DiffDataInDiffDim)
+create_test_padding_VALID_class(TestConv3dOp_DiffDataInDiffDim)
+create_test_channel_last_class(TestConv3dOp_DiffDataInDiffDim)
+
+
 class TestCase1_AsyPadding(TestConv3dOp_2):
     def init_test_case(self):
         self.stride = [1, 1, 1]
