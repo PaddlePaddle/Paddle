@@ -186,19 +186,22 @@ class TestConcatAPI(OpTest):
         input_3 = np.random.random([2, 2, 4, 5]).astype("int32")
         x_2 = fluid.data(shape=[2, 1, 4, 5], dtype='int32', name='x_2')
         x_3 = fluid.data(shape=[2, 2, 4, 5], dtype='int32', name='x_3')
-        positive_1 = fluid.layers.fill_constant([1], "int32", 1)
+        positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
+        positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
         out_1 = fluid.layers.concat(input=[x_2, x_3], axis=1)
-        out_2 = fluid.layers.concat(input=[x_2, x_3], axis=positive_1)
+        out_2 = fluid.layers.concat(input=[x_2, x_3], axis=positive_1_int32)
+        out_3 = fluid.layers.concat(input=[x_2, x_3], axis=positive_1_int64)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
-        [res_1, res_2] = exe.run(
+        [res_1, res_2, res_3] = exe.run(
             fluid.default_main_program(),
             feed={"x_1": input_2,
                   "x_2": input_2,
                   "x_3": input_3},
-            fetch_list=[out_1, out_2])
+            fetch_list=[out_1, out_2, out_3])
         assert np.array_equal(res_1, np.concatenate((input_2, input_3), axis=1))
         assert np.array_equal(res_2, np.concatenate((input_2, input_3), axis=1))
+        assert np.array_equal(res_3, np.concatenate((input_2, input_3), axis=1))
 
 
 if __name__ == '__main__':

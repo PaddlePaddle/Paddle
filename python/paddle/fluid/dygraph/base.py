@@ -127,12 +127,14 @@ def guard(place=None):
     train = framework.Program()
     startup = framework.Program()
     tracer = Tracer()
+    core._switch_tracer(tracer)
 
     if place is None:
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
+    tracer._expected_place = place
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
@@ -199,8 +201,6 @@ def to_variable(value, block=None, name=None):
             stop_gradient=True)
         var = py_var._ivar.value()
         tensor = var.get_tensor()
-        if value.dtype == np.float16:
-            value = value.view(np.uint16)
         tensor.set(value, framework._current_expected_place())
         return py_var
     elif isinstance(value, framework.Variable):

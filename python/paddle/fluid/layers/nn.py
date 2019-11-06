@@ -2745,9 +2745,11 @@ def conv2d(input,
                 padding = padding[1:3]
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 4, 'padding')
+            if utils._is_symmetric_padding(padding, 2):
+                padding = [padding[0], padding[2]]
+
         else:
             padding = utils.convert_to_list(padding, 2, 'padding')
-            padding = [padding[0], padding[0], padding[1], padding[1]]
 
         return padding
 
@@ -2760,10 +2762,10 @@ def conv2d(input,
                 str(padding))
         if padding == "VALID":
             padding_algorithm = "VALID"
-            padding = [0, 0, 0, 0]
+            padding = [0, 0]
         elif padding == "SAME":
             padding_algorithm = "SAME"
-            padding = [0, 0, 0, 0]
+            padding = [0, 0]
 
     padding = _update_padding(padding, data_format)
 
@@ -2989,15 +2991,14 @@ def conv3d(input,
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 6, 'padding')
-
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
         elif is_list_or_tuple(padding) and len(padding) == 6:
             padding = utils.convert_to_list(padding, 6, 'padding')
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
         else:
             padding = utils.convert_to_list(padding, 3, 'padding')
-            padding = [
-                padding[0], padding[0], padding[1], padding[1], padding[2],
-                padding[2]
-            ]
 
         return padding
 
@@ -3010,10 +3011,10 @@ def conv3d(input,
                 str(padding))
         if padding == "VALID":
             padding_algorithm = "VALID"
-            padding = [0, 0, 0, 0, 0, 0]
+            padding = [0, 0, 0]
         elif padding == "SAME":
             padding_algorithm = "SAME"
-            padding = [0, 0, 0, 0, 0, 0]
+            padding = [0, 0, 0]
 
     padding = _update_padding(padding, data_format)
 
@@ -3457,9 +3458,18 @@ def pool2d(input,
         Variable: The output tensor of pooling result. The data type is same as input tensor.
 
     Raises:
-        ValueError: If `pool_type` is not "max" nor "avg"
-        ValueError: If `global_pooling` is False and `pool_size` is -1
-        ValueError: If `use_cudnn` is not a bool value.
+        ValueError: If `pool_type` is not "max" nor "avg".
+        ValueError: If `global_pooling` is False and `pool_size` is -1.
+        TypeError: If `use_cudnn` is not a bool value.
+        ValueError: If `data_format` is not "NCHW" or "NHWC".
+        ValueError: If `pool_padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `pool_padding` is "VALID", but `ceil_mode` is True.
+        ValueError: If `pool_padding` is a list or tuple, but the elements in the batch or channel dimensions are non-zero.
+        ShapeError: If the input is not a 4-D or 5-D Tensor.
+        ShapeError: If the dimension of input minus the size of `pool_stride` is not 2.
+        ShapeError: If the size of `pool_size` and `pool_stride` is not equal.
+        ShapeError: If the output's shape calculated is not greater than 0.
+
 
     Examples:
 
@@ -3522,8 +3532,8 @@ def pool2d(input,
             "and be a valid value. Received pool_size: %s." % str(pool_size))
 
     if not isinstance(use_cudnn, bool):
-        raise ValueError("Attr(use_cudnn) should be True or False. Received "
-                         "Attr(use_cudnn): %s." % str(use_cudnn))
+        raise TypeError("Attr(use_cudnn) should be True or False. Received "
+                        "Attr(use_cudnn): %s." % str(use_cudnn))
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
@@ -3556,6 +3566,8 @@ def pool2d(input,
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 4, 'padding')
 
+            if utils._is_symmetric_padding(padding, 2):
+                padding = [padding[0], padding[2]]
         else:
             padding = utils.convert_to_list(padding, 2, 'padding')
 
@@ -3570,14 +3582,14 @@ def pool2d(input,
                 % str(pool_padding))
         if pool_padding == "VALID":
             padding_algorithm = "VALID"
-            pool_padding = [0, 0, 0, 0]
+            pool_padding = [0, 0]
             if ceil_mode != False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode) must be False. "
                     "Received ceil_mode: True.")
         elif pool_padding == "SAME":
             padding_algorithm = "SAME"
-            pool_padding = [0, 0, 0, 0]
+            pool_padding = [0, 0]
 
     pool_padding = update_padding(pool_padding, data_format)
 
@@ -3660,6 +3672,19 @@ def pool3d(input,
     Returns:
         Variable: The output tensor of pooling result. The data type is same as input tensor.
 
+    Raises:
+        ValueError: If `pool_type` is not "max" nor "avg".
+        ValueError: If `global_pooling` is False and `pool_size` is -1.
+        TypeError: If `use_cudnn` is not a bool value.
+        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
+        ValueError: If `pool_padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `pool_padding` is "VALID", but `ceil_mode` is True.
+        ValueError: If `pool_padding` is a list or tuple, but the elements in the batch or channel dimensions are non-zero.
+        ShapeError: If the input is not a 4-D or 5-D Tensor.
+        ShapeError: If the dimension of input minus the size of `pool_stride` is not 2.
+        ShapeError: If the size of `pool_size` and `pool_stride` is not equal.
+        ShapeError: If the output's shape calculated is not greater than 0.
+
     Examples:
 
         .. code-block:: python
@@ -3727,8 +3752,8 @@ def pool3d(input,
             str(pool_size))
 
     if not isinstance(use_cudnn, bool):
-        raise ValueError("Attr(use_cudnn) should be True or False. Received "
-                         "Attr(use_cudnn): %s. " % str(use_cudnn))
+        raise TypeError("Attr(use_cudnn) should be True or False. Received "
+                        "Attr(use_cudnn): %s. " % str(use_cudnn))
 
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(
@@ -3760,10 +3785,13 @@ def pool3d(input,
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 6, 'padding')
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
 
         elif is_list_or_tuple(padding) and len(padding) == 6:
             padding = utils.convert_to_list(padding, 6, 'padding')
-
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
         else:
             padding = utils.convert_to_list(padding, 3, 'padding')
 
@@ -3778,14 +3806,14 @@ def pool3d(input,
                 % str(pool_padding))
         if pool_padding == "VALID":
             padding_algorithm = "VALID"
-            pool_padding = [0, 0, 0, 0, 0, 0]
+            pool_padding = [0, 0, 0]
             if ceil_mode != False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", ceil_mode must be False. "
                     "Received ceil_mode: True.")
         elif pool_padding == "SAME":
             padding_algorithm = "SAME"
-            pool_padding = [0, 0, 0, 0, 0, 0]
+            pool_padding = [0, 0, 0]
 
     pool_padding = update_padding(pool_padding, data_format)
 
@@ -4204,7 +4232,6 @@ def batch_norm(input,
             will save global variance with the string.
         do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance should do model
             average when model average is enabled.
-        fuse_with_relu (bool): if True, this OP performs relu after batch norm.
         use_global_stats(bool, Default False): Whether to use global mean and
             variance. In inference or test mode, set use_global_stats to true
             or is_test to true, and the behavior is equivalent.
@@ -5146,6 +5173,9 @@ def conv2d_transpose(input,
         filter_size = utils.convert_to_list(filter_size, 2,
                                             'conv2d_transpose.filter_size')
 
+    if len(padding) == 4 and utils._is_symmetric_padding(padding, 2):
+        padding = [padding[0], padding[2]]
+
     if output_size is None:
         output_size = []
     elif isinstance(output_size, list) or isinstance(output_size, int):
@@ -5381,13 +5411,13 @@ def conv3d_transpose(input,
 
         elif is_list_or_tuple(padding) and len(padding) == 6:
             padding = utils.convert_to_list(padding, 6, 'padding')
+
         else:
             padding = utils.convert_to_list(padding, 3, 'padding')
             padding = [
                 padding[0], padding[0], padding[1], padding[1], padding[2],
                 padding[2]
             ]
-
         return padding
 
     padding_algorithm = "EXPLICIT"
@@ -5426,6 +5456,9 @@ def conv3d_transpose(input,
     else:
         filter_size = utils.convert_to_list(filter_size, 3,
                                             'conv3d_transpose.filter_size')
+
+    if len(padding) == 6 and utils._is_symmetric_padding(padding, 3):
+        padding = [padding[0], padding[2], padding[4]]
 
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
@@ -9286,7 +9319,8 @@ def lod_append(x, level):
     return out
 
 
-def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
+def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None,
+        data_format='NCHW'):
     """
     This operator implements the Local Response Normalization Layer.
     This layer performs a type of "lateral inhibition" by normalizing over local input regions.
@@ -9307,13 +9341,18 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
 
     Args:
-        input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W], where N is the batch size, C is the input channel, H is Height, W is weight. The data type is float32. The rank of this tensor must be 4, otherwise it will raise ValueError.
+        input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W] or [N, H, W, C], 
+            where N is the batch size, C is the input channel, H is Height, W is weight. The data 
+            type is float32. The rank of this tensor must be 4, otherwise it will raise ValueError.
         n (int, optional): The number of channels to sum over. Default: 5
         k (float, optional): An offset, positive. Default: 1.0
         alpha (float, optional): The scaling parameter, positive. Default:1e-4
         beta (float, optional): The exponent, positive. Default:0.75
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` 
-
+        name (str, optional): The default value is None. Normally there is no need for user to set 
+            this property. For more information, please refer to :ref:`api_guide_Name` 
+        data_format(str, optional): The data format of the input and output data. An optional string
+            from: `"NCHW"`, `"NHWC"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. Default: 'NCHW'.
     Returns:
         Variable: A tensor variable storing the transformation result with the same shape and data type as input.
 
@@ -9336,8 +9375,12 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
     if dims != 4:
         raise ValueError(
-            "dims of input must be 4(not %d), and it's order must be NCHW" %
+            "Input's dimension size of Op(lrn) must be 4, but received %d." %
             (dims))
+    if data_format not in ['NCHW', 'NHWC']:
+        raise ValueError(
+            "Attr(data_format) of Op(lrn) got wrong value: received " +
+            data_format + " but only NCHW or NHWC supported.")
 
     mid_out = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
@@ -9349,10 +9392,13 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
             "Out": lrn_out,
             "MidOut": mid_out,
         },
-        attrs={"n": n,
-               "k": k,
-               "alpha": alpha,
-               "beta": beta})
+        attrs={
+            "n": n,
+            "k": k,
+            "alpha": alpha,
+            "beta": beta,
+            "data_format": data_format
+        })
 
     return lrn_out
 

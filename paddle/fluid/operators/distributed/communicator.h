@@ -107,21 +107,21 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
+template <typename T>
 inline void MergeVars(const std::string& var_name,
                       const std::vector<std::shared_ptr<Variable>>& vars,
-                      Scope* scope) {
+                      Scope* scope, bool merge_add = true) {
   PADDLE_ENFORCE(!vars.empty(), "should have value to merge!");
   auto cpu_place = platform::CPUPlace();
   auto& var0 = vars[0];
   auto* out_var = scope->Var(var_name);
   if (var0->IsType<framework::LoDTensor>()) {
     auto dims = var0->Get<framework::LoDTensor>().dims();
-    VLOG(3) << "merge " << var_name << " LoDTensor dims " << dims;
-
+    VLOG(3) << "merge " << var_name << " LoDTensor dims " << dims
+            << "; merge add: " << merge_add;
     // init output tensor
     auto* out_t = out_var->GetMutable<framework::LoDTensor>();
-    out_t->mutable_data<float>(dims, cpu_place);
-
+    out_t->mutable_data<T>(dims, cpu_place);
     // check the input dims
     for (auto& var : vars) {
       auto& var_t = var->Get<framework::LoDTensor>();
@@ -130,44 +130,41 @@ inline void MergeVars(const std::string& var_name,
 
     // set output tensor to 0.
     auto cpu_ctx = paddle::platform::CPUDeviceContext();
-    math::SetConstant<paddle::platform::CPUDeviceContext, float>
-        constant_functor;
-    constant_functor(cpu_ctx, out_t, static_cast<float>(0));
-
+    math::SetConstant<paddle::platform::CPUDeviceContext, T> constant_functor;
+    constant_functor(cpu_ctx, out_t, static_cast<T>(0));
     // sum all vars to out
-    auto result = EigenVector<float>::Flatten(*out_t);
+    auto result = EigenVector<T>::Flatten(*out_t);
     for (auto& var : vars) {
       auto& in_t = var->Get<framework::LoDTensor>();
-      auto in = EigenVector<float>::Flatten(in_t);
+      auto in = EigenVector<T>::Flatten(in_t);
       result.device(*cpu_ctx.eigen_device()) = result + in;
     }
-    if (!FLAGS_communicator_is_sgd_optimizer) {
+    if (!merge_add) {
       result.device(*cpu_ctx.eigen_device()) =
-          result / static_cast<float>(vars.size());
+          result / static_cast<T>(vars.size());
     }
   } else if (var0->IsType<framework::SelectedRows>()) {
     auto& slr0 = var0->Get<framework::SelectedRows>();
     auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
     out_slr->mutable_rows()->clear();
-    out_slr->mutable_value()->mutable_data<float>({{}}, cpu_place);
+    out_slr->mutable_value()->mutable_data<T>({{}}, cpu_place);
     std::vector<const paddle::framework::SelectedRows*> inputs;
     inputs.reserve(vars.size());
     for (auto& var : vars) {
       inputs.push_back(&var->Get<framework::SelectedRows>());
     }
     auto dev_ctx = paddle::platform::CPUDeviceContext();
-    if (FLAGS_communicator_is_sgd_optimizer) {
-      math::scatter::MergeAdd<paddle::platform::CPUDeviceContext, float>
-          merge_add;
+    if (merge_add) {
+      math::scatter::MergeAdd<paddle::platform::CPUDeviceContext, T> merge_add;
       merge_add(dev_ctx, inputs, out_slr);
     } else {
-      math::scatter::MergeAverage<paddle::platform::CPUDeviceContext, float>
+      math::scatter::MergeAverage<paddle::platform::CPUDeviceContext, T>
           merge_average;
       merge_average(dev_ctx, inputs, out_slr);
     }
 
     VLOG(3) << "merge " << var_name << " SelectedRows height: " << slr0.height()
-            << " dims: " << slr0.value().dims();
+            << " dims: " << slr0.value().dims() << "; merge add: " << merge_add;
   } else {
     PADDLE_THROW("unsupported var type!");
   }

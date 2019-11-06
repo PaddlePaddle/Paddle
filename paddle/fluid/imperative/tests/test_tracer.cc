@@ -278,6 +278,24 @@ TEST(test_tracer, test_unique_name_generator) {
   ASSERT_STREQ("fc_2", fc_2.c_str());
 }
 
+TEST(test_tracer, test_current_tracer) {
+  // use current_tracer
+  auto tracer = std::make_shared<imperative::Tracer>();
+  imperative::SetCurrentTracer(tracer);
+  auto current_tracer = imperative::GetCurrentTracer();
+  ASSERT_EQ(current_tracer, tracer);
+}
+
+TEST(test_tracer, test_expected_place) {
+  // default expected place is CPUPlace
+  imperative::Tracer tracer;
+  ASSERT_EQ(platform::is_cpu_place(tracer.ExpectedPlace()), true);
+  // set to CUDAPlace
+  platform::CUDAPlace gpu_place(0);
+  tracer.SetExpectedPlace(gpu_place);
+  ASSERT_EQ(platform::is_gpu_place(tracer.ExpectedPlace()), true);
+}
+
 }  // namespace imperative
 }  // namespace paddle
 
