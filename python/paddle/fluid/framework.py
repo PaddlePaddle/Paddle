@@ -1676,6 +1676,14 @@ class OpProtoHolder(object):
             core.op_proto_and_checker_maker.kOpCreationCallstackAttrName()
         }
 
+class PrecisionGuardType(Enum):
+    # Don't change
+    precision=0
+
+    # Operator's inputs and outputs can be conver to half.
+    half=1
+
+g_op_precision_guard_attr=None
 
 class Operator(object):
     """
@@ -1774,6 +1782,11 @@ class Operator(object):
                 callstack_var_name = op_maker.kOpCreationCallstackAttrName()
                 op_attrs[callstack_var_name] = list(
                     reversed(traceback.format_stack()))[1:]
+
+            global g_op_precision_guard_attr
+            if g_op_precision_guard_attr is not None:
+                presion_role_name = op_maker.kOpPrecisionAttrName()
+                op_attrs[presion_role_name] = g_op_precision_guard_attr
 
             self.desc.set_type(type)
             proto = OpProtoHolder.instance().get_op_proto(type)

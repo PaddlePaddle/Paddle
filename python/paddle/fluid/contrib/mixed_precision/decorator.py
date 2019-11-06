@@ -20,6 +20,8 @@ from . import fp16_utils
 from .fp16_utils import update_loss_scaling, rewrite_program
 from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
+from paddle.fluid.framework import g_op_presion_guard_attr,PrecisionGuardType
+from paddle.fuild.wrapped_decorator import signature_safe_contextmanager
 
 __all__ = ["decorate"]
 
@@ -212,6 +214,23 @@ class OptimizerWithMixedPrecison(object):
 
         return optimize_ops, scaled_params_grads
 
+def _switch_precision_attr(attr):
+    global g_op_precision_guard_attr
+    ex = g_op_precision_guard_attr
+    g_op_precision_guard_attr = attr
+    return ex
+
+@signature_safe_contextmanager
+def half_precision_guard():
+    ex = _switch_precision_attr(PrecisionGuardType.half)
+    yield
+    _switch_precision_attr(ex)
+
+@signature_safe_contextmanager
+def presion_guard():
+    ex = _switch_precision_attr(PrecisionGuardType.precision)
+    yield
+    _switch_precision_attr(ex)
 
 def decorate(optimizer,
              amp_lists=None,
@@ -220,7 +239,8 @@ def decorate(optimizer,
              decr_every_n_nan_or_inf=2,
              incr_ratio=2.0,
              decr_ratio=0.8,
-             use_dynamic_loss_scaling=True):
+             use_dynamic_loss_scaling=True,
+             decorate_type=DecorateType.black_white_list):
     """ 
     Decorate the given optimizer to adapt to the mixed-precision training.
 
@@ -255,8 +275,17 @@ def decorate(optimizer,
             ops, param_grads = mp_optimizer.minimize(loss)
             scaled_loss = mp_optimizer.get_scaled_loss()
     """
-    if amp_lists is None:
+    if decorate_type != DecorateType.black_white_list and amp_lists is not None:
+        assert False, "amp_list only used under DecorateType.black_white_list type"
+    if decorate_type == DecorateType.black_white_list and amp_list is none:
         amp_lists = AutoMixedPrecisionLists()
+    elif decorate_type == DecorateType.half:
+        get_half_lists()
+    elif decorate_type == DecorateType.presion:
+        get_precision_lists()
+    elif decorate_type == DecorateType.user_defined:
+        get_user_defined_lists()
+
     mp_optimizer = OptimizerWithMixedPrecison(
         optimizer, amp_lists, init_loss_scaling, use_dynamic_loss_scaling,
         incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio)

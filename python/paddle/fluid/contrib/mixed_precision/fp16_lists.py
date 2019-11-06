@@ -13,8 +13,23 @@
 # limitations under the License.
 
 import copy
+from enum import Enum, unique
 
 __all__ = ["AutoMixedPrecisionLists"]
+
+class DecorateType(Enum):
+    # Use black-white-gray list method to convert progrom from fp32 to fp16.
+    # It's the default method of mixed precision.
+    black_white_list=0
+
+    # All the program use half precision but the operators guarded with presion_guard.
+    half=1
+
+    # All the program use original precision but the operators guarded with half_precision_guard.
+    precision=2
+
+    # User defines which operator will use half and which operator will use full precision.
+    user_defined=3
 
 
 class AutoMixedPrecisionLists(object):
