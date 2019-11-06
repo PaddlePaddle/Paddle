@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -135,23 +135,28 @@ class AmsgradOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1000);
 
     AddComment(R"DOC(
-Amsgrad Optimizer.
+    The Amsgrad optimzier uses an optimization described at the end
+    of section 3 of `Amsgrad paper <https://openreview.net/pdf?id=ryQu7f-RZ>`_ ,
+    it can dynamically adjusts the learning rate of each parameter using
+    the 1st moment estimates and the 2nd moment estimates of the gradient.
 
-This implements the Amsgrad optimizer from Section 2 of the Amsgrad
-paper : https://arxiv.org/abs/1412.6980.
-Amsgrad is a first-order gradient-based optimization method based on
-adaptive estimates of lower-order moments.
+    It is a variant of the Adam optimizer. It considers the long term memory of past gradients by keep tracking the maximum
+    of 2nd exponential moving average moment estimates of the gradient.
 
-Amsgrad updates:
+    Amsgrad update rule:
 
-$$
-moment\_1\_out = \beta_1 * moment\_1 + (1 - \beta_1) * grad \\
-moment\_2_\out = \beta_2 * moment\_2 + (1 - \beta_2) * grad * grad \\
-learning\_rate = learning\_rate *
-                  \frac{\sqrt{1 - \beta_{2\_pow}}}{1 - \beta_{1\_pow}} \\
-param\_out = param - learning\_rate * \frac{moment\_1}{\sqrt{moment\_2} + \epsilon}
-$$
+    $$
+    moment\_1\_out & = {\\beta}_1 * moment\_1 + (1 - {\\beta}_1) * grad
 
+    moment\_2\_out & = {\\beta}_2 * moment\_2 + (1 - {\\beta}_2) * grad * grad
+
+    max_moment\_2\_out & = max{max_moment\_2, moment\_2\_out}
+
+    learning\_rate & = learning\_rate * \\
+                          \\frac{\sqrt{1 - {\\beta}_2^t}}{1 - {\\beta}_1^t}
+
+    param\_out & = param - learning\_rate * \\frac{moment\_1\_out}{\sqrt{max_moment\_2\_out} + \epsilon}
+    $$s
 )DOC");
   }
 };

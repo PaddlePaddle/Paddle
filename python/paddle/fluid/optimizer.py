@@ -1583,12 +1583,12 @@ class AmsgradOptimizer(Optimizer):
 
         moment\_2\_out & = {\\beta}_2 * moment\_2 + (1 - {\\beta}_2) * grad * grad
 
-        max_moment\_2\out & = max{max_moment\_2, moment\_2\_out}
+        max_moment\_2\_out & = max{max_moment\_2, moment\_2\_out}
 
         learning\_rate & = learning\_rate * \\
                           \\frac{\sqrt{1 - {\\beta}_2^t}}{1 - {\\beta}_1^t}
 
-        param\_out & = param - learning\_rate * \\frac{moment\_1}{\sqrt{max_moment\_2} + \epsilon}
+        param\_out & = param - learning\_rate * \\frac{moment\_1_out}{\sqrt{max_moment\_2\_out} + \epsilon}
 
     Related paper: `On the Convergence of Adam and Beyond <https://openreview.net/pdf?id=ryQu7f-RZ>`_
 
