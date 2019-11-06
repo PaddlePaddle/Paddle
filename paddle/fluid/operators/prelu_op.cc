@@ -51,8 +51,8 @@ class PReluOp : public framework::OperatorWithKernel {
                         "For element-wise mode, rank of weight Alpha must be ",
                         "equal to the rank of input.");
       for (int64_t i = x_rank - 1; i > 0; i--) {
-        x_product *= x_dim[x_rank];
-        alpha_product *= alpha_dim[x_rank];
+        x_product *= x_dim[i];
+        alpha_product *= alpha_dim[i];
       }
       PADDLE_ENFORCE_EQ(x_product, alpha_product,
                         "For element-wise mode, size of weight Alpha must be "
