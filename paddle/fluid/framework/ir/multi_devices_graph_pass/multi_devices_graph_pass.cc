@@ -271,9 +271,11 @@ void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
   switch (this->strategy_.gradient_scale_) {
     case details::BuildStrategy::GradientScaleStrategy::kOne:
       loss_scale = 1;
+      VLOG(0) << "loss_scale use kOne";
       break;
     case details::BuildStrategy::GradientScaleStrategy::kCoeffNumDevice:
       loss_scale = Get<size_t>(details::kNRanks);
+      VLOG(0) << "loss_scale use kCoeffNumDevice";
       break;
     case details::BuildStrategy::GradientScaleStrategy::kCustomized:
       loss_scale = 0;
@@ -283,12 +285,15 @@ void MultiDevSSAGraphBuilderBase::InsertScaleLossGradOp(
       break;
   }
 
-  VLOG(3) << "loss_scale: " << loss_scale;
+  VLOG(0) << "loss_scale: " << loss_scale;
 
   if (loss_scale) {
     // TODO(paddle-dev): Why is there no input for this op_handle?
     auto loss_grad_name = node->Op()->OutputArgumentNames()[0];
     auto out_dtype = this->all_vars_.at(loss_grad_name)->GetDataType();
+
+    VLOG(0) << "add loss_scale for " << loss_grad_name;
+
     this->CreateScaleLossGradOp(result, loss_grad_name, node->outputs[0],
                                 loss_scale, out_dtype);
   }

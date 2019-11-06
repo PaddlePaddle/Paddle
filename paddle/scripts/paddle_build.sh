@@ -291,7 +291,6 @@ function build_base() {
     if [ "$1" != "" ]; then
       parallel_number=$1
     fi
-    make clean
     make -j ${parallel_number}
     make install -j ${parallel_number}
 }
@@ -315,7 +314,6 @@ function build_mac() {
     Building in /paddle/build ...
     ============================================
 EOF
-    make clean
     make -j 8
     make install -j 8
 }

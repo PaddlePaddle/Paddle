@@ -805,6 +805,8 @@ class DistributeTranspiler(object):
                         [param_varname, recv_op_role_var_name]
                     })
 
+        self._update_remote_sparse_update_op(program, need_sparse_update_params)
+
         if self.sync_mode:
             # form a WAW dependency
             program.global_block().append_op(
@@ -831,9 +833,6 @@ class DistributeTranspiler(object):
                             "axis": 0,
                             RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
                         })
-
-            self._update_remote_sparse_update_op(program,
-                                                 need_sparse_update_params)
 
         self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
 
