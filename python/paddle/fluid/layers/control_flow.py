@@ -1782,13 +1782,9 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             "Incompatible return values of true_fn and false_fn in cond: {}".
             format(e))
 
-    #flatten_true_output = flatten(true_output)
-    #flatten_false_output = flatten(false_output)
-
     mask = cast(pred, dtype='int32')
     merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)
     merged_output = map_structure(merge_func, false_output, true_output)
-    # merged_output = [merge_selected_var([y, x], mask) for (x, y) in zip(flatten_true_output, flatten_false_output)]
     return merged_output
 
 
