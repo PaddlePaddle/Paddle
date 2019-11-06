@@ -33,6 +33,7 @@ endif()
 
 ExternalProject_Add(
     extern_cares
+    ${SHALLOW_CLONE}
     GIT_REPOSITORY "https://github.com/c-ares/c-ares.git"
     GIT_TAG "cares-1_13_0"
     PREFIX          ${CARES_SOURCES_DIR}

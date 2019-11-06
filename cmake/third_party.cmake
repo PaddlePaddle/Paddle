@@ -65,6 +65,10 @@ if(WIN32 OR APPLE OR NOT WITH_GPU OR ON_INFER)
     set(WITH_DGC OFF)
 endif()
 
+if(${CMAKE_VERSION} VERSION_GREATER "3.5.2")
+    set(SHALLOW_CLONE "GIT_SHALLOW TRUE") # adds --depth=1 arg to git clone of External_Projects
+endif()
+
 ########################### include third_party accoring to flags ###############################
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags

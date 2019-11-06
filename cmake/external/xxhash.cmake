@@ -18,6 +18,7 @@ if(WIN32)
   ExternalProject_Add(
       extern_xxhash
       ${EXTERNAL_PROJECT_LOG_ARGS}
+      ${SHALLOW_CLONE}
       GIT_REPOSITORY  "https://github.com/Cyan4973/xxHash"
       GIT_TAG         "v0.6.5"
       PREFIX          ${XXHASH_SOURCE_DIR}

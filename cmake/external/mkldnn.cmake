@@ -52,6 +52,7 @@ ENDIF(NOT WIN32)
 ExternalProject_Add(
     ${MKLDNN_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
     DEPENDS             ${MKLDNN_DEPENDS}
     GIT_REPOSITORY      "https://github.com/intel/mkl-dnn.git"
     GIT_TAG             "aef88b7c233f48f8b945da310f1b973da31ad033"

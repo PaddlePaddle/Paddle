@@ -37,6 +37,7 @@ add_definitions(-DXBYAK_NO_OP_NAMES)
 ExternalProject_Add(
     ${XBYAK_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
     DEPENDS             ""
     GIT_REPOSITORY      "https://github.com/herumi/xbyak.git"
     GIT_TAG             "v5.661"  # Jul 26th
