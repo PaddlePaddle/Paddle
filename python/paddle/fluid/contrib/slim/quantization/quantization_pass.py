@@ -1244,10 +1244,13 @@ class AddQuantDequantPass(object):
                 for input_name in input_names:
                     in_node = graph._find_node_by_name(op_node.inputs,
                                                        input_name)
-                    quant_var_node, scale_var_node = \
-                        self._inser_quant_dequant_moving_average_abs_max_op(
-                        graph, in_node, self._quant_bits)
-                    dequantized_vars_map[input_name] = quant_var_node
+                    if input_name in dequantized_vars_map:
+                        quant_var_node = dequantized_vars_map[input_name]
+                    else:
+                        quant_var_node, scale_var_node = \
+                            self._inser_quant_dequant_moving_average_abs_max_op(
+                            graph, in_node, self._quant_bits)
+                        dequantized_vars_map[input_name] = quant_var_node
                     graph.update_input_link(in_node, quant_var_node, op_node)
 
         for op_node in ops:
