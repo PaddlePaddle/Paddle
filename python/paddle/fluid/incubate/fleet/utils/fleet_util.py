@@ -856,7 +856,6 @@ class FleetUtil(object):
                                     executor,
                                     scope,
                                     program,
-                                    model_name,
                                     feeded_vars,
                                     target_vars,
                                     output_path,
@@ -873,7 +872,6 @@ class FleetUtil(object):
             executor(Executor): fluid Executor
             scope(Scope): fluid Scope
             program(Program): fluid Program
-            model_name(str): save model local dir or filename
             feeded_vars(list[Variable]): feed vars
             target_vars(list[variable]): fetch vars
             output_path(str): hdfs/afs output path
@@ -893,7 +891,6 @@ class FleetUtil(object):
               fleet_util.save_paddle_inference_model(exe,
                                                      join_scope,
                                                      join_program,
-                                                     "model0",
                                                      feeded_vars,
                                                      target_vars,
                                                      "hdfs:/my/output/path/",
@@ -905,10 +902,10 @@ class FleetUtil(object):
         day = str(day)
         pass_id = str(pass_id)
         feeded_var_names = [i.name for i in feeded_vars]
+        model_name = "inference_model"
         # pull dense before save
         self.pull_all_dense_params(scope, program)
         if fleet.worker_index() == 0:
-            vars = [program.global_block().var(i) for i in var_names]
             with fluid.scope_guard(scope):
                 if save_combine:
                     fluid.io.save_inference_model(dirname=model_name,
@@ -935,10 +932,7 @@ class FleetUtil(object):
             if not client.is_exist(dest):
                 client.makedirs(dest)
 
-            if os.path.isdir(model_name):
-                client.upload_dir(dest, model_name)
-            else:
-                client.upload(dest, model_name)
+            client.upload(dest, model_name)
 
         fleet._role_maker._barrier_worker()
 
