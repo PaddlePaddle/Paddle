@@ -15,7 +15,8 @@
 from __future__ import print_function
 
 from .layer_function_generator import templatedoc
-from ..framework import in_dygraph_mode
+from ..framework import Variable, in_dygraph_mode
+from ..layer_helper import LayerHelper
 
 __all__ = [
     'sequence_conv',

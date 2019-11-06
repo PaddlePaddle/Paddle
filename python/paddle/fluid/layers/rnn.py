@@ -20,6 +20,7 @@ from . import nn
 from . import tensor
 from . import control_flow
 from . import utils
+from . import sequence_lod
 from .utils import *
 from ..layer_helper import LayerHelper
 from ..framework import in_dygraph_mode
@@ -443,7 +444,7 @@ def rnn(cell,
 
     if sequence_length:
         max_seq_len = nn.shape(flatten(inputs)[0])[0]
-        mask = nn.sequence_mask(
+        mask = sequence_lod.sequence_mask(
             sequence_length,
             maxlen=max_seq_len,
             dtype=flatten(initial_states)[0].dtype)
