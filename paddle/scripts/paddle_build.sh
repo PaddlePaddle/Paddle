@@ -485,6 +485,8 @@ function generate_api_spec() {
 
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec 
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > $spec_path
+    awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
+    awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
     if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then 
         # Use sed to make python2 and python3 sepc keeps the same
         sed -i 's/arg0: str/arg0: unicode/g' $spec_path
