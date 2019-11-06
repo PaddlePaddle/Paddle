@@ -42,6 +42,7 @@ using paddle::PaddlePlace;
 using paddle::PaddlePredictor;
 using paddle::PaddleTensor;
 using paddle::PassStrategy;
+
 void BindPaddleDType(py::module *m);
 void BindPaddleBuf(py::module *m);
 void BindPaddleTensor(py::module *m);
@@ -56,6 +57,9 @@ void BindPaddlePassBuilder(py::module *m);
 #ifdef PADDLE_WITH_MKLDNN
 void BindMkldnnQuantizerConfig(py::module *m);
 #endif
+
+template <typename... Args>
+using py_overload_cast = py::detail::overload_cast_impl<Args...>;
 }  // namespace
 
 void BindInferenceApi(py::module *m) {
@@ -97,20 +101,20 @@ void PaddleBufReset(PaddleBuf &buf, py::array_t<T> data) {  // NOLINT
 }
 
 template <typename T>
-PaddleDType PaddleTensorGetDType();
+constexpr PaddleDType PaddleTensorGetDType();
 
 template <>
-PaddleDType PaddleTensorGetDType<int32_t>() {
+constexpr PaddleDType PaddleTensorGetDType<int32_t>() {
   return PaddleDType::INT32;
 }
 
 template <>
-PaddleDType PaddleTensorGetDType<int64_t>() {
+constexpr PaddleDType PaddleTensorGetDType<int64_t>() {
   return PaddleDType::INT64;
 }
 
 template <>
-PaddleDType PaddleTensorGetDType<float>() {
+constexpr PaddleDType PaddleTensorGetDType<float>() {
   return PaddleDType::FLOAT32;
 }
 
@@ -438,8 +442,8 @@ void BindPaddlePassBuilder(py::module *m) {
       .def("append_pass", &PaddlePassBuilder::AppendPass)
       .def("insert_pass", &PaddlePassBuilder::InsertPass)
       .def("delete_pass",
-           py::overload_cast<size_t>(&PaddlePassBuilder::DeletePass))
-      .def("delete_pass", py::overload_cast<const std::string &>(
+           py_overload_cast<size_t>(&PaddlePassBuilder::DeletePass))
+      .def("delete_pass", py_overload_cast<const std::string &>(
                               &PaddlePassBuilder::DeletePass))
       .def("append_analysis_pass", &PaddlePassBuilder::AppendAnalysisPass)
       .def("turn_on_debug", &PaddlePassBuilder::TurnOnDebug)
