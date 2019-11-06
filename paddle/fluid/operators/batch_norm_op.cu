@@ -234,47 +234,36 @@ static __global__ void KeBNBackwardData(const T *dy,
   }
 }
 
-template <typename X, typename Scale, typename Bias, typename Mean,
-          typename Variance, typename Y>
-static __global__ void KeBNRestoreData(const framework::DataLayout layout, X *x,
-                                       const Scale *scale, const Bias *bias,
-                                       const Mean *mean,
-                                       const Variance *variance, double epsilon,
-                                       int C, int M, const int num,
-                                       const Y *y) {
+template <typename T>
+static __global__ void KeBNRestoreData(const framework::DataLayout layout, T *x,
+                                       const BatchNormParamType<T> *scale,
+                                       const BatchNormParamType<T> *bias,
+                                       const BatchNormParamType<T> *mean,
+                                       const BatchNormParamType<T> *variance,
+                                       double epsilon, int C, int M,
+                                       const int num, const T *y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
   for (int i = gid; i < num; i += stride) {
     const int c = layout == framework::DataLayout::kNCHW ? (i / M) % C : i % C;
-    x[i] = (y[i] - bias[c]) / scale[c] / variance[c] + mean[c];
+    auto y_i = static_cast<BatchNormParamType<T>>(y[i]);
+    auto x_i = (y_i - bias[c]) / scale[c] / variance[c] + mean[c];
+    x[i] = static_cast<T>(x_i);
   }
 }
 
 template <typename T>
 class InplaceHelper {
  public:
-  template <typename X, typename Scale, typename Bias, typename Mean,
-            typename Variance, typename Y>
-  void operator()(const framework::DataLayout layout, X *x, const Scale *scale,
-                  const Bias *bias, const Mean *mean, const Variance *variance,
-                  double epsilon, int C, int M, const int num, const Y *y,
-                  int grid2, int block, const cudaStream_t &stream) {
+  void operator()(const framework::DataLayout layout, T *x,
+                  const BatchNormParamType<T> *scale,
+                  const BatchNormParamType<T> *bias,
+                  const BatchNormParamType<T> *mean,
+                  const BatchNormParamType<T> *variance, double epsilon, int C,
+                  int M, const int num, const T *y, int grid2, const int block,
+                  const cudaStream_t &stream) {
     KeBNRestoreData<<<grid2, block, 0, stream>>>(
         layout, x, scale, bias, mean, variance, epsilon, C, M, num, y);
-  }
-};
-
-template <>
-class InplaceHelper<paddle::platform::float16> {
- public:
-  template <typename X, typename Scale, typename Bias, typename Mean,
-            typename Variance, typename Y>
-  void operator()(const framework::DataLayout layout, X *x, const Scale *scale,
-                  const Bias *bias, const Mean *mean, const Variance *variance,
-                  double epsilon, int C, int M, const int num, const Y *y,
-                  int grid2, int block, const cudaStream_t &stream) {
-    PADDLE_THROW("Batch_norm not support in-place for %s for CUDA.",
-                 DataLayoutToString(layout));
   }
 };
 
@@ -449,9 +438,10 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 
       if (is_inplace) {
         inplace_functor(data_layout, px.mutable_data<T>(ctx.GetPlace()),
-                        scale->data<T>(), bias->data<T>(), saved_mean_data,
-                        saved_var_data, epsilon, C, H * W * D, num,
-                        x->data<T>(), grid2, block, stream);
+                        scale->template data<BatchNormParamType<T>>(),
+                        bias->template data<BatchNormParamType<T>>(),
+                        saved_mean_data, saved_var_data, epsilon, C, H * W * D,
+                        num, x->data<T>(), grid2, block, stream);
       }
 
       if (d_scale && d_bias) {
@@ -503,9 +493,10 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 
       if (is_inplace) {
         inplace_functor(data_layout, px.mutable_data<T>(ctx.GetPlace()),
-                        scale->data<T>(), bias->data<T>(), running_mean_data,
-                        running_var_data, epsilon, C, H * W * D, num,
-                        x->data<T>(), grid2, block, stream);
+                        scale->template data<BatchNormParamType<T>>(),
+                        bias->template data<BatchNormParamType<T>>(),
+                        running_mean_data, running_var_data, epsilon, C,
+                        H * W * D, num, x->data<T>(), grid2, block, stream);
       }
 
       if (data_layout == framework::DataLayout::kNCHW) {
