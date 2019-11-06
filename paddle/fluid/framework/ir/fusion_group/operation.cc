@@ -26,6 +26,17 @@ OperationMap::OperationMap() {
   InsertBinaryElementwiseOperations();
 }
 
+std::unordered_set<std::string> OperationMap::Find(int type, int num_operands) {
+  std::unordered_set<std::string> res;
+  for (auto& t : operations_) {
+    if ((t.second.type == type) &&
+        (num_operands < 0 || t.second.num_operands == num_operands)) {
+      res.insert(t.first);
+    }
+  }
+  return res;
+}
+
 void OperationMap::Insert(int type, int num_operands, std::string op_type,
                           std::string expr,
                           std::vector<std::string> grad_exprs) {

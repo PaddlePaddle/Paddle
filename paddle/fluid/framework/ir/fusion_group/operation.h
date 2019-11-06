@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/platform/enforce.h"
 
@@ -47,6 +48,8 @@ class OperationMap {
     }
     return *map;
   }
+
+  std::unordered_set<std::string> Find(int type, int num_operands = -1);
 
  private:
   void Insert(int type, int num_operands, std::string op_type, std::string expr,
