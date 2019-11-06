@@ -165,7 +165,7 @@ class FleetWrapper {
   // mode = 1, save delta feature, which means save diff
   void SaveModel(const std::string& path, const int mode);
 
-  double GetCacheThreshold();
+  double GetCacheThreshold(int table_id);
   void CacheShuffle(int table_id, const std::string& path, const int mode,
                     const double cache_threshold);
   int32_t SaveCache(int table_id, const std::string& path, const int mode);
