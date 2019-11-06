@@ -661,7 +661,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
         auto moment_2_idx = mom2_out->AutoGrownIndex(sparse_id, true);
 
         for (size_t offset = 0; offset < row_numel; ++offset) {
-          size_t i = cpurows[row_index] * row_numel + offset;
           functor.adam_update(moment_1_idx + offset, moment_2_idx + offset,
                               param_val_idx + offset,
                               grad_data[row_index * row_numel + offset]);
