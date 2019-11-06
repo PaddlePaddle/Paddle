@@ -71,6 +71,9 @@ class DistributedTranspiler(Fleet):
         if self._transpile_config.sync_mode:
             return
 
+        if not self._transpile_config.runtime_split_send_recv:
+            return
+
         kwargs = {}
 
         if self._transpile_config.geo_sgd_mode:
@@ -141,8 +144,7 @@ class DistributedTranspiler(Fleet):
         Returns:
             None
         """
-        if not self._transpile_config.sync_mode and self._communicator.is_running(
-        ):
+        if not self._transpile_config.sync_mode and not self._transpile_config.runtime_split_send_recv:
             self._communicator.stop()
         self._executor.close()
         if isinstance(self._role_maker, MPISymetricRoleMaker):
@@ -252,8 +254,8 @@ class DistributedTranspiler(Fleet):
             raise TypeError(
                 "config must be an instance of DistributeTranspilerConfig")
 
-        if not config.sync_mode:
-            config.runtime_split_send_recv = True
+        #if not config.sync_mode:
+        #    config.runtime_split_send_recv = True
 
         # _origin_program is a deep copy for default_main_program, for inference
         self._origin_program = default_main_program().clone(for_test=False)

@@ -477,6 +477,15 @@ void HalfAsyncCommunicator::ConsumeThread() {
             }
           }
           auto before_merge = GetCurrentUS();
+
+          if (var_name == "SparseFeatFactors@GRAD") {
+            for (int i = 0; i < vars.size(); ++i) {
+              auto var_str = GetTensorDetails(
+                  *(vars[i].get()), var_name + "_" + std::to_string(i));
+              VLOG(1) << var_str;
+            }
+          }
+
           MergeVars(var_name, vars, send_scope_.get());
 
           auto var_str =
