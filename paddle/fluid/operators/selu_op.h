@@ -15,12 +15,11 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/for_range.h"
+
 namespace paddle {
 namespace operators {
-
-static HOSTDEVICE float real_exp(float x) { return expf(x); }
-static HOSTDEVICE float real_exp(double x) { return exp(x); }
 
 template <typename T>
 struct SeluFunctor {

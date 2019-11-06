@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_MKLDNN})
-  return()
-ENDIF(NOT ${WITH_MKLDNN})
-
 INCLUDE(ExternalProject)
 
 SET(MKLDNN_PROJECT        "extern_mkldnn")
@@ -23,17 +19,17 @@ SET(MKLDNN_SOURCES_DIR    ${THIRD_PARTY_PATH}/mkldnn)
 SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 
-IF(APPLE)
-    MESSAGE(WARNING
-        "Mac is not supported with MKLDNN in Paddle yet."
-        "Force WITH_MKLDNN=OFF")
-    SET(WITH_MKLDNN OFF CACHE STRING "Disable MKLDNN in MacOS" FORCE)
-    return()
-ENDIF()
+# Introduce variables:
+# * CMAKE_INSTALL_LIBDIR
+INCLUDE(GNUInstallDirs)
+SET(LIBDIR "lib")
+if(CMAKE_INSTALL_LIBDIR MATCHES ".*lib64$")
+  SET(LIBDIR "lib64")
+endif()
 
-MESSAGE(STATUS "Set ${MKLDNN_INSTALL_DIR}/lib to runtime path")
+MESSAGE(STATUS "Set ${MKLDNN_INSTALL_DIR}/l${LIBDIR} to runtime path")
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLDNN_INSTALL_DIR}/lib")
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLDNN_INSTALL_DIR}/${LIBDIR}")
 
 INCLUDE_DIRECTORIES(${MKLDNN_INC_DIR}) # For MKLDNN code to include internal headers.
 
@@ -58,7 +54,7 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS             ${MKLDNN_DEPENDS}
     GIT_REPOSITORY      "https://github.com/intel/mkl-dnn.git"
-    GIT_TAG             "830a10059a018cd2634d94195140cf2d8790a75a"
+    GIT_TAG             "aef88b7c233f48f8b945da310f1b973da31ad033"
     PREFIX              ${MKLDNN_SOURCES_DIR}
     UPDATE_COMMAND      ""
     CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -79,9 +75,9 @@ ExternalProject_Add(
                         -DMKLROOT:PATH=${MKLML_ROOT}
 )
 if(WIN32)
-    SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/lib/mkldnn.lib" CACHE FILEPATH "mkldnn library." FORCE)
+    SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/${LIBDIR}/mkldnn.lib" CACHE FILEPATH "mkldnn library." FORCE)
 else(WIN32)
-    SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/lib/libmkldnn.so" CACHE FILEPATH "mkldnn library." FORCE)
+    SET(MKLDNN_LIB "${MKLDNN_INSTALL_DIR}/${LIBDIR}/libmkldnn.so" CACHE FILEPATH "mkldnn library." FORCE)
 endif(WIN32)
 
 ADD_LIBRARY(shared_mkldnn SHARED IMPORTED GLOBAL)
@@ -101,7 +97,7 @@ ADD_DEPENDENCIES(mkldnn ${MKLDNN_PROJECT})
 # copy the real so.0 lib to install dir
 # it can be directly contained in wheel or capi
 if(WIN32)
-    SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/lib/mkldnn.dll)
+    SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/bin/mkldnn.dll)
 else(WIN32)
     SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libmkldnn.so.0)
     ADD_CUSTOM_COMMAND(OUTPUT ${MKLDNN_SHARED_LIB}

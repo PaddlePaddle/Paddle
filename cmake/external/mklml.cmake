@@ -12,16 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_MKLML})
-  return()
-ENDIF(NOT ${WITH_MKLML})
-
-IF(APPLE)
-    MESSAGE(WARNING "Mac is not supported with MKLML in Paddle yet. Force WITH_MKLML=OFF.")
-    SET(WITH_MKLML OFF CACHE STRING "Disable MKLML package in MacOS" FORCE)
-    return()
-ENDIF()
-
 INCLUDE(ExternalProject)
 SET(MKLML_DST_DIR       "mklml")
 SET(MKLML_INSTALL_ROOT  "${THIRD_PARTY_PATH}/install")
@@ -34,14 +24,17 @@ SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${MKLML_ROOT}/lib")
 SET(TIME_VERSION "2019.0.1.20181227")
 IF(WIN32)
     SET(MKLML_VER "mklml_win_${TIME_VERSION}" CACHE STRING "" FORCE)
-    SET(MKLML_URL "https://paddlepaddledeps.cdn.bcebos.com/${MKLML_VER}.zip" CACHE STRING "" FORCE)
+    SET(MKLML_URL "https://paddlepaddledeps.bj.bcebos.com/${MKLML_VER}.zip" CACHE STRING "" FORCE)
     SET(MKLML_LIB                 ${MKLML_LIB_DIR}/mklml.lib)
     SET(MKLML_IOMP_LIB            ${MKLML_LIB_DIR}/libiomp5md.lib)
     SET(MKLML_SHARED_LIB          ${MKLML_LIB_DIR}/mklml.dll)
+    SET(MKLML_SHARED_LIB_DEPS     ${MKLML_LIB_DIR}/msvcr120.dll)
     SET(MKLML_SHARED_IOMP_LIB     ${MKLML_LIB_DIR}/libiomp5md.dll)
-ELSE()  
-    SET(MKLML_VER "mklml_lnx_${TIME_VERSION}" CACHE STRING "" FORCE)
-    SET(MKLML_URL "http://paddlepaddledeps.cdn.bcebos.com/${MKLML_VER}.tgz" CACHE STRING "" FORCE)
+ELSE()
+    #TODO(intel-huying):
+    #  Now enable Erf function in mklml library temporarily, it will be updated as offical version later.
+    SET(MKLML_VER "csrmm2_mklml_lnx_2019.0.2" CACHE STRING "" FORCE)
+    SET(MKLML_URL "http://paddlepaddledeps.bj.bcebos.com/${MKLML_VER}.tgz" CACHE STRING "" FORCE)
     SET(MKLML_LIB                 ${MKLML_LIB_DIR}/libmklml_intel.so)
     SET(MKLML_IOMP_LIB            ${MKLML_LIB_DIR}/libiomp5.so)
     SET(MKLML_SHARED_LIB          ${MKLML_LIB_DIR}/libmklml_intel.so)

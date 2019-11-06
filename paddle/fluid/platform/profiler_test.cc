@@ -33,7 +33,6 @@ TEST(Event, CpuElapsedTime) {
 }
 
 TEST(RecordEvent, RecordEvent) {
-  using paddle::platform::DeviceContext;
   using paddle::platform::Event;
   using paddle::platform::EventType;
   using paddle::platform::RecordEvent;

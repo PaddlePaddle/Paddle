@@ -24,12 +24,12 @@ template <class T>
 struct LstmUnitFunctor<platform::CPUDeviceContext, T> {
   static void compute(const platform::CPUDeviceContext& context,
                       LstmMetaValue<T> value, int frame_size, int batch_size,
-                      const detail::ActivationType& gate_act,
+                      T cell_clip, const detail::ActivationType& gate_act,
                       const detail::ActivationType& cell_act,
                       const detail::ActivationType& cand_act) {
     for (int b = 0; b < batch_size; b++) {
       detail::cpu_lstm_forward(detail::forward::lstm<T>(), value, frame_size,
-                               cand_act, gate_act, cell_act);
+                               cell_clip, cand_act, gate_act, cell_act);
       value.gate_value += frame_size * 4;
       value.state_value += frame_size;
       value.state_active_value += frame_size;
@@ -45,13 +45,14 @@ template <class T>
 struct LstmUnitGradFunctor<platform::CPUDeviceContext, T> {
   static void compute(const platform::CPUDeviceContext& context,
                       LstmMetaValue<T> value, LstmMetaGrad<T> grad,
-                      int frame_size, int batch_size,
+                      int frame_size, int batch_size, T cell_clip,
                       const detail::ActivationType& gate_act,
                       const detail::ActivationType& cell_act,
                       const detail::ActivationType& cand_act) {
     for (int b = 0; b < batch_size; b++) {
       detail::cpu_lstm_backward(detail::backward::lstm<T>(), value, grad,
-                                frame_size, cand_act, gate_act, cell_act);
+                                frame_size, cell_clip, cand_act, gate_act,
+                                cell_act);
 
       value.gate_value += frame_size * 4;
       value.state_value += frame_size;

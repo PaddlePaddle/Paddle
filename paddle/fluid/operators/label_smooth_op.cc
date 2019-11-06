@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/label_smooth_op.h"
+#include <memory>
 #include <string>
 
 namespace paddle {
@@ -105,10 +106,24 @@ class LabelSmoothGradOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) shouldn't be null.");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) shouldn't be null.");
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->SetOutputDim(framework::GradVarName("X"),
+                      ctx->GetInputDim(framework::GradVarName("Out")));
+  }
+};
+
+template <typename T>
+class LabelSmoothGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType("label_smooth_grad");
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+    return op;
   }
 };
 
@@ -117,7 +132,8 @@ class LabelSmoothGradOp : public framework::OperatorWithKernel {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(label_smooth, ops::LabelSmoothOp, ops::LabelSmoothOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::LabelSmoothGradMaker<paddle::framework::OpDesc>,
+                  ops::LabelSmoothGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(label_smooth_grad, ops::LabelSmoothGradOp);
 REGISTER_OP_CPU_KERNEL(
     label_smooth,

@@ -20,9 +20,8 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init("identity_scale_op_clean", graph.get());
+void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init("identity_scale_op_clean", graph);
 
   // pre_op -> scale_in -> scale_op -> scale_out
   // ->
@@ -72,8 +71,7 @@ std::unique_ptr<ir::Graph> IdentityScaleOpCleanPass::ApplyImpl(
     IR_NODE_LINK_TO(pre_op_var, scale_out_var);
   };
 
-  detector(graph.get(), handler);
-  return graph;
+  detector(graph, handler);
 }
 
 }  // namespace ir

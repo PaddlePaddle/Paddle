@@ -27,7 +27,7 @@ enum class OpRole {
   kForward = 0x0000,
   kBackward = 0x0001,
   kOptimize = 0x0002,
-  // RPC role is for send/recv releated op
+  // RPC role is for send/recv related op
   kRPC = 0x0004,
   // Dist role is for split_byref/split_selected_rows/concat
   // used for distributed training.

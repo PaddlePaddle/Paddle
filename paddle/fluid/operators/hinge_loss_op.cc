@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/hinge_loss_op.h"
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -97,12 +100,31 @@ class HingeLossGradOp : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class HingeLossGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType("hinge_loss_grad");
+    op->SetInput("Logits", this->Input("Logits"));
+    op->SetInput("Labels", this->Input("Labels"));
+    op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
+    op->SetOutput(framework::GradVarName("Logits"), this->InputGrad("Logits"));
+    op->SetAttrMap(this->Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(hinge_loss, ops::HingeLossOp, ops::HingeLossOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::HingeLossGradOpMaker<paddle::framework::OpDesc>,
+                  ops::HingeLossGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(hinge_loss_grad, ops::HingeLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     hinge_loss,

@@ -14,8 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include "ngraph/ngraph.hpp"
+#include "paddle/fluid/operators/ngraph/ops/op_bridge.h"
 #include "paddle/fluid/platform/ngraph_helper.h"
 
 namespace paddle {
@@ -32,6 +35,7 @@ static void BuildMulNode(
   int y_num_col_dims = op_attrs.Get<int>("y_num_col_dims");
   auto x = paddle::platform::GetInputNode(op, "X", ngb_node_map);
   auto y = paddle::platform::GetInputNode(op, "Y", ngb_node_map);
+  int y_rank = y->get_shape().size();
 
   auto x_reshape = x;
   auto y_reshape = y;
@@ -49,10 +53,14 @@ static void BuildMulNode(
   std::shared_ptr<ngraph::Node> out =
       std::make_shared<ngraph::op::Dot>(x_reshape, y_reshape);
 
-  auto dummy_out = paddle::platform::GetOutputNode(op, "Out", ngb_node_map);
-  if (dummy_out && dummy_out->get_shape() != out->get_shape()) {
-    out = paddle::platform::NgReshaper(out, dummy_out->get_shape());
+  ngraph::Shape out_shape;
+  for (int i = 0; i < x_num_col_dims; ++i) {
+    out_shape.push_back(x->get_shape()[i]);
   }
+  for (int i = y_num_col_dims; i < y_rank; ++i) {
+    out_shape.push_back(y->get_shape()[i]);
+  }
+  out = paddle::platform::NgReshaper(out, out_shape);
   paddle::platform::SetOutputNode(op, "Out", out, ngb_node_map);
 }
 
@@ -130,3 +138,6 @@ static void BuildMulGradNode(
 }  // namespace ngraphs
 }  // namespace operators
 }  // namespace paddle
+
+REGISTER_NG_OP(mul, BuildMulNode);
+REGISTER_NG_OP(mul_grad, BuildMulGradNode);

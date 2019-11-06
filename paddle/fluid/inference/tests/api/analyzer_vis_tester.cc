@@ -85,9 +85,10 @@ void profile(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
   // cfg.pass_builder()->TurnOnDebug();
-  std::vector<PaddleTensor> outputs;
+  std::vector<std::vector<PaddleTensor>> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
@@ -100,7 +101,8 @@ void profile(bool use_mkldnn = false) {
     auto refer = ProcessALine(line);
     file.close();
 
-    auto &output = outputs.front();
+    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    auto &output = outputs.back().front();
     size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
     CHECK_EQ(numel, refer.data.size());
     for (size_t i = 0; i < numel; ++i) {
@@ -131,6 +133,7 @@ void compare(bool use_mkldnn = false) {
   SetConfig(&cfg);
   if (use_mkldnn) {
     cfg.EnableMKLDNN();
+    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;

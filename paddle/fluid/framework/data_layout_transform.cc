@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_layout_transform.h"
+#include <string>
 #include <vector>
 
 #include "paddle/fluid/operators/math/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
+#include "paddle/fluid/platform/mkldnn_reuse.h"
 #endif
 
 namespace paddle {
@@ -119,33 +120,39 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const Tensor& in, Tensor* out) {
   auto in_layout = kernel_type_for_var.data_layout_;
   auto out_layout = expected_kernel_type.data_layout_;
+  auto place = expected_kernel_type.place_;
 
   PADDLE_ENFORCE(
       in_layout == DataLayout::kMKLDNN && out_layout != DataLayout::kMKLDNN,
       "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
       "non-MKLDNN");
 
+  innerTransDataLayoutFromMKLDNN(in_layout, out_layout, in, out, place);
+}
+
+void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
+                                    const Tensor& in, Tensor* out,
+                                    platform::Place place) {
 #ifdef PADDLE_WITH_MKLDNN
-  PADDLE_ENFORCE(in.format() != memory::format::format_undef &&
-                     in.format() != memory::format::any,
-                 "Input tensor should have specified memory format");
+  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::format_undef,
+                    "Input tensor should have specified memory format");
+  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::any,
+                    "Input tensor should have specified memory format");
 
   // Set default as NCHW in case not specified
   out_layout =
       out_layout == DataLayout::kAnyLayout ? DataLayout::kNCHW : out_layout;
 
   auto& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(
-      pool.Get(expected_kernel_type.place_));
+  auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
   auto& cpu_engine = dev_ctx->GetEngine();
 
-  std::vector<int> in_tz = paddle::framework::vectorize2int(in.dims());
-  std::vector<int> out_tz = in_tz;
+  auto in_tz = paddle::framework::vectorize<int>(in.dims());
+  auto out_tz = in_tz;
 
   memory::data_type in_type = ToMKLDNNDataType(in.type());
   PADDLE_ENFORCE(in_type != memory::data_type::data_undef,
                  "Input tensor type is not supported: %s", in.type());
-  memory::data_type out_type = in_type;
 
   auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
   auto out_format =
@@ -156,20 +163,27 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
 
   if (in_format != out_format) {
     void* in_data = GetDataFromTensor(in, in_type);
-    auto out_data = out->mutable_data(expected_kernel_type.place_, in.type());
+    const std::string key = platform::CreateKey(in_tz, in_format, out_format,
+                                                std::to_string(in_type));
 
-    auto in_memory =
-        memory({{{in_tz}, in_type, in_format}, cpu_engine}, in_data);
-    auto out_memory =
-        memory({{{out_tz}, out_type, out_format}, cpu_engine}, out_data);
+    platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type, *dev_ctx,
+                                           cpu_engine, key);
 
-    platform::Reorder(in_memory, out_memory);
+    auto reorder_src_memory_p = handler.AcquireSrcMemory(in_format, in_data);
+    auto reorder_dst_memory_p =
+        handler.AcquireDstMemory(out, out_format, place);
+    auto reorder_p =
+        handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
+
+    std::vector<mkldnn::primitive> pipeline;
+    pipeline.push_back(*reorder_p);
+    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
   } else {
     out->ShareDataWith(in);
   }
   out->set_layout(out_layout);
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
-  out->set_format(memory::format::format_undef);
+  out->set_format(MKLDNNMemoryFormat::format_undef);
 #endif
 }
 

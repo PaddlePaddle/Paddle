@@ -216,7 +216,7 @@ class Vector {
       void *src = gpu_->ptr();
       void *dst = cpu_.data();
       paddle::memory::Copy(platform::CPUPlace(), dst, CUDAPlace().get(), src,
-                           gpu_->size(), stream);
+                           gpu_memory_size_, stream);
       dev_ctx->Wait();
     }
 
@@ -256,13 +256,14 @@ class Vector {
 
     void CopyCPUDataToCUDA(const platform::Place &place) const {
       void *src = cpu_.data();
-      gpu_ = memory::Alloc(place, cpu_.size() * sizeof(T));
+      gpu_memory_size_ = cpu_.size() * sizeof(T);
+      gpu_ = memory::Alloc(place, gpu_memory_size_);
       void *dst = gpu_->ptr();
       auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
           platform::DeviceContextPool::Instance().Get(place));
       auto stream = dev_ctx->stream();
       paddle::memory::Copy(CUDAPlace().get(), dst, platform::CPUPlace(), src,
-                           gpu_->size(), stream);
+                           gpu_memory_size_, stream);
     }
 
     void ImmutableCPU() const {
@@ -285,6 +286,7 @@ class Vector {
 
     mutable std::vector<T> cpu_;
     mutable paddle::memory::AllocationPtr gpu_;
+    mutable size_t gpu_memory_size_{0};
     mutable int flag_;
 
     mutable std::mutex mtx_;

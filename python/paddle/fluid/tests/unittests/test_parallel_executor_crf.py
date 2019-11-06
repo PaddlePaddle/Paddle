@@ -61,6 +61,11 @@ def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
             param_attr=fluid.ParamAttr(
                 name=embedding_name, trainable=False)) for x in word_input
     ]
+    # TODO(zcd): if the parameter is not trainable, the
+    #  parameter's gradient should not generated.
+    for emb_layer in emb_layers:
+        emb_layer.stop_gradient = True
+
     emb_layers.append(predicate_embedding)
     emb_layers.append(mark_embedding)
 
@@ -113,60 +118,62 @@ class TestCRFModel(unittest.TestCase):
         os.environ['CPU_NUM'] = str(4)
         main = fluid.Program()
         startup = fluid.Program()
-        with fluid.program_guard(main, startup):
-            word = fluid.layers.data(
-                name='word_data', shape=[1], dtype='int64', lod_level=1)
-            predicate = fluid.layers.data(
-                name='verb_data', shape=[1], dtype='int64', lod_level=1)
-            ctx_n2 = fluid.layers.data(
-                name='ctx_n2_data', shape=[1], dtype='int64', lod_level=1)
-            ctx_n1 = fluid.layers.data(
-                name='ctx_n1_data', shape=[1], dtype='int64', lod_level=1)
-            ctx_0 = fluid.layers.data(
-                name='ctx_0_data', shape=[1], dtype='int64', lod_level=1)
-            ctx_p1 = fluid.layers.data(
-                name='ctx_p1_data', shape=[1], dtype='int64', lod_level=1)
-            ctx_p2 = fluid.layers.data(
-                name='ctx_p2_data', shape=[1], dtype='int64', lod_level=1)
-            mark = fluid.layers.data(
-                name='mark_data', shape=[1], dtype='int64', lod_level=1)
+        scope = fluid.Scope()
+        with fluid.scope_guard(scope):
+            with fluid.program_guard(main, startup):
+                word = fluid.layers.data(
+                    name='word_data', shape=[1], dtype='int64', lod_level=1)
+                predicate = fluid.layers.data(
+                    name='verb_data', shape=[1], dtype='int64', lod_level=1)
+                ctx_n2 = fluid.layers.data(
+                    name='ctx_n2_data', shape=[1], dtype='int64', lod_level=1)
+                ctx_n1 = fluid.layers.data(
+                    name='ctx_n1_data', shape=[1], dtype='int64', lod_level=1)
+                ctx_0 = fluid.layers.data(
+                    name='ctx_0_data', shape=[1], dtype='int64', lod_level=1)
+                ctx_p1 = fluid.layers.data(
+                    name='ctx_p1_data', shape=[1], dtype='int64', lod_level=1)
+                ctx_p2 = fluid.layers.data(
+                    name='ctx_p2_data', shape=[1], dtype='int64', lod_level=1)
+                mark = fluid.layers.data(
+                    name='mark_data', shape=[1], dtype='int64', lod_level=1)
 
-            feature_out = db_lstm(**locals())
-            target = fluid.layers.data(
-                name='target', shape=[1], dtype='int64', lod_level=1)
-            crf_cost = fluid.layers.linear_chain_crf(
-                input=feature_out,
-                label=target,
-                param_attr=fluid.ParamAttr(
-                    name='crfw', learning_rate=1e-1))
-            avg_cost = fluid.layers.mean(crf_cost)
+                feature_out = db_lstm(**locals())
+                target = fluid.layers.data(
+                    name='target', shape=[1], dtype='int64', lod_level=1)
+                crf_cost = fluid.layers.linear_chain_crf(
+                    input=feature_out,
+                    label=target,
+                    param_attr=fluid.ParamAttr(
+                        name='crfw', learning_rate=1e-1))
+                avg_cost = fluid.layers.mean(crf_cost)
 
-            sgd_optimizer = fluid.optimizer.SGD(
-                learning_rate=fluid.layers.exponential_decay(
-                    learning_rate=0.01,
-                    decay_steps=100000,
-                    decay_rate=0.5,
-                    staircase=True))
-            sgd_optimizer.minimize(avg_cost)
+                sgd_optimizer = fluid.optimizer.SGD(
+                    learning_rate=fluid.layers.exponential_decay(
+                        learning_rate=0.01,
+                        decay_steps=100000,
+                        decay_rate=0.5,
+                        staircase=True))
+                sgd_optimizer.minimize(avg_cost)
 
-            train_data = paddle.batch(
-                paddle.reader.shuffle(
-                    paddle.dataset.conll05.test(), buf_size=8192),
-                batch_size=16)
+                train_data = paddle.batch(
+                    paddle.reader.shuffle(
+                        paddle.dataset.conll05.test(), buf_size=8192),
+                    batch_size=16)
 
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(startup)
+                place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+                exe = fluid.Executor(place)
+                exe.run(startup)
 
-            train_cp = compiler.CompiledProgram(main).with_data_parallel(
-                loss_name=avg_cost.name, build_strategy=build_strategy)
+                train_cp = compiler.CompiledProgram(main).with_data_parallel(
+                    loss_name=avg_cost.name, build_strategy=build_strategy)
 
-            feeder = fluid.DataFeeder(
-                feed_list=[
-                    word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate,
-                    mark, target
-                ],
-                place=fluid.CPUPlace())
+                feeder = fluid.DataFeeder(
+                    feed_list=[
+                        word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate,
+                        mark, target
+                    ],
+                    place=fluid.CPUPlace())
 
             data = train_data()
             for i in range(10):

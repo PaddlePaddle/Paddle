@@ -15,56 +15,22 @@ limitations under the License. */
 #pragma once
 #include <forward_list>
 #include <list>
+#include <map>
+#include <memory>
+#include <mutex>  // NOLINT
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
-#include "paddle/fluid/platform/device_context.h"
-
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/event.h"
+#include "paddle/fluid/platform/place.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/gpu_info.h"
+#endif
 namespace paddle {
 namespace platform {
-
-enum EventType { kMark, kPushRange, kPopRange };
-
-class Event {
- public:
-  // The DeviceContext is used to get the cuda stream.
-  // If CPU profiling mode, can pass nullptr.
-  Event(EventType type, std::string name, uint32_t thread_id);
-
-  const EventType& type() const;
-  std::string name() const { return name_; }
-  uint32_t thread_id() const { return thread_id_; }
-
-#ifdef PADDLE_WITH_CUDA
-#ifndef PADDLE_WITH_CUPTI
-  cudaEvent_t event() const { return event_; }
-  int device() const { return device_; }
-#endif
-#endif
-
-  double CpuElapsedMs(const Event& e) const;
-  double CudaElapsedMs(const Event& e) const;
-
- private:
-  EventType type_;
-  std::string name_;
-  uint32_t thread_id_;
-  int64_t cpu_ns_;
-#ifdef PADDLE_WITH_CUDA
-#ifdef PADDLE_WITH_CUPTI
-  int64_t gpu_ns_ = 0;
-
- public:
-  void AddCudaElapsedTime(int64_t start_ns, int64_t end_ns) {
-    gpu_ns_ += end_ns - start_ns;
-  }
-
- private:
-#else
-  cudaEvent_t event_ = nullptr;
-  int device_ = -1;
-#endif
-#endif
-};
 
 enum ProfilerState {
   kDisabled,  // disabled state
@@ -75,8 +41,41 @@ enum ProfilerState {
 
 void Mark(const std::string& name);
 
-Event* PushEvent(const std::string& name);
+void PushMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                  const Place& place);
+void PopMemEvent(uint64_t start_ns, uint64_t end_ns, size_t bytes,
+                 const Place& place);
 
+struct MemEvenRecorder {
+ public:
+  void PushMemRecord(const void* ptr, const Place& place, size_t size);
+  void PopMemRecord(const void* ptr, const Place& place);
+  void Flush();
+  static MemEvenRecorder& Instance() { return recorder; }
+
+ private:
+  struct RecordMemEvent {
+    RecordMemEvent(const Place& place, size_t bytes);
+    ~RecordMemEvent();
+
+    Place place_;
+    size_t bytes_;
+    uint64_t start_ns_;
+    uint64_t end_ns_;
+    std::string alloc_in_;
+    std::string free_in_;
+  };
+
+  static MemEvenRecorder recorder;
+  std::map<Place,
+           std::unordered_map<const void*, std::unique_ptr<RecordMemEvent>>>
+      address_memevent_;
+  std::mutex mtx_;
+  MemEvenRecorder() {}
+  DISABLE_COPY_AND_ASSIGN(MemEvenRecorder);
+};
+
+Event* PushEvent(const std::string& name);
 void PopEvent(const std::string& name);
 
 struct RecordEvent {
@@ -117,7 +116,51 @@ struct RecordBlock {
 std::vector<std::vector<Event>> GetAllEvents();
 
 // Candidate keys to sort the profiling report
-enum EventSortingKey { kDefault, kCalls, kTotal, kMin, kMax, kAve };
+enum EventSortingKey {
+  kDefault,
+  kCalls,
+  kTotal,
+  kMin,
+  kMax,
+  kAve,
+  kCPUTime,
+  kGPUTime
+};
+
+template <typename T>
+struct EventList {
+  constexpr static size_t kMB = 1024 * 1024;
+  constexpr static size_t kEventBlockSize = 16 * kMB;
+  constexpr static size_t kEventSize = sizeof(T);
+  constexpr static size_t kEventAlign = alignof(T);
+  constexpr static size_t kNumBlock =
+      kEventBlockSize /
+      ((kEventSize + kEventAlign - 1) / kEventAlign * kEventAlign);
+
+  template <typename... Args>
+  T* Record(Args&&... args) {
+    if (event_blocks.empty() || event_blocks.front().size() == kNumBlock) {
+      event_blocks.emplace_front();
+      event_blocks.front().reserve(kNumBlock);
+    }
+    event_blocks.front().emplace_back(std::forward<Args>(args)...);
+    return &event_blocks.front().back();
+  }
+
+  std::vector<T> Reduce() {
+    std::vector<T> result;
+    for (auto& block : event_blocks) {
+      result.insert(result.begin(), std::make_move_iterator(block.begin()),
+                    std::make_move_iterator(block.end()));
+    }
+    event_blocks.clear();
+    return result;
+  }
+
+  void Clear() { event_blocks.clear(); }
+
+  std::forward_list<std::vector<T>> event_blocks;
+};
 
 // Enable the profiling function.
 void EnableProfiler(ProfilerState state);

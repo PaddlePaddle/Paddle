@@ -71,7 +71,10 @@ def _reference_layer_norm_grad(x, grad_y, scale, mean, var, begin_norm_axis=1):
     return grad_x, d_scale, d_bias
 
 
-class TestLayerNormdOp(unittest.TestCase):
+class TestLayerNormOp(unittest.TestCase):
+    def setUp(self):
+        self.use_cudnn = True
+
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
@@ -160,7 +163,8 @@ class TestLayerNormdOp(unittest.TestCase):
                 self.__assert_close(bias_grad, out[5], "bias_grad")
 
         places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
+        if core.is_compiled_with_cuda() and core.op_support_gpu(
+                "layer_norm") and self.use_cudnn:
             places.append(core.CUDAPlace(0))
 
         for place in places:
@@ -169,6 +173,39 @@ class TestLayerNormdOp(unittest.TestCase):
     def test_check_forward_backward_with_scale_and_bias(self):
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=1)
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=3)
+
+
+class TestLayerNormAPI(unittest.TestCase):
+    def test_case(self):
+        x = fluid.layers.data(
+            name='x',
+            shape=[64, 32, 256],
+            dtype='float32',
+            append_batch_size=False)
+        x = fluid.layers.layer_norm(
+            x,
+            scale=True,
+            shift=True,
+            begin_norm_axis=1,
+            epsilon=1e-05,
+            param_attr=None,
+            bias_attr=None)
+        x = fluid.layers.layer_norm(
+            x,
+            scale=False,
+            shift=False,
+            begin_norm_axis=1,
+            epsilon=1e-05,
+            param_attr=None,
+            bias_attr=None)
+        x = fluid.layers.layer_norm(
+            x,
+            scale=False,
+            shift=False,
+            begin_norm_axis=1,
+            epsilon=1e-05,
+            param_attr="scale",
+            bias_attr="shift")
 
 
 if __name__ == '__main__':

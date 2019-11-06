@@ -48,6 +48,42 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+inline std::vector<int> get_expand_times(
+    const framework::ExecutionContext& ctx) {
+  if (ctx.HasInput("ExpandTimes")) {
+    auto* expand_tensor = ctx.Input<framework::LoDTensor>("ExpandTimes");
+    auto* expand_data = expand_tensor->data<int>();
+    framework::Tensor cpu_expand_tensor;
+    if (platform::is_gpu_place(expand_tensor->place())) {
+      TensorCopySync(*expand_tensor, platform::CPUPlace(), &cpu_expand_tensor);
+      expand_data = cpu_expand_tensor.data<int>();
+    }
+    auto vec_epxand_times =
+        std::vector<int>(expand_data, expand_data + expand_tensor->numel());
+    return vec_epxand_times;
+  }
+
+  auto list_expand_times_tensor =
+      ctx.MultiInput<framework::Tensor>("expand_times_tensor");
+  if (list_expand_times_tensor.size() > 0) {
+    // get tensor from
+    std::vector<int> vec_epxand_times;
+    for (size_t i = 0; i < list_expand_times_tensor.size(); ++i) {
+      auto tensor = list_expand_times_tensor[i];
+      if (platform::is_gpu_place(tensor->place())) {
+        framework::Tensor temp;
+        TensorCopySync(*tensor, platform::CPUPlace(), &temp);
+        vec_epxand_times.push_back(*temp.data<int32_t>());
+      } else {
+        vec_epxand_times.push_back(*tensor->data<int32_t>());
+      }
+    }
+
+    return vec_epxand_times;
+  } else {
+    return ctx.Attr<std::vector<int>>("expand_times");
+  }
+}
 
 using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
@@ -74,12 +110,24 @@ class ExpandKernel : public framework::OpKernel<T> {
   template <int Rank>
   void Expand(const framework::ExecutionContext& context) const {
     auto* in0 = context.Input<Tensor>("X");
-    auto& expand_times = context.Attr<std::vector<int>>("expand_times");
+
+    auto in_dims = in0->dims();
+    auto expand_times = get_expand_times(context);
+    PADDLE_ENFORCE_EQ(static_cast<size_t>(in_dims.size()), expand_times.size(),
+                      "The number of Attr(expand_times)'s value must be equal "
+                      "to the rank of Input(X).");
     auto* out0 = context.Output<Tensor>("Out");
     Eigen::DSizes<int, Rank> bcast_dims;
     for (size_t i = 0; i < expand_times.size(); ++i) {
       bcast_dims[i] = expand_times[i];
     }
+
+    framework::DDim out_dims(in_dims);
+    for (size_t i = 0; i < expand_times.size(); ++i) {
+      out_dims[i] *= expand_times[i];
+    }
+
+    out0->Resize(out_dims);
     auto x = EigenTensor<T, Rank>::From(*in0);
     out0->mutable_data<T>(context.GetPlace());
     auto y = EigenTensor<T, Rank>::From(*out0);
@@ -94,7 +142,8 @@ class ExpandGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* in0 = context.Input<Tensor>("X");
-    auto& expand_times = context.Attr<std::vector<int>>("expand_times");
+    // auto& expand_times = context.Attr<std::vector<int>>("expand_times");
+    auto expand_times = get_expand_times(context);
     auto x_dims = in0->dims();
     // 1. reshape_dims_vec is the broadcast parameter. For each dimension i,
     //    if expand_times[i] > 1 and x_dims[i] > 1, i will be splitted to two
@@ -153,7 +202,6 @@ class ExpandGradKernel : public framework::OpKernel<T> {
                       "reduce dimensions.");
     auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
-    auto x = EigenVector<T>::Flatten(*(context.Input<Tensor>("X")));
     out0->mutable_data<T>(context.GetPlace());
     auto x_grad = EigenVector<T>::Flatten(*out0);
     Eigen::DSizes<int, Dims / MAX_RANK_SUPPORTED + 1> reshape_dims;
@@ -167,7 +215,9 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     auto out_grad = EigenVector<T>::Flatten(*in0);
     x_grad.device(
         *context.template device_context<DeviceContext>().eigen_device()) =
-        out_grad.reshape(reshape_dims).sum(reduce_dims).reshape(x.dimensions());
+        out_grad.reshape(reshape_dims)
+            .sum(reduce_dims)
+            .reshape(x_grad.dimensions());
   }
 };
 

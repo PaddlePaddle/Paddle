@@ -16,6 +16,7 @@ limitations under the License. */
 #include <nccl.h>
 #endif
 #include <limits>
+#include <memory>
 #include <thread>  // NOLINT
 
 #include "google/protobuf/io/coded_stream.h"
@@ -104,8 +105,10 @@ void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
   e.WriteVarlengthBeginning(VarMsg::kSerializedFieldNumber,
                             payload->memory_size());
   if (payload->memory_size() >= std::numeric_limits<int>::max()) {
-    LOG(FATAL) << "AppendZeroCopy varname:" << name
-               << ", vlen:" << payload->memory_size();
+    LOG(FATAL) << "FATAL error: varname:" << name
+               << ", vlen:" << payload->memory_size()
+               << " >= std::numeric_limits<int>::max():"
+               << std::numeric_limits<int>::max() << ", so exit!";
   }
   // steal reference of tensor data
   ::grpc::Slice slices[4];  // metadata, tensor, rows meta, rows

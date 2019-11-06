@@ -17,32 +17,47 @@
 #include <cuda_runtime.h>
 #include <string>
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
 bool CUDAAllocator::IsAllocThreadSafe() const { return true; }
-void CUDAAllocator::Free(Allocation* allocation) {
+void CUDAAllocator::FreeImpl(Allocation* allocation) {
   platform::CUDADeviceGuard guard(place_.device);
-  auto* cuda_allocation = dynamic_cast<CUDAAllocation*>(allocation);
-  PADDLE_ENFORCE_NOT_NULL(cuda_allocation);
-  PADDLE_ENFORCE_EQ(boost::get<platform::CUDAPlace>(cuda_allocation->place()),
+  PADDLE_ENFORCE_EQ(boost::get<platform::CUDAPlace>(allocation->place()),
                     place_);
   PADDLE_ENFORCE(cudaFree(allocation->ptr()));
   delete allocation;
 }
-Allocation* CUDAAllocator::AllocateImpl(size_t size, Allocator::Attr attr) {
+
+Allocation* CUDAAllocator::AllocateImpl(size_t size) {
   platform::CUDADeviceGuard guard(place_.device);
   void* ptr;
-  auto status = cudaMalloc(&ptr, size);
-  if (UNLIKELY(status != cudaSuccess)) {
-    throw BadAlloc(string::Sprintf(
-        "Cannot allocate %d on GPU %d, cuda status %d, %s", size, place_.device,
-        status, cudaGetErrorString(status)));
+  auto result = cudaMalloc(&ptr, size);
+  if (LIKELY(result == cudaSuccess)) {
+    return new Allocation(ptr, size, platform::Place(place_));
   }
-  return new CUDAAllocation(ptr, size, platform::Place(place_));
+
+  platform::RaiseNonOutOfMemoryError(&result);
+
+  size_t avail = 0, total = 0;
+  result = cudaMemGetInfo(&avail, &total);
+  if (result != cudaSuccess) avail = 0;
+  platform::RaiseNonOutOfMemoryError(&result);
+
+  PADDLE_THROW_BAD_ALLOC(
+      "\n\nOut of memory error on GPU %d. "
+      "Cannot allocate %s memory on GPU %d, "
+      "available memory is only %s.\n\n"
+      "Please check whether there is any other process using GPU %d.\n"
+      "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
+      "2. If no, please decrease the batch size of your model.\n",
+      place_.device, string::HumanReadableSize(size), place_.device,
+      string::HumanReadableSize(avail), place_.device);
 }
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

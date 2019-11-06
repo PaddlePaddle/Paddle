@@ -16,8 +16,11 @@ limitations under the License. */
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <string>
-
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -28,6 +31,9 @@ namespace framework {
 namespace ir {
 template <typename PassType>
 struct PassRegistrar;
+
+typedef std::unordered_set<std::string> PassRecorder;
+constexpr char kPassRecorder[] = "pass_recorder";
 
 class Pass {
  public:
@@ -44,7 +50,7 @@ class Pass {
 
   std::string Type() const { return type_; }
 
-  std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) const;
+  Graph *Apply(Graph *graph) const;
 
   // Get a reference to the attributed previously set.
   template <typename AttrType>
@@ -98,10 +104,13 @@ class Pass {
   }
 
  protected:
-  virtual std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const {
+  virtual void ApplyImpl(Graph *graph) const {
     LOG(FATAL) << "Calling virtual Pass not implemented.";
-    return graph;
   }
+
+  // Some Pass must be placed before this Pass, and some
+  // Pass must be placed after this Pass.
+  virtual void CheckPrevPass() const {}
 
  private:
   template <typename PassType>

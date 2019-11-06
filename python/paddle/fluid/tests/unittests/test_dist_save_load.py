@@ -22,6 +22,9 @@ import numpy as np
 
 from test_dist_base import TestDistBase, RUN_STEP
 
+import os
+flag_name = os.path.splitext(__file__)[0]
+
 
 class TestDistSaveLoadDense2x2(TestDistBase):
     def _setup_config(self):
@@ -32,7 +35,8 @@ class TestDistSaveLoadDense2x2(TestDistBase):
                          model_file,
                          delta=1e-3,
                          check_error_log=False,
-                         need_envs={}):
+                         need_envs={},
+                         log_name=""):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -43,7 +47,8 @@ class TestDistSaveLoadDense2x2(TestDistBase):
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "3"
+            required_envs["GLOG_vmodule"] = \
+                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10,alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         model_dir = tempfile.mkdtemp()
@@ -59,8 +64,8 @@ class TestDistSaveLoadDense2x2(TestDistBase):
         cluster_env.update(required_envs)
 
         local_var = self._run_local(model_file, local_env, check_error_log)
-        tr0_var, tr1_var = self._run_cluster(model_file, cluster_env,
-                                             check_error_log)
+        tr0_var, tr1_var = self._run_cluster(
+            model_file, cluster_env, check_error_log, log_name=flag_name)
 
         shutil.rmtree(model_dir)
 
@@ -68,9 +73,9 @@ class TestDistSaveLoadDense2x2(TestDistBase):
         train0_np = np.array(tr0_var)
         train1_np = np.array(tr1_var)
 
-        self.assertAlmostEqual(local_np.all(), train0_np.all(), delta=delta)
-        self.assertAlmostEqual(local_np.all(), train1_np.all(), delta=delta)
-        self.assertAlmostEqual(train0_np.all(), train1_np.all(), delta=delta)
+        np.testing.assert_almost_equal(local_np, train0_np, decimal=2)
+        np.testing.assert_almost_equal(local_np, train1_np, decimal=2)
+        np.testing.assert_almost_equal(train0_np, train1_np, decimal=2)
 
     def test_dist(self):
         need_envs = {
@@ -95,7 +100,8 @@ class TestDistSaveLoadWithPServerStateDense2x2(TestDistBase):
                          model_file,
                          delta=1e-3,
                          check_error_log=False,
-                         need_envs={}):
+                         need_envs={},
+                         log_name=""):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -106,7 +112,8 @@ class TestDistSaveLoadWithPServerStateDense2x2(TestDistBase):
         required_envs.update(need_envs)
 
         if check_error_log:
-            required_envs["GLOG_v"] = "3"
+            required_envs["GLOG_vmodule"] = \
+                "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10,alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10"
             required_envs["GLOG_logtostderr"] = "1"
 
         model_dir = tempfile.mkdtemp()
@@ -117,15 +124,15 @@ class TestDistSaveLoadWithPServerStateDense2x2(TestDistBase):
         save_env["MODEL_DIR"] = model_dir
         save_env.update(required_envs)
 
-        tr0_var_1, tr1_var_1 = self._run_cluster(model_file, save_env,
-                                                 check_error_log)
+        tr0_var_1, tr1_var_1 = self._run_cluster(
+            model_file, save_env, check_error_log, log_name=flag_name)
 
         load_env = {}
         load_env["LOAD"] = "1"
         load_env["MODEL_DIR"] = model_dir
         load_env.update(required_envs)
-        tr0_var_2, tr1_var_2 = self._run_cluster(model_file, load_env,
-                                                 check_error_log)
+        tr0_var_2, tr1_var_2 = self._run_cluster(
+            model_file, load_env, check_error_log, log_name=flag_name)
 
         shutil.rmtree(model_dir)
 
@@ -134,10 +141,8 @@ class TestDistSaveLoadWithPServerStateDense2x2(TestDistBase):
         train0_2_np = np.array(tr0_var_2)
         train1_2_np = np.array(tr1_var_2)
 
-        self.assertAlmostEqual(
-            train0_1_np.all(), train0_2_np.all(), delta=delta)
-        self.assertAlmostEqual(
-            train1_1_np.all(), train1_2_np.all(), delta=delta)
+        np.testing.assert_almost_equal(train0_1_np, train0_2_np, decimal=2)
+        np.testing.assert_almost_equal(train1_1_np, train1_2_np, decimal=2)
 
     def test_dist(self):
         need_envs = {
@@ -151,8 +156,9 @@ class TestDistSaveLoadWithPServerStateDense2x2(TestDistBase):
         self.check_with_place(
             "dist_save_load.py",
             delta=0,
-            check_error_log=False,
-            need_envs=need_envs)
+            check_error_log=True,
+            need_envs=need_envs,
+            log_name=flag_name)
 
 
 if __name__ == "__main__":

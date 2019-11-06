@@ -60,6 +60,22 @@ void CopyValidData(framework::Tensor* dst_tensor,
 }
 
 template <typename T>
+static void fast_mem_init(void* dest, size_t dest_size, const T* src,
+                          size_t num_bytes) {
+  if (dest == nullptr || dest_size == 0 || src == nullptr) return;
+
+  memcpy(dest, src, num_bytes);
+
+  dest_size *= num_bytes;
+  while (dest_size > num_bytes) {
+    size_t remaining = dest_size - num_bytes;
+    size_t count = (remaining > num_bytes) ? num_bytes : remaining;
+    memcpy((unsigned char*)dest + num_bytes, dest, count);
+    num_bytes += count;
+  }
+}
+
+template <typename T>
 class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
@@ -87,9 +103,8 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
     T* pad_data = pad_tensor->data<T>();
     const T* pad_value_data = pad_value.data<T>();
     if (pad_value.numel() == 1) {
-      for (int i = 0; i < pad_tensor->numel(); ++i) {
-        pad_data[i] = *pad_value_data;
-      }
+      fast_mem_init<T>(pad_data, pad_tensor->numel(), pad_value_data,
+                       sizeof(T));
     } else {
       for (int i = 0; i < pad_tensor->numel(); i += step_width) {
         memcpy(pad_data + i, pad_value_data, step_width * sizeof(T));

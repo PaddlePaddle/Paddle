@@ -15,11 +15,12 @@
 #include "paddle/fluid/framework/ir/embedding_fc_lstm_fuse_pass.h"
 #include <algorithm>
 #include <string>
+#include <unordered_set>
+#include <vector>
 #include "paddle/fluid/framework/lod_tensor.h"
 
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/operators/math/fc_compute.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
@@ -43,7 +44,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   patterns::FC fc_pattern(pattern, name_scope);
 
   // fc_out is a tmp var, will be removed after fuse, so marked as intermediate.
-  auto* fc_out = fc_pattern(embedding_out, with_fc_bias)->AsIntermediate();
+  auto* fc_out = fc_pattern(embedding_out, with_fc_bias, /* with_relu */ false)
+                     ->AsIntermediate();
   patterns::LSTM lstm_pattern(pattern, name_scope);
   lstm_pattern(fc_out);
 
@@ -149,11 +151,11 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     op_desc.SetAttr("use_seq", true);
 
     PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-    auto* scope = graph->Get<Scope*>(kParamScopeAttr);
+    auto& scope = graph->Get<Scope>(kParamScopeAttr);
 #define OP_SET_OUT(x)                            \
   const std::string x = patterns::UniqueKey(#x); \
   op_desc.SetOutput(#x, {x});                    \
-  scope->Var(x)->GetMutable<LoDTensor>()
+  scope.Var(x)->GetMutable<LoDTensor>()
     OP_SET_OUT(BatchedCell);
     OP_SET_OUT(BatchedHidden);
     OP_SET_OUT(ReorderedH0);
@@ -193,7 +195,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     }
 
     if (with_fc_bias) {
-      GET_IR_NODE_FROM_SUBGRAPH(fc_out, Out, fc_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(fc_out, elementwise_add_out, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(fc_bias, bias, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
       embedding_lstm_creator(lookup_table, W, lstm, subgraph.at(x), w, Weight,
@@ -201,7 +203,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       // Remove unneeded nodes.
       // TODO(jczaja): Proper removing of lookup table
       std::unordered_set<const Node*> marked_nodes(
-          //{lookup_table, mul, lstm, elementwise_add, fc_bias, W});
+          // {lookup_table, mul, lstm, elementwise_add, fc_bias, W});
           {mul, lstm, elementwise_add, fc_bias});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
@@ -224,15 +226,13 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   return fusion_count;
 }
 
-std::unique_ptr<ir::Graph> EmbeddingFCLSTMFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(name_scope_, graph.get());
+void EmbeddingFCLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
+  FusePassBase::Init(name_scope_, graph);
 
-  int fusion_count = BuildFusion(graph.get(), name_scope_, param_scope(),
-                                 true /*with_fc_bias*/);
+  int fusion_count =
+      BuildFusion(graph, name_scope_, param_scope(), true /*with_fc_bias*/);
 
   AddStatis(fusion_count);
-  return graph;
 }
 
 }  // namespace ir

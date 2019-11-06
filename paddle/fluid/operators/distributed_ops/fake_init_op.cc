@@ -56,8 +56,7 @@ class FakeInitOp : public framework::OperatorBase {
 
 class FakeInitOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {}
+  void operator()(framework::InferVarTypeContext *ctx) const override {}
 };
 
 class FakeInitOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -81,6 +80,8 @@ table parameter at trainer side in distributed lookup table.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fake_init, ops::FakeInitOp, ops::FakeInitInferShape,
-                  ops::FakeInitOpMaker, paddle::framework::EmptyGradOpMaker,
-                  ops::FakeInitOpVarTypeInference);
+REGISTER_OPERATOR(
+    fake_init, ops::FakeInitOp, ops::FakeInitInferShape, ops::FakeInitOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::FakeInitOpVarTypeInference);

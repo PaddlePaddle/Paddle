@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include <vector>
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 
@@ -24,9 +25,8 @@ namespace plugin {
 
 class ElementWisePlugin : public PluginTensorRT {
  public:
-  ElementWisePlugin(nvinfer1::ElementWiseOperation type,
-                    nvinfer1::Dims const &dims_x, nvinfer1::Dims const &dims_y,
-                    int axis)
+  ElementWisePlugin(std::string type, nvinfer1::Dims const &dims_x,
+                    nvinfer1::Dims const &dims_y, int axis)
       : type_(type),
         dims_x_(dims_x),
         dims_y_(dims_y),
@@ -37,6 +37,9 @@ class ElementWisePlugin : public PluginTensorRT {
 
   ElementWisePlugin(void const *serial_data, size_t serial_length) {
     deserializeBase(serial_data, serial_length);
+    const char *elementwise_type;
+    DeserializeValue(&serial_data, &serial_length, &elementwise_type);
+    type_ = std::string(elementwise_type);
     DeserializeValue(&serial_data, &serial_length, &axis_);
     DeserializeValue(&serial_data, &serial_length, &dims_x_);
     DeserializeValue(&serial_data, &serial_length, &dims_y_);
@@ -47,7 +50,7 @@ class ElementWisePlugin : public PluginTensorRT {
     return nullptr;
   }
 
-  const char *getPluginType() const override { return "elementwise"; }
+  const char *getPluginType() const override { return "elementwise_plugin"; }
 
   nvinfer1::Dims getOutputDimensions(int index,
                                      const nvinfer1::Dims *input_dims,
@@ -61,18 +64,21 @@ class ElementWisePlugin : public PluginTensorRT {
 
  protected:
   size_t getSerializationSize() override {
-    return SerializedSize(axis_) + SerializedSize(dims_x_) +
-           SerializedSize(dims_y_) + getBaseSerializationSize();
+    return SerializedSize(getPluginType()) + SerializedSize(axis_) +
+           SerializedSize(dims_x_) + SerializedSize(dims_y_) +
+           getBaseSerializationSize();
   }
 
   void serialize(void *buffer) override {
+    SerializeValue(&buffer, getPluginType());
     serializeBase(buffer);
+    SerializeValue(&buffer, type_.c_str());
     SerializeValue(&buffer, axis_);
     SerializeValue(&buffer, dims_x_);
     SerializeValue(&buffer, dims_y_);
   }
 
-  nvinfer1::ElementWiseOperation type_;
+  std::string type_;
   nvinfer1::Dims dims_x_;
   nvinfer1::Dims dims_y_;
   int axis_;

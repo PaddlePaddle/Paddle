@@ -14,11 +14,9 @@
 
 from . import config
 from .config import *
-from . import compress_pass
-from .compress_pass import *
+from . import compressor
+from .compressor import *
 from . import strategy
 from .strategy import *
-from . import pass_builder
-from .pass_builder import *
 
-__all__ = config.__all__ + compress_pass.__all__ + strategy.__all__ + pass_builder.__all__
+__all__ = config.__all__ + compressor.__all__ + strategy.__all__

@@ -13,6 +13,7 @@
  * limitations under the License. */
 
 #include "paddle/fluid/operators/jit/gen/hopv.h"
+#include <memory>
 #include "paddle/fluid/operators/jit/registry.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -76,7 +77,7 @@ void HOPVJitCode::genCode() {
 #define DECLARE_HOP_CREATOR(name)                                            \
   class name##Creator : public JitCodeCreator<int> {                         \
    public:                                                                   \
-    bool UseMe(const int& attr) const override {                             \
+    bool CanBeUsed(const int& attr) const override {                         \
       return platform::MayIUse(platform::avx);                               \
     }                                                                        \
     size_t CodeSize(const int& d) const override {                           \

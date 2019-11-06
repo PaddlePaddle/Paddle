@@ -18,20 +18,26 @@ from op_test import OpTest
 
 
 class TestSequenceScatterOp(OpTest):
+    def init_lod(self):
+        return [[3, 5, 4]]
+
     def setUp(self):
         self.op_type = "sequence_scatter"
 
         X_data = np.random.uniform(0.1, 1.0, [3, 6]).astype('float32')
-        Ids_data = np.array([[0], [1], [2], [5], [4], [3], [2], [1], [3], [2],
+        Ids_data = np.array([[0], [1], [2], [5], [4], [3], [0], [1], [3], [2],
                              [5], [4]]).astype('int64')
-        Ids_lod = [[3, 5, 4]]
+        Ids_lod = self.init_lod()
+
         Updates_data = np.random.uniform(0.1, 1.0, [12, 1]).astype('float32')
         Updates_lod = Ids_lod
 
         Out_data = np.copy(X_data)
-        Out_data[0][Ids_data[0:3]] += Updates_data[0:3]
-        Out_data[1][Ids_data[3:8]] += Updates_data[3:8]
-        Out_data[2][Ids_data[8:]] += Updates_data[8:]
+        offset = 0
+        for i in range(3):
+            Out_data[i][Ids_data[offset:(offset + Ids_lod[0][
+                i])]] += Updates_data[offset:(offset + Ids_lod[0][i])]
+            offset += Ids_lod[0][i]
 
         self.inputs = {
             'X': X_data,
@@ -45,6 +51,21 @@ class TestSequenceScatterOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['Updates'], 'Out', in_place=True)
+
+
+class TestSequenceScatterOpSeqLen0(TestSequenceScatterOp):
+    def init_lod(self):
+        return [[6, 0, 6]]
+
+
+class TestSequenceScatterOpSeqLen0Case1(TestSequenceScatterOp):
+    def init_lod(self):
+        return [[0, 6, 6]]
+
+
+class TestSequenceScatterOpSeqLen0Case2(TestSequenceScatterOp):
+    def init_lod(self):
+        return [[6, 6, 0]]
 
 
 if __name__ == "__main__":

@@ -27,7 +27,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
+
+void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
     var->GetMutable<LoDTensor>();
   } else if (var_type == proto::VarType::SELECTED_ROWS) {
@@ -37,7 +38,7 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::FETCH_LIST) {
     var->GetMutable<FeedFetchList>();
   } else if (var_type == proto::VarType::STEP_SCOPES) {
-    var->GetMutable<std::vector<framework::Scope*>>();
+    var->GetMutable<std::vector<framework::Scope *>>();
   } else if (var_type == proto::VarType::LOD_RANK_TABLE) {
     var->GetMutable<LoDRankTable>();
   } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
@@ -54,6 +55,28 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
         "LOD_RANK_TABLE, PLACE_LIST, READER, RAW]",
         var_type);
+  }
+}
+
+void CopyVariable(const Variable &src_var, Variable *dst_var) {
+  // only support cpu now
+  auto cpu_place = platform::CPUPlace();
+
+  if (src_var.IsType<framework::LoDTensor>()) {
+    auto *tmp_grad_tensor = dst_var->GetMutable<framework::LoDTensor>();
+    auto &src_tensor = src_var.Get<framework::LoDTensor>();
+    tmp_grad_tensor->set_lod(src_tensor.lod());
+    framework::TensorCopy(src_tensor, cpu_place, tmp_grad_tensor);
+  } else if (src_var.IsType<framework::SelectedRows>()) {
+    auto &src_slr = src_var.Get<framework::SelectedRows>();
+    auto *tmp_grad_slr = dst_var->GetMutable<framework::SelectedRows>();
+    tmp_grad_slr->set_rows(src_slr.rows());
+    tmp_grad_slr->set_height(src_slr.height());
+    auto &src_t = src_slr.value();
+    auto *dst_t = tmp_grad_slr->mutable_value();
+    framework::TensorCopy(src_t, cpu_place, dst_t);
+  } else {
+    PADDLE_THROW("unknown var type to copy");
   }
 }
 }  // namespace framework

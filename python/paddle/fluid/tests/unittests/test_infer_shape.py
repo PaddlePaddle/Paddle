@@ -104,6 +104,7 @@ class TestInferShape(unittest.TestCase):
         sum_op_desc = block.append_op()
         sum_op_desc.set_type("expand")
         sum_op_desc.set_input("X", ["x"])
+        sum_op_desc.set_input('expand_times_tensor', [])
         sum_op_desc.set_output("Out", ["out"])
         sum_op_desc._set_attr('expand_times', expand_times)
 

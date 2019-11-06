@@ -19,6 +19,24 @@ import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
 from scipy.special import expit, erf
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
+
+
+class TestSqrtOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of sqrt op must be Variable or numpy.ndarray.
+            in1 = 1
+            self.assertRaises(TypeError, fluid.layers.sqrt, in1)
+            # The input dtype of sqrt op must be float16, float32, float64.
+            in2 = fluid.layers.data(
+                name='input2', shape=[12, 10], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.sqrt, in2)
+
+            in3 = fluid.layers.data(
+                name='input3', shape=[12, 10], dtype="float16")
+            fluid.layers.sqrt(x=in3)
 
 
 class TestActivation(OpTest):
@@ -26,6 +44,7 @@ class TestActivation(OpTest):
         self.op_type = "exp"
         self.dtype = np.float32
         self.init_dtype()
+        self.init_kernel_type()
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.exp(x)
@@ -43,6 +62,9 @@ class TestActivation(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float32
+
+    def init_kernel_type(self):
+        pass
 
 
 class TestSigmoid(TestActivation):
@@ -86,6 +108,23 @@ class TestTanh(TestActivation):
 
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.tanh(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestAtan(TestActivation):
+    def setUp(self):
+        self.op_type = "atan"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.arctan(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -171,6 +210,23 @@ class TestSqrt(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
+class TestRsqrt(TestActivation):
+    def setUp(self):
+        self.op_type = "rsqrt"
+        self.init_dtype()
+
+        x = np.random.uniform(0.1, 1, [2, 3]).astype(self.dtype)
+        out = 1.0 / np.sqrt(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.0005)
+
+
 class TestAbs(TestActivation):
     def setUp(self):
         self.op_type = "abs"
@@ -221,7 +277,7 @@ class TestFloor(TestActivation):
         self.outputs = {'Out': out}
 
     # the gradient on floor, ceil, round is undefined.
-    # we return zero as gradient, but the numpy return nan 
+    # we return zero as gradient, but the numpy return nan
     # The same reason with TestFloor
     def test_check_grad(self):
         pass
@@ -244,6 +300,23 @@ class TestCos(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
+class TestAcos(TestActivation):
+    def setUp(self):
+        self.op_type = "acos"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        out = np.arccos(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
 class TestSin(TestActivation):
     def setUp(self):
         self.op_type = "sin"
@@ -251,6 +324,23 @@ class TestSin(TestActivation):
 
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
         out = np.sin(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestAsin(TestActivation):
+    def setUp(self):
+        self.op_type = "asin"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        out = np.arcsin(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -285,6 +375,25 @@ class TestRelu(TestActivation):
         # The same reason with TestAbs
         x[np.abs(x) < 0.005] = 0.02
         out = np.maximum(x, 0)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+
+class TestLeakyRelu(TestActivation):
+    def setUp(self):
+        self.op_type = "leaky_relu"
+        self.init_dtype()
+
+        x = np.random.uniform(-1, 1, [11, 17]).astype(self.dtype)
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.02
+        out = np.maximum(x, 0.02 * x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -359,6 +468,30 @@ class TestRelu6(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
 
+class TestHardSwish(TestActivation):
+    def setUp(self):
+        self.op_type = 'hard_swish'
+        self.init_dtype()
+
+        x = np.random.uniform(-6, 6, [4, 4]).astype(self.dtype)
+        threshold = 6.0
+        scale = 6.0
+        offset = 3.0
+        #the same with TestAbs
+        x[np.abs(x + offset) < 0.005] = 0.02
+        x[np.abs(x - threshold + offset) < 0.005] = threshold - offset + 0.02
+        out = x * np.minimum(np.maximum(x + offset, 0), threshold) / scale
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.attrs = {'threshold': threshold, 'scale': scale, 'offset': offset}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+
+
 class TestSoftRelu(TestActivation):
     def setUp(self):
         self.op_type = "soft_relu"
@@ -402,6 +535,18 @@ class TestELU(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
+
+
+class TestELUOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of elu_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.elu, x1)
+            # The input dtype of elu_op must be float16 float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.elu, x2)
 
 
 class TestReciprocal(TestActivation):
@@ -471,6 +616,51 @@ class TestPow(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
+
+
+class TestPow_factor_tensor(TestActivation):
+    def setUp(self):
+        self.op_type = "pow"
+        self.init_dtype()
+
+        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        out = np.power(x, 3)
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(x),
+            'FactorTensor': np.array([3.0]).astype("float32")
+        }
+
+        self.attrs = {}
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+
+    def test_api(self):
+        import paddle.fluid as fluid
+
+        input = np.random.uniform(1, 2, [11, 17]).astype("float32")
+        x = fluid.layers.data(
+            name="x", shape=[11, 17], append_batch_size=False, dtype="float32")
+
+        factor_1 = 2.0
+        factor_2 = fluid.layers.fill_constant([1], "float32", 3.0)
+        out_1 = fluid.layers.pow(x, factor=factor_1)
+        out_2 = fluid.layers.pow(x, factor=factor_2)
+
+        exe = fluid.Executor(place=fluid.CPUPlace())
+        res_1, res_2 = exe.run(fluid.default_main_program(),
+                               feed={"x": input},
+                               fetch_list=[out_1, out_2])
+
+        assert np.array_equal(res_1, np.power(input, 2))
+        assert np.array_equal(res_2, np.power(input, 3))
 
 
 class TestSTanh(TestActivation):
@@ -601,6 +791,25 @@ class TestSwish(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
+#------------------ Test Cudnn Activation----------------------
+def create_test_act_cudnn_class(parent, atol=1e-3, grad_atol=1e-3):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestActCudnn(parent):
+        def init_kernel_type(self):
+            self.attrs = {"use_cudnn": True}
+
+    cls_name = "{0}_{1}".format(parent.__name__, "cudnn")
+    TestActCudnn.__name__ = cls_name
+    globals()[cls_name] = TestActCudnn
+
+
+create_test_act_cudnn_class(TestRelu)
+create_test_act_cudnn_class(TestRelu6)
+create_test_act_cudnn_class(TestSigmoid)
+create_test_act_cudnn_class(TestTanh)
+
+
 #------------------ Test Fp16 ----------------------
 def create_test_act_fp16_class(parent,
                                atol=1e-3,
@@ -642,7 +851,10 @@ create_test_act_fp16_class(TestAbs)
 create_test_act_fp16_class(TestCeil, grad_check=False)
 create_test_act_fp16_class(TestFloor, grad_check=False)
 create_test_act_fp16_class(TestCos, grad_atol=0.85)
+create_test_act_fp16_class(TestAcos, grad_atol=0.85)
 create_test_act_fp16_class(TestSin)
+create_test_act_fp16_class(TestAsin)
+create_test_act_fp16_class(TestAtan)
 create_test_act_fp16_class(TestRound, grad_check=False)
 create_test_act_fp16_class(TestRelu)
 create_test_act_fp16_class(TestGelu)
@@ -654,12 +866,14 @@ create_test_act_fp16_class(TestReciprocal)
 create_test_act_fp16_class(TestLog)
 create_test_act_fp16_class(TestSquare)
 create_test_act_fp16_class(TestPow, atol=5e-2)
+create_test_act_fp16_class(TestPow_factor_tensor, atol=5e-2)
 create_test_act_fp16_class(TestSTanh, grad_atol=0.9)
 create_test_act_fp16_class(TestSoftplus)
 create_test_act_fp16_class(TestSoftsign)
 create_test_act_fp16_class(TestThresholdedRelu)
 create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish)
+create_test_act_fp16_class(TestHardSwish)
 
 if __name__ == "__main__":
     unittest.main()

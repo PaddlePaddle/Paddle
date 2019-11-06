@@ -93,11 +93,9 @@ execution.
 
 class GetPlacesInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    for (auto &o_name : op_desc.Output("Out")) {
-      block->FindRecursiveOrCreateVar(o_name).SetType(
-          framework::proto::VarType::PLACE_LIST);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    for (auto &o_name : ctx->Output("Out")) {
+      ctx->SetType(o_name, framework::proto::VarType::PLACE_LIST);
     }
   }
 };
@@ -113,6 +111,8 @@ class GetPlacesInferShape : public framework::InferShapeBase {
 }  // namespace paddle
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(get_places, ops::GetPlacesOp, ops::GetPlacesOpProtoMaker,
-                  ops::GetPlacesInferVarType, ops::GetPlacesInferShape,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    get_places, ops::GetPlacesOp, ops::GetPlacesOpProtoMaker,
+    ops::GetPlacesInferVarType, ops::GetPlacesInferShape,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

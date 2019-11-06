@@ -14,8 +14,11 @@
 #include "paddle/fluid/framework/tensor_util.h"
 #include <algorithm>
 #include <limits>
+#include <memory>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -50,7 +53,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_cpu_place = boost::get<platform::CPUPlace>(dst_place);
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place), true);
     auto ctx_gpu_place = boost::get<platform::CUDAPlace>(ctx_place);
     PADDLE_ENFORCE_EQ(src_gpu_place, ctx_gpu_place);
     auto stream =
@@ -61,7 +64,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto src_cpu_place = boost::get<platform::CPUPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place), true);
     auto ctx_gpu_place = boost::get<platform::CUDAPlace>(ctx_place);
     PADDLE_ENFORCE_EQ(dst_gpu_place, ctx_gpu_place);
     auto stream =
@@ -72,7 +75,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     auto ctx_place = ctx.GetPlace();
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx_place), true);
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
     if (platform::is_same_place(src_place, dst_place)) {
@@ -96,6 +99,8 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
         PADDLE_THROW("ctx is not belong to dst_gpu_place or src_gpu_place.");
       }
     }
+  } else {
+    PADDLE_THROW("Copy from %s to %s is not supported.", src_place, dst_place);
   }
 #endif
 }
@@ -135,16 +140,19 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
+    platform::RecordEvent record_event("TensorCopy:GPU->CPU");
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_cpu_place = boost::get<platform::CPUPlace>(dst_place);
     memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   } else if (platform::is_cpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
+    platform::RecordEvent record_event("TensorCopy:CPU->GPU");
     auto src_cpu_place = boost::get<platform::CPUPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, nullptr);
   } else if (platform::is_gpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
+    platform::RecordEvent record_event("TensorCopy:GPU->GPU");
     if (src_ptr == dst_ptr && platform::is_same_place(src_place, dst_place)) {
       VLOG(3) << "Skip copy the same data from " << src_place << " to "
               << dst_place;
@@ -155,10 +163,13 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
     memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   } else if (platform::is_cuda_pinned_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
+    platform::RecordEvent record_event("TensorCopy:CUDAPinned->GPU");
     auto src_pinned_place = boost::get<platform::CUDAPinnedPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size,
                  nullptr);
+  } else {
+    PADDLE_THROW("Copy from %s to %s is not supported.", src_place, dst_place);
   }
 #endif
 }
@@ -482,6 +493,128 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       is.read(static_cast<char*>(buf), size);
     }
   }
+}
+
+// get tensor data point by DLDataType
+void* GetDstPtrByDLDataType(DLDataType type, framework::Tensor* dst,
+                            const platform::Place& dst_place) {
+  // vector types not currently supported
+  PADDLE_ENFORCE_LE(type.lanes, 1, "vector types not currently supported");
+
+  switch (type.bits) {
+    case 8:
+      if (type.code == kDLInt)
+        return static_cast<void*>(dst->mutable_data<int8_t>(dst_place));
+      if (type.code == kDLUInt)
+        return static_cast<void*>(dst->mutable_data<uint8_t>(dst_place));
+      PADDLE_THROW("There is no this type.code <%d> when type.bits is <%d>.",
+                   type.code, type.bits);
+    case 16:
+      if (type.code == kDLInt)
+        return static_cast<void*>(dst->mutable_data<int16_t>(dst_place));
+      if (type.code == kDLFloat)
+        return static_cast<void*>(
+            dst->mutable_data<paddle::platform::float16>(dst_place));
+      PADDLE_THROW("There is no this type.code <%d> when type.bits is <%d>.",
+                   type.code, type.bits);
+    case 32:
+      if (type.code == kDLInt)
+        return static_cast<void*>(dst->mutable_data<int32_t>(dst_place));
+      if (type.code == kDLFloat)
+        return static_cast<void*>(dst->mutable_data<float>(dst_place));
+      PADDLE_THROW("There is no this type.code <%d> when type.bits is <%d>.",
+                   type.code, type.bits);
+    case 64:
+      if (type.code == kDLInt)
+        return static_cast<void*>(dst->mutable_data<int64_t>(dst_place));
+      if (type.code == kDLFloat)
+        return static_cast<void*>(dst->mutable_data<double>(dst_place));
+      PADDLE_THROW("There is no this type.code <%d> when type.bits is <%d>.",
+                   type.code, type.bits);
+    default:
+      PADDLE_THROW("Unsupport type.bits %d", type.bits);
+  }
+}
+
+void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
+  platform::CPUPlace dst_place = platform::CPUPlace();
+  platform::CPUPlace src_place = platform::CPUPlace();
+
+  std::vector<int64_t> vec;
+  std::copy(dl_tensor.shape, dl_tensor.shape + dl_tensor.ndim,
+            std::back_inserter(vec));
+
+  framework::DDim vddim = framework::make_ddim(vec);
+
+  dst->Resize(vddim);
+  ::DLDataType type = dl_tensor.dtype;
+  void* dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
+
+  auto src_ptr = static_cast<const void*>(dl_tensor.data);
+  auto size = paddle::framework::product(vddim) * type.bits / 8;
+
+  if (dl_tensor.ctx.device_type == kDLCPU) {
+    memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
+  }
+#ifdef PADDLE_WITH_CUDA
+  if (dl_tensor.ctx.device_type == kDLGPU) {
+    platform::CUDAPlace dst_place =
+        platform::CUDAPlace(dl_tensor.ctx.device_id);
+    platform::CUDAPlace src_place =
+        platform::CUDAPlace(dl_tensor.ctx.device_id);
+    dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
+    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(dst_place);
+    memory::Copy(
+        dst_place, dst_ptr, src_place, src_ptr, size,
+        reinterpret_cast<const platform::CUDADeviceContext&>(*ctx).stream());
+  }
+#endif
+}
+
+template <typename T>
+std::ostream& print_tensor(std::ostream& os, const framework::Tensor& tensor) {
+  auto inspect = tensor.data<T>();
+  auto element_num = tensor.numel();
+
+  os << "\tdata: [";
+  if (element_num > 0) {
+    os << inspect[0];
+    for (int j = 1; j < element_num; ++j) {
+      os << " " << inspect[j];
+    }
+  }
+  os << "]";
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Tensor& t) {
+  os << "\tdim: " << t.dims() << "\n";
+  os << "\tlayout: " << DataLayoutToString(t.layout()) << "\n";
+
+  Tensor tensor;
+  tensor.Resize(t.dims());
+  if (platform::is_cpu_place(t.place())) {
+    tensor.ShareDataWith(t);
+  } else {
+    platform::CPUPlace place;
+    framework::TensorCopy(t, place, &tensor);
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& dev_ctx = *pool.Get(t.place());
+    dev_ctx.Wait();
+  }
+
+#define PrintTensorCallback(cpp_type, proto_type) \
+  do {                                            \
+    if (tensor.type() == proto_type) {            \
+      os << "\tdtype: " << proto_type << "\n";    \
+      print_tensor<cpp_type>(os, tensor);         \
+      return os;                                  \
+    }                                             \
+  } while (0)
+
+  _ForEachDataType_(PrintTensorCallback);
+  VLOG(1) << "PrintVar: unrecognized data type:" << t.type();
+  return os;
 }
 
 }  // namespace framework

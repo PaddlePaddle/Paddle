@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -23,9 +24,13 @@ namespace imperative {
 
 class VarBase;
 class OpBase;
+class Tracer;
 
-typedef std::map<std::string, std::vector<VarBase*>> VarBasePtrMap;
-typedef std::map<std::string, std::vector<OpBase*>> OpBasePtrMap;
+using NameVarBaseMap =
+    std::map<std::string, std::vector<std::shared_ptr<VarBase>>>;
+
+using WeakNameVarBaseMap =
+    std::map<std::string, std::vector<std::weak_ptr<VarBase>>>;
 
 }  // namespace imperative
 }  // namespace paddle

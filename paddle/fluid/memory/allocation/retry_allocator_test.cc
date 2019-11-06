@@ -17,12 +17,16 @@
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
 #include <mutex>               // NOLINT
-#include <thread>              // NOLINT
+#include <string>
+#include <thread>  // NOLINT
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/memory/allocation/cuda_allocator.h"
+#endif
 
 namespace paddle {
 namespace memory {
@@ -32,14 +36,14 @@ TEST(RetryAllocator, RetryAllocator) {
   CPUAllocator cpu_allocator;
 
   size_t size = (1 << 20);
-  auto cpu_allocation = cpu_allocator.Allocate(size, cpu_allocator.kDefault);
+  auto cpu_allocation = cpu_allocator.Allocate(size);
 
   std::unique_ptr<BestFitAllocator> best_fit_allocator(
       new BestFitAllocator(cpu_allocation.get()));
   std::unique_ptr<LockedAllocator> locked_allocator(
       new LockedAllocator(std::move(best_fit_allocator)));
 
-  size_t thread_num = 32;
+  size_t thread_num = 4;
   size_t sleep_time = 40;
   size_t extra_time = 10;
 
@@ -91,6 +95,49 @@ TEST(RetryAllocator, RetryAllocator) {
                                     [val](void *p) { return p == val; });
     ASSERT_TRUE(is_all_equal);
   }
+}
+
+class DummyAllocator : public Allocator {
+ public:
+  bool IsAllocThreadSafe() const override { return true; }
+
+ protected:
+  Allocation *AllocateImpl(size_t size) override {
+    PADDLE_THROW_BAD_ALLOC("Always BadAlloc");
+  }
+
+  void FreeImpl(Allocation *) override {}
+};
+
+TEST(RetryAllocator, RetryAllocatorLastAllocFailure) {
+  size_t retry_ms = 10;
+  {
+    RetryAllocator allocator(std::make_shared<DummyAllocator>(), retry_ms);
+    try {
+      auto allocation = allocator.Allocate(100);
+      ASSERT_TRUE(false);
+      allocation.reset();
+    } catch (BadAlloc &ex) {
+      ASSERT_TRUE(std::string(ex.what()).find("Always BadAlloc") !=
+                  std::string::npos);
+    }
+  }
+
+#ifdef PADDLE_WITH_CUDA
+  {
+    platform::CUDAPlace p(0);
+    RetryAllocator allocator(std::make_shared<CUDAAllocator>(p), retry_ms);
+    size_t allocate_size = (static_cast<size_t>(1) << 40);  // Very large number
+    try {
+      auto allocation = allocator.Allocate(allocate_size);
+      ASSERT_TRUE(false);
+      allocation.reset();
+    } catch (BadAlloc &ex) {
+      ASSERT_TRUE(std::string(ex.what()).find("Cannot allocate") !=
+                  std::string::npos);
+    }
+  }
+#endif
 }
 
 }  // namespace allocation

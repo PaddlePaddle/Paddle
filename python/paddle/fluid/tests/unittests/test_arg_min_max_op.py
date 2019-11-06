@@ -64,6 +64,14 @@ class TestCase2(BaseTestCase):
         self.axis = 0
 
 
+class TestCase2_1(BaseTestCase):
+    def initTestCase(self):
+        self.op_type = 'arg_max'
+        self.dims = (3, 4)
+        self.dtype = 'int64'
+        self.axis = -1
+
+
 class TestCase3(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'

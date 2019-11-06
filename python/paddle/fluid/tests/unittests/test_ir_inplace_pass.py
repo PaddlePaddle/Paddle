@@ -47,10 +47,7 @@ class TestIrInplace(TestParallelExecutorBase):
     def setUpClass(cls):
         os.environ['CPU_NUM'] = str(4)
 
-    def _fc_with_batchnorm(self,
-                           ir_memory_optimize,
-                           enable_inplace,
-                           memory_opt=False):
+    def _fc_with_batchnorm(self, ir_memory_optimize, enable_inplace):
 
         if not core.is_compiled_with_cuda():
             return
@@ -62,7 +59,6 @@ class TestIrInplace(TestParallelExecutorBase):
             feed_dict={"image": img,
                        "label": label},
             use_cuda=True,
-            memory_opt=memory_opt,
             use_ir_memory_optimize=ir_memory_optimize,
             enable_inplace=enable_inplace)
 
@@ -74,3 +70,7 @@ class TestIrInplace(TestParallelExecutorBase):
         self.assertAlmostEqual(loss00, loss10, delta=delta)
         self.assertAlmostEqual(loss00, loss01, delta=delta)
         self.assertAlmostEqual(loss00, loss11, delta=delta)
+
+
+if __name__ == '__main__':
+    unittest.main()

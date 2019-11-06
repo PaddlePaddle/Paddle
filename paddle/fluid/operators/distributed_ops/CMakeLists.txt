@@ -2,9 +2,9 @@ include(operators)
 
 set(DISTRIBUTE_DEPS "")
 if(WITH_GRPC)
-    set(DISTRIBUTE_DEPS sendrecvop_rpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf node)
+    set(DISTRIBUTE_DEPS sendrecvop_rpc parameter_send parameter_recv communicator async_sparse_param_update_recorder grpc++_unsecure grpc_unsecure gpr cares zlib protobuf node)
 else()
-    set(DISTRIBUTE_DEPS sendrecvop_rpc brpc leveldb snappystream snappy protobuf ssl crypto zlib node)
+    set(DISTRIBUTE_DEPS sendrecvop_rpc parameter_send parameter_recv communicator async_sparse_param_update_recorder brpc leveldb snappystream snappy protobuf ssl crypto zlib node)
     if(WITH_BRPC_RDMA)
         find_library(IBVERBS_LIBRARY NAMES ibverbs)
         ADD_LIBRARY(ibverbs SHARED IMPORTED GLOBAL)
@@ -20,7 +20,6 @@ else()
 endif()
 
 set(DISTRIBUTE_COMPILE_FLAGS "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor")
-
 
 file(GLOB OPS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" "*_op.cc")
 list(REMOVE_DUPLICATES OPS)

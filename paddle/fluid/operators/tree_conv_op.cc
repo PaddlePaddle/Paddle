@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/tree_conv_op.h"
+
+#include <memory>
 #include <string>
 
 namespace paddle {
@@ -62,17 +64,38 @@ class TreeConvOp : public framework::OperatorWithKernel {
     auto edge_dims = ctx->GetInputDim("EdgeSet");
     auto vector_dims = ctx->GetInputDim("NodesVector");
     auto filter_dims = ctx->GetInputDim("Filter");
-    PADDLE_ENFORCE_EQ(edge_dims[2], 2, "Input(EdgeSet) dim[2] should be 2");
+
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(edge_dims[2], 2, "Input(EdgeSet) dim[2] should be 2");
+    } else {
+      if (edge_dims[2] != -1) {
+        PADDLE_ENFORCE_EQ(edge_dims[2], 2, "Input(EdgeSet) dim[2] should be 2");
+      }
+    }
     PADDLE_ENFORCE_EQ(edge_dims.size(), 3,
                       "The dimension of EdgeSet Tensor should be 3");
     PADDLE_ENFORCE_EQ(vector_dims.size(), 3,
                       "The dimension of NodesVector Tensor should be 3");
     PADDLE_ENFORCE_EQ(filter_dims.size(), 4,
                       "The dimension of Filter Tensor should be 4");
-    PADDLE_ENFORCE_EQ(filter_dims[1], 3, "Input(Filter) dim[1] should be 3");
-    PADDLE_ENFORCE_EQ(
-        filter_dims[0], vector_dims[2],
-        "Input(Filter) dim[0] must equal to Input(NodesVector) dim[2]");
+
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(filter_dims[1], 3, "Input(Filter) dim[1] should be 3");
+      PADDLE_ENFORCE_EQ(
+          filter_dims[0], vector_dims[2],
+          "Input(Filter) dim[0] must equal to Input(NodesVector) dim[2]");
+    } else {
+      if (filter_dims[1] != -1) {
+        PADDLE_ENFORCE_EQ(filter_dims[1], 3,
+                          "Input(Filter) dim[1] should be 3");
+      }
+
+      if (filter_dims[0] != -1 && vector_dims[2] != -1) {
+        PADDLE_ENFORCE_EQ(
+            filter_dims[0], vector_dims[2],
+            "Input(Filter) dim[0] must equal to Input(NodesVector) dim[2]");
+      }
+    }
     auto output_dims = framework::make_ddim(
         {vector_dims[0], vector_dims[1], filter_dims[2], filter_dims[3]});
     ctx->SetOutputDim("Out", output_dims);
@@ -81,8 +104,34 @@ class TreeConvOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("NodesVector")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "NodesVector"),
+        ctx.device_context());
+  }
+};
+
+template <typename T>
+class TreeConvGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+
+    op->SetType("tree_conv_grad");
+
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput("EdgeSet", this->Input("EdgeSet"));
+    op->SetInput("NodesVector", this->Input("NodesVector"));
+
+    op->SetOutput(framework::GradVarName("NodesVector"),
+                  this->InputGrad("NodesVector"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
+
+    op->SetAttrMap(this->Attrs());
+    return op;
   }
 };
 
@@ -106,8 +155,9 @@ class TreeConvGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("NodesVector")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "NodesVector"),
+        ctx.device_context());
   }
 };
 }  // namespace operators
@@ -115,7 +165,8 @@ class TreeConvGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(tree_conv, ops::TreeConvOp, ops::TreeConvOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::TreeConvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::TreeConvGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(tree_conv_grad, ops::TreeConvGradOp);
 

@@ -30,7 +30,11 @@ ProcessorCount(NUM_OF_PROCESSOR)
 IF(APPLE)
   SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
 ELSE()
-  SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+  if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
+    SET(BUILD_CMD make CFLAGS=-Wno-error=sizeof-pointer-memaccess CXXFLAGS=-Wno-error=ignored-qualifiers HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+  else()
+    SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+  endif()
 ENDIF()
 
 # FIXME(wuyi): do not build zlib cares protobuf twice, find a way to build grpc with them
@@ -44,7 +48,7 @@ ExternalProject_Add(
     # 3. keep only zlib, cares, protobuf, boringssl under "third_party",
     #    checkout and clean other dirs under third_party
     # 4. remove .git, and package the directory.
-    URL "http://paddlepaddledeps.cdn.bcebos.com/grpc-v1.10.x.tar.gz"
+    URL "http://paddlepaddledeps.bj.bcebos.com/grpc-v1.10.x.tar.gz"
     URL_MD5  "1f268a2aff6759839dccd256adcc91cf"
     PREFIX          ${GRPC_SOURCES_DIR}
     UPDATE_COMMAND  ""

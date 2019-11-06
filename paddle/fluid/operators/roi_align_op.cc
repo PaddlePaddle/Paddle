@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/roi_align_op.h"
+#include <memory>
 
 namespace paddle {
 namespace operators {
@@ -36,9 +37,11 @@ class ROIAlignOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(rois_dims.size() == 2,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
                    "given as [[x1, y1, x2, y2], ...].");
-    PADDLE_ENFORCE(rois_dims[1] == 4,
-                   "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
-                   "given as [[x1, y1, x2, y2], ...].");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE(rois_dims[1] == 4,
+                     "ROIs should be a 2-D LoDTensor of shape (num_rois, 4)"
+                     "given as [[x1, y1, x2, y2], ...].");
+    }
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
@@ -62,8 +65,9 @@ class ROIAlignOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -82,8 +86,9 @@ class ROIAlignGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "ROIs"),
+        ctx.device_context());
   }
 };
 
@@ -92,7 +97,7 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(Tensor), "
-             "The input of ROIAlignOp. "
+             "The input of ROIAlignOp. The data type is float32 or float64."
              "The format of input tensor is NCHW. Where N is batch size, "
              "C is the number of input channels, "
              "H is the height of the feature, and "
@@ -107,7 +112,8 @@ class ROIAlignOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(Tensor), "
               "The output of ROIAlignOp is a 4-D tensor with shape "
-              "(num_rois, channels, pooled_h, pooled_w).");
+              "(num_rois, channels, pooled_h, pooled_w). The data type is "
+              "float32 or float64.");
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
                    "Multiplicative spatial scale factor "
@@ -147,13 +153,35 @@ Thus avoid the misaligned problem.
   }
 };
 
+template <typename T>
+class ROIAlignGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType("roi_align_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+    return op;
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(RoiAlignGradNoNeedBufVarsInferer, "X");
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(roi_align, ops::ROIAlignOp, ops::ROIAlignOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(roi_align_grad, ops::ROIAlignGradOp);
+                  ops::ROIAlignGradMaker<paddle::framework::OpDesc>,
+                  ops::ROIAlignGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(roi_align_grad, ops::ROIAlignGradOp,
+                  ops::RoiAlignGradNoNeedBufVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     roi_align,
     ops::CPUROIAlignOpKernel<paddle::platform::CPUDeviceContext, float>,

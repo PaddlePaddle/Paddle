@@ -64,11 +64,9 @@ class LoDRankTableInferShape : public framework::InferShapeBase {
 
 class LoDRankTableInferVarType : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    for (auto &o : op_desc.Output("Out")) {
-      block->FindRecursiveOrCreateVar(o).SetType(
-          framework::proto::VarType::LOD_RANK_TABLE);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    for (auto &o : ctx->Output("Out")) {
+      ctx->SetType(o, framework::proto::VarType::LOD_RANK_TABLE);
     }
   }
 };
@@ -76,8 +74,10 @@ class LoDRankTableInferVarType : public framework::VarTypeInference {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(lod_rank_table, paddle::operators::LoDRankTableOp,
-                  paddle::operators::LoDRankTableOpProtoMaker,
-                  paddle::operators::LoDRankTableInferShape,
-                  paddle::operators::LoDRankTableInferVarType,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    lod_rank_table, paddle::operators::LoDRankTableOp,
+    paddle::operators::LoDRankTableOpProtoMaker,
+    paddle::operators::LoDRankTableInferShape,
+    paddle::operators::LoDRankTableInferVarType,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

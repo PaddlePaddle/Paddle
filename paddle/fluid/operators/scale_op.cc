@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/scale_op.h"
 
+#include <memory>
 #include <string>
 
 #include "paddle/fluid/operators/detail/safe_ref.h"
@@ -69,47 +70,49 @@ $$Out = scale*(X + bias)$$
 
 class ScaleOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc &op_desc,
-                  framework::BlockDesc *block) const override {
-    auto &in_var_name = op_desc.Input("X").front();
-    auto &in_var = detail::Ref(block->FindVarRecursive(in_var_name));
-
-    auto out_var_name = op_desc.Output("Out").front();
-    auto *out_var = block->FindVarRecursive(out_var_name);
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto &in_var_name = ctx->Input("X").front();
+    auto out_var_name = ctx->Output("Out").front();
 
     if (in_var_name != out_var_name) {
-      out_var->SetType(in_var.GetType());
-      out_var->SetDataType(in_var.GetDataType());
+      ctx->SetType(out_var_name, ctx->GetType(in_var_name));
+      ctx->SetDataType(out_var_name, ctx->GetDataType(in_var_name));
     }
   }
 };
 
-class ScaleGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("scale");
-    grad_op->SetInput("X", OutputGrad("Out"));
-    grad_op->SetOutput("Out", InputGrad("X"));
-    grad_op->SetAttr("scale", GetAttr("scale"));
+    grad_op->SetInput("X", this->OutputGrad("Out"));
+    grad_op->SetOutput("Out", this->InputGrad("X"));
+    grad_op->SetAttr("scale", this->GetAttr("scale"));
     grad_op->SetAttr("bias", 0.0f);
     grad_op->SetAttr("bias_after_scale", true);
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
-using ScaleOpInplace = framework::SingleOpInplaceInToOut;
+DECLARE_INPLACE_OP_INFERER(ScaleOpInplace, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker, ops::ScaleGradMaker,
+REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker,
+                  ops::ScaleGradMaker<paddle::framework::OpDesc>,
+                  ops::ScaleGradMaker<paddle::imperative::OpBase>,
                   ops::ScaleOpVarTypeInference, ops::ScaleOpInplace);
 REGISTER_OP_CPU_KERNEL(
     scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int8_t>,
+    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int16_t>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, int>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, int64_t>);

@@ -216,24 +216,14 @@ class RmspropOpKernel : public framework::OpKernel<T> {
       }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
       auto &grad = grad_var->Get<framework::SelectedRows>();
-      auto *merged_grad = const_cast<framework::Scope &>(ctx.scope())
-                              .Var()
-                              ->GetMutable<framework::SelectedRows>();
-
+      framework::SelectedRows tmp_merged_grad;
+      framework::SelectedRows *merged_grad = &tmp_merged_grad;
       math::scatter::MergeAdd<DeviceContext, T> merge_func;
       merge_func(dev_ctx, grad, merged_grad);
 
       platform::ForRange<DeviceContext> for_range(dev_ctx, limit);
-      const int64_t *rows;
-#ifdef PADDLE_WITH_CUDA
-      if (platform::is_gpu_place(ctx.GetPlace())) {
-        rows = merged_grad->rows().CUDAData(ctx.GetPlace());
-      } else {
-#endif
-        rows = merged_grad->rows().data();
-#ifdef PADDLE_WITH_CUDA
-      }
-#endif
+      const int64_t *rows = merged_grad->rows().Data(ctx.GetPlace());
+
       auto &merged_tensor = merged_grad->value();
       int64_t row_count = merged_grad->rows().size();
       int64_t row_numel = merged_tensor.numel() / row_count;

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include <typeindex>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/ddim.h"
@@ -86,17 +87,12 @@ class Tensor {
    * @note    If not exist, then allocation.
    */
   template <typename T>
-  T* mutable_data(platform::Place place,
-                  memory::Allocator::Attr attr = memory::Allocator::kDefault,
-                  size_t requested_size = 0);
+  T* mutable_data(platform::Place place, size_t requested_size = 0);
 
   void* mutable_data(platform::Place place, proto::VarType::Type type,
-                     memory::Allocator::Attr attr = memory::Allocator::kDefault,
                      size_t requested_size = 0);
 
-  void* mutable_data(platform::Place place,
-                     memory::Allocator::Attr attr = memory::Allocator::kDefault,
-                     size_t requested_size = 0);
+  void* mutable_data(platform::Place place, size_t requested_size = 0);
 
   /**
    * @brief     Return a pointer to mutable memory block.
@@ -108,9 +104,7 @@ class Tensor {
    * @note      If not exist, then allocation.
    */
   template <typename T>
-  T* mutable_data(DDim dims, platform::Place place,
-                  memory::Allocator::Attr attr = memory::Allocator::kDefault,
-                  size_t requested_size = 0);
+  T* mutable_data(DDim dims, platform::Place place, size_t requested_size = 0);
 
   /*! Return the dimensions of the memory block. */
   const DDim& dims() const;
@@ -132,7 +126,7 @@ class Tensor {
    * @param[in] end_idx     The index of the end row(exclusive) to slice.
    *                        The index number begins from 0.
    */
-  Tensor Slice(int begin_idx, int end_idx) const;
+  Tensor Slice(int64_t begin_idx, int64_t end_idx) const;
 
   platform::Place place() const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -155,7 +149,15 @@ class Tensor {
 
   void set_layout(const DataLayout layout) { layout_ = layout; }
 
-  void clear() { holder_ = nullptr; }
+  void clear() {
+    holder_ = nullptr;
+    offset_ = 0;
+  }
+
+  void ShareBufferWith(const Tensor& tensor) {
+    holder_ = tensor.holder_;
+    offset_ = tensor.offset_;
+  }
 
   const std::shared_ptr<memory::Allocation>& Holder() const { return holder_; }
   size_t offset() const { return offset_; }

@@ -29,11 +29,8 @@ ELSE()
     SET(USE_OMP ON)
 ENDIF()
 
-IF(WIN32)
-    SET(WARPCTC_REPOSITORY "https://github.com/wopeizl/warp-ctc.git")
-ELSE()
-    SET(WARPCTC_REPOSITORY "https://github.com/dzhwinter/warp-ctc.git")
-ENDIF()
+# TODO: Use the official github address instead of private branch
+SET(WARPCTC_REPOSITORY "https://github.com/wopeizl/warp-ctc.git")
 
 ExternalProject_Add(
     extern_warpctc
@@ -64,12 +61,7 @@ ExternalProject_Add(
                      -DCMAKE_INSTALL_PREFIX:PATH=${WARPCTC_INSTALL_DIR}
 )
 IF(WIN32)
-    IF(NOT EXISTS "${WARPCTC_INSTALL_DIR}/lib/warpctc${CMAKE_SHARED_LIBRARY_SUFFIX}")
-        add_custom_command(TARGET extern_warpctc POST_BUILD
-                COMMAND cmake -E copy ${WARPCTC_INSTALL_DIR}/bin/warpctc${CMAKE_SHARED_LIBRARY_SUFFIX} ${WARPCTC_INSTALL_DIR}/lib/warpctc${CMAKE_SHARED_LIBRARY_SUFFIX}
-                )
-    ENDIF()
-    SET(WARPCTC_LIBRARIES "${WARPCTC_INSTALL_DIR}/lib/warpctc${CMAKE_SHARED_LIBRARY_SUFFIX}"
+    SET(WARPCTC_LIBRARIES "${WARPCTC_INSTALL_DIR}/bin/warpctc${CMAKE_SHARED_LIBRARY_SUFFIX}"
             CACHE FILEPATH "Warp-ctc Library" FORCE)
 else(WIN32)
     SET(WARPCTC_LIBRARIES "${WARPCTC_INSTALL_DIR}/lib/libwarpctc${CMAKE_SHARED_LIBRARY_SUFFIX}"
@@ -77,6 +69,7 @@ else(WIN32)
 ENDIF(WIN32)
 
 MESSAGE(STATUS "warp-ctc library: ${WARPCTC_LIBRARIES}")
+get_filename_component(WARPCTC_LIBRARY_PATH ${WARPCTC_LIBRARIES} DIRECTORY)
 INCLUDE_DIRECTORIES(${WARPCTC_INCLUDE_DIR}) # For warpctc code to include its headers.
 INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include warpctc headers.
 

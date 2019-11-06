@@ -66,27 +66,48 @@ class AssignFunctor {
   const platform::DeviceContext &dev_ctx_;
 };
 
-class AssignOp : public framework::OperatorBase {
+class AssignOp : public framework::OperatorWithKernel {
  public:
   AssignOp(const std::string &type, const framework::VariableNameMap &inputs,
            const framework::VariableNameMap &outputs,
            const framework::AttributeMap &attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
+      : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
-    auto *x = scope.FindVar(Input("X"));
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    if (ctx->HasInput("X")) {
+      auto type = ctx->GetInputsVarType("X")[0];
+      if (type == framework::proto::VarType::SELECTED_ROWS ||
+          type == framework::proto::VarType::LOD_TENSOR) {
+        ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+        if (type == framework::proto::VarType::LOD_TENSOR) {
+          ctx->ShareLoD("X", /*->*/ "Out");
+        }
+      }
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
+  }
+};
+
+class AssignKernel {
+ public:
+  void operator()(const framework::ExecutionContext &ctx) const {
+    auto *x = ctx.InputVar("X");
     if (x == nullptr) {
       return;
     }
-    auto *out = scope.FindVar(Output("Out"));
+    auto *out = ctx.OutputVar("Out");
     PADDLE_ENFORCE(
         out != nullptr,
         "The Output(Out) should not be null if the Input(X) is set.");
-
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
+    auto &dev_ctx = *pool.Get(ctx.GetPlace());
 
     framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
   }
@@ -110,36 +131,40 @@ raise error if the type is not listed above.
   }
 };
 
-class AssignInferShape : public framework::InferShapeBase {
+template <typename T>
+class AssignGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  void operator()(framework::InferShapeContext *context) const override {
-    if (context->HasInput("X")) {
-      auto type = context->GetInputsVarType("X")[0];
-      if (type == framework::proto::VarType::SELECTED_ROWS ||
-          type == framework::proto::VarType::LOD_TENSOR) {
-        context->SetOutputDim("Out", context->GetInputDim("X"));
-      }
-    }
-  }
-};
-
-class AssignGradMaker : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *op = new T();
     op->SetType("assign");
-    op->SetInput("X", OutputGrad("Out"));
-    op->SetOutput("Out", InputGrad("X"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetInput("X", this->OutputGrad("Out"));
+    op->SetOutput("Out", this->InputGrad("X"));
+    return std::unique_ptr<T>(op);
   }
 };
+
+DECLARE_INPLACE_OP_INFERER(AssignOpInplaceInferer, {"X", "Out"});
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(assign, ops::AssignOp, ops::AssignGradMaker,
-                  ops::AssignInferShape, ops::AssignOpProtoMaker);
+REGISTER_OPERATOR(assign, ops::AssignOp,
+                  ops::AssignGradMaker<paddle::framework::OpDesc>,
+                  ops::AssignGradMaker<paddle::imperative::OpBase>,
+                  ops::AssignOpProtoMaker, ops::AssignOpInplaceInferer);
+
+REGISTER_OP_CPU_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
+                               ops::AssignKernel, int, ops::AssignKernel,
+                               int64_t, ops::AssignKernel, bool,
+                               ops::AssignKernel);
+
+#ifdef PADDLE_WITH_CUDA
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(assign, float, ops::AssignKernel, double,
+                                ops::AssignKernel, int, ops::AssignKernel,
+                                int64_t, ops::AssignKernel, bool,
+                                ops::AssignKernel);
+#endif

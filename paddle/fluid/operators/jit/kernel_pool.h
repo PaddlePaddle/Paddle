@@ -17,6 +17,7 @@
 #include <memory>  // for unique_ptr
 #include <string>
 #include <unordered_map>
+#include <utility>  // for move
 #include <vector>
 #include "paddle/fluid/operators/jit/gen_base.h"
 #include "paddle/fluid/operators/jit/kernel_base.h"
@@ -30,7 +31,7 @@ namespace jit {
 template <KernelType KT>
 class JitCodePool {
   typedef std::unique_ptr<GenBase> GenBasePtr;
-  typedef std::unordered_map<size_t, GenBasePtr> JitCodeMap;
+  typedef std::unordered_map<int64_t, GenBasePtr> JitCodeMap;
 
  public:
   JitCodePool() = default;
@@ -41,9 +42,9 @@ class JitCodePool {
 
   const JitCodeMap& AllKernels() { return codes_; }
 
-  bool Has(size_t key) const { return codes_.find(key) != codes_.end(); }
+  bool Has(int64_t key) const { return codes_.find(key) != codes_.end(); }
 
-  void Insert(size_t key, GenBasePtr value) {
+  void Insert(int64_t key, GenBasePtr value) {
     codes_.emplace(key, std::move(value));
   }
 

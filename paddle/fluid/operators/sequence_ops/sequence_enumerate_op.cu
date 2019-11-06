@@ -65,6 +65,7 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
     auto lod0 = in_lod[0];
     auto in_len = in->numel();
     auto in_data = in->data<T>();
+    out->Resize({in_dims[0], win_size});
     auto out_data = out->mutable_data<T>(context.GetPlace());
     // Copy LoD to GPU
     const size_t* dev_in_lod_ptr = lod0.CUDAData(context.GetPlace());
@@ -72,6 +73,7 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
     CalcOutPut<<<(in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
                  PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         in_data, dev_in_lod_ptr, lod0.size(), win_size, pad_value, out_data);
+    out->set_lod(in->lod());
   }
 };
 

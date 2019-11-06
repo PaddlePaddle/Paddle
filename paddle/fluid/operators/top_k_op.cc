@@ -34,8 +34,11 @@ class TopkOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_GE(k, 1, "k must >= 1");
     PADDLE_ENFORCE_GE(input_dims.size(), 1, "input must have >= 1d shape");
-    PADDLE_ENFORCE_GE(input_dims[input_dims.size() - 1], k,
-                      "input must have >= k columns");
+
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_GE(input_dims[input_dims.size() - 1], k,
+                        "input must have >= k columns");
+    }
 
     framework::DDim dims = input_dims;
     dims[dims.size() - 1] = k;
@@ -50,8 +53,9 @@ class TopkOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context(), layout_, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context(),
+        layout_, library_);
   }
 };
 
@@ -84,8 +88,10 @@ For matrices, this operator computes the top k entries in each row. )DOC");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(top_k, ops::TopkOp, ops::TopkOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    top_k, ops::TopkOp, ops::TopkOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(top_k,
                        ops::TopkKernel<paddle::platform::CPUPlace, float>,
                        ops::TopkKernel<paddle::platform::CPUPlace, double>);

@@ -51,6 +51,13 @@ template <typename T>
 void VAXPY(T a, const T* x, T* y, int n);
 
 template <typename T>
+void VBroadcast(const T* x, T* y, int64_t y_h, int64_t x_len) {
+  for (int64_t h = 0; h < y_h; ++h) {
+    VCopy(x, y + h * x_len, x_len);
+  }
+}
+
+template <typename T>
 void VSigmoid(const T* x, T* y, int n) {
   const T min = SIGMOID_THRESHOLD_MIN;
   const T max = SIGMOID_THRESHOLD_MAX;
@@ -122,7 +129,14 @@ template <typename T>
 void ASum(const T* x, T* res, int n);
 
 template <typename T>
-void Softmax(const T* x, T* y, int n, int bs) {
+void StrideASum(const T* x, T* res, int n, int stride);
+
+template <typename T>
+void StrideScal(const T* a, const T* x, T* y, int n, int stride);
+
+// remain is the product of dimension shapes after the axis dimension
+template <typename T>
+void Softmax(const T* x, T* y, int n, int bs, int remain = 1) {
   std::vector<T> entities(bs);
   for (int i = 0; i < bs; ++i) {
     entities[i] = x[i * n];
@@ -136,42 +150,79 @@ void Softmax(const T* x, T* y, int n, int bs) {
   VExp(y, y, n * bs);
   for (int i = 0; i < bs; ++i) {
     T sum;
-    ASum(&y[i * n], &sum, n);
-    sum = static_cast<T>(1) / sum;
-    VScal(&sum, &y[i * n], &y[i * n], n);
+    if (remain == 1) {
+      ASum(&y[i * n], &sum, n);
+      sum = static_cast<T>(1) / sum;
+      VScal(&sum, &y[i * n], &y[i * n], n);
+    } else {
+      for (int j = 0; j < remain; ++j) {
+        StrideASum(&y[i * n + j], &sum, n, remain);
+        sum = static_cast<T>(1) / sum;
+        StrideScal(&sum, &y[i * n + j], &y[i * n + j], n, remain);
+      }
+    }
   }
 }
 
-#define DECLARE_MKL_KERNEL(name, tuples)                             \
-  template <typename T>                                              \
-  class name##Kernel : public KernelMore<tuples<T>> {                \
-   public:                                                           \
-    name##Kernel() { this->func = name<T>; }                         \
-    bool UseMe(const typename tuples<T>::attr_type&) const override; \
-    const char* ImplType() const override { return "MKL"; }          \
+template <typename T>
+void Sgd(const T* lr, const T* param, const T* grad, const int64_t* rows,
+         T* out, const sgd_attr_t* attr) {
+  PADDLE_ENFORCE_EQ(attr->param_width, attr->grad_width);
+  PADDLE_ENFORCE_LE(attr->selected_rows_size, attr->grad_height);
+  T scalar = -lr[0];
+  int width = attr->grad_width;
+  if (out == param) {
+    for (int64_t i = 0; i < attr->selected_rows_size; ++i) {
+      auto h_idx = rows[i];
+      PADDLE_ENFORCE_LT(h_idx, attr->param_height);
+      PADDLE_ENFORCE_GE(h_idx, 0);
+      VAXPY(scalar, grad + i * width, out + h_idx * width, width);
+    }
+  } else {
+    for (int64_t i = 0; i < attr->selected_rows_size; ++i) {
+      auto h_idx = rows[i];
+      PADDLE_ENFORCE_LT(h_idx, attr->param_height);
+      PADDLE_ENFORCE_GE(h_idx, 0);
+      VScal(&scalar, grad + i * width, out + h_idx * width, width);
+      VAdd(param + h_idx * width, out + h_idx * width, out + h_idx * width,
+           width);
+    }
+  }
+}
+
+#define DECLARE_MKL_KERNEL(name)                                              \
+  template <typename T>                                                       \
+  class name##Kernel : public KernelMore<name##Tuple<T>> {                    \
+   public:                                                                    \
+    name##Kernel() { this->func = name<T>; }                                  \
+    bool CanBeUsed(const typename name##Tuple<T>::attr_type&) const override; \
+    const char* ImplType() const override { return "MKL"; }                   \
   }
 
 // ABCMNK
-DECLARE_MKL_KERNEL(MatMul, MatMulTuples);
+DECLARE_MKL_KERNEL(MatMul);
 
 // XYZN
-DECLARE_MKL_KERNEL(VMul, XYZNTuples);
-DECLARE_MKL_KERNEL(VAdd, XYZNTuples);
+DECLARE_MKL_KERNEL(VMul);
+DECLARE_MKL_KERNEL(VAdd);
 
 // AXYN
-DECLARE_MKL_KERNEL(VScal, AXYNTuples);
+DECLARE_MKL_KERNEL(VScal);
+DECLARE_MKL_KERNEL(StrideScal);
 
 // XYN
-DECLARE_MKL_KERNEL(VExp, XYNTuples);
-DECLARE_MKL_KERNEL(VSigmoid, XYNTuples);
-DECLARE_MKL_KERNEL(VTanh, XYNTuples);
-DECLARE_MKL_KERNEL(VSquare, XYNTuples);
+DECLARE_MKL_KERNEL(VExp);
+DECLARE_MKL_KERNEL(VSigmoid);
+DECLARE_MKL_KERNEL(VTanh);
+DECLARE_MKL_KERNEL(VSquare);
+DECLARE_MKL_KERNEL(VCopy);
 
-DECLARE_MKL_KERNEL(SeqPool, SeqPoolTuples);
-
-DECLARE_MKL_KERNEL(EmbSeqPool, EmbSeqPoolTuples);
-
-DECLARE_MKL_KERNEL(Softmax, SoftmaxTuples);
+// others
+DECLARE_MKL_KERNEL(SeqPool);
+DECLARE_MKL_KERNEL(EmbSeqPool);
+DECLARE_MKL_KERNEL(Softmax);
+DECLARE_MKL_KERNEL(Sgd);
+DECLARE_MKL_KERNEL(VBroadcast);
 
 #undef DECLARE_MKL_KERNEL
 

@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -92,14 +94,13 @@ struct TestBroadcastOpHandle {
 
   void InitBroadcastOp(size_t input_scope_idx) {
     nodes_.clear();
+    std::unordered_map<Scope*, Scope*> scope_map;
     for (size_t j = 0; j < place_list_.size(); ++j) {
       local_scopes_.push_back(&(g_scope_.NewScope()));
       Scope& local_scope = local_scopes_.back()->NewScope();
-      *local_scopes_.back()
-           ->Var(details::kLocalExecScopeName)
-           ->GetMutable<Scope*>() = &local_scope;
       local_scope.Var("out");
       param_scopes_.emplace_back(&local_scope);
+      scope_map.emplace(local_scopes_.back(), param_scopes_.back());
     }
     param_scopes_[input_scope_idx]->Var("input");
 
@@ -121,6 +122,8 @@ struct TestBroadcastOpHandle {
                                          place_list_);
 #endif
     }
+
+    op_handle_->SetLocalExecScopes(scope_map);
 
     nodes_.emplace_back(
         ir::CreateNodeForTest("node1", ir::Node::Type::kVariable));

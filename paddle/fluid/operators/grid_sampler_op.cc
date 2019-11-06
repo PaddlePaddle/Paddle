@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/grid_sampler_op.h"
+#include <memory>
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
@@ -40,10 +41,12 @@ class GridSampleOp : public framework::OperatorWithKernel {
                    "Input(X) of GridSampleOp should be 4-D Tensor.");
     PADDLE_ENFORCE(grid_dims.size() == 4,
                    "Input(Grid) of GridSampleOp should be 4-D Tensor.");
-    PADDLE_ENFORCE(grid_dims[3] == 2, "Input(Grid) dims[3] should be 2.");
-    PADDLE_ENFORCE_EQ(grid_dims[0], x_dims[0],
-                      "Input(X) and Input(Grid) dims[0] should be equal.");
+    if (ctx->IsRuntime() || grid_dims[3] > 0) {
+      PADDLE_ENFORCE(grid_dims[3] == 2, "Input(Grid) dims[3] should be 2.");
+    }
     if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(grid_dims[0], x_dims[0],
+                        "Input(X) and Input(Grid) dims[0] should be equal.");
       PADDLE_ENFORCE_EQ(
           grid_dims[1], x_dims[2],
           "Input(X) dims[2] and Input(Grid) dims[1] should be equal.");
@@ -65,9 +68,9 @@ class GridSampleOp : public framework::OperatorWithKernel {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kAnyLayout, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        framework::DataLayout::kAnyLayout, library_);
   }
 };
 
@@ -161,29 +164,30 @@ class GridSampleOpGrad : public framework::OperatorWithKernel {
       library_ = framework::LibraryType::kCUDNN;
     }
 #endif
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace(),
-                                   framework::DataLayout::kAnyLayout, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        framework::DataLayout::kAnyLayout, library_);
   }
 };
 
-class GridSampleGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class GridSampleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
     op->SetType("grid_sampler_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Grid", Input("Grid"));
-    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Grid", this->Input("Grid"));
+    op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Grid"), InputGrad("Grid"));
-    return std::unique_ptr<framework::OpDesc>(op);
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Grid"), this->InputGrad("Grid"));
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -192,7 +196,8 @@ class GridSampleGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(grid_sampler, ops::GridSampleOp, ops::GridSampleOpMaker,
-                  ops::GridSampleGradMaker);
+                  ops::GridSampleGradMaker<paddle::framework::OpDesc>,
+                  ops::GridSampleGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(grid_sampler_grad, ops::GridSampleOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

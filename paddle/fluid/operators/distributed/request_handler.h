@@ -18,7 +18,9 @@
 #include <condition_variable>  // NOLINT
 
 #include <functional>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -43,6 +45,7 @@ constexpr char kRequestPrefetch[] = "RequestPrefetch";
 constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
 constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
 constexpr char kRequestGetNoBarrier[] = "GetVariableNoBarrier";
+constexpr char kRequestNotify[] = "RequestNotify";
 
 constexpr char kSendRPC[] = "SendRPC";
 constexpr char kGetRPC[] = "GetRPC";
@@ -60,6 +63,7 @@ constexpr char kCheckPointNotifyRPC[] = "CheckPointNotifyRPC";
 #define FETCH_BARRIER_MESSAGE "FETCH_BARRIER@RECV"
 #define COMPLETE_MESSAGE "COMPLETE@RECV"
 #define WITHOUT_BARRIER_MESSAGE "@WITHOUT_BARRIER@RECV"
+#define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 
 #define CHECKPOINT_SAVE_MESSAGE "SAVE@CHECKPOINTNOTIFY"
 #define CHECKPOINT_LOAD_MESSAGE "LOAD@CHECKPOINTNOTIFY"
@@ -83,6 +87,8 @@ class VarHandle {
   virtual ~VarHandle() {}
 
  public:
+  bool should_retry = false;
+
   bool Wait() {
     int ret = kDefaultState;
     {
@@ -180,6 +186,15 @@ class RequestHandler {
     grad_to_prepared_ctx_ = g;
   }
 
+  void SetSparseGradToParam(std::unordered_map<std::string, std::string>* g) {
+    sparse_grad_to_param_ = g;
+  }
+
+  void SetLrDecayPreparedCtx(
+      std::shared_ptr<framework::ExecutorPrepareContext> g) {
+    lr_decay_prepared_ctx_ = g;
+  }
+
   void SetRPCServer(RPCServer* rpc_server) { rpc_server_ = rpc_server; }
 
   // Get attributes.
@@ -228,7 +243,10 @@ class RequestHandler {
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>*
       grad_to_prepared_ctx_;
+  std::unordered_map<std::string, std::string>* sparse_grad_to_param_;
 
+  // used for lr decay
+  std::shared_ptr<framework::ExecutorPrepareContext> lr_decay_prepared_ctx_;
   RPCServer* rpc_server_;
 };
 

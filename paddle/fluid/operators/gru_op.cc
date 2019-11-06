@@ -47,8 +47,11 @@ class GRUOp : public framework::OperatorWithKernel {
     auto weight_dims = ctx->GetInputDim("Weight");
     int input_size = input_dims[1];
     int frame_size = weight_dims[0];
-    PADDLE_ENFORCE_EQ(input_size, frame_size * 3,
-                      "The input_size must be 3 times of frame_size in GRUOp.");
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(
+          input_size, frame_size * 3,
+          "The input_size must be 3 times of frame_size in GRUOp.");
+    }
     PADDLE_ENFORCE_EQ(
         weight_dims[1], frame_size * 3,
         "The shape of Weight matrix must be [frame_size, frame_size * 3].");
@@ -134,7 +137,7 @@ class GRUOpMaker : public framework::OpProtoAndCheckerMaker {
         "The activation type used in update gate and reset gate.")
         .SetDefault("sigmoid");
     AddAttr<bool>("is_reverse",
-                  "(bool, defalut: False) "
+                  "(bool, default: False) "
                   "whether to compute reversed GRU.")
         .SetDefault(false);
     AddAttr<bool>("origin_mode",
@@ -377,8 +380,10 @@ class GRUCPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(gru, ops::GRUOp, ops::GRUOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    gru, ops::GRUOp, ops::GRUOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>)
 REGISTER_OPERATOR(gru_grad, ops::GRUGradOp);
 REGISTER_OP_CPU_KERNEL(gru, ops::GRUCPUKernel<float>,
                        ops::GRUCPUKernel<double>);

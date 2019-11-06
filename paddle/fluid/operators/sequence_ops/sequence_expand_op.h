@@ -92,6 +92,10 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     auto& x_lod = x->lod();
     auto& y_lod = y->lod();
 
+    PADDLE_ENFORCE_EQ(y_lod.empty(), false,
+                      "Input(Y) Tensor of SequenceExpandOp does not contain "
+                      "LoD information.");
+
     if (ref_level == -1) ref_level = y_lod.size() - 1;
 
     out->mutable_data<T>(context.GetPlace());
@@ -160,6 +164,7 @@ struct SequenceExpandGradFunctor<platform::CPUDeviceContext, T> {
         int x_start = x_lod[i - 1];
         int x_end = x_lod[i];
         int x_seq_len = x_end - x_start;
+        if (x_seq_len == 0) continue;
         auto dx_sub = dx->Slice(x_start, x_end);
         dx_sub.Resize(flatten_to_1d(dx_sub.dims()));
         int dout_end = dout_offset + repeat_num * x_seq_len;

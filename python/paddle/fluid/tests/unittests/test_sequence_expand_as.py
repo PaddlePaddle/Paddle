@@ -66,6 +66,15 @@ class TestSequenceExpandAsCase1(TestSequenceExpandAs):
 
 class TestSequenceExpandAsCase2(TestSequenceExpandAs):
     def set_data(self):
+        x_data = np.random.uniform(0.1, 1, [5, 1]).astype('float32')
+        x_lod = [[2, 3]]
+        y_data = np.random.uniform(0.1, 1, [10, 1]).astype('float32')
+        y_lod = [[0, 4, 0, 6, 0]]
+        self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
+
+
+class TestSequenceExpandAsCase3(TestSequenceExpandAs):
+    def set_data(self):
         x_data = np.random.uniform(0.1, 1, [1, 2, 2]).astype('float32')
         x_lod = [[1]]
         y_data = np.random.uniform(0.1, 1, [2, 2, 2]).astype('float32')
