@@ -305,7 +305,7 @@ class TestCase1(TestPool3d_Op):
 
     def init_test_case(self):
         self.ksize = [3, 3, 3]
-        self.strides = [1, 2, 1]
+        self.strides = [1, 1, 1]
 
     def init_paddings(self):
         self.paddings = [0, 0, 0]
