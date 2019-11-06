@@ -85,11 +85,6 @@ class HeartBeatMonitor {
   }
 
   static HeartBeatMonitor* GetInstance() {
-    if (monitor_ == nullptr) {
-      PADDLE_THROW(
-          "HeartBeatMonitor is not inited, call "
-          "HeartBeatMonitor::Init first");
-    }
     return monitor_.get();
   }
 

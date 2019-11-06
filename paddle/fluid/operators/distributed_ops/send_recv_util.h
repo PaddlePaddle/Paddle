@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -55,16 +56,20 @@ inline std::string GetTensorDetails(const framework::Scope &scope,
   std::stringstream ss;
   ss << "------------  " << varname << "  ---------------\n";
 
-  if (var->IsType<framework::LoDTensor>()) {
-    auto &var_t = var->Get<framework::LoDTensor>();
+  if (var.IsType<framework::LoDTensor>()) {
+    auto &var_t = var.Get<framework::LoDTensor>();
     const auto *data = var_t.data<float>();
 
     for (int i = 0; i < var_t.numel(); i++) {
       ss << data[i] << " ";
     }
   } else {
-    auto &var_t = var->Get<framework::SelectedRows>();
+    auto &var_t = var.Get<framework::SelectedRows>();
     auto &rows = var_t.rows();
+
+    std::vector<int64_t> rs(rows.begin(), rows.end());
+    std::sort(rs.begin(), rs.end());
+
     auto &values = var_t.value();
 
     ss << "ROWS: \n";
@@ -72,16 +77,46 @@ inline std::string GetTensorDetails(const framework::Scope &scope,
       ss << id << " ";
     }
 
-    ss << "VALUES: \n";
+    ss << "\n ROWS SORT:\n";
+    for (auto &id : rs) {
+      ss << id << " ";
+    }
+
+    ss << "\n ROWS: " << rs.size() << " VALUES: " << values.numel() << "\n";
+
+    ss << "\nVALUES: \n";
+
     const auto *data = values.data<float>();
-    for (int i = 0; i < values.numel(); i++) {
-      ss << data[i] << " ";
+    const auto dim = values.numel() / rs.size();
+
+    std::vector<int64_t> print_r{570, 342789, 499868, 999497};
+
+    for (int64_t i = 0; i < rows.size(); i++) {
+      if (std::find(print_r.begin(), print_r.end(), rows[i]) == print_r.end()) {
+        continue;
+      }
+
+      ss << "row: " << rows[i] << " val: ";
+      for (int x = 0; x < dim; x++) {
+        ss << data[i * dim + x] << " ";
+      }
+      ss << "\n";
     }
   }
 
-  ss << "------------------------------------------------\n";
+  ss << "\n------------------------------------------------\n";
 
   return ss.str();
+}
+
+inline std::string GetTensorDetails(const framework::Scope &scope,
+                                    const std::string &var_name) {
+  if (var_name != "SparseFeatFactors@GRAD" && var_name != "fc_3.w_0@GRAD") {
+    return "";
+  }
+
+  auto *var = scope.FindVar(var_name);
+  return GetTensorDetails(*var, var_name);
 }
 
 inline std::vector<int64_t> ToAbsoluteSection(
