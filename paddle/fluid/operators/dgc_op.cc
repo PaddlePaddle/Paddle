@@ -31,8 +31,8 @@ class DGCOp : public framework::OperatorWithKernel {
                    "Input(Grad) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("current_step"),
                    "Input(current_step) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("nranks"),
-                   "Input(nranks) of DGCop should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("nranks"), true,
+                      "Input(nranks) of DGCop should not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("U_out"),
                    "Output(U_out) of DGCop should not be null.");
@@ -42,6 +42,8 @@ class DGCOp : public framework::OperatorWithKernel {
                    "Output(k) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("EncodeGrad"),
                    "Output(EncodeGrad) of DGCop should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("GatherBuff"), true,
+                      "Output(EncodeGrad) of DGCop should not be null.");
   }
 
  protected:
@@ -61,27 +63,18 @@ class DGCOp : public framework::OperatorWithKernel {
 class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("U", "(Tensor) Middle tensor of DGC");
-    AddInput("V", "(Tensor) Middle tensor of DGC");
+    AddInput("U", "(Tensor) U velocity tensor of DGC");
+    AddInput("V", "(Tensor) V velocity tensor of DGC");
     AddInput("Grad", "(Tensor) Input gradient");
     AddInput("current_step", "(Tensor) Current step.");
     AddInput("nranks", "(Tensor) nranks.");
 
-    AddOutput("U_out",
-              "(Tensor) "
-              "Output encoded gradient");
-    AddOutput("V_out",
-              "(Tensor) "
-              "Output encoded gradient");
-    AddOutput("EncodeGrad",
-              "(Tensor) "
-              "Output encoded gradient");
-    AddOutput("Grad_out",
-              "(Tensor) "
-              "Output grad gradient");
-    AddOutput("k",
-              "(Tensor) "
-              "Output top-k value");
+    AddOutput("U_out", "(Tensor) Output U velocity of DGC");
+    AddOutput("V_out", "(Tensor) Output V velocity of DGC");
+    AddOutput("EncodeGrad", "(Tensor) Output encoded gradient");
+    AddOutput("Grad_out", "(Tensor) Output grad gradient");
+    AddOutput("k", "(Tensor) Output top-k value");
+    AddOutput("GatherBuff", "(Tensor) Gather buffer");
 
     AddAttr<float>("m",
                    "(float, 0.9) "

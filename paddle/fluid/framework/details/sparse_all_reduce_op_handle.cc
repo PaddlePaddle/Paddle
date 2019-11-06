@@ -42,7 +42,7 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
   VLOG(1) << "Use dgc allreduce mode"
           << ", nranks:" << nranks_;
 
-  PADDLE_ENFORCE(local_scopes_.size() > 0);
+  PADDLE_ENFORCE_GT(local_scopes_.size(), 0);
   auto nranks_name = g_dgc_nranks;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto *local_scope = local_scopes_[i];
