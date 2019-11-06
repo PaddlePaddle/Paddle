@@ -16,12 +16,13 @@ from __future__ import print_function
 from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import autodoc, templatedoc
-from .tensor import assign, fill_constant
+from .tensor import assign, cast, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
 from .nn import logical_and, logical_not, logical_or
+from .utils import assert_same_structure, flatten, map_structure
 import numpy
 import warnings
 import six
@@ -30,7 +31,7 @@ from functools import reduce
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
     'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
-    'array_read', 'array_length', 'IfElse', 'DynamicRNN', 'StaticRNN',
+    'array_read', 'array_length', 'cond', 'IfElse', 'DynamicRNN', 'StaticRNN',
     'reorder_lod_tensor_by_rank', 'Print', 'is_empty'
 ]
 
@@ -1708,6 +1709,68 @@ class ConditionalBlock(object):
                 'sub_block': inside_block,
                 'is_scalar_condition': self.is_scalar_condition
             })
+
+
+def copy_scope_var_to_global(var, layer_helper):
+    if var is None:
+        return None
+    global_var = layer_helper.create_global_variable(
+        dtype=var.dtype, type=var.type)
+    assign(var, global_var)
+    return global_var
+
+
+def cond(pred, true_fn=None, false_fn=None, name=None):
+    """
+    
+    """
+    helper = LayerHelper('cond', **locals())
+    true_output = None
+    false_output = None
+    copy_to_global_func = lambda var: copy_scope_var_to_global(var, helper)
+    if true_fn is not None:
+        if not callable(true_fn):
+            raise TypeError("The true_fn in cond must be callable")
+        true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
+        with true_cond_block.block():
+            origin_true_output = true_fn()
+            if origin_true_output is not None:
+                true_output = map_structure(copy_to_global_func,
+                                            origin_true_output)
+    if false_fn is not None:
+        if not callable(false_fn):
+            raise TypeError("The false_fn in cond must be callable")
+        false_cond_block = ConditionalBlock(
+            [logical_not(pred)], is_scalar_condition=True)
+        with false_cond_block.block():
+            origin_false_output = false_fn()
+            if origin_false_output is not None:
+                false_output = map_structure(copy_to_global_func,
+                                             origin_false_output)
+
+    if true_output is None and false_output is None:
+        return None
+
+    # Merge ture and false output if they are not None
+    try:
+        assert_same_structure(true_output, false_output)
+    except TypeError as e:
+        raise TypeError(
+            "Incompatible return types of true_fn and false_fn in cond: {}".
+            format(e))
+    except ValueError as e:
+        raise ValueError(
+            "Incompatible return values of true_fn and false_fn in cond: {}".
+            format(e))
+
+    #flatten_true_output = flatten(true_output)
+    #flatten_false_output = flatten(false_output)
+
+    mask = cast(pred, dtype='int32')
+    merge_func = lambda false_var, true_var : merge_selected_var([false_var, true_var], mask)
+    merged_output = map_structure(merge_func, false_output, true_output)
+    # merged_output = [merge_selected_var([y, x], mask) for (x, y) in zip(flatten_true_output, flatten_false_output)]
+    return merged_output
 
 
 class Switch(object):
