@@ -49,4 +49,5 @@ def get_logger(name, level, fmt=None):
         handler.setFormatter(formatter)
 
     logger.addHandler(handler)
+    logger.propagate = 0
     return logger
