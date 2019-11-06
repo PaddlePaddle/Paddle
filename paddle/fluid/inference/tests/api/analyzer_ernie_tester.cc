@@ -137,7 +137,7 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
 }
 
-void profile(bool use_mkldnn = false) {
+void profile(bool use_mkldnn = false, bool use_gpu = false) {
   AnalysisConfig config;
   SetConfig(&config);
 
@@ -146,6 +146,9 @@ void profile(bool use_mkldnn = false) {
     config.pass_builder()->AppendPass("fc_mkldnn_pass");
   }
 
+  if (use_gpu) {
+    config.EnableUseGpu(100, 0);
+  }
   std::vector<std::vector<PaddleTensor>> outputs;
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
@@ -155,21 +158,11 @@ void profile(bool use_mkldnn = false) {
 
 TEST(Analyzer_ernie, profile) { profile(); }
 #ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_ernie, profile_mkldnn) { profile(true); }
+TEST(Analyzer_ernie, profile_mkldnn) { profile(true, false); }
 #endif
 
 // Check the model by gpu
-TEST(Analyzer_ernie, profile_gpu) {
-  AnalysisConfig config;
-  SetConfig(&config);
-
-  config.EnableUseGpu(100, 0);
-  std::vector<std::vector<PaddleTensor>> outputs;
-  std::vector<std::vector<PaddleTensor>> inputs;
-  LoadInputData(&inputs);
-  TestPrediction(reinterpret_cast<const PaddlePredictor::Config *>(&config),
-                 inputs, &outputs, FLAGS_num_threads);
-}
+TEST(Analyzer_ernie, profile_gpu) { profile(false, true); }
 
 // Check the fuse status
 TEST(Analyzer_Ernie, fuse_statis) {
