@@ -135,9 +135,6 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
-  if (FLAGS_zero_copy) {
-    cfg->SwitchUseFeedFetchOps(false);
-  }
 }
 
 void profile(bool use_mkldnn = false, bool use_ngraph = false) {
@@ -235,23 +232,6 @@ TEST(Analyzer_Ernie, compare_determine) {
   LoadInputData(&input_slots_all);
   CompareDeterministic(reinterpret_cast<const PaddlePredictor::Config *>(&cfg),
                        input_slots_all);
-}
-
-// Compare result of AnalysisConfig and AnalysisConfig + ZeroCopy
-TEST(Analyzer_ernie, compare_zero_copy) {
-  AnalysisConfig cfg;
-  SetConfig(&cfg);
-
-  AnalysisConfig cfg1;
-  SetConfig(&cfg1);
-
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  LoadInputData(&input_slots_all);
-  std::vector<std::string> outputs_name;
-  outputs_name.emplace_back("fc_73.tmp_1");
-  CompareAnalysisAndZeroCopy(reinterpret_cast<PaddlePredictor::Config *>(&cfg),
-                             reinterpret_cast<PaddlePredictor::Config *>(&cfg1),
-                             input_slots_all, outputs_name);
 }
 
 // Compare results
