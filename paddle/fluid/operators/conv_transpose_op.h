@@ -328,7 +328,9 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
           col2vol(dev_ctx, col, dilations, strides, paddings, &out_slice,
                   data_layout);
         }
-        output_batch_vec.push_back(out_slice);
+        if (data_layout == framework::DataLayout::kNHWC) {
+          output_batch_vec.push_back(out_slice);
+        }
       }
       if (data_layout == framework::DataLayout::kNHWC) {
         concat_functor(dev_ctx, output_batch_vec, static_cast<int>(D - 2),

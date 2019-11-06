@@ -52,88 +52,10 @@ limitations under the License. */
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
 
-#define WITH_SIMPLE_TRACEBACK
-
 namespace paddle {
 namespace platform {
 
-#ifdef __GNUC__
-inline std::string demangle(std::string name) {
-  int status = -4;  // some arbitrary value to eliminate the compiler warning
-  std::unique_ptr<char, void (*)(void*)> res{
-      abi::__cxa_demangle(name.c_str(), NULL, NULL, &status), std::free};
-  return (status == 0) ? res.get() : name;
-}
-#else
-inline std::string demangle(std::string name) { return name; }
-#endif
-
-template <typename StrType>
-inline std::string GetTraceBackString(StrType&& what, const char* file,
-                                      int line) {
-  static constexpr int TRACE_STACK_LIMIT = 100;
-  std::ostringstream sout;
-
-#if !defined(_WIN32)
-  void* call_stack[TRACE_STACK_LIMIT];
-  auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
-  auto symbols = backtrace_symbols(call_stack, size);
-  Dl_info info;
-  int idx = 0;
-  for (int i = 0; i < size; ++i) {
-    if (dladdr(call_stack[i], &info) && info.dli_sname) {
-      auto demangled = demangle(info.dli_sname);
-#ifdef WITH_SIMPLE_TRACEBACK
-      std::string path(info.dli_fname);
-      // C++ traceback info are from core.so
-      if (path.substr(path.length() - 3).compare(".so") == 0) {
-        sout << string::Sprintf("%-3d %s\n", idx++, demangled);
-      }
-#else
-      auto addr_offset = static_cast<char*>(call_stack[i]) -
-                         static_cast<char*>(info.dli_saddr);
-      sout << string::Sprintf("%-3d %*0p %s + %zd\n", i, 2 + sizeof(void*) * 2,
-                              call_stack[i], demangled, addr_offset);
-    } else {
-      sout << string::Sprintf("%-3d %*0p\n", i, 2 + sizeof(void*) * 2,
-                              call_stack[i]);
-#endif
-    }
-  }
-  free(symbols);
-#else
-  sout << "Windows not support stack backtrace yet.";
-#endif
-  sout << string::Sprintf("PaddleCheckError: %s at [%s:%d]",
-                          std::forward<StrType>(what), file, line)
-       << std::endl;
-  return sout.str();
-}
-
-struct EnforceNotMet : public std::exception {
-  std::string err_str_;
-  EnforceNotMet(std::exception_ptr e, const char* file, int line) {
-    try {
-      std::rethrow_exception(e);
-    } catch (std::exception& e) {
-      err_str_ = GetTraceBackString(e.what(), file, line);
-    }
-  }
-
-  EnforceNotMet(const std::string& str, const char* file, int line)
-      : err_str_(GetTraceBackString(str, file, line)) {}
-
-  const char* what() const noexcept override { return err_str_.c_str(); }
-};
-
-struct EOFException : public std::exception {
-  std::string err_str_;
-  EOFException(const char* err_msg, const char* file, int line) {
-    err_str_ = string::Sprintf("%s at [%s:%d]", err_msg, file, line);
-  }
-
-  const char* what() const noexcept override { return err_str_.c_str(); }
-};
+/** HELPER MACROS AND FUNCTIONS **/
 
 // Because most enforce conditions would evaluate to true, we can use
 // __builtin_expect to instruct the C++ compiler to generate code that
@@ -154,6 +76,130 @@ struct EOFException : public std::exception {
 #define LIKELY(condition) (condition)
 #endif
 
+#ifdef __GNUC__
+inline std::string demangle(std::string name) {
+  int status = -4;  // some arbitrary value to eliminate the compiler warning
+  std::unique_ptr<char, void (*)(void*)> res{
+      abi::__cxa_demangle(name.c_str(), NULL, NULL, &status), std::free};
+  return (status == 0) ? res.get() : name;
+}
+#else
+inline std::string demangle(std::string name) { return name; }
+#endif
+
+namespace details {
+template <typename T>
+inline constexpr bool IsArithmetic() {
+  return std::is_arithmetic<T>::value;
+}
+
+template <typename T1, typename T2, bool kIsArithmetic /* = true */>
+struct TypeConverterImpl {
+  using Type1 = typename std::common_type<T1, T2>::type;
+  using Type2 = Type1;
+};
+
+template <typename T1, typename T2>
+struct TypeConverterImpl<T1, T2, false> {
+  using Type1 = T1;
+  using Type2 = T2;
+};
+
+template <typename T1, typename T2>
+struct TypeConverter {
+ private:
+  static constexpr bool kIsArithmetic =
+      IsArithmetic<T1>() && IsArithmetic<T2>();
+
+ public:
+  using Type1 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type1;
+  using Type2 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type2;
+};
+
+template <typename T1, typename T2>
+using CommonType1 = typename std::add_lvalue_reference<
+    typename std::add_const<typename TypeConverter<T1, T2>::Type1>::type>::type;
+
+template <typename T1, typename T2>
+using CommonType2 = typename std::add_lvalue_reference<
+    typename std::add_const<typename TypeConverter<T1, T2>::Type2>::type>::type;
+
+// Here, we use SFINAE to check whether T can be converted to std::string
+template <typename T>
+struct CanToString {
+ private:
+  using YesType = uint8_t;
+  using NoType = uint16_t;
+
+  template <typename U>
+  static YesType Check(decltype(std::cout << std::declval<U>())) {
+    return 0;
+  }
+
+  template <typename U>
+  static NoType Check(...) {
+    return 0;
+  }
+
+ public:
+  static constexpr bool kValue =
+      std::is_same<YesType, decltype(Check<T>(std::cout))>::value;
+};
+
+template <bool kCanToString /* = true */>
+struct BinaryCompareMessageConverter {
+  template <typename T>
+  static std::string Convert(const char* expression, const T& value) {
+    return expression + std::string(":") + string::to_string(value);
+  }
+};
+
+template <>
+struct BinaryCompareMessageConverter<false> {
+  template <typename T>
+  static const char* Convert(const char* expression, const T& value) {
+    return expression;
+  }
+};
+}  // namespace details
+
+template <typename StrType>
+inline std::string GetTraceBackString(StrType&& what, const char* file,
+                                      int line) {
+  static constexpr int TRACE_STACK_LIMIT = 100;
+  std::ostringstream sout;
+
+  sout << "\n\n--------------------------------------------\n";
+  sout << "C++ Call Stacks (More useful to developers):";
+  sout << "\n--------------------------------------------\n";
+#if !defined(_WIN32)
+  void* call_stack[TRACE_STACK_LIMIT];
+  auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
+  auto symbols = backtrace_symbols(call_stack, size);
+  Dl_info info;
+  int idx = 0;
+  for (int i = 0; i < size; ++i) {
+    if (dladdr(call_stack[i], &info) && info.dli_sname) {
+      auto demangled = demangle(info.dli_sname);
+      std::string path(info.dli_fname);
+      // C++ traceback info are from core.so
+      if (path.substr(path.length() - 3).compare(".so") == 0) {
+        sout << string::Sprintf("%-3d %s\n", idx++, demangled);
+      }
+    }
+  }
+  free(symbols);
+#else
+  sout << "Windows not support stack backtrace yet.\n";
+#endif
+  sout << "\n----------------------\nError Message "
+          "Summary:\n----------------------\n";
+  sout << string::Sprintf("PaddleCheckError: %s at [%s:%d]",
+                          std::forward<StrType>(what), file, line)
+       << std::endl;
+  return sout.str();
+}
+
 inline bool is_error(bool stat) { return !stat; }
 
 inline void throw_on_error(bool stat, const std::string& msg) {
@@ -163,6 +209,144 @@ inline void throw_on_error(bool stat, const std::string& msg) {
   LOG(FATAL) << msg;
 #endif
 }
+
+/** ENFORCE EXCEPTION AND MACROS **/
+
+struct EnforceNotMet : public std::exception {
+  EnforceNotMet(std::exception_ptr e, const char* file, int line) {
+    try {
+      std::rethrow_exception(e);
+    } catch (std::exception& e) {
+      err_str_ = GetTraceBackString(e.what(), file, line);
+    }
+  }
+  EnforceNotMet(const std::string& str, const char* file, int line)
+      : err_str_(GetTraceBackString(str, file, line)) {}
+
+  const char* what() const noexcept override { return err_str_.c_str(); }
+
+  std::string err_str_;
+};
+
+#define PADDLE_THROW(...)                                            \
+  do {                                                               \
+    throw ::paddle::platform::EnforceNotMet(                         \
+        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+  } while (0)
+
+#if defined(__CUDA_ARCH__)
+// For cuda, the assertions can affect performance and it is therefore
+// recommended to disable them in production code
+// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#assertion
+#define PADDLE_ENFORCE(_IS_NOT_ERROR, __FORMAT, ...)                   \
+  do {                                                                 \
+    if (!(_IS_NOT_ERROR)) {                                            \
+      printf("Exception: %s:%d Assertion `%s` failed. " __FORMAT "\n", \
+             __FILE__, __LINE__, #_IS_NOT_ERROR, ##__VA_ARGS__);       \
+      asm("trap;");                                                    \
+    }                                                                  \
+  } while (0)
+#else
+#define PADDLE_ENFORCE(COND, ...)                                         \
+  do {                                                                    \
+    auto __cond__ = (COND);                                               \
+    if (UNLIKELY(::paddle::platform::is_error(__cond__))) {               \
+      try {                                                               \
+        ::paddle::platform::throw_on_error(                               \
+            __cond__, ::paddle::string::Sprintf(__VA_ARGS__));            \
+      } catch (...) {                                                     \
+        throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
+                                                __FILE__, __LINE__);      \
+      }                                                                   \
+    }                                                                     \
+  } while (0)
+#endif
+
+/*
+ * Some enforce helpers here, usage:
+ *    int a = 1;
+ *    int b = 2;
+ *    PADDLE_ENFORCE_EQ(a, b);
+ *
+ *    will raise an expression described as follows:
+ *    "Expected input a == b, but received a(1) != b(2)."
+ *      with detailed stack information.
+ *
+ *    extra messages is also supported, for example:
+ *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
+ */
+#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                 \
+  do {                                                      \
+    if (UNLIKELY(nullptr == (__VAL))) {                     \
+      PADDLE_THROW(#__VAL " should not be null\n%s",        \
+                   ::paddle::string::Sprintf(__VA_ARGS__)); \
+    }                                                       \
+  } while (0)
+
+#define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)         \
+  do {                                                                         \
+    auto __val1 = (__VAL1);                                                    \
+    auto __val2 = (__VAL2);                                                    \
+    using __TYPE1__ = decltype(__val1);                                        \
+    using __TYPE2__ = decltype(__val2);                                        \
+    using __COMMON_TYPE1__ =                                                   \
+        ::paddle::platform::details::CommonType1<__TYPE1__, __TYPE2__>;        \
+    using __COMMON_TYPE2__ =                                                   \
+        ::paddle::platform::details::CommonType2<__TYPE1__, __TYPE2__>;        \
+    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(        \
+        static_cast<__COMMON_TYPE2__>(__val2));                                \
+    if (UNLIKELY(!__is_not_error)) {                                           \
+      constexpr bool __kCanToString__ =                                        \
+          ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&       \
+          ::paddle::platform::details::CanToString<__TYPE2__>::kValue;         \
+      PADDLE_THROW("Expected %s " #__CMP " %s, but received %s " #__INV_CMP    \
+                   " %s.\n%s",                                                 \
+                   #__VAL1, #__VAL2,                                           \
+                   ::paddle::platform::details::BinaryCompareMessageConverter< \
+                       __kCanToString__>::Convert(#__VAL1, __val1),            \
+                   ::paddle::platform::details::BinaryCompareMessageConverter< \
+                       __kCanToString__>::Convert(#__VAL2, __val2),            \
+                   ::paddle::string::Sprintf(__VA_ARGS__));                    \
+    }                                                                          \
+  } while (0)
+
+#define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, ==, !=, __VA_ARGS__)
+#define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, !=, ==, __VA_ARGS__)
+#define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >, <=, __VA_ARGS__)
+#define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >=, <, __VA_ARGS__)
+#define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <, >=, __VA_ARGS__)
+#define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
+  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
+
+/** OTHER EXCEPTION AND ENFORCE **/
+
+struct EOFException : public std::exception {
+  std::string err_str_;
+  EOFException(const char* err_msg, const char* file, int line) {
+    err_str_ = string::Sprintf("%s at [%s:%d]", err_msg, file, line);
+  }
+
+  const char* what() const noexcept override { return err_str_.c_str(); }
+};
+
+#define PADDLE_THROW_EOF()                                                     \
+  do {                                                                         \
+    throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
+                                           __LINE__);                          \
+  } while (0)
+
+#define PADDLE_THROW_BAD_ALLOC(...)                                  \
+  do {                                                               \
+    throw ::paddle::memory::allocation::BadAlloc(                    \
+        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+  } while (0)
+
+/** CUDA PADDLE ENFORCE FUNCTIONS AND MACROS **/
 
 #ifdef PADDLE_WITH_CUDA
 
@@ -246,6 +430,7 @@ inline void throw_on_error(ncclResult_t stat, const std::string& msg) {
 #endif
 }
 #endif  // __APPLE__ and windows
+
 #endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_CUDA
@@ -271,41 +456,7 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
 #endif
 
 }  // namespace details
-#endif
-
-#define PADDLE_THROW(...)                                            \
-  do {                                                               \
-    throw ::paddle::platform::EnforceNotMet(                         \
-        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
-  } while (0)
-
-#if defined(__CUDA_ARCH__)
-// For cuda, the assertions can affect performance and it is therefore
-// recommended to disable them in production code
-// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#assertion
-#define PADDLE_ENFORCE(_IS_NOT_ERROR, __FORMAT, ...)                   \
-  do {                                                                 \
-    if (!(_IS_NOT_ERROR)) {                                            \
-      printf("Exception: %s:%d Assertion `%s` failed. " __FORMAT "\n", \
-             __FILE__, __LINE__, #_IS_NOT_ERROR, ##__VA_ARGS__);       \
-      asm("trap;");                                                    \
-    }                                                                  \
-  } while (0)
-#else
-#define PADDLE_ENFORCE(COND, ...)                                         \
-  do {                                                                    \
-    auto __cond__ = (COND);                                               \
-    if (UNLIKELY(::paddle::platform::is_error(__cond__))) {               \
-      try {                                                               \
-        ::paddle::platform::throw_on_error(                               \
-            __cond__, ::paddle::string::Sprintf(__VA_ARGS__));            \
-      } catch (...) {                                                     \
-        throw ::paddle::platform::EnforceNotMet(std::current_exception(), \
-                                                __FILE__, __LINE__);      \
-      }                                                                   \
-    }                                                                     \
-  } while (0)
-#endif
+#endif  // PADDLE_WITH_CUDA
 
 #ifdef PADDLE_WITH_CUDA
 #define PADDLE_ENFORCE_CUDA_SUCCESS(COND, ...)                            \
@@ -327,198 +478,7 @@ DEFINE_CUDA_STATUS_TYPE(ncclResult_t, ncclSuccess);
   } while (0)
 
 #undef DEFINE_CUDA_STATUS_TYPE
-#endif
-
-#define PADDLE_THROW_EOF()                                                     \
-  do {                                                                         \
-    throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
-                                           __LINE__);                          \
-  } while (0)
-
-#define PADDLE_THROW_BAD_ALLOC(...)                                  \
-  do {                                                               \
-    throw ::paddle::memory::allocation::BadAlloc(                    \
-        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
-  } while (0)
-
-/*
- * Some enforce helpers here, usage:
- *    int a = 1;
- *    int b = 2;
- *    PADDLE_ENFORCE_EQ(a, b);
- *
- *    will raise an expression described as follows:
- *    "Expected input a == b, but received a(1) != b(2)."
- *      with detailed stack information.
- *
- *    extra messages is also supported, for example:
- *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
- */
-#define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                 \
-  do {                                                      \
-    if (UNLIKELY(nullptr == (__VAL))) {                     \
-      PADDLE_THROW(#__VAL " should not be null\n%s",        \
-                   ::paddle::string::Sprintf(__VA_ARGS__)); \
-    }                                                       \
-  } while (0)
-
-namespace details {
-template <typename T>
-inline constexpr bool IsArithmetic() {
-  return std::is_arithmetic<T>::value;
-}
-
-template <typename T1, typename T2, bool kIsArithmetic /* = true */>
-struct TypeConverterImpl {
-  using Type1 = typename std::common_type<T1, T2>::type;
-  using Type2 = Type1;
-};
-
-template <typename T1, typename T2>
-struct TypeConverterImpl<T1, T2, false> {
-  using Type1 = T1;
-  using Type2 = T2;
-};
-
-template <typename T1, typename T2>
-struct TypeConverter {
- private:
-  static constexpr bool kIsArithmetic =
-      IsArithmetic<T1>() && IsArithmetic<T2>();
-
- public:
-  using Type1 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type1;
-  using Type2 = typename TypeConverterImpl<T1, T2, kIsArithmetic>::Type2;
-};
-
-template <typename T1, typename T2>
-using CommonType1 = typename std::add_lvalue_reference<
-    typename std::add_const<typename TypeConverter<T1, T2>::Type1>::type>::type;
-
-template <typename T1, typename T2>
-using CommonType2 = typename std::add_lvalue_reference<
-    typename std::add_const<typename TypeConverter<T1, T2>::Type2>::type>::type;
-
-// Here, we use SFINAE to check whether T can be converted to std::string
-template <typename T>
-struct CanToString {
- private:
-  using YesType = uint8_t;
-  using NoType = uint16_t;
-
-  template <typename U>
-  static YesType Check(decltype(std::cout << std::declval<U>())) {
-    return 0;
-  }
-
-  template <typename U>
-  static NoType Check(...) {
-    return 0;
-  }
-
- public:
-  static constexpr bool kValue =
-      std::is_same<YesType, decltype(Check<T>(std::cout))>::value;
-};
-
-template <bool kCanToString /* = true */>
-struct BinaryCompareMessageConverter {
-  template <typename T>
-  static std::string Convert(const char* expression, const T& value) {
-    return expression + std::string(":") + string::to_string(value);
-  }
-};
-
-template <>
-struct BinaryCompareMessageConverter<false> {
-  template <typename T>
-  static const char* Convert(const char* expression, const T& value) {
-    return expression;
-  }
-};
-
-}  // namespace details
-
-#define __PADDLE_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)         \
-  do {                                                                         \
-    auto __val1 = (__VAL1);                                                    \
-    auto __val2 = (__VAL2);                                                    \
-    using __TYPE1__ = decltype(__val1);                                        \
-    using __TYPE2__ = decltype(__val2);                                        \
-    using __COMMON_TYPE1__ =                                                   \
-        ::paddle::platform::details::CommonType1<__TYPE1__, __TYPE2__>;        \
-    using __COMMON_TYPE2__ =                                                   \
-        ::paddle::platform::details::CommonType2<__TYPE1__, __TYPE2__>;        \
-    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(        \
-        static_cast<__COMMON_TYPE2__>(__val2));                                \
-    if (UNLIKELY(!__is_not_error)) {                                           \
-      constexpr bool __kCanToString__ =                                        \
-          ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&       \
-          ::paddle::platform::details::CanToString<__TYPE2__>::kValue;         \
-      PADDLE_THROW("Expected %s " #__CMP " %s, but received %s " #__INV_CMP    \
-                   " %s.\n%s",                                                 \
-                   #__VAL1, #__VAL2,                                           \
-                   ::paddle::platform::details::BinaryCompareMessageConverter< \
-                       __kCanToString__>::Convert(#__VAL1, __val1),            \
-                   ::paddle::platform::details::BinaryCompareMessageConverter< \
-                       __kCanToString__>::Convert(#__VAL2, __val2),            \
-                   ::paddle::string::Sprintf(__VA_ARGS__));                    \
-    }                                                                          \
-  } while (0)
-
-#define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, ==, !=, __VA_ARGS__)
-#define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, !=, ==, __VA_ARGS__)
-#define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >, <=, __VA_ARGS__)
-#define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, >=, <, __VA_ARGS__)
-#define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <, >=, __VA_ARGS__)
-#define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
-  __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
-
-#define __PADDLE_INFERSHAPE_BINARY_COMPARE(__CTX, __VAL1, __VAL2, __CMP,       \
-                                           __INV_CMP, ...)                     \
-  do {                                                                         \
-    auto __val1 = (__VAL1);                                                    \
-    auto __val2 = (__VAL2);                                                    \
-    if (!__CTX->IsRuntime()) {                                                 \
-      if (__val1 == -1 || __val2 == -1) {                                      \
-        break;                                                                 \
-      }                                                                        \
-    }                                                                          \
-    using __TYPE1__ = decltype(__val1);                                        \
-    using __TYPE2__ = decltype(__val2);                                        \
-    using __COMMON_TYPE1__ =                                                   \
-        ::paddle::platform::details::CommonType1<__TYPE1__, __TYPE2__>;        \
-    using __COMMON_TYPE2__ =                                                   \
-        ::paddle::platform::details::CommonType2<__TYPE1__, __TYPE2__>;        \
-    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(        \
-        static_cast<__COMMON_TYPE2__>(__val2));                                \
-    if (UNLIKELY(!__is_not_error)) {                                           \
-      PADDLE_THROW("Expected %s " #__CMP " %s, but received %s:%s " #__INV_CMP \
-                   " %s:%s.\n%s",                                              \
-                   #__VAL1, #__VAL2, #__VAL1,                                  \
-                   ::paddle::string::to_string(__val1), #__VAL2,               \
-                   ::paddle::string::to_string(__val2),                        \
-                   ::paddle::string::Sprintf(__VA_ARGS__));                    \
-    }                                                                          \
-  } while (0)
-
-#define PADDLE_INFERSHAPE_ENFORCE_EQ(__CTX, __VAL0, __VAL1, ...) \
-  __PADDLE_INFERSHAPE_BINARY_COMPARE(__CTX, __VAL0, __VAL1, ==, !=, __VA_ARGS__)
-#define PADDLE_INFERSHAPE_ENFORCE_NE(__CTX, __VAL0, __VAL1, ...) \
-  __PADDLE_INFERSHAPE_BINARY_COMPARE(__CTX, __VAL0, __VAL1, !=, ==, __VA_ARGS__)
-#define PADDLE_INFERSHAPE_ENFORCE_GT(__CTX, __VAL0, __VAL1, ...) \
-  __PADDLE_INFERSHAPE_BINARY_COMPARE(__CTX, __VAL0, __VAL1, >, <=, __VA_ARGS__)
-#define PADDLE_INFERSHAPE_ENFORCE_GE(__CTX, __VAL0, __VAL1, ...) \
-  __PADDLE_INFERSHAPE_BINARY_COMPARE(__CTX, __VAL0, __VAL1, >=, <, __VA_ARGS__)
-#define PADDLE_INFERSHAPE_ENFORCE_LT(__CTX, __VAL0, __VAL1, ...) \
-  __PADDLE_INFERSHAPE_BINARY_COMPARE(__CTX, __VAL0, __VAL1, <, >=, __VA_ARGS__)
-#define PADDLE_INFERSHAPE_ENFORCE_LE(__CTX, __VAL0, __VAL1, ...) \
-  __PADDLE_INFERSHAPE_BINARY_COMPARE(__CTX, __VAL0, __VAL1, <=, >, __VA_ARGS__)
+#endif  // PADDLE_WITH_CUDA
 
 }  // namespace platform
 }  // namespace paddle

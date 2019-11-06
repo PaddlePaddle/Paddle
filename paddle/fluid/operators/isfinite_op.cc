@@ -84,20 +84,21 @@ If X contains both Inf/Nan, it will return the first indicator it meeted.
 
 namespace ops = paddle::operators;
 
-#define REGISTER_OP_MAKER(op_type, comment)             \
-  namespace paddle {                                    \
-  namespace operators {                                 \
-  class _##op_type##OverflowOpMaker                     \
-      : public ::paddle::operators::OverflowOpMaker {   \
-   protected:                                           \
-    std::string GetName() const { return #op_type; }    \
-    std::string GetComments() const { return comment; } \
-  };                                                    \
-  }                                                     \
-  }                                                     \
-  REGISTER_OPERATOR(op_type, ops::OverflowOp,           \
-                    ops::_##op_type##OverflowOpMaker,   \
-                    paddle::framework::EmptyGradOpMaker)
+#define REGISTER_OP_MAKER(op_type, comment)                           \
+  namespace paddle {                                                  \
+  namespace operators {                                               \
+  class _##op_type##OverflowOpMaker                                   \
+      : public ::paddle::operators::OverflowOpMaker {                 \
+   protected:                                                         \
+    std::string GetName() const { return #op_type; }                  \
+    std::string GetComments() const { return comment; }               \
+  };                                                                  \
+  }                                                                   \
+  }                                                                   \
+  REGISTER_OPERATOR(                                                  \
+      op_type, ops::OverflowOp, ops::_##op_type##OverflowOpMaker,     \
+      paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>, \
+      paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
 #define REGISTER_OVERFLOW_CPU_KERNEL(op_type, functor)                      \
   REGISTER_OP_CPU_KERNEL(                                                   \
