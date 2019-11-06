@@ -92,7 +92,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
 
-  int GetLoDLevel(const std::string &in, size_t i = 0) const override {
+  int32_t GetLoDLevel(const std::string &in, size_t i = 0) const override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size(),
                       "Input %s of operator %s only has %d elements.", in,
                       op_.Type(), Inputs(in).size());
@@ -103,16 +103,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_NOT_NULL(
         in_var, "Input %s[%d] of operator %s should not be nullptr.", in,
         op_.Type(), i);
-    if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
-        in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
-      VLOG(3) << "Input " << in << "[" << i << "] of operator " << op_.Type()
-              << " is not LoDTensor or LoDTensorArray.";
-      return 0;
-    }
     return in_var->GetLoDLevel();
   }
 
-  void SetLoDLevel(const std::string &out, int lod_level,
+  void SetLoDLevel(const std::string &out, int32_t lod_level,
                    size_t j = 0) const override {
     PADDLE_ENFORCE_LT(j, Outputs(out).size(),
                       "Output %s of operator %s only has %d elements.", out,
@@ -124,11 +118,6 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_NOT_NULL(
         out_var, "Output %s[%d] of operator %s should not be nullptr.", out,
         op_.Type(), j);
-    if (out_var->GetType() != proto::VarType::LOD_TENSOR &&
-        out_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
-      VLOG(3) << "Output " << out << "[" << j << "] of operator " << op_.Type()
-              << " is not LoDTensor or LoDTensorArray.";
-    }
     if (lod_level >= 0) {
       out_var->SetLoDLevel(lod_level);
     }
