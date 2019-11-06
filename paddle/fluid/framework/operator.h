@@ -239,7 +239,6 @@ class ExecutionContext {
         ctx_(ctx),
         kernel_configs_(configs) {}
   virtual ~ExecutionContext() {}
-  // const OperatorBase& op() const { return op_; }
 
   virtual std::string InputName(const std::string& name) const {
     return op_.Input(name);

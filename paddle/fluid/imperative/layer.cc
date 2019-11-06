@@ -190,6 +190,7 @@ void VarBase::AddGradOps(const std::weak_ptr<OpBase>& op) {
 void VarBase::ClearGradient() {
   if (grad_var_) {
     auto* grad_t = grad_var_->var_.GetMutable<framework::LoDTensor>();
+
     if (grad_t->IsInitialized()) {
       auto* dev_ctx =
           platform::DeviceContextPool::Instance().Get(grad_t->place());
@@ -257,11 +258,13 @@ void OpBase::CreateOperatorBase() {
 void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   auto* op_kernel = dynamic_cast<framework::OperatorWithKernel*>(op_.get());
   PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
-  auto& info = op_->Info();
+  // auto& info = op_->Info();
+  /*
   if (info.infer_var_type_) {
     RuntimeInferVarTypeContext infer_var_type_ctx(ins, &outs, attrs_);
     info.infer_var_type_(&infer_var_type_ctx);
   }
+  */
   // Initialize output var type
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {

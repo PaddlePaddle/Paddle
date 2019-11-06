@@ -219,7 +219,6 @@ class DefaultValueSetter {
  public:
   explicit DefaultValueSetter(T default_value)
       : default_value_(default_value) {}
-  // void operator()(T* value) const { *value = default_value_; }
   const T& operator()() const { return default_value_; }
 
  private:

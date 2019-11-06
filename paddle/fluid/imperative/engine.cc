@@ -152,8 +152,6 @@ void BasicEngine::PrepareDeps() {
     q.pop();
     VLOG(3) << "Checking grads of op " << cur_op->Type();
 
-    CheckBackwardInputs(cur_op);
-
     SetBackwardOutputs(cur_op);
 
     PrepareGradAccumulators(cur_op);
@@ -188,6 +186,9 @@ void BasicEngine::Execute() {
   while (!q.empty()) {
     OpBase* cur_op = q.front();
     q.pop();
+
+    // CheckBackWardInput
+    CheckBackwardInputs(cur_op);
 
     // Step 1: Run Backward
     auto& bwd_ins = cur_op->GetInsMap();

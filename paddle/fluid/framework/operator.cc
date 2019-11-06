@@ -453,10 +453,6 @@ const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
-  // auto it = ctx_.inputs.find(name);
-  // if (it == ctx_.inputs.end()) {
-  //  return {};
-  //}
   auto vars = MultiInputVar(name);
   if (vars.size() == 0) {
     return {};
