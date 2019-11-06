@@ -41,6 +41,20 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
   PADDLE_ENFORCE_EQ(is_encoded, true);
   VLOG(1) << "Use dgc allreduce mode"
           << ", nranks:" << nranks_;
+
+  PADDLE_ENFORCE(local_scopes_.size() > 0);
+  auto nranks_name = g_dgc_nranks;
+  for (size_t i = 0; i < local_scopes_.size(); ++i) {
+    auto *local_scope = local_scopes_[i];
+    auto nranks_var = local_scope->FindVar(nranks_name);
+    if (nranks_var == nullptr) {
+      PADDLE_THROW("not find nranks_var:%s", nranks_name);
+    }
+
+    float *dgc_nranks = nranks_var->GetMutable<LoDTensor>()->data<float>();
+    *dgc_nranks = nranks;
+    VLOG(10) << "dgc_nranks=" << *dgc_nranks;
+  }
 }
 
 void SparseAllReduceOpHandle::RunImplEncoded() {

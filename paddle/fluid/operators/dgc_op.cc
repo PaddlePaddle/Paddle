@@ -31,6 +31,8 @@ class DGCOp : public framework::OperatorWithKernel {
                    "Input(Grad) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("current_step"),
                    "Input(current_step) of DGCop should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("nranks"),
+                   "Input(nranks) of DGCop should not be null.");
 
     PADDLE_ENFORCE(ctx->HasOutput("U_out"),
                    "Output(U_out) of DGCop should not be null.");
@@ -46,8 +48,7 @@ class DGCOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    if (var_name == "current_step" || var_name == "rampup_step" ||
-        var_name == "k") {
+    if (var_name == "current_step" || var_name == "k" || var_name == "nranks") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
       return expected_kernel_type;
     }
@@ -64,6 +65,7 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("V", "(Tensor) Middle tensor of DGC");
     AddInput("Grad", "(Tensor) Input gradient");
     AddInput("current_step", "(Tensor) Current step.");
+    AddInput("nranks", "(Tensor) nranks.");
 
     AddOutput("U_out",
               "(Tensor) "

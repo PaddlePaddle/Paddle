@@ -66,6 +66,7 @@ void BindConstValue(pybind11::module* m) {
           [] { return framework::details::g_dgc_counter_name; });
   dgc.def("kDGCRampUpBeginStepName",
           [] { return framework::details::g_dgc_rampup_begin_step; });
+  dgc.def("kDGCNRanksName", [] { return framework::details::g_dgc_nranks; });
 #endif
 }
 

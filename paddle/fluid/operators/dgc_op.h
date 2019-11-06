@@ -50,6 +50,10 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto rampup_begin_step = ctx.Attr<float>("rampup_begin_step");
     auto rampup_step = ctx.Attr<float>("rampup_step");
 
+    // nranks
+    auto nranks_tensor = ctx.Input<framework::Tensor>("nranks");
+    const float* nranks = nranks_tensor->data<float>();
+
     // current step
     auto current_step_tensor = ctx.Input<framework::Tensor>("current_step");
     const float* current_step = current_step_tensor->data<float>();
@@ -72,7 +76,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
              << ", rampup_begin_step:" << rampup_begin_step
              << ", rampup_step:" << rampup_step
              << ",  current_step:" << *current_step << ", ratio:" << ratio
-             << ", k:" << k;
+             << ", k:" << k << ", nranks:" << *nranks;
 
     auto k_out = ctx.Output<framework::Tensor>("k");
     T* k_out_data = k_out->data<T>();
