@@ -1,4 +1,4 @@
-cc_library(code_generator SRCS code_generator.cc code_generator_helper.cc DEPS graph)
+cc_library(code_generator SRCS operation.cc code_generator.cc code_generator_helper.cc DEPS graph)
 if(NOT APPLE AND NOT WIN32)
     if(WITH_GPU)
         cc_test(test_code_generator SRCS code_generator_tester.cc DEPS code_generator device_code lod_tensor)
