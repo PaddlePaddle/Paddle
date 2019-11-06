@@ -233,15 +233,17 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
 
-  std::unordered_set<std::string> no_need_buffer_vars;
+  const std::unordered_set<std::string>* no_need_buffer_vars = nullptr;
   if (info_ && info_->NoNeedBufferVarsInferer()) {
     no_need_buffer_vars =
-        Info().NoNeedBufferVarsInferer()(Inputs(), Outputs(), Attrs());
+        &(Info().NoNeedBufferVarsInferer()(Inputs(), Outputs(), Attrs()));
+    if (no_need_buffer_vars->empty()) no_need_buffer_vars = nullptr;
   }
 
   for (auto it = inputs_.begin(); it != inputs_.end();) {
     auto& input = *it;
-    bool is_no_need_buffer_var = (no_need_buffer_vars.count(input.first) > 0);
+    bool is_no_need_buffer_var =
+        (no_need_buffer_vars && no_need_buffer_vars->count(input.first) > 0);
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
       auto var_name = input.second[i];
@@ -1026,21 +1028,18 @@ Scope* OperatorWithKernel::PrepareData(
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
 
-  std::unordered_set<std::string> no_buffer_ins;
+  const std::unordered_set<std::string>* no_buffer_ins = nullptr;
   if (info_) {
     auto& no_buffer_inferer = info_->NoNeedBufferVarsInferer();
     // Some op may not register NoNeedBufferVarsInferer
     if (no_buffer_inferer) {
-      no_buffer_ins = no_buffer_inferer(Inputs(), Outputs(), Attrs());
+      no_buffer_ins = &(no_buffer_inferer(Inputs(), Outputs(), Attrs()));
+      if (no_buffer_ins->empty()) no_buffer_ins = nullptr;
     }
   }
 
   for (auto& var_name_item : Inputs()) {
-    // NOTE(zjl): STL does not guarantee fast std::unordered_set::count when set
-    // is empty. At least STL implemented on my mac does calculate hash code
-    // of search key even though the set is empty.
-    if (!no_buffer_ins.empty() &&
-        no_buffer_ins.count(var_name_item.first) > 0) {
+    if (no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0) {
       VLOG(7) << "Skip scanning input " << var_name_item.first
               << " in Operator " << type_;
       continue;
