@@ -58,8 +58,6 @@ void BindPaddlePassBuilder(py::module *m);
 void BindMkldnnQuantizerConfig(py::module *m);
 #endif
 
-template <typename... Args>
-using py_overload_cast = py::detail::overload_cast_impl<Args...>;
 }  // namespace
 
 void BindInferenceApi(py::module *m) {
@@ -159,6 +157,9 @@ py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
   }
   return py::array(dt, {tensor.shape}, tensor.data.data());
 }
+
+// template <typename... Args>
+// using py_overload_cast = py::detail::overload_cast_impl<Args...>;
 
 void BindPaddleDType(py::module *m) {
   py::enum_<PaddleDType>(*m, "PaddleDType")
@@ -441,10 +442,17 @@ void BindPaddlePassBuilder(py::module *m) {
       .def("set_passes", &PaddlePassBuilder::SetPasses)
       .def("append_pass", &PaddlePassBuilder::AppendPass)
       .def("insert_pass", &PaddlePassBuilder::InsertPass)
+      .def(
+          "delete_pass",
+          (void (PaddlePassBuilder::*)(size_t)) & PaddlePassBuilder::DeletePass,
+          // py_overload_cast<size_t>()(&PaddlePassBuilder::DeletePass),
+          "Delete Pass")
       .def("delete_pass",
-           py_overload_cast<size_t>(&PaddlePassBuilder::DeletePass))
-      .def("delete_pass", py_overload_cast<const std::string &>(
-                              &PaddlePassBuilder::DeletePass))
+           (void (PaddlePassBuilder::*)(const std::string &)) &
+               PaddlePassBuilder::DeletePass,
+           // py_overload_cast<const std::string &>()(
+           //    &PaddlePassBuilder::DeletePass),
+           "Delete Pass")
       .def("append_analysis_pass", &PaddlePassBuilder::AppendAnalysisPass)
       .def("turn_on_debug", &PaddlePassBuilder::TurnOnDebug)
       .def("debug_string", &PaddlePassBuilder::DebugString)
