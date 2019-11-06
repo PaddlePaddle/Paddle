@@ -24,6 +24,7 @@ from . import sequence_lod
 from .utils import *
 from ..layer_helper import LayerHelper
 from ..framework import in_dygraph_mode
+from ..param_attr import ParamAttr
 
 __all__ = [
     'RNNCell',
@@ -2348,11 +2349,11 @@ def lstm_unit(x_t,
         bias_attr = ParamAttr()
 
     size = cell_t_prev.shape[1]
-    concat_out = concat(input=[x_t, hidden_t_prev], axis=1)
-    fc_out = fc(input=concat_out,
-                size=4 * size,
-                param_attr=param_attr,
-                bias_attr=bias_attr)
+    concat_out = nn.concat(input=[x_t, hidden_t_prev], axis=1)
+    fc_out = nn.fc(input=concat_out,
+                   size=4 * size,
+                   param_attr=param_attr,
+                   bias_attr=bias_attr)
     dtype = x_t.dtype
     c = helper.create_variable_for_type_inference(dtype)
     h = helper.create_variable_for_type_inference(dtype)
