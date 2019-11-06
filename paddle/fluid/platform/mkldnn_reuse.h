@@ -540,13 +540,12 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
     auto dst_md =
         platform::MKLDNNMemDesc(dst_dims, dt, MKLDNNMemoryFormat::any);
 
-    std::vector<int> padding_left_top(paddings);
-    std::vector<int> padding_right_bottom(paddings);
+    auto mkldnn_paddings = ToMkldnnPadding(paddings);
+
     if (ceil_mode) {
       CorrectOutputSize(src_dims, dst_dims, ksize, paddings, strides,
-                        padding_right_bottom);
+                        mkldnn_paddings[1]);
     }
-
     this->AcquireForwardPrimitiveDescriptor(
         is_test ? mkldnn::prop_kind::forward_inference
                 : mkldnn::prop_kind::forward_training,
@@ -555,7 +554,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
             : (exclude_padding
                    ? mkldnn::algorithm::pooling_avg_exclude_padding
                    : mkldnn::algorithm::pooling_avg_include_padding),
-        src_md, dst_md, strides, ksize, padding_left_top, padding_right_bottom,
+        src_md, dst_md, strides, ksize, mkldnn_paddings[0], mkldnn_paddings[1],
         mkldnn::padding_kind::zero);
   }
 
@@ -578,14 +577,16 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
         mkldnn::memory::desc(diff_src_dims, platform::MKLDNNGetDataType<T>(),
                              MKLDNNMemoryFormat::any);
 
+    auto mkldnn_paddings = ToMkldnnPadding(paddings);
+
     this->AcquireBackwardPrimitiveDescriptor(
         pooling_type == "max"
             ? mkldnn::algorithm::pooling_max
             : (exclude_padding
                    ? mkldnn::algorithm::pooling_avg_exclude_padding
                    : mkldnn::algorithm::pooling_avg_include_padding),
-        diff_src_md, diff_dst_md, strides, ksize, paddings, paddings,
-        mkldnn::padding_kind::zero);
+        diff_src_md, diff_dst_md, strides, ksize, mkldnn_paddings[0],
+        mkldnn_paddings[1], mkldnn::padding_kind::zero);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireWorkspaceMemory(void) {
