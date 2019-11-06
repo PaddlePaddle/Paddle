@@ -1148,6 +1148,7 @@ function main() {
         exit 1
         ;;
       esac
+      echo "paddle_build script finished as expected"
 }
 
 main $@
