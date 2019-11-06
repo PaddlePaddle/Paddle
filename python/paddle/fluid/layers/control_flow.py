@@ -37,10 +37,19 @@ __all__ = [
 
 def select_output(input, outputs, mask):
     """
-    
-    TODO(huihuangzheng): this API is not tested in control flow APIs yet. I
-    will add doc and probably change this API after I tested it in control
-    flow APIs
+    **select_output**    
+    This API takes in one input and multiple outputs and an integer mask. It
+    selects the output specified by the mask and copy the input to selected
+    output. It is useful in control flow.
+
+    Args:
+        input(Variable): The input variable
+        outputs(tuple|list): The output variables
+        mask(Variable): A tensor containing 1 integer number selecting which
+            output to be copied with input
+
+    Returns:
+        Variable: The outputs variables
     """
     helper = LayerHelper('select_output', **locals())
     helper.append_op(
@@ -56,7 +65,7 @@ def select_input(inputs, mask):
     **select_input**
     
     This API takes in multiple inputs and uses an integer mask to select one
-    input to output. It is used in control flow.
+    input to output. It is useful in control flow.
 
     Args:
         inputs(tuple|list): The input variables
@@ -65,19 +74,6 @@ def select_input(inputs, mask):
 
     Returns:
         Variable: The selected input variable
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          x = fluid.layers.data(name='x', shape=[1])
-          x.persistable = True
-
-          y = fluid.layers.data(name='y', shape=[1])
-          y.persistable = True
-
-          out_true, out_false = fluid.layers.split_lod_tensor(
-                input=x, mask=y, level=level)
     """
     helper = LayerHelper('select_input', **locals())
     if isinstance(inputs, list) or isinstance(inputs, tuple):
