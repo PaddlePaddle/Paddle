@@ -423,7 +423,8 @@ class TranspilerOptimizer(DistributedOptimizer):
         optimize_ops, params_grads = self._optimizer.minimize(
             loss, startup_program, parameter_list, no_grad_set)
 
-        self._strategy.ada_optimizer = self.is_ada()
+        if self._strategy.half_async:
+            self._strategy.ada_optimizer = self.is_ada()
         fleet._transpile(config=self._strategy)
 
         return optimize_ops, params_grads

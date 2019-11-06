@@ -176,6 +176,7 @@ class DistributeTranspilerConfig(object):
     mode = "pserver"
     print_log = False
     wait_port = True
+    half_async = False
     ada_optimizer = False
     # split the send recv var in runtime
     _runtime_split_send_recv = False
