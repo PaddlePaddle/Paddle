@@ -16,6 +16,7 @@ import logging
 import paddle.fluid as fluid
 import paddle.fluid.io as io
 import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
+from paddle.fluid.layers import dist_algo
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
