@@ -1079,7 +1079,7 @@ void GeoSgdCommunicator::SendDeltaScopeDense(const std::string &var_name) {
   VLOG(0) << "send " << var_name << " use time " << after_run - before_run;
 }
 
-void RecvDenseVars(const std::string &var_name) {
+void GeoSgdCommunicator::RecvDenseVars(const std::string &var_name) {
   auto origin_var_name = DeltaVarToVar(var_name);
 
   auto before_run_recv = GetCurrentUS();
@@ -1090,8 +1090,8 @@ void RecvDenseVars(const std::string &var_name) {
           << after_run_recv - before_run_recv;
 }
 
-void RecvSparseVars(const std::string &var_name,
-                    const std::string &splited_var_name) {
+void GeoSgdCommunicator::RecvSparseVars(const std::string &var_name,
+                                        const std::string &splited_var_name) {
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   auto origin_var_name = DeltaVarToVar(var_name);
   auto origin_splited_var_name = DeltaVarToVar(splited_var_name);
@@ -1103,7 +1103,7 @@ void RecvSparseVars(const std::string &var_name,
           << after_run_recv - before_run_recv;
 }
 
-void CopyDenseVars(const std::string &var_name) {
+void GeoSgdCommunicator::CopyDenseVars(const std::string &var_name) {
   auto origin_var_name = DeltaVarToVar(var_name);
   auto before_run = GetCurrentUS();
 
@@ -1125,9 +1125,9 @@ void CopyDenseVars(const std::string &var_name) {
           << after_run - before_run;
 }
 
-void CopySparseVars(const std::string &var_name,
-                    const std::string &splited_var_name,
-                    const std::vector<SparseIdsMap> &ids_send_vec) {
+void GeoSgdCommunicator::CopySparseVars(
+    const std::string &var_name, const std::string &splited_var_name,
+    const std::vector<SparseIdsMap> &ids_send_vec) {
   auto before_run = GetCurrentUS();
   auto origin_var_name = DeltaVarToVar(var_name);
 
