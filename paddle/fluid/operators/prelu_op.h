@@ -45,8 +45,9 @@ class PReluKernel : public framework::OpKernel<T> {
         o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[index] * x_ptr[i];
       }
     } else if (mode == "element") {
+      int temp = numel / dim[0];
       for (i = 0; i < numel; i++) {
-        index = i % dim[0];
+        index = i % temp;
         o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[index] * x_ptr[i];
       }
     } else {
