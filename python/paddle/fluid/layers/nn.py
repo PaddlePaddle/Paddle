@@ -17854,7 +17854,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max}
     if in_dygraph_mode():
-        attrs = {'shape': shape}
+        attrs['shape'] = shape
     else:
         if isinstance(shape, Variable):
             shape.stop_gradient = True

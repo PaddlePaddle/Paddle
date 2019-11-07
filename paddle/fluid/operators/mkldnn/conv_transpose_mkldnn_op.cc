@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -74,6 +75,18 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
+    std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
+
+    auto input_dims = input->dims();
+    auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
+    auto filter_dims = filter->dims();
+    auto filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+
+    auto ksize = framework::vectorize<int>(filter_data_dims);
+
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             data_dims, strides, ksize);
 
     PADDLE_ENFORCE(
         dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
