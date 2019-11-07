@@ -109,8 +109,9 @@ class PReluGradKernel : public framework::OpKernel<T> {
           dalpha_ptr[index] += x_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
         }
       } else if (mode == "element") {
+        temp = numel / dim[0];
         for (i = 0; i < numel; i++) {
-          index = i % dim[0];
+          index = i % temp;
           dalpha_ptr[index] += x_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
         }
       } else {
