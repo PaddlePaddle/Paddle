@@ -28,7 +28,7 @@ template <typename T>
 __global__ void PReluChannelWiseKernel(const T *input, const T *alpha,
                                        T *output, int channel_num,
                                        size_t plane_size, size_t spatial_size,
-                                       bool use_spatial_size) {
+                                       bool use_plane_size) {
   size_t offset = blockIdx.x * spatial_size;
   const T *in = input + offset;
   T *out = output + offset;
@@ -36,7 +36,7 @@ __global__ void PReluChannelWiseKernel(const T *input, const T *alpha,
 
   for (size_t i = threadIdx.x; i < spatial_size; i += blockDim.x) {
     T x = in[i];
-    if (use_spatial_size) {
+    if (use_plane_size) {
       T s = alpha[i / plane_size];
       out[i] = (x > 0) ? x : s * x;
     } else {
@@ -49,13 +49,13 @@ template <typename T>
 __global__ void PReluElementWiseKernel(const T *input, const T *alpha,
                                        T *output, int batch_size,
                                        size_t plane_size, size_t spatial_size,
-                                       bool use_spatial_size) {
+                                       bool use_plane_size) {
   size_t offset = blockIdx.x * spatial_size;
   const T *in = input + offset;
   auto channel_index = blockIdx.x % batch_size;
   const T *scale = alpha + channel_index * spatial_size;
 
-  if (use_spatial_size) scale = alpha;
+  if (use_plane_size) scale = alpha;
 
   T *out = output + offset;
 
@@ -68,7 +68,7 @@ __global__ void PReluElementWiseKernel(const T *input, const T *alpha,
 template <typename T>
 __global__ void PReluScalarKernel(const T *input, const T *alpha, T *output,
                                   size_t plane_size, size_t spatial_size,
-                                  bool use_spatial_size) {
+                                  bool use_plane_size) {
   size_t offset = blockIdx.x * spatial_size;
   const T *in = input + offset;
   T scale = *alpha;
@@ -87,18 +87,18 @@ void PreluChannelWiseDirectCUDAFunctor<T>::operator()(
   size_t unroll = input_shape[0] * input_shape[1];
   size_t plane_size = input_shape[2] * input_shape[3];
   size_t spatial_size = plane_size;
-  bool use_spatial_size = false;
+  bool use_plane_size = false;
   if (unroll > CUDA_MAX_NUM_BLOCKS) {
     unroll = input_shape[0];
     spatial_size = input_shape[1] * input_shape[2] * input_shape[3];
-    use_spatial_size = true;
+    use_plane_size = true;
   }
   size_t num_threads = CUDA_NUM_THREADS;
   if (spatial_size < CUDA_NUM_THREADS) num_threads = spatial_size;
   CHECK_LE(unroll, CUDA_MAX_NUM_BLOCKS);
   PReluChannelWiseKernel<<<unroll, num_threads, 0, stream>>>(
       input, alpha, output, input_shape[1], plane_size, spatial_size,
-      use_spatial_size);
+      use_plane_size);
 }
 
 template <typename T>
@@ -108,18 +108,18 @@ void PreluElementWiseDirectCUDAFunctor<T>::operator()(
   size_t unroll = input_shape[0] * input_shape[1];
   size_t plane_size = input_shape[2] * input_shape[3];
   size_t spatial_size = plane_size;
-  bool use_spatial_size = false;
+  bool use_plane_size = false;
   if (unroll > CUDA_MAX_NUM_BLOCKS) {
     unroll = input_shape[0];
     spatial_size = input_shape[1] * input_shape[2] * input_shape[3];
-    use_spatial_size = true;
+    use_plane_size = true;
   }
   size_t num_threads = CUDA_NUM_THREADS;
   if (spatial_size < CUDA_NUM_THREADS) num_threads = spatial_size;
   CHECK_LE(unroll, CUDA_MAX_NUM_BLOCKS);
   PReluElementWiseKernel<<<unroll, num_threads, 0, stream>>>(
       input, alpha, output, input_shape[0], plane_size, spatial_size,
-      use_spatial_size);
+      use_plane_size);
 }
 
 template <typename T>
@@ -130,17 +130,17 @@ void PreluScalarDirectCUDAFunctor<T>::operator()(cudaStream_t stream,
   size_t unroll = input_shape[0] * input_shape[1];
   size_t plane_size = input_shape[2] * input_shape[3];
   size_t spatial_size = plane_size;
-  bool use_spatial_size = false;
+  bool use_plane_size = false;
   if (unroll > CUDA_MAX_NUM_BLOCKS) {
     unroll = input_shape[0];
     spatial_size = input_shape[1] * input_shape[2] * input_shape[3];
-    use_spatial_size = true;
+    use_plane_size = true;
   }
   size_t num_threads = CUDA_NUM_THREADS;
   if (spatial_size < CUDA_NUM_THREADS) num_threads = spatial_size;
   CHECK_LE(unroll, CUDA_MAX_NUM_BLOCKS);
   PReluScalarKernel<<<unroll, num_threads, 0, stream>>>(
-      input, alpha, output, plane_size, spatial_size, use_spatial_size);
+      input, alpha, output, plane_size, spatial_size, use_plane_size);
 }
 
 template class PreluChannelWiseDirectCUDAFunctor<float>;
