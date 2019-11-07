@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/errors.h"
 
-#include <sstream>
+#include <stdexcept>
 
 namespace paddle {
 namespace platform {
@@ -36,7 +36,7 @@ std::string error_name(Code code) {
       return "OutOfRangeError";
       break;
     case paddle::platform::error::ALREADY_EXISTS:
-      return "AlreadExistsError";
+      return "AlreadyExistsError";
       break;
     case paddle::platform::error::RESOURCE_EXHAUSTED:
       return "ResourceExhaustedError";
@@ -63,9 +63,7 @@ std::string error_name(Code code) {
       return "ExternalError";
       break;
     default:
-      std::ostringstream sout;
-      sout << "IllegalTypeError(" << static_cast<int>(code) << ")";
-      return sout.str();
+      throw std::invalid_argument("The error type is undefined.");
       break;
   }
 }

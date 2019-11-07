@@ -95,7 +95,7 @@ TEST(Errors, NotFound) { CHECK_ALL_PADDLE_EXCEPTION_MACRO(NotFound); }
 
 TEST(Errors, OutOfRange) { CHECK_ALL_PADDLE_EXCEPTION_MACRO(OutOfRange); }
 
-TEST(Errors, AlreadExists) { CHECK_ALL_PADDLE_EXCEPTION_MACRO(AlreadExists); }
+TEST(Errors, AlreadExists) { CHECK_ALL_PADDLE_EXCEPTION_MACRO(AlreadyExists); }
 
 TEST(Errors, ResourceExhausted) {
   CHECK_ALL_PADDLE_EXCEPTION_MACRO(ResourceExhausted);

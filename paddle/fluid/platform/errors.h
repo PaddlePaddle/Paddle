@@ -34,9 +34,8 @@ class ErrorSummary {
   //   This constructor is only used to be compatible with
   //   current existing no error message PADDLE_ENFORCE_*
   ErrorSummary() {
-    state_ = std::unique_ptr<State>(new State);
-    state_->code = paddle::platform::error::LEGACY;
-    state_->msg =
+    code_ = paddle::platform::error::LEGACY;
+    msg_ =
         "Paddle internal Check failed. (Please help us create a new issue, "
         "here we need to find the developer to add a user friendly error "
         "message)";
@@ -48,31 +47,22 @@ class ErrorSummary {
   //   PADDLE_ENFORCE
   template <typename... Args>
   explicit ErrorSummary(Args... args) {
-    state_ = std::unique_ptr<State>(new State);
-    state_->code = paddle::platform::error::LEGACY;
-    state_->msg = paddle::string::Sprintf(args...);
+    code_ = paddle::platform::error::LEGACY;
+    msg_ = paddle::string::Sprintf(args...);
   }
 
   // Note(chenweihang): Recommended constructor
-  explicit ErrorSummary(Code code, std::string msg) {
-    state_ = std::unique_ptr<State>(new State);
-    state_->code = code;
-    state_->msg = msg;
-  }
+  explicit ErrorSummary(Code code, std::string msg) : code_(code), msg_(msg) {}
 
-  Code code() const { return state_->code; }
+  Code code() const { return code_; }
 
-  const std::string& error_message() const { return state_->msg; }
+  const std::string& error_message() const { return msg_; }
 
   std::string ToString() const;
 
  private:
-  struct State {
-    Code code;
-    std::string msg;
-  };
-
-  std::unique_ptr<State> state_;
+  Code code_;
+  std::string msg_;
 };
 
 namespace errors {
@@ -87,7 +77,7 @@ namespace errors {
 REGISTER_ERROR(InvalidArgument, INVALID_ARGUMENT)
 REGISTER_ERROR(NotFound, NOT_FOUND)
 REGISTER_ERROR(OutOfRange, OUT_OF_RANGE)
-REGISTER_ERROR(AlreadExists, ALREADY_EXISTS)
+REGISTER_ERROR(AlreadyExists, ALREADY_EXISTS)
 REGISTER_ERROR(ResourceExhausted, RESOURCE_EXHAUSTED)
 REGISTER_ERROR(PreconditionNotMet, PRECONDITION_NOT_MET)
 REGISTER_ERROR(PermissionDenied, PERMISSION_DENIED)
