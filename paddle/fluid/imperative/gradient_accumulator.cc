@@ -21,6 +21,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -65,6 +66,177 @@ class TensorAddFunctor : public boost::static_visitor<> {
   T* y_;
 };
 
+void SelectedRowsAddToTensor(const framework::Variable& src,
+                             framework::Variable* dst) {
+  auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
+  auto& src_selectedrows = src.Get<framework::SelectedRows>();
+  auto place = dst_tensor->place();
+  auto data_type = src_selectedrows.value().type();
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+
+  if (paddle::platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+#define PADDLE_SelectedRowsAddToTensor_MACRO(cpp_type)                      \
+  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {        \
+    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);             \
+    paddle::operators::math::SelectedRowsAddToTensor<                       \
+        paddle::platform::CUDADeviceContext, cpp_type>                      \
+        functor;                                                            \
+    functor(*(dynamic_cast<paddle::platform::CUDADeviceContext*>(dev_ctx)), \
+            src_selectedrows, dst_tensor);                                  \
+    return;                                                                 \
+  }
+
+    PADDLE_SelectedRowsAddToTensor_MACRO(float);
+    PADDLE_SelectedRowsAddToTensor_MACRO(double);
+
+#undef PADDLE_SelectedRowsAddToTensor_MACRO
+
+    PADDLE_THROW("Not supported data type %s for AddTo",
+                 framework::DataTypeToString(data_type));
+#else
+    PADDLE_THROW("CUDA is not support.");
+#endif
+  } else {
+#define PADDLE_SelectedRowsAddToTensor_MACRO(cpp_type)                     \
+  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {       \
+    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);            \
+    paddle::operators::math::SelectedRowsAddToTensor<                      \
+        paddle::platform::CPUDeviceContext, cpp_type>                      \
+        functor;                                                           \
+    functor(*(dynamic_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), \
+            src_selectedrows, dst_tensor);                                 \
+    return;                                                                \
+  }
+
+    PADDLE_SelectedRowsAddToTensor_MACRO(float);
+    PADDLE_SelectedRowsAddToTensor_MACRO(double);
+
+#undef PADDLE_SelectedRowsAddToTensor_MACRO
+
+    PADDLE_THROW("Not supported data type %s for AddTo",
+                 framework::DataTypeToString(data_type));
+  }
+}
+
+void SelectedRowsAddToSelectedRows(const framework::Variable& src,
+                                   framework::Variable* dst) {
+  auto& src_selectedrows = src.Get<framework::SelectedRows>();
+  auto place = src_selectedrows.value().place();
+  auto data_type = src_selectedrows.value().type();
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+
+  std::vector<const paddle::framework::SelectedRows*> inputs;
+  inputs.push_back(&src_selectedrows);
+  auto* output = dst->GetMutable<paddle::framework::SelectedRows>();
+
+  if (paddle::platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+#define PADDLE_SelectedRowsAddToSelectedRows_MACRO(cpp_type)                  \
+  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {          \
+    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);               \
+    paddle::operators::math::scatter::MergeAdd<                               \
+        paddle::platform::CUDADeviceContext, cpp_type>                        \
+        merge_add;                                                            \
+    merge_add(*(dynamic_cast<paddle::platform::CUDADeviceContext*>(dev_ctx)), \
+              inputs, output);                                                \
+    return;                                                                   \
+  }
+
+    PADDLE_SelectedRowsAddToSelectedRows_MACRO(float);
+    PADDLE_SelectedRowsAddToSelectedRows_MACRO(double);
+
+#undef PADDLE_SelectedRowsAddToSelectedRows_MACRO
+
+    PADDLE_THROW("Not supported data type %s for AddTo",
+                 framework::DataTypeToString(data_type));
+#else
+    PADDLE_THROW("CUDA is not support.");
+#endif
+  } else {
+#define PADDLE_SelectedRowsAddToSelectedRows_MACRO(cpp_type)                 \
+  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {         \
+    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);              \
+    paddle::operators::math::scatter::MergeAdd<                              \
+        paddle::platform::CPUDeviceContext, cpp_type>                        \
+        merge_add;                                                           \
+    merge_add(*(dynamic_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), \
+              inputs, output);                                               \
+    return;                                                                  \
+  }
+
+    PADDLE_SelectedRowsAddToSelectedRows_MACRO(float);
+    PADDLE_SelectedRowsAddToSelectedRows_MACRO(double);
+
+#undef PADDLE_SelectedRowsAddToSelectedRows_MACRO
+
+    PADDLE_THROW("Not supported data type %s for AddTo",
+                 framework::DataTypeToString(data_type));
+  }
+}
+
+std::shared_ptr<VarBase> SelectedRowsAddSelectedRows(
+    const framework::Variable& src, framework::Variable* dst) {
+  auto* dst_selectedrows = dst->GetMutable<framework::SelectedRows>();
+  auto& src_selectedrows = src.Get<framework::SelectedRows>();
+  auto place = src_selectedrows.value().place();
+  auto data_type = src_selectedrows.value().type();
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+
+  std::vector<const paddle::framework::SelectedRows*> inputs;
+  inputs.push_back(&src_selectedrows);
+  inputs.push_back(dst_selectedrows);
+  auto temp = std::make_shared<VarBase>(false, "temp");
+  auto* output =
+      temp->MutableVar()->GetMutable<paddle::framework::SelectedRows>();
+
+  if (paddle::platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+#define PADDLE_SelectedRowsAddSelectedRows_MACRO(cpp_type)                    \
+  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {          \
+    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);               \
+    paddle::operators::math::scatter::MergeAdd<                               \
+        paddle::platform::CUDADeviceContext, cpp_type>                        \
+        merge_add;                                                            \
+    merge_add(*(dynamic_cast<paddle::platform::CUDADeviceContext*>(dev_ctx)), \
+              inputs, output);                                                \
+    return temp;                                                              \
+  }
+
+    PADDLE_SelectedRowsAddSelectedRows_MACRO(float);
+    PADDLE_SelectedRowsAddSelectedRows_MACRO(double);
+
+#undef PADDLE_SelectedRowsAddSelectedRows_MACRO
+
+    PADDLE_THROW("Not supported data type %s for AddTo",
+                 framework::DataTypeToString(data_type));
+#else
+    PADDLE_THROW("CUDA is not support.");
+#endif
+  } else {
+#define PADDLE_SelectedRowsAddSelectedRows_MACRO(cpp_type)                   \
+  if (data_type == framework::DataTypeTrait<cpp_type>::DataType()) {         \
+    paddle::platform::DeviceContext* dev_ctx = pool.Get(place);              \
+    paddle::operators::math::scatter::MergeAdd<                              \
+        paddle::platform::CPUDeviceContext, cpp_type>                        \
+        merge_add;                                                           \
+    merge_add(*(dynamic_cast<paddle::platform::CPUDeviceContext*>(dev_ctx)), \
+              inputs, output);                                               \
+    return temp;                                                             \
+  }
+
+    PADDLE_SelectedRowsAddSelectedRows_MACRO(float);
+    PADDLE_SelectedRowsAddSelectedRows_MACRO(double);
+
+#undef PADDLE_SelectedRowsAddSelectedRows_MACRO
+
+    PADDLE_THROW("Not supported data type %s for AddTo",
+                 framework::DataTypeToString(data_type));
+  }
+
+  return temp;
+}
+
 void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
   auto* dst_tensor = dst->GetMutable<framework::LoDTensor>();
   auto& src_tensor = src.Get<framework::LoDTensor>();
@@ -102,16 +274,71 @@ void TensorAdd(const framework::Variable& src, framework::Variable* dst) {
                framework::DataTypeToString(data_type));
 }
 
+void VarBaseAdd(std::shared_ptr<VarBase> var, VarBase* var_) {
+  auto& src = var->Var();
+  auto* dst = var_->MutableVar();
+  if (dst->IsType<framework::LoDTensor>()) {
+    if (src.IsType<framework::LoDTensor>()) {
+      // VLOG(3) << "1111111111111111111111" << place << " " << data_type <<
+      // paddle::framework::DataTypeToString(data_type) << std::endl;
+      TensorAdd(src, dst);
+    } else if (src.IsType<framework::SelectedRows>()) {
+      SelectedRowsAddToTensor(src, dst);
+    } else {
+      PADDLE_THROW("Unexpected branch, output variable type is %s",
+                   framework::ToTypeName(dst->Type()));
+    }
+  } else {
+    if (src.IsType<framework::LoDTensor>()) {
+      auto* src_temp = var->MutableVar();
+      SelectedRowsAddToTensor(*dst, src_temp);
+      *dst = std::move(*(var->MutableVar()));
+    } else if (src.IsType<framework::SelectedRows>()) {
+      std::cout << "$$$$$$$$$$$$$ SelectedRows $$$$$$$$$$$ " << std::endl;
+      std::shared_ptr<VarBase> output = SelectedRowsAddSelectedRows(src, dst);
+      *dst = std::move(*(output->MutableVar()));
+    } else {
+      PADDLE_THROW("Unexpected branch, output variable type is %s",
+                   framework::ToTypeName(dst->Type()));
+    }
+    // if (place == paddle::platform::CPUPlace) {
+    // paddle::platform::CPUDeviceContext ctx(place);
+    //}
+    // else {
+    // paddle::platform::CUDADeviceContext ctx(place);
+    //}
+
+    // auto data_type = src_selectedrows_tensor.value().type();
+    // VLOG(3) << "1111111111111111111111" << place << " " << data_type << " "
+    // <<  paddle::framework::DataTypeToString(data_type) << " " <<
+    // framework::DataTypeTrait<double>::DataType() << " "<<
+    // framework::DataTypeTrait<float>::DataType() << std::endl;
+  }
+}
+
 void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
                                    size_t trace_id) {
   auto* dst_var = var_->MutableVar();
-  auto place = var->Var().Get<framework::LoDTensor>().place();
+  paddle::platform::Place place;
+  if (var->Var().IsType<framework::LoDTensor>()) {
+    place = var->Var().Get<framework::LoDTensor>().place();
+  } else if (var->Var().IsType<framework::SelectedRows>()) {
+    place = var->Var().Get<framework::SelectedRows>().place();
+  } else {
+    PADDLE_THROW("only support LoDTensor and SelectedRows in dygraph");
+  }
   if (!var_->OverridedStopGradient()) {
     VLOG(3) << "Sum Gradient for: " << var_->Name();
     if (cur_cnt_ == 0) {
-      *dst_var = std::move(*(var->MutableVar()));
+      if (var->Var().IsType<framework::SelectedRows>()) {
+        auto temp = std::make_shared<VarBase>(false, "temp");
+        SelectedRowsAddToSelectedRows(*(var->MutableVar()), temp->MutableVar());
+        *dst_var = std::move(*(temp->MutableVar()));
+      } else {
+        *dst_var = std::move(*(var->MutableVar()));
+      }
     } else {
-      TensorAdd(var->Var(), dst_var);
+      VarBaseAdd(var, var_);
     }
   } else {
     if (!var_->Var().IsInitialized() ||
@@ -162,7 +389,7 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
 
       *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
       for (size_t i = 1; i < tmp_grad_vars_.size(); ++i) {
-        TensorAdd(tmp_grad_vars_[i].first->Var(), dst_var);
+        VarBaseAdd(tmp_grad_vars_[i].first, var_);
       }
 
       tmp_grad_vars_.clear();
