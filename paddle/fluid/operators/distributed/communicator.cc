@@ -629,7 +629,8 @@ void GeoSgdCommunicator::SendThread() {
             auto copy_training_scope_task = [this, &var_name,
                                              &splited_var_name] {
               CopySparseVars(var_name, splited_var_name, ids_send_vec_);
-            } auto update_delta_task = [this, &var_name, &splited_var_name] {
+            };
+            auto update_delta_task = [this, &var_name, &splited_var_name] {
               SendUpdateSparseVars(var_name, splited_var_name);
             };
             auto send_task = [this, &var_name, &splited_var_name] {
@@ -677,16 +678,20 @@ void GeoSgdCommunicator::SendThread() {
         }
       }
       for (int i = 0; i < task_futures.size(); i++) {
-        auto task_f = task_futures[i];
+        auto &task_f = task_futures[i];
         task_f.wait();
-        task_futures[i] =
-            send_threadpool_->enqueue(std::move(task_futures_second[i]));
+        task_futures.erase(task_futures.begin() + i);
+        task_futures.insert(
+            task_futures.begin() + i,
+            send_threadpool_->enqueue(std::move(task_futures_second[i])));
       }
       for (int i = 0; i < task_futures.size(); i++) {
-        auto task_f = task_futures[i];
+        auto &task_f = task_futures[i];
         task_f.wait();
-        task_futures[i] =
-            send_threadpool_->enqueue(std::move(task_futures_third[i]));
+        task_futures.erase(task_futures.begin() + i);
+        task_futures.insert(
+            task_futures.begin() + i,
+            send_threadpool_->enqueue(std::move(task_futures_third[i])));
       }
       task_futures_second.clear();
       task_futures_third.clear();
