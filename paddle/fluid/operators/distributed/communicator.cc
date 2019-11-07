@@ -755,6 +755,9 @@ void GeoSgdCommunicator::SendUpdateDenseVars(const std::string &var_name) {
   math::SetConstant<paddle::platform::CPUDeviceContext, float> constant_functor;
   constant_functor(cpu_ctx, var_z_tensor, static_cast<float>(0));
 
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
+
   // calc sub = var_training - var_old
   blas.SCAL(var_y_sub_tensor.numel(), -1,
             var_y_sub_tensor.mutable_data<float>(var_y_sub_tensor.place()));
@@ -801,6 +804,8 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   auto *z_value = var_z_value->mutable_data<float>(var_y_tensor.place());
 
   float avg = 1 / static_cast<float>(trainer_nums_);
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
   for (int y = 0; y < sparse_rows.size(); y++) {
     auto ids = sparse_rows[y];
     float *x_val = x_value + y * row_numel;
@@ -852,6 +857,8 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
   auto *var_z = pserver_scope_.get()->FindVar(origin_var_name);
   auto var_z_tensor = var_z->Get<framework::LoDTensor>();
 
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
   // calc sub = pserver - old
   blas.SCAL(var_y_sub_tensor.numel(), -1,
             var_y_sub_tensor.mutable_data<float>(var_y_sub_tensor.place()));
@@ -904,6 +911,9 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
   auto *new_value = var_z_slr->mutable_value();
   auto row_numel = dims[1];
   auto *z_value = new_value->mutable_data<float>(var_x_tensor.place());
+
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
 
   for (int y = 0; y < new_rows.size(); y++) {
     std::vector<float> row_delta(row_numel, 0);
@@ -998,6 +1008,9 @@ void GeoSgdCommunicator::UpdateOldScopeDense(const std::string &var_name) {
   auto *var_z = delta_scope_->Var(var_name);
   auto *var_z_tensor = var_z->GetMutable<framework::LoDTensor>();
 
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
+
   // calc var_old += var_delta
   blas.VADD(var_y_tensor.numel(),
             var_y_tensor.mutable_data<float>(var_y_tensor.place()),
@@ -1024,6 +1037,9 @@ void GeoSgdCommunicator::UpdateOldScopeSparse(
   auto *var_z_select_rows = var_z->GetMutable<framework::SelectedRows>();
   auto *var_z_value = var_z_select_rows->mutable_value();
   auto *z_value = var_z_value->mutable_data<float>(var_z_select_rows->place());
+
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
 
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   std::vector<int64_t> new_rows;
@@ -1096,6 +1112,8 @@ void CopyDenseVars(const std::string &var_name) {
   auto numel = var_x_tensor.numel();
   std::vector<float> data_copy{numel};
 
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
   blas.VCOPY(numel, var_x_tensor.mutable_data<float>(var_x_tensor.place()),
              data_copy.data());
 
@@ -1118,6 +1136,8 @@ void CopySparseVars(const std::string &var_name,
   auto row_numel = dims[1];
 
   float *x_value = var_x_tensor.mutable_data<float>(var_x_tensor.place());
+  auto cpu_ctx = paddle::platform::CPUDeviceContext();
+  auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
 
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   std::vector<float> update_delta;

@@ -282,9 +282,6 @@ class Communicator {
 using SparseIdsMap =
     std::unordered_map<std::string, std::vector<std::vector<int64_t>>>;
 
-using cpu_ctx = paddle::platform::CPUDeviceContext();
-using blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
-
 class AsyncCommunicator : public Communicator {
  public:
   AsyncCommunicator() {}
