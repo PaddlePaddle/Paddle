@@ -31,13 +31,11 @@ if(WITH_LIBXSMM)
   add_dependencies(cblas extern_libxsmm)
 endif()
 
-set(CBLAS_FOUND OFF)
-
 ## Find MKLML First.
-if(WITH_MKLML AND MKLML_INC_DIR AND MKLML_LIB)
-  set(CBLAS_FOUND ON)
+if(WITH_MKLML)
+  include(external/mklml)       # download, install mklml package
   set(CBLAS_PROVIDER MKLML)
-  set(CBLAS_INC_DIR ${MKLML_INC_DIR})
+  set(CBLAS_INC_DIR  ${MKLML_INC_DIR})
   set(CBLAS_LIBRARIES ${MKLML_LIB})
 
   add_definitions(-DPADDLE_WITH_MKLML)
@@ -51,7 +49,7 @@ if(WITH_MKLML AND MKLML_INC_DIR AND MKLML_LIB)
 endif()
 
 ## Then find openblas.
-if(NOT CBLAS_FOUND)
+if(NOT DEFINED CBLAS_PROVIDER)
   set(OPENBLAS_ROOT $ENV{OPENBLAS_ROOT} CACHE PATH "Folder contains Openblas")
   set(OPENBLAS_INCLUDE_SEARCH_PATHS
           ${OPENBLAS_ROOT}/include
@@ -73,7 +71,6 @@ if(NOT CBLAS_FOUND)
     PATHS ${OPENBLAS_LIB_SEARCH_PATHS})
 
   if(OPENBLAS_LAPACKE_INC_DIR AND OPENBLAS_INC_DIR AND OPENBLAS_LIB)
-    set(CBLAS_FOUND ON)
     set(CBLAS_PROVIDER OPENBLAS)
     set(CBLAS_INC_DIR ${OPENBLAS_INC_DIR} ${OPENBLAS_LAPACKE_INC_DIR})
     set(CBLAS_LIBRARIES ${OPENBLAS_LIB})
@@ -87,8 +84,7 @@ if(NOT CBLAS_FOUND)
 endif()
 
 ## Then find the reference-cblas if WITH_SYSTEM_BLAS.  www.netlib.org/blas/
-if(NOT CBLAS_FOUND AND WITH_SYSTEM_BLAS)
-  message("======found system blas")
+if(NOT DEFINED CBLAS_PROVIDER AND WITH_SYSTEM_BLAS)
   set(REFERENCE_CBLAS_ROOT $ENV{REFERENCE_CBLAS_ROOT} CACHE PATH
     "Folder contains reference-cblas")
   set(REFERENCE_CBLAS_INCLUDE_SEARCH_PATHS
@@ -109,8 +105,7 @@ if(NOT CBLAS_FOUND AND WITH_SYSTEM_BLAS)
         ${REFERENCE_CBLAS_LIB_SEARCH_PATHS})
 
   if(REFERENCE_CBLAS_INCLUDE_DIR AND REFERENCE_CBLAS_LIBRARY)
-    set(CBLAS_FOUND ON)
-    set(CBLAS_PROVIDER REFERENCE)
+    set(CBLAS_PROVIDER REFERENCE_CBLAS)
     set(CBLAS_INC_DIR ${REFERENCE_CBLAS_INCLUDE_DIR})
     set(CBLAS_LIBRARIES ${REFERENCE_CBLAS_LIBRARY})
     add_definitions(-DPADDLE_USE_REFERENCE_CBLAS)
@@ -119,9 +114,9 @@ if(NOT CBLAS_FOUND AND WITH_SYSTEM_BLAS)
 endif()
 
 ## Then build openblas by external_project
-if(NOT CBLAS_FOUND)
-  include(external/openblas)        # download, build, install openblas
-  set(CBLAS_PROVIDER openblas)
+if(NOT DEFINED CBLAS_PROVIDER)
+  include(external/openblas)          # download, build, install openblas
+  set(CBLAS_PROVIDER EXTERN_OPENBLAS)
   add_dependencies(cblas extern_openblas)
   add_definitions(-DPADDLE_USE_OPENBLAS)
   message(STATUS "Build OpenBLAS by External Project "
@@ -132,6 +127,6 @@ endif()
 # linear algebra libraries for cc_library(xxx SRCS xxx.c DEPS cblas)
 
 include_directories(${CBLAS_INC_DIR})
-if(NOT "${CBLAS_PROVIDER}" STREQUAL "MKLML")
+if(NOT ${CBLAS_PROVIDER} STREQUAL MKLML)
   target_link_libraries(cblas ${CBLAS_LIBRARIES})
 endif()

@@ -52,8 +52,8 @@ if(WIN32 OR APPLE)
 endif()
 
 set(WITH_MKLML ${WITH_MKL})
-if (NOT DEFINED WITH_MKLDNN)
-    if (WITH_MKL AND AVX2_FOUND)
+if(NOT DEFINED WITH_MKLDNN)
+    if(WITH_MKL AND AVX2_FOUND)
         set(WITH_MKLDNN ON)
     else()
         message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN")
@@ -84,12 +84,11 @@ if(WITH_AMD_GPU)
     list(APPEND third_party_deps rocprim)
 endif()
 
-if(WITH_MKLML)
-    include(external/mklml)     # download, install mklml package
+include(cblas)              # find first, then download, build, install openblas
+if(${CBLAS_PROVIDER} STREQUAL MKLML)
     list(APPEND third_party_deps mklml)
 endif()
-include(cblas)      # find first, then download, build, install openblas
-if(NOT CBLAS_FOUND)
+if(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
     list(APPEND third_party_deps extern_openblas)
 endif()
 
