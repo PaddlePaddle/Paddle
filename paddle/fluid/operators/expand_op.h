@@ -143,9 +143,7 @@ class ExpandGradKernel : public framework::OpKernel<T> {
     // auto& expand_times = context.Attr<std::vector<int>>("expand_times");
     auto expand_times = get_expand_times(context);
     auto x_dims = in0->dims();
-    // 1. reshape_dims_vec is the broadcast parameter. For each dimension i,
-    //    if expand_times[i] > 1 and x_dims[i] > 1, i will be splitted to two
-    //    dimensions [expand_times[i], x_dims[i]].
+    // 1. reshape_dims_vec is the broadcast parameter.
     // 2. reduce_dims_vec is the dimension parameter to compute gradients. For
     //    each dimension expanded, the gradients should be summed to original
     //    size.
@@ -159,8 +157,15 @@ class ExpandGradKernel : public framework::OpKernel<T> {
 
     int dims = reduce_dims_vec.size();
 
+    bool just_copy = true;
+    for (size_t i = 0; i < expand_times.size(); i++) {
+      if (expand_times[i] != 1) {
+        just_copy = false;
+        break;
+      }
+    }
     // no need reduce, just copy
-    if (reduce_dims_vec.size() == 0) {
+    if (just_copy) {
       auto* in0 = context.Input<Tensor>(framework::GradVarName("Out"));
       auto* out0 = context.Output<Tensor>(framework::GradVarName("X"));
       out0->mutable_data<T>(context.GetPlace());
