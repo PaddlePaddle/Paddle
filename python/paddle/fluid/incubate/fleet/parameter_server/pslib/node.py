@@ -99,9 +99,12 @@ class DownpourServer(Server):
         table.table_class = table_class
 
         if table_class == 'DownpourSparseTable':
-            table.enable_sparse_table_cache = strategy.get('sparse_enable_cache', True)
-            table.sparse_table_cache_rate = strategy.get('sparse_cache_rate', 0.00055)
-            table.sparse_table_cache_file_num = strategy.get('sparse_cache_file_num', 16)
+            table.enable_sparse_table_cache = strategy.get(
+                'sparse_enable_cache', True)
+            table.sparse_table_cache_rate = strategy.get('sparse_cache_rate',
+                                                         0.00055)
+            table.sparse_table_cache_file_num = strategy.get(
+                'sparse_cache_file_num', 16)
             table.compress_in_save = strategy.get('sparse_compress_in_save',
                                                   True)
             table.shard_num = strategy.get('sparse_shard_num', 1000)
