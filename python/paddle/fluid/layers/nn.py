@@ -4143,7 +4143,6 @@ def batch_norm(input,
                param_attr=None,
                bias_attr=None,
                data_layout='NCHW',
-               in_place=False,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
@@ -4221,8 +4220,7 @@ def batch_norm(input,
 	     If the Initializer of the bias_attr is not set, the bias is initialized zero. 
 	     Default: None.
         data_layout(str, default NCHW): the data_layout of input, is NCHW or NHWC.
-        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
-        name(str|None): For detailed information, please refer to :ref:`api_guide_Name`. 
+        name(str|None): For detailed information, please refer to :ref:`api_guide_Name`.
             Usually name is no need to set and None by default. 
         moving_mean_name(str, Default None): The name of moving_mean which store the global Mean. If it 
             is set to None, batch_norm will save global mean with a random name, otherwise, batch_norm 
@@ -4322,8 +4320,7 @@ def batch_norm(input,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
 
-    batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
-        dtype)
+    batch_norm_out = helper.create_variable_for_type_inference(dtype)
 
     helper.append_op(
         type="batch_norm",
@@ -4473,7 +4470,6 @@ def data_norm(input,
               epsilon=1e-05,
               param_attr=None,
               data_layout='NCHW',
-              in_place=False,
               name=None,
               moving_mean_name=None,
               moving_variance_name=None,
@@ -4506,7 +4502,6 @@ def data_norm(input,
         epsilon(float, Default 1e-05):
         param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
         data_layout(string, default NCHW): NCHW|NHWC
-        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
@@ -4577,7 +4572,7 @@ def data_norm(input,
     means = helper.create_variable(dtype=dtype, stop_gradient=True)
     scales = helper.create_variable(dtype=dtype, stop_gradient=True)
 
-    data_norm_out = input if in_place else helper.create_variable(dtype=dtype)
+    data_norm_out = helper.create_variable(dtype=dtype)
 
     helper.append_op(
         type="data_norm",

@@ -1195,7 +1195,6 @@ class BatchNorm(layers.Layer):
         dtype(str, optional): Indicate the data type of the input ``Tensor``,
              which can be float32 or float64. Default: float32.
         data_layout(str, optional): Specify the input data format, the data format can be "NCHW" or "NHWC". Default: NCHW.
-        in_place(bool, optional): Make the input and output of batch norm reuse memory. Default: False.
         moving_mean_name(str, optional): The name of moving_mean which store the global Mean. Default: None.
         moving_variance_name(str, optional): The name of the moving_variance which store the global Variance. Default: None.
         do_model_average_for_mean_and_var(bool, optional): Whether parameter mean and variance should do model
@@ -1237,7 +1236,6 @@ class BatchNorm(layers.Layer):
                  bias_attr=None,
                  dtype='float32',
                  data_layout='NCHW',
-                 in_place=False,
                  moving_mean_name=None,
                  moving_variance_name=None,
                  do_model_average_for_mean_and_var=True,
@@ -1317,7 +1315,7 @@ class BatchNorm(layers.Layer):
             dtype=self._dtype, stop_gradient=True)
         saved_variance = self._helper.create_variable_for_type_inference(
             dtype=self._dtype, stop_gradient=True)
-        batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
+        batch_norm_out = self._helper.create_variable_for_type_inference(
             self._dtype)
 
         self._helper.append_op(
