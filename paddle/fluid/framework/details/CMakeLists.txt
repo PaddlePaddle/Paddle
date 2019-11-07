@@ -22,8 +22,9 @@ endif()
 
 
 if(WITH_GPU)
+    nv_library(var_utils SRCS var_utils.cu DEPS framework_proto scope place)
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
-            dynload_cuda variable_visitor)
+            dynload_cuda variable_visitor var_utils)
     nv_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
             dynload_cuda variable_visitor place device_memory_aligment)
 
