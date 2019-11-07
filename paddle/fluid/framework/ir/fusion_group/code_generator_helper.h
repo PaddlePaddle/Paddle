@@ -27,8 +27,6 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-static std::vector<std::string> replaced_element_in_order = {"@", "$"};
-
 static std::string VarName(int index) { return "var" + std::to_string(index); }
 
 class OperationExpression {
