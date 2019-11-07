@@ -129,9 +129,17 @@ bool LoadInputData(std::vector<std::vector<paddle::PaddleTensor>> *inputs) {
   return true;
 }
 
-void SetConfig(AnalysisConfig *cfg) {
+void SetConfig(AnalysisConfig *cfg, bool use_mkldnn = false,
+               bool use_gpu = false) {
   cfg->SetModel(FLAGS_infer_model);
-  cfg->DisableGpu();
+  if (use_mkldnn) {
+    cfg->EnableMKLDNN();
+  }
+  if (use_gpu) {
+    cfg->EnableUseGpu(100, 0);
+  } else {
+    cfg->DisableGpu();
+  }
   cfg->SwitchSpecifyInputNames();
   cfg->SwitchIrOptim();
   cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
@@ -139,16 +147,8 @@ void SetConfig(AnalysisConfig *cfg) {
 
 void profile(bool use_mkldnn = false, bool use_gpu = false) {
   AnalysisConfig config;
-  SetConfig(&config);
+  SetConfig(&config, use_mkldnn, use_gpu);
 
-  if (use_mkldnn) {
-    config.EnableMKLDNN();
-    config.pass_builder()->AppendPass("fc_mkldnn_pass");
-  }
-
-  if (use_gpu) {
-    config.EnableUseGpu(100, 0);
-  }
   std::vector<std::vector<PaddleTensor>> outputs;
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
@@ -162,7 +162,9 @@ TEST(Analyzer_ernie, profile_mkldnn) { profile(true, false); }
 #endif
 
 // Check the model by gpu
+#ifdef PADDLE_WITH_CUDA
 TEST(Analyzer_ernie, profile_gpu) { profile(false, true); }
+#endif
 
 // Check the fuse status
 TEST(Analyzer_Ernie, fuse_statis) {
@@ -173,17 +175,16 @@ TEST(Analyzer_Ernie, fuse_statis) {
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
   auto fuse_statis = GetFuseStatis(
       static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  ASSERT_EQ(fuse_statis.at("fc_fuse"), 74);
   LOG(INFO) << "num_ops: " << num_ops;
+  EXPECT_EQ(num_ops, 295);
 }
 
 // Compare result of NativeConfig and AnalysisConfig
 void compare(bool use_mkldnn = false) {
   AnalysisConfig cfg;
-  SetConfig(&cfg);
-  if (use_mkldnn) {
-    cfg.EnableMKLDNN();
-    cfg.pass_builder()->AppendPass("fc_mkldnn_pass");
-  }
+  SetConfig(&cfg, use_mkldnn, false);
 
   std::vector<std::vector<PaddleTensor>> inputs;
   LoadInputData(&inputs);
