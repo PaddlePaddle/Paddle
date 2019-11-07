@@ -83,7 +83,7 @@ class DistributedTranspiler(Fleet):
             mode = AsyncMode.GEO_SGD
 
         # for async training, use half-async to acquire better performances
-        elif self._transpile_config.ada_optimizer:
+        elif self._transpile_config.half_async:
             mode = AsyncMode.HALF_ASYNC
         else:
             mode = AsyncMode.ASYNC
