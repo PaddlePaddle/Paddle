@@ -37,7 +37,7 @@ class SelectInputOp : public framework::OperatorBase {
     auto &dev_ctx = *pool.Get(dev_place);
 
     auto &mask = scope.FindVar(Input("Mask"))->Get<framework::LoDTensor>();
-    size_t output_branch = static_cast<size_t>(GetBranchNumber(mask, dev_ctx));
+    size_t output_branch = static_cast<size_t>(GetBranchNumber(mask));
 
     const std::vector<std::string> &x_names = Inputs("X");
     PADDLE_ENFORCE_LT(output_branch, x_names.size(),
@@ -76,11 +76,12 @@ specifying the output branchi.
 class SelectInputInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInputs("X"), "SelectInputOp must have input X.");
-    PADDLE_ENFORCE(context->HasInput("Mask"),
-                   "SelectInputOp must have input Mask.");
-    PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "SelectInputOp must have output Out.");
+    PADDLE_ENFORCE_EQ(context->HasInputs("X"), true,
+                      "SelectInputOp must have input X.");
+    PADDLE_ENFORCE_EQ(context->HasInput("Mask"), true,
+                      "SelectInputOp must have input Mask.");
+    PADDLE_ENFORCE_EQ(context->HasOutput("Out"), true,
+                      "SelectInputOp must have output Out.");
   }
 };
 

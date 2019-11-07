@@ -95,8 +95,18 @@ class TestCond(unittest.TestCase):
             np.allclose(np.asarray(ret[1]), np.full((2, 3), 2, np.float32)))
 
     def test_pass_and_modify_var(self):
+        """
+        pseudocode:
+
+        for i in range(5):
+            if i % 2 == 0:
+                return 1, 2
+        else:
+            return 3, 4
+        """
+
         def true_func(a):
-            a = a + 1
+            a = a + 2
             return a
 
         def false_func(a):
@@ -107,7 +117,7 @@ class TestCond(unittest.TestCase):
         startup_program = Program()
         with program_guard(main_program, startup_program):
             pred = fluid.data(name="condition", shape=[1], dtype='bool')
-            a = layers.fill_constant(shape=[3, 2, 1], dtype='int', value=100)
+            a = layers.fill_constant(shape=[3, 2, 1], dtype='int', value=1)
             out = layers.cond(pred, true_func, false_func)
 
 
