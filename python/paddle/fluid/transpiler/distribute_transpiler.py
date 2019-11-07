@@ -2210,7 +2210,7 @@ class DistributeTranspiler(object):
                 opt_op.type, key, var.shape, param_var.shape)
             tmpvar = pserver_block.create_var(
                 name=var.name,
-                type=param_var.type,
+                type=var.type,
                 persistable=var.persistable,
                 dtype=var.dtype,
                 shape=new_shape)
