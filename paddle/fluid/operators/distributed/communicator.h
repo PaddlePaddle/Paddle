@@ -281,8 +281,9 @@ class Communicator {
 
 using SparseIdsMap =
     std::unordered_map<std::string, std::vector<std::vector<int64_t>>>;
-using SparseIdsMapNobucket =
-    std::unordered_map<std::string, std::vector<int64_t>>;
+
+using cpu_ctx = paddle::platform::CPUDeviceContext();
+using blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
 
 class AsyncCommunicator : public Communicator {
  public:
@@ -366,22 +367,30 @@ class GeoSgdCommunicator : public Communicator {
       const std::vector<SparseIdsMap>& ids_send_vec,
       const std::string& var_name, const std::string& splited_var_name);
 
+  void CopyDenseVars(const std::string& var_name);
+  void CopySparseVars(const std::string& var_name,
+                      const std::string& splited_var_name,
+                      const std::vector<SparseIdsMap>& ids_send_vec);
+
   void SendUpdateDenseVars(const std::string& var_name);
   void SendUpdateSparseVars(const std::string& var_name,
-                            const std::string& splited_var_name,
-                            const std::vector<SparseIdsMap>& ids_send_vec);
+                            const std::string& splited_var_name);
+
+  void RecvDenseVars(const std::string& var_name);
+  void RecvSparseVars(const std::string& var_name,
+                      const std::string& splited_var_name);
 
   void RecvUpdateDenseVars(const std::string& var_name);
   void RecvUpdateSparseVars(const std::string& var_name,
                             const std::string& splited_var_name);
 
-  void UpdateOldScopeDense(const std::string &var_name);
-  void UpdateOldScopeSparse(const std::string &var_name,
-                            const std::string &splited_var_name);
+  void UpdateOldScopeDense(const std::string& var_name);
+  void UpdateOldScopeSparse(const std::string& var_name,
+                            const std::string& splited_var_name);
 
-  void SendDeltaScopeDense(const std::string &var_name);
-  void SendDeltaScopeSparse(const std::string &var_name,
-                            const std::string &splited_var_name);
+  void SendDeltaScopeDense(const std::string& var_name);
+  void SendDeltaScopeSparse(const std::string& var_name,
+                            const std::string& splited_var_name);
 
   void GeoSgdDenseParamInit(framework::Scope* scope_x,
                             framework::Scope* scope_y,
@@ -448,6 +457,10 @@ class GeoSgdCommunicator : public Communicator {
 
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<std::thread> send_thread_{nullptr};
+
+  std::unordered_map<std::string, std::vector<float>> dense_variables_copy;
+  std::unordered_map<std::string, std::vector<float>> sparse_variables_copy;
+  std::unordered_map<std::string, std::vector<int64_t>> sparse_variables_rows;
 
   size_t need_thread_nums_{0};
 };
