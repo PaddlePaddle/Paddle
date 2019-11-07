@@ -529,7 +529,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
 
   SparseIdsMap deduplication_for_ids;
   for (size_t i = 0; i < sparse_var_tables.size(); i++) {
-    if (deduplication_for_ids.find(sparse_var_name[i]) ==
+    if (deduplication_for_ids.find(sparse_var_names[i]) ==
         deduplication_for_ids.end()) {
       auto *var = scope.FindVar(sparse_var_names[i]);
       auto var_tensor = var->Get<framework::LoDTensor>();
