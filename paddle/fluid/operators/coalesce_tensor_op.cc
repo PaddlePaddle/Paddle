@@ -107,8 +107,6 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
       math::SetConstant<DeviceContext, T> set_constant;
       set_constant(dev_ctx, fused_tensor,
                    static_cast<T>(context.Attr<float>("constant")));
-    } else {
-      math::set_constant(dev_ctx, fused_tensor, 0.0);
     }
 
     // Make the outputs point to the continuous space.

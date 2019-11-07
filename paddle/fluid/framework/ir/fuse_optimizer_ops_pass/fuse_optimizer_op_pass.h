@@ -84,7 +84,9 @@ class FuseOptimizerOpPass : public ir::Pass {
   std::unordered_map<std::string, std::vector<Node *>> GetVarInfo(
       const Graph &result) const;
 
-  bool GradGeneratedOpSupportGPU(
+  bool OpWithKernelSupportCPUAndGPU(const std::string &op_type) const;
+
+  bool GradGeneratedOpKernelCheck(
       const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
       const std::string &grad_var_name) const;
 

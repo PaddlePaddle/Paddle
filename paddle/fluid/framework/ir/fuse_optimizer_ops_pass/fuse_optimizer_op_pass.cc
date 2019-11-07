@@ -179,10 +179,10 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   // Pass pre-condition check: gradients generated op kernel
   auto fusing_grad_var_names = aux_var_map.at(kGrad);
   for (auto grad_var_name : fusing_grad_var_names) {
-    if (!GradGeneratedOpSupportGPU(vars_info, grad_var_name)) {
+    if (!GradGeneratedOpKernelCheck(vars_info, grad_var_name)) {
       // Note(chenweihang): Currently the fuse_optimizer_ops strategy is risky
-      //   when gradient generated operator doesn't support GPU device,
-      //   so close it.
+      //   when gradient generated operator with kernel just support CPU or
+      //   GPU device, so close it.
       return;
     }
   }
@@ -253,20 +253,44 @@ bool FuseOptimizerOpPass::HasVarDepsBetweenOps(
   return false;
 }
 
-bool FuseOptimizerOpPass::GradGeneratedOpSupportGPU(
+bool FuseOptimizerOpPass::OpWithKernelSupportCPUAndGPU(
+    const std::string &op_type) const {
+  auto &all_kernels = OperatorWithKernel::AllOpKernels();
+  auto it = all_kernels.find(op_type);
+  // skip op not has kernel
+  if (it != all_kernels.end()) {
+    bool support_cpu = false;
+    bool support_gpu = false;
+    for (auto &kernel_pair : it->second) {
+      if (platform::is_cpu_place(kernel_pair.first.place_)) {
+        support_cpu = true;
+      }
+      if (platform::is_gpu_place(kernel_pair.first.place_)) {
+        support_gpu = true;
+      }
+    }
+    VLOG(6) << "Op check: " << op_type << ", support CPU: " << support_cpu
+            << ", support GPU: " << support_gpu;
+    return support_cpu && support_gpu;
+  }
+  return true;
+}
+
+bool FuseOptimizerOpPass::GradGeneratedOpKernelCheck(
     const std::unordered_map<std::string, std::vector<ir::Node *>> &vars_info,
     const std::string &grad_var_name) const {
   auto grad_var_nodes = vars_info.at(grad_var_name);
+  std::unordered_set<std::string> check_op_set;
   for (auto var_node : grad_var_nodes) {
     for (auto in_node : var_node->inputs) {
       if (in_node->IsOp() && in_node->Op()) {
-        VLOG(6) << "Check (" << var_node->Var()->Name() << ")'s generated Op ("
-                << in_node->Op()->Type() << ") whether to support GPU.";
-        if (!framework::OpSupportGPU(in_node->Op()->Type())) {
-          VLOG(6) << "Op " << in_node->Op()->Type() << " doesn't support GPU.";
-          return false;
-        }
+        check_op_set.emplace(in_node->Op()->Type());
       }
+    }
+  }
+  for (auto op_type : check_op_set) {
+    if (!OpWithKernelSupportCPUAndGPU(op_type)) {
+      return false;
     }
   }
   return true;
