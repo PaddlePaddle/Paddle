@@ -36,9 +36,9 @@ std::string CodeGenerator::GenerateCode(
     std::string func_name, std::vector<OperationExpression> expressions) {
   // Check whether all expressions are elementwise operations.
   TemplateVariable template_var;
-  template_var.Add("$func_name", func_name);
-  template_var.Add("$parameters", EmitParameters(expressions, "float"));
-  template_var.Add("$compute_body", EmitComputeBody(expressions));
+  template_var.Add("func_name", func_name);
+  template_var.Add("parameters", EmitParameters(expressions, "float"));
+  template_var.Add("compute_body", EmitComputeBody(expressions));
   return predefined_cuda_functions + code_templates_[0].Format(template_var);
 }
 

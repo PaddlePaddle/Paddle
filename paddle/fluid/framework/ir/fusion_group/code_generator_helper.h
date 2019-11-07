@@ -21,15 +21,14 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {
 namespace fusion_group {
 
 static std::vector<std::string> replaced_element_in_order = {"@", "$"};
-
-static std::vector<std::string> kernel_template = {"$func_name", "$parameters",
-                                                   "$compute_body"};
 
 class OperationExpression {
  public:
@@ -85,22 +84,28 @@ class CodeTemplate {
 
   std::string Format(TemplateVariable template_var) {
     std::string ret = template_str_;
-    std::unordered_map<std::string, std::string> identifier_str =
-        template_var.Get();
+    std::unordered_map<std::string, bool> found;
 
+    // Word begins with "$" in template_str will be replaced.
     for (size_t i = 0; i < ret.size(); i++) {
       auto pos = i;
       char c = ret[pos];
 
       if (c == '$') {
-        for (size_t j = 0; j < kernel_template.size(); j++) {
-          int template_size = kernel_template[j].size();
-          auto tmp_cmp = ret.substr(pos, template_size);
-          if (tmp_cmp == kernel_template[j]) {
-            ret.replace(pos, template_size, identifier_str[kernel_template[j]]);
+        for (auto iter : template_var.Get()) {
+          std::string keyword = iter.first;
+          if (ret.substr(pos + 1, keyword.size()) == keyword) {
+            found[keyword] = true;
+            ret.replace(pos, keyword.size() + 1, iter.second);
+            break;
           }
         }
       }
+    }
+
+    for (auto iter : template_var.Get()) {
+      PADDLE_ENFORCE_NE(found.find(iter.first), found.end(),
+                        "Keyword %s in template is not set.", iter.first);
     }
 
     return EmitIndents(ret);

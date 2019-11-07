@@ -26,6 +26,20 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 namespace fusion_group = paddle::framework::ir::fusion_group;
 
+template <typename T>
+void SetupRandomCPUTensor(paddle::framework::LoDTensor* tensor) {
+  static unsigned int seed = 100;
+  std::mt19937 rng(seed++);
+  std::uniform_real_distribution<double> uniform_dist(0, 1);
+
+  T* ptr = tensor->data<T>();
+  PADDLE_ENFORCE_NOT_NULL(
+      ptr, "Call mutable_data to alloc memory for Tensor first.");
+  for (int64_t i = 0; i < tensor->numel(); ++i) {
+    ptr[i] = static_cast<T>(uniform_dist(rng)) - static_cast<T>(0.5);
+  }
+}
+
 void TestMain(std::string func_name,
               std::vector<fusion_group::OperationExpression> expressions,
               std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
@@ -33,7 +47,7 @@ void TestMain(std::string func_name,
   fusion_group::OperationMap::Init();
   fusion_group::CodeGenerator code_generator;
   std::string code_str = code_generator.GenerateCode(func_name, expressions);
-  std::cout << code_str << std::endl;
+  VLOG(3) << code_str;
 
   paddle::framework::InitDevices(false, {0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
@@ -41,18 +55,21 @@ void TestMain(std::string func_name,
   device_code.Compile();
 
   std::vector<paddle::framework::LoDTensor> gpu_tensors(cpu_tensors.size());
-  VLOG(3) << gpu_tensors.size();
 
-  std::vector<float*> gpu_ptrs(cpu_tensors.size());
+  std::vector<float*> gpu_ptrs(gpu_tensors.size());
   std::vector<void*> args;
   args.push_back(&n);
+
   for (size_t i = 0; i < input_ids.size(); ++i) {
     gpu_ptrs[input_ids[i]] = gpu_tensors[input_ids[i]].mutable_data<float>(
         cpu_tensors[input_ids[i]].dims(), place);
     args.push_back(&gpu_ptrs[input_ids[i]]);
+
+    SetupRandomCPUTensor<float>(&cpu_tensors[input_ids[i]]);
     TensorCopySync(cpu_tensors[input_ids[i]], place,
                    &gpu_tensors[input_ids[i]]);
   }
+
   for (size_t i = 0; i < output_ids.size(); ++i) {
     gpu_ptrs[output_ids[i]] = gpu_tensors[output_ids[i]].mutable_data<float>(
         cpu_tensors[output_ids[i]].dims(), place);
@@ -100,22 +117,25 @@ TEST(code_generator, elementwise) {
   }
 
   int n = cpu_tensors[0].numel();
-  for (int i = 0; i < n; ++i) {
-    cpu_tensors[input_ids[0]].data<float>()[i] = static_cast<float>(i);
-    cpu_tensors[input_ids[1]].data<float>()[i] = static_cast<float>(0.5);
-    cpu_tensors[input_ids[2]].data<float>()[i] = static_cast<float>(10.0);
-    cpu_tensors[input_ids[3]].data<float>()[i] = static_cast<float>(0.0);
-  }
-
   TestMain("fused_elementwise_kernel", expressions, cpu_tensors, n, input_ids,
            output_ids);
 
+  auto cpu_kernel_handler = [&](float* var0, float* var1, float* var3,
+                                float* var5, int i) -> float {
+    float var2_i = var0[i] * var1[i];
+    float var4_i = var2_i + var3[i];
+    float var6_i = var4_i - var5[i];
+    float var7_i = var6_i > 0.0 ? var6_i : 0.0;
+    float var8_i = 1.0 / (1.0 + std::exp(-var7_i));
+    return var8_i;
+  };
+
   // Check the results
   for (int i = 0; i < n; i++) {
-    float result =
-        (1.0 / (1.0 + std::exp(-std::max(
-                          0.0, static_cast<float>(i) * 0.5 + 10.0 - 0.0))));
-    PADDLE_ENFORCE_EQ(cpu_tensors[8].data<float>()[i], result);
+    float result = cpu_kernel_handler(
+        cpu_tensors[0].data<float>(), cpu_tensors[1].data<float>(),
+        cpu_tensors[3].data<float>(), cpu_tensors[5].data<float>(), i);
+    PADDLE_ENFORCE_LT(fabs(cpu_tensors[8].data<float>()[i] - result), 1.E-05);
   }
 }
 #endif
