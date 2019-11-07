@@ -281,6 +281,8 @@ class Communicator {
 
 using SparseIdsMap =
     std::unordered_map<std::string, std::vector<std::vector<int64_t>>>;
+using SparseIdsMapNobucket =
+    std::unordered_map<std::string, std::vector<int64_t>>;
 
 class AsyncCommunicator : public Communicator {
  public:
@@ -430,7 +432,7 @@ class GeoSgdCommunicator : public Communicator {
   std::unordered_map<std::string, bool>
       var_list_;  // if var is sparse, using selected rows, bool=true
 
-  std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>>
+  std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMapNobucket>>>
       need_push_queue_;
   std::vector<SparseIdsMap> ids_send_vec_;
 

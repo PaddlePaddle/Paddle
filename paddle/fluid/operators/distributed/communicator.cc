@@ -461,7 +461,7 @@ void GeoSgdCommunicator::InitImpl(
 
   send_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
   need_push_queue_ =
-      std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(
+      std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMapNobucket>>>(
           geo_need_push_nums);
   delta_scope_.reset(new Scope());
   old_scope_.reset(new Scope());
@@ -520,31 +520,27 @@ void GeoSgdCommunicator::Send(const std::string &var_name,
 void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
                               const std::vector<std::string> &sparse_var_tables,
                               const framework::Scope &scope) {
+  if (FLAGS_communicator_fake_rpc) return;
   // SparseIdsMap = std::unordered_map<std::string,std::vector<int64_t>>
-  std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
+  std::shared_ptr<SparseIdsMapNobucket> ids_table =
+      std::make_shared<SparseIdsMapNobucket>();
   auto before_run_send = GetCurrentUS();
+
   for (size_t i = 0; i < sparse_var_tables.size(); i++) {
     auto *var = scope.FindVar(sparse_var_names[i]);
     auto var_tensor = var->Get<framework::LoDTensor>();
     int element_number = var_tensor.numel();
     int *var_mutable_data = var_tensor.mutable_data<int>(var_tensor.place());
+    std::vector<int64_t> tmp_ids(var_mutable_data,
+                                 var_mutable_data + element_number);
     if (ids_table->find(sparse_var_tables[i]) == ids_table->end()) {
       // create empty set for new sparse var
-      auto splited_var_nums =
-          recv_varname_to_ctx_[sparse_var_tables[i]].splited_var_names.size();
-      ids_table->insert(
-          std::pair<std::string, std::vector<std::vector<int64_t>>>(
-              sparse_var_tables[i],
-              std::vector<std::vector<int64_t>>(
-                  splited_var_nums, std::vector<int64_t>(element_number, 0))));
-    }
-    // insert ids which has not been record
-    for (size_t j = 0; j < element_number; j++) {
-      auto ep_idx = GetSectionIndex(var_mutable_data[j],
-                                    absolute_section_[sparse_var_tables[i]]);
-      ids_table->at(sparse_var_tables[i])[ep_idx][j] = var_mutable_data[j];
-      VLOG(1) << "Sparse var " << sparse_var_tables[i] << " insert "
-              << var_mutable_data[j];
+      ids_table->insert(std::pair<std::string, std::vector<int64_t>>(
+          sparse_var_tables[i], tmp_ids));
+    } else {
+      ids_table->at(sparse_var_tables[i])
+          .insert(ids_table->at(sparse_var_tables[i]).end(), tmp_ids.begin(),
+                  tmp_ids.end());
     }
   }
   need_push_queue_->Push(ids_table);
@@ -562,10 +558,28 @@ void GeoSgdCommunicator::SendThread() {
 
     size_t wait_times = 0;
     while (ids_send_vec_.size() < geo_need_push_nums_) {
-      VLOG(4) << "ids_send_vec_ Size: " << ids_send_vec_.size();
+      VLOG(0) << "ids_send_vec_ Size: " << ids_send_vec_.size();
       if (need_push_queue_->Size() > 0) {
         wait_times = 0;
-        ids_send_vec_.push_back(*(need_push_queue_->Pop()));
+        auto tmp_ids = *(need_push_queue_->Pop());
+        std::shared_ptr<SparseIdsMap> ids_bucket =
+            std::shared_ptr<SparseIdsMap>();
+        for (auto &iter : tmp_ids) {
+          auto table_name = iter.first;
+          auto ids_vec = iter.second;
+          auto splited_var_nums =
+              recv_varname_to_ctx_[table_name].splited_var_names.size();
+          std::vector<std::vector<int64_t>> bucket_ids{splited_var_nums};
+          VLOG(0) << "DEBUG " << bucket_ids.size();
+          for (auto &id_ : ids_vec) {
+            auto ep_idx = GetSectionIndex(id_, absolute_section_[table_name]);
+            bucket_ids[ep_idx].push_back(id_);
+          }
+          ids_bucket->insert(
+              std::pair<std::string, std::vector<std::vector<int64_t>>>(
+                  table_name, bucket_ids));
+        }
+        ids_send_vec_.push_back(*(ids_bucket));
         VLOG(4) << "ids_send_vec_ pushed";
       } else if (need_push_queue_->Size() == 0) {
         VLOG(3) << "wait_times -> " << wait_times;
@@ -753,7 +767,8 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
       auto ids = ids_vec[y];
       if (id_exist.find(ids) == id_exist.end()) {
         id_exist.insert(std::pair<int64_t, bool>(ids, true));
-        send_rows.push_back(ids - absolute_section_[origin_var_name][splited_var_index]);
+        send_rows.push_back(
+            ids - absolute_section_[origin_var_name][splited_var_index]);
       } else {
         continue;
       }
