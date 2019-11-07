@@ -544,8 +544,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
         tmp_ids[ep_idx].push_back(var_mutable_data[j]);
       }
       deduplication_for_ids.insert(
-          std::pair < std::string, std
-          : vector<std::vector<int64_t>>> (sparse_var_names[i], tmp_ids));
+          std::pair<std::string, std::vector<std::vector<int64_t>>>(sparse_var_names[i], tmp_ids));
     }
     if (ids_table->find(sparse_var_tables[i]) == ids_table->end()) {
       // create empty set for new sparse var
