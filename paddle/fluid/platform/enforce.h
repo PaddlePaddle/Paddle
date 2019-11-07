@@ -179,7 +179,7 @@ inline std::string GetTraceBackString(StrType&& what, const char* file,
   auto symbols = backtrace_symbols(call_stack, size);
   Dl_info info;
   int idx = 0;
-  for (int i = 1; i < size; ++i) {
+  for (int i = 0; i < size; ++i) {
     if (dladdr(call_stack[i], &info) && info.dli_sname) {
       auto demangled = demangle(info.dli_sname);
       std::string path(info.dli_fname);
