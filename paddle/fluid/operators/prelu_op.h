@@ -86,8 +86,9 @@ class PReluGradKernel : public framework::OpKernel<T> {
               x_ptr[i] > 0 ? dout_ptr[i] : alpha_ptr[index] * dout_ptr[i];
         }
       } else if (mode == "element") {
+        temp = numel / dim[0];
         for (i = 0; i < numel; i++) {
-          index = i % dim[0];
+          index = i % temp;
           dx_ptr[i] =
               x_ptr[i] > 0 ? dout_ptr[i] : alpha_ptr[index] * dout_ptr[i];
         }
