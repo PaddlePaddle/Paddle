@@ -478,6 +478,7 @@ void HalfAsyncCommunicator::ConsumeThread() {
           }
           auto before_merge = GetCurrentUS();
 
+<<<<<<< HEAD
           if (var_name == "SparseFeatFactors@GRAD") {
               for (int i = 0; i < vars.size(); ++i) {
                   auto var_str = GetTensorDetails(*(vars[i].get()), var_name+"_"+std::to_string(i));
@@ -487,6 +488,8 @@ void HalfAsyncCommunicator::ConsumeThread() {
 
           VLOG(1) << "================================================================================";
 
+=======
+>>>>>>> 5a857fe00c... delete debug info
           MergeVars(var_name, vars, send_scope_.get());
 
           auto var_str =
