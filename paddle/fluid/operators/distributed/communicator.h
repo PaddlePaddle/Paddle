@@ -375,6 +375,14 @@ class GeoSgdCommunicator : public Communicator {
   void RecvUpdateSparseVars(const std::string& var_name,
                             const std::string& splited_var_name);
 
+  void UpdateOldScopeDense(const std::string &var_name);
+  void UpdateOldScopeSparse(const std::string &var_name,
+                            const std::string &splited_var_name);
+
+  void SendDeltaScopeDense(const std::string &var_name);
+  void SendDeltaScopeSparse(const std::string &var_name,
+                            const std::string &splited_var_name);
+
   void GeoSgdDenseParamInit(framework::Scope* scope_x,
                             framework::Scope* scope_y,
                             const std::string var_name);
@@ -441,8 +449,6 @@ class GeoSgdCommunicator : public Communicator {
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<std::thread> send_thread_{nullptr};
 
-  std::unique_ptr<std::thread> send_delta_thread{nullptr};
-  std::unique_ptr<std::thread> update_old_scope_thread{nullptr};
   size_t need_thread_nums_{0};
 };
 
