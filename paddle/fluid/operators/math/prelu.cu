@@ -26,31 +26,37 @@ inline static int GET_NUM_BLOCKS(const int N) {
 
 template <typename T>
 __global__ void PReluChannelWiseKernel(const T *input, const T *alpha,
-                                       T *output, int channel,
+                                       T *output, int channel_num,
                                        size_t plane_size, size_t spatial_size,
                                        bool use_spatial_size) {
   size_t offset = blockIdx.x * spatial_size;
   const T *in = input + offset;
   T *out = output + offset;
-  T scale = alpha[blockIdx.x % channel];
-  if (use_spatial_size) {
-    scale = alpha[spatial_size / plane_size];
-  }
+  T scale = alpha[blockIdx.x % channel_num];
 
   for (size_t i = threadIdx.x; i < spatial_size; i += blockDim.x) {
     T x = in[i];
-    out[i] = (x > 0) ? x : scale * x;
+    if (use_spatial_size) {
+      T s = alpha[i / plane_size];
+      out[i] = (x > 0) ? x : s * x;
+    } else {
+      out[i] = (x > 0) ? x : scale * x;
+    }
   }
 }
 
 template <typename T>
 __global__ void PReluElementWiseKernel(const T *input, const T *alpha,
-                                       T *output, size_t plane_size,
-                                       size_t spatial_size,
+                                       T *output, int batch_size,
+                                       size_t plane_size, size_t spatial_size,
                                        bool use_spatial_size) {
   size_t offset = blockIdx.x * spatial_size;
   const T *in = input + offset;
-  const T *scale = alpha + offset;
+  auto channel_index = blockIdx.x % batch_size;
+  const T *scale = alpha + channel_index * spatial_size;
+
+  if (use_spatial_size) scale = alpha;
+
   T *out = output + offset;
 
   for (size_t i = threadIdx.x; i < spatial_size; i += blockDim.x) {
@@ -112,7 +118,8 @@ void PreluElementWiseDirectCUDAFunctor<T>::operator()(
   if (spatial_size < CUDA_NUM_THREADS) num_threads = spatial_size;
   CHECK_LE(unroll, CUDA_MAX_NUM_BLOCKS);
   PReluElementWiseKernel<<<unroll, num_threads, 0, stream>>>(
-      input, alpha, output, plane_size, spatial_size, use_spatial_size);
+      input, alpha, output, input_shape[0], plane_size, spatial_size,
+      use_spatial_size);
 }
 
 template <typename T>

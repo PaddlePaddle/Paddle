@@ -46,7 +46,8 @@ class PReluKernel : public framework::OpKernel<T> {
       }
     } else if (mode == "element") {
       for (i = 0; i < numel; i++) {
-        o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[i] * x_ptr[i];
+        index = i % dim[0];
+        o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[index] * x_ptr[i];
       }
     } else {
       for (i = 0; i < numel; i++) {
@@ -85,7 +86,9 @@ class PReluGradKernel : public framework::OpKernel<T> {
         }
       } else if (mode == "element") {
         for (i = 0; i < numel; i++) {
-          dx_ptr[i] = x_ptr[i] > 0 ? dout_ptr[i] : alpha_ptr[i] * dout_ptr[i];
+          index = i % dim[0];
+          dx_ptr[i] =
+              x_ptr[i] > 0 ? dout_ptr[i] : alpha_ptr[index] * dout_ptr[i];
         }
       } else {
         for (i = 0; i < numel; i++) {
@@ -107,7 +110,8 @@ class PReluGradKernel : public framework::OpKernel<T> {
         }
       } else if (mode == "element") {
         for (i = 0; i < numel; i++) {
-          dalpha_ptr[i] += x_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
+          index = i % dim[0];
+          dalpha_ptr[index] += x_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
         }
       } else {
         for (i = 0; i < numel; i++) {
