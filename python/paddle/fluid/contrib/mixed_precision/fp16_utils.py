@@ -18,16 +18,20 @@ from ... import core
 from ... import layers
 from ... import framework
 
+from enum import Enum
+
+__all__ = ["DecorateType"]
+
 
 class DecorateType(Enum):
     # Use black-white-gray list method to convert progrom from fp32 to fp16.
     # It's the default method of mixed precision.
     black_white_list = 0
 
-    # All the program use half precision but the operators guarded with presion_guard.
+    # All the network use half precision but the operators guarded with presion_guard.
     half = 1
 
-    # All the program use original precision but the operators guarded with half_precision_guard.
+    # All the network use original precision but the operators guarded with half_precision_guard.
     precision = 2
 
     # User defines which operator will use half and which operator will use full precision.
@@ -187,6 +191,7 @@ def _is_in_black_varnames(op, amp_lists):
 
 
 def _set_op_precision_guard_attr(ops, guard_type):
+    op_maker = core.op_proto_and_checker_maker
     precision_role_name = op_maker.kOpPrecisionAttrName()
     role_type = op.attr[precision_role_name]
     for op in ops:
@@ -219,6 +224,7 @@ def _get_black_white_list(program):
     black_op_set = set()
     white_op_set = set()
 
+    op_maker = core.op_proto_and_checker_maker
     precision_role_name = op_maker.kOpPrecisionAttrName()
     for op in ops:
         role_type = op.attr[precision_role_name]
@@ -238,8 +244,8 @@ def _get_black_white_list(program):
 
 
 def rewrite_program_by_decorated_type(program, decorate_type):
-    _add_op_precision_attr(main_program, decorate_type)
-    black_op_set, white_op_set = _get_black_white_list(main_program)
+    _add_op_precision_attr(program, decorate_type)
+    black_op_set, white_op_set = _get_black_white_list(program)
 
     block = program.global_block()
     ops = block.ops

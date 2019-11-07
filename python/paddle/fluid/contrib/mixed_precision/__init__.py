@@ -16,6 +16,9 @@ from __future__ import print_function
 from . import decorator
 from .decorator import *
 from .fp16_lists import AutoMixedPrecisionLists
+from . import fp16_utils
+from .fp16_utils import DecorateType
 
 __all__ = decorator.__all__
 __all__ += fp16_lists.__all__
+__all__ += fp16_utils.__all__

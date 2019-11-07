@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import copy
-from enum import Enum, unique
+from enum import Enum
 
 __all__ = ["AutoMixedPrecisionLists"]
 

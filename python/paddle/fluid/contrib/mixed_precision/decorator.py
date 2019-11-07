@@ -17,13 +17,15 @@ from ... import default_startup_program
 from ... import layers
 from ... import unique_name
 from . import fp16_utils
-from .fp16_utils import update_loss_scaling, rewrite_program_by_decorated_type, rewrite_program_by_amp_lists
+from .fp16_utils import update_loss_scaling
 from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
-from paddle.fluid.framework import g_op_presion_guard_attr, PrecisionGuardType
-from paddle.fuild.wrapped_decorator import signature_safe_contextmanager
+from .fp16_utils import rewrite_program_by_decorated_type, rewrite_program_by_amp_lists, DecorateType
 
-__all__ = ["decorate"]
+from paddle.fluid.framework import g_op_precision_guard_attr, PrecisionGuardType
+from ... import wrapped_decorator
+
+__all__ = ["decorate", "half_precision_guard", "precision_guard"]
 
 
 class OptimizerWithMixedPrecison(object):
@@ -65,7 +67,11 @@ class OptimizerWithMixedPrecison(object):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
         self._param_grads = None
+
         self._train_program = default_main_program()
+        assert not self._train_program._use_amp, "please don't use amp interface twice"
+        self._train_program._use_amp = True
+
         self._startup_prog = default_startup_program()
         self._scaled_loss = None
         self._decorate_type = decorate_type
@@ -235,16 +241,37 @@ def _switch_precision_attr(attr):
     return ex
 
 
-@signature_safe_contextmanager
-def half_precision_guard():
-    ex = _switch_precision_attr(PrecisionGuardType.half)
+@wrapped_decorator.signature_safe_contextmanager
+def half_precision_guard(use_mp=True):
+    """
+    Try to set that operator can run under half precision.
+
+    Args:
+        use_mp(BOOL): Use mixed_precision or not. If use_mp is False, the guard will take no effct.
+    """
+    precision_type = PrecisionGuardType.half if use_mp else None
+    ex = _switch_precision_attr(precision_type)
     yield
     _switch_precision_attr(ex)
 
 
-@signature_safe_contextmanager
-def presion_guard():
-    ex = _switch_precision_attr(PrecisionGuardType.precision)
+@wrapped_decorator.signature_safe_contextmanager
+def precision_guard(use_mp=True):
+    """
+    Try to set that operator runs under origin precision.
+
+    Args:
+        use_mp(BOOL): Use mixed_precision or not. If use_mp is False, the guard will take no effct.
+    """
+    precision_type = PrecisionGuardType.precision if use_mp else None
+    ex = _switch_precision_attr(precision_type)
+    yield
+    _switch_precision_attr(ex)
+
+
+@wrapped_decorator.signature_safe_contextmanager
+def _reset_precision_guard():
+    ex = _switch_precision_attr(None)
     yield
     _switch_precision_attr(ex)
 
@@ -295,15 +322,16 @@ def decorate(optimizer,
     if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()
 
-    mp_optimizer = OptimizerWithMixedPrecison(
-        optimizer,
-        amp_lists,
-        init_loss_scaling,
-        use_dynamic_loss_scaling,
-        incr_every_n_steps,
-        decr_every_n_nan_or_inf,
-        incr_ratio,
-        decr_ratio,
-        decorate_type=decorate_type)
+    with _reset_precision_guard():
+        mp_optimizer = OptimizerWithMixedPrecison(
+            optimizer,
+            amp_lists,
+            init_loss_scaling,
+            use_dynamic_loss_scaling,
+            incr_every_n_steps,
+            decr_every_n_nan_or_inf,
+            incr_ratio,
+            decr_ratio,
+            decorate_type=decorate_type)
 
     return mp_optimizer

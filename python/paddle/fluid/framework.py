@@ -37,6 +37,8 @@ from . import unique_name
 import paddle.version as fluid_version
 import warnings
 
+from enum import Enum
+
 __all__ = [
     'Program',
     'default_startup_program',
@@ -3614,6 +3616,9 @@ class Program(object):
 
         # appending gradients times
         self._appending_grad_times = 0
+
+        # use amp interface
+        self._use_amp = False
 
     @property
     def _op_role(self):
