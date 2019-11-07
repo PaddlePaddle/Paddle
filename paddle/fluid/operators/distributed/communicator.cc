@@ -734,7 +734,8 @@ void GeoSgdCommunicator::SendUpdateDenseVars(const std::string &var_name) {
   auto origin_var_name = DeltaVarToVar(var_name);
   auto before_run_send_dense = GetCurrentUS();
 
-  auto *var_x_data = dense_variables_copy.at(origin_var_name);
+  auto var_x = dense_variables_copy.at(origin_var_name);
+  auto *var_x_data = var_x.data();
 
   auto *var_y = old_scope_->FindVar(origin_var_name);
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
@@ -749,25 +750,25 @@ void GeoSgdCommunicator::SendUpdateDenseVars(const std::string &var_name) {
   // create delta var in delta scope
   auto *var_z = delta_scope_->Var(var_name);
   auto *var_z_tensor = var_z->GetMutable<framework::LoDTensor>();
-  var_z_tensor->mutable_data<float>(dims, var_x_tensor.place());
-  var_z_tensor->set_lod(var_x_tensor.lod());
-
-  math::SetConstant<paddle::platform::CPUDeviceContext, float> constant_functor;
-  constant_functor(cpu_ctx, var_z_tensor, static_cast<float>(0));
+  var_z_tensor->mutable_data<float>(dims, var_y_tensor.place());
+  var_z_tensor->set_lod(var_y_tensor.lod());
 
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
   auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
 
+  math::SetConstant<paddle::platform::CPUDeviceContext, float> constant_functor;
+  constant_functor(cpu_ctx, var_z_tensor, static_cast<float>(0));
+
   // calc sub = var_training - var_old
   blas.SCAL(var_y_sub_tensor.numel(), -1,
             var_y_sub_tensor.mutable_data<float>(var_y_sub_tensor.place()));
-  blas.VADD(var_x_data.size(), var_x_data,
+  blas.VADD(var_x.size(), var_x_data,
             var_y_sub_tensor.mutable_data<float>(var_y_sub_tensor.place()),
             var_z_tensor->mutable_data<float>(var_z_tensor->place()));
 
   // calc var_delta = sub / trainer_nums
   float trainer_param = 1.0 / static_cast<float>(trainer_nums_);
-  blas.SCAL(var_z_tensor->numel(), trainer_param,
+  blas.SCAL(var_x.size(), trainer_param,
             var_z_tensor->mutable_data<float>(var_z_tensor->place()));
 
   auto after_run_send_dense = GetCurrentUS();
@@ -790,8 +791,8 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   auto *var_y = old_scope_.get()->FindVar(origin_var_name);
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
 
-  auto row_numel = static_cast<int>(sparse_variables.size()) /
-                   static_cast<int>(sparse_rows.size());
+  int row_numel = static_cast<int>(sparse_variables.size()) /
+                  static_cast<int>(sparse_rows.size());
   auto ids_num = sparse_rows.size();
 
   float *x_value = sparse_variables.data();
