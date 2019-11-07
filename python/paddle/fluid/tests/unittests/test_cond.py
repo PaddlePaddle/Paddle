@@ -97,28 +97,41 @@ class TestCond(unittest.TestCase):
     def test_pass_and_modify_var(self):
         """
         pseudocode:
-
         for i in range(5):
+            a = 7
             if i % 2 == 0:
-                return 1, 2
-        else:
-            return 3, 4
+                a = a * (i + 1)
+            else:
+                a = a - (i - 1)
         """
 
-        def true_func(a):
-            a = a + 2
+        def true_func(a, i):
+            a = a * (i + 1)
             return a
 
-        def false_func(a):
-            a = a - 1
+        def false_func(a, i):
+            a = a - (i - 1)
             return a
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            pred = fluid.data(name="condition", shape=[1], dtype='bool')
-            a = layers.fill_constant(shape=[3, 2, 1], dtype='int', value=1)
-            out = layers.cond(pred, true_func, false_func)
+            a = layers.fill_constant(shape=[3, 2, 1], dtype='int32', value=7)
+            i = fluid.data(name="i", shape=[1], dtype='int32')
+            pred = ((i % 2) == 0)
+            a = layers.cond(pred, lambda: true_func(a, i),
+                            lambda: false_func(a, i))
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        for feed_i in range(5):
+            expected_a = 7 * (feed_i + 1) if feed_i % 2 == 0 else 8 - feed_i
+            ret = exe.run(main_program,
+                          feed={'i': np.full((1), feed_i, np.int32)},
+                          fetch_list=[a])
+            self.assertTrue(
+                np.allclose(
+                    np.asarray(ret), np.full((3, 2, 1), expected_a, np.int32)))
 
 
 if __name__ == '__main__':
