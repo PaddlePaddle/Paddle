@@ -12278,7 +12278,7 @@ def swish(x, beta=1.0, name=None):
     return out
 
 
-def prelu(x, mode, param_attr=None, name=None):
+def prelu(x, mode, param_attr=None, name=None, batch_size=None):
     """
     Equation:
 
@@ -12328,7 +12328,9 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode == 'channel':
         alpha_shape = [1, x.shape[1], 1, 1]
     elif mode == 'element':
-        alpha_shape = x.shape
+        assert batch_size is not None and batch_size > 0, \
+            "For the element mode for prelu, a positive batch-size must be set."
+        alpha_shape = [batch_size] + list(x.shape[1:])
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,
