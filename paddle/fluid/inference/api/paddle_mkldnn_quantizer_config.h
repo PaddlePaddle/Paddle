@@ -29,7 +29,8 @@ enum class ScaleAlgo {
   NONE,      // Do not compute scale
   MAX,       // Find scale based on the max absolute value
   MAX_CH,    // Find scale based on the max absolute value per output channel
-  MAX_CH_T,  // Find scale based on the max absolute value per input channel
+  MAX_CH_T,  // Find scale based on the max absolute value per output channel
+             // of a transposed tensor
   KL,        // Find scale based on KL Divergence
 };
 

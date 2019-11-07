@@ -80,7 +80,7 @@ class AnalysisPredictor::MkldnnQuantizer {
 
   std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
       const framework::LoDTensor& var_tensor, bool is_unsigned,
-      int oc_axis) const;
+      bool is_transposed) const;
 
   std::pair<bool, framework::LoDTensor> GetMaxScalingFactor(
       const framework::LoDTensor& var_tensor, bool is_unsigned) const;
