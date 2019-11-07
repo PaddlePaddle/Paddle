@@ -6,12 +6,14 @@ PADDLE_ROOT=$1
 TURN_ON_MKL=$2 # use MKL or Openblas
 
 # download models
-function download() {
-    wget -q http://paddle-tar.bj.bcebos.com/train_demo/LR/main_program
-    wget -q http://paddle-tar.bj.bcebos.com/train_demo/LR/startup_program
-}
+#function download() {
+#    wget -q http://paddle-tar.bj.bcebos.com/train_demo/LR/main_program
+#    wget -q http://paddle-tar.bj.bcebos.com/train_demo/LR/startup_program
+#}
 
-download
+#download
+
+python demo_network.py
 
 # build demo trainer
 fluid_install_dir=${PADDLE_ROOT}/build/fluid_install_dir
