@@ -50,20 +50,26 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
-
-    if (ctx.Attr<bool>("global_pooling")) {
-      for (size_t i = 0; i < ksize.size(); ++i) {
-        paddings[i] = 0;
-        ksize[i] = static_cast<int>(input->dims()[i + 2]);
-      }
-    }
+    bool global_pooling = ctx.Attr<bool>("global_pooling");
+    std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
 
     // Only 2D pooling is supported now
-    PADDLE_ENFORCE(ksize.size() == 2, "ksize must be 2D, i.e. 2D pooling");
-    PADDLE_ENFORCE(pooling_type == "max" || pooling_type == "avg",
-                   "pooling_type must be 'max' or 'avg'");
-    PADDLE_ENFORCE(input->dims().size() == 4,
-                   "Input dim must be with 4, i.e. NCHW");
+    PADDLE_ENFORCE_EQ(ksize.size(), 2, "ksize must be 2D, i.e. 2D pooling");
+    PADDLE_ENFORCE_EQ(pooling_type == "max" || pooling_type == "avg", true,
+                      "pooling_type must be 'max' or 'avg'");
+    PADDLE_ENFORCE_EQ(input->dims().size(), 4,
+                      "Input dim must be with 4, i.e. NCHW");
+
+    auto input_dims = input->dims();
+    framework::DDim data_dims =
+        framework::slice_ddim(input_dims, 2, input_dims.size());
+
+    if (global_pooling) {
+      UpdateKsize(&ksize, data_dims);
+    }
+
+    UpdatePadding(&paddings, global_pooling, 0, padding_algorithm, data_dims,
+                  strides, ksize);
 
     auto src_tz = paddle::framework::vectorize<int>(input->dims());
     auto dst_tz = paddle::framework::vectorize<int>(output->dims());
@@ -81,6 +87,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     std::shared_ptr<mkldnn::pooling_forward> pool_p;
     std::shared_ptr<mkldnn::memory> workspace_memory;
+
     if ((is_test == false) && (pooling_type == "max")) {
       // Training
       workspace_memory = handler.AcquireWorkspaceMemory();
@@ -129,13 +136,19 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
+    bool global_pooling = ctx.Attr<bool>("global_pooling");
+    std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
 
-    if (ctx.Attr<bool>("global_pooling")) {
-      for (size_t i = 0; i < ksize.size(); ++i) {
-        paddings[i] = 0;
-        ksize[i] = static_cast<int>(in_x->dims()[i + 2]);
-      }
+    auto in_x_dims = in_x->dims();
+    framework::DDim data_dims =
+        framework::slice_ddim(in_x_dims, 2, in_x_dims.size());
+
+    if (global_pooling) {
+      UpdateKsize(&ksize, data_dims);
     }
+
+    UpdatePadding(&paddings, global_pooling, 0, padding_algorithm, data_dims,
+                  strides, ksize);
 
     auto& dev_ctx =
         ctx.template device_context<platform::MKLDNNDeviceContext>();
@@ -162,6 +175,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     std::shared_ptr<mkldnn::pooling_backward> pool_bwd_p;
     std::shared_ptr<mkldnn::memory> workspace_memory;
+
     if (pooling_type == "max") {
       // Max - pooling needs Workspace
       workspace_memory = handler.AcquireWorkspaceMemory();
