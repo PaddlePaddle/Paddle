@@ -302,5 +302,20 @@ void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream) {
                  "error code : %d, %s",
                  error_code, CudaErrorWebsite());
 }
+
+void RaiseNonOutOfMemoryError(cudaError_t *status) {
+  if (*status == cudaErrorMemoryAllocation) {
+    *status = cudaSuccess;
+  }
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(*status);
+
+  *status = cudaGetLastError();
+  if (*status == cudaErrorMemoryAllocation) {
+    *status = cudaSuccess;
+  }
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(*status);
+}
 }  // namespace platform
 }  // namespace paddle
