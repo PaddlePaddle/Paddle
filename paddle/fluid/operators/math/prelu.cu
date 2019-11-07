@@ -47,12 +47,12 @@ __global__ void PReluChannelWiseKernel(const T *input, const T *alpha,
 
 template <typename T>
 __global__ void PReluElementWiseKernel(const T *input, const T *alpha,
-                                       T *output, int batch_size,
+                                       T *output, int channel_num,
                                        size_t plane_size, size_t spatial_size,
                                        bool use_plane_size) {
   size_t offset = blockIdx.x * spatial_size;
   const T *in = input + offset;
-  auto channel_index = blockIdx.x % batch_size;
+  auto channel_index = blockIdx.x % channel_num;
   const T *scale = alpha + channel_index * spatial_size;
 
   if (use_plane_size) scale = alpha;
@@ -118,7 +118,7 @@ void PreluElementWiseDirectCUDAFunctor<T>::operator()(
   if (spatial_size < CUDA_NUM_THREADS) num_threads = spatial_size;
   CHECK_LE(unroll, CUDA_MAX_NUM_BLOCKS);
   PReluElementWiseKernel<<<unroll, num_threads, 0, stream>>>(
-      input, alpha, output, input_shape[0], plane_size, spatial_size,
+      input, alpha, output, input_shape[1], plane_size, spatial_size,
       use_plane_size);
 }
 

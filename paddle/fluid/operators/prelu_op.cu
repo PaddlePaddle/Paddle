@@ -68,21 +68,19 @@ struct ScalarMode {};
 template <typename T, typename M>
 struct AlphaFunctor {
   HOSTDEVICE inline T operator()(const T* alpha, size_t channel_num,
-                                 size_t batch_size, size_t plane_size,
-                                 size_t spatial_size, bool use_plane_size,
-                                 size_t idx) const {}
+                                 size_t plane_size, size_t spatial_size,
+                                 bool use_plane_size, size_t idx) const {}
 };
 
 template <typename T>
 struct AlphaFunctor<T, prelu::ElementWiseMode> {
   HOSTDEVICE inline T operator()(const T* alpha, size_t channel_num,
-                                 size_t batch_size, size_t plane_size,
-                                 size_t spatial_size, bool use_plane_size,
-                                 size_t idx) const {
+                                 size_t plane_size, size_t spatial_size,
+                                 bool use_plane_size, size_t idx) const {
     if (use_plane_size) {
       return alpha[idx];
     }
-    size_t channel_index = blockIdx.x % batch_size;
+    size_t channel_index = blockIdx.x % channel_num;
     return alpha[channel_index * spatial_size + idx];
   }
 };
@@ -90,9 +88,8 @@ struct AlphaFunctor<T, prelu::ElementWiseMode> {
 template <typename T>
 struct AlphaFunctor<T, prelu::ChannelMode> {
   HOSTDEVICE inline T operator()(const T* alpha, size_t channel_num,
-                                 size_t batch_size, size_t plane_size,
-                                 size_t spatial_size, bool use_plane_size,
-                                 size_t idx) const {
+                                 size_t plane_size, size_t spatial_size,
+                                 bool use_plane_size, size_t idx) const {
     T ret = alpha[blockIdx.x % channel_num];
     if (use_plane_size) ret = alpha[idx / plane_size];
     return ret;
@@ -102,9 +99,8 @@ struct AlphaFunctor<T, prelu::ChannelMode> {
 template <typename T>
 struct AlphaFunctor<T, prelu::ScalarMode> {
   HOSTDEVICE inline T operator()(const T* alpha, size_t channel_num,
-                                 size_t batch_size, size_t plane_size,
-                                 size_t spatial_size, bool use_plane_size,
-                                 size_t idx) const {
+                                 size_t plane_size, size_t spatial_size,
+                                 bool use_plane_size, size_t idx) const {
     return alpha[0];
   }
 };
@@ -112,8 +108,8 @@ struct AlphaFunctor<T, prelu::ScalarMode> {
 template <typename T, typename M>
 __global__ void PReluGradElementWiseKernel(
     const T* x_ptr, const T* y_ptr, const T* alpha_ptr, const T* dy_ptr,
-    T* dx_ptr, T* dalpha_ptr, size_t channel_num, size_t batch_size,
-    size_t plane_size, size_t spatial_size, bool use_plane_size) {
+    T* dx_ptr, T* dalpha_ptr, size_t channel_num, size_t plane_size,
+    size_t spatial_size, bool use_plane_size) {
   size_t offset = blockIdx.x * spatial_size;
   AlphaFunctor<T, M> alpha_func;
 
@@ -121,8 +117,8 @@ __global__ void PReluGradElementWiseKernel(
     T y = y_ptr[offset + i];
     T x = x_ptr[offset + i];
     T dy = dy_ptr[offset + i];
-    T alpha = alpha_func(alpha_ptr, channel_num, batch_size, plane_size,
-                         spatial_size, use_plane_size, i);
+    T alpha = alpha_func(alpha_ptr, channel_num, plane_size, spatial_size,
+                         use_plane_size, i);
     if (dx_ptr != nullptr) dx_ptr[offset + i] = (x > 0) ? dy : alpha * dy;
     if (dalpha_ptr != nullptr) dalpha_ptr[offset + i] = (x > 0) ? 0 : x * dy;
   }
@@ -146,8 +142,8 @@ class PreluGradElementwiseFunctor {
     if (spatial_size < CUDA_NUM_THREADS) num_threads = spatial_size;
     CHECK_LE(unroll, CUDA_MAX_NUM_BLOCKS);
     PReluGradElementWiseKernel<T, M><<<unroll, num_threads, 0, stream>>>(
-        x, y, alpha, dy, dx, dalpha, input_shape[1], input_shape[0], plane_size,
-        spatial_size, use_plane_size);
+        x, y, alpha, dy, dx, dalpha, input_shape[1], plane_size, spatial_size,
+        use_plane_size);
   }
 };
 
