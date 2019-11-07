@@ -379,11 +379,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
-    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
-                   "The Var(%s)'s type should be LoDTensor, "
-                   "but the received is %s",
-                   ctx.Inputs("Param").front(),
-                   framework::ToTypeName(param_var->Type()));
 
     using paddle::framework::LoDTensor;
     using paddle::framework::SelectedRows;
@@ -646,19 +641,19 @@ class AdamOpKernel : public framework::OpKernel<T> {
       SparseAdamFunctor<T, CPUAdam> functor(
           beta1, beta2, epsilon, beta1_pow.template data<T>(),
           beta2_pow.template data<T>(), mom1.value().template data<T>(),
-          mom1_out.value().template mutable_data<T>(ctx.GetPlace()),
+          mom1_out.mutable_value()->template mutable_data<T>(ctx.GetPlace()),
           mom2.value().template data<T>(),
-          mom2_out.value().template mutable_data<T>(ctx.GetPlace()),
+          mom2_out.mutable_value()->template mutable_data<T>(ctx.GetPlace()),
           lr.template data<T>(), grad_data, param.value().template data<T>(),
-          param_out.value().template mutable_data<T>(ctx.GetPlace()), rows,
-          row_numel, grad_merge.rows().size(), lazy_mode);
+          param_out.mutable_value()->template mutable_data<T>(ctx.GetPlace()),
+          rows, row_numel, grad_merge.rows().size(), lazy_mode);
 
       std::vector<int64_t> cpurows(grad_merge.rows());
       for (size_t row_index = 0; row_index < row_count; ++row_index) {
         auto sparse_id = cpurows[row_index];
-        auto param_val_idx = param_out->AutoGrownIndex(sparse_id, false);
-        auto moment_1_idx = mom1_out->AutoGrownIndex(sparse_id, true);
-        auto moment_2_idx = mom2_out->AutoGrownIndex(sparse_id, true);
+        auto param_val_idx = param_out.AutoGrownIndex(sparse_id, false);
+        auto moment_1_idx = mom1_out.AutoGrownIndex(sparse_id, true);
+        auto moment_2_idx = mom2_out.AutoGrownIndex(sparse_id, true);
 
         for (size_t offset = 0; offset < row_numel; ++offset) {
           functor.adam_update(moment_1_idx + offset, moment_2_idx + offset,
