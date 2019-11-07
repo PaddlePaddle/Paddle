@@ -138,8 +138,13 @@ inline void MergeVars(const std::string& var_name,
       auto in = EigenVector<float>::Flatten(in_t);
       result.device(*cpu_ctx.eigen_device()) = result + in;
     }
+<<<<<<< HEAD
     //result.device(*cpu_ctx.eigen_device()) =
     //    result / static_cast<float>(vars.size());
+=======
+    result.device(*cpu_ctx.eigen_device()) =
+        result / static_cast<float>(vars.size());
+>>>>>>> 9c8ab43838... add half_async flga
   } else if (var0->IsType<framework::SelectedRows>()) {
     auto& slr0 = var0->Get<framework::SelectedRows>();
     auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
@@ -151,9 +156,15 @@ inline void MergeVars(const std::string& var_name,
       inputs.push_back(&var->Get<framework::SelectedRows>());
     }
     auto dev_ctx = paddle::platform::CPUDeviceContext();
+<<<<<<< HEAD
     //math::scatter::MergeAverage<paddle::platform::CPUDeviceContext, float>
     //    merge_average;
     //merge_average(dev_ctx, inputs, out_slr);
+=======
+    math::scatter::MergeAverage<paddle::platform::CPUDeviceContext, float>
+        merge_average;
+    merge_average(dev_ctx, inputs, out_slr);
+>>>>>>> 9c8ab43838... add half_async flga
 
    math::scatter::MergeAdd<paddle::platform::CPUDeviceContext, float>
    merge_add;

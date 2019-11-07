@@ -177,7 +177,6 @@ class DistributeTranspilerConfig(object):
     print_log = False
     wait_port = True
     half_async = False
-    ada_optimizer = False
     # split the send recv var in runtime
     _runtime_split_send_recv = False
     _sync_mode = True
@@ -724,7 +723,7 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
         else:
-            if self.config.runtime_split_send_recv and self.config.ada_optimizer:
+            if self.config.runtime_split_send_recv and self.config.half_async:
                 program.global_block().append_op(
                     type="send_barrier",
                     inputs={"X": list(input_deps)},
