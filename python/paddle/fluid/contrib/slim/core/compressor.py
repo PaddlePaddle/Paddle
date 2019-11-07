@@ -14,7 +14,7 @@
 
 from ....core import CPUPlace, EOFException
 from .... import compiler
-from ....framework import Variable
+from ....framework import Variable, is_variable
 from .... import io
 from .... import profiler
 from .... import scope_guard
@@ -188,7 +188,7 @@ class Context(object):
         s_time = time.time()
         reader = self.eval_reader
         if sampled_rate:
-            assert (not isinstance(reader, Variable))
+            assert (not is_variable(reader, Variable))
             assert (sampled_rate > 0)
             assert (self.cache_path is not None)
             _logger.info('sampled_rate: {}; cached_id: {}'.format(sampled_rate,

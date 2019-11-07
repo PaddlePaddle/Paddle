@@ -209,6 +209,13 @@ def _dygraph_only_(func):
     return __impl__
 
 
+def is_variable(value, **args):
+    if in_dygraph_mode():
+        return isinstance(value, core.VarBase)
+    else:
+        return isinstance(value, Variable)
+
+
 dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
 

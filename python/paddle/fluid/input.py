@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 import warnings
-from .framework import Variable, in_dygraph_mode
+from .framework import Variable, in_dygraph_mode, is_variable
 from .layer_helper import LayerHelper
 from .data_feeder import convert_dtype
 
@@ -106,7 +106,7 @@ def one_hot(input, depth, allow_out_of_range=False):
         inputs = {'X': input}
         attrs = {'depth': depth}
     else:
-        if not isinstance(depth, Variable):
+        if not is_variable(depth):
             # user attribute 
             inputs = {'X': input}
             attrs = {'depth': depth}

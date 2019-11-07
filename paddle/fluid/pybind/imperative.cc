@@ -38,8 +38,8 @@ namespace pybind {
 namespace py = ::pybind11;
 
 template <typename P>
-extern void SetTensorFromPyArray(framework::Tensor *self, pybind11::array array,
-                                 P place);
+extern void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
+                                 const P &place);
 extern py::array TensorToPyArray(const framework::Tensor &tensor,
                                  bool need_deep_copy = false);
 
@@ -54,37 +54,80 @@ class Layer : public imperative::Layer {
                       Forward, inputs);  // NOLINT
   }
 };
+static void InitTensorForVarBase(imperative::VarBase *self, bool persistable,
+                                 bool is_default, const py::array &array,
+                                 const py::object &obj = py::object()) {
+  new (self) imperative::VarBase(
+      imperative::GetCurrentTracer()->GenerateUniqueName("generated_var_"));
+  self->SetPersistable(persistable);
+  auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
+  if (is_default) {
+    auto place = imperative::GetCurrentTracer()->ExpectedPlace();
+    if (platform::is_cpu_place(place)) {
+      SetTensorFromPyArray<platform::CPUPlace>(
+          tensor, array, boost::get<platform::CPUPlace>(place));
+    } else if (platform::is_gpu_place(place)) {
+      SetTensorFromPyArray<platform::CUDAPlace>(
+          tensor, array, boost::get<platform::CUDAPlace>(place));
+    } else if (platform::is_cuda_pinned_place(place)) {
+      SetTensorFromPyArray<platform::CUDAPinnedPlace>(
+          tensor, array, boost::get<platform::CUDAPinnedPlace>(place));
+    } else {
+      PADDLE_THROW("Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace");
+    }
+  } else {
+    if (py::isinstance<platform::CPUPlace>(obj)) {
+      SetTensorFromPyArray<platform::CPUPlace>(tensor, array,
+                                               obj.cast<platform::CPUPlace>());
+    } else if (py::isinstance<platform::CUDAPlace>(obj)) {
+      SetTensorFromPyArray<platform::CUDAPlace>(
+          tensor, array, obj.cast<platform::CUDAPlace>());
+    } else if (py::isinstance<platform::CUDAPinnedPlace>(obj)) {
+      SetTensorFromPyArray<platform::CUDAPinnedPlace>(
+          tensor, array, obj.cast<platform::CUDAPinnedPlace>());
+    } else {
+      PADDLE_THROW("Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace");
+    }
+  }
+  self->SetType(framework::proto::VarType::LOD_TENSOR);
+  self->SetDataType(tensor->type());
+}
 
-template <typename P>
 static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
                                            const py::kwargs &kwargs) {
   PADDLE_ENFORCE_EQ(kwargs.contains("value"), true, "Missing arguments: value");
-  new (self) imperative::VarBase(
-      (kwargs.contains("name") && py::isinstance<std::string>(kwargs["name"]))
-          ? kwargs["name"].cast<std::string>()
-          : imperative::UniqueNameGenerator("generated_var_").Generate());
-  self->SetPersistable(kwargs.contains("persistable")
-                           ? kwargs["persistable"].cast<bool>()
-                           : false);
-  auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
-  SetTensorFromPyArray<P>(tensor, kwargs["value"].cast<py::array>(),
-                          kwargs["place"].cast<P>());
-  self->SetType(framework::proto::VarType::LOD_TENSOR);
-  self->SetDataType(tensor->type());
+  if (kwargs.contains("place")) {
+    InitTensorForVarBase(self, kwargs.contains("persistable")
+                                   ? kwargs["persistable"].cast<bool>()
+                                   : false,
+                         false, kwargs["value"].cast<py::array>(),
+                         kwargs["place"]);
+  } else {
+    InitTensorForVarBase(self, kwargs.contains("persistable")
+                                   ? kwargs["persistable"].cast<bool>()
+                                   : false,
+                         true, kwargs["value"].cast<py::array>());
+  }
 }
 
 template <typename P>
 static void InitVarBaseFromNumpyWithArg(imperative::VarBase *self,
                                         const py::array &array, const P &place,
-                                        const std::string &name,
                                         bool persistable) {
   // 0: value, 1: place, 2: name 3: persistable
-  new (self) imperative::VarBase(name);
+  new (self) imperative::VarBase(
+      imperative::GetCurrentTracer()->GenerateUniqueName("generated_var_"));
   self->SetPersistable(persistable);
   auto *tensor = self->MutableVar()->GetMutable<framework::LoDTensor>();
   SetTensorFromPyArray<P>(tensor, array, place);
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(tensor->type());
+}
+
+static void InitVarBaseFromNumpyWithArgDefault(imperative::VarBase *self,
+                                               const py::array &array,
+                                               bool persistable) {
+  InitTensorForVarBase(self, persistable, true, array);
 }
 
 static std::string GetTypeName(const imperative::VarBase &var) {
@@ -239,44 +282,15 @@ void BindImperative(py::module *m_ptr) {
                tensor->Resize(framework::make_ddim(dims));
              }
            })
-      .def("__init__", InitVarBaseFromNumpyWithArg<platform::CPUPlace>,
-           py::arg("value"), py::arg("place"),
-           py::arg("name") =
-               imperative::UniqueNameGenerator("generated_var_").Generate(),
+      .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CPUPlace>,
+           py::arg("value"), py::arg("place"), py::arg("persistable") = false)
+      .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CUDAPlace>,
+           py::arg("value"), py::arg("place"), py::arg("persistable") = false)
+      .def("__init__", &InitVarBaseFromNumpyWithArg<platform::CUDAPinnedPlace>,
+           py::arg("value"), py::arg("place"), py::arg("persistable") = false)
+      .def("__init__", &InitVarBaseFromNumpyWithArgDefault, py::arg("value"),
            py::arg("persistable") = false)
-      .def("__init__", InitVarBaseFromNumpyWithArg<platform::CUDAPlace>,
-           py::arg("value"), py::arg("place"),
-           py::arg("name") =
-               imperative::UniqueNameGenerator("generated_var_").Generate(),
-           py::arg("persistable") = false)
-      .def("__init__", InitVarBaseFromNumpyWithArg<platform::CUDAPinnedPlace>,
-           py::arg("value"), py::arg("place"),
-           py::arg("name") =
-               imperative::UniqueNameGenerator("generated_var_").Generate(),
-           py::arg("persistable") = false)
-      .def(
-          "__init__",
-          [](imperative::VarBase &self, const py::kwargs &kwargs) {
-            if (kwargs.contains("place")) {
-              if (py::isinstance<platform::CPUPlace>(kwargs["place"])) {
-                InitVarBaseFromNumpyWithKwargs<platform::CPUPlace>(&self,
-                                                                   kwargs);
-              } else if (py::isinstance<platform::CUDAPlace>(kwargs["place"])) {
-                InitVarBaseFromNumpyWithKwargs<platform::CUDAPlace>(&self,
-                                                                    kwargs);
-              } else if (py::isinstance<platform::CUDAPinnedPlace>(
-                             kwargs["place"])) {
-                InitVarBaseFromNumpyWithKwargs<platform::CUDAPinnedPlace>(
-                    &self, kwargs);
-              } else {
-                PADDLE_THROW(
-                    "place arguments should ONLY be one of "
-                    "CUDAPinnedPlace/CUDAPlace/CPUPlace");
-              }
-            } else {
-              VLOG(6) << "No Place Info passed should Add Default here";
-            }
-          })
+      .def("__init__", &InitVarBaseFromNumpyWithKwargs)
       .def("numpy",
            [](imperative::VarBase &self) -> py::array {
              const auto &tensor =

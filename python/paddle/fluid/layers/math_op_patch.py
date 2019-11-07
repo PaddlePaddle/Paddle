@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, unique_name
+from ..framework import Variable, unique_name, is_variable
 from .layer_function_generator import OpProtoHolder
 from ..initializer import force_init_on_cpu
 
@@ -66,7 +66,7 @@ def monkey_patch_variable():
         return create_tensor(block, value, dtype, shape=[1])
 
     def create_tensor_with_batchsize(ref_var, value, dtype):
-        assert isinstance(ref_var, Variable)
+        assert is_variable(ref_var)
         value = float(value)
         block = current_block(ref_var)
         var = create_new_tmp_var(block, dtype)
@@ -192,7 +192,7 @@ def monkey_patch_variable():
 
             lhs_dtype = safe_get_dtype(self)
 
-            if not isinstance(other_var, Variable):
+            if not is_variable(other_var):
                 if reverse:
                     has_batch_size = False
                     for elem in self.shape:
