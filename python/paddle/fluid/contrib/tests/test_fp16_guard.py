@@ -26,6 +26,7 @@ import copy
 import numpy as np
 
 import paddle.fluid.contrib.mixed_precision as mixed_precision
+from paddle.fluid.transpiler.details import program_to_code
 
 
 def resnet_cifar10(input, depth=32):
@@ -167,8 +168,11 @@ class TestAmpGuard(unittest.TestCase):
             optimizer.minimize(avg_cost)
             loss_scaling = optimizer.get_loss_scaling()
             scaled_loss = optimizer.get_scaled_loss()
+        print("test_decorate_half:")
+        program_to_code(train_program)
 
-    def test_decorate_precision():
+    """
+    def test_decorate_precision(self):
         train_program = fluid.Program()
         startup_prog = fluid.Program()
         train_program.random_seed = 123
@@ -193,6 +197,7 @@ class TestAmpGuard(unittest.TestCase):
             optimizer.minimize(avg_cost)
             loss_scaling = optimizer.get_loss_scaling()
             scaled_loss = optimizer.get_scaled_loss()
+    """
 
 
 if __name__ == '__main__':

@@ -22,7 +22,7 @@ from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
 from .fp16_utils import rewrite_program_by_decorated_type, rewrite_program_by_amp_lists, DecorateType
 
-from paddle.fluid.framework import g_op_precision_guard_attr, PrecisionGuardType
+from paddle.fluid.framework import g_op_precision_guard_attr, PrecisionGuardType, _switch_precision_attr
 from ... import wrapped_decorator
 
 __all__ = ["decorate", "half_precision_guard", "precision_guard"]
@@ -232,13 +232,6 @@ class OptimizerWithMixedPrecison(object):
         optimize_ops = self.apply_gradients(scaled_params_grads)
 
         return optimize_ops, scaled_params_grads
-
-
-def _switch_precision_attr(attr):
-    global g_op_precision_guard_attr
-    ex = g_op_precision_guard_attr
-    g_op_precision_guard_attr = attr
-    return ex
 
 
 @wrapped_decorator.signature_safe_contextmanager

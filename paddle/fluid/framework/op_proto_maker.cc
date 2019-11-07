@@ -87,6 +87,10 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
                                     "Callstack for Op Creatation.")
       .SetDefault({});
 
+  AddAttr<int>(OpPrecisionGuardAttrName(),
+               "Precision guard attr, used for mixed precision.")
+      .SetDefault(-1);
+
   Validate();
 }
 

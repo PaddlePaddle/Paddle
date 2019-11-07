@@ -18,12 +18,14 @@ from ... import core
 from ... import layers
 from ... import framework
 
-from enum import Enum
+from enum import IntEnum
 
 __all__ = ["DecorateType"]
 
+from paddle.fluid.framework import PrecisionGuardType
 
-class DecorateType(Enum):
+
+class DecorateType(IntEnum):
     # Use black-white-gray list method to convert progrom from fp32 to fp16.
     # It's the default method of mixed precision.
     black_white_list = 0
@@ -192,12 +194,12 @@ def _is_in_black_varnames(op, amp_lists):
 
 def _set_op_precision_guard_attr(ops, guard_type):
     op_maker = core.op_proto_and_checker_maker
-    precision_role_name = op_maker.kOpPrecisionAttrName()
-    role_type = op.attr[precision_role_name]
+    precision_role_name = op_maker.kOpPrecisionGuardAttrName()
     for op in ops:
-        if role_type is None:
-            op.attr[precision_role_name] = guard_type
-            continue
+        if op.attr(precision_role_name) < 0:
+            print("_set_op_precision_guard_attr:", op.type,
+                  op.attr(precision_role_name))
+            op._set_attr(precision_role_name, guard_type)
     return
 
 
@@ -225,13 +227,13 @@ def _get_black_white_list(program):
     white_op_set = set()
 
     op_maker = core.op_proto_and_checker_maker
-    precision_role_name = op_maker.kOpPrecisionAttrName()
+    precision_role_name = op_maker.kOpPrecisionGuardAttrName()
     for op in ops:
-        role_type = op.attr[precision_role_name]
-        if role_type is None:
+        if op.attr(precision_role_name) < 0:
             black_op_set.add(op)
             continue
 
+        role_type = op.attr(precision_role_name)
         if role_type == PrecisionGuardType.precision:
             black_op_set.add(op)
         elif role_type == PrecisionGuardType.half:

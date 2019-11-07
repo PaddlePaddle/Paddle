@@ -37,7 +37,7 @@ from . import unique_name
 import paddle.version as fluid_version
 import warnings
 
-from enum import Enum
+from enum import IntEnum
 
 __all__ = [
     'Program',
@@ -1675,11 +1675,12 @@ class OpProtoHolder(object):
             core.op_proto_and_checker_maker.kOpRoleAttrName(),
             core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
             core.op_proto_and_checker_maker.kOpNameScopeAttrName(),
-            core.op_proto_and_checker_maker.kOpCreationCallstackAttrName()
+            core.op_proto_and_checker_maker.kOpCreationCallstackAttrName(),
+            core.op_proto_and_checker_maker.kOpPrecisionGuardAttrName()
         }
 
 
-class PrecisionGuardType(Enum):
+class PrecisionGuardType(IntEnum):
     # Use original precision and not covert to other precision.
     precision = 0
 
@@ -1688,6 +1689,13 @@ class PrecisionGuardType(Enum):
 
 
 g_op_precision_guard_attr = None
+
+
+def _switch_precision_attr(attr):
+    global g_op_precision_guard_attr
+    ex = g_op_precision_guard_attr
+    g_op_precision_guard_attr = attr
+    return ex
 
 
 class Operator(object):
@@ -1790,7 +1798,9 @@ class Operator(object):
 
             global g_op_precision_guard_attr
             if g_op_precision_guard_attr is not None:
-                presion_role_name = op_maker.kOpPrecisionAttrName()
+                print("framework class operator:", type,
+                      g_op_precision_guard_attr)
+                presion_role_name = op_maker.kOpPrecisionGuardAttrName()
                 op_attrs[presion_role_name] = g_op_precision_guard_attr
 
             self.desc.set_type(type)
