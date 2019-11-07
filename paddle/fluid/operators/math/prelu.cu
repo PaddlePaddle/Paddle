@@ -90,7 +90,7 @@ void PreluChannelWiseDirectCUDAFunctor<T>::operator()(
   size_t num_threads = CUDA_NUM_THREADS;
   if (spatial_size < CUDA_NUM_THREADS) num_threads = spatial_size;
   CHECK_LE(unroll, CUDA_MAX_NUM_BLOCKS);
-  PReluChannelWiseKernel<<<unroll, CUDA_NUM_THREADS, 0, stream>>>(
+  PReluChannelWiseKernel<<<unroll, num_threads, 0, stream>>>(
       input, alpha, output, input_shape[1], plane_size, spatial_size,
       use_spatial_size);
 }
@@ -111,7 +111,7 @@ void PreluElementWiseDirectCUDAFunctor<T>::operator()(
   size_t num_threads = CUDA_NUM_THREADS;
   if (spatial_size < CUDA_NUM_THREADS) num_threads = spatial_size;
   CHECK_LE(unroll, CUDA_MAX_NUM_BLOCKS);
-  PReluElementWiseKernel<<<unroll, CUDA_NUM_THREADS, 0, stream>>>(
+  PReluElementWiseKernel<<<unroll, num_threads, 0, stream>>>(
       input, alpha, output, plane_size, spatial_size, use_spatial_size);
 }
 
