@@ -28,16 +28,16 @@ class ElementwiseMulOp : public framework::OperatorWithKernel {
   using Tensor = framework::Tensor;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of elementwise op should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Y"),
-                   "Input(Y) of elementwise op should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of elementwise op should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                      "Input(X) of elementwise op should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
+                      "Input(Y) of elementwise op should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) of elementwise op should not be null.");
 
-    PADDLE_ENFORCE(
-        ctx->GetInputsVarType("Y").front() ==
-            framework::proto::VarType::LOD_TENSOR,
+    PADDLE_ENFORCE_EQ(
+        ctx->GetInputsVarType("Y").front(),
+        framework::proto::VarType::LOD_TENSOR,
         "The input var's type should be LoDTensor, but the received is %s [%s]",
         ctx->GetInputsVarType("Y").front(), ctx->Inputs("Y").front());
 
@@ -45,14 +45,25 @@ class ElementwiseMulOp : public framework::OperatorWithKernel {
         framework::proto::VarType::LOD_TENSOR) {
       auto x_dim = ctx->GetInputDim("X");
       auto y_dim = ctx->GetInputDim("Y");
-      PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
-                        "Rank of first input must >= rank of second input.");
+      PADDLE_ENFORCE_GE(
+          x_dim.size(), y_dim.size(),
+          "ShapeError: the dimension of input X must greater than or equal to "
+          "the one of input Y. But received: the shape of input X = [%s], the "
+          "dimension of input X = %d, the shape of input Y = [%s], the "
+          "dimension of input Y = %d",
+          x_dim, x_dim.size(), y_dim, y_dim.size());
     } else if (ctx->GetInputsVarType("X").front() ==
                framework::proto::VarType::SELECTED_ROWS) {
-      PADDLE_ENFORCE((ctx->GetInputDim("Y").size() == 1u) &&
-                         (ctx->GetInputDim("Y")[0] == 1),
-                     "For elementwise_op, if X is Sparse, "
-                     "Y must be scalar.");
+      PADDLE_ENFORCE_EQ(
+          ctx->GetInputDim("Y").size(), 1u,
+          "ShapeError: For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
+          "), Y must be scalar. But reveived the dimension of Y = %s",
+          ctx->GetInputDim("Y").size());
+      PADDLE_ENFORCE_EQ(
+          ctx->GetInputDim("Y")[0], 1,
+          "ShapeError: For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
+          "), Y must be scalar. But reveived the first dimension of Y = %s",
+          ctx->GetInputDim("Y")[0]);
     } else {
       PADDLE_THROW("X's type[%s] is not supported by elementwise_op.",
                    ctx->GetInputsVarType("X").front());
