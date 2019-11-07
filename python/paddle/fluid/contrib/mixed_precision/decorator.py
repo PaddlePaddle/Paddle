@@ -292,19 +292,18 @@ def decorate(optimizer,
             ops, param_grads = mp_optimizer.minimize(loss)
             scaled_loss = mp_optimizer.get_scaled_loss()
     """
-    if decorate_type != DecorateType.black_white_list and amp_lists is not None:
-        assert False, "amp_list only used under DecorateType.black_white_list type"
-    if decorate_type == DecorateType.black_white_list and amp_list is none:
+    if amp_lists is None:
         amp_lists = AutoMixedPrecisionLists()
-    elif decorate_type == DecorateType.half:
-        get_half_lists()
-    elif decorate_type == DecorateType.presion:
-        get_precision_lists()
-    elif decorate_type == DecorateType.user_defined:
-        get_user_defined_lists()
 
     mp_optimizer = OptimizerWithMixedPrecison(
-        optimizer, amp_lists, init_loss_scaling, use_dynamic_loss_scaling,
-        incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio)
+        optimizer,
+        amp_lists,
+        init_loss_scaling,
+        use_dynamic_loss_scaling,
+        incr_every_n_steps,
+        decr_every_n_nan_or_inf,
+        incr_ratio,
+        decr_ratio,
+        decorate_type=decorate_type)
 
     return mp_optimizer
