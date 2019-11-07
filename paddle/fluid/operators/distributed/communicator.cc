@@ -1006,6 +1006,7 @@ void GeoSgdCommunicator::RpcRecv(const std::string &var_name,
 }
 
 void GeoSgdCommunicator::UpdateOldScopeDense(const std::string &var_name) {
+  auto before_send_dense = GetCurrentUS();
   auto origin_var_name = DeltaVarToVar(var_name);
   auto *var_y = old_scope_->FindVar(origin_var_name);
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
@@ -1020,10 +1021,14 @@ void GeoSgdCommunicator::UpdateOldScopeDense(const std::string &var_name) {
             var_y_tensor.mutable_data<float>(var_y_tensor.place()),
             var_z_tensor->mutable_data<float>(var_z_tensor->place()),
             var_y_tensor.mutable_data<float>(var_y_tensor.place()));
+  auto after_run_geo = GetCurrentUS();
+  VLOG(0) << "run update delta var dense " << var_name << " use time "
+          << after_run_geo - before_run_geo;
 }
 
 void GeoSgdCommunicator::UpdateOldScopeSparse(
     const std::string &var_name, const std::string &splited_var_name) {
+  auto before_send_dense = GetCurrentUS();
   auto origin_var_name = DeltaVarToVar(var_name);
   auto *var_y = old_scope_.get()->FindVar(origin_var_name);
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
@@ -1045,7 +1050,7 @@ void GeoSgdCommunicator::UpdateOldScopeSparse(
     blas.VADD(row_numel, y_val, z_val, z_val);
   }
   auto after_run_geo = GetCurrentUS();
-  VLOG(0) << "run  send var " << var_name << " use time "
+  VLOG(0) << "run update delta var sparse " << splited_var_name << " use time "
           << after_run_geo - before_run_geo;
 }
 
