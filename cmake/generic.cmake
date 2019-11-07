@@ -390,7 +390,7 @@ function(cc_test_run TARGET_NAME)
             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true, MKLDNN_VERBOSE=2)
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
     # No unit test should exceed 10 minutes.
     set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
   endif()

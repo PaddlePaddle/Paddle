@@ -554,8 +554,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
             : (exclude_padding
                    ? mkldnn::algorithm::pooling_avg_exclude_padding
                    : mkldnn::algorithm::pooling_avg_include_padding),
-        src_md, dst_md, strides, ksize, mkldnn_paddings[0], mkldnn_paddings[1],
-        mkldnn::padding_kind::zero);
+        src_md, dst_md, strides, ksize, mkldnn_paddings[0], mkldnn_paddings[1]);
   }
 
   PoolingMKLDNNHandler(
@@ -586,7 +585,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
                    ? mkldnn::algorithm::pooling_avg_exclude_padding
                    : mkldnn::algorithm::pooling_avg_include_padding),
         diff_src_md, diff_dst_md, strides, ksize, mkldnn_paddings[0],
-        mkldnn_paddings[1], mkldnn::padding_kind::zero);
+        mkldnn_paddings[1]);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireWorkspaceMemory(void) {
@@ -1022,15 +1021,14 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
         auto mkldnn_paddings = ToMkldnnPadding(paddings);
 
         auto conv_desc =
-            bias
-                ? typename forward_t::desc(
-                      fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
-                      weights, *bias, dst, stride_dims, mkldnn_paddings[0],
-                      mkldnn_paddings[1], mkldnn::padding_kind::zero)
-                : typename forward_t::desc(
-                      fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
-                      weights, dst, stride_dims, mkldnn_paddings[0],
-                      mkldnn_paddings[1], mkldnn::padding_kind::zero);
+            bias ? typename forward_t::desc(
+                       fwd_prop_kind, convolutional_algorithm<forward_t>::T,
+                       src, weights, *bias, dst, stride_dims,
+                       mkldnn_paddings[0], mkldnn_paddings[1])
+                 : typename forward_t::desc(
+                       fwd_prop_kind, convolutional_algorithm<forward_t>::T,
+                       src, weights, dst, stride_dims, mkldnn_paddings[0],
+                       mkldnn_paddings[1]);
 
         mkldnn::primitive_attr conv_attr =
             CreatePostOps(fuse_activation, fuse_alpha, fuse_beta,

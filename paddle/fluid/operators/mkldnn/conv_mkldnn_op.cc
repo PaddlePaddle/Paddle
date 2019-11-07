@@ -471,7 +471,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
                           "Bias must only have 1 dimension, i.e. X");
       }
-      
+
       std::vector<int> strides_temp = ctx.Attr<std::vector<int>>("strides");
       std::vector<int64_t> strides(begin(strides_temp), end(strides_temp));
 
@@ -856,8 +856,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     // create backward convolution weights primitive descriptor
     auto conv_bwd_weights_desc = mkldnn::convolution_backward_weights::desc(
-        mkldnn::convolution_direct, src_md, diff_weights_md, diff_dst_md,
-        strides, mkldnn_paddings[0], mkldnn_paddings[1]);
+        mkldnn::algorithm::convolution_direct, src_md, diff_weights_md,
+        diff_dst_md, strides, mkldnn_paddings[0], mkldnn_paddings[1]);
 
     auto conv_bwd_weights_pd =
         std::make_shared<mkldnn::convolution_backward_weights::primitive_desc>(
@@ -865,8 +865,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     // create backward convolution data primitive descriptor
     auto conv_bwd_data_desc = mkldnn::convolution_backward_data::desc(
-        mkldnn::convolution_direct, diff_src_md, weights_md, diff_dst_md,
-        strides, mkldnn_paddings[0], mkldnn_paddings[1]);
+        mkldnn::algorithm::convolution_direct, diff_src_md, weights_md,
+        diff_dst_md, strides, mkldnn_paddings[0], mkldnn_paddings[1]);
 
     auto conv_bwd_data_pd =
         std::make_shared<mkldnn::convolution_backward_data::primitive_desc>(

@@ -89,7 +89,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto filter_data_dims =
         framework::slice_ddim(filter_dims, 2, filter_dims.size());
 
-    auto ksize = framework::vectorize<int>(filter_data_dims);
+    auto ksize = framework::vectorize(filter_data_dims);
 
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              data_dims, strides, ksize);
