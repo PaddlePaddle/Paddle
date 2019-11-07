@@ -45,42 +45,37 @@ std::string CodeGenerator::GenerateCode(
 // we get the parameter list code for the expression information
 std::string CodeGenerator::EmitParameters(
     std::vector<OperationExpression> expressions, std::string dtype) {
-  std::stringstream ret;
-
   std::set<int> input_ids;
   std::set<int> output_ids;
-
+  // Remove the reptead id and get a ordered list.
   for (size_t i = 0; i < expressions.size(); i++) {
-    std::vector<int> tmp_input = expressions[i].GetInputIds();
-    for (size_t j = 0; j < tmp_input.size(); j++) {
-      int id = tmp_input[j];
+    for (auto id : expressions[i].GetInputIds()) {
       input_ids.insert(id);
     }
-    int tmp_output = expressions[i].GetOutputIds()[0];
-    output_ids.insert(tmp_output);
-  }
-
-  std::set<int>::iterator it = input_ids.begin();
-  while (it != input_ids.end()) {
-    int var_index = *it;
-    if (output_ids.find(var_index) != output_ids.end()) {
-      input_ids.erase(it++);
-    } else {
-      it++;
+    for (auto id : expressions[i].GetOutputIds()) {
+      output_ids.insert(id);
     }
   }
 
+  // If a id is in the input and output list at the same time, then remove it
+  // from the input list.
+  for (auto iter = input_ids.begin(); iter != input_ids.end();) {
+    if (output_ids.find(*iter) != output_ids.end()) {
+      input_ids.erase(iter++);
+    } else {
+      iter++;
+    }
+  }
+
+  std::stringstream ret;
   ret << "int N, ";
-  for (it = input_ids.begin(); it != input_ids.end(); it++) {
-    int var_index = *it;
-    ret << dtype << R"(* var)" << var_index;
-    ret << ", ";
+  for (auto iter = input_ids.begin(); iter != input_ids.end(); iter++) {
+    ret << dtype << "* " << VarName(*iter) << ", ";
   }
 
   size_t count_index = 0;
-  for (it = output_ids.begin(); it != output_ids.end(); it++) {
-    int var_index = *it;
-    ret << dtype << R"(* var)" << var_index;
+  for (auto iter = output_ids.begin(); iter != output_ids.end(); iter++) {
+    ret << dtype << "* " << VarName(*iter);
     if (count_index != output_ids.size() - 1) {
       ret << ", ";
     }

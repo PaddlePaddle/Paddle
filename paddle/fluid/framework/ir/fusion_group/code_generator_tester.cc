@@ -117,7 +117,7 @@ TEST(code_generator, elementwise) {
   }
 
   int n = cpu_tensors[0].numel();
-  TestMain("fused_elementwise_kernel", expressions, cpu_tensors, n, input_ids,
+  TestMain("fused_elementwise_0", expressions, cpu_tensors, n, input_ids,
            output_ids);
 
   auto cpu_kernel_handler = [&](float* var0, float* var1, float* var3,
@@ -136,6 +136,57 @@ TEST(code_generator, elementwise) {
         cpu_tensors[0].data<float>(), cpu_tensors[1].data<float>(),
         cpu_tensors[3].data<float>(), cpu_tensors[5].data<float>(), i);
     PADDLE_ENFORCE_LT(fabs(cpu_tensors[8].data<float>()[i] - result), 1.E-05);
+  }
+}
+
+TEST(code_generator, elementwise_grad) {
+  // The var order: t0, t1, t2, t3, t0', t1', t2', t3'
+  // t2 = t0 * t1
+  // t3 = relu(t2)
+  // t2' = relu_grad(t2, t3, t3')
+  // t0', t1' = elementwise_mul_grad(t0, t1, t2, t2')
+  fusion_group::OperationExpression exp1("relu_grad", {2, 3, 7}, {6});
+  fusion_group::OperationExpression exp2("elementwise_mul_grad", {0, 1, 2, 6},
+                                         {4, 5});
+
+  std::vector<fusion_group::OperationExpression> expressions = {exp1, exp2};
+
+  // Prepare CPU tensors
+  std::vector<paddle::framework::LoDTensor> cpu_tensors(8);
+  std::vector<int> input_ids = {0, 1, 2, 3, 7};
+  std::vector<int> output_ids = {4, 5, 6};
+
+  auto dims = paddle::framework::make_ddim(
+      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+  for (size_t i = 0; i < cpu_tensors.size(); ++i) {
+    cpu_tensors[i].mutable_data<float>(dims, paddle::platform::CPUPlace());
+  }
+
+  int n = cpu_tensors[0].numel();
+  TestMain("fused_elementwise_grad_0", expressions, cpu_tensors, n, input_ids,
+           output_ids);
+
+  auto cpu_kernel_handler = [&](float* var0, float* var1, float* var2,
+                                float* var3, float* var7,
+                                int i) -> std::vector<float> {
+    float var6_i = var2[i] > 0 ? var7[i] : 0;
+    float var4_i = var6_i * var1[i];
+    float var5_i = var6_i * var0[i];
+    return std::vector<float>{var4_i, var5_i, var6_i};
+  };
+
+  // Check the results
+  for (int i = 0; i < n; i++) {
+    std::vector<float> results = cpu_kernel_handler(
+        cpu_tensors[0].data<float>(), cpu_tensors[1].data<float>(),
+        cpu_tensors[2].data<float>(), cpu_tensors[3].data<float>(),
+        cpu_tensors[7].data<float>(), i);
+    PADDLE_ENFORCE_LT(fabs(cpu_tensors[4].data<float>()[i] - results[0]),
+                      1.E-05);
+    PADDLE_ENFORCE_LT(fabs(cpu_tensors[5].data<float>()[i] - results[1]),
+                      1.E-05);
+    PADDLE_ENFORCE_LT(fabs(cpu_tensors[6].data<float>()[i] - results[2]),
+                      1.E-05);
   }
 }
 #endif

@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <iostream>
 #include <set>
 #include <sstream>
 #include <string>
@@ -29,6 +28,8 @@ namespace ir {
 namespace fusion_group {
 
 static std::vector<std::string> replaced_element_in_order = {"@", "$"};
+
+static std::string VarName(int index) { return "var" + std::to_string(index); }
 
 class OperationExpression {
  public:
@@ -45,8 +46,8 @@ class OperationExpression {
   std::string GetExpression();
 
   // TODO(wangchao): make offset more flexible we add stride and basic offset
-  std::string GetRHSTemplate(size_t i = 0);
-  std::string GetLHSTemplate(size_t i = 0);
+  std::string GetRHS(size_t i = 0);
+  std::string GetLHS(size_t i = 0);
 
  private:
   std::string op_;

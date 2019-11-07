@@ -56,44 +56,57 @@ void OperationMap::Insert(int type, int num_operands, std::string op_type,
 void OperationMap::InsertUnaryElementwiseOperations() {
   int type = 0;
   int num_oprands = 1;
+  // For unary elementwise operations:
+  //  ${0} - x
+  //  ${1} - out
+  //  ${2} - dout
 
   // relu:
   //  out = f(x) = x > 0 ? x : 0
   //  dx = dout * (out > 0 ? 1 : 0) = dout * (x > 0 ? 1 : 0)
-  Insert(type, num_oprands, "relu", "real_max(var@, 0)", {"var@ > 0 ? 1 : 0"});
+  Insert(type, num_oprands, "relu", "real_max(${0}, 0)",
+         {"${0} > 0 ? ${2} : 0"});
   // sigmoid:
   //  out = f(x) = 1.0 / (1.0 + exp(-x))
   //  dx = dout * out * (1 - out)
-  Insert(type, num_oprands, "sigmoid", "1.0 / (1.0 + real_exp(-var@))", {});
+  Insert(type, num_oprands, "sigmoid", "1.0 / (1.0 + real_exp(- ${0}))",
+         {"${2} * ${1} * (1.0 - ${1})"});
   // tanh:
   //  out = f(x) = 2.0 / (1.0 + exp(-2.0 * x)) - 1.0;
   //  dx = dout * (1 - out * out)
-  Insert(type, num_oprands, "tanh", "2.0 / (1.0 + real_exp(-2.0 * var@)) - 1.0",
-         {});
+  Insert(type, num_oprands, "tanh", "2.0 / (1.0 + real_exp(-2.0 * ${0})) - 1.0",
+         {"${2} * (1.0 - ${1} * ${1})"});
 }
 
 void OperationMap::InsertBinaryElementwiseOperations() {
   int type = 0;
   int num_oprands = 2;
+  // For binary elementwise oprations:
+  //  ${0} - x
+  //  ${1} - y
+  //  ${2} - out
+  //  ${3} - dout
 
   // elementwise_add:
   //  out = x + y
   //  dx = dout * 1
   //  dy = dout * 1
-  Insert(type, num_oprands, "elementwise_add", "var@ + var$", {"1", "1"});
+  Insert(type, num_oprands, "elementwise_add", "${0} + ${1}", {"${3}", "${3}"});
   // elementwise_sub:
   //  out = x - y
   //  dx = dout * 1
   //  dy = dout * (-1)
-  Insert(type, num_oprands, "elementwise_sub", "var@ - var$", {"1", "-1"});
+  Insert(type, num_oprands, "elementwise_sub", "${0} - ${1}",
+         {"${3}", "- ${3}"});
   // elementwise_mul:
   //  out = x * y
   //  dx = dout * y
   //  dy = dout * x
-  Insert(type, num_oprands, "elementwise_mul", "var@ * var$", {"var$", "var@"});
-  Insert(type, num_oprands, "elementwise_div", "var@ / var$", {});
-  Insert(type, num_oprands, "elementwise_min", "real_min(var@, var$)", {});
-  Insert(type, num_oprands, "elementwise_max", "real_max(var@, var$)", {});
+  Insert(type, num_oprands, "elementwise_mul", "${0} * ${1}",
+         {"${3} * ${1}", "${3} * ${0}"});
+  Insert(type, num_oprands, "elementwise_div", "${0} / ${1}", {});
+  Insert(type, num_oprands, "elementwise_min", "real_min(${0}, ${1})", {});
+  Insert(type, num_oprands, "elementwise_max", "real_max(${0}, ${1})", {});
 }
 
 }  // namespace fusion_group
