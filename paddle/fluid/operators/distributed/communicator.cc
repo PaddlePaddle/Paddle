@@ -527,10 +527,10 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
   std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
   auto before_run_send = GetCurrentUS();
 
-  SparseIdsMap deduplication_for_ids;
+  std::shared_ptr<SparseIdsMap> deduplication_for_ids = std::make_shared<SparseIdsMap>();
   for (size_t i = 0; i < sparse_var_tables.size(); i++) {
-    if (deduplication_for_ids.find(sparse_var_names[i]) ==
-        deduplication_for_ids.end()) {
+    if (deduplication_for_ids->find(sparse_var_names[i]) ==
+        deduplication_for_ids->end()) {
       auto *var = scope.FindVar(sparse_var_names[i]);
       auto var_tensor = var->Get<framework::LoDTensor>();
       int element_number = var_tensor.numel();
@@ -543,18 +543,18 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
                                       absolute_section_[sparse_var_tables[i]]);
         tmp_ids[ep_idx].push_back(var_mutable_data[j]);
       }
-      deduplication_for_ids.insert(
+      deduplication_for_ids->insert(
           std::pair<std::string, std::vector<std::vector<int64_t>>>(sparse_var_names[i], tmp_ids));
     }
     if (ids_table->find(sparse_var_tables[i]) == ids_table->end()) {
       // create empty set for new sparse var
-      ids_table->insert(std::pair<std::string, std::vector<int64_t>>(
-          sparse_var_tables[i], deduplication_for_ids[sparse_var_names[i]]));
+      ids_table->insert(std::pair<std::string, std::vector<std::vector<int64_t>>>(
+          sparse_var_tables[i], deduplication_for_ids->at(sparse_var_names[i])));
     } else {
       ids_table->at(sparse_var_tables[i])
           .insert(ids_table->at(sparse_var_tables[i]).end(),
-                  deduplication_for_ids[sparse_var_names[i]].begin(),
-                  deduplication_for_ids[sparse_var_names[i]].end());
+                  deduplication_for_ids->at(sparse_var_names[i]).begin(),
+                  deduplication_for_ids->at(sparse_var_names[i]).end());
     }
   }
   need_push_queue_->Push(ids_table);
