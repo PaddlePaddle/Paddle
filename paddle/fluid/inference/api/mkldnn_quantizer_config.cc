@@ -36,7 +36,7 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["prior_box"]["Variances"] = ScaleAlgo::NONE;
 
   rules_["transpose2"]["X"] = ScaleAlgo::KL;
-  rules_["transpose2"]["Out"] = ScaleAlgo::KL;
+  rules_["transpose2"]["Out"] = ScaleAlgo::NONE;
 }
 
 ScaleAlgo MkldnnQuantizerConfig::scale_algo(

@@ -365,8 +365,7 @@ void CPUQuantizePass::QuantizeTranspose(Graph* graph) const {
     auto* transpose_op_desc = transpose_op->Op();
 
     // skip if should not be quantized
-    if (!transpose_op_desc->HasAttr("use_quantizer") ||
-        !boost::get<bool>(transpose_op_desc->GetAttr("use_quantizer"))) {
+    if (!transpose_op_desc->GetAttrIfExists<bool>("use_quantizer")) {
       return;
     }
     GET_IR_NODE_FROM_SUBGRAPH(prev_op, prev_op, transpose_pattern);
@@ -376,8 +375,7 @@ void CPUQuantizePass::QuantizeTranspose(Graph* graph) const {
     // in future we should checked if next_op is quantized
     // transpose INT8 schould be used only between INT8 operators
     if (!(prev_op->Op()->Type() == "dequantize" ||
-          (prev_op->Op()->HasAttr("use_quantizer") &&
-           boost::get<bool>(prev_op->Op()->GetAttr("use_quantizer"))))) {
+          (prev_op->Op()->GetAttrIfExists<bool>("use_quantizer")))) {
       return;
     }
 

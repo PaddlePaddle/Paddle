@@ -678,7 +678,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
       auto dst_mdp = mkldnn::memory::primitive_desc{
           Axis2MemoryDesc(dims_, axis_), engine_};
 
-      auto dst_data = output->mutable_data<T>(place);
+      auto dst_data = output->mutable_data<T>(place, dst_mdp.get_size());
 
       mem_p = std::make_shared<mkldnn::memory>(dst_mdp, dst_data);
       dev_ctx_.SetBlob(local_key, mem_p);
