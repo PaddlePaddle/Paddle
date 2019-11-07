@@ -82,9 +82,8 @@ struct AlphaFunctor<T, prelu::ElementWiseMode> {
     if (use_spatial_size) {
       return alpha[idx];
     }
-    size_t channel_index =
-        blockIdx.x %
-        batch_size return alpha[channel_index * spatial_size + idx];
+    size_t channel_index = blockIdx.x % batch_size;
+    return alpha[channel_index * spatial_size + idx];
   }
 };
 
