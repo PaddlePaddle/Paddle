@@ -17,10 +17,10 @@ from ... import default_startup_program
 from ... import layers
 from ... import unique_name
 from . import fp16_utils
-from .fp16_utils import update_loss_scaling, rewrite_program
+from .fp16_utils import update_loss_scaling, rewrite_program_by_decorated_type, rewrite_program_by_amp_lists
 from .fp16_utils import update_role_var_grad
 from .fp16_lists import AutoMixedPrecisionLists
-from paddle.fluid.framework import g_op_presion_guard_attr,PrecisionGuardType
+from paddle.fluid.framework import g_op_presion_guard_attr, PrecisionGuardType
 from paddle.fuild.wrapped_decorator import signature_safe_contextmanager
 
 __all__ = ["decorate"]
@@ -52,15 +52,23 @@ class OptimizerWithMixedPrecison(object):
 
     """
 
-    def __init__(self, optimizer, amp_lists, init_loss_scaling,
-                 use_dynamic_loss_scaling, incr_every_n_steps,
-                 decr_every_n_nan_or_inf, incr_ratio, decr_ratio):
+    def __init__(self,
+                 optimizer,
+                 amp_lists,
+                 init_loss_scaling,
+                 use_dynamic_loss_scaling,
+                 incr_every_n_steps,
+                 decr_every_n_nan_or_inf,
+                 incr_ratio,
+                 decr_ratio,
+                 decorate_type=DecorateType.black_white_list):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
         self._param_grads = None
         self._train_program = default_main_program()
         self._startup_prog = default_startup_program()
         self._scaled_loss = None
+        self._decorate_type = decorate_type
         self._loss_scaling = layers.create_global_var(
             name=unique_name.generate("loss_scaling"),
             shape=[1],
@@ -133,7 +141,12 @@ class OptimizerWithMixedPrecison(object):
             A list of (param, grad), which is a tuple of a parameter and its 
             gradient respectively, and the scaled loss.
         """
-        rewrite_program(self._train_program, self._amp_lists)
+        if self._decorate_type != DecorateType.black_white_list:
+            rewrite_program_by_decorated_type(self._train_program,
+                                              self._decorate_type)
+        else:
+            rewrite_program_by_amp_lists(self._train_program, self._amp_lists)
+
         self._scaled_loss = loss * self._loss_scaling
         self._params_grads = self._optimizer.backward(
             self._scaled_loss, startup_program, parameter_list, no_grad_set,
@@ -214,11 +227,13 @@ class OptimizerWithMixedPrecison(object):
 
         return optimize_ops, scaled_params_grads
 
+
 def _switch_precision_attr(attr):
     global g_op_precision_guard_attr
     ex = g_op_precision_guard_attr
     g_op_precision_guard_attr = attr
     return ex
+
 
 @signature_safe_contextmanager
 def half_precision_guard():
@@ -226,11 +241,13 @@ def half_precision_guard():
     yield
     _switch_precision_attr(ex)
 
+
 @signature_safe_contextmanager
 def presion_guard():
     ex = _switch_precision_attr(PrecisionGuardType.precision)
     yield
     _switch_precision_attr(ex)
+
 
 def decorate(optimizer,
              amp_lists=None,

@@ -19,6 +19,21 @@ from ... import layers
 from ... import framework
 
 
+class DecorateType(Enum):
+    # Use black-white-gray list method to convert progrom from fp32 to fp16.
+    # It's the default method of mixed precision.
+    black_white_list = 0
+
+    # All the program use half precision but the operators guarded with presion_guard.
+    half = 1
+
+    # All the program use original precision but the operators guarded with half_precision_guard.
+    precision = 2
+
+    # User defines which operator will use half and which operator will use full precision.
+    user_defined = 3
+
+
 def append_cast_op(i, o, prog):
     """
     Append a cast op in a given Program to cast input `i` to data type `o.dtype`.
@@ -171,7 +186,83 @@ def _is_in_black_varnames(op, amp_lists):
     return False
 
 
-def rewrite_program(main_prog, amp_lists):
+def _set_op_precision_guard_attr(ops, guard_type):
+    precision_role_name = op_maker.kOpPrecisionAttrName()
+    role_type = op.attr[precision_role_name]
+    for op in ops:
+        if role_type is None:
+            op.attr[precision_role_name] = guard_type
+            continue
+    return
+
+
+def _add_op_precision_attr(program, decorate_type):
+    if decorate_type == DecorateType.user_defined:
+        return
+
+    block = program.global_block()
+    ops = block.ops
+    if decorate_type == DecorateType.half:
+        _set_op_precision_guard_attr(ops, PrecisionGuardType.half)
+        return
+
+    if decorate_type == DecorateType.precision:
+        _set_op_precision_guard_attr(ops, PrecisionGuardType.precision)
+        return
+
+    assert False, "not supported decorate_type:{}".format(decorate_type)
+
+
+def _get_black_white_list(program):
+    block = program.global_block()
+    ops = block.ops
+    black_op_set = set()
+    white_op_set = set()
+
+    precision_role_name = op_maker.kOpPrecisionAttrName()
+    for op in ops:
+        role_type = op.attr[precision_role_name]
+        if role_type is None:
+            black_op_set.add(op)
+            continue
+
+        if role_type == PrecisionGuardType.precision:
+            black_op_set.add(op)
+        elif role_type == PrecisionGuardType.half:
+            white_op_set.add(op)
+        else:
+            assert False, "not supported precision guard type:{}".format(
+                role_type)
+
+    return black_op_set, white_op_set
+
+
+def rewrite_program_by_decorated_type(program, decorate_type):
+    _add_op_precision_attr(main_program, decorate_type)
+    black_op_set, white_op_set = _get_black_white_list(main_program)
+
+    block = program.global_block()
+    ops = block.ops
+
+    idx = 0
+    while idx < len(ops):
+        op = ops[idx]
+        num_cast_ops = 0
+        if op in black_op_set:
+            num_cast_ops = _insert_cast_op(block, op, idx,
+                                           core.VarDesc.VarType.FP16,
+                                           core.VarDesc.VarType.FP32)
+        elif op in white_op_set:
+            num_cast_ops = _insert_cast_op(block, op, idx,
+                                           core.VarDesc.VarType.FP32,
+                                           core.VarDesc.VarType.FP16)
+        else:
+            pass
+
+        idx += num_cast_ops + 1
+
+
+def rewrite_program_by_amp_lists(main_prog, amp_lists):
     """
     Traverse all ops in current block and insert cast op according to 
     which set current op belongs to.

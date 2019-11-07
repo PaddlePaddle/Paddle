@@ -1676,14 +1676,17 @@ class OpProtoHolder(object):
             core.op_proto_and_checker_maker.kOpCreationCallstackAttrName()
         }
 
+
 class PrecisionGuardType(Enum):
-    # Don't change
-    precision=0
+    # Use original precision and not covert to other precision.
+    precision = 0
 
-    # Operator's inputs and outputs can be conver to half.
-    half=1
+    # Operator's inputs and outputs with valid var types can be convert to half.
+    half = 1
 
-g_op_precision_guard_attr=None
+
+g_op_precision_guard_attr = None
+
 
 class Operator(object):
     """
