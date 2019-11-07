@@ -72,6 +72,32 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     SetDim(output_n, GetDim(input_n));
   }
 
+  void ShareAllLoD(const std::string &in,
+                   const std::string &out) const override {
+    auto &in_var_names = op_.Input(in);
+    auto &out_var_names = op_.Output(out);
+
+    PADDLE_ENFORCE_EQ(
+        in_var_names.size(), out_var_names.size(),
+        "Op [%s]:  Input var number shoule be equal with output var number",
+        op_.Type());
+
+    for (size_t i = 0; i < in_var_names.size(); ++i) {
+      if (out_var_names[i] == framework::kEmptyVarName) {
+        continue;
+      }
+
+      auto *in_var = block_.FindVarRecursive(in_var_names[i]);
+      auto *out_var = block_.FindVarRecursive(out_var_names[i]);
+      if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
+          in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
+        VLOG(3) << "input " << in << " is not LoDTensor or LoDTensorArray.";
+        return;
+      }
+      out_var->SetLoDLevel(in_var->GetLoDLevel());
+    }
+  }
+
   void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,
                 size_t j = 0) const override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());

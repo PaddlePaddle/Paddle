@@ -755,9 +755,13 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     out_lod_tensor->Resize(in_lod_tensor.dims());
   }
 
+  void ShareAllLoD(const std::string& in,
+                   const std::string& out) const override {
+    // do nothing
+  }
   void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) const override {
-    // don't nothing
+    // do nothing
   }
 
   void DecreaseLoDLevel(const std::string& in, const std::string& out,

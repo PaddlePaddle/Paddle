@@ -617,6 +617,46 @@ class RuntimeInferShapeContext : public InferShapeContext {
     }
   }
 
+  void ShareAllLoD(const std::string& in,
+                   const std::string& out) const override {
+    auto in_it = ctx_.inputs.find(in);
+    auto out_it = ctx_.outputs.find(out);
+    PADDLE_ENFORCE(in_it != ctx_.inputs.end(),
+                   "Input [%s] found error in Op [%s]", in, op_.Type());
+    PADDLE_ENFORCE(out_it != ctx_.outputs.end(),
+                   "Output [%s] found error in Op [%s]", out, op_.Type());
+
+    auto& in_var_list = in_it->second;
+    auto& out_var_list = out_it->second;
+
+    PADDLE_ENFORCE(
+        in_var_list.size(), out_var_list.size(),
+        "Op [%s]: Input var size should be equal with ouput var size",
+        op_.Type());
+
+    auto& out_var_names = op_.Outputs(out);
+
+    for (size_t i = 0; i < in_var_list.size(); ++i) {
+      if (out_var_names[i] == framework::kEmptyVarName) {
+        continue;
+      }
+
+      Variable* in_var = in_var_list[i];
+      if (!in_var->IsType<LoDTensor>()) return;
+      Variable* out_var = out_var_list[i];
+      PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
+                     "The %d-th output of Output(%s) must be LoDTensor.", i,
+                     out_var_names[i]);
+      auto& in_tensor = in_var->Get<LoDTensor>();
+      auto* out_tensor = out_var->GetMutable<LoDTensor>();
+      out_tensor->set_lod(in_tensor.lod());
+#ifdef PADDLE_WITH_MKLDNN
+      if (in_tensor.layout() != DataLayout::kMKLDNN)
+#endif
+        out_tensor->set_layout(in_tensor.layout());
+    }
+  }
+
   void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) const override {
     auto in_it = ctx_.inputs.find(in);
