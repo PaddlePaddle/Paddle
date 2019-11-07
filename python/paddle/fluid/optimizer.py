@@ -923,8 +923,8 @@ class DGCMomentumOptimizer(Optimizer):
                         sparsity=[0.999, 0.999])
 
     """
-    _u_velocity_acc_str = "__dgc_u__"
-    _v_velocity_acc_str = "__dgc_v__"
+    _u_velocity_acc_str = "_dgc_u_"
+    _v_velocity_acc_str = "_dgc_v_"
 
     def __init__(self,
                  learning_rate,
@@ -965,8 +965,6 @@ class DGCMomentumOptimizer(Optimizer):
             self._num_trainers = num_trainers
             self._clip_norm = local_grad_clip_norm / (num_trainers *
                                                       num_trainers)
-        # reuse velocity in dgc_op and dgc_momentum_op
-        self._u_vars = {}
 
     def _is_use_dgc(self, param_var, grad_var):
         var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
@@ -979,8 +977,8 @@ class DGCMomentumOptimizer(Optimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
-        velocity_acc = self._u_vars[param_and_grad[0].name +
-                                    self._u_velocity_acc_str]
+        velocity_acc = self._get_accumulator(self._u_velocity_acc_str,
+                                             param_and_grad[0])
         assert velocity_acc is not None
 
         inputs = {
@@ -1063,24 +1061,16 @@ class DGCMomentumOptimizer(Optimizer):
             value=self._rampup_begin_step * 1.0,
             force_cpu=True)
 
+        self.helper = LayerHelper(self.__class__.__name__)
+
         for param_var, grad_var in param_and_grads:
-            u_var = tensor.create_global_var(
-                shape=param_var.shape,
-                dtype=param_var.dtype,
-                persistable=True,
-                name=param_var.name + self._u_velocity_acc_str,
-                value=0.0)
-            self._u_vars[param_var.name + self._u_velocity_acc_str] = u_var
+            # reuse velocity in dgc_op and dgc_momentum_op
+            u_var = self._add_accumulator(self._u_velocity_acc_str, param_var)
 
             if not self._is_use_dgc(param_var, grad_var):
                 continue
 
-            v_var = tensor.create_global_var(
-                shape=param_var.shape,
-                dtype=param_var.dtype,
-                persistable=True,
-                name=param_var.name + self._v_velocity_acc_str,
-                value=0.0)
+            v_var = self._add_accumulator(self._v_velocity_acc_str, param_var)
 
             k_var = tensor.create_global_var(
                 shape=[1],
