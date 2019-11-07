@@ -186,7 +186,7 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
 
     T* dalpha_tmp_ptr;
     Tensor dalpha_tmp;
-    if (mode == "element" || dalpha_ptr == nullptr) {
+    if (dalpha_ptr == nullptr) {
       dalpha_tmp_ptr = dalpha_ptr;
     } else {
       auto& dev_ctx = context.template device_context<DeviceContext>();
