@@ -572,10 +572,10 @@ void GeoSgdCommunicator::SendThread() {
   task_futures.reserve(2 * send_varname_to_ctx_.size());
 
   std::vector<std::function<void()>> task_futures_second;
-  task_futures_second.reserve(2 * send_varname_to_ctx_.size());
+  task_futures_second.reserve(send_varname_to_ctx_.size());
 
   std::vector<std::function<void()>> task_futures_third;
-  task_futures_third.reserve(2 * send_varname_to_ctx_.size());
+  task_futures_third.reserve(send_varname_to_ctx_.size());
 
   bool first_loop = true;
 
@@ -630,14 +630,8 @@ void GeoSgdCommunicator::SendThread() {
                                              &splited_var_name] {
               CopySparseVars(var_name, splited_var_name, ids_send_vec_);
             };
-            auto update_delta_task = [this, &var_name, &splited_var_name] {
+            auto send_update_task = [this, &var_name, &splited_var_name] {
               SendUpdateSparseVars(var_name, splited_var_name);
-            };
-            auto send_task = [this, &var_name, &splited_var_name] {
-              SendDeltaScopeSparse(var_name, splited_var_name);
-            };
-            auto update_old_task = [this, &var_name, &splited_var_name] {
-              UpdateOldScopeSparse(var_name, splited_var_name);
             };
             task_futures.emplace_back(
                 send_threadpool_->enqueue(std::move(recv_task)));
@@ -645,10 +639,7 @@ void GeoSgdCommunicator::SendThread() {
                 send_threadpool_->enqueue(std::move(copy_training_scope_task)));
 
             task_futures_second.emplace_back(std::move(recv_update_task));
-            task_futures_second.emplace_back(std::move(update_delta_task));
-
-            task_futures_third.emplace_back(std::move(send_task));
-            task_futures_third.emplace_back(std::move(update_old_task));
+            task_futures_third.emplace_back(std::move(send_update_task));
           }
         } else {
           auto recv_task = [this, &var_name] { RecvDenseVars(var_name); };
@@ -658,12 +649,8 @@ void GeoSgdCommunicator::SendThread() {
           auto copy_training_scope_task = [this, &var_name] {
             CopyDenseVars(var_name);
           };
-          auto update_delta_task = [this, &var_name] {
+          auto send_update_task = [this, &var_name] {
             SendUpdateDenseVars(var_name);
-          };
-          auto send_task = [this, &var_name] { SendDeltaScopeDense(var_name); };
-          auto update_old_task = [this, &var_name] {
-            UpdateOldScopeDense(var_name);
           };
           task_futures.emplace_back(
               send_threadpool_->enqueue(std::move(recv_task)));
@@ -671,30 +658,27 @@ void GeoSgdCommunicator::SendThread() {
               send_threadpool_->enqueue(std::move(copy_training_scope_task)));
 
           task_futures_second.emplace_back(std::move(recv_update_task));
-          task_futures_second.emplace_back(std::move(update_delta_task));
-
-          task_futures_third.emplace_back(std::move(send_task));
-          task_futures_third.emplace_back(std::move(update_old_task));
+          task_futures_third.emplace_back(std::move(send_update_task));
         }
       }
-      for (int i = 0; i < task_futures.size(); i++) {
-        auto &task_f = task_futures[i];
+      for (auto &task_f : task_futures) {
         task_f.wait();
-        task_futures.erase(task_futures.begin() + i);
-        task_futures.insert(
-            task_futures.begin() + i,
-            send_threadpool_->enqueue(std::move(task_futures_second[i])));
       }
       VLOG(0) << "debug first tasks done";
-      for (int i = 0; i < task_futures.size(); i++) {
-        auto &task_f = task_futures[i];
+      task_futures.clear();
+      for (auto &f : task_futures_second) {
+        task_futures.emplace_back(
+            send_threadpool_->enqueue(std::move(task_futures_second[i])));
+      }
+      for (auto &task_f : task_futures) {
         task_f.wait();
-        task_futures.erase(task_futures.begin() + i);
-        task_futures.insert(
-            task_futures.begin() + i,
-            send_threadpool_->enqueue(std::move(task_futures_third[i])));
       }
       VLOG(0) << "debug second tasks done";
+      task_futures.clear();
+      for (auto &f : task_futures_third) {
+        task_futures.emplace_back(
+            send_threadpool_->enqueue(std::move(task_futures_third[i])));
+      }
       task_futures_second.clear();
       task_futures_third.clear();
       ids_send_vec_.clear();
