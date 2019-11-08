@@ -56,12 +56,6 @@ class CUDAPReluKernel : public framework::OpKernel<T> {
   }
 };
 
-namespace prelu {
-struct ElementWiseMode {};
-struct ChannelMode {};
-struct ScalarMode {};
-} /* namespace prelu */
-
 template <typename T>
 __global__ void PReluGradKernel(const T* x_ptr, const T* y_ptr,
                                 const T* alpha_ptr, const T* dy_ptr, T* dx_ptr,
