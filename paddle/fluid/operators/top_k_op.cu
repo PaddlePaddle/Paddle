@@ -345,7 +345,7 @@ __global__ void InitIndex(int* indices, int num_rows, int num_cols) {
 }
 
 template <typename T>
-void SortTopk(const platform::CUDADeviceContext& ctx,
+bool SortTopk(const platform::CUDADeviceContext& ctx,
               const framework::Tensor* input_tensor, const size_t num_cols,
               const size_t num_rows, size_t k, framework::Tensor* out_tensor,
               framework::Tensor* indices_tensor) {
@@ -418,11 +418,11 @@ void SortTopk(const platform::CUDADeviceContext& ctx,
       cu_stream);
   if (err != cudaSuccess) {
     LOG(ERROR)
-        << "TopKOp failed as could not launch "
+        << "TopKOP failed as could not launch "
            "cub::DeviceSegmentedRadixSort::SortPairsDescending to calculate "
            "temp_storage_bytes, status: "
         << cudaGetErrorString(err);
-    return;
+    return false;
   }
   Tensor temp_storage;
   temp_storage.mutable_data<uint8_t>(ctx.GetPlace(), temp_storage_bytes);
@@ -434,11 +434,11 @@ void SortTopk(const platform::CUDADeviceContext& ctx,
       0, sizeof(T) * 8, cu_stream);
   if (err != cudaSuccess) {
     LOG(ERROR)
-        << "TopKOp failed as could not launch "
+        << "TopKOP failed as could not launch "
            "cub::DeviceSegmentedRadixSort::SortPairsDescending to sort input, "
            "temp_storage_bytes: "
         << temp_storage_bytes << ", status: " << cudaGetErrorString(err);
-    return;
+    return false;
   }
   auto& dev = *ctx.eigen_device();
   if (k < num_cols) {
@@ -456,6 +456,7 @@ void SortTopk(const platform::CUDADeviceContext& ctx,
     e_indices.device(dev) = e_tmp_indices.slice(slice_indices, slice_sizes);
     e_values.device(dev) = e_tmp_values.slice(slice_indices, slice_sizes);
   }
+  return true;
 }
 
 #define FIXED_BLOCK_DIM_BASE(dim, ...) \
@@ -504,9 +505,14 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
 
     if ((input_width <= 1024 || k >= 128 || k == input_width) &&
         (input_height < (1 << 31 - 1))) {
-      SortTopk<T>(dev_ctx, input, input_width, input_height, k, output,
-                  indices);
-      return;
+      if (SortTopk<T>(dev_ctx, input, input_width, input_height, k, output,
+                      indices)) {
+        // Successed, return.
+        return;
+      } else {
+        LOG(INFO) << "TopKOP: Some errors happened when use cub sorting, use "
+                     "default topk kernel.";
+      }
     }
     int64_t* indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());
     if (k > input_width) k = input_width;
