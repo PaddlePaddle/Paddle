@@ -57,25 +57,25 @@ class CUDAPReluKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-__global__ void PReluGradKernel(const T* x_ptr, const T* y_ptr,
-                                const T* alpha_ptr, const T* dy_ptr, T* dx_ptr,
-                                T* dalpha_ptr, size_t channel_num,
-                                size_t plane_size, size_t spatial_size,
-                                size_t numel, std::string mode) {
+__global__ void PReluOpGradKernel(const T* x_ptr, const T* y_ptr,
+                                  const T* alpha_ptr, const T* dy_ptr,
+                                  T* dx_ptr, T* dalpha_ptr, size_t channel_num,
+                                  size_t plane_size, size_t spatial_size,
+                                  size_t numel, std::string mode) {
   size_t index;
   CUDA_KERNEL_LOOP(index, numel) {
     T scale;
     if (mode == "element") {
-      size_t elment_index = index % spatial_size;
+      size_t element_index = index % spatial_size;
       scale = alpha_ptr[element_index];
     } else if (mode == "channel") {
       size_t temp = index / plane_size;
       size_t channel_index = temp % channel_num;
       scale = alpha_ptr[channel_index];
     } else {
-      scale = alpha_ptr[0]
+      scale = alpha_ptr[0];
     }
-    T x = input[index];
+    T x = x_ptr[index];
     T dy = dy_ptr[index];
     if (dx_ptr != nullptr) dx_ptr[index] = (x > 0) ? dy : scale * dy;
     if (dalpha_ptr != nullptr) dalpha_ptr[index] = (x > 0) ? 0 : x * dy;
@@ -83,7 +83,7 @@ __global__ void PReluGradKernel(const T* x_ptr, const T* y_ptr,
 }
 
 template <typename T>
-class PreluGradFunctor {
+class PreluOpGradFunctor {
  public:
   void operator()(cudaStream_t stream, const T* x, const T* y, const T* alpha,
                   const T* dy, T* dx, T* dalpha, std::vector<int> input_shape,
@@ -91,8 +91,8 @@ class PreluGradFunctor {
     size_t plane_size = input_shape[2] * input_shape[3];
     size_t spatial_size = plane_size * input_shape[1];
     size_t numel = spatial_size * input_shape[0];
-    PReluGradKernel<
-        T><<<PADDLE_GET_BLOCKS(numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+    PReluOpGradKernel<T><<<math::PADDLE_GET_BLOCKS(numel),
+                           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         x, y, alpha, dy, dx, dalpha, input_shape[1], plane_size, spatial_size,
         numel, mode);
   }
@@ -141,7 +141,7 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       dalpha_tmp_ptr = dalpha_tmp.mutable_data<T>(context.GetPlace());
     }
 
-    PreluGradFunctor<T> prelu_grad;
+    PreluOpGradFunctor<T> prelu_grad;
     prelu_grad(stream, x_ptr, y_ptr, alpha_ptr, dy_ptr, dx_ptr, dalpha_tmp_ptr,
                input_shape, mode);
 
