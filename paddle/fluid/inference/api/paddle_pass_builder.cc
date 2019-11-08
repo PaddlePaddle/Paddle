@@ -76,6 +76,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "shuffle_channel_detect_pass",               //
       "quant_conv2d_dequant_fuse_pass",            //
       "delete_quant_dequant_op_pass",              //
+      "conv_bn_fuse_pass",                         //
       // "fc_fuse_pass",                                 //
       "tensorrt_subgraph_pass",  //
       "conv_bn_fuse_pass",       //
