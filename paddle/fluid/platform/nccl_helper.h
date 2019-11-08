@@ -205,6 +205,11 @@ class NCCLContextMap {
 // We could also use a single communication ring for the flatten case
 class NCCLReference {
  public:
+  using ContextMapVector = std::vector<std::unique_ptr<NCCLContextMap>>;
+
+  // for compatible
+  friend class NCCLCommunicator;
+
   static NCCLReference &Instance() {
     static NCCLReference instance;
     return instance;
@@ -213,43 +218,53 @@ class NCCLReference {
   NCCLReference() = default;
   ~NCCLReference() = default;
 
+  void InitFlattenRing(const std::vector<Place> &places,
+                       const std::vector<std::string> &endpoints,
+                       size_t trainer_id, size_t nrings = 1);
+
+  void Init2DRing(const std::vector<Place> &places,
+                  const std::vector<std::string> &endpoints, size_t trainer_id,
+                  size_t nrings = 1);
+
+  // @Deprecated. Only for compatible
+  void InitFlattenRing(const std::vector<Place> &places,
+                       const std::vector<ncclUniqueId *> &nccl_ids,
+                       size_t trainer_num, size_t trainer_id);
+
+  // @Deprecated. Only for compatible and suppose multi-process mode
+  void InitHierarchicalRing(const std::vector<Place> &places,
+                            const std::vector<ncclUniqueId *> &inter_nccl_ids,
+                            const std::vector<ncclUniqueId *> &exter_nccl_ids,
+                            size_t nranks, size_t rank_id, size_t inter_ranks);
+
+  void AllReduce(const void *send, void *recv, size_t count,
+                 ncclDataType_t datatype, ncclRedOp_t op, const Place &place,
+                 cudaStream_t *stream = nullptr, size_t order = 0);
+
+  void AllReduce2D(const void *send, void *recv, size_t count,
+                   ncclDataType_t datatype, ncclRedOp_t op, const Place &place,
+                   cudaStream_t *stream = nullptr, size_t order = 0);
+
   NCCLContextMap *GetContextMap(int ring_id) const {
-    return ring2map_.at(ring_id).get();
+    return flat_rings_.at(ring_id).get();
   }
 
   NCCLContextMap *GetDefaultContextMap() const { return GetContextMap(0); }
 
-  void InitNCCLContexts(const std::vector<Place> &places,
-                        ncclUniqueId *nccl_id = nullptr, int ntrainers = 1,
-                        int trainer_id = 0, int ring_id = 0);
-
-  void InitAllNCCLContexts(const std::vector<Place> &places, int ring_id = 0) {
-    InitNCCLContexts(places, nullptr, 1, 0, ring_id);
-  }
-
-  void InitNCCLContext(ncclUniqueId *nccl_id, int nranks, int rank, Place place,
-                       int ring_id = 0) {
-    InitNCCLContexts({place}, nccl_id, nranks, rank, ring_id);
-  }
-
   // retrieve a communicator by the ring id
   NCCLContext *Get(int ring_id) const {
-    PADDLE_ENFORCE_GT(ring2map_.count(ring_id), 0,
-                      "comunicator in ring id %d has not been initialized",
-                      ring_id);
-    return ring2map_.at(ring_id)->GetSingle();
+    PADDLE_ENFORCE_LT(ring_id, flat_rings_.size());
+    return flat_rings_.at(ring_id)->GetSingle();
   }
 
   // retrieve a communicator by the ring id and the device id
   NCCLContext *Get(int ring_id, int dev_id) const {
-    PADDLE_ENFORCE_GT(ring2map_.count(ring_id), 0,
-                      "comunicator of ring id %d has not been initialized",
-                      ring_id);
+    PADDLE_ENFORCE_LT(ring_id, flat_rings_.size());
     PADDLE_ENFORCE_GT(
-        ring2map_.at(ring_id)->count(dev_id), 0,
+        flat_rings_.at(ring_id)->count(dev_id), 0,
         "comunicator at device id %d has not been initialized in ring %d",
         dev_id, ring_id);
-    return ring2map_.at(ring_id)->at(dev_id);
+    return flat_rings_.at(ring_id)->at(dev_id);
   }
 
   // retrieve a communicator by the ring id and place
@@ -261,17 +276,38 @@ class NCCLReference {
                               std::vector<int> ring_ids);
 
  protected:
-  // we preserve the first 100 ring ids for system use
-  // Default: 0
-  // Synchronize BatchNorm stats: 1
-  // Hierarchical AllReduce: 10-50
-  // A ring id allocation strategy is needed here
+  static const std::string s_nccl_id_var_name_ = "NCCL_ID_";
 
   std::once_flag once_flag_;
-  std::mutex ring2map_mutex_;
-  // std::map<int, std::map<int, std::unique_ptr<NCCLContext>>> ring2map_;
-  // ring id to NCCLContextMap
-  std::map<int, std::unique_ptr<NCCLContextMap>> ring2map_;
+
+  // for ring-based allreduce
+  std::vector<std::unique_ptr<NCCLContextMap>> flat_rings_;
+
+  // for 2D allreduce
+  std::vector<std::unique_ptr<NCCLContextMap>> d2_inter_rings_;
+  std::vector<std::unique_ptr<NCCLContextMap>> d2_exter_rings_;
+  size_t d2_inter_ranks_;
+  size_t d2_exter_ranks_;
+
+  // for hierarchical allreduce
+  std::vector<std::unique_ptr<NCCLContextMap>> h_inter_rings_;
+  std::vector<std::unique_ptr<NCCLContextMap>> h_exter_rings_;
+  size_t h_inter_ranks_;
+  size_t h_exter_ranks_;
+
+  void InitNCCLContexts(const std::vector<Place> &places,
+                        ncclUniqueId *nccl_id = nullptr, size_t ntrainers = 1,
+                        size_t trainer_id = 0,
+                        ContextMapVector *rings = nullptr);
+
+  void InitAllNCCLContexts(const std::vector<Place> &places) {
+    InitNCCLContexts(places, nullptr, 1, 0);
+  }
+
+  void InitNCCLContext(ncclUniqueId *nccl_id, size_t nranks, size_t rank,
+                       Place place) {
+    InitNCCLContexts({place}, nccl_id, nranks, rank);
+  }
 
   void ReleaseNCCLResource();
 
@@ -314,7 +350,6 @@ class NCCLCommunicator {
     return flat_ctxs_[run_order % flat_ctxs_.size()];
   }
 
-  // check usage
   NCCLContextMap *GetRunEnvNCCLCtx(size_t run_order,
                                    bool use_hierarchical_allreduce) const {
     if (!use_hierarchical_allreduce) {
@@ -348,20 +383,7 @@ class NCCLCommunicator {
                     const std::vector<ncclUniqueId *> &nccl_ids,
                     size_t trainers_num, size_t trainer_id) {
     auto &ins = NCCLReference::Instance();
-    std::vector<int> ring_ids;
-    if (nccl_ids.size() == 0) {
-      ins.InitAllNCCLContexts(places, 0);
-      VLOG(1) << "init local trainer";
-      ring_ids.push_back(0);
-    }
-
-    for (size_t i = 0; i < nccl_ids.size(); i++) {
-      ins.InitNCCLContexts(places, nccl_ids[i], trainers_num, trainer_id, i);
-      VLOG(1) << "init trainer_id:" << trainer_id << ", comm no:" << i;
-      ring_ids.push_back(i);
-    }
-
-    ins.CollectNCCLContextMaps(&flat_ctxs_, ring_ids);
+    ins.InitFlattenRing(places, nccl_ids, trainers_num, trainer_id);
   }
 
   void InitHierarchicalCtxs(const std::vector<platform::Place> &places,
@@ -374,77 +396,44 @@ class NCCLCommunicator {
                       "trainers_num:%llu != inter_trainers_num:%llu * "
                       "exter_trainers_num:%llu",
                       trainers_num, inter_trainers_num, exter_trainers_num);
-
     PADDLE_ENFORCE_GT(inter_trainers_num, 1, "inter_trainers_num:%llu must > 1",
                       inter_trainers_num);
-
     auto &ins = NCCLReference::Instance();
-
-    static const int s_hallred_rid_start = 10;
-
-    std::vector<int> ring_ids;
-    int inter_trainer_id = trainer_id % inter_trainers_num;
-    for (size_t i = 0; i < inter_nccl_ids.size(); i++) {
-      int ring_id = s_hallred_rid_start + i;
-      ins.InitNCCLContexts(places, inter_nccl_ids[i], inter_trainers_num,
-                           inter_trainer_id, ring_id);
-      VLOG(1) << "init inter_trainer_id:" << inter_trainer_id
-              << ", comm no:" << ring_id;
-      ring_ids.push_back(ring_id);
-    }
-    ins.CollectNCCLContextMaps(&h_inter_ctxs_, ring_ids);
-
-    int exter_trainer_id = -1;
-    if (trainer_id % inter_trainers_num == 0) {
-      exter_trainer_id = trainer_id / inter_trainers_num;
-    }
-
-    if (exter_trainer_id >= 0) {
-      ring_ids.clear();
-      for (size_t i = 0; i < exter_nccl_ids.size(); i++) {
-        int ring_id = s_hallred_rid_start + inter_nccl_ids.size() + i;
-        ins.InitNCCLContexts(places, exter_nccl_ids[i], exter_trainers_num,
-                             exter_trainer_id, ring_id);
-        VLOG(1) << "init exter_trainer_id:" << exter_trainer_id
-                << ", comm no:" << ring_id;
-        ring_ids.push_back(ring_id);
-      }
-      ins.CollectNCCLContextMaps(&h_exter_ctxs_, ring_ids);
-    }
+    ins.InitHierarchicalRing(places, inter_nccl_ids, exter_nccl_ids,
+                             trainers_num, trainer_id, inter_trainers_num);
   }
 
-  bool NeedExterAllReduce() const { return h_exter_ctxs_.size() > 0; }
+  bool NeedExterAllReduce() const {
+    return NCCLReference::Instance().h_exter_rings_.size() > 0;
+  }
 
   NCCLContextMap *GetHierarchicalInterCtx(size_t run_order) const {
-    PADDLE_ENFORCE(h_inter_ctxs_.size() > 0,
+    auto &inter_rings = NCCLReference::Instance().h_inter_rings_;
+    PADDLE_ENFORCE(h_inter_rings.size() > 0,
                    "must init hierarchical ctxs first!");
-    return h_inter_ctxs_[run_order % h_inter_ctxs_.size()];
+    return h_inter_rings[run_order % h_inter_rings.size()].get();
   }
 
   NCCLContextMap *GetHierarchicalExterCtx(size_t run_order) const {
-    PADDLE_ENFORCE(h_exter_ctxs_.size() > 0,
+    auto &exter_rings = NCCLReference::Instance().h_exter_rings_;
+    PADDLE_ENFORCE(h_exter_rings.size() > 0,
                    "must init hierarchical ctxs first!");
-    return h_exter_ctxs_[run_order % h_exter_ctxs_.size()];
+    return h_exter_rings[run_order % h_exter_rings.size()].get();
   }
 
-  const std::vector<NCCLContextMap *> *GetHierarchicalInterCtxs() {
-    return &h_inter_ctxs_;
+  const std::vector<std::unique_ptr<NCCLContextMap>>
+      *GetHierarchicalInterCtxs() {
+    return &NCCLReference::Instance().h_inter_rings_;
   }
 
-  const std::vector<NCCLContextMap *> *GetHierarchicalExterCtxs() {
-    return &h_exter_ctxs_;
+  const std::vector<std::unique_ptr<NCCLContextMap>>
+      *GetHierarchicalExterCtxs() {
+    return &NCCLReference::Instance().h_exter_rings_;
   }
 
  protected:
-  // Support multi nccl comm on default nccl ring while NCCLContextMap can't.
-  std::vector<NCCLContextMap *> flat_ctxs_;
-
-  // h_inter_ctxs_ and h_exter_ctxs_ are for 2d allreduce.
-  // And h_exter_ctxs_ can support multi comm too.
-  std::vector<NCCLContextMap *> h_inter_ctxs_;
-  std::vector<NCCLContextMap *> h_exter_ctxs_;
-
   // just used for sync_batch_norm op.
+  // Is it neccessary to use another stream to sync batch norm?
   std::unique_ptr<NCCLContextMap> sync_batch_norm_ctx_;
 };
 
