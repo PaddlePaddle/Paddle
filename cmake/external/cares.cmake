@@ -11,15 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-
-IF(NOT WITH_DISTRIBUTE)
-    return()
-ENDIF()
-
-include (ExternalProject)
 
 # NOTE: c-ares is needed when linking with grpc.
+
+include (ExternalProject)
 
 SET(CARES_SOURCES_DIR ${THIRD_PARTY_PATH}/cares)
 SET(CARES_INSTALL_DIR ${THIRD_PARTY_PATH}/install/cares)

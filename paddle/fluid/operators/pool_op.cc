@@ -38,10 +38,10 @@ int PoolOutputSize(int input_size, int filter_size, int padding_1,
   }
   PADDLE_ENFORCE_GT(
       output_size, 0,
-      "Due to the settings of padding(%d,%d), filter_size(%d) and "
-      "stride(%d), the output size is less than 0, please check "
-      "again. Input_size:%d",
-      padding_1, padding_2, filter_size, stride, input_size);
+      "ShapeError: the output size must be greater than 0. But received: "
+      "output_size = %d due to the settings of input_size(%d), padding(%d,%d), "
+      "k_size(%d) and stride(%d). Please check again!",
+      output_size, input_size, padding_1, padding_2, filter_size, stride);
   return output_size;
 }
 
@@ -63,13 +63,30 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
       ctx->Attrs().Get<std::string>("padding_algorithm");
 
   auto in_x_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_EQ(in_x_dims.size() == 4 || in_x_dims.size() == 5, true,
-                    "Pooling intput should be 4-D or 5-D tensor.");
+  PADDLE_ENFORCE_EQ(
+      in_x_dims.size() == 4 || in_x_dims.size() == 5, true,
+      "ShapeError: the input of Op(pool) should be 4-D or 5-D Tensor. But "
+      "received: %u-D Tensor and it's shape is [%s].",
+      in_x_dims.size(), in_x_dims);
 
-  PADDLE_ENFORCE_EQ(in_x_dims.size() - ksize.size(), 2U,
-                    "Input size and pooling size should be consistent.");
+  PADDLE_ENFORCE_EQ(
+      in_x_dims.size() - ksize.size(), 2U,
+      "ShapeError: the dimension of input minus the size of "
+      "Attr(ksize) must be euqal to 2 in Op(pool). "
+      "But received: the dimension of input minus the size "
+      "of Attr(ksize) is %d, the "
+      "input's dimension is %d, the shape of input "
+      "is [%s], the Attr(ksize)'s size is %d, the Attr(ksize) is [%s].",
+      in_x_dims.size() - ksize.size(), in_x_dims.size(), in_x_dims,
+      ksize.size(), framework::make_ddim(ksize));
+
   PADDLE_ENFORCE_EQ(ksize.size(), strides.size(),
-                    "Strides size and pooling size should be the same.");
+                    "ShapeError: the size of Attr(ksize) and Attr(strides) in "
+                    "Op(pool) must be equal. "
+                    "But received: Attr(ksize)'s size is %d, Attr(strides)'s "
+                    "size is %d, Attr(ksize) is [%s], Attr(strides)is [%s].",
+                    ksize.size(), strides.size(), framework::make_ddim(ksize),
+                    framework::make_ddim(strides));
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
@@ -91,7 +108,7 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
   if (adaptive) {
     output_shape.insert(output_shape.end(), ksize.begin(), ksize.end());
   } else {
-    for (size_t i = 0; i < data_dims.size(); ++i) {
+    for (int i = 0; i < data_dims.size(); ++i) {
       if ((!ctx->IsRuntime()) && (data_dims[i] < 0)) {
         output_shape.push_back(data_dims[i]);
       } else {
