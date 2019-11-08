@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/tensorrt/plugin/avg_pool_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/pool_op_plugin.h"
 
 namespace paddle {
 namespace inference {
@@ -75,12 +75,19 @@ class Pool2dOpConverter : public OpConverter {
     std::vector<int> paddings =
         boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
     bool ceil_mode = boost::get<bool>(op_desc.GetAttr("ceil_mode"));
+    bool adaptive = false;
+    if (op_desc.HasAttr("adaptive"))
+      adaptive = boost::get<bool>(op_desc.GetAttr("adaptive"));
 
     nvinfer1::PoolingType nv_pool_type = nvinfer1::PoolingType::kMAX;
+    plugin::PoolPlugin::PoolType plugin_pool_type =
+        plugin::PoolPlugin::PoolType::max;
     if (pool_type == "max") {
       nv_pool_type = nvinfer1::PoolingType::kMAX;
+      plugin_pool_type = plugin::PoolPlugin::PoolType::max;
     } else if (pool_type == "avg") {
       nv_pool_type = nvinfer1::PoolingType::kAVERAGE;
+      plugin_pool_type = plugin::PoolPlugin::PoolType::avg;
     } else {
       PADDLE_THROW("TensorRT unsupported pooling type!");
     }
@@ -108,7 +115,7 @@ class Pool2dOpConverter : public OpConverter {
       return;
     }
 
-    if (pool_type == "max") {
+    if (!adaptive && pool_type == "max") {
       // Under ceil mode, the pre_pad and post_pad are used to
       // record the the padding size. In some ceil mode cases,
       // we do not need padding, so we initialize the two vars to 0.
@@ -141,10 +148,13 @@ class Pool2dOpConverter : public OpConverter {
       for (int i = 0; i < input_dims; i++) {
         input_shape_v.push_back(input_shape.d[i]);
       }
-      plugin::AvgPoolPlugin *plugin = new plugin::AvgPoolPlugin(
-          ceil_mode, ksize, strides, paddings, input_shape_v);
-      auto *avg_pool_layer = engine_->AddPlugin(&input1, 1, plugin);
-      layer = avg_pool_layer;
+      plugin::PoolPlugin *plugin =
+          new plugin::PoolPlugin(ceil_mode, plugin_pool_type, adaptive, ksize,
+                                 strides, paddings, input_shape_v);
+      PADDLE_ENFORCE_NOT_NULL(plugin->getPluginType(),
+                              "The plugin used must not be null");
+      auto *pool_layer = engine_->AddPlugin(&input1, 1, plugin);
+      layer = pool_layer;
     }
 
     auto output_name = op_desc.Output("Out")[0];

@@ -32,6 +32,11 @@ constexpr static float fraction_reserve_gpu_memory = 0.05f;
 namespace paddle {
 namespace platform {
 
+/* Here is a very simple CUDA “pro tip”: cudaDeviceGetAttribute() is a much
+faster way to query device properties. You can see details in
+https://devblogs.nvidia.com/cuda-pro-tip-the-fast-way-to-query-device-properties/
+*/
+
 inline std::string CudaErrorWebsite() {
   return "Please see detail in https://docs.nvidia.com/cuda/cuda-runtime-api"
          "/group__CUDART__TYPES.html#group__CUDART__TYPES_1g3f51e3575c217824"
@@ -39,6 +44,14 @@ inline std::string CudaErrorWebsite() {
 }
 
 static int GetCUDADeviceCountImpl() {
+  int driverVersion = 0;
+  cudaError_t status = cudaDriverGetVersion(&driverVersion);
+
+  if (!(status == cudaSuccess && driverVersion != 0)) {
+    // No GPU driver
+    return 0;
+  }
+
   const auto *cuda_visible_devices = std::getenv("CUDA_VISIBLE_DEVICES");
   if (cuda_visible_devices != nullptr) {
     std::string cuda_visible_devices_str(cuda_visible_devices);
@@ -67,14 +80,23 @@ int GetCUDADeviceCount() {
 
 int GetCUDAComputeCapability(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
-  cudaDeviceProp device_prop;
-  auto error_code = cudaGetDeviceProperties(&device_prop, id);
-  PADDLE_ENFORCE(
-      error_code,
-      "cudaGetDeviceProperties failed in "
+  int major, minor;
+
+  auto major_error_code =
+      cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, id);
+  auto minor_error_code =
+      cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, id);
+  PADDLE_ENFORCE_EQ(
+      major_error_code, 0,
+      "cudaDevAttrComputeCapabilityMajor failed in "
       "paddle::platform::GetCUDAComputeCapability, error code : %d, %s",
-      error_code, CudaErrorWebsite());
-  return device_prop.major * 10 + device_prop.minor;
+      major_error_code, CudaErrorWebsite());
+  PADDLE_ENFORCE_EQ(
+      minor_error_code, 0,
+      "cudaDevAttrComputeCapabilityMinor failed in "
+      "paddle::platform::GetCUDAComputeCapability, error code : %d, %s",
+      minor_error_code, CudaErrorWebsite());
+  return major * 10 + minor;
 }
 
 int GetCUDARuntimeVersion(int id) {
@@ -279,6 +301,21 @@ void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream) {
                  "cudaMemsetAsync failed in paddle::platform::GpuMemsetAsync "
                  "error code : %d, %s",
                  error_code, CudaErrorWebsite());
+}
+
+void RaiseNonOutOfMemoryError(cudaError_t *status) {
+  if (*status == cudaErrorMemoryAllocation) {
+    *status = cudaSuccess;
+  }
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(*status);
+
+  *status = cudaGetLastError();
+  if (*status == cudaErrorMemoryAllocation) {
+    *status = cudaSuccess;
+  }
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(*status);
 }
 }  // namespace platform
 }  // namespace paddle

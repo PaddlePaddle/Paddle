@@ -228,8 +228,7 @@ std::shared_ptr<FCPrimitiveFactory<T>> GetPrimitiveFactory(
     const Tensor* input, const Tensor* weights,
     const mkldnn::engine& mkldnn_engine) {
   const std::string key = platform::CreateKey(
-      input->format(), framework::vectorize<int>(weights->dims()),
-      ctx.op().Output("Out"));
+      framework::vectorize<int>(weights->dims()), ctx.op().Output("Out"));
 
   auto prim_creator =
       std::static_pointer_cast<FCPrimitiveFactory<T>>(dev_ctx.GetBlob(key));

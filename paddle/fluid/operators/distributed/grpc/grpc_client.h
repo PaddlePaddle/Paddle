@@ -225,6 +225,11 @@ class GRPCClient : public RPCClient {
       const std::string& ep, const std::string& dir,
       int64_t time_out = FLAGS_rpc_deadline) override;
 
+  VarHandlePtr AsyncDistributeNotify(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      int64_t time_out = FLAGS_rpc_deadline) override;
+
   VarHandlePtr AsyncSendComplete(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
 

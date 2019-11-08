@@ -83,10 +83,10 @@ inline void UpdatePaddingAndDilation(std::vector<int>* paddings,
         "Paddings size should be the same or twice as the input data size.");
   }
 
-  // when padding_desc is "VALID" or "SAME"
+  // when padding_algorithm is "VALID" or "SAME"
   if (padding_algorithm == "SAME") {
     for (size_t i = 0; i < data_dims.size(); ++i) {
-      int out_size = (data_dims[i] + strides[i] - 1) / strides[0];
+      int out_size = (data_dims[i] + strides[i] - 1) / strides[i];
       int pad_sum =
           std::max((out_size - 1) * strides[i] + ksize[i] - data_shape[i], 0);
       int pad_0 = pad_sum / 2;
@@ -651,7 +651,7 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     // transform Tensor
     Tensor transformed_X(X->type());
     Tensor transformed_dY(dY->type());
-    Tensor transformed_ddX(ddX->type());
+    Tensor transformed_ddX(X->type());
 
     if (channel_last) {
       ResizeToChannelFirst<DeviceContext, T>(ctx, X, &transformed_X);
@@ -660,13 +660,16 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
       ResizeToChannelFirst<DeviceContext, T>(ctx, dY, &transformed_dY);
       TransToChannelFirst<DeviceContext, T>(ctx, dY, &transformed_dY);
 
-      ResizeToChannelFirst<DeviceContext, T>(ctx, ddX, &transformed_ddX);
-      TransToChannelFirst<DeviceContext, T>(ctx, ddX, &transformed_ddX);
-
+      if (ddX) {
+        ResizeToChannelFirst<DeviceContext, T>(ctx, ddX, &transformed_ddX);
+        TransToChannelFirst<DeviceContext, T>(ctx, ddX, &transformed_ddX);
+      }
     } else {
       transformed_X = *X;
       transformed_dY = *dY;
-      transformed_ddX = *ddX;
+      if (ddX) {
+        transformed_ddX = *ddX;
+      }
     }
 
     // update padding and dilation
@@ -857,11 +860,10 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
             } else if (data_dim == 3U) {
               vol2col(dev_ctx, ddx_slice, dilations, strides, paddings, &col);
             }
+            Tensor w_slice = W.Slice(g * out_step, (g + 1) * out_step);
+            blas.MatMul(w_slice, false, col_matrix, false, T(1.0), &ddy_slice,
+                        T(0.0));
           }
-
-          Tensor w_slice = W.Slice(g * out_step, (g + 1) * out_step);
-          blas.MatMul(w_slice, false, col_matrix, false, T(1.0), &ddy_slice,
-                      T(0.0));
 
           if (ddW_in) {
             Tensor x_batch = transformed_X.Slice(i, i + 1).Resize(input_shape);

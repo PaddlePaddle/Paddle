@@ -237,6 +237,56 @@ static std::vector<std::string> inline GetNameList(
   return vec_res;
 }
 
+static void inline CreateVariableIfNotExit(
+    const py::handle &py_handle, const framework::Scope &scope,
+    const framework::Executor *exe = nullptr) {
+  std::vector<std::string> vec_res;
+
+  PyObject *py_obj = py_handle.ptr();  // get underlying PyObject
+  // Python None is not nullptr in C++!
+  if (!py_obj || py_obj == Py_None) {
+    PADDLE_THROW("Save parameter list is None");
+  }
+
+  if (PyList_Check(py_obj)) {
+    size_t len = PyList_GET_SIZE(py_obj);
+
+    vec_res.reserve(len);
+
+    const char *kNameField = "name";
+    const char *kVarDescField = "desc";
+
+    for (size_t i = 0; i < len; ++i) {
+      PyObject *py_name =
+          PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kNameField);
+      PADDLE_ENFORCE_NOT_NULL(py_name);
+      auto para_name = PyObjectCast<std::string>(py_name);
+      Py_DECREF(py_name);
+
+      auto var = scope.FindVar(para_name);
+      if (var == nullptr) {
+        PADDLE_ENFORCE_NE(exe, nullptr,
+                          "Parameter not Initialized, "
+                          "Please set argument [executor] not None "
+                          "or run startup program first");
+        PyObject *py_var_desc =
+            PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kVarDescField);
+        PADDLE_ENFORCE_NOT_NULL(py_var_desc);
+        auto var_desc = PyObjectCast<framework::VarDesc>(py_var_desc);
+        Py_DECREF(py_var_desc);
+        var = const_cast<framework::Scope *>(&scope)->Var(para_name);
+        auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
+        tensor_temp->Resize(framework::make_ddim(var_desc.GetShape()));
+        tensor_temp->mutable_data(exe->GetPlace(), var_desc.GetDataType());
+      }
+    }
+  } else {
+    PADDLE_THROW("Set parameter should be a list");
+  }
+
+  return;
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -258,6 +308,24 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
+  m.def("from_dlpack", [](py::capsule *dltensor) {
+    DLManagedTensor *dmt = reinterpret_cast<DLManagedTensor *>(
+        PyCapsule_GetPointer(dltensor->ptr(), "dltensor"));
+    PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
+    DLTensor dl = dmt->dl_tensor;
+    Tensor tensor;
+
+    if (dl.ctx.device_type == kDLCPU) {
+      paddle::framework::TensorFromDLPack(dl, &tensor);
+    }
+#ifdef PADDLE_WITH_CUDA
+    if (dl.ctx.device_type == kDLGPU) {
+      paddle::framework::TensorFromDLPack(dl, &tensor);
+    }
+#endif
+    return tensor;
+  });
+
   m.def("_save_static_dict",
         [](const std::string &str_file_name, const py::handle &vec_var_list,
            const Scope &scope) {
@@ -267,9 +335,16 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_load_static_dict",
         [](const std::string &str_file_name, const py::handle &vec_var_list,
-           const Scope &scope) {
+           const Scope &scope, const Executor *executor) {
           std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
+          CreateVariableIfNotExit(vec_var_list, scope, executor);
           LoadStaticNameListFromDisk(str_file_name, vec_name_list, scope);
+        });
+
+  m.def("_create_loaded_parameter",
+        [](const py::handle &vec_var_list, const Scope &scope,
+           const Executor *executor) {
+          CreateVariableIfNotExit(vec_var_list, scope, executor);
         });
 
   m.def("_save_dygraph_dict", [](const std::string &str_file_name,
@@ -291,6 +366,7 @@ PYBIND11_MODULE(core_noavx, m) {
 
     return map_output;
   });
+
   m.def("save_op_compatible_info", [](framework::ProgramDesc &desc) {
     framework::OpCompatibleMap op_compatible_map;
     op_compatible_map.InitOpCompatibleMap();
@@ -381,55 +457,12 @@ PYBIND11_MODULE(core_noavx, m) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_clear", &Tensor::clear)
-      .def("set", PyCPUTensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"))
-#ifdef PADDLE_WITH_CUDA
-      .def("set", PyCUDATensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"), R"DOC(
+      .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
+           py::arg("array"), py::arg("place"))
+      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPlace>,
+           py::arg("array"), py::arg("place"))
+      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
+           py::arg("array"), py::arg("place"), R"DOC(
         Set the data of LoDTensor on place with given numpy array.
         
         Args:
@@ -449,7 +482,7 @@ PYBIND11_MODULE(core_noavx, m) {
                 t = fluid.LoDTensor()
                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
           )DOC")
-#endif
+
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); }, R"DOC(
            Return the shape of LoDTensor.
 
@@ -467,6 +500,28 @@ PYBIND11_MODULE(core_noavx, m) {
                   t.set(np.ndarray([5, 30]), fluid.CPUPlace())
                   print(t.shape())  # [5, 30]
            )DOC")
+      .def("_to_dlpack",
+           [](Tensor &self) {
+             DLPackTensor dlpack_tensor(self, 1);
+             DLManagedTensor *dmt =
+                 dlpack_tensor.ToCudfCompatibleDLManagedTensor();
+             auto capsule = py::capsule(
+                 static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
+                   if (ptr) {
+                     auto dltensor = new DLManagedTensor;
+                     try {
+                       dltensor = reinterpret_cast<DLManagedTensor *>(
+                           PyCapsule_GetPointer(ptr, "used_dltensor"));
+                       return;
+                     } catch (...) {
+                       dltensor = reinterpret_cast<DLManagedTensor *>(
+                           PyCapsule_GetPointer(ptr, "dltensor"));
+                     }
+                     dltensor->deleter(dltensor);
+                   }
+                 });
+             return capsule;
+           })
       .def("_set_float_element", TensorSetElement<float>)
       .def("_get_float_element", TensorGetElement<float>)
       .def("_set_double_element", TensorSetElement<double>)
@@ -860,6 +915,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("size", &LoDTensorBlockingQueue::Size)
       .def("capacity", &LoDTensorBlockingQueue::Cap)
       .def("close", &LoDTensorBlockingQueue::Close)
+      .def("kill", &LoDTensorBlockingQueue::Kill)
       .def("is_closed", &LoDTensorBlockingQueue::IsClosed);
 
   m.def("init_lod_tensor_blocking_queue",
@@ -1290,7 +1346,7 @@ All parameter, weight, gradient are variables in Paddle.
                                      create_local_scope, create_vars,
                                      feed_holder_name, fetch_holder_name);
            })
-      .def("run_cached_prepared_ctx",
+      .def("run_prepared_ctx",
            [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
               bool create_local_scope = true, bool create_vars = true,
               bool keep_kids = false) {
@@ -1298,10 +1354,16 @@ All parameter, weight, gradient are variables in Paddle.
              self.RunPreparedContext(ctx, scope, create_local_scope,
                                      create_vars, keep_kids);
            })
-      .def("prepare_ctx_cache", &Executor::PrepareCtxCache,
-           py::call_guard<py::gil_scoped_release>())
-      .def("create_variables", &Executor::CreateVariables,
-           py::call_guard<py::gil_scoped_release>())
+      .def("prepare",
+           [](Executor &self, const ProgramDesc &program, int block_id,
+              const std::vector<std::string> &skip_ref_cnt_vars =
+                  std::vector<std::string>(),
+              bool force_disable_gc = false) {
+             pybind11::gil_scoped_release release;
+             return self.Prepare(program, block_id, skip_ref_cnt_vars,
+                                 force_disable_gc);
+           })
+      .def("create_variables", &Executor::CreateVariables)
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
                      int block_id, bool create_local_scope, bool create_vars,
                      const std::vector<std::string> &fetch_vars) {
@@ -1312,7 +1374,6 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
-  m.def("init_dgc", framework::InitDGC);
   m.def("load_op_library", framework::LoadOpLib);
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });

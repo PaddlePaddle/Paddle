@@ -87,6 +87,9 @@ class TrainerDesc(object):
     def _set_mpi_rank(self, mpi_rank):
         self.proto_desc.mpi_rank = mpi_rank
 
+    def _set_mpi_size(self, mpi_size):
+        self.proto_desc.mpi_size = mpi_size
+
     def _set_dump_fields(self, dump_fields):
         for field in dump_fields:
             self.proto_desc.dump_fields.append(field)
@@ -94,8 +97,19 @@ class TrainerDesc(object):
     def _set_dump_fields_path(self, path):
         self.proto_desc.dump_fields_path = path
 
+    def _set_dump_file_num(self, dump_file_num):
+        self.proto_desc.dump_file_num = dump_file_num
+
     def _set_dump_converter(self, converter):
         self.proto_desc.dump_converter = converter
+
+    def _set_dump_param(self, dump_param):
+        for param in dump_param:
+            self.proto_desc.dump_param.append(param)
+
+    def _set_check_nan_var_names(self, check_nan_var_names):
+        for var in check_nan_var_names:
+            self.proto_desc.check_nan_var_names.append(var)
 
     def _set_adjust_ins_weight(self, config_dict):
         self.proto_desc.adjust_ins_weight_config.need_adjust = \

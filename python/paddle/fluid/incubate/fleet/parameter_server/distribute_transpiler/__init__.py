@@ -16,10 +16,8 @@ import warnings
 """
 Convert the fluid program to distributed data-parallelism programs.
 """
-
 import paddle.fluid.io as io
 from paddle.fluid.communicator import Communicator
-from paddle.fluid.communicator import AsyncMode
 from paddle.fluid.framework import default_main_program
 from paddle.fluid.framework import default_startup_program
 from paddle.fluid.framework import Program
@@ -68,32 +66,19 @@ class DistributedTranspiler(Fleet):
             from paddle.fluid.transpiler.details.checkport import wait_server_ready
             wait_server_ready(fleet.server_endpoints(to_string=False))
 
-        if self._transpile_config.sync_mode:
-            return
+        if not self._transpile_config.sync_mode:
+            if self._transpile_config.geo_sgd_mode:
+                self._communicator = Communicator(
+                    self.main_program, self.vars_info,
+                    fleet.worker_num(),
+                    self._transpile_config.geo_sgd_need_push_nums)
+            else:
+                self._communicator = Communicator(self.main_program)
 
-        if not self._transpile_config.runtime_split_send_recv:
-            return
-
-        kwargs = {}
-
-        if self._transpile_config.geo_sgd_mode:
-            kwargs["push_nums"] = self._transpile_config.geo_sgd_need_push_nums
-            kwargs["trainers"] = fleet.worker_num()
-            kwargs["push_vars"] = self.vars_info
-            mode = AsyncMode.GEO_SGD
-
-        # for async training, use half-async to acquire better performances
-        elif self._transpile_config.half_async:
-            mode = AsyncMode.HALF_ASYNC
-        else:
-            mode = AsyncMode.ASYNC
-
-        self._communicator = Communicator(self.main_program, mode, kwargs)
-
-        if not self._communicator.is_running():
-            self._communicator.start()
-        else:
-            warnings.warn("communicator has been initialized, skip")
+            if not self._communicator.is_running():
+                self._communicator.start()
+            else:
+                warnings.warn("communicator has been initialized, skip")
 
     def init_server(self, model_dir=None):
         """
@@ -167,6 +152,10 @@ class DistributedTranspiler(Fleet):
 
         if not isinstance(optimizer, Optimizer):
             raise ValueError("optimizer must be an instance of Optimizer")
+        if not fleet._is_initialized:
+            raise ValueError(
+                "use fleet.init(role) to initialize the role of current node before optimizer.minimize(loss)"
+            )
         self._optimizer = TranspilerOptimizer(optimizer, strategy)
         return self._optimizer
 

@@ -128,10 +128,7 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
 
         loss = cross_entropy(softmax, labels, self.soft_label, self.axis)
 
-        self.inputs = {
-            "Logits": logits.astype(self.dtype).view(np.uint16),
-            "Label": labels
-        }
+        self.inputs = {"Logits": logits.astype(self.dtype), "Label": labels}
         self.outputs = {
             "Softmax": softmax.astype(self.dtype),
             "Loss": loss.astype(self.dtype)

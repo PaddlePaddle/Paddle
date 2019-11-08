@@ -1198,9 +1198,8 @@ class BatchNorm(layers.Layer):
         in_place(bool, optional): Make the input and output of batch norm reuse memory. Default: False.
         moving_mean_name(str, optional): The name of moving_mean which store the global Mean. Default: None.
         moving_variance_name(str, optional): The name of the moving_variance which store the global Variance. Default: None.
-        do_model_average_for_mean_and_var(bool, optional): Do model average for mean and variance or not. Default: False.
-        fuse_with_relu (bool, optional): When setting fuse_with_relu True, this OP performs relu after batch norm. 
-            Default: False.
+        do_model_average_for_mean_and_var(bool, optional): Whether parameter mean and variance should do model
+            average when model average is enabled. Default: True.
         use_global_stats(bool, optional): Whether to use global mean and
             variance. In inference or test mode, set use_global_stats to true
             or is_test to true, and the behavior is equivalent.
@@ -1241,8 +1240,7 @@ class BatchNorm(layers.Layer):
                  in_place=False,
                  moving_mean_name=None,
                  moving_variance_name=None,
-                 do_model_average_for_mean_and_var=False,
-                 fuse_with_relu=False,
+                 do_model_average_for_mean_and_var=True,
                  use_global_stats=False,
                  trainable_statistics=False):
         super(BatchNorm, self).__init__(name_scope, dtype)
@@ -1301,7 +1299,7 @@ class BatchNorm(layers.Layer):
         self._momentum = momentum
         self._epsilon = epsilon
         self._is_test = is_test
-        self._fuse_with_relu = fuse_with_relu
+        self._fuse_with_relu = False
         self._use_global_stats = use_global_stats
         self._trainable_statistics = trainable_statistics
 

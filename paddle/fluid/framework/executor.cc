@@ -93,6 +93,20 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
+Executor::~Executor() {
+#ifdef PADDLE_WITH_MKLDNN
+  // Clear mkl-dnn cache, unless explicitly
+  // (as set in constructor) marked not to do so
+  // this is needed to have mkl-dnn unit tests working
+  if (platform::is_cpu_place(place_)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::MKLDNNDeviceContext* dev_ctx =
+        (platform::MKLDNNDeviceContext*)pool.Get(place_);
+    dev_ctx->ResetBlobMap();
+  }
+#endif
+}
+
 void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
   // TODO(typhoonzero): complete message will need to use real trainer_id,
@@ -271,12 +285,6 @@ static bool has_fetch_operators(
   }
 
   return fetch_count > 0;
-}
-
-std::unique_ptr<ExecutorPrepareContext> Executor::PrepareCtxCache(
-    const ProgramDesc& program, int block_id,
-    const std::vector<std::string>& skip_ref_cnt_vars, bool force_disable_gc) {
-  return Prepare(program, block_id, skip_ref_cnt_vars, force_disable_gc);
 }
 
 void Executor::Run(const ProgramDesc& program, Scope* scope,

@@ -148,6 +148,10 @@ class TestFCOpError(OpTest):
 
             self.assertRaises(TypeError, test_type)
 
+            # The input dtype of fc can be float16 in GPU, test for warning
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype='float16')
+            fluid.layers.fc(input=x3, size=1)
+
 
 if __name__ == "__main__":
     unittest.main()

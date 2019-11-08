@@ -92,7 +92,10 @@ void zero_copy_run() {
   inputs[1].shape = label_shape;
   inputs[1].shape_size = label_shape_size;
 
-  PD_PredictorZeroCopyRun(config, inputs, in_size, outputs, &out_size);
+  PD_PredictorZeroCopyRun(config, inputs, in_size, &outputs, &out_size);
+
+  LOG(INFO) << outputs[0].name;
+  LOG(INFO) << outputs[0].shape_size;
 }
 
 TEST(PD_ZeroCopyRun, zero_copy_run) {
