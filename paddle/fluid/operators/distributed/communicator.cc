@@ -664,20 +664,20 @@ void GeoSgdCommunicator::SendThread() {
       for (auto &task_f : task_futures) {
         task_f.wait();
       }
-      VLOG(0) << "debug first tasks done";
       task_futures.clear();
       for (auto &f : task_futures_second) {
         task_futures.emplace_back(
-            send_threadpool_->enqueue(std::move(task_futures_second[i])));
+            send_threadpool_->enqueue(std::move(f)));
       }
-      for (auto &task_f : task_futures) {
-        task_f.wait();
-      }
-      VLOG(0) << "debug second tasks done";
-      task_futures.clear();
       for (auto &f : task_futures_third) {
         task_futures.emplace_back(
-            send_threadpool_->enqueue(std::move(task_futures_third[i])));
+            send_threadpool_->enqueue(std::move(f)));
+      }
+      int need_wait = task_futures.size() / 2;
+      for (int i = need_wait - 1; i >= 0; i--) {
+        auto &task_f = task_futures[i];
+        task_f.wait();
+        task_futures.erase(task_futures.begin() + i);
       }
       task_futures_second.clear();
       task_futures_third.clear();
@@ -835,7 +835,7 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
       sparse_variables_copy.at(splited_var_name);
   std::vector<int64_t> sparse_rows = sparse_variables_rows.at(splited_var_name);
 
-  auto ids_num = sparse_row.size();
+  auto ids_num = sparse_rows.size();
   VLOG(1) << "Sparse Ids nums is : " << ids_num;
   auto origin_var_name = DeltaVarToVar(var_name);
 
@@ -889,7 +889,7 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   auto before_send_sparse = GetCurrentUS();
   RpcSend(var_name, splited_var_name, splited_var_index);
   auto after_send_sparse = GetCurrentUS();
-  VLOG(1) << "send " << splited_var_name << " has nums " << new_rows.size()
+  VLOG(1) << "send " << splited_var_name << " has nums " << sparse_rows.size()
           << " use time " << after_send_sparse - before_send_sparse;
 }
 
