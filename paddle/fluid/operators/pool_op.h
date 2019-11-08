@@ -66,7 +66,7 @@ inline void UpdatePadding(std::vector<int>* paddings, const bool global_pooling,
   // set padding size == data_dims.size() * 2
   auto data_shape = framework::vectorize<int>(data_dims);
   if (paddings->size() == data_dims.size()) {
-    for (size_t i = 0; i < data_dims.size(); ++i) {
+    for (int i = 0; i < data_dims.size(); ++i) {
       int copy_pad = *(paddings->begin() + 2 * i);
       paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
     }
@@ -78,7 +78,7 @@ inline void UpdatePadding(std::vector<int>* paddings, const bool global_pooling,
 
   // when padding_desc is "VALID" or "SAME"
   if (padding_algorithm == "SAME") {
-    for (size_t i = 0; i < data_dims.size(); ++i) {
+    for (int i = 0; i < data_dims.size(); ++i) {
       int out_size = (data_dims[i] + strides[i] - 1) / strides[0];
       int pad_sum =
           std::max((out_size - 1) * strides[i] + ksize[i] - data_shape[i], 0);

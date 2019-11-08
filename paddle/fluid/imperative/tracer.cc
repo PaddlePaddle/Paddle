@@ -16,9 +16,17 @@
 #include <unordered_set>
 #include <utility>
 #include "paddle/fluid/platform/profiler.h"
-
 namespace paddle {
 namespace imperative {
+
+static std::shared_ptr<Tracer> g_current_tracer(nullptr);
+
+const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
+
+void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer) {
+  g_current_tracer = tracer;
+  VLOG(6) << "Set current tracer: " << g_current_tracer;
+}
 
 static void ClearNoNeedBufferInputs(OpBase* op) {
   auto& inferer = op->Info().NoNeedBufferVarsInferer();

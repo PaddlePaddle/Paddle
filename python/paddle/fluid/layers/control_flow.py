@@ -35,6 +35,60 @@ __all__ = [
 ]
 
 
+def select_output(input, outputs, mask):
+    """
+    **select_output**    
+    This API takes in one input and multiple outputs and an integer mask. It
+    selects the output specified by the mask and copy the input to selected
+    output. It is useful in control flow.
+
+    Args:
+        input(Variable): The input variable
+        outputs(tuple|list): The output variables
+        mask(Variable): A tensor containing 1 integer number selecting which
+            output to be copied with input
+
+    Returns:
+        Variable: The outputs variables
+    """
+    helper = LayerHelper('select_output', **locals())
+    helper.append_op(
+        type='select_output',
+        inputs={'X': input,
+                'Mask': mask},
+        outputs={'Out': outputs})
+    return outputs
+
+
+def select_input(inputs, mask):
+    """
+    **select_input**
+    
+    This API takes in multiple inputs and uses an integer mask to select one
+    input to output. It is useful in control flow.
+
+    Args:
+        inputs(tuple|list): The input variables
+        mask(Variable): A tensor containing 1 integer number selecting which
+            input to output
+
+    Returns:
+        Variable: The selected input variable
+    """
+    helper = LayerHelper('select_input', **locals())
+    if isinstance(inputs, list) or isinstance(inputs, tuple):
+        input_dtype = inputs[0].dtype
+    else:
+        input_dtype = inputs.dtype
+    out = helper.create_variable(dtype=input_dtype)
+    helper.append_op(
+        type='select_input',
+        inputs={'X': inputs,
+                'Mask': mask},
+        outputs={'Out': out})
+    return out
+
+
 def split_lod_tensor(input, mask, level=0):
     """
     This function takes in an input that contains the complete lod information,
