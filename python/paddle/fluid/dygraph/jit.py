@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['trace']
+__all__ = ['TracedLayer']
 
-from .base import program_desc_tracing_guard
+from .base import program_desc_tracing_guard, switch_to_static_graph
 from .layers import Layer
-from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard
+from paddle.fluid import core
+from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
+from paddle.fluid.executor import Executor, scope_guard
+from paddle.fluid.compiler import CompiledProgram
+import paddle.fluid.io as fluid_io
 
 
 def create_program_from_desc(program_desc):
@@ -43,7 +47,7 @@ def extract_vars(inputs):
 
 
 @dygraph_only
-def trace(layer, inputs, feed_names=None, fetch_names=None):
+def _trace(layer, inputs, feed_names=None, fetch_names=None):
     """
     Trace dygraph network into a :code:`Program`. The returned :code:`Program`
     can be run in static graph mode. This method would simply record all
@@ -70,9 +74,10 @@ def trace(layer, inputs, feed_names=None, fetch_names=None):
                 different between different batches. Default None.
                 
     Returns:
-        A tuple of 2 items, whose first item is the outputs of 
+        A tuple of 4 items, whose first item is the outputs of 
         :code:`layer.forward()` method, and second item is the traced 
-        :code:`Program` .
+        :code:`Program`, and the third item is names of feed variables,
+        and the fourth item is names of fetch variables.
 
     Examples:
 
@@ -95,7 +100,7 @@ def trace(layer, inputs, feed_names=None, fetch_names=None):
                 layer = ExampleLayer("example_layer")
                 in_np = np.random.random([2, 3]).astype('float32')
                 in_var = to_variable(in_np)
-                out, program = jit.trace(layer, inputs=[in_var],
+                out, program, _, _ = jit._trace(layer, inputs=[in_var],
                                          feed_names=['input'],
                                          fetch_names=['fc_out'])
 
@@ -114,6 +119,9 @@ def trace(layer, inputs, feed_names=None, fetch_names=None):
     tracer = _dygraph_tracer()._get_program_desc_tracer()
 
     var_list = extract_vars(inputs)
+    if callable(feed_names):
+        feed_names = feed_names(len(var_list))
+
     tracer.set_feed_vars(var_list, feed_names)
 
     with program_desc_tracing_guard(True):
@@ -124,6 +132,9 @@ def trace(layer, inputs, feed_names=None, fetch_names=None):
             outputs = original_outputs
         out_vars = [var._ivar for var in outputs]
 
+        if callable(fetch_names):
+            fetch_names = fetch_names(len(out_vars))
+
         tracer.set_fetch_vars(out_vars, fetch_names)
         tracer.set_name_prefix('t_')
 
@@ -133,4 +144,104 @@ def trace(layer, inputs, feed_names=None, fetch_names=None):
     with _dygraph_guard(None):
         program = create_program_from_desc(program_desc)
 
-    return original_outputs, program
+    return original_outputs, program, feed_names, fetch_names
+
+
+class TracedLayer(object):
+    def __init__(self, layer, program, feed_names, fetch_names):
+        self._layer = layer
+        self._program = program
+        self._feed_names = feed_names
+        self._fetch_names = fetch_names
+
+        self._place = _current_expected_place()
+
+        self._scope = core.Scope()
+        for p in self._layer.parameters():
+            p._ivar._share_data_in_scope(self._scope)
+
+        self._exe = Executor(self._place)
+        self._compiled_program = None
+        self._build_strategy = None
+        self._exec_strategy = None
+
+    @property
+    def program(self):
+        return self._program
+
+    def _switch(self, is_test=True):
+        for block_id in range(self._program.num_blocks):
+            block = self._program.block(block_id)
+            for op in block.ops:
+                if op.has_attr("is_test"):
+                    op._set_attr("is_test", is_test)
+
+    @staticmethod
+    @dygraph_only
+    def trace(layer, inputs):
+        feed_func = lambda n: ['feed_{}'.format(i) for i in range(n)]
+        fetch_func = lambda n: ['fetch_{}'.format(i) for i in range(n)]
+        outs, prog, feed, fetch = _trace(layer, inputs, feed_func, fetch_func)
+        traced = TracedLayer(layer, prog, feed, fetch)
+        return outs, traced
+
+    def set_strategy(self, build_strategy=None, exec_strategy=None):
+        self._build_strategy = build_strategy
+        self._exec_strategy = exec_strategy
+
+    @switch_to_static_graph
+    def _compile(self):
+        self._compiled_program = CompiledProgram(
+            self._program).with_data_parallel(
+                build_strategy=self._build_strategy,
+                exec_strategy=self._exec_strategy,
+                places=self._place)
+
+    def _build_feed(self, inputs):
+        assert len(inputs) == len(self._feed_names)
+        feed_dict = {}
+        if in_dygraph_mode():
+            for x, name in zip(inputs, self._feed_names):
+                feed_dict[name] = x._ivar.value().get_tensor()
+        else:
+            for x, name in zip(inputs, self._feed_names):
+                feed_dict[name] = x
+
+        return feed_dict
+
+    @switch_to_static_graph
+    def _run(self, feed):
+        return self._exe.run(self._compiled_program,
+                             feed=feed,
+                             fetch_list=self._fetch_names)
+
+    def __call__(self, inputs):
+        with scope_guard(self._scope):
+            if self._compiled_program is None:
+                self._compile()
+
+            return self._run(self._build_feed(inputs))
+
+    @switch_to_static_graph
+    def save_inference_model(self, dirname, feed=None, fetch=None):
+        def get_feed_fetch(all_vars, partial_vars):
+            if partial_vars is None:
+                return all_vars
+
+            return [all_vars[idx] for idx in feed]
+
+        with scope_guard(self._scope):
+            feeded_var_names = get_feed_fetch(self._feed_names, feed)
+            target_var_names = get_feed_fetch(self._fetch_names, fetch)
+            target_vars = []
+            for name in target_var_names:
+                target_var = self._program.global_block().vars.get(name, None)
+                assert target_var is not None, "{} cannot be found".format(name)
+                target_vars.append(target_var)
+
+            return fluid_io.save_inference_model(
+                dirname=dirname,
+                feeded_var_names=feeded_var_names,
+                target_vars=target_vars,
+                executor=self._exe,
+                main_program=self._program.clone())
