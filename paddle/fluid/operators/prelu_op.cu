@@ -92,7 +92,7 @@ class PreluGradFunctor {
     size_t spatial_size = plane_size * input_shape[1];
     size_t numel = spatial_size * input_shape[0];
     PReluGradKernel<
-        T, M><<<PADDLE_GET_BLOCKS(numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+        T><<<PADDLE_GET_BLOCKS(numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         x, y, alpha, dy, dx, dalpha, input_shape[1], plane_size, spatial_size,
         numel, mode);
   }
