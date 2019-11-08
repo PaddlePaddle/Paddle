@@ -30,6 +30,9 @@ __all__ = [
     'var_conv_2d',
     'match_matrix_tensor',
     'tree_conv',
+    'fused_embedding_seq_pool',
+    'multiclass_nms2',
+    'search_pyramid_hash',
 ]
 
 
@@ -427,3 +430,295 @@ def tree_conv(nodes_vector,
     else:
         pre_activation = out
     return helper.append_activation(pre_activation)
+
+
+def fused_embedding_seq_pool(input,
+                             size,
+                             is_sparse=False,
+                             padding_idx=None,
+                             combiner='sum',
+                             param_attr=None,
+                             dtype='float32'):
+    """
+    **Embedding Sequence pool**
+
+    This layer is the fusion of lookup table and sequence_pool.
+
+    Args:
+        input (Variable): Input is a Tensor<int64> Variable, which contains the IDs' information.
+            The value of the input IDs should satisfy :math:`0<= id < size[0]`.
+        size (tuple|list): The shape of the lookup_table parameter. It should
+            have two elements which indicate the size of the dictionary of
+            embedding and the size of each embedding vector respectively.
+        is_sparse (bool): The flag indicating whether to use sparse update.
+            Default: False.
+        padding_idx (int|long|None): It will output all-zero padding data whenever
+            lookup encounters :math:`padding\_idx` in Ids. If set :attr:`None`, it makes
+            no effect to output. If :math:`padding\_idx < 0`, the :math:`padding\_idx`
+            will automatically be converted to :math:`size[0] + padding\_idx` to use.
+            Default: None.
+        combiner (str): The pooling type of sequence_pool, and only support `sum`.
+            Default: sum.
+        param_attr (ParamAttr): Parameters for this layer.
+        dtype (np.dtype|core.VarDesc.VarType|str): The dtype refers to the data type of output
+            tensor. It can be float32, float_16, int etc.
+    Returns:
+        The sequence pooling variable which is a Tensor.
+    Examples:
+        .. code-block:: python
+            import numpy as np
+            import paddle.fluid as fluid
+
+            dict_size = 20
+            data_t = fluid.layers.data(name='word', shape=[1], dtype='int64', lod_level=1)
+            padding_idx = np.random.randint(1, 10)
+            out = fluid.contrib.fused_embedding_seq_pool(
+                input=data_t,
+                size=[dict_size, 32],
+                param_attr='w',
+                padding_idx=padding_idx,
+                is_sparse=False)
+    """
+    helper = LayerHelper('fused_embedding_seq_pool', **locals())
+    w = helper.create_parameter(
+        attr=helper.param_attr, shape=size, dtype=dtype, is_bias=False)
+    out = helper.create_variable_for_type_inference(dtype)
+    padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
+        size[0] + padding_idx)
+    helper.append_op(
+        type='fused_embedding_seq_pool',
+        inputs={'Ids': input,
+                'W': w},
+        outputs={'Out': out},
+        attrs={
+            'is_sparse': is_sparse,
+            'combiner': combiner,
+            'padding_idx': padding_idx
+        })
+    return out
+
+
+def multiclass_nms2(bboxes,
+                    scores,
+                    score_threshold,
+                    nms_top_k,
+                    keep_top_k,
+                    nms_threshold=0.3,
+                    normalized=True,
+                    nms_eta=1.,
+                    background_label=0,
+                    return_index=False,
+                    name=None):
+    """
+    **Multiclass NMS2**
+    
+    This operator is to do multi-class non maximum suppression (NMS) on
+    boxes and scores.
+    In the NMS step, this operator greedily selects a subset of detection bounding
+    boxes that have high scores larger than score_threshold, if providing this
+    threshold, then selects the largest nms_top_k confidences scores if nms_top_k
+    is larger than -1. Then this operator pruns away boxes that have high IOU
+    (intersection over union) overlap with already selected boxes by adaptive
+    threshold NMS based on parameters of nms_threshold and nms_eta.
+    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    per image if keep_top_k is larger than -1.
+
+    Args:
+        bboxes (Variable): Two types of bboxes are supported:
+                           1. (Tensor) A 3-D Tensor with shape
+                           [N, M, 4 or 8 16 24 32] represents the
+                           predicted locations of M bounding bboxes,
+                           N is the batch size. Each bounding box has four
+                           coordinate values and the layout is 
+                           [xmin, ymin, xmax, ymax], when box size equals to 4.
+                           2. (LoDTensor) A 3-D Tensor with shape [M, C, 4]
+                           M is the number of bounding boxes, C is the 
+                           class number   
+        scores (Variable): Two types of scores are supported:
+                           1. (Tensor) A 3-D Tensor with shape [N, C, M]
+                           represents the predicted confidence predictions.
+                           N is the batch size, C is the class number, M is 
+                           number of bounding boxes. For each category there 
+                           are total M scores which corresponding M bounding
+                           boxes. Please note, M is equal to the 2nd dimension
+                           of BBoxes.
+                           2. (LoDTensor) A 2-D LoDTensor with shape [M, C].
+                           M is the number of bbox, C is the class number.
+                           In this case, input BBoxes should be the second
+                           case with shape [M, C, 4].
+        background_label (int): The index of background label, the background 
+                                label will be ignored. If set to -1, then all
+                                categories will be considered. Default: 0
+        score_threshold (float): Threshold to filter out bounding boxes with
+                                 low confidence score. If not provided, 
+                                 consider all boxes.
+        nms_top_k (int): Maximum number of detections to be kept according to
+                         the confidences aftern the filtering detections based
+                         on score_threshold.
+        nms_threshold (float): The threshold to be used in NMS. Default: 0.3
+        nms_eta (float): The threshold to be used in NMS. Default: 1.0
+        keep_top_k (int): Number of total bboxes to be kept per image after NMS
+                          step. -1 means keeping all bboxes after NMS step.
+        normalized (bool): Whether detections are normalized. Default: True
+        return_index(bool): Whether return selected index. Default: False
+        name(str): Name of the multiclass nms op. Default: None.
+
+    Returns:
+        A tuple with two Variables: (Out, Index) if return_index is True,
+        otherwise, a tuple with one Variable(Out) is returned. 
+        Out: A 2-D LoDTensor with shape [No, 6] represents the detections. 
+        Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax] 
+        or A 2-D LoDTensor with shape [No, 10] represents the detections. 
+        Each row has 10 values: [label, confidence, x1, y1, x2, y2, x3, y3, 
+        x4, y4]. No is the total number of detections. 
+        If all images have not detected results, all elements in LoD will be
+        0, and output tensor is empty (None).
+        Index: Only return when return_index is True. A 2-D LoDTensor with 
+        shape [No, 1] represents the selected index which type is Integer. 
+        The index is the absolute value cross batches. No is the same number 
+        as Out. If the index is used to gather other attribute such as age, 
+        one needs to reshape the input(N, M, 1) to (N * M, 1) as first, where 
+        N is the batch size and M is the number of boxes.
+
+
+    Examples:
+        .. code-block:: python
+
+
+            import paddle.fluid as fluid
+            boxes = fluid.layers.data(name='bboxes', shape=[81, 4],
+                                      dtype='float32', lod_level=1)
+            scores = fluid.layers.data(name='scores', shape=[81],
+                                      dtype='float32', lod_level=1)
+            out, index = fluid.layers.multiclass_nms2(bboxes=boxes,
+                                              scores=scores,
+                                              background_label=0,
+                                              score_threshold=0.5,
+                                              nms_top_k=400,
+                                              nms_threshold=0.3,
+                                              keep_top_k=200,
+                                              normalized=False,
+                                              return_index=True)
+    """
+    helper = LayerHelper('multiclass_nms2', **locals())
+
+    output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
+    index = helper.create_variable_for_type_inference(dtype='int')
+    helper.append_op(
+        type="multiclass_nms2",
+        inputs={'BBoxes': bboxes,
+                'Scores': scores},
+        attrs={
+            'background_label': background_label,
+            'score_threshold': score_threshold,
+            'nms_top_k': nms_top_k,
+            'nms_threshold': nms_threshold,
+            'nms_eta': nms_eta,
+            'keep_top_k': keep_top_k,
+            'nms_eta': nms_eta,
+            'normalized': normalized
+        },
+        outputs={'Out': output,
+                 'Index': index})
+    output.stop_gradient = True
+    index.stop_gradient = True
+
+    if return_index:
+        return output, index
+    return output
+
+
+def search_pyramid_hash(input,
+                        num_emb,
+                        space_len,
+                        pyramid_layer,
+                        rand_len,
+                        drop_out_percent,
+                        is_training,
+                        use_filter,
+                        white_list_len,
+                        black_list_len,
+                        seed,
+                        lr,
+                        param_attr=None,
+                        param_attr_wl=None,
+                        param_attr_bl=None,
+                        name=None,
+                        dtype='float32'):
+    """
+    **Pyramid hash embedding**
+
+    Args:
+        input (Variable): LoDTensor<int32> Variable contained the IDs' information.
+        num_emb (int): The embedding size of output.
+        space_len (int): The length of pyramid hash embedding space.
+        pyramid_layer (int): The number of pyramid layers. It should be greater than 2.
+        rand_len (int): The minimum length of pyramid hash cell.
+        drop_out_percent (float): The probability of dropping out the input token randomly.
+            It should satisfy: [0., 1.]
+        is_training (bool): Whether in training or testing phrase.
+        use_filter(bool): If set True, the white filter and black filter should be given by
+            :attr:`param_attr_wl` and :attr:`param_attr_bl` .
+        white_list_len(int): If set :math:`white_list_len>0` , white filter with shape [white_list_len, 1]
+            should be provided by param_attr_wl.
+        black_list_len(int): If set :math:`black_list_len>0` , black filter with shape [black_list_len, 1]
+            should be provided by param_attr_bl.
+        seed(int): The number of random seed.
+        lr(float): The learning rate of weight created by :attr:`param_attr` with shape [space_len+rand_len, 1]
+            in this layer.
+        param_attr(ParamAttr): To specify the weight parameter property. Default: None, which means the
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
+        param_attr_wl(ParamAttr): Specified parameters of white filter.
+        param_attr_bl(ParamAttr): Specified parameters of black filter.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
+            For more information, please refer to :ref:`api_guide_Name` .
+        dtype(str): The data type of output variable, float32.
+    Returns:
+        Variable: LoDTensor of pyramid hash embedding.
+    """
+    helper = LayerHelper('search_pyramid_hash', **locals())
+
+    w_shape = [space_len + rand_len, 1]
+    w = helper.create_parameter(
+        attr=param_attr, shape=w_shape, dtype=dtype, is_bias=False)
+    w.stop_gradient = True
+
+    input_vars = {'X': input, 'W': w}
+    if white_list_len > 0:
+        wl_shape = [white_list_len, 1]
+        white_list = helper.create_parameter(
+            attr=param_attr_wl, shape=wl_shape, dtype=dtype, is_bias=False)
+        white_list.stop_gradient = True
+        input_vars['WhiteList'] = white_list
+
+    if black_list_len >= 0:
+        bl_shape = [black_list_len, 1]
+        black_list = helper.create_parameter(
+            attr=param_attr_bl, shape=bl_shape, dtype=dtype, is_bias=False)
+        black_list.stop_gradient = True
+        input_vars['BlackList'] = black_list
+
+    res = helper.create_variable_for_type_inference(dtype)
+    drop_pos = helper.create_variable_for_type_inference(dtype)
+    x_temp_out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='pyramid_hash',
+        inputs=input_vars,
+        outputs={"Out": res,
+                 "X_Temp_Out": x_temp_out,
+                 'DropPos': drop_pos},
+        attrs={
+            'num_emb': num_emb,
+            'space_len': space_len,
+            'pyramid_layer': pyramid_layer,
+            'rand_len': rand_len,
+            'drop_out_percent': drop_out_percent,
+            'is_training': is_training,
+            'use_filter': use_filter,
+            'white_list_len': white_list_len,
+            'black_list_len': black_list_len,
+            'seed': seed,
+            'lr': lr,
+        })
+
+    return res

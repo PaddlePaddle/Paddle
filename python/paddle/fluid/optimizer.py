@@ -695,12 +695,13 @@ class SGDOptimizer(Optimizer):
 
         param\_out = param - learning\_rate * grad
 
-    Args:
-        learning_rate (float|Variable): the learning rate used to update parameters. \
-        Can be a float value or a Variable with one float value as data element.
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
+    Parameters:
+        learning_rate (float|Variable): The learning rate used to update parameters. \
+            Can be a float value or a Variable with one float value as data element.
+        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
+            Optional, default is None.
+        name (str, optional): This parameter is used by developers to print debugging information. \
+            For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Examples:
         .. code-block:: python
@@ -778,14 +779,15 @@ class MomentumOptimizer(Optimizer):
 
         &\quad   param = param - learning\_rate * velocity
 
-    Args:
-        learning_rate (float|Variable): the learning rate used to update parameters. \
-        Can be a float value or a Variable with one float value as data element.
-        momentum (float): momentum factor
-        use_nesterov (bool): enables Nesterov momentum
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
+    Parameters:
+        learning_rate (float|Variable): The learning rate used to update parameters. \
+            Can be a float value or a Variable with one float value as data element.
+        momentum (float): Momentum factor
+        use_nesterov (bool, optional): Enables Nesterov momentum, default is false.
+        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
+            Optional, default is None.
+        name (str, optional): This parameter is used by developers to print debugging information. \
+            For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Examples:
         .. code-block:: python
@@ -957,7 +959,46 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         super(DGCMomentumOptimizer, self).__init__(
             learning_rate, momentum, use_nesterov, regularization, name)
 
-        core.init_dgc()
+    def _is_use_dgc(self, param_var, grad_var):
+        var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
+        if var_numel < 16384 or \
+           param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
+           grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
+               param_var.dtype != core.VarDesc.VarType.FP32 :
+            return False
+        return True
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        if not self._is_use_dgc(param_and_grad[0], param_and_grad[1]):
+            return super(DGCMomentumOptimizer, self)._append_optimize_op(
+                block, param_and_grad)
+
+        velocity_acc = self._get_accumulator(self._velocity_acc_str,
+                                             param_and_grad[0])
+        # create the dgc momentum optimize op
+        dgc_momentum_op = block.append_op(
+            type="dgc_momentum",
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Velocity": velocity_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+                "current_step": self._global_step_var,
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "VelocityOut": velocity_acc
+            },
+            attrs={
+                "mu": self._momentum,
+                "use_nesterov": self._use_nesterov,
+                "rampup_begin_step": float(self._rampup_begin_step)
+            },
+            stop_gradient=True)
+
+        return dgc_momentum_op
 
     def _add_auto_increment_var(self, counter_name, begin, step=1):
         helper = LayerHelper('global_step_counter')
@@ -997,11 +1038,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             force_cpu=True)
 
         for param_var, grad_var in param_and_grads:
-            var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
-            if var_numel < 16384 or \
-                param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
-                grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
-                    param_var.dtype != core.VarDesc.VarType.FP32 :
+            if not self._is_use_dgc(param_var, grad_var):
                 continue
 
             u_var = tensor.create_global_var(
@@ -1142,16 +1179,16 @@ class LarsMomentumOptimizer(Optimizer):
 
         & param = param - velocity
 
-    Args:
-        learning_rate (float|Variable): the learning rate used to update parameters. \
-        Can be a float value or a Variable with one float value as data element.
-        momentum (float): momentum factor
-        lars_coeff (float): defines how much we trust the layer to change its weights.
-        lars_weight_decay (float): weight decay coefficient for decaying using LARS.
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
-
+    Parameters:
+        learning_rate (float|Variable): The learning rate used to update parameters. \
+            Can be a float value or a Variable with one float value as data element. \
+            momentum (float): momentum factor
+        lars_coeff (float): Defines how much we trust the layer to change its weights.
+        lars_weight_decay (float): Weight decay coefficient for decaying using LARS.
+        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`.
+            Optional, default is None.
+        name (str, optional): This parameter is used by developers to print debugging information. \
+            For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Examples:
         .. code-block:: python
@@ -2015,20 +2052,21 @@ class RMSPropOptimizer(Optimizer):
     from 1e-4 to 1e-8.
 
 
-    Args:
-        learning_rate(float): global learning rate.
-        rho(float): rho is :math: `\\rho` in equation, set 0.95 by default.
+    Parameters:
+        learning_rate(float): Global learning rate.
+        rho(float): rho is :math: `\\rho` in equation, default is 0.95.
         epsilon(float): :math: `\\epsilon` in equation is smoothing term to
-            avoid division by zero, set 1e-6 by default.
+            avoid division by zero, default is 1e-6.
         momentum(float): :math:`\\beta` in equation is the momentum term,
-            set 0.0 by default.
+            default is 0.0.
         centered(bool): If True, gradients are normalized by the estimated variance of
             the gradient; if False, by the uncentered second moment. Setting this to
             True may help with training, but is slightly more expensive in terms of
             computation and memory. Defaults to False.
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
+        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
+            Optional, default is None.
+        name (str, optional): This parameter is used by developers to print debugging information. \
+            For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Raises:
         ValueError: If learning_rate, rho, epsilon, momentum are None.
@@ -2180,14 +2218,15 @@ class FtrlOptimizer(Optimizer):
 
         &squared\_accum += grad^2
 
-    Args:
-        learning_rate (float|Variable): global learning rate.
-        l1 (float): L1 regularization strength.
-        l2 (float): L2 regularization strength.
-        lr_power (float): Learning Rate Power.
-        regularization: A Regularizer, such as
-                        fluid.regularizer.L2DecayRegularizer.
-        name: A optional name prefix.
+    Parameters:
+        learning_rate (float|Variable): Global learning rate.
+        l1 (float): L1 regularization strength, default is 0.0.
+        l2 (float): L2 regularization strength, default is 0.0.
+        lr_power (float): Learning Rate Power, default is -0.5.
+        regularization: A Regularizer, such as :ref:`api_fluid_regularizer_L2DecayRegularizer`. \
+            Optional, default is None.
+        name (str, optional): This parameter is used by developers to print debugging information. \
+            For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Raises:
         ValueError: If learning_rate, rho, epsilon, momentum are None.
@@ -2220,7 +2259,7 @@ class FtrlOptimizer(Optimizer):
                 for data in train_reader():
                     exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
-    Notes:
+    NOTE:
        Currently, FtrlOptimizer doesn't support sparse parameter optimization.
     """
 

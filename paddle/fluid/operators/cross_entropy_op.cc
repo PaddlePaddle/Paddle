@@ -107,8 +107,9 @@ class CrossEntropyOpBase : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
   virtual bool IsSoftLabel(framework::InferShapeContext* ctx) const {
@@ -136,8 +137,8 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
                       "Input(Y@Grad) and Input(Y) should have the same rank.");
 
     bool check = true;
-    if ((!ctx->IsRuntime()) && (framework::product(x_dims) <= 0 ||
-                                framework::product(label_dims) <= 0)) {
+    if ((!ctx->IsRuntime()) &&
+        (framework::product(x_dims) <= 0 || framework::product(dy_dims) <= 0)) {
       check = false;
     }
 
@@ -157,9 +158,9 @@ class CrossEntropyGradientOpBase : public framework::OperatorWithKernel {
   // is determined by its input "X".
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Y"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Y")),
+                                   ctx.device_context());
   }
 
   virtual framework::DDim GetXDim(framework::InferShapeContext* ctx) const {
@@ -256,19 +257,20 @@ class CrossEntropyGradientOp : public CrossEntropyGradientOpBase {
   }
 };
 
-class CrossEntropyGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class CrossEntropyGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("cross_entropy_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Label", Input("Label"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -364,20 +366,21 @@ or not. But the output only shares the LoD information with input X.
   }
 };
 
-class CrossEntropyGradOpDescMaker2 : public framework::SingleGradOpDescMaker {
+template <typename T>
+class CrossEntropyGradOpMaker2 : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("cross_entropy_grad2");
-    op->SetInput("Label", Input("Label"));
-    op->SetInput("MatchX", Output("MatchX"));
-    op->SetInput("XShape", Output("XShape"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput("MatchX", this->Output("MatchX"));
+    op->SetInput("XShape", this->Output("XShape"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -390,7 +393,8 @@ using CPUCtx = paddle::platform::CPUDeviceContext;
 
 REGISTER_OPERATOR(cross_entropy, ops::CrossEntropyOpBase,
                   ops::CrossEntropyOpMaker, ops::CrossEntropyOpInferVarType,
-                  ops::CrossEntropyGradOpDescMaker);
+                  ops::CrossEntropyGradOpMaker<paddle::framework::OpDesc>,
+                  ops::CrossEntropyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cross_entropy_grad, ops::CrossEntropyGradientOp);
 REGISTER_OP_CPU_KERNEL(cross_entropy, ops::CrossEntropyOpKernel<CPUCtx, float>,
                        ops::CrossEntropyOpKernel<CPUCtx, double>);
@@ -400,7 +404,8 @@ REGISTER_OP_CPU_KERNEL(cross_entropy_grad,
 
 REGISTER_OPERATOR(cross_entropy2, ops::CrossEntropyOp2,
                   ops::CrossEntropyOpMaker2, ops::CrossEntropyOpInferVarType,
-                  ops::CrossEntropyGradOpDescMaker2);
+                  ops::CrossEntropyGradOpMaker2<paddle::framework::OpDesc>,
+                  ops::CrossEntropyGradOpMaker2<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cross_entropy_grad2, ops::CrossEntropyGradientOp2);
 REGISTER_OP_CPU_KERNEL(cross_entropy2,
                        ops::CrossEntropyOpKernel2<CPUCtx, float>,

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -27,6 +28,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type_inference.h"
+#include "paddle/fluid/imperative/dygraph_grad_maker.h"
+#include "paddle/fluid/imperative/type_defs.h"
 
 namespace paddle {
 namespace framework {
@@ -40,6 +43,7 @@ enum OpInfoFillType {
   kShapeInference = 4,
   kInplaceOpInference = 5,
   kNoNeedBufferVarsInference = 6,
+  kGradOpBaseMaker = 7,
   kUnknown = -1
 };
 
@@ -54,6 +58,7 @@ using OpRegistryClasses = std::tuple<                                // NOLINT
     TypePair<OperatorBase, kOperator>,                               // NOLINT
     TypePair<OpProtoAndCheckerMaker, kOpProtoAndCheckerMaker>,       // NOLINT
     TypePair<GradOpDescMakerBase, kGradOpDescMaker>,                 // NOLINT
+    TypePair<imperative::GradOpBaseMakerBase, kGradOpBaseMaker>,     // NOLINT
     TypePair<VarTypeInference, kVarTypeInference>,                   // NOLINT
     TypePair<InferShapeBase, kShapeInference>,                       // NOLINT
     TypePair<InplaceOpInference, kInplaceOpInference>,               // NOLINT
@@ -186,8 +191,21 @@ struct OpInfoFiller<T, kGradOpDescMaker> {
     };
 
     info->use_default_grad_op_desc_maker_ =
-        std::is_base_of<DefaultGradOpDescMaker<true>, T>::value ||
-        std::is_base_of<DefaultGradOpDescMaker<false>, T>::value;
+        std::is_base_of<DefaultGradOpMaker<OpDesc, true>, T>::value ||
+        std::is_base_of<DefaultGradOpMaker<OpDesc, false>, T>::value;
+  }
+};
+
+template <typename T>
+struct OpInfoFiller<T, kGradOpBaseMaker> {
+  void operator()(const char* op_type, OpInfo* info) const {
+    info->dygraph_grad_op_maker_ = [](
+        const imperative::OpBase* fw_op_base,
+        const imperative::NameVarBaseMap& var_base_map_in,
+        const imperative::NameVarBaseMap& var_base_map_out) {
+      T maker(fw_op_base, var_base_map_in, var_base_map_out);
+      return maker();
+    };
   }
 };
 
@@ -214,9 +232,9 @@ struct OpInfoFiller<T, kShapeInference> {
 template <typename T>
 struct OpInfoFiller<T, kInplaceOpInference> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->infer_inplace_ = [](const OpDesc& op_desc, bool use_cuda) {
+    info->infer_inplace_ = [](bool use_cuda) {
       T infer;
-      return infer(op_desc, use_cuda);
+      return infer(use_cuda);
     };
   }
 };
@@ -224,12 +242,7 @@ struct OpInfoFiller<T, kInplaceOpInference> {
 template <typename T>
 struct OpInfoFiller<T, kNoNeedBufferVarsInference> {
   void operator()(const char* op_type, OpInfo* info) const {
-    info->infer_no_need_buffer_vars_ = [](const VariableNameMap& inputs,
-                                          const VariableNameMap& outputs,
-                                          const AttributeMap& attrs) {
-      T infer(inputs, outputs, attrs);
-      return infer();
-    };
+    info->infer_no_need_buffer_vars_.Reset(std::make_shared<T>());
   }
 };
 

@@ -74,6 +74,45 @@ TEST(test_tracer, test_trace_op) {
   }
 }
 
+TEST(test_tracer, test_trace_op_with_backward) {
+  // Doing an mul
+  imperative::Tracer tracer;
+  std::shared_ptr<imperative::VarBase> x_in(
+      new imperative::VarBase(true, "x_in"));
+  std::shared_ptr<imperative::VarBase> y_in(
+      new imperative::VarBase(true, "y_in"));
+  std::shared_ptr<imperative::VarBase> vout(
+      new imperative::VarBase(true, "vout"));
+  platform::CPUPlace place;
+  std::vector<float> src_data(10, 2.0);
+  std::vector<int64_t> dims1 = {2, 5};
+  std::vector<int64_t> dims2 = {5, 2};
+
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  x_in_tensor->Resize(framework::make_ddim(dims1));
+  auto* mutable_x = x_in_tensor->mutable_data<float>(place);
+  paddle::memory::Copy(place, mutable_x, place, src_data.data(),
+                       sizeof(float) * src_data.size());
+  y_in_tensor->Resize(framework::make_ddim(dims2));
+  auto* mutable_y = y_in_tensor->mutable_data<float>(place);
+  paddle::memory::Copy(place, mutable_y, place, src_data.data(),
+                       sizeof(float) * src_data.size());
+
+  var_pair x_pair = var_pair("X", vb_vector(1, x_in));
+  var_pair y_pair = var_pair("Y", vb_vector(1, y_in));
+  var_pair out_pair = var_pair("Out", vb_vector(1, vout));
+  imperative::NameVarBaseMap ins = {x_pair, y_pair};
+  imperative::NameVarBaseMap outs = {out_pair};
+  framework::AttributeMap mul_attr_map;
+  mul_attr_map["use_mkldnn"] = false;
+  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
+  for (size_t i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
+    ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
+  }
+}
+
 TEST(test_tracer, test_track_backward_output) {
   // Doing an mul
   imperative::Tracer tracer;
@@ -151,15 +190,17 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   imperative::Tracer tracer;
   std::shared_ptr<imperative::VarBase> x_in(
       new imperative::VarBase(true, "x_in"));
+  x_in->SetOverridedStopGradient(false);  // force to run backward
   std::shared_ptr<imperative::VarBase> y_in(
       new imperative::VarBase(true, "y_in"));
+  y_in->SetOverridedStopGradient(false);
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(true, "vout"));
   platform::CPUPlace place;
   platform::CUDAPlace gpu_place(0);
   std::vector<float> src_data(10, 2.0);
   std::vector<int64_t> dims1 = {2, 5};
-  std::vector<int64_t> dims2 = {5, 2};
+  std::vector<int64_t> dims2 = {2, 5};
 
   auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
   auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
@@ -178,16 +219,87 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  tracer.TraceOp("mul", ins, outs, mul_attr_map, gpu_place, true);
+  tracer.TraceOp("elementwise_add", ins, outs, mul_attr_map, gpu_place, true);
+
+  // run reduce sum
+  std::shared_ptr<imperative::VarBase> reduce_sum_out(
+      new imperative::VarBase(true, "reduce_sum_out"));
+  var_pair reduce_sum_in_pair = var_pair("X", vb_vector(1, vout));
+  var_pair reduce_sum_out_pair = var_pair("Out", vb_vector(1, reduce_sum_out));
+  imperative::NameVarBaseMap reduce_in = {reduce_sum_in_pair};
+  imperative::NameVarBaseMap reduce_out = {reduce_sum_out_pair};
+  framework::AttributeMap reduce_attr_map;
+  tracer.TraceOp("reduce_sum", reduce_in, reduce_out, reduce_attr_map,
+                 gpu_place, true);
+  detail::BackwardStrategy back_st;
+  imperative::Engine* engine = tracer.GetDefaultEngine();
+  engine->Init(reduce_sum_out.get(), back_st);
+  engine->Execute();
+
   framework::LoDTensor rlt;
   framework::TensorCopySync(vout->Var().Get<framework::LoDTensor>(), place,
                             &rlt);
   for (size_t i = 0; i < rlt.numel(); i++) {
-    ASSERT_EQ(rlt.data<float>()[i], 20.0);
+    ASSERT_EQ(rlt.data<float>()[i], 4.0);
+  }
+
+  framework::LoDTensor out_grad;
+  framework::TensorCopySync(vout->GradVar().Get<framework::LoDTensor>(), place,
+                            &out_grad);
+  for (size_t i = 0; i < out_grad.numel(); ++i) {
+    ASSERT_EQ(out_grad.data<float>()[i], 1.0);
+  }
+
+  framework::LoDTensor x_grad;
+  framework::TensorCopySync(x_in->GradVar().Get<framework::LoDTensor>(), place,
+                            &x_grad);
+
+  for (size_t i = 0; i < x_grad.numel(); ++i) {
+    ASSERT_EQ(x_grad.data<float>()[i], 1.0);
+  }
+
+  framework::LoDTensor y_grad;
+  framework::TensorCopySync(y_in->GradVar().Get<framework::LoDTensor>(), place,
+                            &y_grad);
+
+  for (size_t i = 0; i < y_grad.numel(); ++i) {
+    ASSERT_EQ(y_grad.data<float>()[i], 1.0);
   }
 }
+
 #endif
+
+TEST(test_tracer, test_unique_name_generator) {
+  // generate two unique names
+  imperative::Tracer tracer;
+  auto fc_1 = tracer.GenerateUniqueName("fc");
+  auto fc_2 = tracer.GenerateUniqueName("fc");
+  ASSERT_STREQ("fc_1", fc_1.c_str());
+  ASSERT_STREQ("fc_2", fc_2.c_str());
+}
+
+TEST(test_tracer, test_current_tracer) {
+  // use current_tracer
+  auto tracer = std::make_shared<imperative::Tracer>();
+  imperative::SetCurrentTracer(tracer);
+  auto current_tracer = imperative::GetCurrentTracer();
+  ASSERT_EQ(current_tracer, tracer);
+}
+
+TEST(test_tracer, test_expected_place) {
+  // default expected place is CPUPlace
+  imperative::Tracer tracer;
+  ASSERT_EQ(platform::is_cpu_place(tracer.ExpectedPlace()), true);
+  // set to CUDAPlace
+  platform::CUDAPlace gpu_place(0);
+  tracer.SetExpectedPlace(gpu_place);
+  ASSERT_EQ(platform::is_gpu_place(tracer.ExpectedPlace()), true);
+}
+
 }  // namespace imperative
 }  // namespace paddle
 
 USE_OP(mul);
+USE_OP(reduce_sum);
+USE_OP(reduce_sum_grad);
+USE_OP(elementwise_add);

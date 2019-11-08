@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Defination of device workers."""
 
 __all__ = ['DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section']
 
@@ -23,9 +24,7 @@ class DeviceWorker(object):
     """
 
     def __init__(self):
-        """
-        Init.
-        """
+        """Init."""
         self._program = None
         self._infer = None
 
@@ -75,9 +74,7 @@ class Hogwild(DeviceWorker):
     """
 
     def __init__(self):
-        """
-        Init.
-        """
+        """Init."""
         super(Hogwild, self).__init__()
 
     def _gen_worker_desc(self, trainer_desc):
@@ -140,23 +137,29 @@ class DownpourSGD(DeviceWorker):
         trainer_desc.device_worker_name = "DownpourWorker"
         pull_thread = trainer_desc.pull_dense_param
         pull_thread.device_num = trainer_desc.thread_num
-        for i in self._fleet_desc.trainer_param.dense_table:
+        if opt_info.get("program_id_to_worker") is None:
+            raise ValueError("opt_info must have program_id_to_worker")
+        prog_id_to_worker = opt_info["program_id_to_worker"]
+        if prog_id_to_worker.get(program_id) is None:
+            raise ValueError("%s not found in program_id_to_worker" %
+                             program_id)
+        worker = opt_info["program_id_to_worker"][program_id]
+        for i in worker.get_desc().dense_table:
             if i.table_id in dense_table_set:
                 dense_table = pull_thread.dense_table.add()
                 dense_table.dense_value_name.extend(i.dense_variable_name)
                 dense_table.table_id = \
                     i.table_id
-        sparse_len = len(self._fleet_desc.trainer_param.sparse_table)
+        sparse_len = len(worker.get_desc().sparse_table)
         for i in range(sparse_len):
             sparse_table = downpour.sparse_table.add()
-            sparse_table.table_id = \
-                        self._fleet_desc.trainer_param.sparse_table[i].table_id
-            sparse_table.sparse_key_name.extend(
-                self._fleet_desc.trainer_param.sparse_table[i].slot_key)
-            sparse_table.sparse_value_name.extend(
-                self._fleet_desc.trainer_param.sparse_table[i].slot_value)
-            sparse_table.sparse_grad_name.extend(
-                self._fleet_desc.trainer_param.sparse_table[i].slot_gradient)
+            sparse_table.table_id = worker.get_desc().sparse_table[i].table_id
+            sparse_table.sparse_key_name.extend(worker.get_desc().sparse_table[
+                i].slot_key)
+            sparse_table.sparse_value_name.extend(worker.get_desc()
+                                                  .sparse_table[i].slot_value)
+            sparse_table.sparse_grad_name.extend(worker.get_desc().sparse_table[
+                i].slot_gradient)
             if opt_info["use_cvm"]:
                 sparse_table.emb_dim = \
                     self._fleet_desc.server_param.downpour_server_param.downpour_table_param[
@@ -173,28 +176,24 @@ class DownpourSGD(DeviceWorker):
             for i in opt_info["stat_var_names"]:
                 downpour.stat_var_names.extend([i])
 
-        for i in self._fleet_desc.trainer_param.dense_table:
+        for i in worker.get_desc().dense_table:
             if i.table_id in dense_table_set:
                 dense_table = downpour.dense_table.add()
                 dense_table.table_id = i.table_id
                 dense_table.dense_value_name.extend(i.dense_variable_name)
                 dense_table.dense_grad_name.extend(
                     i.dense_gradient_variable_name)
-                downpour.skip_ops.extend(self._fleet_desc.trainer_param.skip_op)
+                downpour.skip_ops.extend(worker.get_desc().skip_op)
         if self._infer:
             downpour.push_dense = False
             downpour.push_sparse = False
 
 
 class Section(DeviceWorker):
-    """
-    SectionWorker
-    """
+    """SectionWorker."""
 
     def __init__(self):
-        """
-        Init.
-        """
+        """Init."""
         super(Section, self).__init__()
 
     def _gen_worker_desc(self, trainer_desc):

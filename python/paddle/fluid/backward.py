@@ -23,7 +23,7 @@ import logging
 from .. import compat as cpt
 from . import unique_name
 from . import log_helper
-
+import paddle.fluid
 __all__ = [
     'append_backward',
     'gradients',
@@ -1247,15 +1247,19 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
         target = targets[i]
         if grad is None:
             grad_name = _append_grad_suffix_(target.name)
-            op_desc = _create_op_desc_("fill_constant_batch_size_like",
-                                       {"Input": [target.name]},
+            target_shape = target.name + '_shape'
+            block.desc.append_op().copy_from(
+                _create_op_desc_("shape", {'Input': [target.name]},
+                                 {"Out": [target_shape]}, {}))
+            input_grad_names_set.add(target_shape)
+            op_desc = _create_op_desc_("fill_constant",
+                                       {"ShapeTensor": [target_shape]},
                                        {"Out": [grad_name]}, {
                                            "shape": target.shape,
                                            "value": 1.0,
                                            "dtype": target.dtype,
-                                           'input_dim_idx': 0,
-                                           'output_dim_idx': 0
                                        })
+
             block.desc.append_op().copy_from(op_desc)
             input_grad_names_set.add(grad_name)
         else:

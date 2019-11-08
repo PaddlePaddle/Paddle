@@ -222,6 +222,8 @@ class TestExpandAPI(OpTest):
         out_2 = fluid.layers.expand(x, expand_times=[positive_2, 3])
         out_3 = fluid.layers.expand(x, expand_times=expand_times)
 
+        g0 = fluid.backward.calc_gradient(out_2, x)
+
         exe = fluid.Executor(place=fluid.CPUPlace())
         res_1, res_2, res_3 = exe.run(fluid.default_main_program(),
                                       feed={

@@ -84,9 +84,7 @@ class HeartBeatMonitor {
                    be_monitored_var);
   }
 
-  static HeartBeatMonitor* GetInstance() {
-    return monitor_.get();
-  }
+  static HeartBeatMonitor* GetInstance() { return monitor_.get(); }
 
   void Stop() {
     running_ = false;

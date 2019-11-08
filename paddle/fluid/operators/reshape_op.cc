@@ -186,13 +186,16 @@ class ReshapeOp : public framework::OperatorWithKernel {
         output_shape[unk_dim_idx] = -1;
       }
     } else {
-      PADDLE_ENFORCE_EQ(
-          capacity, in_size,
-          "ShapeError: The 'shape' in ReshapeOp is invalid. "
-          "The input tensor X'size must be equal to the capacity of 'shape'. "
-          "But received X's shape = [%s], X's size = %d, 'shape' is [%s], the "
-          "capacity of 'shape' is %d.",
-          in_dims, in_size, framework::make_ddim(shape), capacity);
+      if (all_positive) {
+        PADDLE_ENFORCE_EQ(
+            capacity, in_size,
+            "ShapeError: The 'shape' in ReshapeOp is invalid. "
+            "The input tensor X'size must be equal to the capacity of 'shape'. "
+            "But received X's shape = [%s], X's size = %d, 'shape' is [%s], "
+            "the "
+            "capacity of 'shape' is %d.",
+            in_dims, in_size, framework::make_ddim(shape), capacity);
+      }
     }
     return framework::make_ddim(output_shape);
   }
@@ -200,8 +203,9 @@ class ReshapeOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -302,8 +306,9 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -363,6 +368,20 @@ class ReshapeGradKernel {
   }
 };
 
+class ReshapeDoubleGradKernel {
+ public:
+  void operator()(const framework::ExecutionContext &ctx) const {
+    auto *dd_x = ctx.Input<framework::Tensor>("DDX");
+    auto *dd_out = ctx.Output<framework::Tensor>("DDOut");
+
+    auto out_dims = dd_out->dims();
+
+    dd_out->mutable_data(ctx.GetPlace(), dd_x->type());
+    framework::TensorCopySync(*dd_x, ctx.GetPlace(), dd_out);
+    dd_out->Resize(out_dims);
+  }
+};
+
 // FIXME(zcd): reshape2 adds an intermediate output(XShape) based on reshape,
 // the XShape is used to carry the shape and lod of X which will be used in
 // reshape_grad, in this way, the framework can reuse the memory of X
@@ -402,19 +421,39 @@ class Reshape2OpMaker : public ReshapeOpMaker {
   }
 };
 
-class Reshape2GradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class Reshape2GradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
     grad_op->SetType("reshape2_grad");
-    grad_op->SetInput("XShape", Output("XShape"));
-    grad_op->SetInput("ShapeTensor", Input("ShapeTensor"));
-    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    grad_op->SetAttrMap(Attrs());
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput("ShapeTensor", this->Input("ShapeTensor"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
+  }
+};
+
+template <typename T>
+class Reshape2DoubleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
+    grad_op->SetType("reshape2_grad_grad");
+
+    grad_op->SetInput("ShapeTensor", this->Input("ShapeTensor"));
+    grad_op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    grad_op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+
+    grad_op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -440,8 +479,44 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "ShapeTensor") {
+      return expected_kernel_type;
+    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
+};
+
+class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
+ public:
+  Reshape2DoubleGradOp(const std::string &type,
+                       const framework::VariableNameMap &inputs,
+                       const framework::VariableNameMap &outputs,
+                       const framework::AttributeMap &attrs)
+      : OperatorWithKernel(type, inputs, outputs, attrs) {}
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInput("DDX"), true,
+                      "Input(X@GRAD_GRAD) shouldn't be null.");
+
+    if (ctx->HasOutput("DDOut") && ctx->HasInput("DDX")) {
+      ctx->ShareDim("DOut", "DDOut");
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"))->type(),
+        OperatorWithKernel::IndicateVarDataType(ctx, "DDX"),
         ctx.device_context());
   }
 
@@ -460,17 +535,21 @@ DECLARE_INPLACE_OP_INFERER(ReshapeOpInplaceInToOut, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(ReshapeGradInplaceInToOut,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
+DECLARE_INPLACE_OP_INFERER(ReshapeDoubleGradInplaceInToOut, {"DDX", "DDOut"});
 
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(reshape, ops::ReshapeOp, ops::ReshapeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>,
-                  ops::ReshapeOpInplaceInToOut);
+REGISTER_OPERATOR(
+    reshape, ops::ReshapeOp, ops::ReshapeOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
+    ops::ReshapeOpInplaceInToOut);
 REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp,
                   ops::ReshapeGradInplaceInToOut);
+
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int, ops::ReshapeKernel,
                                int64_t, ops::ReshapeKernel);
@@ -478,11 +557,17 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
                                double, ops::ReshapeGradKernel, int,
                                ops::ReshapeGradKernel, int64_t,
                                ops::ReshapeGradKernel);
-
 REGISTER_OPERATOR(reshape2, ops::Reshape2Op, ops::Reshape2OpMaker,
-                  ops::Reshape2GradMaker, ops::ReshapeOpInplaceInToOut);
+                  ops::Reshape2GradMaker<paddle::framework::OpDesc>,
+                  ops::Reshape2GradMaker<paddle::imperative::OpBase>,
+                  ops::ReshapeOpInplaceInToOut);
 REGISTER_OPERATOR(reshape2_grad, ops::Reshape2GradOp,
+                  ops::Reshape2DoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::Reshape2DoubleGradMaker<paddle::imperative::OpBase>,
                   ops::ReshapeGradInplaceInToOut);
+REGISTER_OPERATOR(reshape2_grad_grad, ops::Reshape2DoubleGradOp,
+                  ops::ReshapeDoubleGradInplaceInToOut);
+
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int, ops::ReshapeKernel,
                                int64_t, ops::ReshapeKernel);
@@ -490,6 +575,11 @@ REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
                                double, ops::ReshapeGradKernel, int,
                                ops::ReshapeGradKernel, int64_t,
                                ops::ReshapeGradKernel);
+REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2_grad_grad, float,
+                               ops::ReshapeDoubleGradKernel, double,
+                               ops::ReshapeDoubleGradKernel, int,
+                               ops::ReshapeDoubleGradKernel, int64_t,
+                               ops::ReshapeDoubleGradKernel);
 
 #ifdef PADDLE_WITH_CUDA
 REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
@@ -510,4 +600,11 @@ REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
                                 ops::ReshapeGradKernel, int64_t,
                                 ops::ReshapeGradKernel, plat::float16,
                                 ops::ReshapeGradKernel);
+
+REGISTER_OP_CUDA_KERNEL_FUNCTOR(reshape2_grad_grad, float,
+                                ops::ReshapeDoubleGradKernel, double,
+                                ops::ReshapeDoubleGradKernel, int,
+                                ops::ReshapeDoubleGradKernel, int64_t,
+                                ops::ReshapeDoubleGradKernel, plat::float16,
+                                ops::ReshapeDoubleGradKernel);
 #endif
