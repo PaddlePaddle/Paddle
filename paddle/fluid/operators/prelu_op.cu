@@ -141,7 +141,7 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       dalpha_tmp_ptr = dalpha_tmp.mutable_data<T>(context.GetPlace());
     }
 
-    PreluGradFunctor<T, prelu::ElementWiseMode> prelu_grad;
+    PreluGradFunctor<T> prelu_grad;
     prelu_grad(stream, x_ptr, y_ptr, alpha_ptr, dy_ptr, dx_ptr, dalpha_tmp_ptr,
                input_shape, mode);
 
