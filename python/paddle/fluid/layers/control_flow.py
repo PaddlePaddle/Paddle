@@ -1741,7 +1741,7 @@ def copy_scope_var_to_global(var, layer_helper):
 
 def cond(pred, true_fn=None, false_fn=None, name=None):
     """
-    TODO
+    TODO:(huihuangzheng) developing
     """
     helper = LayerHelper('cond', **locals())
     true_output = None
@@ -1770,13 +1770,18 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     if true_output is None and false_output is None:
         return None
 
+    if true_output is None:
+        raise ValueError(
+            "Incompatible return values of true_fn and false_fn in cond: "
+            "true_fn returns None while false_fn returns non-None")
+    if false_output is None:
+        raise ValueError(
+            "Incompatible return values of true_fn and false_fn in cond: "
+            "true_fn returns non-None while false_fn returns None")
+
     # Merge ture and false output if they are not None
     try:
-        assert_same_structure(true_output, false_output)
-    except TypeError as e:
-        raise TypeError(
-            "Incompatible return types of true_fn and false_fn in cond: {}".
-            format(e))
+        assert_same_structure(true_output, false_output, check_types=False)
     except ValueError as e:
         raise ValueError(
             "Incompatible return values of true_fn and false_fn in cond: {}".
