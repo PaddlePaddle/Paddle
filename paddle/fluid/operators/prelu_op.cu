@@ -22,6 +22,17 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+static constexpr int PD_CUDA_NUM_THREADS = 1024;
+
+// CUDA: grid stride looping
+#define CUDA_KERNEL_LOOP(i, n)                                 \
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
+       i += blockDim.x * gridDim.x)
+
+inline static int PADDLE_GET_BLOCKS(const int N) {
+  return (N + PD_CUDA_NUM_THREADS - 1) / PD_CUDA_NUM_THREADS;
+}
+
 template <typename DeviceContext, typename T>
 class CUDAPReluKernel : public framework::OpKernel<T> {
  public:
@@ -56,19 +67,21 @@ class CUDAPReluKernel : public framework::OpKernel<T> {
   }
 };
 
+enum PRELU_MODE { Element, Channel, Scalar };
+
 template <typename T>
 __global__ void PReluOpGradKernel(const T* x_ptr, const T* y_ptr,
                                   const T* alpha_ptr, const T* dy_ptr,
                                   T* dx_ptr, T* dalpha_ptr, size_t channel_num,
                                   size_t plane_size, size_t spatial_size,
-                                  size_t numel, std::string mode) {
+                                  size_t numel, PRELU_MODE mode) {
   size_t index;
   CUDA_KERNEL_LOOP(index, numel) {
     T scale;
-    if (mode == "element") {
+    if (mode == Element) {
       size_t element_index = index % spatial_size;
       scale = alpha_ptr[element_index];
-    } else if (mode == "channel") {
+    } else if (mode == Channel) {
       size_t temp = index / plane_size;
       size_t channel_index = temp % channel_num;
       scale = alpha_ptr[channel_index];
@@ -87,12 +100,12 @@ class PreluOpGradFunctor {
  public:
   void operator()(cudaStream_t stream, const T* x, const T* y, const T* alpha,
                   const T* dy, T* dx, T* dalpha, std::vector<int> input_shape,
-                  std::string mode) {
+                  PRELU_MODE mode) {
     size_t plane_size = input_shape[2] * input_shape[3];
     size_t spatial_size = plane_size * input_shape[1];
     size_t numel = spatial_size * input_shape[0];
-    PReluOpGradKernel<T><<<math::PADDLE_GET_BLOCKS(numel),
-                           PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+    PReluOpGradKernel<
+        T><<<PADDLE_GET_BLOCKS(numel), PD_CUDA_NUM_THREADS, 0, stream>>>(
         x, y, alpha, dy, dx, dalpha, input_shape[1], plane_size, spatial_size,
         numel, mode);
   }
@@ -141,9 +154,17 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       dalpha_tmp_ptr = dalpha_tmp.mutable_data<T>(context.GetPlace());
     }
 
+    PRELU_MODE m;
+    if (mode == "element") {
+      m = Element;
+    } else if (mode == "channel") {
+      m = Channel;
+    } else {
+      m = Scalar;
+    }
     PreluOpGradFunctor<T> prelu_grad;
     prelu_grad(stream, x_ptr, y_ptr, alpha_ptr, dy_ptr, dx_ptr, dalpha_tmp_ptr,
-               input_shape, mode);
+               input_shape, m);
 
     if (dalpha_tmp_ptr == nullptr) return;
 

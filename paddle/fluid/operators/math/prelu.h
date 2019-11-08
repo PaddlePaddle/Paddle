@@ -43,17 +43,6 @@ class PreluScalarDirectCUDAFunctor {
                   T *output, std::vector<int> input_shape);
 };
 
-#define PADDLE_CUDA_NUM_THREADS 1024
-
-// CUDA: grid stride looping
-#define CUDA_KERNEL_LOOP(i, n)                                 \
-  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
-       i += blockDim.x * gridDim.x)
-
-inline int PADDLE_GET_BLOCKS(const int N) {
-  return (N + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS;
-}
-
 #endif
 
 }  // namespace math
