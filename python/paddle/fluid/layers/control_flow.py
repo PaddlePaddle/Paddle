@@ -26,13 +26,15 @@ from .utils import assert_same_structure, flatten, map_structure
 import numpy
 import warnings
 import six
-from functools import reduce
+from functools import reduce, partial
+from ..data_feeder import convert_dtype
+from collections import OrderedDict
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
     'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
     'array_read', 'array_length', 'cond', 'IfElse', 'DynamicRNN', 'StaticRNN',
-    'reorder_lod_tensor_by_rank', 'Print', 'is_empty'
+    'reorder_lod_tensor_by_rank', 'Print', 'is_empty', 'case'
 ]
 
 
@@ -1786,6 +1788,104 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)
     merged_output = map_structure(merge_func, false_output, true_output)
     return merged_output
+
+
+def _error_message(what, arg_name, op_name, right_value, error_value):
+    raise TypeError(
+        "{what} of '{arg_name}' in Op({op_name}) "
+        "must be {right_value}, but received: {error_value}.".format(
+            what=what,
+            arg_name=arg_name,
+            op_name=op_name,
+            right_value=right_value,
+            error_value=error_value))
+
+
+def case(pred_fn_pairs, default=None, name='case'):
+    '''
+    todo: doc
+    **Note**:
+        Batch operation is not supported. But maybe it's easier to use `case` than `Switch`.
+
+    Args:
+        pred_fn_pairs(list|tuple): Pairs of (pred, fn). `pred` is a bool Tensor with shape [1], `fn` is callable that return tensors iff the corresponding `pred` is the first True .
+        default(callable, optional): Callable that return tensors.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property.
+                            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensors returned by the function from first pair whose pred is True. Tensors returned by `defalut` if all pred in `pred_fn_pairs` is False, .
+
+    Raises: todo
+        TypeError:
+    '''
+    helper = LayerHelper('case', **locals())
+
+    def _case_check_args(pred_fn_pairs, default):
+        '''
+
+        return pre_fn_pairs and default
+        '''
+        if not isinstance(pred_fn_pairs, (list, tuple, dict)):
+            raise TypeError(
+                _error_message("The type", "pred_fn_pairs", "case",
+                               "list, tuple or dict", type(pred_fn_pairs)))
+
+        if isinstance(pred_fn_pairs, dict):
+            if not isinstance(pred_fn_pairs, OrderedDict):
+                # todo:
+                # whether to support unordered Dictionaries with only one True
+                # whether to support unordered Dictionaries with more than one True
+                # add warning
+                raise TypeError("OrderedDict required")
+            else:
+                pred_fn_pairs = list(pred_fn_pairs.items())
+
+        for pred_fn in pred_fn_pairs:
+            if not isinstance(pred_fn, tuple):
+                raise TypeError(
+                    _error_message("The elements' type", "pred_fn_pairs",
+                                   "case", "tuple", type(pred_fn)))
+            if len(pred_fn) != 2:
+                raise TypeError(
+                    _error_message("The tuple's size", "pred_fn_pairs", "case",
+                                   "2", str(len(pred_fn)) + "-tuple"))
+            pred, fn = pred_fn
+
+            if not isinstance(pred, Variable):
+                raise TypeError(
+                    _error_message("The pred's type", "pred_fn_pairs", "case",
+                                   "bool Variable", type(pred)))
+
+            if convert_dtype(pred.dtype) is not "bool":
+                raise TypeError(
+                    _error_message("The pred's data type", "pred_fn_pairs",
+                                   "case", "bool", convert_dtype(pred.dtype)))
+
+            if not callable(fn):
+                raise TypeError(
+                    "The function for {} of pred_fn_pairs in case must"
+                    " be callable.".format(pred.name))
+                # necessary to print pred.name ?
+
+        if default is None:
+            default_index = len(pred_fn_pairs) - 1  # pick last one
+            default = pred_fn_pairs[default_index][1]
+            pred_fn_pairs = pred_fn_pairs[:default_index]
+        elif not callable(default):
+            raise TypeError("The default in Op(case) must be callable.")
+
+        return pred_fn_pairs, default
+
+    pred_fn_pairs, default = _case_check_args(pred_fn_pairs, default)
+
+    false_fn = default
+    for pred, true_fn in reversed(pred_fn_pairs):
+        false_fn = partial(cond, pred=pred, true_fn=true_fn, false_fn=false_fn)
+
+    final_fn = false_fn
+
+    return final_fn()
 
 
 class Switch(object):
