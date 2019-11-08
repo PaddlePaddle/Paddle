@@ -61,7 +61,7 @@ __global__ void PReluGradKernel(const T* x_ptr, const T* y_ptr,
                                 const T* alpha_ptr, const T* dy_ptr, T* dx_ptr,
                                 T* dalpha_ptr, size_t channel_num,
                                 size_t plane_size, size_t spatial_size,
-                                size_t numel, string mode) {
+                                size_t numel, std::string mode) {
   size_t index;
   CUDA_KERNEL_LOOP(index, numel) {
     T scale;
@@ -87,7 +87,7 @@ class PreluGradFunctor {
  public:
   void operator()(cudaStream_t stream, const T* x, const T* y, const T* alpha,
                   const T* dy, T* dx, T* dalpha, std::vector<int> input_shape,
-                  string mode) {
+                  std::string mode) {
     size_t plane_size = input_shape[2] * input_shape[3];
     size_t spatial_size = plane_size * input_shape[1];
     size_t numel = spatial_size * input_shape[0];
