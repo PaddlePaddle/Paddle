@@ -137,10 +137,6 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     // dgc use ncclAllGather to get all the encoded data
     // so the buffer need nranks.
     int buf_size = nranks_ * encode_size;
-    // auto tmp_ious_data = memory::Alloc(place, buf_size);
-    // void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
-    // allocations.emplace_back(std::move(tmp_ious_data));
-
     void *gather_buff = gathers[i]->data<void>();
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
