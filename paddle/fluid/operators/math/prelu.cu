@@ -44,7 +44,7 @@ __global__ void PReluElementWiseKernel(const T *input, const T *alpha,
                                        size_t numel) {
   size_t index;
   CUDA_KERNEL_LOOP(index, numel) {
-    size_t elment_index = index % spatial_size;
+    size_t element_index = index % spatial_size;
     T scale = alpha[element_index];
     T x = input[index];
     output[index] = (x > 0) ? x : scale * x;
