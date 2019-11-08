@@ -156,7 +156,8 @@ class AmsgradOpMaker : public framework::OpProtoAndCheckerMaker {
                           \\frac{\sqrt{1 - {\\beta}_2^t}}{1 - {\\beta}_1^t}
 
     param\_out & = param - learning\_rate * \\frac{moment\_1\_out}{\sqrt{max_moment\_2\_out} + \epsilon}
-    $$s
+    $$
+
 )DOC");
   }
 };
