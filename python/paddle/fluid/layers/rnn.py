@@ -20,7 +20,11 @@ from . import nn
 from . import tensor
 from . import control_flow
 from . import utils
+from . import sequence_lod
 from .utils import *
+from ..layer_helper import LayerHelper
+from ..framework import in_dygraph_mode
+from ..param_attr import ParamAttr
 
 __all__ = [
     'RNNCell',
@@ -30,6 +34,14 @@ __all__ = [
     'BeamSearchDecoder',
     'rnn',
     'dynamic_decode',
+    'dynamic_lstm',
+    'dynamic_lstmp',
+    'dynamic_gru',
+    'gru_unit',
+    'lstm_unit',
+    'lstm',
+    'beam_search',
+    'beam_search_decode',
 ]
 
 
@@ -433,7 +445,7 @@ def rnn(cell,
 
     if sequence_length:
         max_seq_len = nn.shape(flatten(inputs)[0])[0]
-        mask = nn.sequence_mask(
+        mask = sequence_lod.sequence_mask(
             sequence_length,
             maxlen=max_seq_len,
             dtype=flatten(initial_states)[0].dtype)
@@ -1163,3 +1175,1195 @@ def dynamic_decode(decoder,
         final_outputs = map_structure(_transpose_batch_time, final_outputs)
 
     return final_outputs, final_states
+
+
+def dynamic_lstm(input,
+                 size,
+                 h_0=None,
+                 c_0=None,
+                 param_attr=None,
+                 bias_attr=None,
+                 use_peepholes=True,
+                 is_reverse=False,
+                 gate_activation='sigmoid',
+                 cell_activation='tanh',
+                 candidate_activation='tanh',
+                 dtype='float32',
+                 name=None):
+    """
+    **Note**:
+        1. This OP only supports LoDTensor as inputs. If you need to deal with Tensor, please use :ref:`api_fluid_layers_lstm` .
+        2. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
+
+    The implementation of this OP include diagonal/peephole connections.
+    Please refer to `Gers, F. A., & Schmidhuber, J. (2000) <ftp://ftp.idsia.ch/pub/juergen/TimeCount-IJCNN2000.pdf>`_ .
+    If you do not need peephole connections, please set use_peepholes to False .
+
+    This OP computes each timestep as follows:
+
+    .. math::
+      i_t = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + b_{x_i} + b_{h_i})
+    .. math::
+      f_t = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + b_{x_f} + b_{h_f})
+    .. math::
+      o_t = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + b_{x_o} + b_{h_o})
+    .. math::
+      \widetilde{c_t} = tanh(W_{cx}x_t + W_{ch}h_{t-1} + b{x_c} + b_{h_c})
+    .. math::
+      c_t = f_t \odot c_{t-1} + i_t \odot \widetilde{c_t}
+    .. math::
+      h_t = o_t \odot tanh(c_t)
+
+    The symbolic meanings in the formula are as follows:
+
+    - :math:`x_{t}` represents the input at timestep :math:`t`
+    - :math:`h_{t}` represents the hidden state at timestep :math:`t`
+    - :math:`h_{t-1}, c_{t-1}` represent the hidden state and cell state at timestep :math:`t-1` , respectively
+    - :math:`\widetilde{c_t}` represents the candidate cell state
+    - :math:`i_t` , :math:`f_t` and :math:`o_t` represent input gate, forget gate, output gate, respectively
+    - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
+    - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
+    - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
+    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
+
+    Parameters:
+        input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, multi-dimensional LODTensor of shape :math:`[T, 4*hidden\_size]` . Data type is float32 or float64.
+        size (int): must be 4 * hidden_size.
+        h_0( :ref:`api_guide_Variable_en` , optional): The initial hidden state of the LSTM, multi-dimensional Tensor of shape :math:`[batch\_size, hidden\_size]` .
+                       Data type is float32 or float64. If set to None, it will be a vector of all 0. Default: None.
+        c_0( :ref:`api_guide_Variable_en` , optional): The initial hidden state of the LSTM, multi-dimensional Tensor of shape :math:`[batch\_size, hidden\_size]` .
+                       Data type is float32 or float64. If set to None, it will be a vector of all 0. `h_0` and `c_0` can be None but only at the same time. Default: None.
+        param_attr(ParamAttr, optional): Parameter attribute of weight. If it is None, the default weight parameter attribute is used. Please refer to ref:`api_fluid_ParamAttr' .
+                              If the user needs to set this parameter, the dimension must be :math:`[hidden\_size, 4*hidden\_size]` . Default: None.
+
+                              - Weights = :math:`\{ W_{cr},W_{ir},W_{fr},W_{or} \}` , the shape is [hidden_size, 4*hidden_size].
+
+        bias_attr (ParamAttr, optional): The bias attribute for the learnable bias
+                              weights, which contains two parts, input-hidden
+                              bias weights and peephole connections weights if
+                              setting `use_peepholes` to `True`.
+                              Please refer to ref:`api_fluid_ParamAttr' . Default: None.
+
+                              1. `use_peepholes = False`
+                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                 - The shape is [1, 4*hidden_size].
+                              2. `use_peepholes = True`
+                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
+                                                 W_{fc}, W_{oc}`}.
+                                 - The shape is [1, 7*hidden_size].
+                                 
+        use_peepholes (bool, optional): Whether to use peephole connection or not. Default: True.
+        is_reverse (bool, optional): Whether to calculate reverse LSTM. Default: False.
+        gate_activation (str, optional): The activation for input gate, forget gate and output gate. Default: "sigmoid".
+        cell_activation (str, optional): The activation for cell output. Default: "tanh".
+        candidate_activation (str, optional): The activation for candidate hidden state. Default: "tanh".
+        dtype (str, optional): Data type, can be "float32" or "float64". Default: "float32".
+        name (str, optional): A name for this layer. Please refer to :ref:`api_guide_Name` . Default: None.
+
+    Returns:
+        tuple ( :ref:`api_guide_Variable` , :ref:`api_guide_Variable` ) :
+
+            The hidden state and cell state of LSTM
+
+                - hidden: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
+                - cell: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            emb_dim = 256
+            vocab_size = 10000
+            hidden_dim = 512
+            
+            data = fluid.data(name='x', shape=[None], dtype='int64', lod_level=1)
+            emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+
+            forward_proj = fluid.layers.fc(input=emb, size=hidden_dim * 4,
+                                           bias_attr=False)
+
+            forward, cell = fluid.layers.dynamic_lstm(
+                input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
+            forward.shape  # (-1, 512)
+            cell.shape  # (-1, 512)
+    """
+    assert in_dygraph_mode(
+    ) is not True, "please use lstm instead of dynamic_lstm in dygraph mode!"
+    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
+    helper = LayerHelper('lstm', **locals())
+    size = size // 4
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 4 * size], dtype=dtype)
+    bias_size = [1, 7 * size]
+    if not use_peepholes:
+        bias_size[1] = 4 * size
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+
+    hidden = helper.create_variable_for_type_inference(dtype)
+    cell = helper.create_variable_for_type_inference(dtype)
+    batch_gate = helper.create_variable_for_type_inference(dtype)
+    batch_cell_pre_act = helper.create_variable_for_type_inference(dtype)
+    inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
+    batch_size = input.shape[0]
+    if h_0:
+        assert h_0.shape == (batch_size, size), \
+            'The shape of h0 should be (batch_size, %d)' % size
+        inputs['H0'] = h_0
+    if c_0:
+        assert c_0.shape == (batch_size, size), \
+            'The shape of c0 should be (batch_size, %d)' % size
+        inputs['C0'] = c_0
+
+    helper.append_op(
+        type='lstm',
+        inputs=inputs,
+        outputs={
+            'Hidden': hidden,
+            'Cell': cell,
+            'BatchGate': batch_gate,
+            'BatchCellPreAct': batch_cell_pre_act
+        },
+        attrs={
+            'use_peepholes': use_peepholes,
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'cell_activation': cell_activation,
+            'candidate_activation': candidate_activation
+        })
+    return hidden, cell
+
+
+def lstm(input,
+         init_h,
+         init_c,
+         max_len,
+         hidden_size,
+         num_layers,
+         dropout_prob=0.0,
+         is_bidirec=False,
+         is_test=False,
+         name=None,
+         default_initializer=None,
+         seed=-1):
+    """
+    **Note**:
+        This OP only supports running on GPU devices.
+
+    This OP implements LSTM operation - `Hochreiter, S., & Schmidhuber, J. (1997) <http://deeplearning.cs.cmu.edu/pdfs/Hochreiter97_lstm.pdf>`_ .
+
+    The implementation of this OP does not include diagonal/peephole connections.
+    Please refer to `Gers, F. A., & Schmidhuber, J. (2000) <ftp://ftp.idsia.ch/pub/juergen/TimeCount-IJCNN2000.pdf>`_ .
+    If you need peephole connections, please use :ref:`api_fluid_layers_dynamic_lstm` .
+
+    This OP computes each timestep as follows:
+
+    .. math::
+      i_t = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + b_{x_i} + b_{h_i})
+    .. math::
+      f_t = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + b_{x_f} + b_{h_f})
+    .. math::
+      o_t = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + b_{x_o} + b_{h_o})
+    .. math::
+      \widetilde{c_t} = tanh(W_{cx}x_t + W_{ch}h_{t-1} + b{x_c} + b_{h_c})
+    .. math::
+      c_t = f_t \odot c_{t-1} + i_t \odot \widetilde{c_t}
+    .. math::
+      h_t = o_t \odot tanh(c_t)
+
+    The symbolic meanings in the formula are as follows:
+
+    - :math:`x_{t}` represents the input at timestep :math:`t`
+    - :math:`h_{t}` represents the hidden state at timestep :math:`t`
+    - :math:`h_{t-1}, c_{t-1}` represent the hidden state and cell state at timestep :math:`t-1` , respectively
+    - :math:`\widetilde{c_t}` represents the candidate cell state
+    - :math:`i_t` , :math:`f_t` and :math:`o_t` represent input gate, forget gate, output gate, respectively
+    - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
+    - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
+    - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
+    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
+
+    Parameters:
+        input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, 3-D Tensor of shape :math:`[batch\_size, seq\_len, input\_dim]` . Data type is float32 or float64
+        init_h( :ref:`api_guide_Variable_en` ): The initial hidden state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
+                       If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
+        init_c( :ref:`api_guide_Variable_en` ): The initial cell state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
+                       If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
+        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len.
+        hidden_size (int): hidden size of the LSTM.
+        num_layers (int): total layers number of the LSTM.
+        dropout_prob(float, optional): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
+                             There is NO dropout work on rnn output of the last RNN layers.
+                             Default: 0.0.
+        is_bidirec (bool, optional): If it is bidirectional. Default: False.
+        is_test (bool, optional): If it is in test phrase. Default: False.
+        name (str, optional): A name for this layer. If set None, the layer
+                         will be named automatically. Default: None.
+        default_initializer(Initializer, optional): Where use initializer to initialize the Weight
+                         If set None, defaule initializer will be used. Default: None.
+        seed(int, optional): Seed for dropout in LSTM, If it's -1, dropout will use random seed. Default: 1.
+
+
+    Returns:
+        tuple ( :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` ) :
+
+                        Three tensors, rnn_out, last_h, last_c:
+
+                        - rnn_out is result of LSTM hidden, shape is :math:`[seq\_len, batch\_size, hidden\_size]` \
+                          if is_bidirec set to True, shape will be :math:`[seq\_len, batch\_size, hidden\_size*2]`
+                        - last_h is the hidden state of the last step of LSTM \
+                          shape is :math:`[num\_layers, batch\_size, hidden\_size]` \
+                          if is_bidirec set to True, shape will be :math:`[num\_layers*2, batch\_size, hidden\_size]`
+                        - last_c(Tensor): the cell state of the last step of LSTM \
+                          shape is :math:`[num\_layers, batch\_size, hidden\_size]` \
+                          if is_bidirec set to True, shape will be :math:`[num\_layers*2, batch\_size, hidden\_size]`
+
+
+    Examples:
+        .. code-block:: python
+            
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            emb_dim = 256
+            vocab_size = 10000
+            data = fluid.data(name='x', shape=[None, 100], dtype='int64')
+            emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
+            batch_size = 20
+            max_len = 100
+            dropout_prob = 0.2
+            input_size = 100
+            hidden_size = 150
+            num_layers = 1
+            init_h = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
+            init_c = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
+            rnn_out, last_h, last_c = layers.lstm( emb, init_h, init_c, \
+                    max_len, hidden_size, num_layers, \
+                    dropout_prob=dropout_prob)
+            rnn_out.shape  # (-1, 100, 150)
+            last_h.shape  # (1, 20, 150)
+            last_c.shape  # (1, 20, 150)
+    """
+
+    helper = LayerHelper('cudnn_lstm', **locals())
+
+    dtype = input.dtype
+    input_shape = list(input.shape)
+    input_size = input_shape[-1]
+    weight_size = 0
+    for i in range(num_layers):
+        if i == 0:
+            input_weight_size = (input_size * hidden_size) * 4
+        else:
+            if is_bidirec:
+                input_weight_size = (hidden_size * 2 * hidden_size) * 4
+            else:
+                input_weight_size = (hidden_size * hidden_size) * 4
+
+        hidden_weight_size = (hidden_size * hidden_size) * 4
+
+        if is_bidirec:
+            weight_size += (input_weight_size + hidden_weight_size) * 2
+            weight_size += hidden_size * 8 * 2
+        else:
+            weight_size += input_weight_size + hidden_weight_size
+            weight_size += hidden_size * 8
+
+    weight = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[weight_size],
+        dtype=dtype,
+        default_initializer=default_initializer)
+
+    out = helper.create_variable_for_type_inference(dtype)
+    last_h = helper.create_variable_for_type_inference(dtype)
+    last_c = helper.create_variable_for_type_inference(dtype)
+
+    cache = helper.create_variable(
+        persistable=True, type=core.VarDesc.VarType.RAW, stop_gradient=True)
+
+    helper.append_op(
+        type='cudnn_lstm',
+        inputs={
+            'Input': input,
+            'InitH': init_h,
+            'InitC': init_c,
+            'W': weight,
+            'Cache': cache,
+        },
+        outputs={
+            'Out': out,
+            'last_h': last_h,
+            'last_c': last_c,
+        },
+        attrs={
+            'max_len': max_len,
+            'is_bidirec': is_bidirec,
+            'input_size': input_size,
+            'hidden_size': hidden_size,
+            'num_layers': num_layers,
+            'is_test': is_test,
+            'dropout_prob': dropout_prob,
+            'seed': seed,
+        })
+    return out, last_h, last_c
+
+
+def dynamic_lstmp(input,
+                  size,
+                  proj_size,
+                  param_attr=None,
+                  bias_attr=None,
+                  use_peepholes=True,
+                  is_reverse=False,
+                  gate_activation='sigmoid',
+                  cell_activation='tanh',
+                  candidate_activation='tanh',
+                  proj_activation='tanh',
+                  dtype='float32',
+                  name=None,
+                  h_0=None,
+                  c_0=None,
+                  cell_clip=None,
+                  proj_clip=None):
+    """
+    **Note**:
+        1. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
+
+    This OP implements the LSTMP (LSTM Projected) layer.
+    The LSTMP layer has a separate linear mapping layer behind the LSTM layer. -- `Sak, H., Senior, A., & Beaufays, F. (2014) <https://ai.google/research/pubs/pub43905.pdf>`_ .
+
+    Compared with the standard LSTM layer, LSTMP has an additional linear mapping layer,
+    which is used to map from the original hidden state :math:`h_t` to the lower dimensional state :math:`r_t` .
+    This reduces the total number of parameters and computational complexity, especially when the output unit is relatively large.
+
+    The default implementation of the OP contains diagonal/peephole connections,
+    please refer to `Gers, F. A., & Schmidhuber, J. (2000) <ftp://ftp.idsia.ch/pub/juergen/TimeCount-IJCNN2000.pdf>`_ .
+    If you need to disable the peephole connections, set use_peepholes to False.
+
+    This OP computes each timestep as follows:
+
+    .. math::
+      i_t = \sigma(W_{ix}x_{t} + W_{ir}r_{t-1} + W_{ic}c_{t-1} + b_i)
+    .. math::
+          f_t = \sigma(W_{fx}x_{t} + W_{fr}r_{t-1} + W_{fc}c_{t-1} + b_f)
+    .. math::
+          o_t = \sigma(W_{ox}x_{t} + W_{or}r_{t-1} + W_{oc}c_{t-1} + b_o)
+    .. math::
+          \widetilde{c_t} = act_g(W_{cx}x_t + W_{cr}r_{t-1} + b_c)
+    .. math::
+          c_t = f_t \odot c_{t-1} + i_t \odot \widetilde{c_t}
+    .. math::
+          h_t = o_t \odot act_h(c_t)
+    .. math::
+          r_t = \overline{act_h}(W_{rh}h_t)
+
+    The symbolic meanings in the formula are as follows:
+
+    - :math:`x_{t}` represents the input at timestep :math:`t`
+    - :math:`h_{t}` represents the hidden state at timestep :math:`t`
+    - :math:`r_{t}` : represents the state of the projected output of the hidden state :math:`h_{t}`
+    - :math:`h_{t-1}, c_{t-1}, r_{t-1}` represent the hidden state, cell state and projected output at timestep :math:`t-1` , respectively
+    - :math:`\widetilde{c_t}` represents the candidate cell state
+    - :math:`i_t` , :math:`f_t` and :math:`o_t` represent input gate, forget gate, output gate, respectively
+    - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
+    - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
+    - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
+    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
+
+    Parameters:
+        input( :ref:`api_guide_Variable_en` ): The input of dynamic_lstmp layer, which supports
+                         variable-time length input sequence.
+                         It is a multi-dimensional LODTensor of shape :math:`[T, 4*hidden\_size]` . Data type is float32 or float64.
+        size(int): must be 4 * hidden_size.
+        proj_size(int): The size of projection output.
+        param_attr(ParamAttr, optional): Parameter attribute of weight. If it is None, the default weight parameter attribute is used. Please refer to ref:`api_fluid_ParamAttr' .
+                              If the user needs to set this parameter, the dimension must be :math:`[hidden\_size, 4*hidden\_size]` . Default: None.
+
+                              - Weights = :math:`\{ W_{cr},W_{ir},W_{fr},W_{or} \}` , the shape is [P, 4*hidden_size] , where P is the projection size.
+                              - Projection weight  = :math:`\{ W_{rh} \}` , the shape is [hidden_size, P].
+
+        bias_attr (ParamAttr, optional): The bias attribute for the learnable bias
+                              weights, which contains two parts, input-hidden
+                              bias weights and peephole connections weights if
+                              setting `use_peepholes` to `True`.
+                              Please refer to ref:`api_fluid_ParamAttr' . Default: None.
+
+                              1. `use_peepholes = False`
+                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
+                                 - The shape is [1, 4*hidden_size].
+                              2. `use_peepholes = True`
+                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
+                                                 W_{fc}, W_{oc}`}.
+                                 - The shape is [1, 7*hidden_size].
+
+        use_peepholes (bool, optional): Whether to use peephole connection or not. Default True.
+        is_reverse (bool, optional): Whether to calculate reverse LSTM. Default False.
+        gate_activation (str, optional): The activation for input gate, forget gate and output gate. Default "sigmoid".
+        cell_activation (str, optional): The activation for cell output. Default "tanh".
+        candidate_activation (str, optional): The activation for candidate hidden state. Default "tanh".
+        proj_activation(str, optional): The activation for projection output. Default "tanh".
+        dtype (str, optional): Data type, can be "float32" or "float64". Default "float32".
+        name (str, optional): A name for this layer. Please refer to :ref:`api_guide_Name` . Default: None.
+        h_0( :ref:`api_guide_Variable` , optional): The initial hidden state is an optional input, default is zero.
+                       This is a tensor with shape :math:`[batch\_size, P]` , where P is the projection size. Default: None.
+        c_0( :ref:`api_guide_Variable` , optional): The initial cell state is an optional input, default is zero.
+                       This is a tensor with shape :math:`[batch\_size, P]` , where P is the projection size.
+                       `h_0` and `c_0` can be None but only at the same time. Default: None.
+        cell_clip(float, optional): If not None, the cell state is clipped
+                             by this value prior to the cell output activation. Default: None.
+        proj_clip(float, optional): If `num_proj > 0` and `proj_clip` is
+                            provided, then the projected values are clipped elementwise to within
+                            `[-proj_clip, proj_clip]`. Default: None.
+
+    Returns:
+        tuple ( :ref:`api_guide_Variable` , :ref:`api_guide_Variable` ) :
+
+                The hidden state and cell state of LSTMP
+
+                - hidden: LoDTensor with shape of :math:`[T, P]` , and its lod and dtype is the same as the input.
+                - cell: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            dict_dim, emb_dim = 128, 64
+            data = fluid.data(name='sequence', shape=[None], dtype='int64', lod_level=1)
+            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
+            hidden_dim, proj_dim = 512, 256
+            fc_out = fluid.layers.fc(input=emb, size=hidden_dim * 4,
+                                    act=None, bias_attr=None)
+            proj_out, last_c = fluid.layers.dynamic_lstmp(input=fc_out,
+                                                    size=hidden_dim * 4,
+                                                    proj_size=proj_dim,
+                                                    use_peepholes=False,
+                                                    is_reverse=True,
+                                                    cell_activation="tanh",
+                                                    proj_activation="tanh")
+            proj_out.shape  # (-1, 256)
+            last_c.shape  # (-1, 512)
+    """
+
+    assert in_dygraph_mode(
+    ) is not True, "please use lstm instead of dynamic_lstmp in dygraph mode!"
+
+    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
+    helper = LayerHelper('lstmp', **locals())
+    size = size // 4
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[proj_size, 4 * size], dtype=dtype)
+    proj_weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, proj_size], dtype=dtype)
+    bias_size = [1, 7 * size]
+    if not use_peepholes:
+        bias_size[1] = 4 * size
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+
+    projection = helper.create_variable_for_type_inference(dtype)
+    cell = helper.create_variable_for_type_inference(dtype)
+    ordered_proj0 = helper.create_variable_for_type_inference(dtype)
+    batch_hidden = helper.create_variable_for_type_inference(dtype)
+    batch_gate = helper.create_variable_for_type_inference(dtype)
+    batch_cell_pre_act = helper.create_variable_for_type_inference(dtype)
+    inputs = {
+        'Input': input,
+        'Weight': weight,
+        'ProjWeight': proj_weight,
+        'Bias': bias
+    }
+    batch_size = input.shape[0]
+    if h_0:
+        assert h_0.shape == (batch_size, proj_size), \
+            'The shape of h0 should be (batch_size, %d)' % proj_size
+        inputs['H0'] = h_0
+    if c_0:
+        assert c_0.shape == (batch_size, size), \
+            'The shape of c0 should be (batch_size, %d)' % size
+        inputs['C0'] = c_0
+
+    if cell_clip:
+        assert cell_clip >= 0, "cell_clip should not be negtive."
+    if proj_clip:
+        assert proj_clip >= 0, "proj_clip should not be negtive."
+
+    helper.append_op(
+        type='lstmp',
+        inputs=inputs,
+        outputs={
+            'Projection': projection,
+            'Cell': cell,
+            'BatchHidden': batch_hidden,
+            'BatchGate': batch_gate,
+            'BatchCellPreAct': batch_cell_pre_act
+        },
+        attrs={
+            'use_peepholes': use_peepholes,
+            'cell_clip': cell_clip,
+            'proj_clip': proj_clip,
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'cell_activation': cell_activation,
+            'candidate_activation': candidate_activation,
+            'proj_activation': proj_activation
+        })
+    return projection, cell
+
+
+def dynamic_gru(input,
+                size,
+                param_attr=None,
+                bias_attr=None,
+                is_reverse=False,
+                gate_activation='sigmoid',
+                candidate_activation='tanh',
+                h_0=None,
+                origin_mode=False):
+    """
+    **Note: The input type of this must be LoDTensor. If the input type to be
+    processed is Tensor, use** :ref:`api_fluid_layers_StaticRNN` .
+
+    This operator is used to perform the calculations for a single layer of
+    Gated Recurrent Unit (GRU) on full sequences step by step. The calculations
+    in one time step support these two modes:
+
+    If ``origin_mode`` is True, then the formula used is from paper
+    `Learning Phrase Representations using RNN Encoder Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_ .
+
+    .. math::
+
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
+
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
+
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
+
+        h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \\tilde{h_t}
+
+
+    if ``origin_mode`` is False, then the formula used is from paper
+    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
+    Modeling  <https://arxiv.org/pdf/1412.3555.pdf>`_
+
+    .. math::
+
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
+
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
+
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
+
+        h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
+
+    :math:`x_t` is the input of current time step, but it is not from ``input`` .
+    This operator does not include the calculations :math:`W_{ux}x_{t}, W_{rx}x_{t}, W_{cx}x_{t}` ,
+    **Note** thus a fully-connect layer whose size is 3 times of ``size`` should
+    be used before this operator, and the output should be used as ``input`` here.
+    :math:`h_{t-1}` is the hidden state from previous time step. 
+    :math:`u_t` , :math:`r_t` , :math:`\\tilde{h_t}` and :math:`h_t` stand for
+    update gate, reset gate, candidate hidden and hidden output separately.
+    :math:`W_{uh}, b_u` , :math:`W_{rh}, b_r` and :math:`W_{ch}, b_c` stand for
+    the weight matrix and bias used in update gate, reset gate, candidate hidden
+    calculations. For implementation, the three weight matrix are merged into a
+    tensor shaped :math:`[D, D \\times 3]` , the three bias are concatenated as
+    a tensor shaped :math:`[1, D \\times 3]` , where :math:`D` stands for the
+    hidden size; The data layout of weight tensor is: :math:`W_{uh}` and :math:`W_{rh}`
+    are concatenated with shape :math:`[D, D  \\times 2]` lying on the first part,
+    and :math:`W_{ch}` lying on the latter part with shape :math:`[D, D]` .
+
+
+    Args:
+        input(Variable): A LoDTensor whose lod level is 1, representing the input
+            after linear projection. Its shape should be :math:`[T, D \\times 3]` ,
+            where :math:`T` stands for the total sequence lengths in this mini-batch,
+            :math:`D` for the hidden size. The data type should be float32 or float64.
+        size(int): Indicate the hidden size.
+        param_attr(ParamAttr, optional):  To specify the weight parameter property.
+            Default: None, which means the default weight parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` .
+        bias_attr (ParamAttr, optional): To specify the bias parameter property.
+            Default: None, which means the default bias parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` .
+        is_reverse(bool, optional): Whether to compute in the reversed order of
+            input sequences. Default False.
+        gate_activation(str, optional): The activation fuction corresponding to
+            :math:`act_g` in the formula. "sigmoid", "tanh", "relu" and "identity"
+            are supported. Default "sigmoid".
+        candidate_activation(str, optional): The activation fuction corresponding to
+            :math:`act_c` in the formula. "sigmoid", "tanh", "relu" and "identity"
+            are supported. Default "tanh".
+        h_0 (Variable, optional): A Tensor representing the initial hidden state.
+            It not provided, the default initial hidden state is 0. The shape is
+            :math:`[N, D]` , where :math:`N` is the number of sequences in the
+            mini-batch, :math:`D` for the hidden size. The data type should be
+            same as ``input`` . Default None.
+
+    Returns:
+        Variable: A LoDTensor whose lod level is 1 and shape is :math:`[T, D]` , \
+            where :math:`T` stands for the total sequence lengths in this mini-batch \
+            :math:`D` for the hidden size. It represents GRU transformed sequence output, \
+            and has the same lod and data type with ``input`` .
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            dict_dim, emb_dim = 128, 64
+            data = fluid.data(name='sequence',
+                      shape=[None],
+                      dtype='int64',
+                      lod_level=1)
+            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
+            hidden_dim = 512
+            x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
+            hidden = fluid.layers.dynamic_gru(input=x, size=hidden_dim)
+    """
+
+    assert in_dygraph_mode(
+    ) is not True, "please use gru instead of dynamic_gru in dygraph mode!"
+
+    helper = LayerHelper('gru', **locals())
+    dtype = helper.input_dtype()
+
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
+    bias = helper.create_parameter(
+        attr=helper.bias_attr, shape=[1, 3 * size], dtype=dtype, is_bias=True)
+    batch_size = input.shape[0]
+    inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
+    if h_0:
+        assert h_0.shape == (
+            batch_size, size
+        ), 'The shape of h0 should be(batch_size, %d)' % size
+        inputs['H0'] = h_0
+
+    hidden = helper.create_variable_for_type_inference(dtype)
+    batch_gate = helper.create_variable_for_type_inference(dtype)
+    batch_reset_hidden_prev = helper.create_variable_for_type_inference(dtype)
+    batch_hidden = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type='gru',
+        inputs=inputs,
+        outputs={
+            'Hidden': hidden,
+            'BatchGate': batch_gate,
+            'BatchResetHiddenPrev': batch_reset_hidden_prev,
+            'BatchHidden': batch_hidden
+        },
+        attrs={
+            'is_reverse': is_reverse,
+            'gate_activation': gate_activation,
+            'activation': candidate_activation,
+            'origin_mode': origin_mode
+        })
+    return hidden
+
+
+def gru_unit(input,
+             hidden,
+             size,
+             param_attr=None,
+             bias_attr=None,
+             activation='tanh',
+             gate_activation='sigmoid',
+             origin_mode=False):
+    """
+    Gated Recurrent Unit (GRU) RNN cell. This operator performs GRU calculations for
+    one time step and it supports these two modes:
+
+    If ``origin_mode`` is True, then the formula used is from paper
+    `Learning Phrase Representations using RNN Encoder Decoder for Statistical
+    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_ .
+
+    .. math::
+
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
+
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
+
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
+
+        h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \\tilde{h_t}
+
+
+    if ``origin_mode`` is False, then the formula used is from paper
+    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
+    Modeling  <https://arxiv.org/pdf/1412.3555.pdf>`_
+
+    .. math::
+
+        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
+
+        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
+
+        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
+
+        h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
+
+    :math:`x_t` is the input of current time step, but it is not ``input`` .
+    This operator does not include the calculations :math:`W_{ux}x_{t}, W_{rx}x_{t}, W_{cx}x_{t}` ,
+    **Note** thus a fully-connect layer whose size is 3 times of GRU hidden size should
+    be used before this operator, and the output should be used as ``input`` here.
+    :math:`h_{t-1}` is the hidden state from previous time step. 
+    :math:`u_t` , :math:`r_t` , :math:`\\tilde{h_t}` and :math:`h_t` stand for
+    update gate, reset gate, candidate hidden and hidden output separately.
+    :math:`W_{uh}, b_u` , :math:`W_{rh}, b_r` and :math:`W_{ch}, b_c` stand for
+    the weight matrix and bias used in update gate, reset gate, candidate hidden
+    calculations. For implementation, the three weight matrix are merged into a
+    tensor shaped :math:`[D, D \\times 3]` , the three bias are concatenated as
+    a tensor shaped :math:`[1, D \\times 3]` , where :math:`D` stands for the
+    hidden size; The data layout of weight tensor is: :math:`W_{uh}` and :math:`W_{rh}`
+    are concatenated with shape :math:`[D, D  \\times 2]` lying on the first part,
+    and :math:`W_{ch}` lying on the latter part with shape :math:`[D, D]` .
+
+
+    Args:
+        input(Variable): A 2D Tensor representing the input after linear projection
+            after linear projection. Its shape should be :math:`[N, D \\times 3]` ,
+            where :math:`N` stands for batch size, :math:`D` for the hidden size.
+            The data type should be float32 or float64.
+        hidden(Variable): A 2D Tensor representing the hidden state from previous step.
+            Its shape should be :math:`[N, D]` , where :math:`N` stands for batch size,
+            :math:`D` for the hidden size. The data type should be same as ``input`` .
+        size(int): Indicate the hidden size.
+        param_attr(ParamAttr, optional):  To specify the weight parameter property.
+            Default: None, which means the default weight parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` .
+        bias_attr (ParamAttr, optional): To specify the bias parameter property.
+            Default: None, which means the default bias parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` .
+        activation(str, optional): The activation fuction corresponding to
+            :math:`act_c` in the formula. "sigmoid", "tanh", "relu" and "identity"
+            are supported. Default "tanh".
+        gate_activation(str, optional): The activation fuction corresponding to
+            :math:`act_g` in the formula. "sigmoid", "tanh", "relu" and "identity"
+            are supported. Default "sigmoid".
+
+    Returns:
+        tuple: The tuple contains three Tensor variables with the same data type \
+            as ``input`` . They represent the hidden state for next time step ( :math:`h_t` ), \
+            reseted previous hidden state ( :math:`r_t \odot h_{t-1}` ), and the \
+            concatenation of :math:`h_t, r_t, \\tilde{h_t}` . And they have shape \
+            :math:`[N, D]` , :math:`[N, D]` , :math:`[N, D \times 3]` separately. \
+            Usually only the hidden state for next time step ( :math:`h_t` ) is used \
+            as output and state, the other two are intermediate results of calculations.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            dict_dim, emb_dim = 128, 64
+            data = fluid.data(name='step_data', shape=[None], dtype='int64')
+            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
+            hidden_dim = 512
+            x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
+            pre_hidden = fluid.data(
+                name='pre_hidden', shape=[None, hidden_dim], dtype='float32')
+            hidden = fluid.layers.gru_unit(
+                input=x, hidden=pre_hidden, size=hidden_dim * 3)
+
+    """
+    activation_dict = dict(
+        identity=0,
+        sigmoid=1,
+        tanh=2,
+        relu=3, )
+    activation = activation_dict[activation]
+    gate_activation = activation_dict[gate_activation]
+
+    helper = LayerHelper('gru_unit', **locals())
+    dtype = helper.input_dtype()
+    size = size // 3
+
+    # create weight
+    weight = helper.create_parameter(
+        attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
+
+    gate = helper.create_variable_for_type_inference(dtype)
+    reset_hidden_pre = helper.create_variable_for_type_inference(dtype)
+    updated_hidden = helper.create_variable_for_type_inference(dtype)
+    inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': weight}
+    # create bias
+    if helper.bias_attr:
+        bias_size = [1, 3 * size]
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
+        inputs['Bias'] = bias
+
+    helper.append_op(
+        type='gru_unit',
+        inputs=inputs,
+        outputs={
+            'Gate': gate,
+            'ResetHiddenPrev': reset_hidden_pre,
+            'Hidden': updated_hidden,
+        },
+        attrs={
+            'activation': 2,  # tanh
+            'gate_activation': 1,  # sigmoid
+            'origin_mode': origin_mode
+        })
+
+    return updated_hidden, reset_hidden_pre, gate
+
+
+def beam_search(pre_ids,
+                pre_scores,
+                ids,
+                scores,
+                beam_size,
+                end_id,
+                level=0,
+                is_accumulated=True,
+                name=None,
+                return_parent_idx=False):
+    """
+    Beam search is a classical algorithm for selecting candidate words in a
+    machine translation task.
+
+    Refer to `Beam search <https://en.wikipedia.org/wiki/Beam_search>`_
+    for more details.
+
+    **This operator only supports LoDTensor.** It is used after finishing
+    scores calculation to perform beam search for one time step. Specifically,
+    after ``ids`` and ``scores`` have been produced, it selects the top-K
+    ( `k` is ``beam_size`` ) candidate word ids of current step from ``ids``
+    according to the correspongding ``scores``. Additionally, ``pre_id`` and
+    ``pre_scores`` are the output of `beam_search` at previous step, they
+    are needed for special use to handle ended candidate translations.
+
+    Note that if ``is_accumulated`` is True, the ``scores`` passed in should
+    be accumulated scores. Otherwise, the ``scores`` are
+    considered as the probabilities of single step and would be transformed to
+    the log field and added up with ``pre_scores`` for final scores in this
+    operator. Length penalty should be done with extra operators before calculating
+    the accumulated scores if needed.
+
+    Please see the following demo for a fully beam search usage example:
+
+        fluid/tests/book/test_machine_translation.py
+
+    Args:
+        pre_ids(Variable): A LodTensor variable (lod level is 2), representing
+            the selected ids of previous step. It is the output of beam_search
+            at previous step. Its shape is `[batch_size, 1]` and its lod is
+            `[[0, 1, ... , batch_size], [0, 1, ..., batch_size]]` at the
+            first step. The data type should be int64.
+        pre_scores(Variable): A LodTensor variable has the same shape and lod
+            with ``pre_ids`` , representing the accumulated scores corresponding
+            to the selected ids of previous step. It is the output of
+            beam_search at previous step. The data type should be float32.
+        ids(Variable|None): A LodTensor variable containing the candidates ids.
+            It has the same lod with ``pre_ids`` and its shape should be
+            `[batch_size * beam_size, K]`, where `K` supposed to be greater than
+            ``beam_size`` and the first dimension size (decrease as samples reach
+            to the end) should be same as that of ``pre_ids`` . The data type
+            should be int64. It can be None, which use indice in ``scores`` as
+            ids.
+        scores(Variable): A LodTensor variable containing the accumulated
+            scores corresponding to ``ids`` . Both its shape and lod are same as
+            thoes of ``ids`` . The data type should be float32.
+        beam_size(int): The beam width used in beam search.
+        end_id(int): The id of end token.
+        level(int): **It can be ignored and mustn't change currently.**
+            The 2 level lod used in this operator has the following
+            meaning: The first level describes how many beams each sample has,
+            which would change to 0 when beams of the sample all end (batch reduce);
+            The second level describes how many times each beam is selected.
+            Default 0, which shouldn't be changed currently.
+        is_accumulated(bool): Whether the input ``score`` is accumulated scores.
+            Default True.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default.
+        return_parent_idx(bool, optional): Whether to return an extra Tensor variable
+            in output, which stores the selected ids' parent indice in
+            ``pre_ids`` and can be used to update RNN's states by gather operator.
+            Default False.
+
+    Returns:
+        tuple: The tuple contains two or three LodTensor variables. The two LodTensor, \
+            representing the selected ids and the corresponding accumulated scores of \
+            current step, have the same shape `[batch_size, beam_size]` and lod with 2 levels, \
+            and have data types int64 and float32. If ``return_parent_idx`` is True, \
+            an extra Tensor variable preserving the selected ids' parent indice \
+            is included, whose shape is `[batch_size * beam_size]` and data type \
+            is int64.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            # Suppose `probs` contains predicted results from the computation
+            # cell and `pre_ids` and `pre_scores` is the output of beam_search
+            # at previous step.
+            beam_size = 4
+            end_id = 1
+            pre_ids = fluid.data(
+                name='pre_id', shape=[None, 1], lod_level=2, dtype='int64')
+            pre_scores = fluid.data(
+                name='pre_scores', shape=[None, 1], lod_level=2, dtype='float32')
+            probs = fluid.data(
+                name='probs', shape=[None, 10000], dtype='float32')
+            topk_scores, topk_indices = fluid.layers.topk(probs, k=beam_size)
+            accu_scores = fluid.layers.elementwise_add(
+                x=fluid.layers.log(x=topk_scores),
+                y=fluid.layers.reshape(pre_scores, shape=[-1]),
+                axis=0)
+            selected_ids, selected_scores = fluid.layers.beam_search(
+                pre_ids=pre_ids,
+                pre_scores=pre_scores,
+                ids=topk_indices,
+                scores=accu_scores,
+                beam_size=beam_size,
+                end_id=end_id)
+    """
+    helper = LayerHelper('beam_search', **locals())
+    score_type = pre_scores.dtype
+    id_type = pre_ids.dtype
+
+    inputs = {"pre_ids": pre_ids, "pre_scores": pre_scores, "scores": scores}
+    if ids is not None:
+        inputs["ids"] = ids
+
+    selected_scores = helper.create_variable_for_type_inference(
+        dtype=score_type)
+    selected_ids = helper.create_variable_for_type_inference(dtype=id_type)
+    # parent_idx is a tensor used to gather cell states at the next time
+    # step. Though lod in selected_ids can also be used to gather by
+    # sequence_expand, it is not efficient.
+    # gather_op's index input only supports int32 dtype currently
+    parent_idx = helper.create_variable_for_type_inference(dtype="int32")
+
+    helper.append_op(
+        type='beam_search',
+        inputs=inputs,
+        outputs={
+            'selected_ids': selected_ids,
+            'selected_scores': selected_scores,
+            'parent_idx': parent_idx
+        },
+        attrs={
+            # TODO(ChunweiYan) to assure other value support
+            'level': level,
+            'beam_size': beam_size,
+            'end_id': end_id,
+            'is_accumulated': is_accumulated,
+        })
+    if return_parent_idx:
+        return selected_ids, selected_scores, parent_idx
+    else:
+        return selected_ids, selected_scores
+
+
+def beam_search_decode(ids, scores, beam_size, end_id, name=None):
+    """
+    This operator is used after beam search has completed. It constructs the
+    full predicted sequences for each sample by walking back along the search
+    paths stored in lod of ``ids`` . The result sequences are stored in a
+    LoDTensor, which uses the following way to parse:
+
+    .. code-block:: text
+
+        If lod = [[0, 3, 6], [0, 12, 24, 40, 54, 67, 82]]
+
+        The first level of lod stands for: There are 2 samples each having 3
+        (beam width) predicted sequence.
+
+        The second level of lod stands for: The lengths of the first sample's
+        3 predicted sequences are 12, 12, 16; The lengths of the second sample's
+        3 predicted sequences are 14, 13, 15.
+
+
+    Please see the following demo for a fully beam search usage example:
+        fluid/tests/book/test_machine_translation.py
+
+    Args:
+        ids(Variable): The LoDTensorArray variable containing the selected ids
+            of all steps. Each LoDTensor in it has int64 data type and 2 level
+            lod which can be used to get the search paths.
+        scores(Variable): The LodTensorArray variable containing the accumulated
+            scores corresponding to selected ids of all steps. It has the same size
+            as ``ids`` . Each LoDTensor in it has the same shape and lod as the
+            counterpart in ``ids`` , and has a float32 data type.
+        beam_size(int): The beam width used in beam search.
+        end_id(int): The id of end token.
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default.
+
+    Returns:
+        tuple: The tuple contains two LodTensor variables. The two LodTensor, \
+            containing the full sequences of ids and the correspongding accumulated \
+            scores, have the same shape flattened to 1D and have the same 2 level \
+            lod. The lod can be used to get how many predicted sequences each sample \
+            has and how many ids each predicted sequence has.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            # Suppose `ids` and `scores` are LodTensorArray variables reserving
+            # the selected ids and scores of all steps
+            ids = fluid.layers.create_array(dtype='int64')
+            scores = fluid.layers.create_array(dtype='float32')
+            finished_ids, finished_scores = fluid.layers.beam_search_decode(
+                ids, scores, beam_size=5, end_id=0)
+    """
+    helper = LayerHelper('beam_search_decode', **locals())
+    sentence_ids = helper.create_variable_for_type_inference(dtype=ids.dtype)
+    sentence_scores = helper.create_variable_for_type_inference(dtype=ids.dtype)
+
+    helper.append_op(
+        type="beam_search_decode",
+        inputs={"Ids": ids,
+                "Scores": scores},
+        outputs={
+            "SentenceIds": sentence_ids,
+            "SentenceScores": sentence_scores
+        },
+        attrs={"beam_size": beam_size,
+               "end_id": end_id})
+
+    return sentence_ids, sentence_scores
+
+
+def lstm_unit(x_t,
+              hidden_t_prev,
+              cell_t_prev,
+              forget_bias=0.0,
+              param_attr=None,
+              bias_attr=None,
+              name=None):
+    """
+    Long-Short Term Memory (LSTM) RNN cell. This operator performs LSTM calculations for
+    one time step, whose implementation is based on calculations described in `RECURRENT
+    NEURAL NETWORK REGULARIZATION <http://arxiv.org/abs/1409.2329>`_  .
+
+    We add forget_bias to the biases of the forget gate in order to
+    reduce the scale of forgetting. The formula is as follows:
+    
+    .. math::
+
+        i_{t} & = \sigma(W_{x_{i}}x_{t} + W_{h_{i}}h_{t-1} + b_{i})
+
+        f_{t} & = \sigma(W_{x_{f}}x_{t} + W_{h_{f}}h_{t-1} + b_{f} + forget\\_bias)
+
+        c_{t} & = f_{t}c_{t-1} + i_{t} tanh (W_{x_{c}}x_{t} + W_{h_{c}}h_{t-1} + b_{c})
+
+        o_{t} & = \sigma(W_{x_{o}}x_{t} + W_{h_{o}}h_{t-1} + b_{o})
+
+        h_{t} & = o_{t} tanh (c_{t})
+
+    :math:`x_{t}` stands for ``x_t`` , corresponding to the input of current time step;
+    :math:`h_{t-1}` and :math:`c_{t-1}` correspond to ``hidden_t_prev`` and ``cell_t_prev`` ,
+    representing the output of from previous time step.
+    :math:`i_{t}, f_{t}, c_{t}, o_{t}, h_{t}` are input gate, forget gate, cell, output gate
+    and hidden calculation.
+
+    Args:
+        x_t(Variable): A 2D Tensor representing the input of current time step.
+            Its shape should be :math:`[N, M]` , where :math:`N` stands for batch
+            size, :math:`M` for the feature size of input. The data type should
+            be float32 or float64.
+        hidden_t_prev(Variable): A 2D Tensor representing the hidden value from
+            previous step. Its shape should be :math:`[N, D]` , where :math:`N`
+            stands for batch size, :math:`D` for the hidden size. The data type
+            should be same as ``x_t`` .
+        cell_t_prev(Variable): A 2D Tensor representing the cell value from
+            previous step. It has the same shape and data type with ``hidden_t_prev`` .
+        forget_bias (float, optional): :math:`forget\\_bias` added to the biases
+            of the forget gate. Default 0.
+        param_attr(ParamAttr, optional):  To specify the weight parameter property.
+            Default: None, which means the default weight parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` .
+        bias_attr (ParamAttr, optional): To specify the bias parameter property.
+            Default: None, which means the default bias parameter property is used.
+            See usage for details in :ref:`api_fluid_ParamAttr` .
+        name(str, optional): For detailed information, please refer 
+            to :ref:`api_guide_Name`. Usually name is no need to set and 
+            None by default.
+
+    Returns:
+        tuple: The tuple contains two Tensor variables with the same shape and \
+            data type with ``hidden_t_prev`` , representing the hidden value and \
+            cell value which correspond to :math:`h_{t}` and :math:`c_{t}` in \
+            the formula.
+
+    Raises:
+        ValueError: Rank of x_t must be 2.
+        ValueError: Rank of hidden_t_prev must be 2.
+        ValueError: Rank of cell_t_prev must be 2.
+        ValueError: The 1st dimensions of x_t, hidden_t_prev and cell_t_prev must be the same.
+        ValueError: The 2nd dimensions of hidden_t_prev and cell_t_prev must be the same.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            dict_dim, emb_dim, hidden_dim = 128, 64, 512
+            data = fluid.data(name='step_data', shape=[None], dtype='int64')
+            x = fluid.embedding(input=data, size=[dict_dim, emb_dim])
+            pre_hidden = fluid.data(
+                name='pre_hidden', shape=[None, hidden_dim], dtype='float32')
+            pre_cell = fluid.data(
+                name='pre_cell', shape=[None, hidden_dim], dtype='float32')
+            hidden = fluid.layers.lstm_unit(
+                x_t=x,
+                hidden_t_prev=pre_hidden,
+                cell_t_prev=pre_cell)
+    """
+    helper = LayerHelper('lstm_unit', **locals())
+
+    if len(x_t.shape) != 2:
+        raise ValueError("Rank of x_t must be 2.")
+
+    if len(hidden_t_prev.shape) != 2:
+        raise ValueError("Rank of hidden_t_prev must be 2.")
+
+    if len(cell_t_prev.shape) != 2:
+        raise ValueError("Rank of cell_t_prev must be 2.")
+
+    if x_t.shape[0] != hidden_t_prev.shape[0] or x_t.shape[
+            0] != cell_t_prev.shape[0]:
+        raise ValueError("The 1st dimensions of x_t, hidden_t_prev and "
+                         "cell_t_prev must be the same.")
+
+    if hidden_t_prev.shape[1] != cell_t_prev.shape[1]:
+        raise ValueError("The 2nd dimensions of hidden_t_prev and "
+                         "cell_t_prev must be the same.")
+
+    if bias_attr is None:
+        bias_attr = ParamAttr()
+
+    size = cell_t_prev.shape[1]
+    concat_out = nn.concat(input=[x_t, hidden_t_prev], axis=1)
+    fc_out = nn.fc(input=concat_out,
+                   size=4 * size,
+                   param_attr=param_attr,
+                   bias_attr=bias_attr)
+    dtype = x_t.dtype
+    c = helper.create_variable_for_type_inference(dtype)
+    h = helper.create_variable_for_type_inference(dtype)
+
+    helper.append_op(
+        type='lstm_unit',
+        inputs={"X": fc_out,
+                "C_prev": cell_t_prev},
+        outputs={"C": c,
+                 "H": h},
+        attrs={"forget_bias": forget_bias})
+
+    return h, c
