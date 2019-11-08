@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <algorithm>
-#include <ctime>
 #include <functional>  // for multiplies
 #include <iterator>
 #include <vector>
@@ -112,6 +111,7 @@ inline void UpdateElementwiseIndexArray(const int *out_dims_array,
     }
   }
 }
+
 inline void GetBroadcastDimsArrays(const framework::DDim &x_dims,
                                    const framework::DDim &y_dims,
                                    int *x_dims_array, int *y_dims_array,
@@ -270,10 +270,6 @@ void CommonGradBroadcastCPU(
     int *y_dims_array, int *out_dims_array, int max_dim,
     const platform::CPUDeviceContext &ctx, DX_OP dx_op, DY_OP dy_op) {
   std::vector<int> index_array(max_dim, 0);
-  // VLOG(3) << "=CommonGradBroadcastCPU  y:" << y << "\tout:" << out
-  // <<"\tdout:" << dout ;
-  VLOG(3) << "= memory_size  y:" << y.memory_size()
-          << "\tout:" << out.memory_size() << "\tdout:" << dout.memory_size();
   const T *x_data = x.data<T>();
   const T *y_data = y.data<T>();
   const T *out_data = out.data<T>();
@@ -413,7 +409,7 @@ void CommonGradBroadcastCUDA(
                                      max_dim, y_one_indexs.size());
 
   // compute array stride for cuda kernel;
-  // e.g. x.dims=[2,3,4] ,x_stride=[12,4,1]
+  // e.g. x.dims=[2,3,4], x_stride=[12,4,1]
   std::vector<int> x_strides_array(max_dim);
   std::vector<int> y_strides_array(max_dim);
   std::vector<int> out_strides_array(max_dim);
@@ -1334,8 +1330,8 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                  &is_run_common_broadcast);
   }
   // special case for common implementation.
-  // case 1: x=[2,3,1,5],y=[2,1,4,1]
-  // case 2: x=[2,3,4],y=[1,1,4]
+  // case 1: x=[2,3,1,5], y=[2,1,4,1]
+  // case 2: x=[2,3,4], y=[1,1,4]
   if (is_run_common_broadcast == 1) {
     CommonElementwiseBroadcastForward<Functor, DeviceContext, T, OutType>(
         ctx, x, y, z, x_dims, y_dims, func, axis, is_xsize_larger);

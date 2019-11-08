@@ -49,7 +49,6 @@ class ElementwiseAddKernel : public framework::OpKernel<T> {
     auto *y = ctx.Input<framework::LoDTensor>("Y");
     auto *z = ctx.Output<framework::LoDTensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());
-
     auto dims_equal = x->dims() == y->dims();
     if (dims_equal) {
       SameDimsElemwiseAdd<DeviceContext, T> same_dims_add;

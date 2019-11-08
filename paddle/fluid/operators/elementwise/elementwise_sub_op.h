@@ -111,7 +111,6 @@ class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
     int axis = ctx.Attr<int>("axis");
     // skip out
     auto* out = dout;
-
     if (dx != nullptr && dy != nullptr && (dx->dims() == dy->dims())) {
       elementwise_sub_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
     } else {
