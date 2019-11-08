@@ -36,6 +36,7 @@ inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
     case DataLayout::kNHWC:
       return MKLDNNMemoryFormat::nhwc;
     case DataLayout::kNCHW:
+    case DataLayout::kAnyLayout:
       return MKLDNNMemoryFormat::nchw;
     default:
       PADDLE_THROW("Fail to convert layout %s to MKLDNN format",
@@ -66,15 +67,14 @@ inline MKLDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
   return MKLDNNDataType::data_undef;
 }
 
+void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
+                                    const Tensor& in, Tensor* out,
+                                    platform::Place place);
 #endif
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
                                const Tensor& in, Tensor* out);
-
-void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
-                                    const Tensor& in, Tensor* out,
-                                    platform::Place place);
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to);
 

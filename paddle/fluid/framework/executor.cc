@@ -103,6 +103,7 @@ Executor::~Executor() {
     platform::MKLDNNDeviceContext* dev_ctx =
         (platform::MKLDNNDeviceContext*)pool.Get(place_);
     dev_ctx->ResetBlobMap();
+    platform::set_cur_paddle_data_layout(paddle::framework::DataLayout::kNCHW);
   }
 #endif
 }
