@@ -766,7 +766,7 @@ class TestDistBase(unittest.TestCase):
         if self.__use_cuda:
             tr_cmd += " --use_cuda"
             env.update({
-                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
+                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id % 2),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
@@ -779,7 +779,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_dgc"
 
         if self._mp_mode:
-            env = {"FLAGS_selected_gpus": "{}".format(trainer_id)}
+            env = {"FLAGS_selected_gpus": "{}".format(trainer_id % 2)}
 
         if self._nccl_comm_num > 1:
             tr_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
@@ -809,13 +809,13 @@ class TestDistBase(unittest.TestCase):
 
             global DIST_UT_PORT
             if DIST_UT_PORT == 0:
-                for i in range(0, 2):
+                for i in range(0, 4):
                     self._ps_endpoints += "127.0.0.1:%s," % (
                         self._find_free_port())
             else:
-                for i in range(0, 2):
+                for i in range(0, 4):
                     self._ps_endpoints += "127.0.0.1:%s," % (DIST_UT_PORT + i)
-                DIST_UT_PORT += 2
+                DIST_UT_PORT += 4
             self._ps_endpoints = self._ps_endpoints[:-1]
 
         # NOTE: we reuse ps_endpoints as nccl2 worker endpoints

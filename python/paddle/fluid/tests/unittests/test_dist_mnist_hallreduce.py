@@ -26,8 +26,7 @@ class TestDistMnistNCCL2HAllreduce(TestDistBase):
         self._use_reduce = False
         self._use_reader_alloc = False
         self._nccl2_mode = True
-        # FIXME(gongwb): change to True use 2 cards
-        self._use_hallreduce = False
+        self._use_hallreduce = True
 
     def test_dist_train(self):
         import paddle.fluid as fluid
