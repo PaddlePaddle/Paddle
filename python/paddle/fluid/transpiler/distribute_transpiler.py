@@ -726,6 +726,47 @@ class DistributeTranspiler(object):
 >>>>>>> 940c6ff1c8... Fix communicator slow bug & fix communicator stop bug (#20366)
 
         if self.sync_mode:
+            fetch_barrier_input = []
+
+            program.global_block().append_op(
+                type="send_barrier",
+                inputs={"X": list(input_deps)},
+                outputs={"Out": send_barrier_out},
+                attrs={
+                    "endpoints": pserver_endpoints,
+                    "trainer_id": self.trainer_id,
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                })
+
+            fetch_barrier_input.append(send_barrier_out)
+        else:
+            lr_ops = self._get_lr_ops()
+            if len(lr_ops) > 0 and self.counter_var:
+                decay_dummy_output = program.global_block().create_var(
+                    name=framework.generate_control_dev_var_name())
+                if self.config.runtime_split_send_recv:
+                    ## async mode, using communicator to merge and send
+                    send_varnames = [self.counter_var.name]
+                else:
+                    send_varnames = []
+                sections = []
+                program.global_block().append_op(
+                    type="send",
+                    inputs={"X": self.counter_var},
+                    outputs={"Out": decay_dummy_output},
+                    attrs={
+                        "epmap": pserver_endpoints,
+                        "sections": sections,
+                        "send_varnames": send_varnames,
+                        "merge_add": True,
+                        "use_send_handler": False,
+                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                        OP_ROLE_VAR_ATTR_NAME:
+                        [self.counter_var.name, self.counter_var.name]
+                    })
+                input_deps.append(decay_dummy_output)
+
+        if self.sync_mode:
             program.global_block().append_op(
                 type="send_barrier",
                 inputs={"X": list(input_deps)},
