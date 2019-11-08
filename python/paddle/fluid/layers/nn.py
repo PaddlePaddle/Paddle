@@ -4148,7 +4148,6 @@ def batch_norm(input,
                moving_mean_name=None,
                moving_variance_name=None,
                do_model_average_for_mean_and_var=True,
-               fuse_with_relu=False,
                use_global_stats=False):
     """
     **Batch Normalization Layer**
@@ -4233,7 +4232,6 @@ def batch_norm(input,
             will save global variance with the string.
         do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance should do model
             average when model average is enabled.
-        fuse_with_relu (bool): if True, this OP performs relu after batch norm.
         use_global_stats(bool, Default False): Whether to use global mean and
             variance. In inference or test mode, set use_global_stats to true
             or is_test to true, and the behavior is equivalent.
@@ -4349,7 +4347,7 @@ def batch_norm(input,
             "is_test": is_test,
             "data_layout": data_layout,
             "use_mkldnn": False,
-            "fuse_with_relu": fuse_with_relu,
+            "fuse_with_relu": False,
             "use_global_stats": use_global_stats
         })
 
@@ -17856,7 +17854,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max}
     if in_dygraph_mode():
-        attrs = {'shape': shape}
+        attrs['shape'] = shape
     else:
         if isinstance(shape, Variable):
             shape.stop_gradient = True
