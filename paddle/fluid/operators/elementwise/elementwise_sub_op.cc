@@ -70,27 +70,6 @@ class ElementwiseSubOpMaker : public ElementwiseOpMaker {
 };
 
 template <typename T>
-class ElementwiseSubGradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  std::unique_ptr<T> Apply() const override {
-    std::unique_ptr<T> op(new T());
-    op->SetType("elementwise_sub_grad");
-    op->SetInput("X", this->Input("X"));
-    op->SetInput("Y", this->Input("Y"));
-    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-
-    op->SetAttrMap(this->Attrs());
-
-    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
-    return op;
-  }
-};
-
-template <typename T>
 class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
