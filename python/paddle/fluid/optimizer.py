@@ -872,6 +872,20 @@ class MomentumOptimizer(Optimizer):
 
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
+        attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
+        outputs = {
+            "ParamOut": [param_and_grad[0]._ivar],
+            "VelocityOut": [velocity_acc._ivar]
+        }
+        inputs = {
+            "Param": [param_and_grad[0]._ivar],
+            "Grad": [param_and_grad[1]],
+            "Velocity": [velocity_acc._ivar],
+            "LearningRate": [self._create_param_lr(param_and_grad)._ivar]
+        }
+        core.ops.momentum(inputs, attrs, outputs)
+        return
+
         # create the momentum optimize op
         momentum_op = block.append_op(
             type=self.type,

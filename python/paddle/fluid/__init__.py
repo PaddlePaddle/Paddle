@@ -83,6 +83,7 @@ from .parallel_executor import *
 from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
+from paddle.fluid.dygraph.math_op_patch import monkey_patch_var_base
 from . import install_check
 from .dygraph.nn import *
 from .dygraph.layers import *
@@ -231,5 +232,6 @@ def __bootstrap__():
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
 # Consider paddle.init(args) or paddle.main(args)
 monkey_patch_variable()
+monkey_patch_var_base()
 add_backward_for_VarBase()
 __bootstrap__()

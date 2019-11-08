@@ -1413,6 +1413,50 @@ class BatchNorm(layers.Layer):
         batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
             self._dtype)
 
+        inputs = {
+            "X": [input],
+            "Scale": [self._scale._ivar],
+            "Bias": [self._bias._ivar],
+            "Mean": [self._mean._ivar],
+            "Variance": [self._variance._ivar]
+        }
+        outputs = {
+            "Y": [batch_norm_out._ivar],
+            "MeanOut": [mean_out._ivar],
+            "VarianceOut": [variance_out._ivar],
+            "SavedMean": [saved_mean._ivar],
+            "SavedVariance": [saved_variance._ivar]
+        }
+        attrs = {
+            "momentum": self._momentum,
+            "epsilon": self._epsilon,
+            "is_test": self._is_test,
+            "data_layout": self._data_layout,
+            "use_mkldnn": False,
+            "fuse_with_relu": self._fuse_with_relu,
+            "use_global_stats": self._use_global_stats,
+            "trainable_statistics": self._trainable_statistics
+        }
+        core.ops.batch_norm(inputs, attrs, outputs)
+
+        # Currently, we don't support inplace in dygraph mode
+        return self._helper.append_activation(batch_norm_out._ivar, self._act)
+
+        # origin
+
+        # create output
+        # mean and mean_out share the same memory
+        mean_out = self._mean
+        # variance and variance out share the same memory
+        variance_out = self._variance
+
+        saved_mean = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        saved_variance = self._helper.create_variable_for_type_inference(
+            dtype=self._dtype, stop_gradient=True)
+        batch_norm_out = input if self._in_place else self._helper.create_variable_for_type_inference(
+            self._dtype)
+
         self._helper.append_op(
             type="batch_norm",
             inputs={

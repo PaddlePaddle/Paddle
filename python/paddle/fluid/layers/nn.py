@@ -230,6 +230,24 @@ __all__ = [
 kIgnoreIndex = -100
 
 
+def dygraph_append_activation(self, input_var):
+    act = self.kwargs.get('act', None)
+    attrs = {}
+    if act is None:
+        return input_var
+    if not isinstance(act, six.string_types):
+        raise TypeError(str(act) + " should be unicode or str")
+    if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
+        attrs['use_cudnn'] = self.kwargs.get('use_cudnn')
+    if 'use_mkldnn' in self.kwargs:
+        attrs['use_mkldnn'] = self.kwargs.get('use_mkldnn')
+
+    act_op = getattr(core.ops, act)
+    inputs = {"X": [input_var]}
+    outs = act_op(inputs, attrs)
+    return tmp
+
+
 def fc(input,
        size,
        num_flatten_dims=1,

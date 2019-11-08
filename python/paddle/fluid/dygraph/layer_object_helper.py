@@ -184,27 +184,29 @@ class LayerObjectHelper(LayerHelperBase):
 
         Return the Variable of after append activation
         """
-        act = act
         if act is None:
             return input_var
-        if isinstance(act, six.string_types):
-            act = {'type': act}
-        else:
+        if not isinstance(act, six.string_types):
             raise TypeError(
                 str(act) + " should be unicode or str in %s ", self.name)
-
+        attrs = {}
         if (use_cudnn is not None) and use_cudnn:
-            act['use_cudnn'] = use_cudnn
+            attrs['use_cudnn'] = use_cudnn
         if (use_mkl_dnn is not None) and use_mkl_dnn:
-            act['use_mkldnn'] = use_mkl_dnn
-        act_type = act.pop('type')
+            attrs['use_mkldnn'] = use_mkl_dnn
+
+        if in_dygraph_mode():
+            act_op = getattr(core.ops, act)
+            inputs = {"X": [input_var]}
+            outs = act_op(inputs, attrs)
+            return outs['Out'][0]
 
         tmp = self.create_variable_for_type_inference(dtype=input_var.dtype)
         self.append_op(
-            type=act_type,
+            type=act,
             inputs={"X": [input_var]},
             outputs={"Out": [tmp]},
-            attrs=act)
+            attrs=attrs)
         return tmp
 
     def is_instance(self, param, cls):

@@ -16,6 +16,7 @@ from __future__ import print_function
 
 from . import framework
 from . import core
+from .framework import in_dygraph_mode
 
 __all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
 
@@ -52,34 +53,41 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
             regularization_term = None
             if param.regularizer is not None:
                 # Add variable for regularization term in grad block
-                regularization_term = param.regularizer(param, grad, grad.block)
+                regularization_term = param.regularizer(param, grad,
+                                                        param.block)
             elif regularization is not None:
-                regularization_term = regularization(param, grad, grad.block)
+                regularization_term = regularization(param, grad, param.block)
 
             # If no regularization specified, then we don't need to do anything
             if regularization_term is None:
                 params_and_grads.append((param, grad))
                 continue
+            if in_dygraph_mode():
+                outs = core.ops.sum({
+                    'X': [grad, regularization_term._ivar]
+                }, {})
+                new_grad = outs['Out'][0]
+                params_and_grads.append((param, new_grad))
+            else:
+                new_grad = grad
+                if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+                    # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
+                    # the grad's type and name will be changed. But the gradient's name
+                    # is used in ParallelExecutor Reduce mode, so I add a flag for
+                    # the new_grad here.
+                    new_grad = grad.block.create_var(
+                        name=grad.name + core.kNewGradSuffix(),
+                        dtype=param.dtype,
+                        shape=param.shape,
+                        lod_level=param.lod_level,
+                        type=core.VarDesc.VarType.LOD_TENSOR)
 
-            new_grad = grad
-            if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
-                # FIXME(zcd): If the grad is SELECTED_ROWS, after regularization,
-                # the grad's type and name will be changed. But the gradient's name
-                # is used in ParallelExecutor Reduce mode, so I add a flag for
-                # the new_grad here.
-                new_grad = grad.block.create_var(
-                    name=grad.name + core.kNewGradSuffix(),
-                    dtype=param.dtype,
-                    shape=param.shape,
-                    lod_level=param.lod_level,
-                    type=core.VarDesc.VarType.LOD_TENSOR)
+                param.block.append_op(
+                    type='sum',
+                    inputs={"X": [grad, regularization_term]},
+                    outputs={"Out": new_grad})
 
-            grad.block.append_op(
-                type='sum',
-                inputs={"X": [grad, regularization_term]},
-                outputs={"Out": new_grad})
-
-            params_and_grads.append((param, new_grad))
+                params_and_grads.append((param, new_grad))
 
     return params_and_grads
 
