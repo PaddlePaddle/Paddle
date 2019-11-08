@@ -139,19 +139,20 @@ class TestDistRunnerBase(object):
             dist_strategy._ut4grad_allreduce = True
         if args.use_dist_fc:
             dist_strategy.use_dist_fc = True
-            #dist_strategy.dist_fc_config = DistFCConfig(
-            #    batch_size=args.batch_size)
+            dist_strategy.dist_fc_config = DistFCConfig(
+                batch_size=args.batch_size)
+            self._distfc_loss_type = args.distfc_loss_type
 
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
+        self.worker_num = fleet.worker_num()
+        self.worker_id = fleet.worker_index()
         print_to_err("gpu_fleet", "fleet.node_num:")
         # "fleet.node_id:", fleet.node_id(),
         # "fleet.trainer_num:", fleet.worker_num())
 
-        print_to_err("wow0")
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
             self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
-        print_to_err("wow1")
 
         trainer_prog = fleet._origin_program
         dist_prog = fleet.main_program
@@ -160,10 +161,8 @@ class TestDistRunnerBase(object):
         place = fluid.CUDAPlace(device_id)
 
         exe = fluid.Executor(place)
-        print_to_err("wow2")
         exe.run(fluid.default_startup_program())
         eprint(type(self).__name__, "run worker startup program done.")
-        print_to_err("wow3")
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
@@ -186,7 +185,6 @@ class TestDistRunnerBase(object):
 
         print_to_err(type(self).__name__, "begin to train on trainer")
         out_losses = []
-        print_to_err("wow5")
         for i in six.moves.xrange(RUN_STEP):
             loss, = exe.run(dist_prog,
                             fetch_list=[avg_cost.name],
@@ -199,7 +197,6 @@ class TestDistRunnerBase(object):
             print(pickle.dumps(out_losses))
         else:
             sys.stdout.buffer.write(pickle.dumps(out_losses))
-        print_to_err("wow6")
 
     def run_trainer(self, args):
         self.lr = args.lr
@@ -210,6 +207,10 @@ class TestDistRunnerBase(object):
             test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
                 self.get_model(batch_size=args.batch_size, use_dgc=args.use_dgc)
         else:
+            if args.use_dist_fc:
+                self._distfc_loss_type = args.distfc_loss_type
+                self.worker_num = 1
+                self.worker_index = 0
             test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
                 self.get_model(batch_size=args.batch_size)
 
@@ -435,6 +436,11 @@ def runtime_main(test_class):
     parser.add_argument('--gpu_fleet_api', action='store_true')
     parser.add_argument('--use_local_sgd', action='store_true')
     parser.add_argument('--use_dist_fc', action='store_true')
+    parser.add_argument(
+        '--distfc_loss_type',
+        type=str,
+        default="softmax",
+        choices=['softmax', 'dist_softmax', 'arcface', 'dist_arcface'])
     parser.add_argument('--ut4grad_allreduce', action='store_true')
     parser.add_argument(
         '--hallreduce_inter_nranks', type=int, required=False, default=2)
@@ -620,6 +626,13 @@ class TestDistBase(unittest.TestCase):
         else:
             env_local = {'CPU_NUM': '1'}
 
+        if self._use_dist_fc:
+            cmd += " --use_dist_fc"
+            if self._distfc_loss_type == "dist_softmax":
+                cmd += " --distfc_loss_type softmax"
+            elif self._distfc_loss_type == "dist_arcface":
+                cmd += " --distfc_loss_type arcface"
+
         env_local.update(envs)
         print("local_cmd: {}, env: {}".format(cmd, env_local))
 
@@ -786,6 +799,8 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --gpu_fleet_api"
             if self._use_dist_fc:
                 tr_cmd += " --use_dist_fc"
+                tr_cmd += " --distfc_loss_type {}".format(
+                    self._distfc_loss_type)
             if self._use_local_sgd:
                 tr_cmd += " --use_local_sgd"
             if self._ut4grad_allreduce:

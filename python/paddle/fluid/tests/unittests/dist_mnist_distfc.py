@@ -40,7 +40,7 @@ fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
 
 
-def cnn_model(data, label, loss_type):
+def cnn_model(data, label, loss_type, rank_id, nranks):
     conv_pool_1 = fluid.nets.simple_img_conv_pool(
         input=data,
         filter_size=5,
@@ -105,15 +105,18 @@ class TestDistMnist2x2(TestDistRunnerBase):
         images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-        loss_type = self._loss_type
+        loss_type = self._distfc_loss_type
         # Train program
-        loss = cnn_model(images, label, loss_type)
+        cost = cnn_model(images, label, loss_type, self.worker_index,
+                         self.worker_num)
         avg_cost = fluid.layers.mean(x=cost)
 
         # Evaluator
-        batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-        batch_acc = fluid.layers.accuracy(
-            input=predict, label=label, total=batch_size_tensor)
+        #batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
+        #batch_acc = fluid.layers.accuracy(
+        #    input=predict, label=label, total=batch_size_tensor)
+        predict = None
+        batch_acc = None
 
         inference_program = fluid.default_main_program().clone()
         # Optimization

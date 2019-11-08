@@ -16,6 +16,9 @@ from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 
+RUN_STEP = 5
+DEFAULT_BATCH_SIZE = 2
+
 
 class TestDistMnistNCCL2FleetApi(TestDistBase):
     def _setup_config(self):
@@ -25,6 +28,7 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
         self._nccl2_mode = True
         self._gpu_fleet_api = True
         self._use_dist_fc = True
+        self._distfc_loss_type = "dist_softmax"
 
     def test_dist_train(self):
         import paddle.fluid as fluid
