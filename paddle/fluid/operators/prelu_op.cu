@@ -20,9 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static const int CUDA_NUM_THREADS = 1024;
-static const int CUDA_MAX_NUM_BLOCKS = 65535;
-
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
@@ -65,85 +62,45 @@ struct ChannelMode {};
 struct ScalarMode {};
 } /* namespace prelu */
 
-template <typename T, typename M>
-struct AlphaFunctor {
-  HOSTDEVICE inline T operator()(const T* alpha, size_t channel_num,
-                                 size_t plane_size, size_t spatial_size,
-                                 bool use_plane_size, size_t idx) const {}
-};
-
 template <typename T>
-struct AlphaFunctor<T, prelu::ElementWiseMode> {
-  HOSTDEVICE inline T operator()(const T* alpha, size_t channel_num,
-                                 size_t plane_size, size_t spatial_size,
-                                 bool use_plane_size, size_t idx) const {
-    if (use_plane_size) {
-      return alpha[idx];
+__global__ void PReluGradKernel(const T* x_ptr, const T* y_ptr,
+                                const T* alpha_ptr, const T* dy_ptr, T* dx_ptr,
+                                T* dalpha_ptr, size_t channel_num,
+                                size_t plane_size, size_t spatial_size,
+                                size_t numel, string mode) {
+  size_t index;
+  CUDA_KERNEL_LOOP(index, numel) {
+    T scale;
+    if (mode == "element") {
+      size_t elment_index = index % spatial_size;
+      scale = alpha_ptr[element_index];
+    } else if (mode == "channel") {
+      size_t temp = index / plane_size;
+      size_t channel_index = temp % channel_num;
+      scale = alpha_ptr[channel_index];
+    } else {
+      scale = alpha_ptr[0]
     }
-    size_t channel_index = blockIdx.x % channel_num;
-    return alpha[channel_index * spatial_size + idx];
-  }
-};
-
-template <typename T>
-struct AlphaFunctor<T, prelu::ChannelMode> {
-  HOSTDEVICE inline T operator()(const T* alpha, size_t channel_num,
-                                 size_t plane_size, size_t spatial_size,
-                                 bool use_plane_size, size_t idx) const {
-    T ret = alpha[blockIdx.x % channel_num];
-    if (use_plane_size) ret = alpha[idx / plane_size];
-    return ret;
-  }
-};
-
-template <typename T>
-struct AlphaFunctor<T, prelu::ScalarMode> {
-  HOSTDEVICE inline T operator()(const T* alpha, size_t channel_num,
-                                 size_t plane_size, size_t spatial_size,
-                                 bool use_plane_size, size_t idx) const {
-    return alpha[0];
-  }
-};
-
-template <typename T, typename M>
-__global__ void PReluGradElementWiseKernel(
-    const T* x_ptr, const T* y_ptr, const T* alpha_ptr, const T* dy_ptr,
-    T* dx_ptr, T* dalpha_ptr, size_t channel_num, size_t plane_size,
-    size_t spatial_size, bool use_plane_size) {
-  size_t offset = blockIdx.x * spatial_size;
-  AlphaFunctor<T, M> alpha_func;
-
-  for (size_t i = threadIdx.x; i < spatial_size; i += blockDim.x) {
-    T y = y_ptr[offset + i];
-    T x = x_ptr[offset + i];
-    T dy = dy_ptr[offset + i];
-    T alpha = alpha_func(alpha_ptr, channel_num, plane_size, spatial_size,
-                         use_plane_size, i);
-    if (dx_ptr != nullptr) dx_ptr[offset + i] = (x > 0) ? dy : alpha * dy;
-    if (dalpha_ptr != nullptr) dalpha_ptr[offset + i] = (x > 0) ? 0 : x * dy;
+    T x = input[index];
+    T dy = dy_ptr[index];
+    if (dx_ptr != nullptr) dx_ptr[index] = (x > 0) ? dy : scale * dy;
+    if (dalpha_ptr != nullptr) dalpha_ptr[index] = (x > 0) ? 0 : x * dy;
   }
 }
 
-template <typename T, typename M>
-class PreluGradElementwiseFunctor {
+template <typename T>
+class PreluGradFunctor {
  public:
   void operator()(cudaStream_t stream, const T* x, const T* y, const T* alpha,
-                  const T* dy, T* dx, T* dalpha, std::vector<int> input_shape) {
-    size_t unroll = input_shape[0] * input_shape[1];
+                  const T* dy, T* dx, T* dalpha, std::vector<int> input_shape,
+                  string mode) {
     size_t plane_size = input_shape[2] * input_shape[3];
-    size_t spatial_size = plane_size;
-    bool use_plane_size = false;
-    if (unroll > CUDA_MAX_NUM_BLOCKS) {
-      unroll = input_shape[0];
-      spatial_size = input_shape[1] * input_shape[2] * input_shape[3];
-      use_plane_size = true;
-    }
-    size_t num_threads = CUDA_NUM_THREADS;
-    if (spatial_size < CUDA_NUM_THREADS) num_threads = spatial_size;
-    CHECK_LE(unroll, CUDA_MAX_NUM_BLOCKS);
-    PReluGradElementWiseKernel<T, M><<<unroll, num_threads, 0, stream>>>(
+    size_t spatial_size = plane_size * input_shape[1];
+    size_t numel = spatial_size * input_shape[0];
+    PReluGradKernel<
+        T, M><<<PADDLE_GET_BLOCKS(numel), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         x, y, alpha, dy, dx, dalpha, input_shape[1], plane_size, spatial_size,
-        use_plane_size);
+        numel, mode);
   }
 };
 
@@ -190,19 +147,9 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       dalpha_tmp_ptr = dalpha_tmp.mutable_data<T>(context.GetPlace());
     }
 
-    if (mode == "element") {
-      PreluGradElementwiseFunctor<T, prelu::ElementWiseMode> prelu_grad;
-      prelu_grad(stream, x_ptr, y_ptr, alpha_ptr, dy_ptr, dx_ptr,
-                 dalpha_tmp_ptr, input_shape);
-    } else if (mode == "channel") {
-      PreluGradElementwiseFunctor<T, prelu::ChannelMode> prelu_grad;
-      prelu_grad(stream, x_ptr, y_ptr, alpha_ptr, dy_ptr, dx_ptr,
-                 dalpha_tmp_ptr, input_shape);
-    } else {
-      PreluGradElementwiseFunctor<T, prelu::ScalarMode> prelu_grad;
-      prelu_grad(stream, x_ptr, y_ptr, alpha_ptr, dy_ptr, dx_ptr,
-                 dalpha_tmp_ptr, input_shape);
-    }
+    PreluGradFunctor<T, prelu::ElementWiseMode> prelu_grad;
+    prelu_grad(stream, x_ptr, y_ptr, alpha_ptr, dy_ptr, dx_ptr, dalpha_tmp_ptr,
+               input_shape, mode);
 
     if (dalpha_tmp_ptr == nullptr) return;
 
