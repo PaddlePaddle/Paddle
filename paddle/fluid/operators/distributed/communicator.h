@@ -360,9 +360,6 @@ class GeoSgdCommunicator : public Communicator {
 
  private:
   void SendThread();
-  std::vector<int64_t> SparseIdsMerge(
-      const std::vector<SparseIdsMap>& ids_send_vec,
-      const std::string& var_name, const std::string& splited_var_name);
 
   void CopyDenseVars(const std::string& var_name);
   void CopySparseVars(const std::string& var_name,
@@ -379,14 +376,6 @@ class GeoSgdCommunicator : public Communicator {
 
   void RecvUpdateDenseVars(const std::string& var_name);
   void RecvUpdateSparseVars(const std::string& var_name,
-                            const std::string& splited_var_name);
-
-  void UpdateOldScopeDense(const std::string& var_name);
-  void UpdateOldScopeSparse(const std::string& var_name,
-                            const std::string& splited_var_name);
-
-  void SendDeltaScopeDense(const std::string& var_name);
-  void SendDeltaScopeSparse(const std::string& var_name,
                             const std::string& splited_var_name);
 
   void GeoSgdDenseParamInit(framework::Scope* scope_x,
