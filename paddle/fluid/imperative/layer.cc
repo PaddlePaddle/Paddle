@@ -258,7 +258,7 @@ OpBase::OpBase(size_t id, const framework::OpDesc& op_desc,
 void OpBase::CreateOperatorBase() {
   const auto& info = framework::OpInfoMap::Instance().Get(type_);
   if (info.Checker() != nullptr) {
-    info.Checker()->Check(&attrs_);
+    info.Checker()->Check(&attrs_, false);
   }
 
   auto input_name_map = CreateVarNameMap(info, type_, ins_, true);
