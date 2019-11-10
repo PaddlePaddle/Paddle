@@ -185,10 +185,10 @@ class DistributeTranspilerConfig(object):
     geo_sgd_need_push_nums = 100
 
     nccl_comm_num = 1
-    #The picture here illustrates the principle:
-    #https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
+    # The picture here illustrates the principle:
+    # https://github.com/PaddlePaddle/Paddle/pull/17263#discussion_r285411396
     use_hierarchical_allreduce = False
-    #Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu cards' number in most cases.
+    # Nccl ranks in a node when use hierarchical allreduce, it's setted to gpu cards' number in most cases.
     hierarchical_allreduce_inter_nranks = 0
 
     # if mode is collective
@@ -554,10 +554,12 @@ class DistributeTranspiler(object):
                     )
 
                 assert trainers_num > self.config.hierarchical_allreduce_inter_nranks, \
-                    "trainers_num:{} < hierarchical_allreduce_inter_nranks:{}".format(trainers_num, self.config.hierarchical_allreduce_inter_nranks)
+                    "trainers_num:{} < hierarchical_allreduce_inter_nranks:{}".format(trainers_num,
+                                                                                      self.config.hierarchical_allreduce_inter_nranks)
 
                 assert trainers_num % self.config.hierarchical_allreduce_inter_nranks == 0, \
-                    "trainers_num:{} mod hierarchical_allreduce_inter_nranks:{} != 0".format(trainers_num, self.config.hierarchical_allreduce_inter_nranks)
+                    "trainers_num:{} mod hierarchical_allreduce_inter_nranks:{} != 0".format(trainers_num,
+                                                                                             self.config.hierarchical_allreduce_inter_nranks)
 
                 self.origin_program._hierarchical_allreduce_inter_nranks = \
                     int(self.config.hierarchical_allreduce_inter_nranks)
@@ -844,6 +846,39 @@ class DistributeTranspiler(object):
         self._get_distributed_optimizer_vars()
         self.origin_program._parameters_on_pservers = self.vars_overview
 
+    def fake_init_sparsetable(self):
+        # delete table init op
+        sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
+
+        sparse_table_names = []
+        for op in self.origin_program.global_block().ops:
+            if op.type in sparse_update_op_types and op.attr(
+                    'is_sparse') is True:
+                sparse_table_names.append(op.input("W")[0])
+            if op.type == "distributed_lookup_table":
+                sparse_table_names.append(op.input("W")[0])
+
+        if self.has_distributed_lookup_table:
+            sparse_table_names.append(self.table_name)
+
+        for table_name in sparse_table_names:
+            table_var = self.startup_program.global_block().vars[table_name]
+            table_param_init_op = []
+            for op in self.startup_program.global_block().ops:
+                if table_name in op.output_arg_names:
+                    table_param_init_op.append(op)
+            init_op_num = len(table_param_init_op)
+            if init_op_num != 1:
+                raise ValueError("table init op num should be 1, now is " + str(
+                    init_op_num))
+            table_init_op = table_param_init_op[0]
+            self.startup_program.global_block().append_op(
+                type="fake_init",
+                inputs={},
+                outputs={"Out": table_var},
+                attrs={"shape": table_init_op.attr('shape')})
+            delete_ops(self.startup_program.global_block(), table_param_init_op)
+
     def get_trainer_program(self, wait_port=True):
         """
         Get transpiled trainer side program. The program on trainer side compared with origin program 
@@ -877,26 +912,7 @@ class DistributeTranspiler(object):
         lr_ops = self._get_lr_ops()
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         delete_ops(self.origin_program.global_block(), lr_ops)
-
-        # delete table init op
-        if self.has_distributed_lookup_table:
-            table_var = self.startup_program.global_block().vars[
-                self.table_name]
-            table_param_init_op = []
-            for op in self.startup_program.global_block().ops:
-                if self.table_name in op.output_arg_names:
-                    table_param_init_op.append(op)
-            init_op_num = len(table_param_init_op)
-            if init_op_num != 1:
-                raise ValueError("table init op num should be 1, now is " + str(
-                    init_op_num))
-            table_init_op = table_param_init_op[0]
-            self.startup_program.global_block().append_op(
-                type="fake_init",
-                inputs={},
-                outputs={"Out": table_var},
-                attrs={"shape": table_init_op.attr('shape')})
-            delete_ops(self.startup_program.global_block(), table_param_init_op)
+        self.fake_init_sparsetable()
 
         self.origin_program.__str__()
 
@@ -2395,7 +2411,7 @@ class DistributeTranspiler(object):
         for op in block.ops:
             role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
             if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
-                role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
+                    role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
                     int(OPT_OP_ROLE_ATTR_VALUE):
                 lr_ops.append(op)
                 log("append lr op: ", op.type)
