@@ -88,12 +88,11 @@ class TestOpDesc(unittest.TestCase):
         self.assertIsNotNone(op)
 
         op.set_type("elementwise_add")
-        op_attr_map = dict()
-        op.set_default_attrs_only(op_attr_map)
+        op.set_default_attrs_only()
         attr_name = "axis"
         expected_attr_default_value = -1
-        self.assertEqual(
-            op_attr_map.get(attr_name), expected_attr_default_value)
+
+        self.assertEqual(op.attr(attr_name), expected_attr_default_value)
 
 
 class TestProgramDesc(unittest.TestCase):
