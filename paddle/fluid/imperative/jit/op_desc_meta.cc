@@ -25,7 +25,7 @@ OpDescMeta::OpDescMeta(const std::string &type, const NameVarBaseMap &inputs,
     : type_(type), attrs_(attrs) {
   auto *proto = framework::OpInfoMap::Instance().GetNullable(type_);
   if (proto && proto->Checker()) {
-    proto->Checker()->Check(&attrs_);
+    proto->Checker()->Check(&attrs_, false);
   }
 
   for (auto &pair : inputs) {
