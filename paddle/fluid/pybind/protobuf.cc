@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
 http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -251,6 +248,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("_block_attr_id", &pd::OpDesc::GetBlockAttrId)
       .def("_blocks_attr_ids", &pd::OpDesc::GetBlocksAttrIds)
       .def("check_attrs", &pd::OpDesc::CheckAttrs)
+      .def("set_default_attrs_only", &pd::OpDesc::SetDefaultAttrsOnly)
       .def("infer_shape", &pd::OpDesc::InferShape)
       .def("infer_var_type", &pd::OpDesc::InferVarType)
       .def("set_is_target", &pd::OpDesc::SetIsTarget)

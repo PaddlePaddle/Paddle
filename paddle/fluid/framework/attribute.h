@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -295,21 +292,29 @@ class TypedAttrChecker {
     return *this;
   }
 
-  void operator()(AttributeMap* attr_map) const {
-    if (!attr_map->count(attr_name_)) {
-      // user do not set this attr
-      PADDLE_ENFORCE(!default_value_setter_.empty(),
-                     "Attribute '%s' is required!", attr_name_);
-      // default_value_setter_ has no more than one element
-      T val;
-      (default_value_setter_[0])(&val);
-      (*attr_map)[attr_name_] = val;
-    }
-    Attribute& attr = attr_map->at(attr_name_);
-    ExtractAttribute<T> extract_attr(attr_name_);
-    T* attr_value = extract_attr(attr);
-    for (const auto& checker : value_checkers_) {
-      checker(*attr_value);
+  void operator()(AttributeMap* attr_map, bool set_default_only) const {
+    if (!set_default_only) {
+      if (!attr_map->count(attr_name_)) {
+        // user do not set this attr
+        PADDLE_ENFORCE(!default_value_setter_.empty(),
+                       "Attribute '%s' is required!", attr_name_);
+        // default_value_setter_ has no more than one element
+        T val;
+        (default_value_setter_[0])(&val);
+        (*attr_map)[attr_name_] = val;
+      }
+      Attribute& attr = attr_map->at(attr_name_);
+      ExtractAttribute<T> extract_attr(attr_name_);
+      T* attr_value = extract_attr(attr);
+      for (const auto& checker : value_checkers_) {
+        checker(*attr_value);
+      }
+    } else {
+      if (!default_value_setter_.empty()) {
+        T val;
+        (default_value_setter_[0])(&val);
+        (*attr_map)[attr_name_] = val;
+      }
     }
   }
 
@@ -321,7 +326,7 @@ class TypedAttrChecker {
 
 // check whether op's all attributes fit their own limits
 class OpAttrChecker {
-  typedef std::function<void(AttributeMap*)> AttrChecker;
+  typedef std::function<void(AttributeMap*, bool)> AttrChecker;
 
  public:
   template <typename T>
@@ -331,9 +336,9 @@ class OpAttrChecker {
     return *(checker.target<TypedAttrChecker<T>>());
   }
 
-  void Check(AttributeMap* attr_map) const {
+  void Check(AttributeMap* attr_map, bool set_default_only) const {
     for (const auto& checker : attr_checkers_) {
-      checker(attr_map);
+      checker(attr_map, set_default_only);
     }
   }
 
