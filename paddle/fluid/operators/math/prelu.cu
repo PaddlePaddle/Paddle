@@ -18,7 +18,7 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-static constexpr int PD_CUDA_NUM_THREADS = 1024;
+#define CUDA_NUM_THREADS 1024
 
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n)                                 \
@@ -26,7 +26,7 @@ static constexpr int PD_CUDA_NUM_THREADS = 1024;
        i += blockDim.x * gridDim.x)
 
 inline static int PADDLE_GET_BLOCKS(const int N) {
-  return (N + PD_CUDA_NUM_THREADS - 1) / PD_CUDA_NUM_THREADS;
+  return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
 
 template <typename T>
@@ -74,7 +74,7 @@ void PreluChannelWiseDirectCUDAFunctor<T>::operator()(
   size_t plane_size = input_shape[2] * input_shape[3];
   size_t spatial_size = input_shape[1] * plane_size;
   size_t numel = input_shape[0] * spatial_size;
-  PReluChannelWiseKernel<<<PADDLE_GET_BLOCKS(numel), PD_CUDA_NUM_THREADS, 0,
+  PReluChannelWiseKernel<<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0,
                            stream>>>(input, alpha, output, input_shape[1],
                                      plane_size, numel);
 }
@@ -86,7 +86,7 @@ void PreluElementWiseDirectCUDAFunctor<T>::operator()(
   size_t plane_size = input_shape[2] * input_shape[3];
   size_t spatial_size = input_shape[1] * plane_size;
   size_t numel = input_shape[0] * spatial_size;
-  PReluElementWiseKernel<<<PADDLE_GET_BLOCKS(numel), PD_CUDA_NUM_THREADS, 0,
+  PReluElementWiseKernel<<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0,
                            stream>>>(input, alpha, output, spatial_size, numel);
 }
 
@@ -98,8 +98,8 @@ void PreluScalarDirectCUDAFunctor<T>::operator()(cudaStream_t stream,
   size_t plane_size = input_shape[2] * input_shape[3];
   size_t spatial_size = input_shape[1] * plane_size;
   size_t numel = input_shape[0] * spatial_size;
-  PReluScalarKernel<<<PADDLE_GET_BLOCKS(numel), PD_CUDA_NUM_THREADS, 0,
-                      stream>>>(input, alpha, output, numel);
+  PReluScalarKernel<<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
+      input, alpha, output, numel);
 }
 
 template class PreluChannelWiseDirectCUDAFunctor<float>;

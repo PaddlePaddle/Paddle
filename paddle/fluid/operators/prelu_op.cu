@@ -22,7 +22,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-static constexpr int PD_CUDA_NUM_THREADS = 1024;
+#define CUDA_NUM_THREADS 1024
 
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n)                                 \
@@ -30,7 +30,7 @@ static constexpr int PD_CUDA_NUM_THREADS = 1024;
        i += blockDim.x * gridDim.x)
 
 inline static int PADDLE_GET_BLOCKS(const int N) {
-  return (N + PD_CUDA_NUM_THREADS - 1) / PD_CUDA_NUM_THREADS;
+  return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
 }
 
 template <typename DeviceContext, typename T>
@@ -105,7 +105,7 @@ class PreluOpGradFunctor {
     size_t spatial_size = plane_size * input_shape[1];
     size_t numel = spatial_size * input_shape[0];
     PReluOpGradKernel<
-        T><<<PADDLE_GET_BLOCKS(numel), PD_CUDA_NUM_THREADS, 0, stream>>>(
+        T><<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
         x, y, alpha, dy, dx, dalpha, input_shape[1], plane_size, spatial_size,
         numel, mode);
   }
