@@ -657,18 +657,17 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_tensor->set_layout(in_tensor.layout());
   }
 
-  void DecreaseLoDLevel(const std::string& in, const std::string& out,
-                        size_t i = 0, size_t j = 0) const override {
+  int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override {
     PADDLE_THROW(
-        "DecreaseLoDLevel is only used in compile time. The calculation of "
+        "GetLoDLevel is only used in compile time. The calculation of "
         "output's actual lod is different among operators so that should be "
         "set in the runtime kernel.");
   }
 
-  void IncreaseLoDLevel(const std::string& in, const std::string& out,
-                        size_t i = 0, size_t j = 0) const override {
+  void SetLoDLevel(const std::string& out, int32_t lod_level,
+                   size_t j = 0) const override {
     PADDLE_THROW(
-        "IncreaseLoDLevel is only used in compile time. The calculation of "
+        "SetLoDLevel is only used in compile time. The calculation of "
         "output's actual lod is different among operators so that should be "
         "set in the runtime kernel.");
   }
