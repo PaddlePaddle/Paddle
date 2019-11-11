@@ -22,6 +22,7 @@ include_directories(${DLPACK_INCLUDE_DIR})
 ExternalProject_Add(
   extern_dlpack
   ${EXTERNAL_PROJECT_LOG_ARGS}
+  ${SHALLOW_CLONE}
   GIT_REPOSITORY "https://github.com/dmlc/dlpack.git"
   GIT_TAG        "v0.2"
   PREFIX         ${DLPACK_SOURCE_DIR}
