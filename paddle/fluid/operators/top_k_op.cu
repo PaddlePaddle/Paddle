@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/float16.h"
 
+// set cub base traits in order to handle float16
 namespace cub {
 template <>
 struct NumericTraits<paddle::platform::float16>
@@ -335,12 +336,14 @@ struct ColumnIndexIter {
   int num_cols_;
 };
 
-__global__ void InitIndex(int* indices, int num_rows, int num_cols) {
+__global__ void InitIndex(int64_t* indices, int num_rows, int num_cols) {
   int col_id = threadIdx.x;
-  int row_id = blockIdx.x < num_rows ? blockIdx.x : num_rows - 1;
+  int row_id = blockIdx.x;
 
-  for (int i = col_id; i < num_cols; i += blockDim.x) {
-    indices[row_id * num_cols + i] = i;
+  for (int j = row_id; j < num_rows; j += gridDim.x) {
+    for (int i = col_id; i < num_cols; i += blockDim.x) {
+      indices[j * num_cols + i] = i;
+    }
   }
 }
 
@@ -349,18 +352,15 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
               const framework::Tensor* input_tensor, const size_t num_cols,
               const size_t num_rows, size_t k, framework::Tensor* out_tensor,
               framework::Tensor* indices_tensor) {
-  // In order to speedup, num_rows must be int.
-  PADDLE_ENFORCE_LT(num_rows, (1 << 31 - 1),
-                    "num_rows should < max gridsize.x");
   auto cu_stream = ctx.stream();
 
   Tensor input_indices;
-  const std::vector<int> dims = {static_cast<int>(num_rows),
-                                 static_cast<int>(num_cols)};
+  const std::vector<int64_t> dims = {static_cast<int64_t>(num_rows),
+                                     static_cast<int64_t>(num_cols)};
   auto dim = framework::make_ddim(dims);
   input_indices.Resize(dim);
   // input_indices.Resize(num_rows*num_cols);
-  input_indices.mutable_data<int32_t>(ctx.GetPlace());
+  input_indices.mutable_data<int64_t>(ctx.GetPlace());
   size_t temp_storage_bytes = -1;
 
   auto ComputeBlockSize = [](int col) {
@@ -377,11 +377,13 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
   };
 
   int block_size = ComputeBlockSize(num_cols);
+
+  int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
   // actually, int num_rows < max_grid_size
-  int grid_size = num_rows;
+  int grid_size = num_rows < maxGridDimX ? num_rows : maxGridDimX;
   // Init a index array
   InitIndex<<<grid_size, block_size, 0, cu_stream>>>(
-      input_indices.data<int32_t>(), num_rows, num_cols);
+      input_indices.data<int64_t>(), num_rows, num_cols);
 
   // create iter for counting input
   cub::CountingInputIterator<int> counting_iter(0);
@@ -391,14 +393,14 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
       segment_offsets_t(counting_iter, SegmentOffsetIter(num_cols));
 
   T* sorted_values_ptr;
-  int32_t* sorted_indices_ptr;
+  int64_t* sorted_indices_ptr;
 
   Tensor temp_values;
   Tensor temp_indices;
 
   const T* input = input_tensor->data<T>();
   T* values = out_tensor->data<T>();
-  int32_t* indices = indices_tensor->mutable_data<int32_t>(ctx.GetPlace());
+  int64_t* indices = indices_tensor->mutable_data<int64_t>(ctx.GetPlace());
 
   if (k == num_cols) {
     // Doing a full sort, no intermediate values needed.
@@ -408,12 +410,12 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
     temp_values.Resize(dim);
     temp_indices.Resize(dim);
     sorted_values_ptr = temp_values.mutable_data<T>(ctx.GetPlace());
-    sorted_indices_ptr = temp_indices.mutable_data<int32_t>(ctx.GetPlace());
+    sorted_indices_ptr = temp_indices.mutable_data<int64_t>(ctx.GetPlace());
   }
 
   auto err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
       nullptr, temp_storage_bytes, input, sorted_values_ptr,
-      input_indices.data<int32_t>(), sorted_indices_ptr, num_cols * num_rows,
+      input_indices.data<int64_t>(), sorted_indices_ptr, num_cols * num_rows,
       num_rows, segment_offsets_t, segment_offsets_t + 1, 0, sizeof(T) * 8,
       cu_stream);
   if (err != cudaSuccess) {
@@ -429,7 +431,7 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
 
   err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
       temp_storage.data<uint8_t>(), temp_storage_bytes, input,
-      sorted_values_ptr, input_indices.data<int32_t>(), sorted_indices_ptr,
+      sorted_values_ptr, input_indices.data<int64_t>(), sorted_indices_ptr,
       num_cols * num_rows, num_rows, segment_offsets_t, segment_offsets_t + 1,
       0, sizeof(T) * 8, cu_stream);
   if (err != cudaSuccess) {
@@ -445,8 +447,8 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
     // copy sliced data to output.
     const Eigen::DSizes<Eigen::DenseIndex, 2> slice_indices{0, 0};
     const Eigen::DSizes<Eigen::DenseIndex, 2> slice_sizes{num_rows, k};
-    auto e_indices = EigenMatrix<int32_t>::From(*indices_tensor, dim);
-    auto e_tmp_indices = EigenMatrix<int32_t>::From(temp_indices);
+    auto e_indices = EigenMatrix<int64_t>::From(*indices_tensor, dim);
+    auto e_tmp_indices = EigenMatrix<int64_t>::From(temp_indices);
 
     std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(k)};
     auto dim = framework::make_ddim(odims);
@@ -503,8 +505,7 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     const size_t input_width = inputdims[inputdims.size() - 1];
     const auto& dev_ctx = ctx.cuda_device_context();
 
-    if ((input_width <= 1024 || k >= 128 || k == input_width) &&
-        (input_height < (1 << 31 - 1))) {
+    if ((input_width <= 1024 || k >= 128 || k == input_width)) {
       if (SortTopk<T>(dev_ctx, input, input_width, input_height, k, output,
                       indices)) {
         // Successed, return.
