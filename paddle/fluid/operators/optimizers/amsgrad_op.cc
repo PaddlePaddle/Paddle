@@ -20,32 +20,32 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 void AmsgradOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("Param"),
-                 "Input(Param) of AmsgradOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                 "Input(Grad) of AmsgradOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Moment1"),
-                 "Input(Moment1) of AmsgradOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Moment2"),
-                 "Input(Moment2) of AmsgradOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("MaxMoment2"),
-                 "Input(MaxMoment2) of AmsgradOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                 "Input(LearningRate) of AmsgradOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Beta1Pow"),
-                 "Input(Beta1Pow) of AmsgradOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Beta2Pow"),
-                 "Input(Beta2Pow) of AmsgradOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
+                    "Input(Param) of AmsgradOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"), true,
+                    "Input(Grad) of AmsgradOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Moment1"), true,
+                    "Input(Moment1) of AmsgradOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Moment2"), true,
+                    "Input(Moment2) of AmsgradOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("MaxMoment2"), true,
+                    "Input(MaxMoment2) of AmsgradOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"), true,
+                    "Input(LearningRate) of AmsgradOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Beta1Pow"), true,
+                    "Input(Beta1Pow) of AmsgradOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Beta2Pow"), true,
+                    "Input(Beta2Pow) of AmsgradOp should not be null.");
 
-  PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                 "Output(ParamOut) of AmsgradOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Moment1Out"),
-                 "Output(Moment1Out) of AmsgradOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Moment2Out"),
-                 "Output(Moment2Out) of AmsgradOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
+                    "Output(ParamOut) of AmsgradOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment1Out"), true,
+                    "Output(Moment1Out) of AmsgradOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment2Out"), true,
+                    "Output(Moment2Out) of AmsgradOp should not be null.");
 
-  PADDLE_ENFORCE(ctx->HasOutput("MaxMoment2Out"),
-                 "Output(MaxMoment2Out) of AmsgradOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasOutput("MaxMoment2Out"), true,
+                    "Output(MaxMoment2Out) of AmsgradOp should not be null.");
   auto lr_dims = ctx->GetInputDim("LearningRate");
   PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
                     "Maybe the Input variable LearningRate has not "
