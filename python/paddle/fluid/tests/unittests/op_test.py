@@ -263,6 +263,35 @@ class OpTest(unittest.TestCase):
 
     def append_input_output_for_dygraph(self, op_proto, np_list, is_input,
                                         if_return_inputs_grad_dict, block):
+        def create_var(np_value, name, is_input, if_return_inputs_grad_dict):
+            if isinstance(np_value, tuple):
+                if is_input:
+                    v = self._create_var_from_numpy(np_value[0])
+                    if if_return_inputs_grad_dict:
+                        v.stop_gradient = False
+                    v._ivar.value().get_tensor().set_recursive_sequence_lengths(
+                        np_value[1])
+                else:
+                    v = block.create_var(
+                        name=name,
+                        dtype=np_value[0].dtype,
+                        type=core.VarDesc.VarType.LOD_TENSOR,
+                        persistable=False,
+                        stop_gradient=False)
+            else:
+                if is_input:
+                    v = self._create_var_from_numpy(np_value)
+                    if if_return_inputs_grad_dict:
+                        v.stop_gradient = False
+                else:
+                    v = block.create_var(
+                        name=name,
+                        dtype=np_value.dtype,
+                        type=core.VarDesc.VarType.LOD_TENSOR,
+                        persistable=False,
+                        stop_gradient=False)
+            return v
+
         # prepare variable for input or output
         var_dict = defaultdict(list)
         if if_return_inputs_grad_dict:
@@ -270,16 +299,15 @@ class OpTest(unittest.TestCase):
         proto_list = op_proto.inputs if is_input else op_proto.outputs
         for var_proto in proto_list:
             name = var_proto.name
+            if (name not in np_list) and var_proto.dispensable:
+                continue
             if name not in np_list:
-                if var_proto.dispensable:
-                    continue
-                else:
-                    assert var_proto.intermediate, "{} not found".format(name)
-                    v = block.create_var(
-                        dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR)
-                    var_dict[name].append(v)
-                    if if_return_inputs_grad_dict:
-                        inputs_grad_dict[name] = v
+                assert var_proto.intermediate, "{} not found".format(name)
+                v = block.create_var(
+                    dtype='float32', type=core.VarDesc.VarType.LOD_TENSOR)
+                var_dict[name].append(v)
+                if if_return_inputs_grad_dict:
+                    inputs_grad_dict[name] = v
                 continue
             if var_proto.duplicable:
                 assert isinstance(
@@ -288,32 +316,8 @@ class OpTest(unittest.TestCase):
                 var_list = []
                 slot_name = name
                 for (name, np_value) in np_list[name]:
-                    if isinstance(np_value, tuple):
-                        if is_input:
-                            v = self._create_var_from_numpy(np_value[0])
-                            if if_return_inputs_grad_dict:
-                                v.stop_gradient = False
-                            v._ivar.value().get_tensor(
-                            ).set_recursive_sequence_lengths(np_value[1])
-                        else:
-                            v = block.create_var(
-                                name=name,
-                                dtype=np_value[0].dtype,
-                                type=core.VarDesc.VarType.LOD_TENSOR,
-                                persistable=False,
-                                stop_gradient=False)
-                    else:
-                        if is_input:
-                            v = self._create_var_from_numpy(np_value)
-                            if if_return_inputs_grad_dict:
-                                v.stop_gradient = False
-                        else:
-                            v = block.create_var(
-                                name=name,
-                                dtype=np_value.dtype,
-                                type=core.VarDesc.VarType.LOD_TENSOR,
-                                persistable=False,
-                                stop_gradient=False)
+                    v = create_var(np_value, name, is_input,
+                                   if_return_inputs_grad_dict)
                     var_list.append(v)
                     if if_return_inputs_grad_dict:
                         inputs_grad_dict[name] = v
@@ -323,62 +327,15 @@ class OpTest(unittest.TestCase):
                 if isinstance(np_list[name], list):
                     slot_name = name
                     for name, np_value in np_list[name]:
-                        if isinstance(np_value, tuple):
-                            if is_input:
-                                v = self._create_var_from_numpy(np_value[0])
-                                if if_return_inputs_grad_dict:
-                                    v.stop_gradient = False
-                                v._ivar.value().get_tensor(
-                                ).set_recursive_sequence_lengths(np_value[1])
-                            else:
-                                v = block.create_var(
-                                    name=name,
-                                    dtype=np_value[0].dtype,
-                                    type=core.VarDesc.VarType.LOD_TENSOR,
-                                    persistable=False,
-                                    stop_gradient=False)
-                        else:
-                            if is_input:
-                                v = self._create_var_from_numpy(np_value)
-                                if if_return_inputs_grad_dict:
-                                    v.stop_gradient = False
-                            else:
-                                v = block.create_var(
-                                    name=name,
-                                    dtype=np_value.dtype,
-                                    type=core.VarDesc.VarType.LOD_TENSOR,
-                                    persistable=False,
-                                    stop_gradient=False)
+                        v = create_var(np_value, name, is_input,
+                                       if_return_inputs_grad_dict)
                         var_dict[slot_name].append(v)
                         if if_return_inputs_grad_dict:
                             inputs_grad_dict[name] = v
                 else:
-                    if isinstance(np_list[name], tuple):
-                        if is_input:
-                            v = self._create_var_from_numpy(np_list[name][0])
-                            if if_return_inputs_grad_dict:
-                                v.stop_gradient = False
-                            v._ivar.value().get_tensor(
-                            ).set_recursive_sequence_lengths(np_list[name][1])
-                        else:
-                            v = block.create_var(
-                                name=unique_name.generate("%s_out" % (name)),
-                                dtype=np_list[name][0].dtype,
-                                type=core.VarDesc.VarType.LOD_TENSOR,
-                                persistable=False,
-                                stop_gradient=False)
-                    else:
-                        if is_input:
-                            v = self._create_var_from_numpy(np_list[name])
-                            if if_return_inputs_grad_dict:
-                                v.stop_gradient = False
-                        else:
-                            v = block.create_var(
-                                name=unique_name.generate("%s_out" % (name)),
-                                dtype=np_list[name].dtype,
-                                type=core.VarDesc.VarType.LOD_TENSOR,
-                                persistable=False,
-                                stop_gradient=False)
+                    v = create_var(np_list[name],
+                                   unique_name.generate("%s_out" % (name)),
+                                   is_input, if_return_inputs_grad_dict)
                     var_dict[name].append(v)
                     if if_return_inputs_grad_dict:
                         inputs_grad_dict[name] = v
