@@ -159,7 +159,7 @@ if [ ${HAS_PADDLE_ENFORCE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
         ALL_PADDLE_ENFORCE=`git diff -U0 upstream/develop |grep "+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
         failed_num=`expr $failed_num + 1`
         echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_CUDA_SUCCESS instead.\nYou must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
-        echo_list=(${echo_list[@]}$failed_num "." $echo_line)
+        echo_list=(${echo_list[@]}$failed_num "." "$echo_line")
     fi
 fi
 
@@ -181,7 +181,7 @@ fi
 
 if [ -n "${echo_list}" ];then
   echo "****************"
-  echo -e ${echo_list[@]}
+  echo -e "${echo_list[@]}"
   echo "There are ${failed_num} approved errors."
   echo "****************"
 fi
