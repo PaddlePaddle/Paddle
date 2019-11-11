@@ -1730,13 +1730,17 @@ class ConditionalBlock(object):
             })
 
 
-def copy_scope_var_to_global(var, layer_helper):
+def copy_var_to_parent_block(var, layer_helper):
     if var is None:
         return None
-    global_var = layer_helper.create_global_variable(
-        dtype=var.dtype, type=var.type)
-    assign(var, global_var)
-    return global_var
+    prog = layer_helper.main_program
+    parent_idx = prog.current_block().parent_idx
+    assert parent_idx >= 0, "Got wrong parent block index when assigning var to parent scope in control_flow"
+    parent_block = prog.block(parent_idx)
+
+    parent_block_var = parent_block.create_var(dtype=var.dtype, type=var.type)
+    assign(var, parent_block_var)
+    return parent_block_var
 
 
 def cond(pred, true_fn=None, false_fn=None, name=None):
@@ -1746,7 +1750,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     helper = LayerHelper('cond', **locals())
     true_output = None
     false_output = None
-    copy_to_global_func = lambda var: copy_scope_var_to_global(var, helper)
+    copy_to_global_func = lambda var: copy_var_to_parent_block(var, helper)
     if true_fn is not None:
         if not callable(true_fn):
             raise TypeError("The true_fn in cond must be callable")
