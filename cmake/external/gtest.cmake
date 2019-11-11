@@ -47,6 +47,7 @@ ENDIF()
 ExternalProject_Add(
     extern_gtest
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
     DEPENDS         ${GTEST_DEPENDS}
     GIT_REPOSITORY  "https://github.com/google/googletest.git"
     GIT_TAG         "release-1.8.1"

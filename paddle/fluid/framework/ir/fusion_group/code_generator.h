@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
@@ -20,19 +21,30 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+namespace fusion_group {
 
 class CodeGenerator {
  public:
-  explicit CodeGenerator(CodeTemplate code_template);
+  CodeGenerator();
 
-  std::string GenerateCode(TemplateVariable template_var);
+  std::string GenerateCode(std::string func_name,
+                           std::vector<OperationExpression> expressions);
 
   // TODO(wangchao): add a more general interface
   // std::string Generate(const std::string name, const SubGraph& subgraph);
 
  private:
-  CodeTemplate code_template_;
+  // we get the parameter list code for the expression information
+  std::string EmitParameters(std::vector<OperationExpression> expressions,
+                             std::string dtype);
+
+  std::string EmitComputeBody(std::vector<OperationExpression> expressions);
+
+ private:
+  std::vector<CodeTemplate> code_templates_;
 };
+
+}  // namespace fusion_group
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
