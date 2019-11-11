@@ -138,7 +138,8 @@ fi
 
 ALL_PADDLE_CHECK=`git diff -U0 upstream/$BRANCH |grep "+" |grep -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" || true`
 VALID_PADDLE_CHECK=`echo "$ALL_PADDLE_CHECK" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' || true`
-INVALID_PADDLE_CHECK=`echo "$ALL_PADDLE_CHECK" |grep -vx "$VALID_PADDLE_CHECK" || true`if [ ${INVALID_PADDLE_CHECK} ] && [ "${GIT_PR_ID}" != "" ]; then
+INVALID_PADDLE_CHECK=`echo "$ALL_PADDLE_CHECK" |grep -vx "$VALID_PADDLE_CHECK" || true`
+if [ ${INVALID_PADDLE_CHECK} ] && [ "${GIT_PR_ID}" != "" ]; then
     APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
     python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 47554610 22561442`
     echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
