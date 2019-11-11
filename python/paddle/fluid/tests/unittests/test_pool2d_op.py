@@ -970,6 +970,20 @@ create_test_cudnn_padding_VALID_class(TestCase4_channel_last)
 create_test_cudnn_padding_VALID_class(TestCase5_channel_last)
 
 
+class TestCase1_strides(TestCase1):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 2]
+
+    def init_shape(self):
+        self.shape = [2, 3, 4, 5]
+
+
+create_test_cudnn_class(TestCase1_strides)
+create_test_padding_SAME_class(TestCase1_strides)
+create_test_cudnn_padding_SAME_class(TestCase1_strides)
+
+
 # ----- test API
 class TestPool2dAPI(OpTest):
     def test_api(self):
@@ -1199,7 +1213,7 @@ class TestPool2dAPI_Error(OpTest):
             dtype="float32")
         ksize = [3, 3]
 
-        # cudnn value error
+        # cudnn type error
         def run_1():
             out_1 = fluid.layers.pool2d(
                 input=input_NHWC,
@@ -1209,7 +1223,7 @@ class TestPool2dAPI_Error(OpTest):
                 use_cudnn=[0],
                 data_format="NHWC")
 
-        self.assertRaises(ValueError, run_1)
+        self.assertRaises(TypeError, run_1)
 
         # data_format value error
         def run_2():
