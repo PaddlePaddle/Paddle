@@ -317,15 +317,7 @@ void BindImperative(py::module *m_ptr) {
                     &imperative::VarBase::SetPersistable)
       .def_property("stop_gradient",
                     &imperative::VarBase::OverridedStopGradient,
-                    &imperative::VarBase::SetOverridedStopGradient)
-      .def("_share_data_in_scope",
-           [](const imperative::VarBase &self, framework::Scope *scope) {
-             auto *tensor =
-                 scope->Var(self.Name())->GetMutable<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(self.Var().IsType<framework::LoDTensor>(), true,
-                               "Can only share Tensor in scope");
-             tensor->ShareDataWith(self.Var().Get<framework::LoDTensor>());
-           });
+                    &imperative::VarBase::SetOverridedStopGradient);
 
   py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
   layer.def(py::init<>())

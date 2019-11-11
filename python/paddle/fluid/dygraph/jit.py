@@ -148,8 +148,7 @@ def _trace(layer, inputs, feed_names=None, fetch_names=None):
 
 
 class TracedLayer(object):
-    def __init__(self, layer, program, feed_names, fetch_names):
-        self._layer = layer
+    def __init__(self, program, parameters, feed_names, fetch_names):
         self._program = program
         self._feed_names = feed_names
         self._fetch_names = fetch_names
@@ -157,8 +156,10 @@ class TracedLayer(object):
         self._place = _current_expected_place()
 
         self._scope = core.Scope()
-        for p in self._layer.parameters():
-            p._ivar._share_data_in_scope(self._scope)
+        for p in parameters:
+            src_tensor = p._ivar.value().get_tensor()
+            dst_tensor = self._scope.var(p.name).get_tensor()
+            dst_tensor._share_data_with(src_tensor)
 
         self._exe = Executor(self._place)
         self._compiled_program = None
@@ -182,10 +183,11 @@ class TracedLayer(object):
         feed_func = lambda n: ['feed_{}'.format(i) for i in range(n)]
         fetch_func = lambda n: ['fetch_{}'.format(i) for i in range(n)]
         outs, prog, feed, fetch = _trace(layer, inputs, feed_func, fetch_func)
-        traced = TracedLayer(layer, prog, feed, fetch)
+        traced = TracedLayer(prog, layer.parameters(), feed, fetch)
         return outs, traced
 
     def set_strategy(self, build_strategy=None, exec_strategy=None):
+        assert self._compiled_program is None, "Cannot set strategy after run"
         self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
 
