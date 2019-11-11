@@ -1026,6 +1026,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
     for (auto& vname : OutputVars(true)) {
       // Some output may not judge by this method, such as dgc Encode.
+      if (vname.find("dgc_encoded") != std::string::npos) continue;
       auto* var = exec_scope.FindVar(vname);
       if (var == nullptr) continue;
       framework::details::EnforceNoNanOrInf(type_, exec_scope, vname, place);
