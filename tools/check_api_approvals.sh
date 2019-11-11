@@ -181,7 +181,7 @@ fi
 if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e ${echo_list[@]}
-  echo "There are ${failed_num}git g approved errors."
+  echo "There are ${failed_num} approved errors."
   echo "****************"
 fi
 
