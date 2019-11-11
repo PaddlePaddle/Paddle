@@ -75,9 +75,58 @@ class Conv2DFusionOpInferShape : public framework::InferShapeBase {
         ctx->Attrs().Get<std::vector<int>>("dilations");
     std::string padding_algorithm =
         ctx->Attrs().Get<std::string>("padding_algorithm");
+    int groups = ctx->Attrs().Get<int>("groups");
 
     framework::DDim in_data_dims;
     in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+
+    PADDLE_ENFORCE_EQ(
+        in_dims.size() == 4 || in_dims.size() == 5, true,
+        "ShapeError: Conv_fusion input should be 4-D or 5-D tensor. But "
+        "received: %u-D Tensor,"
+        "the shape of Conv_fusion input is [%s]",
+        in_dims.size(), in_dims);
+
+    PADDLE_ENFORCE_EQ(in_dims.size(), filter_dims.size(),
+                      "ShapeError: Conv_fusion input dimension and filter "
+                      "dimension should be the "
+                      "equal."
+                      "But received: the shape of Conv_fusion input is [%s], "
+                      "input dimension of Conv_fusion "
+                      "input is [%d],"
+                      "the shape of filter is [%s],  the filter dimension of "
+                      "Conv_fusion is [%d]",
+                      in_dims, in_dims.size(), filter_dims, filter_dims.size());
+
+    int in_sub_stride_size = in_dims.size() - strides.size();
+    PADDLE_ENFORCE_EQ(
+        in_dims.size() - strides.size() == 2U, true,
+        "ShapeError: the dimension of input minus the dimension of "
+        "stride must be euqal to 2."
+        "But received: the dimension of input minus the dimension "
+        "of stride is [%d], the"
+        "input dimension of Conv_fusion is [%d], the shape of Conv_fusion "
+        "input "
+        "is [%s], the stride"
+        "dimension of Conv_fusion is [%d]",
+        in_sub_stride_size, in_dims.size(), in_dims, strides.size());
+
+    const auto input_channels = in_dims[1];
+
+    PADDLE_ENFORCE_EQ(
+        input_channels, filter_dims[1] * groups,
+        "ShapeError: The number of input channels should be equal to filter "
+        "channels * groups. But received: the input channels is [%d], the shape"
+        "of input is [%s], the filter channel is [%d], the shape of filter is "
+        "[%s],"
+        "the groups is [%d]",
+        in_dims[1], in_dims, filter_dims[1], filter_dims, groups);
+    PADDLE_ENFORCE_EQ(
+        filter_dims[0] % groups, 0,
+        "ShapeError: The number of output channels should be divided by groups."
+        "But received: the output channels is [%d], the shape of filter is [%s]"
+        "(the first dimension of filter is output channel), the groups is [%d]",
+        filter_dims[0], filter_dims, groups);
 
     framework::DDim filter_data_dims =
         framework::slice_ddim(filter_dims, 2, filter_dims.size());

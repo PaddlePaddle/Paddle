@@ -36,44 +36,6 @@ using framework::AlgorithmsCache;
 template <typename T>
 using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 
-static inline bool IsSymmetricPadding(const std::vector<int>& paddings,
-                                      const int data_dim) {
-  bool is_sys_pad = true;
-  if (paddings.size() == data_dim * 2) {
-    for (size_t i = 0; i < data_dim; ++i) {
-      if (paddings[2 * i] != paddings[2 * i + 1]) {
-        is_sys_pad = false;
-        return is_sys_pad;
-      }
-    }
-  }
-  return is_sys_pad;
-}
-
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-
-template <typename DeviceContext, typename T, size_t D>
-static void PadFunction(const framework::ExecutionContext& context,
-                        const std::vector<int>& pads,
-                        const framework::Tensor& src, T pad_value,
-                        framework::Tensor* out) {
-  Eigen::array<std::pair<int, int>, D> paddings;
-
-  for (size_t i = 0; i < paddings.size(); ++i) {
-    paddings[i].first = pads[i * 2];
-    paddings[i].second = pads[i * 2 + 1];
-  }
-
-  auto src_tensor = EigenTensor<T, D>::From(src);
-  auto out_tensor = EigenTensor<T, D>::From(*out);
-
-  auto& place =
-      *context.template device_context<DeviceContext>().eigen_device();
-  out_tensor.device(place) = src_tensor.pad(paddings, pad_value);
-}
-
 template <typename T>
 class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
  public:
@@ -127,7 +89,7 @@ class CUDNNConvFusionOpKernel : public framework::OpKernel<T> {
                              in_data_dims, strides, ksize);
 
     int data_dim = strides.size();  // 2d or 3d
-    bool is_sys_pad = IsSymmetricPadding(paddings, data_dim);
+    bool is_sys_pad = math::IsSymmetricPadding(paddings, data_dim);
 
     Tensor transformed_input;
     std::vector<int> padding_common(data_dim, 0);
