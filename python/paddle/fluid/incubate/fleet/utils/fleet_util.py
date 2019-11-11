@@ -559,7 +559,8 @@ class FleetUtil(object):
                              hadoop_fs_name,
                              hadoop_fs_ugi,
                              hadoop_home="$HADOOP_HOME",
-                             donefile_name="sparse_cache.meta"):
+                             donefile_name="sparse_cache.meta",
+                             **kwargs):
         """
         write cache donefile
 
@@ -572,6 +573,9 @@ class FleetUtil(object):
             hadoop_fs_ugi(str): hdfs/afs fs ugi
             hadoop_home(str): hadoop home, default is "$HADOOP_HOME"
             donefile_name(str): donefile name, default is "sparse_cache.meta"
+            kwargs(dict): user defined properties
+                          file_num(int): cache file num
+                          table_id(int): cache table id
 
         Examples:
             .. code-block:: python
@@ -591,12 +595,14 @@ class FleetUtil(object):
         day = str(day)
         pass_id = str(pass_id)
         key_num = int(key_num)
+        file_num = kwargs.get("file_num", 16)
+        table_id = kwargs.get("table_id", 0)
 
         if pass_id != "-1":
-            suffix_name = "/%s/delta-%s/000_cache" % (day, pass_id)
+            suffix_name = "/%s/delta-%s/%03d_cache" % (day, pass_id, table_id)
             model_path = output_path.rstrip("/") + suffix_name
         else:
-            suffix_name = "/%s/base/000_cache" % day
+            suffix_name = "/%s/base/%03d_cache" % (day, table_id)
             model_path = output_path.rstrip("/") + suffix_name
 
         if fleet.worker_index() == 0:
@@ -610,8 +616,8 @@ class FleetUtil(object):
                 self.rank0_error( \
                     "not write because %s already exists" % donefile_path)
             else:
-                meta_str = \
-                    "file_prefix:part\npart_num:16\nkey_num:%d\n" % key_num
+                meta_str = "file_prefix:part\npart_num:%s\nkey_num:%d\n" \
+                           % (file_num, key_num)
                 with open(donefile_name, "w") as f:
                     f.write(meta_str)
                 client.upload(
@@ -805,8 +811,8 @@ class FleetUtil(object):
         suffix_name = "/%s/base" % day
         model_path = output_path.rstrip("/") + suffix_name
         self.rank0_print("going to save_cache_base_model %s" % model_path)
-        key_num = fleet.save_cache_model(None, model_path, mode=2,
-                                         table_id=table_id)
+        key_num = fleet.save_cache_model(
+            None, model_path, mode=2, table_id=table_id)
         self.rank0_print("save_cache_base_model done")
         return key_num
 
@@ -908,14 +914,19 @@ class FleetUtil(object):
         if fleet.worker_index() == 0:
             with fluid.scope_guard(scope):
                 if save_combine:
-                    fluid.io.save_inference_model(dirname=model_name,
+                    fluid.io.save_inference_model(
+                        dirname=model_name,
                         feeded_var_names=feeded_var_names,
-                        target_vars=target_vars, executor=exe,
-                        main_program=program, params_filename="params")
+                        target_vars=target_vars,
+                        executor=exe,
+                        main_program=program,
+                        params_filename="params")
                 else:
-                    fluid.io.save_inference_model(dirname=model_name,
+                    fluid.io.save_inference_model(
+                        dirname=model_name,
                         feeded_var_names=feeded_var_names,
-                        target_vars=target_vars, executor=exe,
+                        target_vars=target_vars,
+                        executor=exe,
                         main_program=program)
 
             configs = {
