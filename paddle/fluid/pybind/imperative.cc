@@ -286,12 +286,22 @@ void BindImperative(py::module *m_ptr) {
                } else {
                  return std::shared_ptr<imperative::VarBase>(nullptr);
                }
-             } else {
+             } else if (grad_var->MutableVar()
+                            ->IsType<framework::SelectedRows>()) {
                auto tensor = grad_var->MutableVar()
                                  ->GetMutable<framework::SelectedRows>()
                                  ->value();
                if (grad_var && grad_var->Var().IsInitialized() &&
                    tensor.IsInitialized()) {
+                 return grad_var;
+               } else {
+                 return std::shared_ptr<imperative::VarBase>(nullptr);
+               }
+             } else {
+               auto *tensor =
+                   grad_var->MutableVar()->GetMutable<framework::LoDTensor>();
+               if (grad_var && grad_var->Var().IsInitialized() &&
+                   tensor->IsInitialized()) {
                  return grad_var;
                } else {
                  return std::shared_ptr<imperative::VarBase>(nullptr);
