@@ -23,6 +23,7 @@ from ....log_helper import get_logger
 from .quantization_pass import QuantizationTransformPass
 from .quantization_pass import QuantizationFreezePass
 from .quantization_pass import AddQuantDequantPass
+from .quantization_pass import _op_real_in_out_name
 
 __all__ = ['PostTrainingQuantization']
 
@@ -39,10 +40,7 @@ class PostTrainingQuantization(object):
                  batch_nums=None,
                  scope=None,
                  algo="KL",
-                 quantizable_op_type=[
-                     "conv2d", "depthwise_conv2d", "mul", "pool2d",
-                     "elementwise_add", "concat"
-                 ],
+                 quantizable_op_type=["conv2d", "depthwise_conv2d", "mul"],
                  is_full_quantize=False):
         '''
         The class utilizes post training quantization methon to quantize the 
@@ -67,10 +65,10 @@ class PostTrainingQuantization(object):
                 abs_max methon to get the scale factor. Default is KL.
             quantizable_op_type(list[str], optional): List the type of ops 
                 that will be quantized. Default is ["conv2d", "depthwise_conv2d", 
-                "mul", "pool2d", "elementwise_add", "concat"].
-            is_full_quantized(bool, optional): If set is_full_quantized be True, 
+                "mul"].
+            is_full_quantized(bool, optional): If set is_full_quantized as True, 
                 apply quantization to all supported quantizable op type. If set 
-                is_full_quantized be False, only apply quantization to the op type 
+                is_full_quantized as False, only apply quantization to the op type 
                 according to the input quantizable_op_type.
         Returns:
             None
@@ -109,8 +107,8 @@ class PostTrainingQuantization(object):
         self._algo = algo
 
         supported_quantizable_op_type = \
-            QuantizationTransformPass.supported_quantizable_op_type + \
-            AddQuantDequantPass.supported_quantizable_op_type
+            QuantizationTransformPass._supported_quantizable_op_type + \
+            AddQuantDequantPass._supported_quantizable_op_type
         if is_full_quantize:
             self._quantizable_op_type = supported_quantizable_op_type
         else:
@@ -125,7 +123,7 @@ class PostTrainingQuantization(object):
         self._fetch_list = None
         self._data_loader = None
 
-        self._op_real_in_out_name = AddQuantDequantPass.op_real_in_out_name
+        self._op_real_in_out_name = _op_real_in_out_name
         self._bit_length = 8
         self._quantized_weight_var_name = []
         self._quantized_act_var_name = []
@@ -295,10 +293,10 @@ class PostTrainingQuantization(object):
         # use QuantizationTransformPass to insert fake_quantize/fake_dequantize op
         graph = IrGraph(core.Graph(self._program.desc), for_test=True)
 
-        g_act_weight_quantizable_op_type = []
-        for op_type in QuantizationTransformPass.supported_quantizable_op_type:
+        major_quantizable_op_types = []
+        for op_type in QuantizationTransformPass._supported_quantizable_op_type:
             if op_type in self._quantizable_op_type:
-                g_act_weight_quantizable_op_type.append(op_type)
+                major_quantizable_op_types.append(op_type)
         transform_pass = QuantizationTransformPass(
             scope=self._scope,
             place=self._place,
@@ -306,18 +304,18 @@ class PostTrainingQuantization(object):
             activation_bits=self._bit_length,
             activation_quantize_type='moving_average_abs_max',
             weight_quantize_type='channel_wise_abs_max',
-            quantizable_op_type=g_act_weight_quantizable_op_type)
+            quantizable_op_type=major_quantizable_op_types)
         transform_pass.apply(graph)
 
         # use AddQuantDequantPass to insert fake_quant_dequant op
-        g_act_quantizable_op_type = []
-        for op_type in AddQuantDequantPass.supported_quantizable_op_type:
+        minor_quantizable_op_types = []
+        for op_type in AddQuantDequantPass._supported_quantizable_op_type:
             if op_type in self._quantizable_op_type:
-                g_act_quantizable_op_type.append(op_type)
+                minor_quantizable_op_types.append(op_type)
         add_quant_dequant_pass = AddQuantDequantPass(
             scope=self._scope,
             place=self._place,
-            quantizable_op_type=g_act_quantizable_op_type)
+            quantizable_op_type=minor_quantizable_op_types)
         add_quant_dequant_pass.apply(graph)
 
         # save scale factor to scale var node
@@ -336,7 +334,7 @@ class PostTrainingQuantization(object):
             weight_bits=self._bit_length,
             activation_bits=self._bit_length,
             weight_quantize_type='channel_wise_abs_max',
-            quantizable_op_type=g_act_weight_quantizable_op_type)
+            quantizable_op_type=major_quantizable_op_types)
         freeze_pass.apply(graph)
         self._program = graph.to_program()
 
@@ -348,11 +346,12 @@ class PostTrainingQuantization(object):
         for op in self._program.global_block().ops:
             if op.type in self._quantizable_op_type:
                 output_name_list = self._op_real_in_out_name[op.type][1]
-                output_var_name = op.output(output_name_list[0])[0]
-                if output_var_name in self._quantized_var_scale_factor:
-                    op._set_attr(
-                        output_scale_name,
-                        self._quantized_var_scale_factor[output_var_name])
+                for output_name in output_name_list:
+                    output_var_name = op.output(output_name)[0]
+                    if output_var_name in self._quantized_var_scale_factor:
+                        op._set_attr(
+                            output_scale_name,
+                            self._quantized_var_scale_factor[output_var_name])
 
     def _load_var_value(self, var_name):
         '''
@@ -373,7 +372,7 @@ class PostTrainingQuantization(object):
 
     def _is_input_all_not_persistable(self, op, persistable_var_names):
         '''
-        Analyse the real inputs of the op are all not persistable.
+        Analyze the real inputs of the op are all not persistable.
         '''
         is_input_all_not_persistable = True
         input_name_list = self._op_real_in_out_name[op.type][0]
@@ -485,8 +484,8 @@ class PostTrainingQuantization(object):
                 tmp_sum2 += 0
             else:
                 if q_idx == 0:
-                    print("Fatal error!, idx = " + str(idx) +
-                          " qindex = 0! p_idx = " + str(p_idx))
+                    _logger.error("Fatal error!, idx = " + str(idx) +
+                                  " qindex = 0! p_idx = " + str(p_idx))
                 tmp_sum1 += p_idx * (math.log(Q_sum * p_idx))
                 tmp_sum2 += p_idx * (math.log(P_sum * q_idx))
         return (tmp_sum1 - tmp_sum2) / P_sum

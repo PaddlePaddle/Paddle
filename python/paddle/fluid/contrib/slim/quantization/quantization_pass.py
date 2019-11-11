@@ -41,6 +41,35 @@ _out_scale_op_list = [
     "dropout", "split", "prelu", "conv2d_transpose", "leaky_relu"
 ]
 
+# list op real input and output names, to avoid processing input such as AxisTensor.
+_op_real_in_out_name = {
+    "conv2d": [["Input", "Filter"], ["Output"]],
+    "depthwise_conv2d": [["Input"], ["Output"]],
+    "mul": [["X", "Y"], ["Out"]],
+    "pool2d": [["X"], ["Out"]],
+    "elementwise_add": [["X", "Y"], ["Out"]],
+    "concat": [["X"], ["Out"]],
+    "softmax": [["X"], ["Out"]],
+    "argmax": [["X"], ["Out"]],
+    "transpose": [["X"], ["Out"]],
+    "equal": [["X", "Y"], ["Out"]],
+    "gather": [["X"], ["Out"]],
+    "greater_equal": [["X", "Y"], ["Out"]],
+    "greater_than": [["X", "Y"], ["Out"]],
+    "less_equal": [["X", "Y"], ["Out"]],
+    "less_than": [["X", "Y"], ["Out"]],
+    "mean": [["X"], ["Out"]],
+    "not_equal": [["X", "Y"], ["Out"]],
+    "reshape": [["X"], ["Out"]],
+    "reshape2": [["X"], ["Out"]],
+    "bilinear_interp": [["X"], ["Out"]],
+    "nearest_interp": [["X"], ["Out"]],
+    "trilinear_interp": [["X"], ["Out"]],
+    "slice": [["Input"], ["Out"]],
+    "squeeze": [["X"], ["Out"]],
+    "elementwise_sub": [["X", "Y"], ["Out"]],
+}
+
 
 def _init_var_node(var_node, value, scope, place):
     assert isinstance(value,
@@ -54,7 +83,7 @@ def _init_var_node(var_node, value, scope, place):
 
 
 class QuantizationTransformPass(object):
-    supported_quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
+    _supported_quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
 
     def __init__(self,
                  scope=None,
@@ -144,7 +173,7 @@ class QuantizationTransformPass(object):
 
         self._quantizable_ops = quantizable_op_type
         for op in self._quantizable_ops:
-            assert op in QuantizationTransformPass.supported_quantizable_op_type, \
+            assert op in QuantizationTransformPass._supported_quantizable_op_type, \
                 op + " is not supported for quantization."
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
         self._quantizable_grad_ops = [
@@ -631,7 +660,7 @@ class QuantizationFreezePass(object):
         self._weight_quantize_type = weight_quantize_type
         self._quantizable_ops = quantizable_op_type
         for op in self._quantizable_ops:
-            assert op in QuantizationTransformPass.supported_quantizable_op_type, \
+            assert op in QuantizationTransformPass._supported_quantizable_op_type, \
                 op + " is not supported for quantization."
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
         self._fake_quant_op_names = _fake_quant_op_list
@@ -925,7 +954,7 @@ class ConvertToInt8Pass(object):
         self._place = place
         self._quantizable_ops = quantizable_op_type
         for op in self._quantizable_ops:
-            assert op in QuantizationTransformPass.supported_quantizable_op_type, \
+            assert op in QuantizationTransformPass._supported_quantizable_op_type, \
                 op + " is not supported for quantization."
 
     def apply(self, graph):
@@ -1192,42 +1221,13 @@ class ScaleForInferencePass(object):
 
 
 class AddQuantDequantPass(object):
-    supported_quantizable_op_type = [
+    _supported_quantizable_op_type = [
         "pool2d", "elementwise_add", "concat", "softmax", "argmax", "transpose",
         "equal", "gather", "greater_equal", "greater_than", "less_equal",
         "less_than", "mean", "not_equal", "reshape", "reshape2",
         "bilinear_interp", "nearest_interp", "trilinear_interp", "slice",
         "squeeze", "elementwise_sub"
     ]
-    # list op real input and output names, to avoid processing input
-    # such as AxisTensor.
-    op_real_in_out_name = {
-        "conv2d": [["Input"], ["Output"]],
-        "depthwise_conv2d": [["Input"], ["Output"]],
-        "mul": [["X", "Y"], ["Out"]],
-        "pool2d": [["X"], ["Out"]],
-        "elementwise_add": [["X", "Y"], ["Out"]],
-        "concat": [["X"], ["Out"]],
-        "softmax": [["X"], ["Out"]],
-        "argmax": [["X"], ["Out"]],
-        "transpose": [["X"], ["Out"]],
-        "equal": [["X", "Y"], ["Out"]],
-        "gather": [["X"], ["Out"]],
-        "greater_equal": [["X", "Y"], ["Out"]],
-        "greater_than": [["X", "Y"], ["Out"]],
-        "less_equal": [["X", "Y"], ["Out"]],
-        "less_than": [["X", "Y"], ["Out"]],
-        "mean": [["X"], ["Out"]],
-        "not_equal": [["X", "Y"], ["Out"]],
-        "reshape": [["X"], ["Out"]],
-        "reshape2": [["X"], ["Out"]],
-        "bilinear_interp": [["X"], ["Out"]],
-        "nearest_interp": [["X"], ["Out"]],
-        "trilinear_interp": [["X"], ["Out"]],
-        "slice": [["Input"], ["Out"]],
-        "squeeze": [["X"], ["Out"]],
-        "elementwise_sub": [["X", "Y"], ["Out"]],
-    }
 
     def __init__(self,
                  scope=None,
@@ -1238,9 +1238,9 @@ class AddQuantDequantPass(object):
                  quantizable_op_type=["elementwise_add", "pool2d", "concat"],
                  is_full_quantized=False):
         """
-        This pass add quant_dequant op for some ops, of which the inputs must be 
+        This pass add quant_dequant op for some ops, of which all the inputs must be 
         not persistable.
-        The quant_dequant op can obtain the input scale.
+        The input scales can be obtained from the quant_dequant op.
 
         Args:
             scope(fluid.Scope): The scope is used to initialize these new parameters.
@@ -1269,11 +1269,11 @@ class AddQuantDequantPass(object):
 
         if is_full_quantized:
             self._quantizable_op_type = \
-                AddQuantDequantPass.supported_quantizable_op_type
+                AddQuantDequantPass._supported_quantizable_op_type
         else:
             self._quantizable_op_type = quantizable_op_type
             for op_type in quantizable_op_type:
-                assert op_type in AddQuantDequantPass.supported_quantizable_op_type, \
+                assert op_type in AddQuantDequantPass._supported_quantizable_op_type, \
                     op_type + " is not supported for quantization."
         self._quantizable_grad_op_type = [
             '%s_grad' % (op) for op in self._quantizable_op_type
@@ -1281,7 +1281,6 @@ class AddQuantDequantPass(object):
 
         assert self._scope != None, "scope must not be None."
         assert self._place != None, "place must not be None."
-        assert self._quant_bits == 8, "quant_bits must be 8 for now."
 
     def apply(self, graph):
         """
@@ -1309,8 +1308,7 @@ class AddQuantDequantPass(object):
                 if not self._is_input_all_not_persistable(graph, op_node):
                     continue
 
-                input_name_list = AddQuantDequantPass.op_real_in_out_name[
-                    op_node.name()][0]
+                input_name_list = _op_real_in_out_name[op_node.name()][0]
                 for input_name in input_name_list:
                     for arg_name in op_node.input(input_name):
                         in_node = graph._find_node_by_name(op_node.inputs,
@@ -1326,7 +1324,8 @@ class AddQuantDequantPass(object):
                                                 op_node)
 
         # Backward stage, update input link
-        for op_node in graph.all_op_nodes():
+        all_op_nodes = graph.all_op_nodes()
+        for op_node in all_op_nodes:
             if op_node.name() in self._quantizable_grad_op_type:
                 for input_name in op_node.input_arg_names():
                     if input_name in dequantized_vars_map:
@@ -1346,8 +1345,7 @@ class AddQuantDequantPass(object):
         is_input_all_not_persistable = True
         op_node_name = op_node.name()
 
-        input_name_list = \
-            AddQuantDequantPass.op_real_in_out_name[op_node_name][0]
+        input_name_list = _op_real_in_out_name[op_node_name][0]
         for input_name in input_name_list:
             for arg_name in op_node.input(input_name):
                 in_node = graph._find_node_by_name(op_node.inputs, arg_name)
