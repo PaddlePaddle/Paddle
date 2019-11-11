@@ -30,6 +30,7 @@ class TrainerFactory(object):
     If opt_info is not None, it will get configs from opt_info,
     otherwise create MultiTrainer and Hogwild.
     """
+
     def __init__(self):
         pass
 
@@ -86,6 +87,7 @@ class FetchHandlerMonitor(object):
     Defination of FetchHandlerMonitor class,
     it's for fetch handler.
     """
+
     def __init__(self, scope, handler):
         self.fetch_instance = handler
         self.fetch_thread = threading.Thread(

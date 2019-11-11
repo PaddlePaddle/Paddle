@@ -228,6 +228,7 @@ class DistMultiTrainer(TrainerDesc):
     Implement of DistMultiTrainer.
     It's for Distributed training.
     """
+
     def __init__(self):
         super(DistMultiTrainer, self).__init__()
         pass
@@ -251,6 +252,7 @@ class PipelineTrainer(TrainerDesc):
     Implement of PipelineTrainer.
     It's for Pipeline.
     """
+
     def __init__(self):
         super(PipelineTrainer, self).__init__()
         pass
