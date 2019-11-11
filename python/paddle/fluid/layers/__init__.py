@@ -36,6 +36,7 @@ from .learning_rate_scheduler import *
 from .collective import *
 from .distributions import *
 from .sequence_lod import *
+from .loss import *
 from . import rnn
 
 __all__ = []
