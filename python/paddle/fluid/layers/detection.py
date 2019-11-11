@@ -1857,10 +1857,10 @@ def density_prior_box(input,
 
         .. code-block:: python
 
-            #declarative mode
+	    #declarative mode
 
-            import paddle.fluid as fluid
-            import numpy as np
+	    import paddle.fluid as fluid
+	    import numpy as np
 
 	    input = fluid.data(name="input", shape=[None,3,6,9])
 	    image = fluid.data(name="image", shape=[None,3,9,12])
