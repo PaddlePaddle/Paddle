@@ -213,8 +213,10 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       }
     } else {
       // Execute default kernel when broadcast is needed
-      ElemwiseGradCompute<paddle::platform::CPUDeviceContext, T,
-                          IdentityGrad<T>, IdentityGrad<T>>(
+      x = ctx.Input<Tensor>("X");
+      y = ctx.Input<Tensor>("Y");
+      ElemwiseExplicitGradCompute<paddle::platform::CPUDeviceContext, T,
+                                  IdentityGrad<T>, IdentityGrad<T>>(
           ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),
           IdentityGrad<T>());
     }
