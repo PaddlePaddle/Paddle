@@ -21,6 +21,7 @@ INCLUDE_DIRECTORIES(${THREADPOOL_INCLUDE_DIR})
 ExternalProject_Add(
     extern_threadpool
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
     GIT_REPOSITORY  "https://github.com/progschj/ThreadPool.git"
     GIT_TAG         9a42ec1329f259a5f4881a291db1dcb8f2ad9040
     PREFIX          ${THREADPOOL_SOURCE_DIR}
