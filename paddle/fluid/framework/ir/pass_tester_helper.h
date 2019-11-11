@@ -19,7 +19,9 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {
@@ -412,7 +414,7 @@ static std::string DebugString(Node* node) {
   return os.str();
 }
 
-static std::string DebugString(const std::unordered_set<Node*>& nodes) {
+static std::string DebugString(const std::vector<Node*>& nodes) {
   std::ostringstream os;
   for (auto* node : nodes) {
     if (node->IsOp() && node->Op()) {
@@ -423,6 +425,14 @@ static std::string DebugString(const std::unordered_set<Node*>& nodes) {
     os << DebugString(node) << "\n";
   }
   return os.str();
+}
+
+static std::string DebugString(const std::unordered_set<Node*>& nodes) {
+  std::vector<Node*> vec;
+  for (auto* node : nodes) {
+    vec.push_back(node);
+  }
+  return DebugString(vec);
 }
 
 static std::string DebugString(const std::unique_ptr<Graph>& graph) {

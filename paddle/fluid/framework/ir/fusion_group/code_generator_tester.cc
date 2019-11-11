@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
+#include "paddle/fluid/framework/ir/pass_tester_helper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device_code.h"
@@ -25,6 +26,12 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUDA
 namespace fusion_group = paddle::framework::ir::fusion_group;
+
+template <typename T>
+void CheckOutput(T actual, T expect) {
+  PADDLE_ENFORCE_LT(fabs(actual - expect), 1.E-05,
+                    "Get %f vs %f (actual vs expect).", actual, expect);
+}
 
 template <typename T>
 void SetupRandomCPUTensor(paddle::framework::LoDTensor* tensor) {
@@ -40,15 +47,9 @@ void SetupRandomCPUTensor(paddle::framework::LoDTensor* tensor) {
   }
 }
 
-void TestMain(std::string func_name,
-              std::vector<fusion_group::OperationExpression> expressions,
-              std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
-              std::vector<int> input_ids, std::vector<int> output_ids) {
-  fusion_group::OperationMap::Init();
-  fusion_group::CodeGenerator code_generator;
-  std::string code_str = code_generator.GenerateCode(func_name, expressions);
-  VLOG(3) << code_str;
-
+void TestMainImpl(std::string func_name, std::string code_str,
+                  std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
+                  std::vector<int> input_ids, std::vector<int> output_ids) {
   paddle::framework::InitDevices(false, {0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
   paddle::platform::CUDADeviceCode device_code(place, func_name, code_str);
@@ -88,6 +89,30 @@ void TestMain(std::string func_name,
     TensorCopySync(gpu_tensors[output_ids[i]], paddle::platform::CPUPlace(),
                    &cpu_tensors[output_ids[i]]);
   }
+}
+
+void TestMain(std::string func_name,
+              std::vector<fusion_group::OperationExpression> expressions,
+              std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
+              std::vector<int> input_ids, std::vector<int> output_ids) {
+  fusion_group::OperationMap::Init();
+  fusion_group::CodeGenerator code_generator;
+  std::string code_str = code_generator.Generate(func_name, expressions);
+  VLOG(3) << code_str;
+
+  TestMainImpl(func_name, code_str, cpu_tensors, n, input_ids, output_ids);
+}
+
+void TestMain(fusion_group::SubGraph* subgraph,
+              std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
+              std::vector<int> input_ids, std::vector<int> output_ids) {
+  fusion_group::OperationMap::Init();
+  fusion_group::CodeGenerator code_generator;
+  std::string code_str = code_generator.Generate(subgraph);
+  LOG(INFO) << code_str;
+
+  TestMainImpl(subgraph->func_name, code_str, cpu_tensors, n, input_ids,
+               output_ids);
 }
 
 TEST(code_generator, elementwise) {
@@ -135,7 +160,7 @@ TEST(code_generator, elementwise) {
     float result = cpu_kernel_handler(
         cpu_tensors[0].data<float>(), cpu_tensors[1].data<float>(),
         cpu_tensors[3].data<float>(), cpu_tensors[5].data<float>(), i);
-    PADDLE_ENFORCE_LT(fabs(cpu_tensors[8].data<float>()[i] - result), 1.E-05);
+    CheckOutput(cpu_tensors[8].data<float>()[i], result);
   }
 }
 
@@ -181,12 +206,61 @@ TEST(code_generator, elementwise_grad) {
         cpu_tensors[0].data<float>(), cpu_tensors[1].data<float>(),
         cpu_tensors[2].data<float>(), cpu_tensors[3].data<float>(),
         cpu_tensors[7].data<float>(), i);
-    PADDLE_ENFORCE_LT(fabs(cpu_tensors[4].data<float>()[i] - results[0]),
-                      1.E-05);
-    PADDLE_ENFORCE_LT(fabs(cpu_tensors[5].data<float>()[i] - results[1]),
-                      1.E-05);
-    PADDLE_ENFORCE_LT(fabs(cpu_tensors[6].data<float>()[i] - results[2]),
-                      1.E-05);
+    CheckOutput(cpu_tensors[4].data<float>()[i], results[0]);
+    CheckOutput(cpu_tensors[5].data<float>()[i], results[1]);
+    CheckOutput(cpu_tensors[6].data<float>()[i], results[2]);
+  }
+}
+
+TEST(code_generator, subgraph) {
+  // inputs                     operator            output
+  // --------------------------------------------------------
+  // (x, y)                     elementwise_add  -> tmp_0
+  // tmp_0                      relu             -> tmp_1
+  //
+  // Expression: tmp_1 = relu(x + y)
+  // The var order: x, y, tmp_0, tmp_1
+  paddle::framework::ir::Layers layers;
+  auto* x = layers.data("x", {16, 32});
+  auto* y = layers.data("y", {16, 32});
+  auto* tmp_0 = layers.elementwise_add(x, y);
+  layers.relu(tmp_0);
+
+  std::unique_ptr<paddle::framework::ir::Graph> graph(
+      new paddle::framework::ir::Graph(layers.main_program()));
+  fusion_group::SubGraph subgraph(0, "elementwise_kernel_1", true,
+                                  graph->Nodes());
+  LOG(INFO) << "SubGraph: {\n" << DebugString(subgraph.Nodes()) << "}\n";
+  LOG(INFO) << "Sorted SubGraph: {\n"
+            << DebugString(subgraph.SortedNodes()) << "}\n";
+
+  // Prepare CPU tensors
+  std::vector<paddle::framework::LoDTensor> cpu_tensors(4);
+  std::vector<int> input_ids = {0, 1};
+  std::vector<int> output_ids = {2, 3};
+
+  auto dims = paddle::framework::make_ddim(
+      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+  for (size_t i = 0; i < cpu_tensors.size(); ++i) {
+    cpu_tensors[i].mutable_data<float>(dims, paddle::platform::CPUPlace());
+  }
+
+  int n = cpu_tensors[0].numel();
+  TestMain(&subgraph, cpu_tensors, n, input_ids, output_ids);
+
+  auto cpu_kernel_handler = [&](float* var0, float* var1,
+                                int i) -> std::vector<float> {
+    float var2_i = var0[i] * var1[i];
+    float var3_i = var2_i > 0 ? var2_i : 0;
+    return std::vector<float>{var2_i, var3_i};
+  };
+
+  // Check the results
+  for (int i = 0; i < n; i++) {
+    std::vector<float> results = cpu_kernel_handler(
+        cpu_tensors[0].data<float>(), cpu_tensors[1].data<float>(), i);
+    CheckOutput(cpu_tensors[2].data<float>()[i], results[0]);
+    CheckOutput(cpu_tensors[3].data<float>()[i], results[1]);
   }
 }
 #endif

@@ -34,7 +34,7 @@ static T StringTo(const std::string& str) {
 }
 
 std::string OperationExpression::GetRHS(size_t i) {
-  auto rhs = OperationMap::Instance().Get(op_).exprs[i];
+  auto rhs = OperationMap::Instance().Get(op_type_).exprs[i];
   for (size_t i = 0; i < rhs.size(); i++) {
     size_t pos = i;
     if (rhs[pos] == '$' && rhs[pos + 1] == '{') {
@@ -60,7 +60,7 @@ std::string OperationExpression::GetLHS(size_t i) {
 }
 
 bool OperationExpression::IsSupport() {
-  return OperationMap::Instance().Has(op_);
+  return OperationMap::Instance().Has(op_type_);
 }
 
 // we Traverse the graph and get the group , all input id and output id is

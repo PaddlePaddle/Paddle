@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
+#include "paddle/fluid/framework/ir/fusion_group/subgraph.h"
 
 namespace paddle {
 namespace framework {
@@ -27,11 +28,10 @@ class CodeGenerator {
  public:
   CodeGenerator();
 
-  std::string GenerateCode(std::string func_name,
-                           std::vector<OperationExpression> expressions);
+  std::string Generate(std::string func_name,
+                       std::vector<OperationExpression> expressions);
 
-  // TODO(wangchao): add a more general interface
-  // std::string Generate(const std::string name, const SubGraph& subgraph);
+  std::string Generate(SubGraph* subgraph);
 
  private:
   // we get the parameter list code for the expression information
@@ -39,6 +39,14 @@ class CodeGenerator {
                              std::string dtype);
 
   std::string EmitComputeBody(std::vector<OperationExpression> expressions);
+
+  // Encode all var nodes in the subgraph with an unique number.
+  std::unordered_map<std::string, int> EncodeVarNodes(SubGraph* subgraph);
+
+  // Insert a new expression into the vertor. Note that expressions should be
+  // maintain in an order that the var is read after written.
+  void InsertOperationExpression(std::vector<OperationExpression>* expressions,
+                                 OperationExpression expr);
 
  private:
   std::vector<CodeTemplate> code_templates_;
