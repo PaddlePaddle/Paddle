@@ -145,7 +145,7 @@ if [ "${INVALID_PADDLE_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
     if [ "${APPROVALS}" == "FALSE" ]; then
         failed_num=`expr $failed_num + 1`
-        echo_line="The error message you wrote in PADDLE_ENFORCE{_**} or PADDLE_THROW does not meet our error message writing specification. Possible errors include 1. the error message is empty / 2. the error message is too short / 3. the error type is not specified / 4. the internal variable name is used / 5. the English grammar is wrong, etc. Please read the specification [ http://agroup.baidu.com/paddlepaddle/md/article/2267381 ], then refine the error message. If a mismatch occurs, please specify chenwhql (Recommend), luotao1 or lanxianghit review and approve.\nThe PADDDLE_ENFORCE or PADDLE_THROW entries that do not meet the specification are as follows:\n${INVALID_PADDLE_CHECK}\n"
+        echo_line="The error message you wrote in PADDLE_ENFORCE{_**} or PADDLE_THROW does not meet our error message writing specification. Possible errors include 1. the error message is empty / 2. the error message is too short / 3. the error type is not specified / 4. the internal variable name is used / 5. the English grammar is wrong, etc. Please read the specification [ http://agroup.baidu.com/paddlepaddle/md/article/2267381 ], then refine the error message. If a mismatch occurs, please specify chenwhql (Recommend), luotao1 or lanxianghit review and approve.\nThe PADDDLE_ENFORCE or PADDLE_THROW entries that do not meet the specification are as follows:\n"${INVALID_PADDLE_CHECK}"\n"
         echo_list=(${echo_list[@]}$failed_num "." "$echo_line")
     fi
 fi
