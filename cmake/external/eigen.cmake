@@ -29,6 +29,7 @@ if(WITH_AMD_GPU)
     ExternalProject_Add(
         extern_eigen3
         ${EXTERNAL_PROJECT_LOG_ARGS}
+        ${SHALLOW_CLONE}
         GIT_REPOSITORY  "https://github.com/sabreshao/hipeigen.git"
         GIT_TAG         7cb2b6e5a4b4a1efe658abb215cd866c6fb2275e
         PREFIX          ${EIGEN_SOURCE_DIR}
@@ -42,6 +43,7 @@ else()
     ExternalProject_Add(
         extern_eigen3
         ${EXTERNAL_PROJECT_LOG_ARGS}
+        ${SHALLOW_CLONE}
         GIT_REPOSITORY  "${EIGEN_GIT_REPOSITORY}"
         # eigen on cuda9.1 missing header of math_funtions.hpp
         # https://stackoverflow.com/questions/43113508/math-functions-hpp-not-found-when-using-cuda-with-eigen
