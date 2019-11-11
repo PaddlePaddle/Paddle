@@ -167,14 +167,13 @@ class QuantizationTransformPass(object):
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
 
         def _quant_preprocess(op_node):
+            user_skipped = False
             if isinstance(self._skip_pattern, list):
                 user_skipped = op_node.op().has_attr("op_namescope") and \
                                any(pattern in op_node.op().attr("op_namescope") for pattern in self._skip_pattern)
             elif isinstance(self._skip_pattern, str):
                 user_skipped = op_node.op().has_attr("op_namescope") and \
                                op_node.op().attr("op_namescope").find(self._skip_pattern) != -1
-            else:
-                raise ValueError("skip_pattern should be a list of string or a string!")
 
             if user_skipped:
                 op_node.op()._set_attr("skip_quant", True)
@@ -1230,6 +1229,7 @@ class AddQuantDequantPass(object):
 
         for op_node in ops:
             if op_node.name() in self._quantizable_op_type:
+                user_skipped = False
                 if isinstance(self._skip_pattern, list):
                     user_skipped = op_node.op().has_attr("op_namescope") and \
                                    any(pattern in op_node.op().attr("op_namescope") for pattern in self._skip_pattern)
