@@ -409,8 +409,8 @@ TEST(Enforce, CICheckRules) {
   PADDLE_ENFORCE(true, platform::errors::PreconditionNotMet(""));
   PADDLE_ENFORCE(true,
                  platform::errors::PreconditionNotMet("msg is too short."));
-  PADDLE_ENFORCE(true, platform::errors::PreconditionNotMet(
-                           "var1(%d)!=var2(%d)", var1, var2));
+  PADDLE_ENFORCE(true,
+                 platform::errors::PreconditionNotMet("%d!=%d", var1, var2));
 
   /* PADDLE_ENFORCE_NOT_NULL */
   // correct cases:
