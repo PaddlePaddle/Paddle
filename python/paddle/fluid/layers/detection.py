@@ -1686,11 +1686,14 @@ def prior_box(input,
         num_priors is the total box count of each position of input
 
     Examples:
+
         .. code-block:: python
 
 	    #declarative mode
+
 	    import paddle.fluid as fluid
 	    import numpy as np
+
 	    input = fluid.data(name="input", shape=[None,3,6,9])
 	    image = fluid.data(name="image", shape=[None,3,9,12])
 	    box, var = fluid.layers.prior_box(
@@ -1712,7 +1715,7 @@ def prior_box(input,
                 feed={"input":input_data,"image":image_data},
                 fetch_list=[box,var],
                 return_numpy=True)
-
+ 
 	    # print(box_out.shape)
 	    # (6, 9, 1, 4)
 	    # print(var_out.shape)
