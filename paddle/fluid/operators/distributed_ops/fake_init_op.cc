@@ -19,33 +19,23 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class FakeInitInferShape : public framework::InferShapeBase {
+template <typename T>
+class FakeInitKernel : public framework::OpKernel<T> {
  public:
-  void operator()(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of FakeInitOp should not be null.");
-    auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
-    ctx->SetOutputDim("Out", framework::make_ddim(shape));
-  }
-};
-
-class FakeInitOp : public framework::OperatorBase {
- public:
-  using framework::OperatorBase::OperatorBase;
-
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &dev_place) const override {
+  void Compute(const paddle::framework::ExecutionContext &ctx) const override {
     framework::Tensor *tensor = nullptr;
+    auto &out_var = *ctx.OutputVar("Out");
 
-    auto &out_var = *scope.FindVar(Output("Out"));
+    auto data_type =
+        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
+    auto &shape = ctx.Attr<std::vector<int64_t>>("shape");
 
     if (out_var.IsType<framework::LoDTensor>()) {
       tensor = out_var.GetMutable<framework::LoDTensor>();
-      tensor->Resize(framework::make_ddim(Attr<std::vector<int64_t>>("shape")));
+      tensor->Resize(framework::make_ddim(shape));
     } else if (out_var.IsType<framework::SelectedRows>()) {
-      tensor = out_var.GetMutable<framework::SelectedRows>()->mutable_value();
-      tensor->Resize(framework::make_ddim(Attr<std::vector<int64_t>>("shape")));
+      tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
+      tensor->Resize(shape);
     } else {
       PADDLE_THROW(
           "fake init op's output only"
@@ -54,14 +44,44 @@ class FakeInitOp : public framework::OperatorBase {
   }
 };
 
+class FillConstantOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of FakeInitOp should not be null.");
+    auto &shape = ctx->Attrs().Get<std::vector<int64_t>>("shape");
+    ctx->SetOutputDim("Out", framework::make_ddim(shape));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
+        ctx.GetPlace());
+  }
+};
+
 class FakeInitOpVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(framework::InferVarTypeContext *ctx) const override {}
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto data_type = static_cast<framework::proto::VarType::Type>(
+        boost::get<int>(ctx->GetAttr("dtype")));
+    auto &out_var_name = ctx->Output("Out").front();
+    ctx->SetDataType(out_var_name, data_type);
+  }
 };
 
 class FakeInitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    AddAttr<int>("dtype",
+                 "(int, default 5 (FP32)) "
+                 "Output data type")
+        .SetDefault(framework::proto::VarType::FP32);
+
     AddAttr<std::vector<int64_t>>("shape",
                                   "(vector<int64_t>) The shape of the output");
     AddOutput("Out",
@@ -80,6 +100,13 @@ table parameter at trainer side in distributed lookup table.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fake_init, ops::FakeInitOp, ops::FakeInitInferShape,
-                  ops::FakeInitOpMaker, paddle::framework::EmptyGradOpMaker,
-                  ops::FakeInitOpVarTypeInference);
+
+REGISTER_OPERATOR(fake_init, ops::FillConstantOp, ops::FakeInitOpMaker,
+                  ops::FakeInitOpVarTypeInference,
+                  paddle::framework::EmptyGradOpMaker);
+
+REGISTER_OP_CPU_KERNEL(fake_init, ops::FakeInitKernel<float>,
+                       ops::FakeInitKernel<double>,
+                       ops::FakeInitKernel<int64_t>, ops::FakeInitKernel<int>,
+                       ops::FakeInitKernel<bool>,
+                       ops::FakeInitKernel<paddle::platform::float16>);
