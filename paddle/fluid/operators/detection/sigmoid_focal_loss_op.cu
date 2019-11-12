@@ -40,7 +40,9 @@ __global__ void GPUSigmoidFocalLossForward(const T *x_data,
                                            const int *fg_num_data,
                                            const T gamma, const T alpha,
                                            const int num_classes,
-                                           const int limit, T *out_data) {
+                                           const int limit,
+                                           const bool use_neg_weights,
+                                           T *out_data) {
   CUDA_1D_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     int a = i / num_classes;  // current sample
@@ -64,9 +66,11 @@ __global__ void GPUSigmoidFocalLossForward(const T *x_data,
     T term_pos = std::pow(static_cast<T>(1. - p), gamma) *
                  real_log(p > FLT_MIN ? p : FLT_MIN);
     // p**gamma * log(1 - p)
+    T neg_weights = use_neg_weights ? std::pow(1. - static_cast<T>(g), 4) : 1.;
     T term_neg =
         std::pow(p, gamma) *
-        (-1. * x * (x >= 0) - real_log(1. + real_exp(x - 2. * x * (x >= 0))));
+        (-1. * x * (x >= 0) - real_log(1. + real_exp(x - 2. * x * (x >= 0)))) *
+        neg_weights;;
 
     out_data[i] = 0.0;
     out_data[i] += -c_pos * term_pos * s_pos;
@@ -78,7 +82,7 @@ template <typename T>
 __global__ void GPUSigmoidFocalLossBackward(
     const T *x_data, const int *label_data, const int *fg_num_data,
     const T gamma, const T alpha, const int num_classes, const T *dout_data,
-    const int limit, T *dx_data) {
+    const int limit, const bool use_neg_weights, T *dx_data) {
   CUDA_1D_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
     T dout = dout_data[i];
@@ -100,11 +104,12 @@ __global__ void GPUSigmoidFocalLossBackward(
     T term_pos = std::pow(static_cast<T>(1. - p), gamma) *
                  (1. - p - (p * gamma * real_log(p > FLT_MIN ? p : FLT_MIN)));
     // (p**g) * (g*(1-p)*log(1-p) - p)
+    T neg_weights = use_neg_weights ? std::pow(1. - static_cast<T>(g), 4) : 1.;
     T term_neg =
         std::pow(p, gamma) *
         ((-1. * x * (x >= 0) - real_log(1. + real_exp(x - 2. * x * (x >= 0)))) *
              (1. - p) * gamma -
-         p);
+         p) * neg_weights;
 
     dx_data[i] = 0.0;
     dx_data[i] += -c_pos * s_pos * term_pos;
@@ -123,6 +128,7 @@ class GPUSigmoidFocalLossKernel : public framework::OpKernel<T> {
     Tensor *Out = context.Output<Tensor>("Out");
     T gamma = static_cast<T>(context.Attr<float>("gamma"));
     T alpha = static_cast<T>(context.Attr<float>("alpha"));
+    bool use_neg_weights = context.Attr<bool>("use_neg_weights");
     auto x_dims = X->dims();
     int num_classes = static_cast<int>(x_dims[1]);
     auto out_data = Out->mutable_data<T>(context.GetPlace());
@@ -134,7 +140,7 @@ class GPUSigmoidFocalLossKernel : public framework::OpKernel<T> {
     int threads = kNumCUDAThreads;
     GPUSigmoidFocalLossForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
         X->data<T>(), Labels->data<int>(), FgNum->data<int>(), gamma, alpha,
-        num_classes, limit, out_data);
+        num_classes, limit, use_neg_weights, out_data);
   }
 };
 
@@ -150,6 +156,8 @@ class GPUSigmoidFocalLossGradKernel : public framework::OpKernel<T> {
     auto dx_data = dX->mutable_data<T>(context.GetPlace());
     T gamma = static_cast<T>(context.Attr<float>("gamma"));
     T alpha = static_cast<T>(context.Attr<float>("alpha"));
+    bool use_neg_weights = context.Attr<bool>("use_neg_weights");
+
     auto x_dims = X->dims();
     int num_classes = static_cast<int>(x_dims[1]);
 
@@ -160,7 +168,7 @@ class GPUSigmoidFocalLossGradKernel : public framework::OpKernel<T> {
     int threads = kNumCUDAThreads;
     GPUSigmoidFocalLossBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
         X->data<T>(), Labels->data<int>(), FgNum->data<int>(), gamma, alpha,
-        num_classes, dOut->data<T>(), limit, dx_data);
+        num_classes, dOut->data<T>(), limit, use_neg_weights, dx_data);
   }
 };
 

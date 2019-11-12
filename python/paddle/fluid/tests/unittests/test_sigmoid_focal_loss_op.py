@@ -22,8 +22,13 @@ from op_test import OpTest
 from paddle.fluid import core
 
 
-def sigmoid_focal_loss_forward(x_data, label_data, fg_num_data, gamma, alpha,
-                               num_classes):
+def sigmoid_focal_loss_forward(x_data,
+                               label_data,
+                               fg_num_data,
+                               gamma,
+                               alpha,
+                               num_classes,
+                               use_neg_weights=False):
     x_data_t = copy.deepcopy(x_data)
     out_data = copy.deepcopy(x_data)
     x_width = len(x_data)
@@ -42,10 +47,12 @@ def sigmoid_focal_loss_forward(x_data, label_data, fg_num_data, gamma, alpha,
         z_pos = alpha / fg_num
 
         p = 1. / (1. + math.exp(-x))
+        neg_weights = pow(1 - label, 4) if use_neg_weights else 1.
         FLT_MIN = 1.175494351e-38
         term_pos = math.pow((1. - p), gamma) * math.log(max(FLT_MIN, p))
         term_neg = math.pow(p, gamma) * (
-            -1. * x * (x >= 0) - math.log(1. + math.exp(x - 2. * x * (x >= 0))))
+            -1. * x * (x >= 0) - math.log(1. + math.exp(x - 2. * x * (x >= 0)))
+        ) * neg_weights
         out_data[idx] = 0.0
         out_data[idx] += -c_pos * term_pos * z_pos
         out_data[idx] += -c_neg * term_neg * z_neg
@@ -60,6 +67,7 @@ class TestSigmoidFocalLossOp1(OpTest):
         self.num_classes = 10
         self.gamma = 2.0
         self.alpha = 0.25
+        self.use_neg_weights = False
 
     def setUp(self):
         self.set_argument()
@@ -81,10 +89,11 @@ class TestSigmoidFocalLossOp1(OpTest):
         self.attrs = {
             'gamma': self.gamma,
             'alpha': self.alpha,
+            'use_neg_weights': self.use_neg_weights,
         }
         loss = sigmoid_focal_loss_forward(
             self.inputs['X'], self.inputs['Label'], self.inputs['FgNum'],
-            self.gamma, self.alpha, self.num_classes)
+            self.gamma, self.alpha, self.num_classes, self.use_neg_weights)
         self.outputs = {'Out': loss.astype('float32')}
 
     def test_check_output(self):
@@ -113,11 +122,34 @@ class TestSigmoidFocalLossOp3(TestSigmoidFocalLossOp1):
         self.num_classes = 10
         self.gamma = 1.0
         self.alpha = 0.5
+        self.use_neg_weights = False
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestSigmoidFocalLossOp4(TestSigmoidFocalLossOp3):
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=2e-3)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', max_relative_error=0.002)
+
+
+class TestSigmoidFocalLossOp5(TestSigmoidFocalLossOp1):
+    def set_argument(self):
+        self.num_anchors = 200
+        self.num_classes = 1
+        self.gamma = 2.0
+        self.alpha = 0.5
+        self.use_neg_weights = True
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSigmoidFocalLossOp6(TestSigmoidFocalLossOp5):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place, atol=2e-3)

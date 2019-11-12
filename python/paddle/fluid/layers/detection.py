@@ -432,7 +432,12 @@ def rpn_target_assign(bbox_pred,
     return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox, bbox_inside_weight
 
 
-def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
+def sigmoid_focal_loss(x,
+                       label,
+                       fg_num,
+                       gamma=2,
+                       alpha=0.25,
+                       use_neg_weights=False):
     """
     **Sigmoid Focal Loss Operator.**
 
@@ -477,6 +482,8 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
             set to 2.0.
         alpha(float): Hyper-parameter to balance the positive and negative example. Default value
             is set to 0.25.
+        use_neg_weights(bool): Whether to add weights on negative examples. It is only used in masked input.
+            Default value is set to False.
 
     Returns:
         Variable(the data type is float32 or float64): 
@@ -507,8 +514,11 @@ def sigmoid_focal_loss(x, label, fg_num, gamma=2, alpha=0.25):
         inputs={"X": x,
                 "Label": label,
                 "FgNum": fg_num},
-        attrs={"gamma": gamma,
-               'alpha': alpha},
+        attrs={
+            "gamma": gamma,
+            'alpha': alpha,
+            'use_neg_weights': use_neg_weights
+        },
         outputs={"Out": out})
     return out
 

@@ -153,6 +153,12 @@ class SigmoidFocalLossOpMaker : public framework::OpProtoAndCheckerMaker {
         "positive and negative examples. "
         "A float scalar with default value 0.5.")
         .SetDefault(0.25);
+    AddAttr<bool>(
+        "use_neg_weights",
+        "Hyper-parameter of sigmoid focal loss op, which is to add "
+        "weights on negative examples. The parameter is only used in masked "
+        "input. A bool flag with default value false.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Sigmoid Focal Loss Operator.
 
