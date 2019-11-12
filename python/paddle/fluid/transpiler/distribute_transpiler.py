@@ -858,6 +858,41 @@ class DistributeTranspiler(object):
         self._get_distributed_optimizer_vars()
         self.origin_program._parameters_on_pservers = self.vars_overview
 
+    def fake_init_sparsetable(self):
+        # delete table init op
+        sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
+
+        sparse_table_names = []
+        for op in self.origin_program.global_block().ops:
+            if op.type in sparse_update_op_types and op.attr(
+                    'is_sparse') is True:
+                sparse_table_names.append(op.input("W")[0])
+            if op.type == "distributed_lookup_table":
+                sparse_table_names.append(op.input("W")[0])
+
+        if self.has_distributed_lookup_table:
+            sparse_table_names.append(self.table_name)
+
+        sparse_table_names = list(set(sparse_table_names))
+
+        for table_name in sparse_table_names:
+            table_var = self.startup_program.global_block().vars[table_name]
+            table_param_init_op = []
+            for op in self.startup_program.global_block().ops:
+                if table_name in op.output_arg_names:
+                    table_param_init_op.append(op)
+            init_op_num = len(table_param_init_op)
+            if init_op_num != 1:
+                raise ValueError("table init op num should be 1, now is " + str(
+                    init_op_num))
+            table_init_op = table_param_init_op[0]
+            self.startup_program.global_block().append_op(
+                type="fake_init",
+                inputs={},
+                outputs={"Out": table_var},
+                attrs={"shape": table_init_op.attr('shape')})
+            delete_ops(self.startup_program.global_block(), table_param_init_op)
+
     def get_trainer_program(self, wait_port=True):
         """
         Get transpiled trainer side program. The program on trainer side compared with origin program 
@@ -891,26 +926,7 @@ class DistributeTranspiler(object):
         lr_ops = self._get_lr_ops()
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         delete_ops(self.origin_program.global_block(), lr_ops)
-
-        # delete table init op
-        if self.has_distributed_lookup_table:
-            table_var = self.startup_program.global_block().vars[
-                self.table_name]
-            table_param_init_op = []
-            for op in self.startup_program.global_block().ops:
-                if self.table_name in op.output_arg_names:
-                    table_param_init_op.append(op)
-            init_op_num = len(table_param_init_op)
-            if init_op_num != 1:
-                raise ValueError("table init op num should be 1, now is " + str(
-                    init_op_num))
-            table_init_op = table_param_init_op[0]
-            self.startup_program.global_block().append_op(
-                type="fake_init",
-                inputs={},
-                outputs={"Out": table_var},
-                attrs={"shape": table_init_op.attr('shape')})
-            delete_ops(self.startup_program.global_block(), table_param_init_op)
+        self.fake_init_sparsetable()
 
         self.origin_program.__str__()
 
@@ -935,7 +951,22 @@ class DistributeTranspiler(object):
         # FIXME(gongwb): delete not need ops.
         # note that: some parameter is not trainable and those ops can't be deleted.
 
+        sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
+
+        sparse_table_names = []
+        for op in self.origin_program.global_block().ops:
+            if op.type in sparse_update_op_types and op.attr(
+                    'is_sparse') is True:
+                sparse_table_names.append(op.input("W")[0])
+            if op.type == "distributed_lookup_table":
+                sparse_table_names.append(op.input("W")[0])
+
+        if self.has_distributed_lookup_table:
+            sparse_table_names.append(self.table_name)
+
         for varname, splited_var in six.iteritems(self.param_var_mapping):
+            if varname in sparse_table_names:
+                continue
             # Get the eplist of recv vars
             eps = []
             for var in splited_var:
@@ -977,6 +1008,8 @@ class DistributeTranspiler(object):
             })
 
         for varname, splited_var in six.iteritems(self.param_var_mapping):
+            if varname in sparse_table_names:
+                continue
             # add concat ops to merge splited parameters received from parameter servers.
             if len(splited_var) <= 1:
                 continue
