@@ -545,7 +545,7 @@ class TestLayer(LayerTest):
             out = layers.conv2d_transpose(
                 input=img,
                 num_filters=10,
-                output_size=28,
+                filter_size=27,
                 act='sigmoid',
                 bias_attr=fluid.initializer.ConstantInitializer(value=1))
             static_rlt = self.get_static_graph_result(
@@ -553,9 +553,9 @@ class TestLayer(LayerTest):
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2], dtype='float32')
             conv2d_transpose = nn.Conv2DTranspose(
-                'conv2d_transpose',
+                num_channels=3,
                 num_filters=10,
-                output_size=28,
+                filter_size=27,
                 act='sigmoid',
                 bias_attr=fluid.initializer.ConstantInitializer(value=1))
             out = conv2d_transpose(img)
@@ -563,9 +563,9 @@ class TestLayer(LayerTest):
                 feed={'pixel': inp_np}, fetch_list=[out])[0]
         with self.dynamic_graph():
             conv2d_transpose = nn.Conv2DTranspose(
-                'conv2d_transpose',
+                num_channels=3,
                 num_filters=10,
-                output_size=28,
+                filter_size=27,
                 act='sigmoid',
                 bias_attr=fluid.initializer.ConstantInitializer(value=1))
             dy_rlt = conv2d_transpose(base.to_variable(inp_np))
@@ -580,9 +580,9 @@ class TestLayer(LayerTest):
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
             conv2d1 = nn.Conv2DTranspose(
-                'conv2d1', num_filters=3, filter_size=[2, 2])
+                num_channels=3, num_filters=3, filter_size=[2, 2])
             conv2d2 = nn.Conv2DTranspose(
-                'conv2d2',
+                num_channels=3,
                 num_filters=3,
                 filter_size=[2, 2],
                 param_attr=weight_attr)

@@ -2349,18 +2349,17 @@ class Conv2DTranspose(layers.Layer):
            W_{out} &\in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
 
     Parameters:
-        name_scope(str): The name of this class.
+        num_channels(int): The number of channels in the input image.
         num_filters(int): The number of the filter. It is as same as the output
             feature map.
+        filter_size(int or tuple): The filter size. If filter_size is a tuple,
+            it must contain two integers, (filter_size_H, filter_size_W).
+            Otherwise, the filter will be a square.
         output_size(int or tuple, optional): The output image size. If output size is a
             tuple, it must contain two integers, (image_H, image_W). None if use
             filter_size, padding, and stride to calculate output_size.
             if output_size and filter_size are specified at the same time, They
             should follow the formula above. Default: None.
-        filter_size(int or tuple, optional): The filter size. If filter_size is a tuple,
-            it must contain two integers, (filter_size_H, filter_size_W).
-            Otherwise, the filter will be a square. None if use output size to
-            calculate filter_size. Default: None.
         padding(int or tuple, optional): The padding size. If padding is a tuple, it must
             contain two integers, (padding_H, padding_W). Otherwise, the
             padding_H = padding_W = padding. Default: 0.
@@ -2389,6 +2388,7 @@ class Conv2DTranspose(layers.Layer):
             library is installed. Default: True.
         act (str, optional): Activation type, if it is set to None, activation is not appended.
             Default: None.
+        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
     Attribute:
         **weight** (Parameter): the learnable weights of filters of this layer.
@@ -2407,16 +2407,16 @@ class Conv2DTranspose(layers.Layer):
           with fluid.dygraph.guard():
               data = np.random.random((3, 32, 32, 5)).astype('float32')
               conv2DTranspose = fluid.dygraph.nn.Conv2DTranspose(
-                    'Conv2DTranspose', num_filters=2, filter_size=3)
+                    num_channels=32, num_filters=2, filter_size=3)
               ret = conv2DTranspose(fluid.dygraph.base.to_variable(data))
 
     """
 
     def __init__(self,
-                 name_scope,
+                 num_channels,
                  num_filters,
+                 filter_size,
                  output_size=None,
-                 filter_size=None,
                  padding=0,
                  stride=1,
                  dilation=1,
@@ -2424,13 +2424,15 @@ class Conv2DTranspose(layers.Layer):
                  param_attr=None,
                  bias_attr=None,
                  use_cudnn=True,
-                 act=None):
-        super(Conv2DTranspose, self).__init__(name_scope)
+                 act=None,
+                 dtype='float32'):
+        super(Conv2DTranspose, self).__init__()
         assert param_attr is not False, "param_attr should not be False in conv2d_transpose."
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
         self._groups = groups
+        self._num_channels = num_channels
         self._num_filters = num_filters
         self._use_cudnn = use_cudnn
         self._padding = padding
@@ -2438,44 +2440,21 @@ class Conv2DTranspose(layers.Layer):
         self._dilation = dilation
         self._filter_size = filter_size
         self._output_size = output_size
-        self._op_type = 'conv2d_transpose'
+        self._dtype = dtype
 
-    def _build_once(self, input):
-        input_channel = input.shape[1]
-        if (input_channel == self._groups and
-                self._num_filters == input_channel and not self._use_cudnn):
+        if (self._num_channels == self._groups and
+                self._num_filters == self._num_channels and
+                not self._use_cudnn):
             self._op_type = 'depthwise_conv2d_transpose'
-
-        if not isinstance(input, Variable):
-            raise TypeError("Input of conv2d_transpose must be Variable")
+        else:
+            self._op_type = 'conv2d_transpose'
 
         self._padding = utils.convert_to_list(self._padding, 2, 'padding')
         self._stride = utils.convert_to_list(self._stride, 2, 'stride')
         self._dilation = utils.convert_to_list(self._dilation, 2, 'dilation')
 
-        if not isinstance(self._use_cudnn, bool):
-            raise ValueError("use_cudnn should be True or False")
-
-        if self._filter_size is None:
-            if self._output_size is None:
-                raise ValueError(
-                    "output_size must be set when filter_size is None")
-            if isinstance(self._output_size, int):
-                self._output_size = [self._output_size, self._output_size]
-
-            h_in = input.shape[2]
-            w_in = input.shape[3]
-
-            filter_size_h = (self._output_size[0] -
-                             (h_in - 1) * self._stride[0] + 2 * self._padding[0]
-                             - 1) // self._dilation[0] + 1
-            filter_size_w = (self._output_size[1] -
-                             (w_in - 1) * self._stride[1] + 2 * self._padding[1]
-                             - 1) // self._dilation[1] + 1
-            self._filter_size = [filter_size_h, filter_size_w]
-        else:
-            self._filter_size = utils.convert_to_list(
-                self._filter_size, 2, 'conv2d_transpose.filter_size')
+        self._filter_size = utils.convert_to_list(
+            self._filter_size, 2, 'conv2d_transpose.filter_size')
 
         if self._output_size is None:
             self._output_size = []
@@ -2487,11 +2466,11 @@ class Conv2DTranspose(layers.Layer):
             raise ValueError("output_size should be list or int")
         self._padding = utils.convert_to_list(self._padding, 2, 'padding')
         self._groups = 1 if self._groups is None else self._groups
-        filter_shape = [input_channel, self._num_filters // self._groups
+        filter_shape = [self._num_channels, self._num_filters // self._groups
                         ] + self._filter_size
 
         self._img_filter = self.create_parameter(
-            dtype=input.dtype, shape=filter_shape, attr=self._param_attr)
+            dtype=self._dtype, shape=filter_shape, attr=self._param_attr)
 
         self._bias_param = self.create_parameter(
             attr=self._bias_attr,
