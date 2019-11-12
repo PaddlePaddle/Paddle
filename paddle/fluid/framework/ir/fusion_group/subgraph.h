@@ -18,7 +18,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/ir/node.h"
-#include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -68,8 +67,7 @@ struct SubGraph {
   }
 
   std::vector<Node*> GetInputVarNodes() {
-    // The order of input nodes should be consistent with that of the generated
-    // code.
+    // The order of input nodes should be consistent anywhere.
     std::vector<Node*> input_vars;
     for (auto* n : SortedNodes()) {
       if (n && n->IsVar() && n->Var()) {
@@ -94,8 +92,7 @@ struct SubGraph {
   }
 
   std::vector<Node*> GetOutputVarNodes() {
-    // The order of output nodes should be consistant with that of the generated
-    // code.
+    // The order of output nodes should be consistant anywhere..
     std::vector<Node*> output_vars;
     for (auto* n : SortedNodes()) {
       if (n && n->IsVar() && n->Var()) {
@@ -143,46 +140,60 @@ struct SubGraph {
     return -1;
   }
 
-  void InsertVarInOrder(Node* n) {
-    PADDLE_ENFORCE_NOT_NULL(n, "Node should not be null.");
-    PADDLE_ENFORCE_EQ(n->IsVar() && n->Var(), true,
-                      "Node %s is not a var node.", n->Name());
+  void SortVarsBasedOnSortedOps() {
+    // Insert var nodes to sorted_nodes.
+    std::unordered_map<std::string, Node*> sorted_vars;
+    for (auto* n : nodes_set) {
+      if (n && n->IsVar() && n->Var()) {
+        int from = 0;
+        int to = sorted_nodes.size();
 
-    int from = 0;
-    int to = sorted_nodes.size();
-
-    for (auto* in : n->inputs) {
-      if (in && in->IsOp() && in->Op()) {
-        int index = FindIndexInSortedNodes(in);
-        // Insert after input op node
-        if (index >= 0) {
-          from = index + 1 > from ? index + 1 : from;
+        for (auto* in : n->inputs) {
+          if (in && in->IsOp() && in->Op()) {
+            int index = FindIndexInSortedNodes(in);
+            // Insert after input op node
+            if (index >= 0) {
+              from = index + 1 > from ? index + 1 : from;
+            }
+          }
         }
+
+        for (auto* out : n->outputs) {
+          if (out && out->IsOp() && out->Op()) {
+            int index = FindIndexInSortedNodes(out);
+            // Insert before output op node
+            if (index >= 0) {
+              to = index < to ? index : to;
+            }
+
+            auto* out_op = out->Op();
+            // Input var nodes should keep the same order with op's input names.
+            bool flag = false;
+            for (auto name : out_op->InputNames()) {
+              auto var_name = out_op->Input(name)[0];
+              if (var_name == n->Name()) {
+                flag = true;
+                continue;
+              }
+              if (sorted_vars.find(var_name) != sorted_vars.end()) {
+                int index = FindIndexInSortedNodes(sorted_vars[var_name]);
+                if (index >= 0) {
+                  if (!flag) {
+                    from = index + 1 > from ? index + 1 : from;
+                  } else {
+                    to = index < to ? index : to;
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid");
+        sorted_nodes.insert(sorted_nodes.begin() + to, n);
+        sorted_vars[n->Name()] = n;
       }
     }
-
-    for (auto* out : n->outputs) {
-      if (out && out->IsOp() && out->Op()) {
-        int index = FindIndexInSortedNodes(out);
-        // Insert before output op node
-        if (index >= 0) {
-          to = index < to ? index : to;
-        }
-        //      auto* out_op = out->Op();
-        //      bool is_found = false;
-        //      for (size_t i = 0; i < out_op->InputArgumentNames().size(); ++i)
-        //      {
-        //        auto arg_name = out_op->InputArgumentNames()[i];
-        //        if (out_op->Input(arg_name) == n->Name()) {
-        //          is_found = true;
-        //        }
-        //      }
-      }
-    }
-
-    PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid");
-    LOG(INFO) << DebugString(n) << ", from:" << from << ", to:" << to;
-    sorted_nodes.insert(sorted_nodes.begin() + to, n);
   }
 
   std::vector<Node*> SortedOps() {
@@ -209,7 +220,6 @@ struct SubGraph {
       }
     }
 
-    LOG(INFO) << "Start: " << DebugString(start_op_n);
     std::vector<Node*> sorted_ops;
     sorted_ops.push_back(start_op_n);
     ops.erase(start_op_n);
@@ -234,8 +244,6 @@ struct SubGraph {
           }
         }
         if (found_connected_ops) {
-          LOG(INFO) << DebugString(op_n) << ", insert from:" << from
-                    << ", to:" << to;
           PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid");
           sorted_ops.insert(sorted_ops.begin() + to, op_n);
           erased_ops.insert(op_n);
@@ -286,11 +294,7 @@ struct SubGraph {
   void Sort() {
     if (!is_sorted) {
       sorted_nodes = SortedOps();
-      for (auto* n : nodes_set) {
-        if (n && n->IsVar() && n->Var()) {
-          InsertVarInOrder(n);
-        }
-      }
+      SortVarsBasedOnSortedOps();
     }
     is_sorted = true;
   }

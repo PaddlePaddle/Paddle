@@ -38,7 +38,6 @@ std::string CodeGenerator::Generate(SubGraph* subgraph) {
   for (auto* node : subgraph->SortedNodes()) {
     if (node && node->IsOp() && node->Op()) {
       auto* op = node->Op();
-      LOG(INFO) << "expression for " << op->Type();
 
       // Input ids should be set in fixed order, like:
       //  - x, y in forward operations
@@ -75,9 +74,6 @@ std::string CodeGenerator::Generate(SubGraph* subgraph) {
       }
       expressions.push_back(
           OperationExpression(node->Name(), input_ids, output_ids));
-      // InsertOperationExpression(
-      //     &expressions,
-      //     OperationExpression(node->Name(), input_ids, output_ids));
     }
   }
   return Generate(subgraph->func_name, expressions);
@@ -143,7 +139,7 @@ std::string CodeGenerator::EmitComputeBody(
   // get the right experssion code using suffix expression
   std::stringstream ret;
   for (size_t i = 0; i < expressions.size(); i++) {
-    LOG(INFO) << DebugString(expressions[i]);
+    VLOG(5) << DebugString(expressions[i]);
     ret << expressions[i].GetExpression();
   }
   return ret.str();
@@ -158,7 +154,7 @@ std::unordered_map<std::string, int> CodeGenerator::EncodeVarNodes(
   std::unordered_map<std::string, int> var_ids;
   // Numbering input vars.
   for (auto* in : input_var_nodes) {
-    LOG(INFO) << "input names:" << in->Name() << ", id:" << id;
+    VLOG(5) << "Encoding input names:" << in->Name() << ", id:" << id;
     if (var_ids.find(in->Name()) == var_ids.end()) {
       var_ids[in->Name()] = id++;
     }
@@ -190,45 +186,12 @@ std::unordered_map<std::string, int> CodeGenerator::EncodeVarNodes(
   }
   // Encoding output vars.
   for (auto* out : output_var_nodes) {
-    LOG(INFO) << "output names:" << out->Name() << ", id:" << id;
+    VLOG(5) << "Ecoding output names:" << out->Name() << ", id:" << id;
     if (var_ids.find(out->Name()) == var_ids.end()) {
       var_ids[out->Name()] = id++;
     }
   }
   return var_ids;
-}
-
-void CodeGenerator::InsertOperationExpression(
-    std::vector<OperationExpression>* expressions, OperationExpression expr) {
-  if (expressions->size() == 0U) {
-    expressions->push_back(expr);
-  } else {
-    int from = 0;
-    int to = expressions->size();
-    for (int i = 0; i < static_cast<int>(expressions->size()); ++i) {
-      // Check whether i-expr's output is expr's input.
-      for (auto in : expr.GetInputIds()) {
-        for (auto out : expressions->at(i).GetOutputIds()) {
-          // Insert expr after i-expr.
-          if (in == out && i >= from) {
-            from = i + 1;
-          }
-        }
-      }
-      // Check whether i-expr's input is expr's output.
-      for (auto out : expr.GetOutputIds()) {
-        for (auto in : expressions->at(i).GetInputIds()) {
-          // Insert expr before i-expr.
-          if (out == in && to > i) {
-            to = i;
-          }
-        }
-      }
-    }
-    PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid");
-    LOG(INFO) << "from:" << from << ", to:" << to;
-    expressions->insert(expressions->begin() + from, expr);
-  }
 }
 
 }  // namespace fusion_group

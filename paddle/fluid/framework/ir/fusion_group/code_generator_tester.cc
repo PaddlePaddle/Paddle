@@ -215,26 +215,26 @@ TEST(code_generator, elementwise_grad) {
 TEST(code_generator, subgraph) {
   // inputs                     operator            output
   // --------------------------------------------------------
-  // x1                         sigmoid          -> tmp_0
-  // (x0, tmp_0)                elementwise_mul  -> tmp_1
-  // x3                         tanh             -> tmp_2
-  // (x2, tmp_2)                elementwise_mul  -> tmp_3
+  // x0                         sigmoid          -> tmp_0
+  // (tmp_0, x1)                elementwise_mul  -> tmp_1
+  // x2                         tanh             -> tmp_2
+  // (x3, tmp_2)                elementwise_mul  -> tmp_3
   // (tmp_1, tmp_3)             elementwise_add  -> tmp_4
   //
-  // Expression: tmp_4 = x0 * sigmoid(x1) + x2 * tanh(x3)
-  // The var order:
+  // Expression: tmp_4 = sigmoid(x0) * x1 + tanh(x2) * x3
+  // The var order: x0, x1, x2, x3, tmp_0, tmp_2, tmp_1, tmp_3, tmp_4
   paddle::framework::ir::Layers layers;
-  auto* x1 = layers.data("x1", {16, 32});
-  auto* tmp_0 = layers.sigmoid(x1);
-  tmp_0->SetShape({16, 32});
   auto* x0 = layers.data("x0", {16, 32});
-  auto* tmp_1 = layers.elementwise_mul(x0, tmp_0);
+  auto* tmp_0 = layers.sigmoid(x0);
+  tmp_0->SetShape({16, 32});
+  auto* x1 = layers.data("x1", {16, 32});
+  auto* tmp_1 = layers.elementwise_mul(tmp_0, x1);
   tmp_1->SetShape({16, 32});
-  auto* x3 = layers.data("x3", {16, 32});
-  auto* tmp_2 = layers.tanh(x3);
-  tmp_2->SetShape({16, 32});
   auto* x2 = layers.data("x2", {16, 32});
-  auto* tmp_3 = layers.elementwise_mul(x2, tmp_2);
+  auto* tmp_2 = layers.tanh(x2);
+  tmp_2->SetShape({16, 32});
+  auto* x3 = layers.data("x3", {16, 32});
+  auto* tmp_3 = layers.elementwise_mul(x3, tmp_2);
   tmp_3->SetShape({16, 32});
   layers.elementwise_add(tmp_1, tmp_3);
 
@@ -242,14 +242,13 @@ TEST(code_generator, subgraph) {
       new paddle::framework::ir::Graph(layers.main_program()));
   fusion_group::SubGraph subgraph(0, "elementwise_kernel_1", true,
                                   graph->Nodes());
-  LOG(INFO) << "SubGraph: {\n" << DebugString(subgraph.Nodes()) << "}\n";
-  LOG(INFO) << "Sorted SubGraph: {\n"
-            << DebugString(subgraph.SortedNodes()) << "}\n";
 
   // Prepare CPU tensors
   std::vector<paddle::framework::LoDTensor> cpu_tensors(9);
-  std::vector<int> input_ids = {0, 1};
-  std::vector<int> output_ids = {2, 3};
+  // input_ids and output_ds should be consistant with that parsed from
+  // subgraph.
+  std::vector<int> input_ids = {0, 1, 2, 3};
+  std::vector<int> output_ids = {4, 5, 6, 7, 8};
 
   auto dims = paddle::framework::make_ddim(
       {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
@@ -260,19 +259,22 @@ TEST(code_generator, subgraph) {
   int n = cpu_tensors[0].numel();
   TestMain(&subgraph, cpu_tensors, n, input_ids, output_ids);
 
-  auto cpu_kernel_handler = [&](float* var0, float* var1,
-                                int i) -> std::vector<float> {
-    float var2_i = var0[i] + var1[i];
-    float var3_i = var2_i > 0 ? var2_i : 0;
-    return std::vector<float>{var2_i, var3_i};
+  auto cpu_kernel_handler = [&](float* var0, float* var1, float* var2,
+                                float* var3, int i) -> float {
+    float var4_i = 1.0 / (1.0 + std::exp(-var0[i]));
+    float var6_i = var4_i * var1[i];
+    float var5_i = std::tanh(var2[i]);
+    float var7_i = var3[i] * var5_i;
+    float var8_i = var6_i + var7_i;
+    return var8_i;
   };
 
   // Check the results
   for (int i = 0; i < n; i++) {
-    std::vector<float> results = cpu_kernel_handler(
-        cpu_tensors[0].data<float>(), cpu_tensors[1].data<float>(), i);
-    CheckOutput(cpu_tensors[2].data<float>()[i], results[0]);
-    CheckOutput(cpu_tensors[3].data<float>()[i], results[1]);
+    float result = cpu_kernel_handler(
+        cpu_tensors[0].data<float>(), cpu_tensors[1].data<float>(),
+        cpu_tensors[2].data<float>(), cpu_tensors[3].data<float>(), i);
+    CheckOutput(cpu_tensors[8].data<float>()[i], result);
   }
 }
 #endif
