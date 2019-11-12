@@ -192,7 +192,8 @@ class GreaterThanChecker {
  public:
   explicit GreaterThanChecker(T lower_bound) : lower_bound_(lower_bound) {}
   void operator()(const T& value) const {
-    PADDLE_ENFORCE(value > lower_bound_, "larger_than check fails.");
+    PADDLE_ENFORCE_GT(value, lower_bound_,
+                      platform::errors::OutOfRange("larger_than check fails."));
   }
 
  private:

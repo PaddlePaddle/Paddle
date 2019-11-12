@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
@@ -112,7 +114,8 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
 LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE(scope_, "Need to init scope first");
   auto *var = scope_->FindVar(name);
-  PADDLE_ENFORCE(var, "No variable [%s] in the scope");
+  PADDLE_ENFORCE_NOT_NULL(
+      var, platform::errors::NotFound("No variable [%s] in the scope.", name));
   auto *tensor = const_cast<LoDTensor *>(&var->Get<LoDTensor>());
   return tensor;
 }
