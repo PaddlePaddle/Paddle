@@ -82,7 +82,7 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
     const int64_t h = x_dims[2];
     const int64_t w = x_dims[3];
 
-    const int64_t simd_width = 16;
+    const int simd_width = 16;
     auto multiply =
         jit::KernelFuncs<jit::NCHW16CMulNCTuple<T>, platform::CPUPlace>::Cache()
             .At(0);
