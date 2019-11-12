@@ -91,7 +91,7 @@ class QuantizationTransformPass(object):
             window_size (int): the window size for 'range_abs_max' quantization.
             skip_pattern(str or str list): The user-defined quantization skip pattern, which
                 will be presented in the name scope of an op. When the skip pattern is
-                detected in an op's name scope, the corresponding op will not be quantized.
+                detected in an op's name scope, the corresponding op will not be quantized. 
             quantizable_op_type(list[str]): List the type of ops that will be quantized. 
                 Default is ["conv2d", "depthwise_conv2d", "mul"].
 
