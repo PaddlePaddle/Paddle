@@ -32,12 +32,11 @@ void CheckNanInf(const T* value, const size_t numel, int print_num,
   T sum = static_cast<T>(0.0);
 #pragma omp parallel for simd reduction(+ : sum)
   for (size_t i = 0; i < numel; ++i) {
-    T val = value[i] - value[i];
-    sum += val;
+    sum += (value[i] - value[i]);
   }
 
   if (std::isnan(sum) || std::isinf(sum)) {
-    // cpu print all value
+    // CPU print all value
     for (size_t i = 0; i < numel; ++i) {
       printf("idx:%lu value:%f\n", static_cast<uint64_t>(i),
              static_cast<float>(value[i]));
@@ -50,29 +49,18 @@ void CheckNanInf(const T* value, const size_t numel, int print_num,
 
 template <>
 template <typename T>
-void CheckNanInfTool<platform::CPUDeviceContext>::run(
-    const std::string& op_type, const std::string& var_name,
-    const framework::Tensor& tensor, const platform::Place& place,
-    int print_num,
-    typename std::enable_if<std::is_floating_point<T>::value>::type*) {
-  platform::DeviceContextPool::Instance().Get(tensor.place());
-
-  CheckNanInf(tensor.data<T>(), tensor.numel(), print_num, op_type, var_name);
-}
-
-template <>
-template <typename T>
-void TensorCheckerVisitor<platform::CPUDeviceContext>::apply() const {
+void TensorCheckerVisitor<platform::CPUDeviceContext>::apply(
+    typename std::enable_if<std::is_floating_point<T>::value>::type*) const {
   int print_num = 3;
-  CheckNanInfTool<platform::CPUDeviceContext> tools;
-  tools.run<T>(op_type_, var_name_, tensor_, place_, print_num);
+  CheckNanInf(tensor_.data<T>(), tensor_.numel(), print_num, op_type_,
+              var_name_);
 }
 
 template <>
-void visit<platform::CPUDeviceContext>(const std::string& op_type,
-                                       const std::string& var_name,
-                                       const framework::Tensor& tensor,
-                                       const platform::Place& place) {
+void tensor_check<platform::CPUDeviceContext>(const std::string& op_type,
+                                              const std::string& var_name,
+                                              const framework::Tensor& tensor,
+                                              const platform::Place& place) {
   TensorCheckerVisitor<platform::CPUDeviceContext> vistor(op_type, var_name,
                                                           tensor, place);
   VisitDataType(tensor.type(), vistor);
@@ -105,14 +93,15 @@ void EnforceNoNanOrInf(const std::string& op_type,
 
   if (platform::is_gpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_CUDA
-    visit<platform::CUDADeviceContext>(op_type, var_name, *tensor, place);
+    tensor_check<platform::CUDADeviceContext>(op_type, var_name, *tensor,
+                                              place);
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif
     return;
   }
 
-  visit<platform::CPUDeviceContext>(op_type, var_name, *tensor, place);
+  tensor_check<platform::CPUDeviceContext>(op_type, var_name, *tensor, place);
 }
 
 }  // namespace details

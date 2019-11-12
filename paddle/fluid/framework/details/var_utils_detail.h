@@ -24,31 +24,6 @@ namespace framework {
 namespace details {
 
 template <typename DeviceContext>
-struct CheckNanInfTool {
-  template <typename T>
-  void run(const std::string& op_type, const std::string& var_name,
-           const framework::Tensor& tensor, const platform::Place& place,
-           int print_num,
-           typename std::enable_if<std::is_integral<T>::value>::type* = 0);
-
-  template <typename T>
-  void run(
-      const std::string& op_type, const std::string& var_name,
-      const framework::Tensor& tensor, const platform::Place& place,
-      int print_num,
-      typename std::enable_if<std::is_floating_point<T>::value>::type* = 0);
-};
-
-template <typename DeviceContext>
-template <typename T>
-void CheckNanInfTool<DeviceContext>::run(
-    const std::string& op_type, const std::string& var_name,
-    const framework::Tensor& tensor, const platform::Place& place,
-    int print_num, typename std::enable_if<std::is_integral<T>::value>::type*) {
-  VLOG(10) << var_name << " need not to check, it's type is not float point";
-}
-
-template <typename DeviceContext>
 struct TensorCheckerVisitor {
   TensorCheckerVisitor(const std::string& op_type, const std::string& var_name,
                        const framework::Tensor& tensor,
@@ -59,7 +34,14 @@ struct TensorCheckerVisitor {
         place_(place) {}
 
   template <typename T>
-  void apply() const;
+  void apply(
+      typename std::enable_if<std::is_integral<T>::value>::type* = 0) const {
+    VLOG(10) << var_name_ << " need not to check, it's type is not float point";
+  }
+
+  template <typename T>
+  void apply(typename std::enable_if<std::is_floating_point<T>::value>::type* =
+                 0) const;
 
   std::string op_type_;
   std::string var_name_;
@@ -68,8 +50,9 @@ struct TensorCheckerVisitor {
 };
 
 template <typename DeviceContext>
-void visit(const std::string& op_type, const std::string& var_name,
-           const framework::Tensor& tensor, const platform::Place& place);
+void tensor_check(const std::string& op_type, const std::string& var_name,
+                  const framework::Tensor& tensor,
+                  const platform::Place& place);
 
 }  // namespace details
 }  // namespace framework

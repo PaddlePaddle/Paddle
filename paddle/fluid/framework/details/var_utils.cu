@@ -74,15 +74,14 @@ __global__ void CheckNanInfKernel(const T* value, const size_t numel,
 
 template <>
 template <typename T>
-void CheckNanInfTool<platform::CUDADeviceContext>::run(
-    const std::string& op_type, const std::string& var_name,
-    const framework::Tensor& tensor, const platform::Place& place,
-    int print_num,
-    typename std::enable_if<std::is_floating_point<T>::value>::type*) {
-  auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
-      platform::DeviceContextPool::Instance().Get(tensor.place()));
+void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
+    typename std::enable_if<std::is_floating_point<T>::value>::type*) const {
+  int print_num = 3;
 
-  std::string debug_str = "[op=" + op_type + "] [tensor=" + var_name + "]";
+  auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+      platform::DeviceContextPool::Instance().Get(tensor_.place()));
+
+  std::string debug_str = "[op=" + op_type_ + "] [tensor=" + var_name_ + "]";
   auto debug_tensor = paddle::memory::Alloc(*dev_ctx, debug_str.length() + 1);
   char* debug_ptr = reinterpret_cast<char*>(debug_tensor->ptr());
 
@@ -91,24 +90,16 @@ void CheckNanInfTool<platform::CUDADeviceContext>::run(
                       cudaMemcpyHostToDevice, dev_ctx->stream()));
 
   const size_t threads = 1024;
-  size_t blocks = std::min(128ul, (tensor.numel() + threads - 1) / threads);
+  size_t blocks = std::min(128ul, (tensor_.numel() + threads - 1) / threads);
   CheckNanInfKernel<<<blocks, threads, 0, dev_ctx->stream()>>>(
-      tensor.data<T>(), tensor.numel(), print_num, debug_ptr);
+      tensor_.data<T>(), tensor_.numel(), print_num, debug_ptr);
 }
 
 template <>
-template <typename T>
-void TensorCheckerVisitor<platform::CUDADeviceContext>::apply() const {
-  int print_num = 3;
-  CheckNanInfTool<platform::CUDADeviceContext> tools;
-  tools.run<T>(op_type_, var_name_, tensor_, place_, print_num);
-}
-
-template <>
-void visit<platform::CUDADeviceContext>(const std::string& op_type,
-                                        const std::string& var_name,
-                                        const framework::Tensor& tensor,
-                                        const platform::Place& place) {
+void tensor_check<platform::CUDADeviceContext>(const std::string& op_type,
+                                               const std::string& var_name,
+                                               const framework::Tensor& tensor,
+                                               const platform::Place& place) {
   TensorCheckerVisitor<platform::CUDADeviceContext> vistor(op_type, var_name,
                                                            tensor, place);
   VisitDataType(tensor.type(), vistor);
