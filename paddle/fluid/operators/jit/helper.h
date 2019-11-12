@@ -175,13 +175,22 @@ typename KernelTuple::func_type GetDefaultBestFunc(
   return funcs[0];
 }
 
+extern thread_local std::unordered_map<std::string, void*> g_func_cache_map;
+
 template <typename KernelTuple, typename PlaceType>
 class KernelFuncs {
  public:
   KernelFuncs() = default;
   static KernelFuncs& Cache() {
-    static thread_local KernelFuncs<KernelTuple, PlaceType> g_func_cache;
-    return g_func_cache;
+    std::string key = typeid(KernelFuncs<KernelTuple, PlaceType>).name();
+    if (g_func_cache_map.find(key) != g_func_cache_map.end()) {
+      auto func_cache = g_func_cache_map.at(key);
+      return *(KernelFuncs<KernelTuple, PlaceType>*)(func_cache);
+    } else {
+      auto cache = new KernelFuncs<KernelTuple, PlaceType>;
+      g_func_cache_map.insert(make_pair(key, std::move(cache)));
+      return *(KernelFuncs<KernelTuple, PlaceType>*)cache;
+    }
   }
 
   // the exposed interface to use

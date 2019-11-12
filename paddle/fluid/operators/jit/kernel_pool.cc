@@ -21,6 +21,8 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
+thread_local std::unordered_map<std::string, void*> g_jit_codes_map;
+
 JitCodeCreatorPool& JitCodeCreatorPool::Instance() {
   static JitCodeCreatorPool g_creator_pool;
   return g_creator_pool;
