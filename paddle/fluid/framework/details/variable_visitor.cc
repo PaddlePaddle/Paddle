@@ -24,7 +24,9 @@ static void VisitVariable(Variable* var, Func* func) {
   } else if (var->IsType<SelectedRows>()) {
     (*func)(var->GetMutable<SelectedRows>());
   } else {
-    PADDLE_THROW("Not supported type %s", ToTypeName(var->Type()));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The variable data type %s is not supported.",
+        ToTypeName(var->Type())));
   }
 }
 
@@ -35,7 +37,8 @@ static void VisitVariable(const Variable& var, Func* func) {
   } else if (var.IsType<SelectedRows>()) {
     (*func)(var.Get<SelectedRows>());
   } else {
-    PADDLE_THROW("Not supported type %s", ToTypeName(var.Type()));
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The variable data type %s is not supported.", ToTypeName(var.Type())));
   }
 }
 

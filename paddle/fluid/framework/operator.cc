@@ -1147,17 +1147,21 @@ void OperatorWithKernel::ParseInputDataType(
         t = &(var->Get<SelectedRows>().value());
       }
       if (t != nullptr) {
-        PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                          "The Tensor in the %s Op's Input Variable %s(%s) is "
-                          "not initialized.",
-                          Type(), name, ctx.Inputs(name).at(i));
+        PADDLE_ENFORCE_EQ(
+            t->IsInitialized(), true,
+            platform::errors::InvalidArgument(
+                "The Tensor in the %s Op's Input Variable %s(%s) is "
+                "not initialized.",
+                Type(), name, ctx.Inputs(name).at(i)));
         proto::VarType::Type tmp = t->type();
-        PADDLE_ENFORCE(tmp == *data_type || *data_type == dafault_data_type,
-                       "The DataType of %s Op's duplicable Variable %s must be "
-                       "consistent. The current variable type is (%s), but the "
-                       "previous variable type is (%s).",
-                       Type(), name, DataTypeToString(tmp),
-                       DataTypeToString(*data_type));
+        PADDLE_ENFORCE(
+            tmp == *data_type || *data_type == dafault_data_type,
+            platform::errors::InvalidArgument(
+                "The DataType of %s Op's duplicable Variable %s must be "
+                "consistent. The current variable type is (%s), but the "
+                "previous variable type is (%s).",
+                Type(), name, DataTypeToString(tmp),
+                DataTypeToString(*data_type)));
         *data_type = tmp;
       }
     }
