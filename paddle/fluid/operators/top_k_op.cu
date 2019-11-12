@@ -366,7 +366,7 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
   auto ComputeBlockSize = [](int col) {
     if (col > 512)
       return 1024;
-    else if (col > 256 && col < 512)
+    else if (col > 256 && col <= 512)
       return 512;
     else if (col > 128 && col <= 256)
       return 256;
@@ -403,7 +403,7 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
   int64_t* indices = indices_tensor->mutable_data<int64_t>(ctx.GetPlace());
 
   if (k == num_cols) {
-    // Doing a full sort, no intermediate values needed.
+    // Doing a full sort.
     sorted_values_ptr = values;
     sorted_indices_ptr = indices;
   } else {
@@ -413,6 +413,8 @@ bool SortTopk(const platform::CUDADeviceContext& ctx,
     sorted_indices_ptr = temp_indices.mutable_data<int64_t>(ctx.GetPlace());
   }
 
+  // Get temp storage buffer size, maybe can allocate a fixed buffer to save
+  // time.
   auto err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
       nullptr, temp_storage_bytes, input, sorted_values_ptr,
       input_indices.data<int64_t>(), sorted_indices_ptr, num_cols * num_rows,
