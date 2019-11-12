@@ -118,7 +118,12 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         float *pdata = static_cast<float *>(out.data.data());
         float *pdata_ref = static_cast<float *>(ref_out.data.data());
         for (size_t j = 0; j < size; ++j) {
-          CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
+          if (std::abs(pdata_ref[j]) > 1) {
+            CHECK_LE(std::abs((pdata_ref[j] - pdata[j]) / pdata_ref[j]),
+                     FLAGS_accuracy);
+          } else {
+            CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
+          }
         }
         break;
       }
@@ -169,7 +174,12 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
         float *pdata_ref = ref_out.data<float>(&place, &ref_size);
         EXPECT_EQ(size, ref_size);
         for (size_t j = 0; j < size; ++j) {
-          CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
+          if (std::abs(pdata_ref[j]) > 1) {
+            CHECK_LE(std::abs((pdata_ref[j] - pdata[j]) / pdata_ref[j]),
+                     FLAGS_accuracy);
+          } else {
+            CHECK_LE(std::abs(pdata_ref[j] - pdata[j]), FLAGS_accuracy);
+          }
         }
         break;
       }
