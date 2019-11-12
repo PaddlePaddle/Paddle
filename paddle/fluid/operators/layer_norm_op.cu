@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <cub/cub.cuh>
+#include <memory>
+#include <vector>
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/operators/layer_norm_op.h"
 
 namespace paddle {
@@ -423,6 +426,38 @@ static void LayerNormBackward(const T *x, const T *d_y, const T *scale,
       }
       break;
     default:
+      break;
+  }
+}
+
+template <typename T>
+void LayerNormDirectCUDAFunctor<T>::operator()(
+    cudaStream_t stream, const T *input, std::vector<int> input_shape,
+    const T *bias, const T *scale, T *output, std::vector<int64_t> mean_shape,
+    std::vector<int64_t> variance_shape, int begin_norm_axis, float eps) {
+  const auto x_dims = framework::make_ddim(input_shape);
+  const auto mean_dims = framework::make_ddim(mean_shape);
+  const auto variance_dims = framework::make_ddim(variance_shape);
+
+  std::unique_ptr<Tensor> mean(new Tensor());
+  std::unique_ptr<Tensor> variance(new Tensor());
+  mean->Resize(mean_dims);
+  variance->Resize(variance_dims);
+  auto *mean_data = mean->mutable_data<T>(paddle::platform::CUDAPlace());
+  auto *variance_data =
+      variance->mutable_data<T>(paddle::platform::CUDAPlace());
+
+  auto matrix_dim = framework::flatten_to_2d(x_dims, begin_norm_axis);
+  int batch_size = static_cast<int>(matrix_dim[0]);
+  int feature_size = static_cast<int>(matrix_dim[1]);
+
+  switch (GetDesiredBlockDim(feature_size)) {
+    FIXED_BLOCK_DIM_CASE(
+        LayerNormForward<T, kBlockDim><<<batch_size, kBlockDim, 0, stream>>>(
+            input, scale, bias, output, mean_data, variance_data, eps,
+            feature_size));
+    default:
+      PADDLE_THROW("Product from begin_norm_axis to end must be larger than 1");
       break;
   }
 }

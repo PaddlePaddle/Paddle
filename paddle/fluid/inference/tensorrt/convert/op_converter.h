@@ -43,7 +43,7 @@ TRT_DT FluidDataType2TRT(FluidDT type) {
     default:
       return TRT_DT::kINT32;
   }
-  PADDLE_THROW("unkown type");
+  PADDLE_THROW("unknown type");
   return TRT_DT::kINT32;
 }
 
@@ -52,9 +52,10 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t>& shape) {
                     "TensorRT' tensor input requires at least 2 dimensions");
   PADDLE_ENFORCE_LE(shape.size(), 4UL,
                     "TensorRT' tensor input requires at most 4 dimensions");
-  PADDLE_ENFORCE(shape.size() == 4UL || shape.size() == 2UL);
   if (shape.size() == 4UL)
     return nvinfer1::DimsCHW(shape[1], shape[2], shape[3]);
+  else if (shape.size() == 3UL)
+    return nvinfer1::DimsCHW(shape[1], shape[2], 1);
   return nvinfer1::DimsCHW(shape[1], 1, 1);
 }
 

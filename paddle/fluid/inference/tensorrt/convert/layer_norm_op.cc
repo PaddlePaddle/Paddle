@@ -36,74 +36,81 @@ class LayerNormOpConverter : public OpConverter {
     // Declare weights
     auto* Bias_v = scope.FindVar(op_desc.Input("Bias").front());
     auto* Scale_v = scope.FindVar(op_desc.Input("Scale").front());
-    const float eps = boost::get<float>(op_desc.GetAttr("epsilon"));
+    auto* Mean_v = scope.FindVar(op_desc.Output("Mean").front());
+    auto* Variance_v = scope.FindVar(op_desc.Output("Variance").front());
+    const int begin_norm_axis =
+        op_desc.HasAttr("begin_norm_axis")
+            ? boost::get<int>(op_desc.GetAttr("begin_norm_axis"))
+            : 1;
+    const float eps = op_desc.HasAttr("epsilon")
+                          ? boost::get<float>(op_desc.GetAttr("epsilon"))
+                          : 1e-5f;
 
-    PADDLE_ENFORCE_NOT_NULL(Bias_v);
-    PADDLE_ENFORCE_NOT_NULL(Scale_v);
+    nvinfer1::Dims input_shape = X->getDimensions();
+    int input_dims = input_shape.nbDims;
+
+    PADDLE_ENFORCE_NOT_NULL(Bias_v,
+                            "Input(Bias) of layer_norm should not be null.");
+    PADDLE_ENFORCE_NOT_NULL(Scale_v,
+                            "Input(Scale) of layer_norm should not be null.");
 
     // get tensor
     auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
     auto* Scale_t = Scale_v->GetMutable<framework::LoDTensor>();
+    auto* Mean_t = Mean_v->GetMutable<framework::LoDTensor>();
+    auto* Variance_t = Variance_v->GetMutable<framework::LoDTensor>();
+
+    std::vector<int64_t> mean_shape =
+        framework::vectorize<int64_t>(Mean_t->dims());
+    std::vector<int64_t> variance_shape =
+        framework::vectorize<int64_t>(Variance_t->dims());
 
     // create temp tensor for weights
-    framework::LoDTensor bias_tensor;
-    framework::LoDTensor scale_tensor;
+    std::unique_ptr<framework::LoDTensor> bias_tensor(
+        new framework::LoDTensor());
+    std::unique_ptr<framework::LoDTensor> scale_tensor(
+        new framework::LoDTensor());
 
-    bias_tensor.Resize(Bias_t->dims());
-    scale_tensor.Resize(Scale_t->dims());
+    bias_tensor->Resize(Bias_t->dims());
+    scale_tensor->Resize(Scale_t->dims());
 
     platform::CPUPlace cpu_place;
     // copy data from gpu to cpu
-    TensorCopySync((*Bias_t), cpu_place, &bias_tensor);
-    TensorCopySync((*Scale_t), cpu_place, &scale_tensor);
+    TensorCopySync((*Bias_t), cpu_place, &(*bias_tensor));
+    TensorCopySync((*Scale_t), cpu_place, &(*scale_tensor));
 
-    auto* bias_data = bias_tensor.mutable_data<float>(platform::CPUPlace());
-    auto* scale_data = scale_tensor.mutable_data<float>(platform::CPUPlace());
+    auto* bias_data = bias_tensor->mutable_data<float>(platform::CPUPlace());
+    auto* scale_data = scale_tensor->mutable_data<float>(platform::CPUPlace());
 
-    std::unique_ptr<framework::LoDTensor> combine_scale_tensor(
-        new framework::LoDTensor());
-    std::unique_ptr<framework::LoDTensor> combine_bias_tensor(
-        new framework::LoDTensor());
-
-    combine_scale_tensor->Resize(scale_tensor.dims());
-    combine_bias_tensor->Resize(bias_tensor.dims());
-
-    auto* combine_scale_data =
-        combine_scale_tensor->mutable_data<float>(platform::CPUPlace());
-    auto* combine_bias_data =
-        combine_bias_tensor->mutable_data<float>(platform::CPUPlace());
-
-    size_t ele_num = combine_scale_tensor->memory_size() / sizeof(float);
-
-    for (size_t i = 0; i < ele_num; i++) {
-      float scale = scale_data[i];
-      float bias = bias_data[i];
-      float mean = mean_data[i];
-      float variance = variance_data[i];
-      combine_scale_data[i] = scale / sqrtf(variance + eps);
-      combine_bias_data[i] = bias - mean * combine_scale_data[i];
+    int d0 = 0;
+    int d1 = 0;
+    int d2 = 0;
+    int d3 = 0;
+    if (input_dims == 3) {
+      d0 = input_shape.d[0];
+      d1 = input_shape.d[1];
+      d2 = input_shape.d[2];
+      d3 = 1;
     }
+    nvinfer1::Dims4 reshape_dim(d0, d1, d2, d3);
 
-    TensorRTEngine::Weight scale_weights{
-        nvinfer1::DataType::kFLOAT, static_cast<void*>(combine_scale_data),
-        combine_scale_tensor->memory_size() / sizeof(float)};
-    TensorRTEngine::Weight shift_weights{
-        nvinfer1::DataType::kFLOAT, static_cast<void*>(combine_bias_data),
-        combine_bias_tensor->memory_size() / sizeof(float)};
-    TensorRTEngine::Weight power_weights{nvinfer1::DataType::kFLOAT, nullptr,
-                                         0};
+    auto* reshape_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Shuffle, *const_cast<nvinfer1::ITensor*>(X));
+    reshape_layer->setReshapeDimensions(reshape_dim);
+    auto* input_after_reshape = reshape_layer->getOutput(0);
 
-    nvinfer1::IScaleLayer* layer =
-        TRT_ENGINE_ADD_LAYER(engine_, Scale, *const_cast<nvinfer1::ITensor*>(X),
-                             nvinfer1::ScaleMode::kCHANNEL, shift_weights.get(),
-                             scale_weights.get(), power_weights.get());
+    plugin::LayerNormPlugin* plugin = new plugin::LayerNormPlugin(
+        bias_data, bias_tensor->numel(), scale_data, scale_tensor->numel(),
+        begin_norm_axis, eps, mean_shape, variance_shape);
+    nvinfer1::IPluginLayer* layernorm_layer =
+        engine_->AddPlugin(&input_after_reshape, 1, plugin);
 
     auto output_name = op_desc.Output("Y").front();
-    engine_->SetWeights(op_desc.Input("Bias").front(),
-                        std::move(combine_bias_tensor));
+    engine_->SetWeights(op_desc.Input("Bias").front(), std::move(bias_tensor));
     engine_->SetWeights(op_desc.Input("Scale").front(),
-                        std::move(combine_scale_tensor));
-    RreplenishLayerAndOutput(layer, "batch_norm", {output_name}, test_mode);
+                        std::move(scale_tensor));
+    RreplenishLayerAndOutput(layernorm_layer, "layer_norm", {output_name},
+                             test_mode);
   }
 };
 

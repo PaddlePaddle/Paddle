@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
@@ -164,6 +166,18 @@ struct MulInvVarFunctor {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using DataLayout = framework::DataLayout;
+
+#ifdef PADDLE_WITH_CUDA
+template <typename T>
+class LayerNormDirectCUDAFunctor {
+ public:
+  void operator()(cudaStream_t stream, const T* input,
+                  std::vector<int> input_shape, const T* bias, const T* scale,
+                  T* output, std::vector<int64_t> mean_shape,
+                  std::vector<int64_t> variance_shape, int begin_norm_axis,
+                  float eps);
+};
+#endif
 
 template <typename DeviceContext, typename T>
 class LayerNormKernel : public framework::OpKernel<T> {
