@@ -28,7 +28,9 @@ inline const T* Tensor::data() const {
   PADDLE_ENFORCE(
       valid, "Tensor holds the wrong type, it holds %s, but desires to be %s",
       DataTypeToString(type_), DataTypeToString(DataTypeTrait<T>::DataType()));
-
+#ifdef PADDLE_WITH_TESTING
+  AddToThreadLocalUsedTensorSet(this);
+#endif
   return reinterpret_cast<const T*>(
       reinterpret_cast<uintptr_t>(holder_->ptr()) + offset_);
 }
@@ -43,6 +45,9 @@ inline T* Tensor::data() {
   PADDLE_ENFORCE(
       valid, "Tensor holds the wrong type, it holds %s, but desires to be %s",
       DataTypeToString(type_), DataTypeToString(DataTypeTrait<T>::DataType()));
+#ifdef PADDLE_WITH_TESTING
+  AddToThreadLocalUsedTensorSet(this);
+#endif
   return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                               offset_);
 }
@@ -58,6 +63,9 @@ inline T* Tensor::mutable_data(DDim dims, platform::Place place,
 template <typename T>
 inline T* Tensor::mutable_data(platform::Place place, size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
+#ifdef PADDLE_WITH_TESTING
+  AddToThreadLocalUsedTensorSet(this);
+#endif
   return reinterpret_cast<T*>(
       mutable_data(place, DataTypeTrait<T>::DataType(), requested_size));
 }

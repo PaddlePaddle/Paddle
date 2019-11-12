@@ -17,6 +17,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
 extern size_t SizeOfType(proto::VarType::Type type);
 void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -56,6 +57,12 @@ void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
     holder_ = memory::AllocShared(place, size);
     offset_ = 0;
   }
+
+#ifdef PADDLE_WITH_TESTING
+  AddToThreadLocalUsedTensorSet(this);
+
+#endif
+
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  offset_);
 }
@@ -112,6 +119,17 @@ void Tensor::ResetHolder(std::shared_ptr<memory::Allocation> holder) {
   }
   holder_ = holder;
 }
+
+#ifdef PADDLE_WITH_TESTING
+std::unordered_set<const Tensor*>* GetThreadLocalUsedTensorSet() {
+  thread_local std::unordered_set<const Tensor*> used_tensor_set;
+  return &used_tensor_set;
+}
+void AddToThreadLocalUsedTensorSet(const Tensor* tensor) {
+  auto* used_tensor_set = GetThreadLocalUsedTensorSet();
+  used_tensor_set->insert(tensor);
+}
+#endif
 
 }  // namespace framework
 }  // namespace paddle

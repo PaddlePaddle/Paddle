@@ -22,6 +22,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
@@ -41,12 +42,115 @@ DEFINE_bool(fast_check_nan_inf, false,
 namespace paddle {
 namespace framework {
 
+static std::unordered_set<std::string>* GetThreadLocalSet() {
+  thread_local std::unordered_set<std::string> str_set;
+  return &str_set;
+}
+
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kPlain),
     std::make_tuple(platform::CPUPlace(), LibraryType::kMKLDNN),
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
+
+#ifdef PADDLE_WITH_TESTING
+static void InitUsedTensorSet() {
+  auto* used_tensor_set = framework::GetThreadLocalUsedTensorSet();
+  used_tensor_set->clear();
+}
+
+static std::vector<const Tensor*> GetTensorFromVariable(const Variable* var) {
+  // types refer to InitializeVariable()
+  // support variable types that hold tensor(s)
+  VLOG(6) << "Variable type is " << var->Type() << ".";
+  std::vector<const Tensor*> tensors;
+  if (var->IsType<LoDTensor>()) {
+    auto* tensor = &var->Get<LoDTensor>();
+    tensors.push_back(tensor);
+  } else if (var->IsType<SelectedRows>()) {
+    auto tensor = &var->Get<SelectedRows>().value();
+    tensors.push_back(tensor);
+  } else if (var->IsType<FeedFetchList>()) {
+    auto list = var->Get<FeedFetchList>();
+    for (auto t : list) {
+      auto* tensor = &t;
+      tensors.push_back(tensor);
+    }
+  } else if (var->IsType<LoDTensorArray>()) {
+    auto array = var->Get<LoDTensorArray>();
+    for (auto t : array) {
+      auto* tensor = &t;
+      tensors.push_back(tensor);
+    }
+  } else {
+    VLOG(6) << "Not support check for " << var->Type() << " type!";
+  }
+  return tensors;
+}
+
+static void CheckUnusedTensors(const OperatorBase& op, const Scope& scope) {
+  auto* used_tensor_set = framework::GetThreadLocalUsedTensorSet();
+  std::vector<std::string> unsed_input_var_names;
+  auto& inferer = op.Info().NoNeedBufferVarsInferer();
+  std::unordered_set<std::string> no_need_buffer_ins = {};
+
+  if (inferer) {
+    no_need_buffer_ins = inferer(op.Inputs(), op.Outputs(), op.Attrs());
+  }
+
+  for (auto& pair : op.Inputs()) {
+    // skip no need buffer vars declared
+    if (no_need_buffer_ins.count(pair.first) != 0) {
+      VLOG(6) << op.Type() << " " << pair.first;
+      continue;
+    }
+    bool used = false;
+    bool empty_var = true;
+    // Example: Given Variable X[x1, x2, x3], in which x1[a1, a2, a3] is a
+    // LoDTensorArray.
+    // X is used if one item of [x1, x2, x3] is used,
+    // and x1 is used if one item of [a1, a2, a3] is used.
+    for (auto& in_var_name : pair.second) {
+      auto* var = scope.FindVar(in_var_name);
+      if (var == nullptr) {
+        continue;
+      }
+      empty_var = false;
+      auto tensors = GetTensorFromVariable(var);
+      if (tensors.size() == 0) {
+        VLOG(6) << pair.first << " has no tensor.";
+        used = true;
+      }
+      for (auto* tensor : tensors) {
+        if (used_tensor_set->count(tensor) != 0) {
+          used = true;
+          break;
+        }
+      }
+      if (used) {
+        break;
+      }
+    }
+    VLOG(6) << pair.first << " is empty: " << empty_var
+            << ", all tensors are used: " << used;
+    if ((!empty_var) && (!used)) {
+      unsed_input_var_names.push_back(pair.first);
+    }
+  }
+
+  if (!unsed_input_var_names.empty()) {
+    std::string err_msg = "Operator " + op.Type() + " has input(s) not uesed: ";
+    for (auto& in_var_name : unsed_input_var_names) {
+      err_msg += in_var_name;
+      err_msg += ", ";
+    }
+    err_msg += "please remove it from inputs or register NoNeedBufferVars!";
+    LOG(ERROR) << err_msg;
+  }
+}
+
+#endif
 
 static DDim GetDimsDebug(const Scope& scope, const std::string& name,
                          bool get_actual_dim = false) {
@@ -149,6 +253,9 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   try {
+#ifdef PADDLE_WITH_TESTING
+    InitUsedTensorSet();
+#endif
     VLOG(4) << place << " " << DebugStringEx(&scope);
     if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
@@ -170,6 +277,10 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       RunImpl(scope, place);
     }
     VLOG(3) << place << " " << DebugStringEx(&scope);
+
+#ifdef PADDLE_WITH_TESTING
+    CheckUnusedTensors(*this, scope);
+#endif
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <cstring>
 #include <memory>
 #include <typeindex>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/data_layout.h"
@@ -204,6 +205,11 @@ class Tensor {
    */
   size_t offset_;
 };
+
+#ifdef PADDLE_WITH_TESTING
+std::unordered_set<const Tensor*>* GetThreadLocalUsedTensorSet();
+void AddToThreadLocalUsedTensorSet(const Tensor* tensor);
+#endif
 
 }  // namespace framework
 }  // namespace paddle
