@@ -861,6 +861,8 @@ class DistributeTranspiler(object):
         if self.has_distributed_lookup_table:
             sparse_table_names.append(self.table_name)
 
+        sparse_table_names = list(set(sparse_table_names))
+
         for table_name in sparse_table_names:
             table_var = self.startup_program.global_block().vars[table_name]
             table_param_init_op = []
@@ -937,7 +939,24 @@ class DistributeTranspiler(object):
         # FIXME(gongwb): delete not need ops.
         # note that: some parameter is not trainable and those ops can't be deleted.
 
+        sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
+
+        sparse_table_names = []
+        for op in self.origin_program.global_block().ops:
+            if op.type in sparse_update_op_types and op.attr(
+                    'is_sparse') is True:
+                sparse_table_names.append(op.input("W")[0])
+            if op.type == "distributed_lookup_table":
+                sparse_table_names.append(op.input("W")[0])
+
+        if self.has_distributed_lookup_table:
+            sparse_table_names.append(self.table_name)
+
         for varname, splited_var in six.iteritems(self.param_var_mapping):
+
+            if varname in sparse_table_names:
+                continue
+
             # Get the eplist of recv vars
             eps = []
             for var in splited_var:
@@ -979,6 +998,9 @@ class DistributeTranspiler(object):
             })
 
         for varname, splited_var in six.iteritems(self.param_var_mapping):
+            if varname in sparse_table_names:
+                continue
+
             # add concat ops to merge splited parameters received from parameter servers.
             if len(splited_var) <= 1:
                 continue
