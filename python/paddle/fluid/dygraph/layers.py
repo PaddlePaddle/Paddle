@@ -34,10 +34,11 @@ class Layer(core.Layer):
     """Dynamic graph Layer based on OOD, includes the parameters of the layer, the structure of the forward graph and so on.
 
     Parameters:
-        name_scope (str): prefix name used by the layer to name parameters.
-            If prefix is "my_model/layer_1", parameter name in MyLayer
-            can be "my_model/layer_1/MyLayer/w_n", where w is the parameter
+        name_scope (str, optional): prefix name used by the layer to name parameters.
+            If prefix is "my_layer", parameter name in MyLayer
+            can be "my_layer_0.w_n", where w is the parameter
             base name and n is an unique suffix auto-generated.
+            If None, prefix name will be lower cased class name. Default: None.
         dtype(str or core.VarDesc.VarType, optional): data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8" or "uint16".
@@ -47,16 +48,17 @@ class Layer(core.Layer):
         None
     """
 
-    def __init__(self, name_scope, dtype=core.VarDesc.VarType.FP32):
-        self._full_name = unique_name.generate(name_scope + "/" +
-                                               self.__class__.__name__)
+    def __init__(self, name_scope=None, dtype=core.VarDesc.VarType.FP32):
+        if name_scope is None:
+            name_scope = self.__class__.__name__.lower()
+        self._full_name = unique_name.generate(name_scope)
+        self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
+
         self._parameters = collections.OrderedDict()
         self._sub_layers = collections.OrderedDict()
         self._loaddict_holder = collections.OrderedDict()
-
-        self._helper = LayerObjectHelper(self._full_name)
 
     def train(self):
         framework._dygraph_tracer().train_mode()

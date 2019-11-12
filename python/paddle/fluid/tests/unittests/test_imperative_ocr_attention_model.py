@@ -57,7 +57,6 @@ class Config(object):
 
 class ConvBNPool(fluid.dygraph.Layer):
     def __init__(self,
-                 name_scope,
                  group,
                  out_ch,
                  channels,
@@ -65,7 +64,7 @@ class ConvBNPool(fluid.dygraph.Layer):
                  is_test=False,
                  pool=True,
                  use_cudnn=True):
-        super(ConvBNPool, self).__init__(name_scope)
+        super(ConvBNPool, self).__init__()
         self.group = group
         self.pool = pool
 
@@ -79,7 +78,7 @@ class ConvBNPool(fluid.dygraph.Layer):
             initializer=fluid.initializer.Normal(0.0, conv_std_1))
 
         self.conv_0_layer = Conv2D(
-            self.full_name(),
+            channels[0],
             out_ch[0],
             3,
             padding=1,
@@ -90,7 +89,7 @@ class ConvBNPool(fluid.dygraph.Layer):
         self.bn_0_layer = BatchNorm(
             self.full_name(), out_ch[0], act=act, is_test=is_test)
         self.conv_1_layer = Conv2D(
-            self.full_name(),
+            out_ch[0],
             num_filters=out_ch[1],
             filter_size=3,
             padding=1,
@@ -125,22 +124,12 @@ class OCRConv(fluid.dygraph.Layer):
     def __init__(self, name_scope, is_test=False, use_cudnn=True):
         super(OCRConv, self).__init__(name_scope)
         self.conv_bn_pool_1 = ConvBNPool(
-            self.full_name(),
-            2, [16, 16], [1, 16],
-            is_test=is_test,
-            use_cudnn=use_cudnn)
+            2, [16, 16], [1, 16], is_test=is_test, use_cudnn=use_cudnn)
         self.conv_bn_pool_2 = ConvBNPool(
-            self.full_name(),
-            2, [32, 32], [16, 32],
-            is_test=is_test,
-            use_cudnn=use_cudnn)
+            2, [32, 32], [16, 32], is_test=is_test, use_cudnn=use_cudnn)
         self.conv_bn_pool_3 = ConvBNPool(
-            self.full_name(),
-            2, [64, 64], [32, 64],
-            is_test=is_test,
-            use_cudnn=use_cudnn)
+            2, [64, 64], [32, 64], is_test=is_test, use_cudnn=use_cudnn)
         self.conv_bn_pool_4 = ConvBNPool(
-            self.full_name(),
             2, [128, 128], [64, 128],
             is_test=is_test,
             pool=False,

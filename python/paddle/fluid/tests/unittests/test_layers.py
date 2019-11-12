@@ -299,7 +299,8 @@ class TestLayer(LayerTest):
 
         with self.static_graph():
             images = layers.data(name='pixel', shape=[3, 5, 5], dtype='float32')
-            conv2d = nn.Conv2D('conv2d', num_filters=3, filter_size=[2, 2])
+            conv2d = nn.Conv2D(
+                num_channels=3, num_filters=3, filter_size=[2, 2])
             ret = conv2d(images)
             static_ret2 = self.get_static_graph_result(
                 feed={'pixel': np.ones(
@@ -308,14 +309,18 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             images = np.ones([2, 3, 5, 5], dtype='float32')
-            conv2d = nn.Conv2D('conv2d', num_filters=3, filter_size=[2, 2])
+            conv2d = nn.Conv2D(
+                num_channels=3, num_filters=3, filter_size=[2, 2])
             dy_ret = conv2d(base.to_variable(images))
             dy_ret_value = dy_ret.numpy()
 
         with self.dynamic_graph():
             images = np.ones([2, 3, 5, 5], dtype='float32')
             conv2d = nn.Conv2D(
-                'conv2d', num_filters=3, filter_size=[2, 2], bias_attr=False)
+                num_channels=3,
+                num_filters=3,
+                filter_size=[2, 2],
+                bias_attr=False)
             dy_ret = conv2d(base.to_variable(images))
             self.assertTrue(conv2d._bias_param is None)
 
@@ -328,9 +333,10 @@ class TestLayer(LayerTest):
             weight_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
-            conv2d1 = nn.Conv2D('conv2d1', num_filters=3, filter_size=[2, 2])
+            conv2d1 = nn.Conv2D(
+                num_channels=3, num_filters=3, filter_size=[2, 2])
             conv2d2 = nn.Conv2D(
-                'conv2d2',
+                num_channels=3,
                 num_filters=3,
                 filter_size=[2, 2],
                 param_attr=weight_attr)

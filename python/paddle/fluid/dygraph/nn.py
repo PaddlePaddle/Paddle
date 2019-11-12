@@ -86,7 +86,7 @@ class Conv2D(layers.Layer):
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
     Parameters:
-        name_scope(str): The name for this class.
+        num_channels(int): The number of channels in the input image.
         num_filters(int): The number of filter. It is as same as the output
             feature map.
         filter_size (int or tuple): The filter size. If filter_size is a tuple,
@@ -143,14 +143,14 @@ class Conv2D(layers.Layer):
 
           data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
           with fluid.dygraph.guard():
-              conv2d = Conv2D("conv2d", 2, 3)
+              conv2d = Conv2D(3, 2, 3)
               data = to_variable(data)
               conv = conv2d(data)
 
     """
 
     def __init__(self,
-                 name_scope,
+                 num_channels,
                  num_filters,
                  filter_size,
                  stride=1,
@@ -163,7 +163,8 @@ class Conv2D(layers.Layer):
                  act=None,
                  dtype='float32'):
         assert param_attr is not False, "param_attr should not be False here."
-        super(Conv2D, self).__init__(name_scope, dtype)
+        super(Conv2D, self).__init__()
+        self._num_channels = num_channels
         self._groups = groups
         self._stride = utils.convert_to_list(stride, 2, 'stride')
         self._padding = utils.convert_to_list(padding, 2, 'padding')
@@ -177,16 +178,13 @@ class Conv2D(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._dtype = dtype
-        # if (self._num_channels == self._groups and
-        #         num_filters % self._num_channels == 0 and not self._use_cudnn):
-        #     self._l_type = 'depthwise_conv2d'
-        # else:
-        # TODO(jiabin): recover the usage of depthwise_conv2d when it's
-        #  kernel fixed https://github.com/PaddlePaddle/Paddle/issues/17275
-        self._l_type = 'conv2d'
+        if (self._num_channels == self._groups and
+                num_filters % self._num_channels == 0 and not self._use_cudnn):
+            self._l_type = 'depthwise_conv2d'
+        else:
+            self._l_type = 'conv2d'
 
-    def _build_once(self, input):
-        self._num_channels = input.shape[1]
+        self._num_channels = num_channels
         if self._groups is None:
             num_filter_channels = self._num_channels
         else:
@@ -194,8 +192,7 @@ class Conv2D(layers.Layer):
                 raise ValueError("num_channels must be divisible by groups.")
             num_filter_channels = self._num_channels // self._groups
         filter_size = utils.convert_to_list(self._filter_size, 2, 'filter_size')
-        filter_shape = [self._num_filters, int(num_filter_channels)
-                        ] + filter_size
+        filter_shape = [self._num_filters, num_filter_channels] + filter_size
 
         def _get_default_param_initializer():
             filter_elem_num = filter_size[0] * filter_size[
