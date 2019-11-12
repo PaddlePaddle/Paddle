@@ -114,8 +114,7 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
 LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
   PADDLE_ENFORCE(scope_, "Need to init scope first");
   auto *var = scope_->FindVar(name);
-  PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::NotFound("No variable [%s] in the scope.", name));
+  PADDLE_ENFORCE(var, "No variable [%s] in the scope");
   auto *tensor = const_cast<LoDTensor *>(&var->Get<LoDTensor>());
   return tensor;
 }

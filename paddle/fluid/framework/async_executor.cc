@@ -92,8 +92,8 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
 
   actual_thread_num_ = thread_num;
   int file_cnt = filelist.size();
-  PADDLE_ENFORCE(file_cnt > 0,
-                 platform::errors::NotFound("Input file list is empty"));
+  PADDLE_ENFORCE_GT(file_cnt, 0,
+                    platform::errors::NotFound("Input file list is empty"));
 
   if (actual_thread_num_ > file_cnt) {
     VLOG(1) << "Thread num = " << thread_num << ", file num = " << file_cnt
