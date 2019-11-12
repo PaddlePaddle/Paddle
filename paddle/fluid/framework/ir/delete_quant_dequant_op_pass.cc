@@ -53,7 +53,6 @@ void DeleteQuantDequantOpPass::ApplyImpl(ir::Graph* graph) const {
     const LoDTensor& input_scale_tensor =
         scope->FindVar(input_scale_var_name)->Get<LoDTensor>();
 
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(input_scale_tensor.place()));
     const float* input_scale_data = input_scale_tensor.data<float>();
     float input_scale = input_scale_data[0];
     auto* any_op2_desc = any_op2->Op();
