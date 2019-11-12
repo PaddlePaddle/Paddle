@@ -76,9 +76,9 @@ class SequencePadOp : public framework::OperatorWithKernel {
       if (padded_length == -1) {
         padded_length = 1;
       }
-      framework::VarDesc* x_desc =
-          boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("X")[0]);
-      PADDLE_ENFORCE_GE(x_desc->GetLoDLevel(), 1);
+      PADDLE_ENFORCE_GT(
+          ctx->GetLoDLevel("X"), 0,
+          "The LoD level Input(X) of sequence_pad should be larger than 0.");
     }
 
     std::vector<int> out_dims_vec{out_dim_0, padded_length};

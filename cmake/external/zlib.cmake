@@ -25,6 +25,7 @@ INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include zl
 ExternalProject_Add(
     extern_zlib
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
     GIT_REPOSITORY  "https://github.com/madler/zlib.git"
     GIT_TAG         "v1.2.8"
     PREFIX          ${ZLIB_SOURCES_DIR}

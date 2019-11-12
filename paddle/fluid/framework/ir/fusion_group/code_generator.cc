@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include <set>
 #include <sstream>
-#include <unordered_map>
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 
