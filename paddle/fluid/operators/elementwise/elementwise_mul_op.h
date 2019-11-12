@@ -26,12 +26,7 @@ namespace operators {
 class ElementwiseMulOp : public ElementwiseOp {
  public:
   using Tensor = framework::Tensor;
-  using VariableNameMap = framework::VariableNameMap;
-  using AttributeMap = framework::AttributeMap;
-
-  ElementwiseMulOp(const std::string& type, const VariableNameMap& inputs,
-                   const VariableNameMap& outputs, const AttributeMap& attrs)
-      : ElementwiseOp(type, inputs, outputs, attrs) {}
+  using ElementwiseOp::ElementwiseOp;
 
 #ifdef PADDLE_WITH_MKLDNN
   static bool AreDimsAndFormatCorrect(const framework::ExecutionContext& ctx,

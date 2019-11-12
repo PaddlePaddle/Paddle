@@ -36,12 +36,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   using Tensor = framework::Tensor;
-  using VariableNameMap = framework::VariableNameMap;
-  using AttributeMap = framework::AttributeMap;
-
-  ElementwiseOp(const std::string &type, const VariableNameMap &inputs,
-                const VariableNameMap &outputs, const AttributeMap &attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
