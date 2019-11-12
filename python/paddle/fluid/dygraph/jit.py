@@ -56,7 +56,7 @@ def _trace(layer, inputs, feed_names=None, fetch_names=None):
     and would not be changed between different batches. Otherwise, the traced
     result may be different.
 
-    Parameters:
+    Args:
         layer(Layer): the layer to be traced.
         inputs(list): the input arguments of :code:`layer.forward()` method.
         feed_names(list(str), optional): the input variable names in the 
@@ -81,7 +81,7 @@ def _trace(layer, inputs, feed_names=None, fetch_names=None):
 
     Examples:
 
-        .. code-blocks: python:
+        .. code-block:: python:
 
             import paddle.fluid as fluid
             from paddle.fluid.dygraph import FC, to_variable
@@ -148,6 +148,21 @@ def _trace(layer, inputs, feed_names=None, fetch_names=None):
 
 
 class TracedLayer(object):
+    """
+    TracedLayer is a callable object which is converted from dygraph model. 
+    Inside TracedLayer, the dygraph model is converted into a static graph
+    model, and it would run the static graph model using 
+    :code:`Executor` and :code:`CompiledProgram` . The static graph model 
+    would share parameters with the dygraph model. 
+    
+    All TracedLayer objects should not be created by constructor and should 
+    be created by static method :code:`TracedLayer.trace(layer, inputs)` .
+
+    The TracedLayer can only be used to convert the data-independent dygraph
+    model into the static graph model, which means the dygraph model should
+    be independent with the tensor data and shape.
+    """
+
     def __init__(self, program, parameters, feed_names, fetch_names):
         self._program = program
         self._feed_names = feed_names
@@ -180,6 +195,44 @@ class TracedLayer(object):
     @staticmethod
     @dygraph_only
     def trace(layer, inputs):
+        """
+        This method is the only allowed method to create TracedLayer object. 
+        It would call the :code:`layer(*inputs)` method to run the dygraph
+        model and convert it into a static graph model.
+
+        Args:
+            layer (paddle.fluid.dygraph.Layer): the layer object to be traced.
+            inputs (list(Variable)): the input variables of the layer object. 
+
+        Returns:
+            A tuple of 2 items, whose the first item is the output of 
+            :code:`layer(*inputs)` , and the second item is the created
+            TracedLayer object. 
+            
+        Examples:
+
+            .. code-block:: python:
+
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph import FC, to_variable, TracedLayer
+                import paddle.fluid.dygraph.jit as jit
+                import numpy as np
+
+                class ExampleLayer(fluid.dygraph.Layer):
+                    def __init__(self, name_scope):
+                        super(ExampleLayer, self).__init__(name_scope)
+                        self._fc = FC(self.full_name(), 10)
+
+                    def forward(self, input):
+                        return self._fc(input)
+
+                with fluid.dygraph.guard():
+                    layer = ExampleLayer("example_layer")
+                    in_np = np.random.random([2, 3]).astype('float32')
+                    in_var = to_variable(in_np)
+                    out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
+                    out_static_graph = static_layer([in_var]) 
+        """
         feed_func = lambda n: ['feed_{}'.format(i) for i in range(n)]
         fetch_func = lambda n: ['fetch_{}'.format(i) for i in range(n)]
         outs, prog, feed, fetch = _trace(layer, inputs, feed_func, fetch_func)
@@ -187,6 +240,51 @@ class TracedLayer(object):
         return outs, traced
 
     def set_strategy(self, build_strategy=None, exec_strategy=None):
+        """
+        Set the strategies when running static graph model.
+
+        Args:
+            build_strategy (BuildStrategy, optional): build strategy of 
+                :code:`CompiledProgram` inside TracedLayer. Default None.
+            exec_strategy (ExecutionStrategy, optional): execution strategy of
+                :code:`CompiledProgram` inside TracedLayer. Default None.
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python:
+
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph import FC, to_variable, TracedLayer
+                import paddle.fluid.dygraph.jit as jit
+                import numpy as np
+
+                class ExampleLayer(fluid.dygraph.Layer):
+                    def __init__(self, name_scope):
+                        super(ExampleLayer, self).__init__(name_scope)
+                        self._fc = FC(self.full_name(), 10) 
+
+                    def forward(self, input):
+                        return self._fc(input)
+
+                with fluid.dygraph.guard():
+                    layer = ExampleLayer("example_layer")
+                    in_np = np.random.random([2, 3]).astype('float32')
+                    in_var = to_variable(in_np)
+
+                    out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
+
+                    build_strategy = fluid.BuildStrategy()
+                    build_strategy.enable_inplace = True
+
+                    exec_strategy = fluid.ExecutionStrategy()
+                    exec_strategy.num_threads = 2
+
+                    static_layer.set_strategy(build_strategy=build_strategy, exec_strategy=exec_strategy)
+                    out_static_graph = static_layer([in_var])
+        """
         assert self._compiled_program is None, "Cannot set strategy after run"
         self._build_strategy = build_strategy
         self._exec_strategy = exec_strategy
@@ -200,6 +298,8 @@ class TracedLayer(object):
                 places=self._place)
 
     def _build_feed(self, inputs):
+        assert isinstance(inputs, (list, tuple)), \
+            "Inputs should be a list or tuple of variables"
         assert len(inputs) == len(self._feed_names)
         feed_dict = {}
         if in_dygraph_mode():
@@ -226,6 +326,52 @@ class TracedLayer(object):
 
     @switch_to_static_graph
     def save_inference_model(self, dirname, feed=None, fetch=None):
+        """
+        Save the TracedLayer to an model for inference. The saved
+        inference model can be loaded by C++ inference APIs. 
+
+        Args:
+            dirname (str): the directory to save the inference model.  
+            feed (list[int], optional): the input variable indices of the saved
+                inference model. If None, all input variables of the 
+                TracedLayer object would be the inputs of the saved inference
+                model. Default None.
+            fetch (list[int], optional): the output variable indices of the
+                saved inference model. If None, all output variables of the
+                TracedLayer object would be the outputs of the saved inference
+                model. Default None.
+
+        Returns:
+            The fetch variables' name list
+        
+        Return Type: 
+            list(str)
+
+        Examples:
+
+            .. code-block:: python:
+
+                import paddle.fluid as fluid
+                from paddle.fluid.dygraph import FC, to_variable, TracedLayer
+                import paddle.fluid.dygraph.jit as jit
+                import numpy as np
+
+                class ExampleLayer(fluid.dygraph.Layer):
+                    def __init__(self, name_scope):
+                        super(ExampleLayer, self).__init__(name_scope)
+                        self._fc = FC(self.full_name(), 10) 
+
+                    def forward(self, input):
+                        return self._fc(input)
+
+                with fluid.dygraph.guard():
+                    layer = ExampleLayer("example_layer")
+                    in_np = np.random.random([2, 3]).astype('float32')
+                    in_var = to_variable(in_np)
+                    out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
+                    static_layer.save_inference_model('./saved_infer_model')
+        """
+
         def get_feed_fetch(all_vars, partial_vars):
             if partial_vars is None:
                 return all_vars
