@@ -280,5 +280,15 @@ void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream) {
                  "error code : %d, %s",
                  error_code, CudaErrorWebsite());
 }
+
+void GpuStreamSync(cudaStream_t stream) {
+  auto error_code = cudaStreamSynchronize(stream);
+  PADDLE_ENFORCE(
+      error_code,
+      "cudaStreamSynchronize failed in paddle::platform::GpuStreamSync "
+      "error code : %d, %s",
+      error_code, CudaErrorWebsite());
+}
+
 }  // namespace platform
 }  // namespace paddle

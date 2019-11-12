@@ -37,8 +37,8 @@ paddle::lite::Predictor* EngineManager::Create(const std::string& name,
                                                const EngineConfig& cfg) {
   auto* p = new paddle::lite::Predictor();
   paddle::lite::Env<TARGET(kCUDA)>::Init();
-  p->Build("", cfg.model, cfg.param, cfg.prefer_place, cfg.valid_places,
-           cfg.neglected_passes, cfg.model_type, cfg.model_from_memory);
+  p->Build("", cfg.model, cfg.param, cfg.valid_places, cfg.neglected_passes,
+           cfg.model_type, cfg.model_from_memory);
   engines_[name].reset(p);
   return p;
 }

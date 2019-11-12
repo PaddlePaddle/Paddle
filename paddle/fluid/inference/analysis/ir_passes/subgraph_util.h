@@ -32,7 +32,8 @@ namespace inference {
 namespace analysis {
 
 std::vector<std::string> ExtractParameters(
-    const std::unordered_set<framework::ir::Node *> &nodes);
+    const std::unordered_set<framework::ir::Node *> &nodes,
+    bool sorted = false);
 
 std::unordered_set<framework::ir::Node *> GetRelatedIOVarNodes(
     const std::vector<framework::ir::Node *> &nodes);

@@ -173,7 +173,7 @@ void OrganizeProgram(Node* merged_node, framework::ProgramDesc* host_program,
 
   std::unordered_set<Node*> io_var_nodes = GetRelatedIOVarNodes(subgraph);
   for (const auto* node : io_var_nodes) {
-    LOG(INFO) << "IO Variable Name: " << node->Name();
+    VLOG(3) << "IO Variable Name: " << node->Name();
   }
 
   std::vector<framework::OpDesc*> subgraph_ops;
@@ -184,11 +184,10 @@ void OrganizeProgram(Node* merged_node, framework::ProgramDesc* host_program,
   ModifyHostProgram(host_program, host_sub_block, io_var_nodes, subgraph_ops);
   ModifyEngineProgram(merged_node, host_program, engine_program, host_sub_block,
                       io_var_nodes, subgraph_ops);
-  *repetitive_params = ExtractParameters(io_var_nodes);
+  *repetitive_params = ExtractParameters(io_var_nodes, true);
   for (const auto& param : *repetitive_params) {
-    LOG(INFO) << "Repetitive param: " << param;
+    VLOG(3) << "Repetitive param: " << param;
   }
-
   host_program->Flush();
   engine_program->Flush();
 }
@@ -210,7 +209,7 @@ void LiteSubgraphPass::SetUpEngine(
     std::ostringstream os;
     platform::CPUDeviceContext ctx;
     for (const auto& param : params) {
-      LOG(INFO) << "Serialize param: " << param;
+      VLOG(3) << "Serialize param: " << param;
       PADDLE_ENFORCE_NOT_NULL(scope->FindVar(param),
                               "Block should already have a '%s' variable",
                               param);
@@ -225,20 +224,15 @@ void LiteSubgraphPass::SetUpEngine(
   lite_api::TargetType target_type = use_gpu ? TARGET(kCUDA) : TARGET(kHost);
   paddle::lite_api::PrecisionType precision_type =
       enable_int8 ? PRECISION(kInt8) : PRECISION(kFloat);
-  paddle::lite::Place prefer_place = {target_type, precision_type};
   std::set<std::string> param_names_set(repetitive_params.begin(),
                                         repetitive_params.end());
   const_cast<std::vector<std::string>&>(repetitive_params)
       .assign(param_names_set.begin(), param_names_set.end());
   serialize_params(&config.param, scope, repetitive_params);
-  serialize_params(&config.param, scope, repetitive_params);
   config.model = program->Proto()->SerializeAsString();
-  config.prefer_place = prefer_place;
   config.valid_places = {
+      paddle::lite::Place({target_type, precision_type}),
       paddle::lite::Place({TARGET(kHost), PRECISION(kFloat)}),
-#ifdef PADDLE_WITH_CUDA
-      paddle::lite::Place({TARGET(kCUDA), PRECISION(kFloat)}),
-#endif
   };
   if (dump_model) {
     lite::StrToBinaryFile("./model.bin", config.model);
@@ -269,6 +263,8 @@ void LiteSubgraphPass::BuildOperator(
   op_desc->SetOutput("Ys", output_names);
   op_desc->SetType("lite_engine");
   op_desc->SetAttr("engine_key", unique_key);
+  op_desc->SetAttr("enable_int8", Get<bool>("enable_int8"));
+  op_desc->SetAttr("use_gpu", Get<bool>("use_gpu"));
 }
 
 void LiteSubgraphPass::ApplyImpl(framework::ir::Graph* graph) const {

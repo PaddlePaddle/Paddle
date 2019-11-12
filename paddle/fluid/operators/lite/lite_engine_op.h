@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/platform/gpu_info.h"
 
 #include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/inference/lite/tensor_utils.h"
@@ -39,6 +40,8 @@ class LiteEngineOp : public framework::OperatorBase {
   std::vector<std::string> in_names_;
   std::vector<std::string> out_names_;
   paddle::lite::Predictor *engine_;
+  framework::proto::VarType::Type precision_;
+  bool use_gpu_;
 
  public:
   LiteEngineOp(const std::string &type,
@@ -51,6 +54,12 @@ class LiteEngineOp : public framework::OperatorBase {
     engine_ =
         inference::Singleton<inference::lite::EngineManager>::Global().Get(
             Attr<std::string>("engine_key"));
+    if (Attr<bool>("enable_int8")) {
+      precision_ = framework::proto::VarType_Type_INT8;
+    } else {
+      precision_ = framework::proto::VarType_Type_FP32;
+    }
+    use_gpu_ = Attr<bool>("use_gpu");
   }
 
  protected:
@@ -61,24 +70,28 @@ class LiteEngineOp : public framework::OperatorBase {
 
   void Execute(const framework::Scope &scope,
                const platform::Place &dev_place) const {
+    const platform::DeviceContext *ctx =
+        platform::DeviceContextPool::Instance().Get(dev_place);
     for (size_t i = 0; i < in_names_.size(); i++) {
       const framework::LoDTensor &src_t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope,
                                                                   in_names_[i]);
       paddle::lite::Tensor *dst_t = engine_->GetInput(i);
-      inference::lite::InitLiteTensorType(dst_t, src_t);
-      inference::lite::TensorCopy(dst_t, src_t);
+      inference::lite::utils::TensorCopyAsync(dst_t, src_t, *ctx);
     }
+#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(dev_place)) {
+      platform::GpuStreamSync(
+          static_cast<const platform::CUDADeviceContext *>(ctx)->stream());
+    }
+#endif
     engine_->Run();
-    cudaDeviceSynchronize();
     for (size_t i = 0; i < out_names_.size(); i++) {
       const paddle::lite::Tensor &src_t = *(engine_->GetOutput(i));
       framework::LoDTensor *dst_t =
           &inference::analysis::GetFromScope<framework::LoDTensor>(
               scope, out_names_[i]);
-      inference::lite::InitLiteTensorType(
-          &const_cast<paddle::lite::Tensor &>(src_t), *dst_t);
-      inference::lite::TensorCopy(dst_t, src_t);
+      inference::lite::utils::TensorCopyAsync(dst_t, src_t, *ctx);
     }
   }
 };

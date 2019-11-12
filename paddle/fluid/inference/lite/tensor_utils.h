@@ -16,18 +16,18 @@
 
 #include "lite/api/paddle_place.h"
 #include "lite/core/tensor.h"
-#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
 namespace inference {
 namespace lite {
+namespace utils {
 
 template <typename DstTensor, typename SrcTensor>
-void TensorCopy(DstTensor* dst, const SrcTensor& src);
+void TensorCopyAsync(DstTensor* dst, const SrcTensor& src,
+                     const platform::DeviceContext& ctx);
 
-void InitLiteTensorType(paddle::lite::Tensor* lite,
-                        const framework::LoDTensor& fluid);
-
+}  // namespace utils
 }  // namespace lite
 }  // namespace inference
 }  // namespace paddle

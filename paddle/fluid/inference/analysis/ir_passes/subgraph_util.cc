@@ -26,7 +26,7 @@ namespace analysis {
 using framework::ir::Node;
 
 std::vector<std::string> ExtractParameters(
-    const std::unordered_set<Node *> &nodes) {
+    const std::unordered_set<Node *> &nodes, bool sorted) {
   // We can judge whether a variable is a parameter by
   // its presistable property, but sometimes the presistable
   // of the feed op output is true, so we have to identify it.
@@ -49,6 +49,9 @@ std::vector<std::string> ExtractParameters(
             feed_outputs.end()) {
       parameters.push_back(node->Name());
     }
+  }
+  if (sorted) {
+    std::sort(parameters.begin(), parameters.end());
   }
   return parameters;
 }
