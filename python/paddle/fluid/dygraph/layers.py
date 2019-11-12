@@ -36,7 +36,7 @@ class Layer(core.Layer):
     Parameters:
         name_scope (str, optional): prefix name used by the layer to name parameters.
             If prefix is "my_layer", parameter name in MyLayer
-            can be "my_layer_0.w_n", where w is the parameter
+            can be "mylayer_0.w_n", where w is the parameter
             base name and n is an unique suffix auto-generated.
             If None, prefix name will be lower cased class name. Default: None.
         dtype(str or core.VarDesc.VarType, optional): data type of this parameter.
@@ -51,7 +51,11 @@ class Layer(core.Layer):
     def __init__(self, name_scope=None, dtype=core.VarDesc.VarType.FP32):
         if name_scope is None:
             name_scope = self.__class__.__name__.lower()
-        self._full_name = unique_name.generate(name_scope)
+            self._full_name = unique_name.generate(name_scope)
+        else:
+            # TODO: remove name_scope parameter and all hard-coded usages
+            self._full_name = unique_name.generate(name_scope + "/" +
+                                                   self.__class__.__name__)
         self._helper = LayerObjectHelper(self._full_name)
         self._built = False
         self._dtype = dtype
