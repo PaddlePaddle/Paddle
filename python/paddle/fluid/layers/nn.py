@@ -34,7 +34,7 @@ from .. import unique_name
 from functools import reduce
 from .. import core
 from ..dygraph import layers
-from ..data_feeder import convert_dtype
+from ..data_feeder import convert_dtype, check_type_and_dtype
 
 __all__ = [
     'fc',
@@ -1444,18 +1444,8 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
             print(output)
     """
     helper = LayerHelper('softmax', **locals())
-    if not isinstance(input, Variable):
-        raise TypeError(
-            "The type of 'input' in softmax must be Variable, but received %s" %
-            (type(input)))
-    if convert_dtype(input.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'input' in softmax only support float16 in GPU now."
-        )
-    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'input' in softmax must be float16, float32 or float64, but received %s."
-            % (convert_dtype(input.dtype)))
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float16', 'float32', 'float64'], 'softmax')
 
     dtype = helper.input_dtype()
     softmax_out = helper.create_variable_for_type_inference(dtype)

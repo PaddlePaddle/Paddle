@@ -23,7 +23,7 @@ from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
 from . import nn
-from ..data_feeder import convert_dtype
+from ..data_feeder import check_type_and_dtype
 
 __all__ = ['accuracy', 'auc']
 
@@ -72,18 +72,8 @@ def accuracy(input, label, k=1, correct=None, total=None):
             #[array([0.6666667], dtype=float32)]
     """
     helper = LayerHelper("accuracy", **locals())
-    if not isinstance(input, Variable):
-        raise TypeError(
-            "The type of 'input' in accuracy must be Variable, but received %s"
-            % (type(input)))
-    if convert_dtype(input.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'input' in accuracy only support float16 in GPU now."
-        )
-    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'input' in accuracy must be float16 or float32 or float64, but received %s."
-            % (convert_dtype(input.dtype)))
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float16', 'float32', 'float64'], 'accuracy')
     topk_out, topk_indices = nn.topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
