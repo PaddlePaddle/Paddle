@@ -17,6 +17,7 @@ from __future__ import print_function
 import numpy as np
 import argparse
 import time
+import six
 import math
 
 import paddle
@@ -28,6 +29,7 @@ from multiprocessing import Process
 import os
 import signal
 from functools import reduce
+from paddle.fluid.layers import dist_algo
 from test_dist_base import TestDistRunnerBase, runtime_main
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.collective import DistFCConfig
@@ -71,19 +73,25 @@ def cnn_model(data, label, loss_type, rank_id, nranks):
         out = fluid.layers.fc(
             input=emb,
             size=SIZE,
-            act="softmax",
+            act=None,
             param_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01)))
         loss = fluid.layers.softmax_with_cross_entropy(logits=out, label=label)
+        loss = fluid.layers.mean(x=loss)
     elif loss_type == "dist_softmax":
+        #out = fluid.layers.fc(
+        #    input=emb,
+        #    size=SIZE,
+        #    act=None,
+        #    param_attr=fluid.param_attr.ParamAttr(
+        #        initializer=fluid.initializer.Constant(value=0.01)))
+        #loss = fluid.layers.softmax_with_cross_entropy(logits=out, label=label)
+        #loss = fluid.layers.mean(x=loss)
+
         loss = dist_algo._distributed_softmax_classify(
-            x=emb,
-            label=label,
-            class_num=SIZE,
-            nranks=nranks,
-            rank_id=rank_id,
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01)))
+            x=emb, label=label, class_num=SIZE, nranks=nranks, rank_id=rank_id)
+        #param_attr=fluid.param_attr.ParamAttr(
+        #    initializer=fluid.initializer.Constant(value=0.01)))
     elif loss_type == "dist_arcface":
         loss = dist_algo._distributed_arcface_classify(
             x=emb,
@@ -93,13 +101,14 @@ def cnn_model(data, label, loss_type, rank_id, nranks):
             rank_id=rank_id,
             param_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01)))
+        loss = loss[0]
     else:
         raise ValueError("Unknown loss type: {}.".format(loss_type))
 
     return loss
 
 
-class TestDistMnist2x2(TestDistRunnerBase):
+class TestDistMnist2x2DistFC(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
         images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
@@ -107,9 +116,9 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         loss_type = self._distfc_loss_type
         # Train program
-        cost = cnn_model(images, label, loss_type, self.worker_index,
-                         self.worker_num)
-        avg_cost = fluid.layers.mean(x=cost)
+        avg_cost = cnn_model(images, label, loss_type, self.worker_index,
+                             self.worker_num)
+        #avg_cost = fluid.layers.mean(x=cost)
 
         # Evaluator
         #batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
@@ -123,11 +132,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         # TODO(typhoonzero): fix distributed adam optimizer
         # opt = fluid.optimizer.AdamOptimizer(
         #     learning_rate=0.001, beta1=0.9, beta2=0.999)
-        if not use_dgc:
-            opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
-        else:
-            opt = fluid.optimizer.DGCMomentumOptimizer(
-                learning_rate=self.lr, momentum=0.9, rampup_begin_step=0)
+        opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
 
         # Reader
         train_reader = paddle.batch(
@@ -136,9 +141,10 @@ class TestDistMnist2x2(TestDistRunnerBase):
             paddle.dataset.mnist.test(), batch_size=batch_size)
 
         if dist_strategy:
+            dist_strategy.use_dist_fc = True
             dist_opt = fleet.distributed_optimizer(
                 optimizer=opt, strategy=dist_strategy)
-            _, param_grads = dist_opt.minimize(avg_cost)
+            dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)
 
@@ -146,4 +152,4 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
 
 if __name__ == "__main__":
-    runtime_main(TestDistMnist2x2)
+    runtime_main(TestDistMnist2x2DistFC)

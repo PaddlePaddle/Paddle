@@ -20,7 +20,7 @@ RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2
 
 
-class TestDistMnistNCCL2FleetApi(TestDistBase):
+class TestDistMnistNCCL2FleetApiDistFC(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -33,7 +33,8 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("dist_mnist_distfc.py", delta=1e-5)
+            #self.check_with_place("dist_mnist_distfc.py", delta=1e-5)
+            self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
 if __name__ == "__main__":

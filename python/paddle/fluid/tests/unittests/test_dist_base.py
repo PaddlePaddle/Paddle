@@ -32,7 +32,7 @@ from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.dygraph.parallel import DataParallel
 
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
-#from paddle.fluid.incubate.fleet.collective import DistFCConfig
+from paddle.fluid.incubate.fleet.collective import DistFCConfig
 import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 RUN_STEP = 5
@@ -138,7 +138,6 @@ class TestDistRunnerBase(object):
         if args.ut4grad_allreduce:
             dist_strategy._ut4grad_allreduce = True
         if args.use_dist_fc:
-            dist_strategy.use_dist_fc = True
             dist_strategy.dist_fc_config = DistFCConfig(
                 batch_size=args.batch_size)
             self._distfc_loss_type = args.distfc_loss_type

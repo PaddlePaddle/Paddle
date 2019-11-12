@@ -364,7 +364,7 @@ class CollectiveOptimizer(DistributedOptimizer):
             self._optimizer._set_checkpoints(self.recompute_checkpoints)
 
         if self._strategy.use_dist_fc:
-            batch_size = self._strategy.dist_fc_config.batch_size
+            batch_size = self._strategy.dist_fc_config._batch_size
             assert self._loss._get_info('shard_logit')
             shard_logit = self._loss._get_info('shard_logit')
             shard_prob = self._loss._get_info('shard_prob')
