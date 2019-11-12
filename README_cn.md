@@ -24,7 +24,7 @@ pip install paddlepaddle
 # Linux GPU cuda10cudnn7
 pip install paddlepaddle-gpu
 # Linux GPU cuda9cudnn7
-pip install paddlepaddle-gpu==1.6.0.post97
+pip install paddlepaddle-gpu==1.6.1.post97
 
 
 # 其他平台上的安装指引请参考 http://paddlepaddle.org/
