@@ -86,10 +86,10 @@ def _summary_model(block_vars, one_op):
         _, c_out_, h_out, w_out = out_data_shape
         assert c_out == c_out_, 'shape error!'
         k_groups = one_op.attr("groups")
-        kernel_ops = k_h * k_w * (c_in / k_groups)
+        kernel_ops = k_h * k_w * c_in
         bias_ops = 0 if one_op.input("Bias") == [] else 1
-        params = c_out * (kernel_ops + bias_ops)
-        flops = h_out * w_out * c_out * (kernel_ops + bias_ops)
+        params = c_out * (kernel_ops + bias_ops) / k_groups
+        flops = h_out * w_out * c_out * (kernel_ops + bias_ops) / k_groups
         # base nvidia paper, include mul and add
         flops = 2 * flops
 
