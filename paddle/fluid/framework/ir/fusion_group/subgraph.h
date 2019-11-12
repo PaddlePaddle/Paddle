@@ -18,6 +18,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -154,8 +155,8 @@ struct SubGraph {
       if (in && in->IsOp() && in->Op()) {
         int index = FindIndexInSortedNodes(in);
         // Insert after input op node
-        if (index >= 0 && index >= from) {
-          from = index + 1;
+        if (index >= 0) {
+          from = index + 1 > from ? index + 1 : from;
         }
       }
     }
@@ -164,8 +165,8 @@ struct SubGraph {
       if (out && out->IsOp() && out->Op()) {
         int index = FindIndexInSortedNodes(out);
         // Insert before output op node
-        if (index >= 0 && index < to) {
-          to = index;
+        if (index >= 0) {
+          to = index < to ? index : to;
         }
         //      auto* out_op = out->Op();
         //      bool is_found = false;
@@ -180,57 +181,114 @@ struct SubGraph {
     }
 
     PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid");
-    LOG(INFO) << "Var " << n->Name() << ", insert from:" << from
-              << ", to:" << to;
-    sorted_nodes.insert(sorted_nodes.begin() + from, n);
+    LOG(INFO) << DebugString(n) << ", from:" << from << ", to:" << to;
+    sorted_nodes.insert(sorted_nodes.begin() + to, n);
   }
 
-  void InsertOpInOrder(Node* n) {
-    PADDLE_ENFORCE_NOT_NULL(n, "Node should not be null.");
-    PADDLE_ENFORCE_EQ(n->IsOp() && n->Op(), true, "Node %p is not a op node.",
-                      n);
+  std::vector<Node*> SortedOps() {
+    Node* start_op_n = nullptr;
+    std::unordered_set<Node*> ops;
+    for (auto* op_n : nodes_set) {
+      if (op_n && op_n->IsOp() && op_n->Op()) {
+        // Initialize ops to all ops in the subgraph.
+        ops.insert(op_n);
 
-    int from = 0;
-    int to = sorted_nodes.size();
-
-    for (auto* in : n->inputs) {
-      if (in && in->IsVar() && in->Var()) {
-        int index = FindIndexInSortedNodes(in);
-        // Insert after input var node
-        if (index >= 0 && index >= from) {
-          from = index + 1;
+        if (!start_op_n) {
+          // Find start op node whose inputs are produced outside the subgraph.
+          bool is_found = false;
+          for (auto* prev_op_n : GetPrevOpNodes(op_n)) {
+            if (Has(prev_op_n)) {
+              is_found = true;
+              break;
+            }
+          }
+          if (!is_found) {
+            start_op_n = op_n;
+          }
         }
       }
     }
 
-    for (auto* out : n->outputs) {
-      if (out && out->IsVar() && out->Var()) {
-        int index = FindIndexInSortedNodes(out);
-        // Insert before output var node
-        if (index >= 0 && index < to) {
-          to = index;
+    LOG(INFO) << "Start: " << DebugString(start_op_n);
+    std::vector<Node*> sorted_ops;
+    sorted_ops.push_back(start_op_n);
+    ops.erase(start_op_n);
+    while (ops.size() > 0U) {
+      std::unordered_set<Node*> erased_ops;
+      for (auto* op_n : ops) {
+        bool found_connected_ops = false;
+        int from = 1;
+        int to = sorted_ops.size();
+        std::unordered_set<Node*> prev_op_nodes = GetPrevOpNodes(op_n);
+        std::unordered_set<Node*> next_op_nodes = GetNextOpNodes(op_n);
+        for (int i = sorted_ops.size(); i >= 0; --i) {
+          if (prev_op_nodes.find(sorted_ops[i]) != prev_op_nodes.end()) {
+            // Insert after i (i + 1)
+            found_connected_ops = true;
+            from = (i + 1 > from) ? i + 1 : from;
+          }
+          if (next_op_nodes.find(sorted_ops[i]) != next_op_nodes.end()) {
+            // Insert before i
+            found_connected_ops = true;
+            to = (i < to) ? i : to;
+          }
+        }
+        if (found_connected_ops) {
+          LOG(INFO) << DebugString(op_n) << ", insert from:" << from
+                    << ", to:" << to;
+          PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid");
+          sorted_ops.insert(sorted_ops.begin() + to, op_n);
+          erased_ops.insert(op_n);
+        }
+      }
+      PADDLE_ENFORCE_GT(erased_ops.size(), 0U);
+      for (auto* op_n : erased_ops) {
+        ops.erase(op_n);
+      }
+    }
+    return sorted_ops;
+  }
+
+  std::unordered_set<Node*> GetPrevOpNodes(Node* op_n) {
+    PADDLE_ENFORCE_EQ(op_n && op_n->IsOp() && op_n->Op(), true,
+                      "Node %p is not a op node.", op_n);
+
+    std::unordered_set<Node*> prev_op_nodes;
+    for (auto* in_var : op_n->inputs) {
+      if (in_var && in_var->IsVar() && in_var->Var()) {
+        for (auto* prev_op_n : in_var->inputs) {
+          if (prev_op_n && prev_op_n->IsOp() && prev_op_n->Op()) {
+            prev_op_nodes.insert(prev_op_n);
+          }
         }
       }
     }
+    return prev_op_nodes;
+  }
 
-    PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid");
-    LOG(INFO) << "Op " << n->Op()->Type() << ", insert from:" << from
-              << ", to:" << to;
-    sorted_nodes.insert(sorted_nodes.begin() + from, n);
+  std::unordered_set<Node*> GetNextOpNodes(Node* op_n) {
+    PADDLE_ENFORCE_EQ(op_n && op_n->IsOp() && op_n->Op(), true,
+                      "Node %p is not a op node.", op_n);
+
+    std::unordered_set<Node*> next_op_nodes;
+    for (auto* out_var : op_n->outputs) {
+      if (out_var && out_var->IsVar() && out_var->Var()) {
+        for (auto* next_op_n : out_var->outputs) {
+          if (next_op_n && next_op_n->IsOp() && next_op_n->Op()) {
+            next_op_nodes.insert(next_op_n);
+          }
+        }
+      }
+    }
+    return next_op_nodes;
   }
 
   void Sort() {
     if (!is_sorted) {
-      sorted_nodes.clear();
+      sorted_nodes = SortedOps();
       for (auto* n : nodes_set) {
-        if (sorted_nodes.size() == 0U) {
-          sorted_nodes.push_back(n);
-        } else {
-          if (n && n->IsVar() && n->Var()) {
-            InsertVarInOrder(n);
-          } else if (n && n->IsOp() && n->Op()) {
-            InsertOpInOrder(n);
-          }
+        if (n && n->IsVar() && n->Var()) {
+          InsertVarInOrder(n);
         }
       }
     }

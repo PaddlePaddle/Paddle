@@ -215,16 +215,28 @@ TEST(code_generator, elementwise_grad) {
 TEST(code_generator, subgraph) {
   // inputs                     operator            output
   // --------------------------------------------------------
-  // (x, y)                     elementwise_add  -> tmp_0
-  // tmp_0                      relu             -> tmp_1
+  // x1                         sigmoid          -> tmp_0
+  // (x0, tmp_0)                elementwise_mul  -> tmp_1
+  // x3                         tanh             -> tmp_2
+  // (x2, tmp_2)                elementwise_mul  -> tmp_3
+  // (tmp_1, tmp_3)             elementwise_add  -> tmp_4
   //
-  // Expression: tmp_1 = relu(x + y)
-  // The var order: x, y, tmp_0, tmp_1
+  // Expression: tmp_4 = x0 * sigmoid(x1) + x2 * tanh(x3)
+  // The var order:
   paddle::framework::ir::Layers layers;
-  auto* x = layers.data("x", {16, 32});
-  auto* y = layers.data("y", {16, 32});
-  auto* tmp_0 = layers.elementwise_add(x, y);
-  layers.relu(tmp_0);
+  auto* x1 = layers.data("x1", {16, 32});
+  auto* tmp_0 = layers.sigmoid(x1);
+  tmp_0->SetShape({16, 32});
+  auto* x0 = layers.data("x0", {16, 32});
+  auto* tmp_1 = layers.elementwise_mul(x0, tmp_0);
+  tmp_1->SetShape({16, 32});
+  auto* x3 = layers.data("x3", {16, 32});
+  auto* tmp_2 = layers.tanh(x3);
+  tmp_2->SetShape({16, 32});
+  auto* x2 = layers.data("x2", {16, 32});
+  auto* tmp_3 = layers.elementwise_mul(x2, tmp_2);
+  tmp_3->SetShape({16, 32});
+  layers.elementwise_add(tmp_1, tmp_3);
 
   std::unique_ptr<paddle::framework::ir::Graph> graph(
       new paddle::framework::ir::Graph(layers.main_program()));
@@ -235,7 +247,7 @@ TEST(code_generator, subgraph) {
             << DebugString(subgraph.SortedNodes()) << "}\n";
 
   // Prepare CPU tensors
-  std::vector<paddle::framework::LoDTensor> cpu_tensors(4);
+  std::vector<paddle::framework::LoDTensor> cpu_tensors(9);
   std::vector<int> input_ids = {0, 1};
   std::vector<int> output_ids = {2, 3};
 
@@ -250,7 +262,7 @@ TEST(code_generator, subgraph) {
 
   auto cpu_kernel_handler = [&](float* var0, float* var1,
                                 int i) -> std::vector<float> {
-    float var2_i = var0[i] * var1[i];
+    float var2_i = var0[i] + var1[i];
     float var3_i = var2_i > 0 ? var2_i : 0;
     return std::vector<float>{var2_i, var3_i};
   };

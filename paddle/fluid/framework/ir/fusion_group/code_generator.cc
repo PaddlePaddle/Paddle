@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include <set>
 #include <sstream>
+#include <unordered_map>
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 
@@ -72,9 +73,11 @@ std::string CodeGenerator::Generate(SubGraph* subgraph) {
                           op->Type());
         output_ids.push_back(var_ids[op->Output(name)[0]]);
       }
-      InsertOperationExpression(
-          &expressions,
+      expressions.push_back(
           OperationExpression(node->Name(), input_ids, output_ids));
+      // InsertOperationExpression(
+      //     &expressions,
+      //     OperationExpression(node->Name(), input_ids, output_ids));
     }
   }
   return Generate(subgraph->func_name, expressions);
