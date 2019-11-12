@@ -275,7 +275,8 @@ TEST(Analyzer_int8_mobilenet_ssd, quantization) {
   q_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(FLAGS_warmup_batch_size);
 
   // 0 is avg_cost, 1 is top1_acc, 2 is top5_acc or mAP
-  CompareQuantizedAndAnalysis(&cfg, &q_cfg, input_slots_all, 2);
+  CompareQuantizedAndAnalysis(&cfg, &q_cfg, input_slots_all, FLAGS_with_label,
+                              2);
 }
 
 }  // namespace analysis

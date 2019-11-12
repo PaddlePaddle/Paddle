@@ -97,9 +97,8 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
 
   if (with_label) {
     PADDLE_ENFORCE_EQ(static_cast<size_t>(test_data[0].size()), size_t{2},
-                      "The requested quantization warmup data size " +
-                          std::to_string(num_images) +
-                          " is bigger than all test data size.");
+                      "FLAGS_with_label is set to true, but the input size is" +
+                          std::to_string(test_data[0].size()));
     PaddleTensor labels;
     labels.name = "label";
     labels.shape = {num_images, 1};
@@ -183,7 +182,9 @@ TEST(Analyzer_int8_image_classification, quantization) {
   q_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
   q_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(FLAGS_warmup_batch_size);
 
-  CompareQuantizedAndAnalysis(&cfg, &q_cfg, input_slots_all, FLAGS_with_label);
+  // 0 is avg_cost, 1 is top1_acc, 2 is top5_acc or mAP
+  CompareQuantizedAndAnalysis(&cfg, &q_cfg, input_slots_all, FLAGS_with_label,
+                              1);
 }
 
 }  // namespace analysis
