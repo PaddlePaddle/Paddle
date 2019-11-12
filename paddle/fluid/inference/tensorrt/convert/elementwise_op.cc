@@ -85,8 +85,7 @@ class ElementwiseWeightOpConverter : public OpConverter {
         }
       }
     } else {
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "TensorRT unsupported weight Shape for Elementwise op!"));
+      PADDLE_THROW("TensorRT unsupported weight Shape for Elementwise op!");
     }
 
     TensorRTEngine::Weight shift_weights{nvinfer1::DataType::kFLOAT,

@@ -136,8 +136,9 @@ void DataFeed::CheckSetFileList() {
 }
 
 void DataFeed::CheckStart() {
-  PADDLE_ENFORCE(finish_start_, platform::errors::PreconditionNotMet(
-                                    "Datafeed has not started running yet."));
+  PADDLE_ENFORCE_EQ(finish_start_, true,
+                    platform::errors::PreconditionNotMet(
+                        "Datafeed has not started running yet."));
 }
 
 void DataFeed::AssignFeedVar(const Scope& scope) {

@@ -45,8 +45,8 @@ paddle::framework::DataFeedDesc load_datafeed_param_from_file(
 const std::vector<std::string> load_filelist_from_file(const char* filename) {
   std::vector<std::string> filelist;
   std::ifstream fin(filename);
-  PADDLE_ENFORCE(fin.good(), platform::errors::Unavaliable(
-                                 "Cannot open file %s.", filename));
+  PADDLE_ENFORCE_EQ(fin.good(), true, platform::errors::Unavaliable(
+                                          "Cannot open file %s.", filename));
   std::string line;
   while (getline(fin, line)) {
     filelist.push_back(line);
