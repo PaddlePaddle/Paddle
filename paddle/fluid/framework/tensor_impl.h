@@ -43,12 +43,9 @@ inline T* Tensor::data() {
   check_memory_size();
   bool valid =
       std::is_same<T, void>::value || type_ == DataTypeTrait<T>::DataType();
-  PADDLE_ENFORCE_EQ(
-      valid, true,
-      platform::errors::InvalidArgument(
-          "Tensor holds the wrong type, it holds %s, but desires to be %s.",
-          DataTypeToString(type_),
-          DataTypeToString(DataTypeTrait<T>::DataType())));
+  PADDLE_ENFORCE(
+      valid, "Tensor holds the wrong type, it holds %s, but desires to be %s",
+      DataTypeToString(type_), DataTypeToString(DataTypeTrait<T>::DataType()));
   return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                               offset_);
 }
