@@ -25,7 +25,7 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-struct ElementwiseGroupDetector {
+class ElementwiseGroupDetector {
  public:
   int operator()(Node* n);
 

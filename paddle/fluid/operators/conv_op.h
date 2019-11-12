@@ -83,10 +83,10 @@ inline void UpdatePaddingAndDilation(std::vector<int>* paddings,
         "Paddings size should be the same or twice as the input data size.");
   }
 
-  // when padding_desc is "VALID" or "SAME"
+  // when padding_algorithm is "VALID" or "SAME"
   if (padding_algorithm == "SAME") {
     for (size_t i = 0; i < data_dims.size(); ++i) {
-      int out_size = (data_dims[i] + strides[i] - 1) / strides[0];
+      int out_size = (data_dims[i] + strides[i] - 1) / strides[i];
       int pad_sum =
           std::max((out_size - 1) * strides[i] + ksize[i] - data_shape[i], 0);
       int pad_0 = pad_sum / 2;

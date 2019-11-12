@@ -116,45 +116,35 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
 
-  void DecreaseLoDLevel(const std::string &in, const std::string &out,
-                        size_t i = 0, size_t j = 0) const override {
-    // When in is a LoDTensor and out is a LoDTensorArray, there may need to
-    // decrease the lod_level.
-    PADDLE_ENFORCE_LT(i, Inputs(in).size());
-    PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    PADDLE_ENFORCE(Inputs(in)[i] != framework::kEmptyVarName,
-                   "The %s[%d] is @EMPTY@", in, i);
-    PADDLE_ENFORCE(Outputs(out)[j] != framework::kEmptyVarName,
-                   "The %s[%d] is @EMPTY@", out, j);
+  int32_t GetLoDLevel(const std::string &in, size_t i = 0) const override {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size(),
+                      "Input %s of operator %s only has %d elements.", in,
+                      op_.Type(), Inputs(in).size());
+    PADDLE_ENFORCE_NE(Inputs(in)[i], framework::kEmptyVarName,
+                      "Input %s[%d] of operator %s is @EMPTY@", in, op_.Type(),
+                      i);
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
-    auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
-    PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarType::LOD_TENSOR,
-                      "The input %s should be LoDTensor.", in_var->Name());
-    PADDLE_ENFORCE_EQ(out_var->GetType(), proto::VarType::LOD_TENSOR_ARRAY,
-                      "The output %s should be LoDTensorArray.",
-                      out_var->Name());
-    if (in_var->GetLoDLevel() > 0) {
-      out_var->SetLoDLevel(in_var->GetLoDLevel() - 1);
-    }
+    PADDLE_ENFORCE_NOT_NULL(
+        in_var, "Input %s[%d] of operator %s should not be nullptr.", in,
+        op_.Type(), i);
+    return in_var->GetLoDLevel();
   }
 
-  void IncreaseLoDLevel(const std::string &in, const std::string &out,
-                        size_t i = 0, size_t j = 0) const override {
-    // When in is a LoDTensorArray and out is a LoDTensor, there may need to
-    // increase the lod_level.
-    PADDLE_ENFORCE_LT(i, Inputs(in).size());
-    PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    PADDLE_ENFORCE_NE(Inputs(in)[i], framework::kEmptyVarName,
-                      "The %s[%d] is @EMPTY@", in, i);
+  void SetLoDLevel(const std::string &out, int32_t lod_level,
+                   size_t j = 0) const override {
+    PADDLE_ENFORCE_LT(j, Outputs(out).size(),
+                      "Output %s of operator %s only has %d elements.", out,
+                      op_.Type(), Outputs(out).size());
     PADDLE_ENFORCE_NE(Outputs(out)[j], framework::kEmptyVarName,
-                      "The %s[%d] is @EMPTY@", out, j);
-    auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
+                      "Output %s[%d] of operator %s is @EMPTY@", out,
+                      op_.Type(), j);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
-    PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarType::LOD_TENSOR_ARRAY,
-                      "The input %s should be LoDTensorArray.", in_var->Name());
-    PADDLE_ENFORCE_EQ(out_var->GetType(), proto::VarType::LOD_TENSOR,
-                      "The output %s should be LoDTensor.", out_var->Name());
-    out_var->SetLoDLevel(in_var->GetLoDLevel() + 1);
+    PADDLE_ENFORCE_NOT_NULL(
+        out_var, "Output %s[%d] of operator %s should not be nullptr.", out,
+        op_.Type(), j);
+    if (lod_level >= 0) {
+      out_var->SetLoDLevel(lod_level);
+    }
   }
 
   std::vector<InferShapeVarPtr> GetInputVarPtrs(

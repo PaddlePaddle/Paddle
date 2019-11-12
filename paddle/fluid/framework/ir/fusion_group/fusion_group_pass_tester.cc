@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fusion_group/fusion_group_pass.h"
 
 #include <gtest/gtest.h>
+#include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
@@ -22,6 +23,8 @@ namespace framework {
 namespace ir {
 
 TEST(FusionGroupPass, elementwise_list) {
+  fusion_group::OperationMap::Init();
+
   // inputs                     operator            output
   // --------------------------------------------------------
   // (x, y)                     mul              -> tmp_0
@@ -69,6 +72,8 @@ TEST(FusionGroupPass, elementwise_list) {
 }
 
 TEST(FusionGroupPass, elementwise_tree) {
+  fusion_group::OperationMap::Init();
+
   // inputs                     operator            output
   // --------------------------------------------------------
   // (x0, y0)                   mul              -> tmp_0
