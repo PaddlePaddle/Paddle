@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -37,30 +38,23 @@ SparseAllReduceOpHandle::SparseAllReduceOpHandle(
       is_encoded_(is_encoded),
       nranks_(nranks) {
   // TODO(gongwb) :polish them!
-  if (is_encoded) {
-    VLOG(1) << "Use dgc allreduce mode";
-  }
-}
+  PADDLE_ENFORCE_EQ(is_encoded, true);
+  VLOG(1) << "Use dgc allreduce mode"
+          << ", nranks:" << nranks_;
 
-void SparseAllReduceOpHandle::WaitInputVarGenerated() {
-#ifdef PADDLE_WITH_CUDA
-  for (auto &p : dev_ctxes_) {
-    if (platform::is_gpu_place(p.first)) {
-      int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
-      auto *compute_dev_ctx =
-          platform::DeviceContextPool::Instance().GetByPlace(
-              platform::CUDAPlace(dev_id));
-      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(p.second);
-      if (compute_dev_ctx->stream() != dev_ctx->stream()) {
-        auto &event = events_.at(dev_id);
-        PADDLE_ENFORCE_CUDA_SUCCESS(
-            cudaEventRecord(event, compute_dev_ctx->stream()));
-        PADDLE_ENFORCE_CUDA_SUCCESS(
-            cudaStreamWaitEvent(dev_ctx->stream(), event, 0));
-      }
+  PADDLE_ENFORCE_GT(local_scopes_.size(), 0);
+  auto nranks_name = g_dgc_nranks;
+  for (size_t i = 0; i < local_scopes_.size(); ++i) {
+    auto *local_scope = local_scopes_[i];
+    auto nranks_var = local_scope->FindVar(nranks_name);
+    if (nranks_var == nullptr) {
+      PADDLE_THROW("not find nranks_var:%s", nranks_name);
     }
+
+    float *dgc_nranks = nranks_var->GetMutable<LoDTensor>()->data<float>();
+    *dgc_nranks = nranks;
+    VLOG(10) << "dgc_nranks=" << *dgc_nranks;
   }
-#endif
 }
 
 void SparseAllReduceOpHandle::RunImplEncoded() {
@@ -76,17 +70,26 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
       "The NoDummyInputSize and NoDummyOutputSize should be equal.");
 
   std::vector<const LoDTensor *> ins;
+  std::vector<LoDTensor *> gathers;
   std::vector<LoDTensor *> outs;
   int k = -1;
   for (size_t i = 0; i < local_scopes_.size(); ++i) {
     auto *local_scope = local_exec_scopes_[i];
     auto original_name =
         paddle::framework::GradOriginalVarName(in_var_handles[i]->name());
+
     auto encode_var_name = original_name + g_dgc_encoded;
     auto *in_var = local_scope->FindVar(encode_var_name);
     PADDLE_ENFORCE_NOT_NULL(in_var, "%s should not be null", encode_var_name);
     auto &in = in_var->Get<LoDTensor>();
     ins.emplace_back(&in);
+
+    auto gather_var_name = original_name + g_dgc_gather;
+    auto *gather_var = local_scope->FindVar(gather_var_name);
+    PADDLE_ENFORCE_NOT_NULL(gather_var, "%s should not be null",
+                            gather_var_name);
+    auto *gather = gather_var->GetMutable<LoDTensor>();
+    gathers.emplace_back(gather);
 
     auto *out = local_scope->FindVar(out_var_handles[i]->name())
                     ->GetMutable<LoDTensor>();
@@ -105,7 +108,8 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
   size_t in_numel = 0;
   size_t out_numel = 0;
   PADDLE_ENFORCE(nranks_ > 1);
-  std::vector<std::function<void()>> all_reduce_calls;
+  std::vector<std::function<void()>> all_gather_calls;
+  std::vector<std::function<void()>> sparse_reduce_calls;
 
   std::vector<memory::AllocationPtr> allocations;
 
@@ -133,23 +137,51 @@ void SparseAllReduceOpHandle::RunImplEncoded() {
     // dgc use ncclAllGather to get all the encoded data
     // so the buffer need nranks.
     int buf_size = nranks_ * encode_size;
-    auto tmp_ious_data = memory::Alloc(place, buf_size);
-    void *gather_buff = reinterpret_cast<void *>(tmp_ious_data->ptr());
-    allocations.emplace_back(std::move(tmp_ious_data));
+    void *gather_buff = gathers[i]->data<void>();
 
     VLOG(10) << "in_numel:" << in_numel << ", out_numel:" << out_numel
              << ", nranks:" << nranks_ << ", gather_buf size:" << buf_size
              << ", k:" << k << ", place:" << place << ", dtype:" << dtype;
 
-    all_reduce_calls.emplace_back([=] {
-      PADDLE_ENFORCE(paddle::communication::dgc::sparseAllGReduce(
-          in_tensor_buf, gather_buff, k, out_tensor_buf, out_numel, comm,
-          stream));
+    all_gather_calls.emplace_back([=] {
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllGather(
+          in_tensor_buf, gather_buff, 2 * k, static_cast<ncclDataType_t>(dtype),
+          comm, stream));
+    });
+
+    sparse_reduce_calls.emplace_back([=] {
+      platform::CUDADeviceGuard guard(dev_id);
+      PADDLE_ENFORCE_EQ(paddle::communication::dgc::sparseReduce(
+                            gather_buff, k, out_tensor_buf,
+                            static_cast<int>(out_numel), nranks_, stream),
+                        true);
     });
   }
 
   WaitInputVarGenerated();
-  NCCLAllReduceFunc(all_reduce_calls);
+  SparseAllReduceFunc(all_gather_calls, sparse_reduce_calls);
+}
+
+void SparseAllReduceOpHandle::SparseAllReduceFunc(
+    const std::vector<std::function<void()>> &all_gather_calls,
+    const std::vector<std::function<void()>> &sparse_reduce_calls) {
+  this->RunAndRecordEvent([&] {
+    if (all_gather_calls.size() == 1UL) {
+      // Do not use NCCLGroup when manage NCCL by per thread per device
+      all_gather_calls[0]();
+    } else {
+      platform::NCCLGroupGuard guard;
+      for (auto &call : all_gather_calls) {
+        call();
+      }
+    }
+
+    for (auto &call : sparse_reduce_calls) {
+      call();
+    }
+  });
+
+  SyncNCCLAllReduce();
 }
 
 int SparseAllReduceOpHandle::GetKValue(const std::string &grad_name) {

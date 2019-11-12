@@ -14,6 +14,12 @@
 
 # make package for paddle fluid shared and static library
 
+set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
+  "A path setting fluid shared and static libraries")
+
+set(FLUID_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_install_dir" CACHE STRING
+  "A path setting fluid inference shared and static libraries")
+  
 if(WIN32)
     if(NOT PYTHON_EXECUTABLE)
         FIND_PACKAGE(PythonInterp REQUIRED)
@@ -50,29 +56,7 @@ function(copy TARGET)
     endforeach ()
 endfunction()
 
-# third party
-set(third_party_deps eigen3 gflags glog boost xxhash zlib dlpack)
-if(NOT PROTOBUF_FOUND OR WIN32)
-    list(APPEND third_party_deps extern_protobuf)
-endif ()
-
-if (WITH_MKLML)
-    list(APPEND third_party_deps mklml)
-elseif (NOT CBLAS_FOUND OR WIN32)
-    list(APPEND third_party_deps extern_openblas)
-endif ()
-
-if (WITH_MKLDNN)
-    list(APPEND third_party_deps mkldnn_shared_lib)
-endif ()
-
-if (WITH_NGRAPH)
-    list(APPEND third_party_deps ngraph)
-endif ()
-
-add_custom_target(third_party DEPENDS ${third_party_deps})
-
-# inference-only library
+# inference library for only inference
 set(inference_lib_deps third_party paddle_fluid paddle_fluid_shared)
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_deps})
 
@@ -223,14 +207,20 @@ set(module "platform")
 set(platform_lib_deps profiler_proto)
 add_dependencies(fluid_lib_dist ${platform_lib_deps})
 copy(fluid_lib_dist
-        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/profiler.pb.h
-        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details ${dst_dir}/${module}
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/profiler.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/error_codes.pb.h
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module}
         )
 
 set(module "string")
 copy(fluid_lib_dist
         SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/tinyformat/*.h
         DSTS ${dst_dir}/${module} ${dst_dir}/${module}/tinyformat
+        )
+
+set(module "imperative")
+copy(fluid_lib_dist
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/jit/*.h 
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/jit
         )
 
 set(module "pybind")

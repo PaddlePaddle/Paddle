@@ -21,10 +21,14 @@ function(download_model_and_data install_dir model_name data_name)
     download_data(${install_dir} ${data_name})
 endfunction()
 
+function(download_result install_dir result_name)
+    download_data(${install_dir} ${result_name})
+endfunction()
+
 function(inference_analysis_api_test target install_dir filename)
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
-        ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt)
+        ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt --refer_result=${install_dir}/result.txt)
 endfunction()
 
 function(inference_analysis_api_int8_test_build TARGET_NAME filename)
@@ -128,6 +132,12 @@ inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR} analyzer_lac_te
 set(PYRAMID_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/pyramid_dnn")
 download_model_and_data(${PYRAMID_DNN_INSTALL_DIR} "PyramidDNN_model.tar.gz" "PyramidDNN_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_pyramid_dnn ${PYRAMID_DNN_INSTALL_DIR} analyzer_pyramid_dnn_tester.cc)
+
+#Ernie
+set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
+download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_model.tar.gz" "Ernie_data.txt.tar.gz" "Ernie_result.txt.tar.gz")
+download_result(${ERNIE_INSTALL_DIR} "Ernie_result.txt.tar.gz")
+inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_tester.cc)
 
 # text_classification
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
@@ -268,6 +278,10 @@ if(WITH_GPU AND TENSORRT_FOUND)
     if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR})
         inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_inference_test_models.tar.gz")
     endif()
+    set(TEST_SPLIT_CONVERTER_MODEL "${TRT_MODEL_INSTALL_DIR}/trt_split_op_converter_test")
+    if (NOT EXISTS ${TEST_SPLIT_CONVERTER_MODEL})
+        inference_download_and_uncompress(${TEST_SPLIT_CONVERTER_MODEL} ${INFERENCE_URL}/tensorrt_test "split_converter.tgz")
+    endif()
     inference_analysis_test(trt_mobilenet_test SRCS trt_mobilenet_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
@@ -283,6 +297,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(trt_cascade_rcnn_test SRCS trt_cascade_rcnn_test.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+    inference_analysis_test(trt_split_converter_test SRCS trt_split_converter_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} 
+            ARGS --infer_model=${TEST_SPLIT_CONVERTER_MODEL}/)
     inference_analysis_test(test_analyzer_capi_gpu SRCS analyzer_capi_gpu_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)

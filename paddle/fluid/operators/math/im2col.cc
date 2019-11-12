@@ -115,7 +115,7 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
           if ((im_row_idx) >= 0 && (im_row_idx) < im_height &&
               (im_col_idx) >= 0 && (im_col_idx) < im_width) {
             int im_offset;
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout != DataLayout::kNHWC) {
               im_offset =
                   (c_im * im_height + im_row_idx) * im_width + im_col_idx;
             } else {

@@ -11,25 +11,30 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/framework/ir/codegen.h"
-#include <set>
-#include <sstream>
-#include "paddle/fluid/framework/ir/codegen_helper.h"
+
+#pragma once
+
+#include <string>
+#include <unordered_set>
+#include "paddle/fluid/framework/ir/fusion_group/subgraph.h"
+#include "paddle/fluid/framework/ir/pass.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {
 
-CodeGenerator::CodeGenerator(CodeTemplate code_template) {
-  code_template_ = code_template;
-}
+class FusionGroupPass : public Pass {
+ protected:
+  void ApplyImpl(Graph* graph) const override;
 
-// in order to get the right result of expression, we need to calculate, we
-// store the expression as
-// suffix Expressions using vector
-std::string CodeGenerator::GenerateCode(TemplateVariable template_var) {
-  auto cuda_kernel = kernel_function + code_template_.Format(template_var);
-  return cuda_kernel;
-}
+ private:
+  int DetectFusionGroup(Graph* graph, int type = 0) const;
+  void InsertFusionGroupOp(Graph* graph,
+                           const fusion_group::SubGraph& subgraph) const;
+
+  const std::string name_scope_{"fusion_group"};
+};
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

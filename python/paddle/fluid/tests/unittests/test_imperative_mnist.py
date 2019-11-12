@@ -26,6 +26,7 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -135,6 +136,9 @@ class TestImperativeMnist(unittest.TestCase):
 
             mnist.train()
             dy_param_init_value = {}
+
+            helper = DyGraphProgramDescTracerTestHelper(mnist, self)
+
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(batch_py_reader()):
                     if batch_id >= batch_num:
@@ -144,7 +148,14 @@ class TestImperativeMnist(unittest.TestCase):
                     label = data[1]
                     label.stop_gradient = True
 
-                    cost = mnist(img)
+                    if batch_id % 10 == 0:
+                        cost, cost_static = helper.run(inputs=img,
+                                                       feed_names=['image'],
+                                                       fetch_names=['cost'])
+                        helper.assertEachVar(cost, cost_static)
+                    else:
+                        cost = mnist(img)
+
                     loss = fluid.layers.cross_entropy(cost, label)
                     avg_loss = fluid.layers.mean(loss)
 
