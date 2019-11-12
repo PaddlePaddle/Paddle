@@ -1013,19 +1013,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (FLAGS_check_nan_inf) {
-    // for (auto& vname : OutputVars(true)) {
-    //  auto* var = exec_scope.FindVar(vname);
-    //  if (var == nullptr) continue;
-    //  if (var->IsType<framework::LoDTensor>()) {
-    //    CheckTensorNANOrInf(type_, vname, var->Get<framework::LoDTensor>());
-    //  } else if (var->IsType<framework::SelectedRows>()) {
-    //    CheckTensorNANOrInf(type_, vname,
-    //                        var->Get<framework::SelectedRows>().value());
-    //  }
-    //}
-
     for (auto& vname : OutputVars(true)) {
-      // Some output may not judge by this method, such as dgc Encode.
+      // FIXME(wangxi). Some op or output may not judge by this method, such as
+      // coalesce_tensor dgc_encoded. May add white list.
+      if (type_ == "coalesce_tensor") continue;
       if (vname.find("dgc_encoded") != std::string::npos) continue;
       auto* var = exec_scope.FindVar(vname);
       if (var == nullptr) continue;

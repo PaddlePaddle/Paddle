@@ -24,26 +24,15 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-// print the first 16 letters of the op name
-#define MAX_LEN_OP_NAME 16
-
-// print the first 48 letters of the tensor name
-#define MAX_LEN_TENSOR_NAME 48
-
-// Resnet Speed. No check 270, check without DebugInfo 229, check with DebugInfo
-// 190.
-// Maybe can use id or hash value to reduce DebugInfo size.
-struct DebugInfo {
-  char op_name[MAX_LEN_OP_NAME];
-  char tensor_name[MAX_LEN_TENSOR_NAME];
-};
-
-static_assert(sizeof(DebugInfo) == (MAX_LEN_OP_NAME + MAX_LEN_TENSOR_NAME),
-              "sizeof(DebugInfo) not aligned");
-
+// Resnet 2gpus speed test, no check 270 images/s, this check 223 images/s
 template <typename T>
 __global__ void CheckNanInfKernel(const T* value, const size_t numel,
-                                  int print_value, struct DebugInfo info) {
+                                  int print_num, char* debug_info) {
+  /// step 1, judge wheater has nan or inf
+  __shared__ volatile int has_nan_inf;
+  if (threadIdx.x == 0) has_nan_inf = false;
+  __syncthreads();
+
   const size_t tid = threadIdx.x + blockIdx.x * blockDim.x;
   T sum = static_cast<T>(0.0);
   // Todo(wangxi). simd speed up
@@ -51,32 +40,43 @@ __global__ void CheckNanInfKernel(const T* value, const size_t numel,
     sum += (value[i] - value[i]);
   }
 
-  if (isnan(sum) || isinf(sum)) {
-  } else {
-    return;
-  }
+  if (isnan(sum) || isinf(sum)) has_nan_inf = true;
+  __syncthreads();
 
-  if (print_value) {
-    for (size_t i = tid; i < numel; i += blockDim.x) {
-      if (isnan(value[i]) || isinf(value[i])) {
-        printf("idx:%u value:%f\n", i, value[i]);
-        // use param control whether print more value
-        if (i < numel) {
-          printf("idx:%u value:%f\n", i + 1, value[i + 1]);
-        }
-      }
+  /// notify, different blocks may behave differently
+  if (!has_nan_inf) return;
+
+  /// step 2, has nan or inf, print part of value
+  __shared__ unsigned int nan_count, inf_count, num_count;
+  if (threadIdx.x == 0) nan_count = inf_count = num_count = 0;
+  __syncthreads;
+
+  for (size_t i = tid; i < numel; i += blockDim.x * gridDim.x) {
+    unsigned int count = 0;
+    if (isnan(value[i])) {
+      count = atomicAdd(&nan_count, 1);
+    } else if (isinf(value[i])) {
+      count = atomicAdd(&inf_count, 1);
+    } else {
+      count = atomicAdd(&num_count, 1);
+    }
+    // for cuda, print in every block
+    if (count < print_num) {
+      printf("numel:%lu idx:%lu value:%f\n", static_cast<uint64_t>(numel),
+             static_cast<uint64_t>(i), static_cast<float>(value[i]));
     }
   }
-  __syncthreads();
-  // abort or not
-  if (true) {
-    PADDLE_ENFORCE(0, "===ERROR: in [op=%s] [tensor=%s] find nan or inf===",
-                   info.op_name, info.tensor_name);
+
+  if (true && threadIdx.x == 0) {
+    printf("In block %d, there has %u,%u,%u nan,inf,num\n", blockIdx.x,
+           nan_count, inf_count, num_count);
+    PADDLE_ENFORCE(!has_nan_inf, "===ERROR: in %s find nan or inf===",
+                   debug_info);
   }
 }
 
 template <typename T>
-void CheckNanInf(const T* value, const size_t numel, int print_value,
+void CheckNanInf(const T* value, const size_t numel, int print_num,
                  const std::string& op_type, const std::string& var_name) {
   T sum = static_cast<T>(0.0);
 #pragma omp parallel for reduction(+ : sum)
@@ -85,11 +85,9 @@ void CheckNanInf(const T* value, const size_t numel, int print_value,
   }
 
   if (std::isnan(sum) || std::isinf(sum)) {
-    printf("===ERROR: has nan or inf===");
-    if (print_value) {
-      for (int i = 0; i < numel; ++i) {
-        printf("idx:%u value:%f\n", i, value[i]);
-      }
+    // cpu print all value
+    for (int i = 0; i < numel; ++i) {
+      printf("idx:%u value:%f\n", i, value[i]);
     }
     PADDLE_ENFORCE_EQ(1, 0,
                       "===ERROR: in [op=%s] [tensor=%s] find nan or inf===",
@@ -102,14 +100,14 @@ struct CheckNanInfTool {
   template <typename T>
   void run(const std::string& op_type, const std::string& var_name,
            const framework::Tensor& tensor, const platform::Place& place,
-           int print_value,
+           int print_num,
            typename std::enable_if<std::is_integral<T>::value>::type* = 0);
 
   template <typename T>
   void run(
       const std::string& op_type, const std::string& var_name,
       const framework::Tensor& tensor, const platform::Place& place,
-      int print_value,
+      int print_num,
       typename std::enable_if<std::is_floating_point<T>::value>::type* = 0);
 };
 
@@ -118,8 +116,7 @@ template <typename T>
 void CheckNanInfTool<DeviceContext>::run(
     const std::string& op_type, const std::string& var_name,
     const framework::Tensor& tensor, const platform::Place& place,
-    int print_value,
-    typename std::enable_if<std::is_integral<T>::value>::type*) {
+    int print_num, typename std::enable_if<std::is_integral<T>::value>::type*) {
   VLOG(10) << var_name << " need not to check, it's type is not float point";
 }
 
@@ -128,26 +125,23 @@ template <typename T>
 void CheckNanInfTool<platform::CUDADeviceContext>::run(
     const std::string& op_type, const std::string& var_name,
     const framework::Tensor& tensor, const platform::Place& place,
-    int print_value,
+    int print_num,
     typename std::enable_if<std::is_floating_point<T>::value>::type*) {
   auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
       platform::DeviceContextPool::Instance().Get(tensor.place()));
 
-  DebugInfo debug_info;
-  int len_op =
-      std::min(MAX_LEN_OP_NAME - 1, static_cast<int>(op_type.length()));
-  std::strncpy(debug_info.op_name, op_type.c_str(), len_op);
-  debug_info.op_name[len_op] = '\0';
+  std::string debug_str = "[op=" + op_type + "] [tensor=" + var_name + "]";
+  auto debug_tensor = paddle::memory::Alloc(*dev_ctx, debug_str.length() + 1);
+  char* debug_ptr = reinterpret_cast<char*>(debug_tensor->ptr());
 
-  int len_tensor =
-      std::min(MAX_LEN_TENSOR_NAME - 1, static_cast<int>(var_name.length()));
-  std::strncpy(debug_info.tensor_name, var_name.c_str(), len_tensor);
-  debug_info.tensor_name[len_tensor] = '\0';
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaMemcpyAsync(debug_ptr, debug_str.c_str(), debug_str.length() + 1,
+                      cudaMemcpyHostToDevice, dev_ctx->stream()));
 
   const size_t threads = 1024;
   size_t blocks = std::min(128ul, (tensor.numel() + threads - 1) / threads);
   CheckNanInfKernel<<<blocks, threads, 0, dev_ctx->stream()>>>(
-      tensor.data<T>(), tensor.numel(), 1, debug_info);
+      tensor.data<T>(), tensor.numel(), print_num, debug_ptr);
 }
 
 template <>
@@ -155,11 +149,11 @@ template <typename T>
 void CheckNanInfTool<platform::CPUDeviceContext>::run(
     const std::string& op_type, const std::string& var_name,
     const framework::Tensor& tensor, const platform::Place& place,
-    int print_value,
+    int print_num,
     typename std::enable_if<std::is_floating_point<T>::value>::type*) {
   platform::DeviceContextPool::Instance().Get(tensor.place());
 
-  CheckNanInf(tensor.data<T>(), tensor.numel(), 1, op_type, var_name);
+  CheckNanInf(tensor.data<T>(), tensor.numel(), print_num, op_type, var_name);
 }
 
 struct TensorCheckerVisitor {
@@ -173,12 +167,12 @@ struct TensorCheckerVisitor {
 
   template <typename T>
   void apply() const {
-    int is_print_value = 1;
+    int print_num = 3;
 
     if (platform::is_gpu_place(tensor_.place())) {
 #ifdef PADDLE_WITH_CUDA
       CheckNanInfTool<platform::CUDADeviceContext> tools;
-      tools.run<T>(op_type_, var_name_, tensor_, place_, is_print_value);
+      tools.run<T>(op_type_, var_name_, tensor_, place_, print_num);
 #else
       PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif
@@ -186,7 +180,7 @@ struct TensorCheckerVisitor {
     }
 
     CheckNanInfTool<platform::CPUDeviceContext> tools;
-    tools.run<T>(op_type_, var_name_, tensor_, place_, is_print_value);
+    tools.run<T>(op_type_, var_name_, tensor_, place_, print_num);
   }
 
   std::string op_type_;
