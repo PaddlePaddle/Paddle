@@ -155,7 +155,6 @@ class DynamicGRU(fluid.dygraph.Layer):
         super(DynamicGRU, self).__init__(scope_name)
 
         self.gru_unit = GRUUnit(
-            self.full_name(),
             size * 3,
             param_attr=param_attr,
             bias_attr=bias_attr,
@@ -323,10 +322,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
                              size=decoder_size * 3,
                              bias_attr=False)
         self.gru_unit = GRUUnit(
-            self.full_name(),
-            size=decoder_size * 3,
-            param_attr=None,
-            bias_attr=None)
+            size=decoder_size * 3, param_attr=None, bias_attr=None)
         self.out_layer = FC(self.full_name(),
                             size=num_classes + 2,
                             bias_attr=None,

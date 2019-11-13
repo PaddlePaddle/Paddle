@@ -387,7 +387,7 @@ class TestLayer(LayerTest):
             hidden = layers.data(name='hidden', shape=[-1, D], dtype='float32')
             updated_hidden, reset_hidden_pre, gate = layers.gru_unit(
                 input=x, hidden=hidden, size=D * 3)
-            gru = nn.GRUUnit('gru', size=D * 3)
+            gru = nn.GRUUnit(size=D * 3)
             updated_hidden, reset_hidden_pre, gate = gru(x, hidden)
 
             static_ret2 = self.get_static_graph_result(
@@ -396,7 +396,7 @@ class TestLayer(LayerTest):
                 fetch_list=[updated_hidden, reset_hidden_pre, gate])
 
         with self.dynamic_graph():
-            gru = nn.GRUUnit('gru', size=D * 3)
+            gru = nn.GRUUnit(size=D * 3)
             dy_ret = gru(
                 base.to_variable(input), base.to_variable(hidden_input))
             dy_ret_value = []
@@ -412,8 +412,8 @@ class TestLayer(LayerTest):
             weight_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
-            gru1 = nn.GRUUnit('gru1', size=D * 3)
-            gru2 = nn.GRUUnit('gru2', size=D * 3, param_attr=weight_attr)
+            gru1 = nn.GRUUnit(size=D * 3)
+            gru2 = nn.GRUUnit(size=D * 3, param_attr=weight_attr)
             dy_ret1 = gru1(
                 base.to_variable(input), base.to_variable(hidden_input))
             dy_ret2 = gru2(
@@ -897,8 +897,8 @@ class TestLayer(LayerTest):
                 embs2.append(emb_rlt)
 
             embs2 = layers.concat(input=embs2, axis=1)
-            nce = nn.NCE('nce',
-                         num_total_classes=dict_size,
+            nce = nn.NCE(num_total_classes=dict_size,
+                         dim=embs2.shape[1],
                          num_neg_samples=2,
                          sampler="custom_dist",
                          custom_dist=nid_freq_arr.tolist(),
@@ -933,8 +933,8 @@ class TestLayer(LayerTest):
                 embs3.append(emb_rlt)
 
             embs3 = layers.concat(input=embs3, axis=1)
-            nce = nn.NCE('nce',
-                         num_total_classes=dict_size,
+            nce = nn.NCE(num_total_classes=dict_size,
+                         dim=embs3.shape[1],
                          num_neg_samples=2,
                          sampler="custom_dist",
                          custom_dist=nid_freq_arr.tolist(),
@@ -971,8 +971,8 @@ class TestLayer(LayerTest):
                 embs3.append(emb_rlt)
 
             embs3 = layers.concat(input=embs3, axis=1)
-            nce1 = nn.NCE('nce1',
-                          num_total_classes=dict_size,
+            nce1 = nn.NCE(num_total_classes=dict_size,
+                          dim=embs3.shape[1],
                           num_neg_samples=2,
                           sampler="custom_dist",
                           custom_dist=nid_freq_arr.tolist(),
@@ -981,13 +981,13 @@ class TestLayer(LayerTest):
                           bias_attr='nce1.b',
                           sample_weight=sample_weights)
 
-            nce2 = nn.NCE('nce2',
-                          param_attr=weight_attr,
-                          num_total_classes=dict_size,
+            nce2 = nn.NCE(num_total_classes=dict_size,
+                          dim=embs3.shape[1],
                           num_neg_samples=2,
                           sampler="custom_dist",
                           custom_dist=nid_freq_arr.tolist(),
                           seed=seed,
+                          param_attr=weight_attr,
                           bias_attr='nce2.b',
                           sample_weight=sample_weights)
 

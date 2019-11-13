@@ -1644,7 +1644,6 @@ class GRUUnit(layers.Layer):
     and concatenation of :math:`u_t`, :math:`r_t` and :math:`m_t`.
 
     Parameters:
-        name_scope(str): The name of this class.
         size (int): The input dimension value.
         param_attr(ParamAttr, optional): The parameter attribute for the learnable
             hidden-hidden weight matrix. 
@@ -1703,14 +1702,13 @@ class GRUUnit(layers.Layer):
           hidden_input = numpy.random.rand(T, D).astype('float32')
           with fluid.dygraph.guard():
               x = numpy.random.random((3, 32, 32)).astype('float32')
-              gru = fluid.dygraph.GRUUnit('gru', size=D * 3)
+              gru = fluid.dygraph.GRUUnit(size=D * 3)
               dy_ret = gru(
                 base.to_variable(input), base.to_variable(hidden_input))
 
     """
 
     def __init__(self,
-                 name_scope,
                  size,
                  param_attr=None,
                  bias_attr=None,
@@ -1718,9 +1716,8 @@ class GRUUnit(layers.Layer):
                  gate_activation='sigmoid',
                  origin_mode=False,
                  dtype='float32'):
-        super(GRUUnit, self).__init__(name_scope, dtype)
+        super(GRUUnit, self).__init__()
         self._bias_attr = bias_attr
-
         activation_dict = dict(
             identity=0,
             sigmoid=1,
@@ -1793,8 +1790,8 @@ class NCE(layers.Layer):
     `Noise-contrastive estimation: A new estimation principle for unnormalized statistical models <http://www.jmlr.org/proceedings/papers/v9/gutmann10a/gutmann10a.pdf>`_ .
 
     Parameters:
-        name_scope(str): The name of this class.
-        num_total_classes (int): Total number of classes in all samples
+        num_total_classes (int): Total number of classes in all samples.
+        dim (int): Dimension of input (possibly embedding dim).
         param_attr (ParamAttr, optional): The parameter attribute for learnable weights(Parameter)
              of nce. If it is set to None or one attribute of ParamAttr, nce
              will create ParamAttr as param_attr. If the Initializer of the param_attr
@@ -1814,6 +1811,7 @@ class NCE(layers.Layer):
                        Default: None.
         seed (int, optional): The seed used in sampler. Default: 0.
         is_sparse(bool, optional): The flag indicating whether to use sparse update. If is_sparse is True, the weight@GRAD and bias@GRAD will be changed to SelectedRows. Default: False.
+        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
     Attribute:
         **weight** (Parameter): the learnable weights of this layer.
@@ -1868,8 +1866,8 @@ class NCE(layers.Layer):
     """
 
     def __init__(self,
-                 name_scope,
                  num_total_classes,
+                 dim,
                  sample_weight=None,
                  param_attr=None,
                  bias_attr=None,
@@ -1877,12 +1875,13 @@ class NCE(layers.Layer):
                  sampler="uniform",
                  custom_dist=None,
                  seed=0,
-                 is_sparse=False):
-        super(NCE, self).__init__(name_scope)
+                 is_sparse=False,
+                 dtype='float32'):
+        super(NCE, self).__init__()
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._num_total_classes = num_total_classes
-
+        self._dtype = dtype
         self._inputs = dict()
         self._inputs['SampleWeight'] = sample_weight if sample_weight is not None else []
         if sampler == "uniform":
@@ -1972,23 +1971,17 @@ class NCE(layers.Layer):
             'remote_prefetch': remote_prefetch
         }
 
-    def _build_once(self, input, label, sample_weight=None):
-        assert isinstance(input, Variable)
-        assert isinstance(label, Variable)
-
-        dim = input.shape[1]
-        num_true_class = label.shape[1]
         self._w = self.create_parameter(
             attr=self._param_attr,
             shape=[self._num_total_classes, dim],
             is_bias=False,
-            dtype=input.dtype)
+            dtype=self._dtype)
         if self._bias_attr:
             self._b = self.create_parameter(
                 attr=self._bias_attr,
                 shape=[self._num_total_classes, 1],
                 is_bias=True,
-                dtype=input.dtype)
+                dtype=self._dtype)
             self._inputs['Bias'] = self._b
         self._inputs['Weight'] = self._w
 
