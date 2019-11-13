@@ -90,7 +90,7 @@ class ConvBNLayer(fluid.Layer):
             bias_attr=None,
             use_cudnn=False)
 
-        self._batch_norm = BatchNorm(self.full_name(), num_filters, act=act)
+        self._batch_norm = BatchNorm(num_filters, act=act)
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -166,11 +166,7 @@ class ResNet(fluid.Layer):
         self.conv = ConvBNLayer(
             num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu')
         self.pool2d_max = Pool2D(
-            self.full_name(),
-            pool_size=3,
-            pool_stride=2,
-            pool_padding=1,
-            pool_type='max')
+            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
 
         self.bottleneck_block_list = []
         for block in range(len(depth)):
@@ -188,7 +184,7 @@ class ResNet(fluid.Layer):
                 shortcut = True
 
         self.pool2d_avg = Pool2D(
-            self.full_name(), pool_size=7, pool_type='avg', global_pooling=True)
+            pool_size=7, pool_type='avg', global_pooling=True)
 
         import math
         stdv = 1.0 / math.sqrt(2048 * 1.0)

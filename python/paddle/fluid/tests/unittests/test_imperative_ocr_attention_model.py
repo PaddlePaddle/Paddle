@@ -86,8 +86,7 @@ class ConvBNPool(fluid.dygraph.Layer):
             bias_attr=False,
             act=None,
             use_cudnn=use_cudnn)
-        self.bn_0_layer = BatchNorm(
-            self.full_name(), out_ch[0], act=act, is_test=is_test)
+        self.bn_0_layer = BatchNorm(out_ch[0], act=act, is_test=is_test)
         self.conv_1_layer = Conv2D(
             out_ch[0],
             num_filters=out_ch[1],
@@ -97,12 +96,10 @@ class ConvBNPool(fluid.dygraph.Layer):
             bias_attr=False,
             act=None,
             use_cudnn=use_cudnn)
-        self.bn_1_layer = BatchNorm(
-            self.full_name(), out_ch[1], act=act, is_test=is_test)
+        self.bn_1_layer = BatchNorm(out_ch[1], act=act, is_test=is_test)
 
         if self.pool:
             self.pool_layer = Pool2D(
-                self.full_name(),
                 pool_size=2,
                 pool_type='max',
                 pool_stride=2,

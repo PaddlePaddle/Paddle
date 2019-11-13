@@ -772,7 +772,6 @@ class Pool2D(layers.Layer):
             Output(i ,j) & = \\frac{sum(Input[hstart:hend, wstart:wend])}{(hend - hstart) * (wend - wstart)}
 
     Parameters:
-        name_scope(str) : The name of this class.
         pool_size (int or list or tuple, optional): The pool kernel size. If pool kernel size is a tuple or list,
             it must contain two integers, (pool_size_Height, pool_size_Width).
             Otherwise, the pool kernel size will be a square of an int. Default: -1.
@@ -791,7 +790,6 @@ class Pool2D(layers.Layer):
         ceil_mode (bool, optional): Whether to use the ceil function to calculate output height and width.
             False is the default. If it is set to False, the floor function will be used. Default: False.
         exclusive (bool, optional): Whether to exclude padding points in average pooling mode. Default: True.
-        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32". 
 
     Returns:
         None
@@ -811,7 +809,7 @@ class Pool2D(layers.Layer):
 
           with fluid.dygraph.guard():
              data = numpy.random.random((3, 32, 32, 5)).astype('float32')
-             pool2d = fluid.dygraph.Pool2D("pool2d",pool_size=2,
+             pool2d = fluid.dygraph.Pool2D(pool_size=2,
                             pool_type='max',
                             pool_stride=1,
                             global_pooling=False)
@@ -820,7 +818,6 @@ class Pool2D(layers.Layer):
     """
 
     def __init__(self,
-                 name_scope,
                  pool_size=-1,
                  pool_type="max",
                  pool_stride=1,
@@ -828,8 +825,7 @@ class Pool2D(layers.Layer):
                  global_pooling=False,
                  use_cudnn=True,
                  ceil_mode=False,
-                 exclusive=True,
-                 dtype=core.VarDesc.VarType.FP32):
+                 exclusive=True):
         if pool_type not in ["max", "avg"]:
             raise ValueError(
                 "Unknown pool_type: '%s'. It can only be 'max' or 'avg'.",
@@ -843,7 +839,7 @@ class Pool2D(layers.Layer):
         if not isinstance(use_cudnn, bool):
             raise ValueError("use_cudnn should be True or False")
 
-        super(Pool2D, self).__init__(name_scope, dtype=dtype)
+        super(Pool2D, self).__init__()
 
         self._pool_type = pool_type
         self._pool_size = utils.convert_to_list(pool_size, 2, 'pool_size')
@@ -1139,7 +1135,6 @@ class BatchNorm(layers.Layer):
     - :math:`\\beta` : trainable deviation parameter
 
     Parameters:
-        name_scope(str): The name of this class.
         num_channels(int): Indicate the number of channels of the input ``Tensor``.
         act(str, optional): Activation to be applied to the output of batch normalizaiton. Default: None.
         is_test (bool, optional): A flag indicating whether it is in test phrase or not. Default: False.
@@ -1183,12 +1178,11 @@ class BatchNorm(layers.Layer):
           x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
           with fluid.dygraph.guard():
               x = to_variable(x)
-              batch_norm = fluid.BatchNorm("batch_norm", 10)
+              batch_norm = fluid.BatchNorm(10)
               hidden1 = batch_norm(x)
     """
 
     def __init__(self,
-                 name_scope,
                  num_channels,
                  act=None,
                  is_test=False,
@@ -1204,7 +1198,7 @@ class BatchNorm(layers.Layer):
                  do_model_average_for_mean_and_var=True,
                  use_global_stats=False,
                  trainable_statistics=False):
-        super(BatchNorm, self).__init__(name_scope, dtype)
+        super(BatchNorm, self).__init__()
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
@@ -1263,9 +1257,6 @@ class BatchNorm(layers.Layer):
         self._fuse_with_relu = False
         self._use_global_stats = use_global_stats
         self._trainable_statistics = trainable_statistics
-
-    def _build_once(self, input):
-        pass
 
     def forward(self, input):
         # create output

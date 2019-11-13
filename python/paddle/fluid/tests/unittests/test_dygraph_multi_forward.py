@@ -61,7 +61,6 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             use_cudnn=use_cudnn)
 
         self._pool2d = Pool2D(
-            self.full_name(),
             pool_size=pool_size,
             pool_type=pool_type,
             pool_stride=pool_stride,

@@ -40,7 +40,7 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
                  dtype='float32',
                  param_attr=None,
                  bias_attr=None):
-        super(SimpleImgConvPool, self).__init__(name_scope)
+        super(SimpleImgConvPool, self).__init__()
 
         self._conv2d = Conv2D(
             num_channels=num_channels,
@@ -57,7 +57,6 @@ class SimpleImgConvPool(fluid.dygraph.Layer):
             act=act)
 
         self._pool2d = Pool2D(
-            self.full_name(),
             pool_size=pool_size,
             pool_type=pool_type,
             pool_stride=pool_stride,
