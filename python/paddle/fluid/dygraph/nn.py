@@ -1852,8 +1852,9 @@ class NCE(layers.Layer):
                     embs3.append(emb_rlt)
 
                 embs3 = fluid.layers.concat(input=embs3, axis=1)
-                nce = fluid.NCE('nce',
+                nce = fluid.NCE(
                              num_total_classes=dict_size,
+                             dim=embs3.shape[1],
                              num_neg_samples=2,
                              sampler="custom_dist",
                              custom_dist=nid_freq_arr.tolist(),
@@ -2040,13 +2041,15 @@ class PRelu(layers.Layer):
         y = \max(0, x) + \\alpha * \min(0, x)
 
     Parameters:
-        name_scope(str): The name of this class.
         mode (str): The mode for weight sharing. It supports all, channel
           and element. all: all elements share same weight
           channel:elements in a channel share same weight
           element:each element has a weight
+        input_shape (list or tuple, optional): The shape of input.
+          This parameter is required when mode is not "all". Default: None.
         param_attr(ParamAttr, optional): The parameter attribute for the learnable
           weight (alpha). Default: None.
+        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
     Attribute:
         **weight** (Parameter): the learnable weights of this layer.
@@ -2067,28 +2070,29 @@ class PRelu(layers.Layer):
               inp_np = to_variable(inp_np)
               mode = 'channel'
               prelu = fluid.PRelu(
-                 'prelu',
                  mode=mode,
+                 input_shape=inp_np.shape,
                  param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(1.0)))
               dy_rlt = prelu(inp_np)
 
     """
 
-    def __init__(self, name_scope, mode, param_attr=None):
-
-        super(PRelu, self).__init__(name_scope)
+    def __init__(self, mode, input_shape=None, param_attr=None,
+                 dtype='float32'):
+        super(PRelu, self).__init__()
         self._mode = mode
         self._param_attr = param_attr
         if self._mode not in ['all', 'channel', 'element']:
             raise ValueError('mode should be one of all, channel, element.')
+        self._dtype = dtype
         self._alpha_shape = [1]
-
-    def _build_once(self, input):
-        if self._mode == 'channel':
-            self._alpha_shape = [1, input.shape[1], 1, 1]
-        elif self._mode == 'element':
-            self._alpha_shape = input.shape
-        self._dtype = self._helper.input_dtype(input)
+        if mode is not 'all':
+            assert input_shape is not None
+            input_shape = list(input_shape)
+            if self._mode == 'channel':
+                self._alpha_shape = [1, input_shape[1], 1, 1]
+            elif self._mode == 'element':
+                self._alpha_shape = input_shape
         self._alpha = self.create_parameter(
             attr=self._param_attr,
             shape=self._alpha_shape,
