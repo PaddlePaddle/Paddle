@@ -45,6 +45,15 @@ function(inference_qat2_int8_test target model_dir data_dir test_script use_mkld
                  --qat2)
 endfunction()
 
+function(save_qat2_int8_model target qat_model_dir qat_int8_save_model_dir test_script)
+    py_test(${target} SRCS ${test_script}
+            ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
+                 OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
+                 FLAGS_use_mkldnn=true
+            ARGS --qat2_model ${qat_model_dir}/float
+	         --save_int8_model_dir ${qat_int8_save_model_dir})
+endfunction()
+
 
 if(WIN32)
     list(REMOVE_ITEM TEST_OPS test_light_nas)
@@ -163,6 +172,12 @@ if(LINUX AND WITH_MKLDNN)
                 inference_download_and_uncompress(${QAT2_RESNET50_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "ResNet50_qat_perf.tar.gz" )
         endif()
         inference_qat2_int8_test(test_qat2_int8_resnet50_mkldnn ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
+
+	set(QAT_INT8_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_QAT_INT8")
+	set(SAVE_QAT_INT8_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/save_qat_int8_model.py")
+	save_qat2_int8_model(save_qat2_int8_resnet50_mkldnn ${QAT_RESNET50_MODEL_DIR} ${QAT_INT8_RESNET50_MODEL_DIR} $SAVE_QAT_INT8_MODEL_SCRIPT true)
+
+
 
         set(QAT2_MOBILENETV1_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf")
         if (NOT EXISTS ${QAT2_MOBILENETV1_MODEL_DIR})

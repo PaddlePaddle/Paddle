@@ -39,6 +39,8 @@
 
 DEFINE_string(model_name, "", "model name");
 DEFINE_string(infer_model, "", "model path");
+DEFINE_string(fp32_model, "", "FP32 model path");
+DEFINE_string(int8_model, "", "INT8 model path");
 DEFINE_string(infer_data, "", "data file");
 DEFINE_string(refer_result, "", "reference result for comparison");
 DEFINE_int32(batch_size, 1, "batch size");
