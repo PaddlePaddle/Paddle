@@ -118,14 +118,14 @@ def var_conv_2d(input,
     padding. Besides, input.dims[1] should be 1. 
 
     .. code-block:: text
-            
+
             If input_channel is 2 and given row lodTensor and col lodTensor as follows:
                 row.lod = [[5, 4]]
                 col.lod = [[6, 7]]
             input is a lodTensor: 
                 input.lod = [[60, 56]]	# where 60 = input_channel * 5 * 6
                 input.dims = [116, 1]	# where 116 = 60 + 56
-            
+
             If set output_channel is 3, filter_size is [3, 3], stride is [1, 1]:
                 output.lod = [[90, 84]] # where 90 = output_channel * [(5-1)/stride + 1] * [(6-1)/stride + 1]
                 output.dims = [174, 1]  # where 174 = 90 + 84
@@ -378,7 +378,7 @@ def tree_conv(nodes_vector,
               name=None):
     """ 
     ${comment}
-    		
+
     Args:
         nodes_vector(${nodes_vector_type}): ${nodes_vector_comment}
         edge_set(${edge_set_type}): ${edge_set_comment}
@@ -511,7 +511,7 @@ def multiclass_nms2(bboxes,
                     name=None):
     """
     **Multiclass NMS2**
-    
+
     This operator is to do multi-class non maximum suppression (NMS) on
     boxes and scores.
     In the NMS step, this operator greedily selects a subset of detection bounding
@@ -644,6 +644,7 @@ def search_pyramid_hash(input,
                         param_attr_wl=None,
                         param_attr_bl=None,
                         name=None,
+                        distribute_update_params=None,
                         dtype='float32'):
     """
     **Pyramid hash embedding**
@@ -670,6 +671,8 @@ def search_pyramid_hash(input,
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
         param_attr_wl(ParamAttr): Specified parameters of white filter.
         param_attr_bl(ParamAttr): Specified parameters of black filter.
+        distribute_update_params(list[ParamAttr.name]): Decided which params should be update in distribute training. 
+            Used in Distribute Transpiler to create trainer/pserver program.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
         dtype(str): The data type of output variable, float32.
@@ -698,6 +701,15 @@ def search_pyramid_hash(input,
         black_list.stop_gradient = True
         input_vars['BlackList'] = black_list
 
+    if distribute_update_params:
+        assert isinstance(distribute_update_params, list)
+        for param in distribute_update_params:
+            if param not in [
+                    param_attr.name, param_attr_wl.name, param_attr_bl.name
+            ]:
+                raise ValueError(
+                    "Pyramid Hash layer didn't have parameter {}".format(param))
+
     res = helper.create_variable_for_type_inference(dtype)
     drop_pos = helper.create_variable_for_type_inference(dtype)
     x_temp_out = helper.create_variable_for_type_inference(dtype)
@@ -719,6 +731,7 @@ def search_pyramid_hash(input,
             'black_list_len': black_list_len,
             'seed': seed,
             'lr': lr,
+            'distribute_update_params': distribute_update_params
         })
 
     return res
