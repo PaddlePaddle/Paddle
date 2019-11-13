@@ -175,7 +175,8 @@ typename KernelTuple::func_type GetDefaultBestFunc(
   return funcs[0];
 }
 
-extern thread_local std::unordered_map<std::string, void*> g_func_cache_map;
+extern thread_local std::unordered_map<std::string, std::shared_ptr<void>>
+    g_func_cache_map;
 
 template <typename KernelTuple, typename PlaceType>
 class KernelFuncs {
@@ -183,13 +184,14 @@ class KernelFuncs {
   KernelFuncs() = default;
   static KernelFuncs& Cache() {
     std::string key = typeid(KernelFuncs<KernelTuple, PlaceType>).name();
-    if (g_func_cache_map.find(key) != g_func_cache_map.end()) {
-      auto func_cache = g_func_cache_map.at(key);
-      return *(KernelFuncs<KernelTuple, PlaceType>*)(func_cache);
+    auto iter = g_func_cache_map.find(key);
+    if (iter != g_func_cache_map.end()) {
+      return *(KernelFuncs<KernelTuple, PlaceType>*)(iter->second.get());
     } else {
-      auto cache = new KernelFuncs<KernelTuple, PlaceType>;
-      g_func_cache_map.insert(make_pair(key, std::move(cache)));
-      return *(KernelFuncs<KernelTuple, PlaceType>*)cache;
+      std::shared_ptr<void> cache =
+          std::make_shared<KernelFuncs<KernelTuple, PlaceType>>();
+      g_func_cache_map.emplace(key, cache);
+      return *(KernelFuncs<KernelTuple, PlaceType>*)(cache.get());
     }
   }
 
