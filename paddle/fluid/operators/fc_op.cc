@@ -77,8 +77,9 @@ class FCOp : public framework::OperatorWithKernel {
     framework::LibraryType library = framework::LibraryType::kPlain;
     framework::DataLayout layout = framework::DataLayout::kAnyLayout;
     int customized_type_value =
-      framework::OpKernelType::kDefaultCustomizedTypeValue;
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
+        framework::OpKernelType::kDefaultCustomizedTypeValue;
+    auto input_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input");
     if (ctx.Attr<bool>("use_mkldnn")) {
       library = framework::LibraryType::kMKLDNN;
       layout = framework::DataLayout::kMKLDNN;
