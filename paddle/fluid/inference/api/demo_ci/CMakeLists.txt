@@ -140,7 +140,7 @@ else()
     set(DEPS ${DEPS}
         ${MATH_LIB} ${MKLDNN_LIB}
         glog gflags_static libprotobufd ${EXTERNAL_LIB})
-    set(DEPS ${DEPS} libcmtd shlwapi.lib)
+    set(DEPS ${DEPS} msvcrtd shlwapi.lib)
   else()
     set(DEPS ${DEPS}
         ${MATH_LIB} ${MKLDNN_LIB}

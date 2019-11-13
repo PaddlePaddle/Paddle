@@ -1,6 +1,6 @@
 
 set(C_API_SRCS pd_config.cc pd_predictor.cc pd_tensor.cc c_api.cc)
-if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(WIN32)
     cc_library(paddle_fluid_c_shared SHARED SRCS ${C_API_SRCS} DEPS ${paddle_fluid_list})
     cc_library(paddle_fluid_c SRCS ${C_API_SRCS} DEPS ${paddle_fluid_list})
 else()

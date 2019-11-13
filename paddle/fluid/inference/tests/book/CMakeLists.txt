@@ -14,10 +14,10 @@ function(inference_test TARGET_NAME)
   endif()
   foreach(arg ${arg_list})
     string(REGEX REPLACE "^_$" "" arg "${arg}")
-    if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if(WIN32)
       cc_test(test_inference_${TARGET_NAME}${arg}
         SRCS test_inference_${TARGET_NAME}.cc
-        DEPS paddle_fluid_origin_list
+        DEPS ${paddle_fluid_origin_list}
         ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.inference.model)
     else()
       cc_test(test_inference_${TARGET_NAME}${arg}
@@ -51,10 +51,10 @@ inference_test(word2vec)
 
 # This is an unly work around to make this test run
 # TODO(TJ): clean me up
-if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(WIN32)
   cc_test(test_inference_nlp
     SRCS test_inference_nlp.cc
-    DEPS paddle_fluid_origin_list
+    DEPS ${paddle_fluid_origin_list}
     ARGS
     --model_path=${PADDLE_BINARY_DIR}/python/paddle/fluid/tests/book/recognize_digits_mlp.inference.model)
 else()

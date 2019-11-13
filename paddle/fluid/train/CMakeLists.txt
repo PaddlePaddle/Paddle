@@ -14,10 +14,10 @@ function(train_test TARGET_NAME)
     endif()
     foreach(arg ${arg_list})
         string(REGEX REPLACE "^_$" "" arg "${arg}")
-        if(WIN32 AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+        if(WIN32)
             cc_test(test_train_${TARGET_NAME}${arg}
                     SRCS test_train_${TARGET_NAME}.cc
-                    DEPS paddle_fluid_origin_list
+                    DEPS ${paddle_fluid_origin_list}
                     ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.train.model/)
         else()
             cc_test(test_train_${TARGET_NAME}${arg}
