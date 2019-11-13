@@ -35,7 +35,7 @@ void CheckNanInf(const T* value, const size_t numel, int print_num,
   T sum = static_cast<T>(0.0);
 #if defined _OPENMP && _OPENMP >= 201307
 #pragma omp parallel for simd reduction(+ : sum)
-#else
+#elif defined _OPENMP
 #pragma omp parallel for reduction(+ : sum)
 #endif
   for (size_t i = 0; i < numel; ++i) {
@@ -55,7 +55,7 @@ void CheckNanInf(const T* value, const size_t numel, int print_num,
 }
 
 #if defined _OPENMP && _OPENMP >= 201307
-#else
+#elif defined _OPENMP
 template <>
 void CheckNanInf<paddle::platform::float16>(
     const paddle::platform::float16* value, const size_t numel, int print_num,
