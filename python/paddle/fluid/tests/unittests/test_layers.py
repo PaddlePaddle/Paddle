@@ -2544,6 +2544,14 @@ class TestBook(LayerTest):
             out = layers.square_error_cost(input=x, label=y)
             return (out)
 
+    def make_masked_select(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = self._get_data(name="input", shape=[4, 4], dtype="float32")
+            mask = self._get_data(name="mask", shape=[1, 4], dtype="bool")
+            out = layers.masked_select(input=input, mask=mask)
+            return (out)
+
     def test_dynamic_lstmp(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
