@@ -960,10 +960,12 @@ class DistributeTranspiler(object):
 
         lr_ops = self._get_lr_ops()
         delete_ops(self.origin_program.global_block(), lr_ops)
-
         self._delete_trainer_optimizer(is_startup=False)
+        sparse_table_names = self.get_sparse_table_names()
+        self.fake_init_sparsetable(sparse_table_names)
 
         self.origin_program.__str__()
+        self.startup_program.__str__()
 
         if wait_port:
             wait_server_ready(self.pserver_endpoints)
@@ -987,8 +989,8 @@ class DistributeTranspiler(object):
         # note that: some parameter is not trainable and those ops can't be deleted.
         sparse_table_names = self.get_sparse_table_names()
 
-        self.fake_init_sparsetable(sparse_table_names)
-        self._delete_trainer_optimizer(is_startup=True)
+        # self.fake_init_sparsetable(sparse_table_names)
+        #self._delete_trainer_optimizer(is_startup=True)
 
         for varname, splited_var in six.iteritems(self.param_var_mapping):
             if varname in sparse_table_names:
