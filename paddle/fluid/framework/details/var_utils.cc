@@ -22,15 +22,22 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+// openmp 4.0
+#if defined _OPENMP && _OPENMP >= 201307
 // more detail see: 180 page of
 // https://www.openmp.org/wp-content/uploads/OpenMP4.0.0.pdf
 #pragma omp declare reduction(+ : paddle::platform::float16 : omp_out += omp_in)
+#endif
 
 template <typename T>
 void CheckNanInf(const T* value, const size_t numel, int print_num,
                  const std::string& op_type, const std::string& var_name) {
   T sum = static_cast<T>(0.0);
+#if defined _OPENMP && _OPENMP >= 201307
 #pragma omp parallel for simd reduction(+ : sum)
+#else
+#pragma omp parallel for reduction(+ : sum)
+#endif
   for (size_t i = 0; i < numel; ++i) {
     sum += (value[i] - value[i]);
   }
@@ -46,6 +53,31 @@ void CheckNanInf(const T* value, const size_t numel, int print_num,
                       op_type, var_name);
   }
 }
+
+#if defined _OPENMP && _OPENMP >= 201307
+#else
+template <>
+void CheckNanInf<paddle::platform::float16>(
+    const paddle::platform::float16* value, const size_t numel, int print_num,
+    const std::string& op_type, const std::string& var_name) {
+  float sum = 0.0f;
+#pragma omp parallel for reduction(+ : sum)
+  for (size_t i = 0; i < numel; ++i) {
+    sum += static_cast<float>(value[i] - value[i]);
+  }
+
+  if (std::isnan(sum) || std::isinf(sum)) {
+    // CPU print all value
+    for (size_t i = 0; i < numel; ++i) {
+      printf("idx:%lu value:%f\n", static_cast<uint64_t>(i),
+             static_cast<float>(value[i]));
+    }
+    PADDLE_ENFORCE_EQ(1, 0,
+                      "===ERROR: in [op=%s] [tensor=%s] find nan or inf===",
+                      op_type, var_name);
+  }
+}
+#endif
 
 template <>
 template <typename T>
