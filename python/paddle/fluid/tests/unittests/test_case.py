@@ -144,7 +144,6 @@ class TestAPICase_Nested(unittest.TestCase):
                 fn_2, x=3)), (var_5 == var_6, partial(
                     layers.fill_constant, shape=[2], dtype='int32', value=7))])
             return out
-            #return layers.fill_constant(shape=[4, 3], dtype='int32', value=3)
 
         main_program = Program()
         startup_program = Program()

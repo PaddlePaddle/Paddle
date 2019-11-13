@@ -1798,14 +1798,15 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
 
 
 def _error_message(what, arg_name, op_name, right_value, error_value):
-    raise TypeError(
-        "{what} of '{arg_name}' in Op({op_name}) "
-        "must be {right_value}, but received: {error_value}.".format(
-            what=what,
-            arg_name=arg_name,
-            op_name=op_name,
-            right_value=right_value,
-            error_value=error_value))
+    error_message = "{what} of '{arg_name}' in Op({op_name}) must be " \
+        "{right_value}, but received: {error_value}.".format(
+        what=what,
+        arg_name=arg_name,
+        op_name=op_name,
+        right_value=right_value,
+        error_value=error_value)
+
+    return error_message
 
 
 def case(pred_fn_pairs, default=None, name=None):
