@@ -20,7 +20,7 @@ RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2
 
 
-class TestDistMnistNCCL2FleetApiDistFC(TestDistBase):
+class TestDistMnistNCCL2FleetApiDistFCSoftmax(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
         self._use_reduce = False
@@ -33,8 +33,23 @@ class TestDistMnistNCCL2FleetApiDistFC(TestDistBase):
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            #self.check_with_place("dist_mnist_distfc.py", delta=1e-5)
-            self.check_with_place("dist_mnist.py", delta=1e-5)
+            self.check_with_place("dist_mnist_distfc.py", delta=1e-5)
+
+
+class TestDistMnistNCCL2FleetApiDistFCArcface(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._use_reduce = False
+        self._use_reader_alloc = False
+        self._nccl2_mode = True
+        self._gpu_fleet_api = True
+        self._use_dist_fc = True
+        self._distfc_loss_type = "dist_arcface"
+
+    def test_dist_train(self):
+        import paddle.fluid as fluid
+        if fluid.core.is_compiled_with_cuda():
+            self.check_with_place("dist_mnist_distfc.py", delta=1e-5)
 
 
 if __name__ == "__main__":

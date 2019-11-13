@@ -19,6 +19,7 @@ import argparse
 import time
 import six
 import math
+import sys
 
 import paddle
 import paddle.fluid as fluid
@@ -29,10 +30,11 @@ from multiprocessing import Process
 import os
 import signal
 from functools import reduce
-from paddle.fluid.layers import dist_algo
 from test_dist_base import TestDistRunnerBase, runtime_main
 from paddle.fluid.incubate.fleet.collective import fleet, DistributedStrategy
 from paddle.fluid.incubate.fleet.collective import DistFCConfig
+from paddle.fluid import unique_name
+from paddle.fluid.layers import dist_algo
 
 DTYPE = "float32"
 paddle.dataset.mnist.fetch()
@@ -79,19 +81,38 @@ def cnn_model(data, label, loss_type, rank_id, nranks):
         loss = fluid.layers.softmax_with_cross_entropy(logits=out, label=label)
         loss = fluid.layers.mean(x=loss)
     elif loss_type == "dist_softmax":
-        #out = fluid.layers.fc(
-        #    input=emb,
-        #    size=SIZE,
-        #    act=None,
-        #    param_attr=fluid.param_attr.ParamAttr(
-        #        initializer=fluid.initializer.Constant(value=0.01)))
-        #loss = fluid.layers.softmax_with_cross_entropy(logits=out, label=label)
-        #loss = fluid.layers.mean(x=loss)
-
         loss = dist_algo._distributed_softmax_classify(
             x=emb, label=label, class_num=SIZE, nranks=nranks, rank_id=rank_id)
-        #param_attr=fluid.param_attr.ParamAttr(
-        #    initializer=fluid.initializer.Constant(value=0.01)))
+    elif loss_type == "arcface":
+        input_norm = fluid.layers.sqrt(
+            fluid.layers.reduce_sum(
+                fluid.layers.square(emb), dim=1))
+        input = fluid.layers.elementwise_div(emb, input_norm, axis=0)
+
+        weight = fluid.layers.create_parameter(
+            shape=[input.shape[1], SIZE],
+            dtype='float32',
+            name=unique_name.generate('final_fc_w'),
+            attr=fluid.param_attr.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.01)))
+
+        weight_norm = fluid.layers.sqrt(
+            fluid.layers.reduce_sum(
+                fluid.layers.square(weight), dim=0))
+        weight = fluid.layers.elementwise_div(weight, weight_norm, axis=1)
+        cos = fluid.layers.mul(input, weight)
+
+        theta = fluid.layers.acos(cos)
+        margin_cos = fluid.layers.cos(theta + 0.5)
+        one_hot = fluid.layers.one_hot(label, SIZE)
+        diff = (margin_cos - cos) * one_hot
+        target_cos = cos + diff
+        logit = fluid.layers.scale(target_cos, scale=64.)
+
+        loss, prob = fluid.layers.softmax_with_cross_entropy(
+            logits=logit, label=label, return_softmax=True)
+        loss = fluid.layers.mean(x=loss)
+        one_hot.stop_gradient = True
     elif loss_type == "dist_arcface":
         loss = dist_algo._distributed_arcface_classify(
             x=emb,
@@ -101,7 +122,6 @@ def cnn_model(data, label, loss_type, rank_id, nranks):
             rank_id=rank_id,
             param_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Constant(value=0.01)))
-        loss = loss[0]
     else:
         raise ValueError("Unknown loss type: {}.".format(loss_type))
 
@@ -111,21 +131,16 @@ def cnn_model(data, label, loss_type, rank_id, nranks):
 class TestDistMnist2x2DistFC(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
-        images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
 
         loss_type = self._distfc_loss_type
         # Train program
         avg_cost = cnn_model(images, label, loss_type, self.worker_index,
                              self.worker_num)
-        #avg_cost = fluid.layers.mean(x=cost)
-
         # Evaluator
-        #batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-        #batch_acc = fluid.layers.accuracy(
-        #    input=predict, label=label, total=batch_size_tensor)
-        predict = None
-        batch_acc = None
+        predict = 1.0
+        batch_acc = 1.0
 
         inference_program = fluid.default_main_program().clone()
         # Optimization
@@ -142,12 +157,14 @@ class TestDistMnist2x2DistFC(TestDistRunnerBase):
 
         if dist_strategy:
             dist_strategy.use_dist_fc = True
+            dist_strategy.mode = "collective"
+            dist_strategy.collective_mode = "grad_allreduce"
+            dist_strategy.dist_fc_config = DistFCConfig(batch_size)
             dist_opt = fleet.distributed_optimizer(
                 optimizer=opt, strategy=dist_strategy)
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)
-
         return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
 
 
