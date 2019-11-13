@@ -283,3 +283,13 @@ if(WITH_GPU AND TENSORRT_FOUND)
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_test_models)
 endif()
+
+if(WITH_GPU)
+    set(LITE_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lite")
+    if (NOT EXISTS ${LITE_MODEL_INSTALL_DIR})
+        download_data(${LITE_MODEL_INSTALL_DIR} "mul_model_fp32.tgz")
+    endif()
+    inference_analysis_test(lite_mul_model_test SRCS lite_mul_model_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${LITE_MODEL_INSTALL_DIR})
+endif()

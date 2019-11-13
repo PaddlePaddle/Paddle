@@ -35,19 +35,19 @@ TEST(LiteEngineOp, GetNativePlace) {
 
 TEST(LiteEngineOp, GetLiteTargetType) {
   TargetType GetLiteTargetType(const platform::Place& place);
-  EXPECT_TRUE(GetLiteTargetType(platform::CPUPlace()) == TargetType::kHost);
-  EXPECT_TRUE(GetLiteTargetType(platform::CUDAPlace(0)) == TargetType::kCUDA);
+  ASSERT_EQ(GetLiteTargetType(platform::CPUPlace()), TargetType::kHost);
+  ASSERT_EQ(GetLiteTargetType(platform::CUDAPlace(0)), TargetType::kCUDA);
 }
 
 TEST(LiteEngineOp, GetLitePrecisionType) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   PrecisionType GetLitePrecisionType(framework::proto::VarType::Type type);
-  EXPECT_TRUE(GetLitePrecisionType(framework::proto::VarType_Type_FP32) ==
-              PrecisionType::kFloat);
-  EXPECT_TRUE(GetLitePrecisionType(framework::proto::VarType_Type_INT8) ==
-              PrecisionType::kInt8);
-  EXPECT_TRUE(GetLitePrecisionType(framework::proto::VarType_Type_INT32) ==
-              PrecisionType::kInt32);
+  ASSERT_EQ(GetLitePrecisionType(framework::proto::VarType_Type_FP32),
+            PrecisionType::kFloat);
+  ASSERT_EQ(GetLitePrecisionType(framework::proto::VarType_Type_INT8),
+            PrecisionType::kInt8);
+  ASSERT_EQ(GetLitePrecisionType(framework::proto::VarType_Type_INT32),
+            PrecisionType::kInt32);
   ASSERT_DEATH(
       GetLitePrecisionType(framework::proto::VarType_Type_SELECTED_ROWS), "");
 }
@@ -56,20 +56,20 @@ TEST(LiteEngineOp, GetNativePrecisionType) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   framework::proto::VarType::Type GetNativePrecisionType(
       const PrecisionType& type);
-  EXPECT_TRUE(GetNativePrecisionType(PrecisionType::kFloat) ==
-              framework::proto::VarType_Type_FP32);
-  EXPECT_TRUE(GetNativePrecisionType(PrecisionType::kInt8) ==
-              framework::proto::VarType_Type_INT8);
-  EXPECT_TRUE(GetNativePrecisionType(PrecisionType::kInt32) ==
-              framework::proto::VarType_Type_INT32);
+  ASSERT_EQ(GetNativePrecisionType(PrecisionType::kFloat),
+            framework::proto::VarType_Type_FP32);
+  ASSERT_EQ(GetNativePrecisionType(PrecisionType::kInt8),
+            framework::proto::VarType_Type_INT8);
+  ASSERT_EQ(GetNativePrecisionType(PrecisionType::kInt32),
+            framework::proto::VarType_Type_INT32);
   ASSERT_DEATH(GetNativePrecisionType(PrecisionType::kUnk), "");
 }
 
 TEST(LiteEngineOp, GetNativeLayoutType) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   framework::DataLayout GetNativeLayoutType(const DataLayoutType& type);
-  EXPECT_TRUE(GetNativeLayoutType(DataLayoutType::kNCHW) ==
-              framework::DataLayout::kNCHW);
+  ASSERT_EQ(GetNativeLayoutType(DataLayoutType::kNCHW),
+            framework::DataLayout::kNCHW);
   ASSERT_DEATH(GetNativeLayoutType(DataLayoutType::kNHWC), "");
 }
 
@@ -95,8 +95,8 @@ void test_tensor_copy(const platform::DeviceContext& ctx) {
 #endif
   std::vector<float> result;
   TensorToVector(lod_tensor_n, &result);
-  EXPECT_TRUE(result == vector);
-  EXPECT_TRUE(lod_tensor_n.lod() == lod_tensor.lod());
+  ASSERT_EQ(result, vector);
+  ASSERT_EQ(lod_tensor_n.lod(), lod_tensor.lod());
 }
 
 TEST(LiteEngineOp, TensorCopyAsync) {
