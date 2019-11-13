@@ -696,11 +696,6 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     return true;
   }
 
-  void IncreaseLoDLevel(const std::string& in, const std::string& out,
-                        size_t i = 0, size_t j = 0) const override {
-    PADDLE_THROW("IncreaseLoDLevel is only used in compile time.");
-  }
-
   framework::AttrReader Attrs() const override {
     return framework::AttrReader(*attrs_);
   }
@@ -762,11 +757,6 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) const override {
     // do nothing
-  }
-
-  void DecreaseLoDLevel(const std::string& in, const std::string& out,
-                        size_t i = 0, size_t j = 0) const override {
-    PADDLE_THROW("DecreaseLoDLevel is only used in compile time.");
   }
 
   bool IsRuntime() const override { return true; }
