@@ -1041,7 +1041,7 @@ class TestLayer(LayerTest):
         with self.static_graph():
             images = layers.data(
                 name='pixel', shape=[3, 6, 6, 6], dtype='float32')
-            conv3d = nn.Conv3D('conv3d', num_filters=3, filter_size=2)
+            conv3d = nn.Conv3D(num_channels=3, num_filters=3, filter_size=2)
             ret = conv3d(images)
             static_ret2 = self.get_static_graph_result(
                 feed={'pixel': np.ones(
@@ -1050,7 +1050,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             images = np.ones([2, 3, 6, 6, 6], dtype='float32')
-            conv3d = nn.Conv3D('conv3d', num_filters=3, filter_size=2)
+            conv3d = nn.Conv3D(num_channels=3, num_filters=3, filter_size=2)
             dy_ret = conv3d(base.to_variable(images))
             dy_rlt_value = dy_ret.numpy()
 
@@ -1063,9 +1063,12 @@ class TestLayer(LayerTest):
             weight_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
-            conv3d1 = nn.Conv3D('conv3d1', num_filters=3, filter_size=2)
+            conv3d1 = nn.Conv3D(num_channels=3, num_filters=3, filter_size=2)
             conv3d2 = nn.Conv3D(
-                'conv3d2', num_filters=3, filter_size=2, param_attr=weight_attr)
+                num_channels=3,
+                num_filters=3,
+                filter_size=2,
+                param_attr=weight_attr)
             dy_ret1 = conv3d1(base.to_variable(images))
             dy_ret2 = conv3d2(base.to_variable(images))
             self.assertFalse(np.array_equal(dy_ret1.numpy(), dy_ret2.numpy()))
@@ -1360,19 +1363,13 @@ class TestLayer(LayerTest):
         with self.static_graph():
             img = layers.data(name='pixel', shape=[3, 2, 2, 2], dtype='float32')
             conv3d_transpose = nn.Conv3DTranspose(
-                'Conv3DTranspose',
-                num_filters=12,
-                filter_size=12,
-                use_cudnn=False)
+                num_channels=3, num_filters=12, filter_size=12, use_cudnn=False)
             out = conv3d_transpose(img)
             static_rlt2 = self.get_static_graph_result(
                 feed={'pixel': input_array}, fetch_list=[out])[0]
         with self.dynamic_graph():
             conv3d_transpose = nn.Conv3DTranspose(
-                'Conv3DTranspose',
-                num_filters=12,
-                filter_size=12,
-                use_cudnn=False)
+                num_channels=3, num_filters=12, filter_size=12, use_cudnn=False)
             dy_rlt = conv3d_transpose(base.to_variable(input_array))
             dy_rlt_value = dy_rlt.numpy()
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
@@ -1385,13 +1382,13 @@ class TestLayer(LayerTest):
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
             conv3d1 = nn.Conv3DTranspose(
-                'conv3d1',
+                num_channels=3,
                 num_filters=3,
                 filter_size=2,
                 bias_attr='conv3d1_b',
                 use_cudnn=False)
             conv3d2 = nn.Conv3DTranspose(
-                'conv3d2',
+                num_channels=3,
                 num_filters=3,
                 filter_size=2,
                 param_attr=weight_attr,
