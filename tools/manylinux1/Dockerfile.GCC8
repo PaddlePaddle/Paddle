@@ -46,6 +46,8 @@ RUN rm gcc
 RUN rm g++
 RUN ln -s /usr/local/gcc-8.2/bin/gcc-8 /usr/local/bin/gcc
 RUN ln -s /usr/local/gcc-8.2/bin/g++-8 /usr/local/bin/g++
+RUN ln -s /usr/local/gcc-8.2/bin/gcc-8 /usr/bin/gcc
+RUN ln -s /usr/local/gcc-8.2/bin/g++-8 /usr/bin/g++
 ENV PATH=/usr/local/gcc-8.2/bin:$PATH
 
 # Install Python3.6

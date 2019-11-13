@@ -27,9 +27,9 @@ IF(APPLE)
   SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
 ELSE()
   if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
-    SET(BUILD_CMD make CFLAGS=-Wno-error=sizeof-pointer-memaccess CXXFLAGS=-Wno-error=ignored-qualifiers HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+    SET(BUILD_CMD make CFLAGS=-Wno-error CXXFLAGS=-Wno-error HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
   else()
-    SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+    SET(BUILD_CMD make CFLAGS=-Wno-error CXXFLAGS=-Wno-error HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
   endif()
 ENDIF()
 
@@ -56,7 +56,7 @@ ExternalProject_Add(
     # It seems that we cannot configure that by make command.
     # Just dry run make command and remove `-Werror`, then use a shell to run make commands
     BUILD_COMMAND  ${BUILD_CMD}
-    INSTALL_COMMAND make prefix=${GRPC_INSTALL_DIR} install
+    INSTALL_COMMAND make prefix=${GRPC_INSTALL_DIR} install CFLAGS=-Wno-error CXXFLAGS=-Wno-error
 )
 
 ADD_LIBRARY(grpc++_unsecure STATIC IMPORTED GLOBAL)
