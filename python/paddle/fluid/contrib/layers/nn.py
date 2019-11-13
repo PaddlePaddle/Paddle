@@ -703,10 +703,15 @@ def search_pyramid_hash(input,
 
     if distribute_update_vars:
         assert isinstance(distribute_update_vars, list)
+        special_name_list = []
+        if param_attr:
+            special_name_list.append(param_attr.name)
+        if param_attr_wl:
+            special_name_list.append(param_attr_wl.name)
+        if param_attr_bl:
+            special_name_list.append(param_attr_bl.name)
         for param in distribute_update_vars:
-            if param not in [
-                    param_attr.name, param_attr_wl.name, param_attr_bl.name
-            ]:
+            if param not in special_name_list:
                 raise ValueError(
                     "Pyramid Hash layer didn't have parameter {}".format(param))
 

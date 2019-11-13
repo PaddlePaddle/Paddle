@@ -2542,10 +2542,11 @@ class DistributeTranspiler(object):
         origin_var_dict = self.origin_program.global_block().vars
         params = []
         for op in block.ops:
-            if op.attr("distribute_update_vars"):
+            special_attr = "distribute_update_vars"
+            if special_attr in op.all_attrs():
                 for param_name in op.attr("distribute_update_vars"):
                     params.append([
                         origin_var_dict[param_name], origin_var_dict[param_name]
                     ])
-        params = list(set(params))
-        return params
+        unique_params = list(set(params))
+        return unique_params
