@@ -216,7 +216,7 @@ class TestLocalAwareNMSOp(OpTest):
 
         boxes_copy = copy.deepcopy(boxes)
         scores_copy = copy.deepcopy(scores)
-        det_outs, lod = batched_multiclass_nms(
+        det_outs, lod = batched_multiclass_nmpython / paddle / fluid / framework.pys(
             boxes_copy, scores_copy, background, score_threshold, nms_threshold,
             nms_top_k, keep_top_k)
 

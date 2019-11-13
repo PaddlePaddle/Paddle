@@ -398,7 +398,7 @@ class LayerHelperBase(object):
         """
         assert isinstance(var, Variable)
         if in_dygraph_mode():
-            initializer(var, var.block)
+            initializer(var, self.main_program.global_block())
         else:
             self.startup_program.global_block().create_var(
                 name=var.name,

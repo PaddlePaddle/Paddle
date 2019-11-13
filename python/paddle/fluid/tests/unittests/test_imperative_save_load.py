@@ -197,7 +197,6 @@ class PtbModel(fluid.Layer):
         loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
         loss = fluid.layers.reduce_mean(loss, dim=[0])
         loss = fluid.layers.reduce_sum(loss)
-        loss.permissions = True
 
         return loss, last_hidden, last_cell
 
@@ -355,7 +354,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             # set to zero
             for k, v in opti_dict.items():
                 np_t = v.numpy()
-                var = v._ivar.value().get_tensor()
+                var = v.value().get_tensor()
                 var.set(np.zeros_like(np_t), place)
 
                 self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
@@ -375,7 +374,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             state_dict = ptb_model.state_dict()
             for k, v in state_dict.items():
                 np_t = v.numpy()
-                var = v._ivar.value().get_tensor()
+                var = v.value().get_tensor()
 
                 var.set(np.zeros_like(np_t), place)
 
@@ -460,7 +459,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             # set to zero
             for k, v in opti_dict.items():
                 np_t = v.numpy()
-                var = v._ivar.value().get_tensor()
+                var = v.value().get_tensor()
                 var.set(np.zeros_like(np_t), place)
 
                 self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
@@ -479,7 +478,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             state_dict = ptb_model.state_dict()
             for k, v in state_dict.items():
                 np_t = v.numpy()
-                var = v._ivar.value().get_tensor()
+                var = v.value().get_tensor()
 
                 var.set(np.zeros_like(np_t), place)
 
@@ -566,7 +565,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for k, v in opti_dict.items():
                 np_t = v.numpy()
                 np_opti_dict[v.name] = np_t
-                var = v._ivar.value().get_tensor()
+                var = v.value().get_tensor()
                 var.set(np.zeros_like(np_t), place)
 
                 self.assertTrue(np.sum(np.abs(v.numpy())) == 0)
@@ -587,7 +586,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for k, v in state_dict.items():
                 np_t = v.numpy()
                 np_state_dict[v.name] = np_t
-                var = v._ivar.value().get_tensor()
+                var = v.value().get_tensor()
 
                 var.set(np.zeros_like(np_t), place)
 

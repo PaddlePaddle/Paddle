@@ -121,7 +121,13 @@ class Optimizer(object):
                 state_dict[var_tmp.name] = var_tmp
         # global step if use lr decay
         if isinstance(self._learning_rate, LearningRateDecay):
-            var_temp = Variable(None, name='global_step', dtype='int32')
+            var_tmp = None
+            if not framework.in_dygraph_mode():
+                var_temp = Variable(None, name='global_step', dtype='int32')
+            else:
+                var_temp = framework._varbase_creator(
+                    None, name='global_step', dtype='int32')
+
             tensor.fill_constant(
                 [1], "int32", self._learning_rate.step_num, out=var_temp)
 
@@ -163,7 +169,7 @@ class Optimizer(object):
             global_step = state_dict['global_step']
 
             if isinstance(global_step, core.VarBase):
-                step_np = global_step.numpy()
+                step_np = global_step
                 step_np = np.array(step_np.value().get_tensor())
                 assert step_np.shape == (1,),  \
                         "global step shape is (1,), the shape is {}".format( step_np.shape )
@@ -188,7 +194,7 @@ class Optimizer(object):
             for para_name, var_tmp in v.items():
                 assert var_tmp.name in state_dict, \
                         "optimizer variable {} not found".format( var_tmp.name )
-                var = var_tmp._ivar.value()
+                var = var_tmp.value()
                 tensor = var.get_tensor()
                 model_np = np.array(tensor)
 
@@ -514,7 +520,11 @@ class Optimizer(object):
         Examples:
             See examples in ``apply_gradients``.
         """
-        no_grad_set = self._get_no_grad_set(loss, no_grad_set)
+        no_grad_set = None
+        if not framework.in_dygraph_mode():
+            no_grad_set = self._get_no_grad_set(loss, no_grad_set)
+        else:
+            pass
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
@@ -527,13 +537,9 @@ class Optimizer(object):
             for param in parameters:
                 if not param.trainable:
                     continue
-                if param._ivar._grad_ivar() is not None:
+                if param._grad_ivar() is not None:
                     # create gradient variable
-                    grad_var = Variable(
-                        block=loss.block,
-                        name=param._ivar._grad_name(),
-                        stop_gradient=True,
-                        ivar=param._ivar._grad_ivar())
+                    grad_var = param._grad_ivar()
                     params_grads.append((param, grad_var))
         else:
             if callbacks is None:

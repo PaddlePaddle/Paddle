@@ -209,13 +209,6 @@ def _dygraph_only_(func):
     return __impl__
 
 
-def is_variable(value, **args):
-    if in_dygraph_mode():
-        return isinstance(value, core.VarBase)
-    else:
-        return isinstance(value, Variable)
-
-
 dygraph_not_support = wrap_decorator(_dygraph_not_support_)
 dygraph_only = wrap_decorator(_dygraph_only_)
 
@@ -997,14 +990,14 @@ class Variable(object):
                 assert (out1.gradient() == 0).all()
         """
         if in_dygraph_mode():
-            return self._ivar.stop_gradient
+            pass
         else:
             return self._stop_gradient
 
     @stop_gradient.setter
     def stop_gradient(self, s):
         if in_dygraph_mode():
-            self._ivar.stop_gradient = s
+            pass
         else:
             self._stop_gradient = s
 
@@ -1032,7 +1025,7 @@ class Variable(object):
             print("persistable of current Var is: {}".format(new_variable.persistable))
         """
         if in_dygraph_mode():
-            return self._ivar.persistable
+            pass
         else:
             return self.desc.persistable()
 
@@ -1064,7 +1057,7 @@ class Variable(object):
             print("name of current Var is: {}".format(new_variable.name))
         """
         if in_dygraph_mode():
-            return self._ivar.name
+            pass
         else:
             return cpt.to_text(self.desc.name())
 
@@ -1091,7 +1084,7 @@ class Variable(object):
     @name.setter
     def name(self, new_name):
         if in_dygraph_mode():
-            self._ivar.name = new_name
+            pass
         else:
             self.desc.set_name(new_name)
 
@@ -1116,7 +1109,7 @@ class Variable(object):
         """
         # convert to tuple, make it as same as numpy API.
         if in_dygraph_mode():
-            return self._ivar.shape
+            pass
         else:
             return tuple(self.desc.shape())
 
@@ -1139,7 +1132,7 @@ class Variable(object):
             print("Dtype of current Var is: {}".format(new_variable.dtype))
         """
         if in_dygraph_mode():
-            return self._ivar.dtype
+            pass
         else:
             return self.desc.dtype()
 
@@ -1191,7 +1184,7 @@ class Variable(object):
             print("Type of current Var is: {}".format(new_variable.type))
         """
         if in_dygraph_mode():
-            return self._ivar.type
+            pass
         else:
             return self.desc.type()
 
@@ -1206,152 +1199,6 @@ class Variable(object):
             None
         """
         self.error_clip = error_clip
-
-    def _slice_indices(self, slice, length):
-        """
-        Reference implementation for the slice.indices method.
-        """
-        # Compute step and length as integers.
-        step = 1 if slice.step is None else slice.step
-
-        # Raise ValueError for negative length or zero step.
-        if length < 0:
-            raise ValueError("length should not be negative")
-        if step == 0:
-            raise ValueError("slice step cannot be zero")
-
-        # Find lower and upper bounds for start and stop.
-        lower = -1 if step < 0 else 0
-        upper = length - 1 if step < 0 else length
-
-        # Compute start.
-        if slice.start is None:
-            start = upper if step < 0 else lower
-        else:
-            start = slice.start
-            start = max(start + length, lower) if start < 0 else min(start,
-                                                                     upper)
-
-        # Compute stop.
-        if slice.stop is None:
-            stop = lower if step < 0 else upper
-        else:
-            stop = slice.stop
-            stop = max(stop + length, lower) if stop < 0 else min(stop, upper)
-
-        return start, stop, step
-
-    def _detectEllipsis(self, item):
-        has_ellipsis = False
-        start = 0
-        end = len(self.shape)
-        for index, o in enumerate(item):
-            if o is Ellipsis:
-                if has_ellipsis:
-                    raise ValueError("Index can have one ellipsis only.")
-                has_ellipsis = True
-                start = index
-            else:
-                if has_ellipsis:
-                    end = index
-        return has_ellipsis, start, end
-
-    def _reconstructSliceinfo(self, item):
-        has_ellipsis, start, end = self._detectEllipsis(item)
-        if has_ellipsis:
-            newitem = []
-            for i in range(start):
-                newitem.append(item[i])
-            for i in range(start, end):
-                newitem.append(slice(None, None, None))
-            for i in range(end, len(item)):
-                newitem.append(item[i])
-            return newitem
-        else:
-            return None
-
-    def _detectContinuesSlice(self, item):
-        starts = []
-        ends = []
-        for index, o in enumerate(item):
-            if isinstance(o, int):
-                start = int(o)
-                if (index > 0 and index >= self.shape[index]) \
-                        or (index < 0 and (index + self.shape[index]) < 0):
-                    raise IndexError("invalid index")
-                start = max(start + self.shape[index], 0) if start < 0 else min(
-                    start, self.shape[index])
-                starts.append(start)
-                ends.append(start + 1)
-            elif isinstance(o, slice):
-                start, stop, step = self._slice_indices(o, self.shape[index])
-                if step == 1 or step == -1:
-                    starts.append(start)
-                    ends.append(stop)
-                else:
-                    return False, None
-            else:
-                raise IndexError("Valid index accept int or slice or ellipsis")
-        return True, [starts, ends]
-
-    def _cloneVar(self, copy=False):
-        if not copy:
-            return self.block.create_var(
-                name=unique_name.generate_with_ignorable_key(self.name),
-                dtype=self.dtype)
-        else:
-            return self
-
-    def _sliceVar(self, axes, starts, ends):
-        new_var = self._cloneVar()
-        self.block.append_op(
-            type="slice",
-            inputs={'Input': [self]},
-            outputs={'Out': [new_var]},
-            attrs={'axes': axes,
-                   'starts': starts,
-                   'ends': ends})
-        return new_var
-
-    def _concatVar(self, inputs, axis):
-        new_var = self._cloneVar()
-        self.block.append_op(
-            type="concat",
-            inputs={'X': inputs},
-            outputs={'Out': [new_var]},
-            attrs={'axis': axis, })
-        return new_var
-
-    def _sliceAndConcatVar(self, item, axis):
-        if isinstance(item, slice):
-            if self.shape[axis] < 0:
-                return self._cloneVar(True)
-            start, stop, step = self._slice_indices(item, self.shape[axis])
-            if step == 1:
-                return self._sliceVar([axis], [start], [stop])
-            else:
-                vars = []
-                if step > 0:
-                    while start < stop:
-                        vars.append(
-                            self._sliceVar([axis], [start], [start + 1]))
-                        start += step
-                else:
-                    while start > stop:
-                        vars.append(
-                            self._sliceVar([axis], [start], [start + 1]))
-                        start += step
-                return self._concatVar(vars, axis)
-        elif isinstance(item, int):
-            if self.shape[axis] < 0:
-                return self._cloneVar(True)
-            index = int(item)
-            if (index > 0 and index >= self.shape[axis]) \
-                    or (index < 0 and (index + self.shape[axis]) < 0):
-                raise IndexError("invalid index")
-            return self._sliceVar([axis], [index], [index + 1])
-        else:
-            raise IndexError("Valid index accept int or slice or tuple")
 
     def __getitem__(self, item):
         """
@@ -2307,18 +2154,31 @@ class Block(object):
         # NOTE: v is destroyed by C++ after calling _rename_var.
         d = self.desc.find_var(cpt.to_bytes(new_name))
         if var_type == "Parameter":
-            var = Parameter(
-                self,
-                d.shape(),
-                d.dtype(),
-                type=orig_var_type,
-                name=new_name,
-                stop_gradient=stop_gradient,
-                trainable=trainable,
-                optimize_attr=optimize_attr,
-                regularizer=regularizer,
-                gradient_clip_attr=gradient_clip_attr,
-                error_clip=error_clip)
+            if not in_dygraph_mode():
+                var = Parameter(
+                    self,
+                    d.shape(),
+                    d.dtype(),
+                    type=orig_var_type,
+                    name=new_name,
+                    stop_gradient=stop_gradient,
+                    trainable=trainable,
+                    optimize_attr=optimize_attr,
+                    regularizer=regularizer,
+                    gradient_clip_attr=gradient_clip_attr,
+                    error_clip=error_clip)
+            else:
+                var = ParamBase(
+                    d.shape(),
+                    d.dtype(),
+                    type=orig_var_type,
+                    name=new_name,
+                    stop_gradient=stop_gradient,
+                    trainable=trainable,
+                    optimize_attr=optimize_attr,
+                    regularizer=regularizer,
+                    gradient_clip_attr=gradient_clip_attr,
+                    error_clip=error_clip)
         elif var_type == "Variable":
             var = Variable(
                 self,
@@ -2341,7 +2201,11 @@ class Block(object):
 
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
-        param = Parameter(global_block, *args, **kwargs)
+        param = None
+        if not in_dygraph_mode():
+            param = Parameter(global_block, *args, **kwargs)
+        else:
+            param = ParamBase(*args, **kwargs)
         if 'initializer' in kwargs:
 
             def _is_inited_by(block, var):
@@ -2580,19 +2444,34 @@ class Block(object):
                 raise ValueError("_copy_param_info_from should be invoked with "
                                  "same topology")
             assert isinstance(v, Variable)
-            new_p = Parameter(
-                block=self,
-                shape=v.shape,
-                dtype=v.dtype,
-                type=v.type,
-                lod_level=v.lod_level,
-                stop_gradient=p.stop_gradient,
-                trainable=p.trainable,
-                optimize_attr=p.optimize_attr,
-                regularizer=p.regularizer,
-                gradient_clip_attr=p.gradient_clip_attr,
-                error_clip=p.error_clip,
-                name=v.name)
+            new_p = None
+            if not in_dygraph_mode():
+                new_p = Parameter(
+                    block=self,
+                    shape=v.shape,
+                    dtype=v.dtype,
+                    type=v.type,
+                    lod_level=v.lod_level,
+                    stop_gradient=p.stop_gradient,
+                    trainable=p.trainable,
+                    optimize_attr=p.optimize_attr,
+                    regularizer=p.regularizer,
+                    gradient_clip_attr=p.gradient_clip_attr,
+                    error_clip=p.error_clip,
+                    name=v.name)
+            else:
+                new_p = ParamBase(
+                    shape=v.shape,
+                    dtype=v.dtype,
+                    type=v.type,
+                    lod_level=v.lod_level,
+                    stop_gradient=p.stop_gradient,
+                    trainable=p.trainable,
+                    optimize_attr=p.optimize_attr,
+                    regularizer=p.regularizer,
+                    gradient_clip_attr=p.gradient_clip_attr,
+                    error_clip=p.error_clip,
+                    name=v.name)
             self.vars[new_p.name] = new_p
 
     def _clone_variable(self, var, force_persistable=True):
@@ -4516,7 +4395,7 @@ class ParamBase(core.VarBase):
     """
 
     @dygraph_only
-    def __init__(self, block, shape, dtype, **kwargs):
+    def __init__(self, shape, dtype, **kwargs):
         if shape is None:
             raise ValueError("The shape of Parameter should not be None")
         if dtype is None:
@@ -4536,11 +4415,12 @@ class ParamBase(core.VarBase):
             if not isinstance(dtype, core.VarDesc.VarType):
                 dtype = convert_np_dtype_to_dtype_(dtype)
 
-        super(ParamBase, self).__init__(
-            kwargs.get('name', unique_name.generate('_param_base')),
-            core.VarDesc.VarType.LOD_TENSOR, dtype
-            if dtype else core.VarDesc.VarType.FP32,
-            list(shape) if shape else [], True)
+        name = kwargs.get('name', unique_name.generate('_param_base'))
+
+        super(ParamBase, self).__init__(dtype
+                                        if dtype else core.VarDesc.VarType.FP32,
+                                        list(shape) if shape else [], name,
+                                        core.VarDesc.VarType.LOD_TENSOR, True)
 
         self.trainable = kwargs.get('trainable', True)
 
@@ -4553,6 +4433,10 @@ class ParamBase(core.VarBase):
         self.do_model_average = kwargs.get('do_model_average', None)
 
         self.is_distributed = False
+
+        self.block = default_main_program().global_block()
+
+        _dygraph_tracer().trace_var(name, self)
 
     def __str__(self):
         return self.to_string(True)

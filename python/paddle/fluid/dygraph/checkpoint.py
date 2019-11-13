@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import os
 import collections
-from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter
+from ..framework import Variable, default_main_program, in_dygraph_mode, dygraph_only, Parameter, is_parameter
 import pickle
 from . import learning_rate_scheduler
 import warnings

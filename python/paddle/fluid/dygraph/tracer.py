@@ -39,7 +39,7 @@ class Tracer(core.Tracer):
 
     def all_parameters(self):
         return list((item for name, item in six.iteritems(self._vars)
-                     if isinstance(item, framework.Parameter)))
+                     if is_parameter(item, framework.Parameter)))
 
     def trace_op(self, type, inputs, outputs, attrs, stop_gradient=False):
         self.trace(type, inputs, outputs, attrs,

@@ -130,7 +130,7 @@ def _trace(layer, inputs, feed_names=None, fetch_names=None):
             outputs = [original_outputs]
         else:
             outputs = original_outputs
-        out_vars = [var._ivar for var in outputs]
+        out_vars = [var for var in outputs]
 
         if callable(fetch_names):
             fetch_names = fetch_names(len(out_vars))

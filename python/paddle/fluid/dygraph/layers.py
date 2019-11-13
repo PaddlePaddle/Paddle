@@ -25,7 +25,7 @@ from .layer_object_helper import LayerObjectHelper
 from .base import program_desc_tracing_guard
 from paddle.fluid import framework
 from ..param_attr import ParamAttr
-from paddle.fluid.framework import Variable
+from ..framework import is_parameter
 
 __all__ = ['Layer']
 
