@@ -958,11 +958,13 @@ class DistributeTranspiler(object):
         # remove optimize ops and add a send op to main_program
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
 
+        self._delete_trainer_optimizer(is_startup=True)
+        sparse_table_names = self.get_sparse_table_names()
+        self.fake_init_sparsetable(sparse_table_names)
+
         lr_ops = self._get_lr_ops()
         delete_ops(self.origin_program.global_block(), lr_ops)
         self._delete_trainer_optimizer(is_startup=False)
-        sparse_table_names = self.get_sparse_table_names()
-        self.fake_init_sparsetable(sparse_table_names)
 
         self.origin_program.__str__()
         self.startup_program.__str__()
