@@ -1814,14 +1814,12 @@ def case(pred_fn_pairs, default=None, name=None):
     This operator works like an if-elif-elif-else chain.
 
     Args:
-        pred_fn_pairs(list|tuple): A list or tuple of (pred, fn) pairs. ``pred`` is a boolean Tensor with shape [1],  ``fn`` is callable.
-        All callables return the same structure of Tensors.
+        pred_fn_pairs(list|tuple): A list or tuple of (pred, fn) pairs. ``pred`` is a boolean Tensor with shape [1], ``fn`` is a callable. All callables return the same structure of Tensors.
         default(callable, optional): Callable that returns a structure of Tensors.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.
-                            For more information, please refer to :ref:`api_guide_Name`.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensors returned by the callable from the first pair whose pred is True,
+        Variable|list(Variable): Tensors returned by the callable from the first pair whose pred is True,
         or Tensors returned by ``default`` if no pred in ``pred_fn_pairs`` is True and ``default`` is not None,
         or Tensors returned by the last callable in ``pred_fn_pairs``  if no pred in ``pred_fn_pairs`` is True and ``default`` is None.
 
@@ -1856,14 +1854,14 @@ def case(pred_fn_pairs, default=None, name=None):
 
                 pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
                 pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
-                pred_3 = layers.equal(x, y)  # false: 0.3 == 0.1
+                pred_3 = layers.equal(x, y)      # false: 0.3 == 0.1
 
                 # Call fn_1 because pred_1 is True
                 out_1 = layers.case(
                     pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3)
 
-                # Argument default is None and no pred in ``pred_fn_pairs`` is True. fn_3 will be called.
-                # because fn_3 is the last callable in ``pred_fn_pairs``.
+                # Argument default is None and no pred in pred_fn_pairs is True. fn_3 will be called.
+                # because fn_3 is the last callable in pred_fn_pairs.
                 out_2 = layers.case(pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)])
 
                 exe = fluid.Executor(fluid.CPUPlace())
