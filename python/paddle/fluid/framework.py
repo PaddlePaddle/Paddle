@@ -929,12 +929,22 @@ class Variable(object):
             raise ValueError("%s has no grad, Please set Variable.stop_gradient=False, or " \
                              "check if this is the first and only variable need grad, if so, please set its pre-Variable's " \
                              "stop_gradient=False, to make sure it has gradient " % self.name)
-        if not self._ivar._grad_ivar().value().get_tensor()._is_initialized():
-            raise ValueError(
-                "%s's Grad is Empty, Please check if it has no data in" %
-                self.name)
-        new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
-        return np.array(new_ivar.value().get_tensor())
+        if self._ivar._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
+            if not self._ivar._grad_ivar().value().get_selected_rows(
+            ).get_tensor()._is_initialized():
+                raise ValueError(
+                    "%s's Grad is Empty, Please check if it has no data in" %
+                    self.name)
+            new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
+            return np.array(new_ivar.value().get_selected_rows().get_tensor())
+        if self._ivar._grad_ivar().type == core.VarDesc.VarType.LOD_TENSOR:
+            if not self._ivar._grad_ivar().value().get_tensor()._is_initialized(
+            ):
+                raise ValueError(
+                    "%s's Grad is Empty, Please check if it has no data in" %
+                    self.name)
+            new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
+            return np.array(new_ivar.value().get_tensor())
 
     @dygraph_only
     def clear_gradient(self):

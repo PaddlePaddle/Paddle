@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <memory>
 #include <utility>
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -279,8 +280,6 @@ void VarBaseAdd(std::shared_ptr<VarBase> var, VarBase* var_) {
   auto* dst = var_->MutableVar();
   if (dst->IsType<framework::LoDTensor>()) {
     if (src.IsType<framework::LoDTensor>()) {
-      // VLOG(3) << "1111111111111111111111" << place << " " << data_type <<
-      // paddle::framework::DataTypeToString(data_type) << std::endl;
       TensorAdd(src, dst);
     } else if (src.IsType<framework::SelectedRows>()) {
       SelectedRowsAddToTensor(src, dst);
@@ -293,26 +292,14 @@ void VarBaseAdd(std::shared_ptr<VarBase> var, VarBase* var_) {
       auto* src_temp = var->MutableVar();
       SelectedRowsAddToTensor(*dst, src_temp);
       *dst = std::move(*(var->MutableVar()));
+      var_->SetType(framework::proto::VarType::LOD_TENSOR);
     } else if (src.IsType<framework::SelectedRows>()) {
-      std::cout << "$$$$$$$$$$$$$ SelectedRows $$$$$$$$$$$ " << std::endl;
       std::shared_ptr<VarBase> output = SelectedRowsAddSelectedRows(src, dst);
       *dst = std::move(*(output->MutableVar()));
     } else {
       PADDLE_THROW("Unexpected branch, output variable type is %s",
                    framework::ToTypeName(dst->Type()));
     }
-    // if (place == paddle::platform::CPUPlace) {
-    // paddle::platform::CPUDeviceContext ctx(place);
-    //}
-    // else {
-    // paddle::platform::CUDADeviceContext ctx(place);
-    //}
-
-    // auto data_type = src_selectedrows_tensor.value().type();
-    // VLOG(3) << "1111111111111111111111" << place << " " << data_type << " "
-    // <<  paddle::framework::DataTypeToString(data_type) << " " <<
-    // framework::DataTypeTrait<double>::DataType() << " "<<
-    // framework::DataTypeTrait<float>::DataType() << std::endl;
   }
 }
 
@@ -333,6 +320,7 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
       if (var->Var().IsType<framework::SelectedRows>()) {
         auto temp = std::make_shared<VarBase>(false, "temp");
         SelectedRowsAddToSelectedRows(*(var->MutableVar()), temp->MutableVar());
+        var_->SetType(framework::proto::VarType::SELECTED_ROWS);
         *dst_var = std::move(*(temp->MutableVar()));
       } else {
         *dst_var = std::move(*(var->MutableVar()));
@@ -366,10 +354,24 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
 void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
                                     size_t trace_id) {
   auto* dst_var = var_->MutableVar();
-  auto place = var->Var().Get<framework::LoDTensor>().place();
+  paddle::platform::Place place;
+  if (var->Var().IsType<framework::LoDTensor>()) {
+    place = var->Var().Get<framework::LoDTensor>().place();
+  } else if (var->Var().IsType<framework::SelectedRows>()) {
+    place = var->Var().Get<framework::SelectedRows>().place();
+  } else {
+    PADDLE_THROW("only support LoDTensor and SelectedRows in dygraph");
+  }
   if (!var_->OverridedStopGradient()) {
     if (ref_cnt_ == 1) {
-      *dst_var = std::move(*(var->MutableVar()));
+      if (var->Var().IsType<framework::SelectedRows>()) {
+        auto temp = std::make_shared<VarBase>(false, "temp");
+        SelectedRowsAddToSelectedRows(*(var->MutableVar()), temp->MutableVar());
+        var_->SetType(framework::proto::VarType::SELECTED_ROWS);
+        *dst_var = std::move(*(temp->MutableVar()));
+      } else {
+        *dst_var = std::move(*(var->MutableVar()));
+      }
     } else {
       if (tmp_grad_vars_.empty()) {
         tmp_grad_vars_.reserve(ref_cnt_);
@@ -387,7 +389,15 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
                   return p1.second > p2.second;
                 });
 
-      *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
+      if (tmp_grad_vars_[0].first->Var().IsType<framework::SelectedRows>()) {
+        auto temp = std::make_shared<VarBase>(false, "temp");
+        SelectedRowsAddToSelectedRows(*(tmp_grad_vars_[0].first->MutableVar()),
+                                      temp->MutableVar());
+        var_->SetType(framework::proto::VarType::SELECTED_ROWS);
+        *dst_var = std::move(*(temp->MutableVar()));
+      } else {
+        *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
+      }
       for (size_t i = 1; i < tmp_grad_vars_.size(); ++i) {
         VarBaseAdd(tmp_grad_vars_[i].first, var_);
       }

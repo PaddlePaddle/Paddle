@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <queue>
 #include <utility>
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
@@ -189,45 +190,76 @@ void VarBase::AddGradOps(const std::weak_ptr<OpBase>& op) {
 
 void VarBase::ClearGradient() {
   if (grad_var_) {
-    auto* grad_t = grad_var_->var_.GetMutable<framework::LoDTensor>();
-    if (grad_t->IsInitialized()) {
-      auto* dev_ctx =
-          platform::DeviceContextPool::Instance().Get(grad_t->place());
-      operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+    if (grad_var_->var_.IsType<framework::SelectedRows>()) {
+      auto* grad_t = grad_var_->var_.GetMutable<framework::SelectedRows>();
+      if (grad_t->mutable_value()->IsInitialized()) {
+        auto* dev_ctx =
+            platform::DeviceContextPool::Instance().Get(grad_t->place());
+        operators::math::set_constant(*dev_ctx, grad_t->mutable_value(), 0.0);
+      }
+    } else {
+      auto* grad_t = grad_var_->var_.GetMutable<framework::LoDTensor>();
+      if (grad_t->IsInitialized()) {
+        auto* dev_ctx =
+            platform::DeviceContextPool::Instance().Get(grad_t->place());
+        operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+      }
     }
   }
 }
 
 std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                                              const bool blocking) const {
-  PADDLE_ENFORCE_EQ(var_.IsInitialized() && var_.IsType<framework::LoDTensor>(),
-                    true,
-                    "Variable must be initialized and type of LoDTensor when "
-                    "getting numpy tensor");
+  PADDLE_ENFORCE_EQ(
+      var_.IsInitialized() && (var_.IsType<framework::LoDTensor>() ||
+                               var_.IsType<framework::SelectedRows>()),
+      true,
+      "Variable must be initialized and type of LoDTensor or SelectedRows when "
+      "getting numpy tensor");
+  if (var_.IsType<framework::LoDTensor>()) {
+    auto& src_tensor = var_.Get<framework::LoDTensor>();
 
-  auto& src_tensor = var_.Get<framework::LoDTensor>();
+    // TODO(Jiabin): change this after move unique_name generator to CXX
+    auto new_var = std::make_shared<VarBase>(
+        false, "Itmp" + std::to_string(copied_counter_++));
 
-  // TODO(Jiabin): change this after move unique_name generator to CXX
-  auto new_var = std::make_shared<VarBase>(
-      false, "Itmp" + std::to_string(copied_counter_++));
+    auto* dst_tensor = new_var->var_.GetMutable<framework::LoDTensor>();
+    dst_tensor->set_lod(src_tensor.lod());
 
-  auto* dst_tensor = new_var->var_.GetMutable<framework::LoDTensor>();
-  dst_tensor->set_lod(src_tensor.lod());
-
-  framework::TensorCopy(src_tensor, dst_place, dst_tensor);
-  if (blocking) {
-    platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
-    auto src_place = src_tensor.place();
-    if (!(src_place == dst_place)) {
-      platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+    framework::TensorCopy(src_tensor, dst_place, dst_tensor);
+    if (blocking) {
+      platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+      auto src_place = src_tensor.place();
+      if (!(src_place == dst_place)) {
+        platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+      }
     }
-  }
 
-  if (platform::is_gpu_place(dst_place)) {
-    VLOG(3) << "copy tensor " << Name() << " from gpu";
-  }
+    if (platform::is_gpu_place(dst_place)) {
+      VLOG(3) << "copy tensor " << Name() << " from gpu";
+    }
 
-  return new_var;
+    return new_var;
+  } else {
+    auto& src_tensor = var_.Get<framework::SelectedRows>();
+    auto new_var = std::make_shared<VarBase>(
+        false, "Itmp" + std::to_string(copied_counter_++));
+    auto* dst_tensor = new_var->var_.GetMutable<framework::SelectedRows>();
+
+    framework::TensorCopy(src_tensor.value(), dst_place,
+                          dst_tensor->mutable_value());
+    if (blocking) {
+      platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+      auto src_place = src_tensor.place();
+      if (!(src_place == dst_place)) {
+        platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+      }
+    }
+    if (platform::is_gpu_place(dst_place)) {
+      VLOG(3) << "copy tensor " << Name() << " from gpu";
+    }
+    return new_var;
+  }
 }
 // create OpBase from optype
 OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
@@ -279,6 +311,15 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   // Initialize output var type
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
+      VLOG(3) << "===============^^^^^^^^^^^^^ " << var->Type() << " "
+              << framework::proto::VarType::LOD_TENSOR
+              << framework::proto::VarType::SELECTED_ROWS << std::endl;
+      /*if (var->MutableVar()->IsType<paddle::framework::LoDTensor>()){
+      var->SetType(framework::proto::VarType::LOD_TENSOR);}
+      else if (var->MutableVar()->IsType<paddle::framework::SelectedRows>()) {
+      var->SetType(framework::proto::VarType::SELECTED_ROWS);}
+      else {
+      PADDLE_THROW("Variable type is not in [LOD_TENSOR, SELECTED_ROWS]");}*/
       InitializeVariable(var->MutableVar(), var->Type());
     }
   }

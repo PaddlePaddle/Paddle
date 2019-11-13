@@ -293,6 +293,10 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
       VLOG(2) << "SUPER UGLY FIX, remove this when move imperative mode in C++";
     } else {
       var_set_[name]->SetType(type);
+      if ((var_set_[name]->MutableVar()->IsInitialized() == true) &&
+          (var_set_[name]->MutableVar()->Type() != type)) {
+        var_set_[name]->MutableVar()->Clear();
+      }
     }
   }
 
