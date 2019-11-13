@@ -35,6 +35,8 @@ from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
 from white_list import op_accuracy_white_list
 
+NO_NEED_CHECK_GRAD_SET = []
+
 
 def _set_use_system_allocator(value=None):
     USE_SYSTEM_ALLOCATOR_FLAG = "FLAGS_use_system_allocator"
@@ -151,6 +153,8 @@ class OpTestBase(unittest.TestCase):
         cls.call_once = False
         cls.dtype = "float32"
         cls.outputs = {}
+        cls.check_grad_times = 0
+        cls.op_type = None
 
         np.random.seed(123)
         random.seed(124)
@@ -164,6 +168,10 @@ class OpTestBase(unittest.TestCase):
         random.setstate(cls._py_rand_state)
 
         _set_use_system_allocator(cls._use_system_allocator)
+
+        if cls.check_grad_times == 0 and OpTest.op_type not in NO_NEED_CHECK_GRAD_SET:
+            raise AssertionError("check_grad is required for " + OpTest.op_type
+                                 + " Op.")
 
     def try_call_once(self, data_type):
         if not self.call_once:
@@ -1094,6 +1102,7 @@ class OpTestBase(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               check_dygraph=True):
+        self.__class__.check_grad_times += 1
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
