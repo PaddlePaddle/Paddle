@@ -1273,7 +1273,7 @@ class TestLayer(LayerTest):
                 lod_level=1,
                 append_batch_size=False)
             treeConv = nn.TreeConv(
-                'TreeConv', output_size=6, num_filters=1, max_depth=2)
+                feature_size=5, output_size=6, num_filters=1, max_depth=2)
             ret = treeConv(NodesVector, EdgeSet)
             static_ret2 = self.get_static_graph_result(
                 feed={
@@ -1287,7 +1287,7 @@ class TestLayer(LayerTest):
 
         with self.dynamic_graph():
             treeConv = nn.TreeConv(
-                'SpectralNorm', output_size=6, num_filters=1, max_depth=2)
+                feature_size=5, output_size=6, num_filters=1, max_depth=2)
             dy_ret = treeConv(base.to_variable(vectors), base.to_variable(adj))
             dy_rlt_value = dy_ret.numpy()
 
@@ -1300,13 +1300,13 @@ class TestLayer(LayerTest):
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
             treeConv1 = nn.TreeConv(
-                'SpectralNorm1',
+                feature_size=5,
                 output_size=6,
                 num_filters=1,
                 max_depth=2,
                 bias_attr='tc1_b')
             treeConv2 = nn.TreeConv(
-                'SpectralNorm2',
+                feature_size=5,
                 output_size=6,
                 num_filters=1,
                 max_depth=2,

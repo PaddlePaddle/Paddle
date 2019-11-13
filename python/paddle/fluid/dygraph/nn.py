@@ -2868,7 +2868,7 @@ class TreeConv(layers.Layer):
     The paper of Tree-Based Convolution Operator is here: `tree-based convolution <https://arxiv.org/abs/1409.5718v1/>`_ .
     
     Parameters:
-        name_scope(str): The name of this class.
+        feature_size(int): last dimension of nodes_vector.
         output_size(int): output feature width.
         num_filters(int, optional): number of filters, Default: 1.
         max_depth(int, optional): max depth of filters, Default: 2.
@@ -2876,6 +2876,7 @@ class TreeConv(layers.Layer):
         param_attr(ParamAttr, optional): the parameter attribute for the filters, Default: None.
         bias_attr(ParamAttr, optional): the parameter attribute for the bias of this layer, Default: None.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
+        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
     Attribute:
         **weight** (Parameter): the learnable weights of filters of this layer.
@@ -2896,35 +2897,31 @@ class TreeConv(layers.Layer):
               nodes_vector = numpy.random.random((1, 10, 5)).astype('float32')
               edge_set = numpy.random.random((1, 9, 2)).astype('int32')
               treeConv = fluid.dygraph.nn.TreeConv(
-                'TreeConv', output_size=6, num_filters=1, max_depth=2)
+                feature_size=5, output_size=6, num_filters=1, max_depth=2)
               ret = treeConv(fluid.dygraph.base.to_variable(nodes_vector), fluid.dygraph.base.to_variable(edge_set))
     """
 
     def __init__(self,
-                 name_scope,
+                 feature_size,
                  output_size,
                  num_filters=1,
                  max_depth=2,
                  act='tanh',
                  param_attr=None,
                  bias_attr=None,
-                 name=None):
-        super(TreeConv, self).__init__(name_scope)
+                 name=None,
+                 dtype='float32'):
+        super(TreeConv, self).__init__()
         self._name = name
+        self._feature_size = feature_size
         self._output_size = output_size
         self._act = act
         self._max_depth = max_depth
         self._num_filters = num_filters
         self._bias_attr = bias_attr
         self._param_attr = param_attr
-
-    def _build_once(self, nodes_vector, edge_set):
-        assert isinstance(nodes_vector, Variable)
-        assert isinstance(edge_set, Variable)
-        self._dtype = self._helper.input_dtype(nodes_vector)
-
-        feature_size = nodes_vector.shape[2]
-        w_shape = [feature_size, 3, self._output_size, self._num_filters]
+        self._dtype = dtype
+        w_shape = [self._feature_size, 3, self._output_size, self._num_filters]
         if self._bias_attr:
             self._bias_param = self.create_parameter(
                 attr=self._bias_attr,
