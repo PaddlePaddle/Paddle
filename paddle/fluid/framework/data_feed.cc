@@ -111,10 +111,13 @@ void DataFeed::SetBatchSize(int batch_size) {
 }
 
 bool DataFeed::PickOneFile(std::string* filename) {
-  PADDLE_ENFORCE(mutex_for_pick_file_ != nullptr,
-                 "should call SetFileListMutex before PickOneFile");
-  PADDLE_ENFORCE(file_idx_ != nullptr,
-                 "should call SetFileListIndex before PickOneFile");
+  PADDLE_ENFORCE_NOT_NULL(
+      mutex_for_pick_file_,
+      platform::errors::PreconditionNotMet(
+          "You should call SetFileListMutex before PickOneFile"));
+  PADDLE_ENFORCE_NOT_NULL(
+      file_idx_, platform::errors::PreconditionNotMet(
+                     "You should call SetFileListIndex before PickOneFile"));
   std::unique_lock<std::mutex> lock(*mutex_for_pick_file_);
   if (*file_idx_ == filelist_.size()) {
     VLOG(3) << "DataFeed::PickOneFile no more file to pick";
@@ -134,7 +137,9 @@ void DataFeed::CheckSetFileList() {
 }
 
 void DataFeed::CheckStart() {
-  PADDLE_ENFORCE(finish_start_, "Datafeed has not started running yet.");
+  PADDLE_ENFORCE_EQ(finish_start_, true,
+                    platform::errors::PreconditionNotMet(
+                        "Datafeed has not started running yet."));
 }
 
 void DataFeed::AssignFeedVar(const Scope& scope) {
