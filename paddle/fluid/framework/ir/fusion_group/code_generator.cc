@@ -32,6 +32,12 @@ CodeGenerator::CodeGenerator() {
 }
 
 std::string CodeGenerator::Generate(SubGraph* subgraph) {
+  std::vector<OperationExpression> expressions = ConvertToExpressions(subgraph);
+  return Generate(subgraph->func_name, expressions);
+}
+
+std::vector<OperationExpression> CodeGenerator::ConvertToExpressions(
+    SubGraph* subgraph) {
   std::unordered_map<std::string, int> var_ids = EncodeVarNodes(subgraph);
   std::vector<OperationExpression> expressions;
   for (auto* node : subgraph->SortedNodes()) {
@@ -75,7 +81,7 @@ std::string CodeGenerator::Generate(SubGraph* subgraph) {
           OperationExpression(node->Name(), input_ids, output_ids));
     }
   }
-  return Generate(subgraph->func_name, expressions);
+  return expressions;
 }
 
 // In order to get the right result of expression, we need to calculate and

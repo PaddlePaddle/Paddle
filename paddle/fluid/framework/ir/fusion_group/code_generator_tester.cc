@@ -81,10 +81,61 @@ inline float elementwise_mul_grad_dy(float x, float y, float out, float dout) {
   return dout * x;
 }
 
-template <typename T>
-inline void CheckOutput(T actual, T expect) {
-  PADDLE_ENFORCE_LT(fabs(actual - expect), 1.E-05,
-                    "Get %f vs %f (actual vs expect).", actual, expect);
+void CheckOutput(
+    const std::vector<fusion_group::OperationExpression>& expressions,
+    const std::vector<paddle::framework::LoDTensor> cpu_tensors,
+    const std::vector<int> input_ids_of_subgraph,
+    const std::vector<int> output_ids_of_subgraph, int i) {
+  std::vector<float> var(cpu_tensors.size());
+  for (auto id : input_ids_of_subgraph) {
+    var[id] = cpu_tensors[id].data<float>()[i];
+  }
+
+  for (auto expression : expressions) {
+    std::string op_type = expression.GetOpType();
+    auto input_ids = expression.GetInputIds();
+    auto output_ids = expression.GetOutputIds();
+    if (op_type == "relu") {
+      var[output_ids[0]] = relu(var[input_ids[0]]);
+    } else if (op_type == "sigmoid") {
+      var[output_ids[0]] = sigmoid(var[input_ids[0]]);
+    } else if (op_type == "tanh") {
+      var[output_ids[0]] = tanh(var[input_ids[0]]);
+    } else if (op_type == "elementwise_add") {
+      var[output_ids[0]] =
+          elementwise_add(var[input_ids[0]], var[input_ids[1]]);
+    } else if (op_type == "elementwise_sub") {
+      var[output_ids[0]] =
+          elementwise_sub(var[input_ids[0]], var[input_ids[1]]);
+    } else if (op_type == "elementwise_mul") {
+      var[output_ids[0]] =
+          elementwise_mul(var[input_ids[0]], var[input_ids[1]]);
+    } else if (op_type == "relu_grad") {
+      var[output_ids[0]] =
+          relu_grad_dx(var[input_ids[0]], 0, var[input_ids[2]]);
+    } else if (op_type == "sigmoid_grad") {
+      var[output_ids[0]] =
+          sigmoid_grad_dx(0, var[input_ids[1]], var[input_ids[2]]);
+    } else if (op_type == "tanh_grad") {
+      var[output_ids[0]] =
+          tanh_grad_dx(0, var[input_ids[1]], var[input_ids[2]]);
+    } else if (op_type == "elementwise_add_grad") {
+      var[output_ids[0]] = elementwise_add_grad_dx(0, 0, 0, var[input_ids[3]]);
+      var[output_ids[1]] = elementwise_add_grad_dy(0, 0, 0, var[input_ids[3]]);
+    } else if (op_type == "elementwise_mul_grad") {
+      var[output_ids[0]] =
+          elementwise_mul_grad_dx(0, var[input_ids[1]], 0, var[input_ids[3]]);
+      var[output_ids[1]] =
+          elementwise_mul_grad_dy(var[input_ids[0]], 0, 0, var[input_ids[3]]);
+    }
+  }
+
+  for (auto id : output_ids_of_subgraph) {
+    float actual = cpu_tensors[id].data<float>()[i];
+    float expect = var[id];
+    PADDLE_ENFORCE_LT(fabs(actual - expect), 1.E-05,
+                      "Get %f vs %f (actual vs expect).", actual, expect);
+  }
 }
 
 template <typename T>
@@ -157,16 +208,20 @@ void TestMain(std::string func_name,
   TestMainImpl(func_name, code_str, cpu_tensors, n, input_ids, output_ids);
 }
 
-void TestMain(fusion_group::SubGraph* subgraph,
-              std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
-              std::vector<int> input_ids, std::vector<int> output_ids) {
+std::vector<fusion_group::OperationExpression> TestMain(
+    fusion_group::SubGraph* subgraph,
+    std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
+    std::vector<int> input_ids, std::vector<int> output_ids) {
   fusion_group::OperationMap::Init();
   fusion_group::CodeGenerator code_generator;
   std::string code_str = code_generator.Generate(subgraph);
-  LOG(INFO) << code_str;
+  VLOG(3) << code_str;
 
   TestMainImpl(subgraph->func_name, code_str, cpu_tensors, n, input_ids,
                output_ids);
+
+  // Need to check the accuracy according to expressions.
+  return code_generator.ConvertToExpressions(subgraph);
 }
 
 TEST(code_generator, elementwise) {
@@ -203,23 +258,9 @@ TEST(code_generator, elementwise) {
   TestMain("elementwise_kernel_0", expressions, cpu_tensors, n, input_ids,
            output_ids);
 
-  auto cpu_kernel_handler = [&](int i) -> float {
-    float var0_i = cpu_tensors[0].data<float>()[i];
-    float var1_i = cpu_tensors[1].data<float>()[i];
-    float var3_i = cpu_tensors[3].data<float>()[i];
-    float var5_i = cpu_tensors[5].data<float>()[i];
-    float var2_i = elementwise_mul(var0_i, var1_i);
-    float var4_i = elementwise_add(var2_i, var3_i);
-    float var6_i = elementwise_sub(var4_i, var5_i);
-    float var7_i = relu(var6_i);
-    float var8_i = sigmoid(var7_i);
-    return var8_i;
-  };
-
   // Check the results
   for (int i = 0; i < n; i++) {
-    float result = cpu_kernel_handler(i);
-    CheckOutput(cpu_tensors[8].data<float>()[i], result);
+    CheckOutput(expressions, cpu_tensors, input_ids, output_ids, i);
   }
 }
 
@@ -251,23 +292,9 @@ TEST(code_generator, elementwise_grad) {
   TestMain("elementwise_grad_kernel_0", expressions, cpu_tensors, n, input_ids,
            output_ids);
 
-  auto cpu_kernel_handler = [&](int i) -> std::vector<float> {
-    float var0_i = cpu_tensors[0].data<float>()[i];
-    float var1_i = cpu_tensors[1].data<float>()[i];
-    float var2_i = cpu_tensors[2].data<float>()[i];
-    float var7_i = cpu_tensors[7].data<float>()[i];
-    float var6_i = relu_grad_dx(var2_i, 0, var7_i);
-    float var4_i = elementwise_mul_grad_dx(0, var1_i, 0, var6_i);
-    float var5_i = elementwise_mul_grad_dy(var0_i, 0, 0, var6_i);
-    return std::vector<float>{var4_i, var5_i, var6_i};
-  };
-
   // Check the results
   for (int i = 0; i < n; i++) {
-    std::vector<float> results = cpu_kernel_handler(i);
-    CheckOutput(cpu_tensors[4].data<float>()[i], results[0]);
-    CheckOutput(cpu_tensors[5].data<float>()[i], results[1]);
-    CheckOutput(cpu_tensors[6].data<float>()[i], results[2]);
+    CheckOutput(expressions, cpu_tensors, input_ids, output_ids, i);
   }
 }
 
@@ -380,25 +407,12 @@ TEST(code_generator, subgraph) {
   int n = cpu_tensors[0].numel();
   std::vector<int> input_ids = {0, 1, 2, 3};
   std::vector<int> output_ids = {4, 5, 6, 7, 8};
-  TestMain(&subgraph, cpu_tensors, n, input_ids, output_ids);
-
-  auto cpu_kernel_handler = [&](int i) -> float {
-    float var0_i = cpu_tensors[0].data<float>()[i];
-    float var1_i = cpu_tensors[1].data<float>()[i];
-    float var2_i = cpu_tensors[2].data<float>()[i];
-    float var3_i = cpu_tensors[3].data<float>()[i];
-    float var4_i = sigmoid(var0_i);
-    float var6_i = elementwise_mul(var4_i, var1_i);
-    float var5_i = tanh(var2_i);
-    float var7_i = elementwise_mul(var3_i, var5_i);
-    float var8_i = elementwise_add(var7_i, var6_i);
-    return var8_i;
-  };
+  std::vector<fusion_group::OperationExpression> expressions =
+      TestMain(&subgraph, cpu_tensors, n, input_ids, output_ids);
 
   // Check the results
   for (int i = 0; i < n; i++) {
-    float result = cpu_kernel_handler(i);
-    CheckOutput(cpu_tensors[8].data<float>()[i], result);
+    CheckOutput(expressions, cpu_tensors, input_ids, output_ids, i);
   }
 }
 
@@ -406,10 +420,6 @@ TEST(code_generator, subgraph_grad) {
   std::unique_ptr<paddle::framework::ir::Graph> graph = BuildGraph(true);
   fusion_group::SubGraph subgraph(0, "elementwise_grad_kernel_1", true,
                                   DistilGradNodes(graph));
-
-  LOG(INFO) << "SubGraph: {\n" << DebugString(subgraph.Nodes()) << "}";
-  LOG(INFO) << "Sorted SubGraph: {\n"
-            << DebugString(subgraph.SortedNodes()) << "}";
 
   // Prepare CPU tensors
   std::vector<paddle::framework::LoDTensor> cpu_tensors(18);
@@ -428,32 +438,12 @@ TEST(code_generator, subgraph_grad) {
   int n = cpu_tensors[0].numel();
   std::vector<int> input_ids = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   std::vector<int> output_ids = {10, 11, 12, 13, 14, 15, 16, 17};
-  TestMain(&subgraph, cpu_tensors, n, input_ids, output_ids);
-
-  auto cpu_kernel_handler = [&](int i) -> std::vector<float> {
-    float var0_i = cpu_tensors[0].data<float>()[i];
-    float var4_i = cpu_tensors[4].data<float>()[i];
-    float var5_i = cpu_tensors[5].data<float>()[i];
-    float var6_i = cpu_tensors[6].data<float>()[i];
-    float var7_i = cpu_tensors[7].data<float>()[i];
-    float var11_i = elementwise_add_grad_dx(0, 0, 0, var0_i);
-    float var10_i = elementwise_add_grad_dy(0, 0, 0, var0_i);
-    float var17_i = elementwise_mul_grad_dx(0, var4_i, 0, var10_i);
-    float var13_i = elementwise_mul_grad_dy(var5_i, 0, 0, var10_i);
-    float var12_i = elementwise_mul_grad_dx(0, var6_i, 0, var11_i);
-    float var15_i = elementwise_mul_grad_dx(var7_i, 0, 0, var11_i);
-    float var16_i = sigmoid_grad_dx(0, var7_i, var12_i);
-    float var14_i = tanh_grad_dx(0, var4_i, var13_i);
-    return std::vector<float>{var14_i, var15_i, var16_i, var17_i};
-  };
+  std::vector<fusion_group::OperationExpression> expressions =
+      TestMain(&subgraph, cpu_tensors, n, input_ids, output_ids);
 
   // Check the results
   for (int i = 0; i < n; i++) {
-    std::vector<float> results = cpu_kernel_handler(i);
-    CheckOutput(cpu_tensors[14].data<float>()[i], results[0]);
-    CheckOutput(cpu_tensors[15].data<float>()[i], results[1]);
-    CheckOutput(cpu_tensors[16].data<float>()[i], results[2]);
-    CheckOutput(cpu_tensors[17].data<float>()[i], results[3]);
+    CheckOutput(expressions, cpu_tensors, input_ids, output_ids, i);
   }
 }
 #endif

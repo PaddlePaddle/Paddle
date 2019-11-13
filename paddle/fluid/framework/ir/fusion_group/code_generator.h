@@ -34,6 +34,8 @@ class CodeGenerator {
 
   std::string Generate(SubGraph* subgraph);
 
+  std::vector<OperationExpression> ConvertToExpressions(SubGraph* subgraph);
+
  private:
   // we get the parameter list code for the expression information
   std::string EmitParameters(std::vector<OperationExpression> expressions,
