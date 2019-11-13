@@ -369,8 +369,7 @@ class OCRAttention(fluid.dygraph.Layer):
                      bias_attr=False,
                      act='relu')
         self.embedding = Embedding(
-            self.full_name(), [Config.num_classes + 2, Config.word_vector_dim],
-            dtype='float32')
+            [Config.num_classes + 2, Config.word_vector_dim], dtype='float32')
         self.gru_decoder_with_attention = GRUDecoderWithAttention(
             self.full_name(), Config.decoder_size, Config.num_classes)
 

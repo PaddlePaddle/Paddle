@@ -800,19 +800,13 @@ class TestLayer(LayerTest):
         with self.static_graph():
             data_t = layers.data(name='word', shape=[1], dtype='int64')
             emb2 = nn.Embedding(
-                name_scope='embedding',
-                size=[dict_size, 32],
-                param_attr='emb.w',
-                is_sparse=False)
+                size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
             emb_rlt = emb2(data_t)
             static_rlt2 = self.get_static_graph_result(
                 feed={'word': inp_word}, fetch_list=[emb_rlt])[0]
         with self.dynamic_graph():
             emb2 = nn.Embedding(
-                name_scope='embedding',
-                size=[dict_size, 32],
-                param_attr='emb.w',
-                is_sparse=False)
+                size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
             dy_rlt = emb2(base.to_variable(inp_word))
             dy_rlt_value = dy_rlt.numpy()
 
@@ -824,13 +818,9 @@ class TestLayer(LayerTest):
             weight_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
-            emb1 = nn.Embedding(
-                name_scope='embedding', size=[dict_size, 32], is_sparse=False)
+            emb1 = nn.Embedding(size=[dict_size, 32], is_sparse=False)
             emb2 = nn.Embedding(
-                name_scope='embedding',
-                size=[dict_size, 32],
-                param_attr=weight_attr,
-                is_sparse=False)
+                size=[dict_size, 32], param_attr=weight_attr, is_sparse=False)
             rep1 = emb1(base.to_variable(inp_word))
             rep2 = emb2(base.to_variable(inp_word))
             self.assertFalse(np.array_equal(emb1.weight.numpy(), custom_weight))
@@ -896,10 +886,7 @@ class TestLayer(LayerTest):
             sample_weights = layers.fill_constant(
                 shape=[5, 1], dtype='float32', value=1)
             emb = nn.Embedding(
-                'embedding',
-                size=[dict_size, 32],
-                param_attr='emb.w',
-                is_sparse=False)
+                size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
 
             embs2 = []
             for i in range(window_size):
@@ -935,10 +922,7 @@ class TestLayer(LayerTest):
             sample_weights = layers.fill_constant(
                 shape=[5, 1], dtype='float32', value=1)
             emb = nn.Embedding(
-                'embedding',
-                size=[dict_size, 32],
-                param_attr='emb.w',
-                is_sparse=False)
+                size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
 
             embs3 = []
             for i in range(window_size):
@@ -976,10 +960,7 @@ class TestLayer(LayerTest):
             sample_weights = layers.fill_constant(
                 shape=[5, 1], dtype='float32', value=1)
             emb = nn.Embedding(
-                'embedding',
-                size=[dict_size, 32],
-                param_attr='emb.w',
-                is_sparse=False)
+                size=[dict_size, 32], param_attr='emb.w', is_sparse=False)
 
             embs3 = []
             for i in range(window_size):

@@ -1342,7 +1342,6 @@ class Embedding(layers.Layer):
         It will pad all-zero data when ids is 127.
 
     Parameters:
-        name_scope(str): The name of this class.
         size(tuple|list): The shape of the look up table parameter. It should have two elements which indicate the size
             of the dictionary of embeddings and the size of each embedding vector respectively.
         is_sparse(bool): The flag indicating whether to use sparse update. This parameter only
@@ -1387,7 +1386,6 @@ class Embedding(layers.Layer):
           dict_size = 20
           with fluid.dygraph.guard():
               emb = fluid.dygraph.Embedding(
-                  name_scope='embedding',
                   size=[dict_size, 32],
                   param_attr='emb.w',
                   is_sparse=False)
@@ -1402,7 +1400,6 @@ class Embedding(layers.Layer):
               trainable=True)
           with fluid.dygraph.guard():
               emb = fluid.dygraph.Embedding(
-                  name_scope='embedding',
                   size=[128, 100],
                   param_attr= w_param_attrs,
                   is_sparse=False)
@@ -1410,14 +1407,13 @@ class Embedding(layers.Layer):
     """
 
     def __init__(self,
-                 name_scope,
                  size,
                  is_sparse=False,
                  is_distributed=False,
                  padding_idx=None,
                  param_attr=None,
                  dtype='float32'):
-        super(Embedding, self).__init__(name_scope, dtype)
+        super(Embedding, self).__init__()
         self._size = size
         self._is_sparse = is_sparse
         self._is_distributed = is_distributed
@@ -1844,7 +1840,6 @@ class NCE(layers.Layer):
                     words.append(fluid.dygraph.base.to_variable(inp_word[i]))
 
                 emb = fluid.Embedding(
-                    'embedding',
                     size=[dict_size, 32],
                     param_attr='emb.w',
                     is_sparse=False)
