@@ -91,7 +91,7 @@ void SigmoidFocalLossGrad(const framework::ExecutionContext &context,
     T fg_num = static_cast<T>((fg_num_data[0] > 1) ? fg_num_data[0] : 1);
     T s_neg = static_cast<T>((1.0 - alpha) / fg_num);
     T s_pos = alpha / fg_num;
-    int g = label_data[a];
+    LabelT g = label_data[a];
 
     T c_pos = static_cast<T>(g == (d + 1));
     T c_neg = static_cast<T>((g != -1) & (g != (d + 1)));
