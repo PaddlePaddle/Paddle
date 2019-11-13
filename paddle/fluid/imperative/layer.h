@@ -340,7 +340,8 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     return vec_res;
   }
 
-  std::vector<Variable*> MultiOutputVar(const std::string& name) const {
+  std::vector<Variable*> MultiOutputVar(
+      const std::string& name) const override {
     auto it = var_base_map_out_.find(name);
     if (it == var_base_map_out_.end()) {
       return {};
