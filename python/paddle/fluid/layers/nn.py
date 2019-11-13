@@ -4656,8 +4656,8 @@ def edit_distance(input,
     Returns:
 	Tuple:
 
-        distance(Variable): edit distance result, its shape is (batch_size, 1).
-        sequence_num(Variable): sequence number, its shape is (1,).
+        distance(Variable): edit distance result, its data type is float32, and its shape is (batch_size, 1).
+        sequence_num(Variable): sequence number, its data type is float32, and its shape is (1,).
 
     Examples:
         .. code-block:: python
