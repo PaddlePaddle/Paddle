@@ -27,7 +27,7 @@ import paddle.fluid as fluid
 import paddle.fluid.dygraph as dygraph
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC, LayerNorm
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC, BatchNorm
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.layer_helper import LayerHelper
 import math
@@ -79,11 +79,11 @@ class ConvBNLayer(fluid.dygraph.Layer):
             bias_attr=False,
             param_attr=fluid.ParamAttr(name="weights"))
 
-        self._layer_norm = LayerNorm(self.full_name(), begin_norm_axis=1)
+        self._batch_norm = BatchNorm(num_filters, act=act)
 
     def forward(self, inputs):
         y = self._conv(inputs)
-        y = self._layer_norm(y)
+        y = self._batch_norm(y)
 
         return y
 

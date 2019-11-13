@@ -1481,7 +1481,7 @@ class LayerNorm(layers.Layer):
     - :math:`b`: the trainable bias parameter.
 
     Parameters:
-        name_scope(str): The name of this class.
+        input_shape(list or tuple): The shape of input.
         scale(bool, optional): Whether to learn the adaptive gain :math:`g` after
             normalization. Default: True.
         shift(bool, optional): Whether to learn the adaptive bias :math:`b` after
@@ -1503,6 +1503,8 @@ class LayerNorm(layers.Layer):
             :attr:`bias_attr` is initialized as 0 if it is added. Default: None.
         act(str, optional): Activation to be applied to the output of layer normalizaiton.
                   Default: None.
+        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
+
     Returns:
         None
 
@@ -1517,21 +1519,23 @@ class LayerNorm(layers.Layer):
           x = numpy.random.random((3, 32, 32)).astype('float32')
           with fluid.dygraph.guard():
               x = to_variable(x)
-              layerNorm = fluid.LayerNorm('LayerNorm', begin_norm_axis=1)
+              layerNorm = fluid.LayerNorm(x.shape, begin_norm_axis=1)
               ret = layerNorm(x)
 
     """
 
     def __init__(self,
-                 name_scope,
+                 input_shape,
                  scale=True,
                  shift=True,
                  begin_norm_axis=1,
                  epsilon=1e-05,
                  param_attr=None,
                  bias_attr=None,
-                 act=None):
-        super(LayerNorm, self).__init__(name_scope)
+                 act=None,
+                 dtype='float32'):
+        super(LayerNorm, self).__init__()
+        self._input_shape = list(input_shape)
         self._scale = scale
         self._shift = shift
         self._begin_norm_axis = begin_norm_axis
@@ -1539,12 +1543,9 @@ class LayerNorm(layers.Layer):
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-
-    def _build_once(self, input):
-        self._dtype = self._helper.input_dtype(input)
-        input_shape = input.shape
+        self._dtype = dtype
         param_shape = [
-            reduce(lambda x, y: x * y, input_shape[self._begin_norm_axis:])
+            reduce(lambda x, y: x * y, self._input_shape[begin_norm_axis:])
         ]
         if self._scale:
             self._scale_w = self.create_parameter(
