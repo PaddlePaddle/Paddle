@@ -570,6 +570,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
     """
     helper = LayerHelper("fill_constant", **locals())
+    py_value = float(value)
+    if py_value > 16777216.0:
+        raise ValueError("big number may bring accuracy loss")
+
     if convert_dtype(dtype) not in [
             'bool', 'float16', 'float32', 'float64', 'int32', 'int64'
     ]:
