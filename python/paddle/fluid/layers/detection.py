@@ -21,6 +21,7 @@ from .layer_function_generator import generate_layer_fn
 from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable
+from .loss import softmax_with_cross_entropy
 from . import tensor
 from . import nn
 from . import ops
@@ -1540,7 +1541,7 @@ def ssd_loss(location,
     target_label = tensor.cast(x=target_label, dtype='int64')
     target_label = __reshape_to_2d(target_label)
     target_label.stop_gradient = True
-    conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
+    conf_loss = softmax_with_cross_entropy(confidence, target_label)
     # 3. Mining hard examples
     actual_shape = nn.slice(conf_shape, axes=[0], starts=[0], ends=[2])
     actual_shape.stop_gradient = True
@@ -1594,7 +1595,7 @@ def ssd_loss(location,
     target_label = __reshape_to_2d(target_label)
     target_label = tensor.cast(x=target_label, dtype='int64')
 
-    conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
+    conf_loss = softmax_with_cross_entropy(confidence, target_label)
     target_conf_weight = __reshape_to_2d(target_conf_weight)
     conf_loss = conf_loss * target_conf_weight
 
