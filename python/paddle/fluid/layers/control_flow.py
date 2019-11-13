@@ -16,12 +16,13 @@ from __future__ import print_function
 from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import autodoc, templatedoc
-from .tensor import assign, fill_constant
+from .tensor import assign, cast, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
 from .nn import logical_and, logical_not, logical_or
+from .utils import assert_same_structure, flatten, map_structure
 import numpy
 import warnings
 import six
@@ -30,7 +31,7 @@ from functools import reduce
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
     'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
-    'array_read', 'array_length', 'IfElse', 'DynamicRNN', 'StaticRNN',
+    'array_read', 'array_length', 'cond', 'IfElse', 'DynamicRNN', 'StaticRNN',
     'reorder_lod_tensor_by_rank', 'Print', 'is_empty'
 ]
 
@@ -1727,6 +1728,73 @@ class ConditionalBlock(object):
                 'sub_block': inside_block,
                 'is_scalar_condition': self.is_scalar_condition
             })
+
+
+def copy_var_to_parent_block(var, layer_helper):
+    if var is None:
+        return None
+    prog = layer_helper.main_program
+    parent_idx = prog.current_block().parent_idx
+    assert parent_idx >= 0, "Got wrong parent block index when assigning var to parent scope in control_flow"
+    parent_block = prog.block(parent_idx)
+
+    parent_block_var = parent_block.create_var(dtype=var.dtype, type=var.type)
+    assign(var, parent_block_var)
+    return parent_block_var
+
+
+def cond(pred, true_fn=None, false_fn=None, name=None):
+    """
+    TODO:(huihuangzheng) developing
+    """
+    helper = LayerHelper('cond', **locals())
+    true_output = None
+    false_output = None
+    copy_to_global_func = lambda var: copy_var_to_parent_block(var, helper)
+    if true_fn is not None:
+        if not callable(true_fn):
+            raise TypeError("The true_fn in cond must be callable")
+        true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
+        with true_cond_block.block():
+            origin_true_output = true_fn()
+            if origin_true_output is not None:
+                true_output = map_structure(copy_to_global_func,
+                                            origin_true_output)
+    if false_fn is not None:
+        if not callable(false_fn):
+            raise TypeError("The false_fn in cond must be callable")
+        false_cond_block = ConditionalBlock(
+            [logical_not(pred)], is_scalar_condition=True)
+        with false_cond_block.block():
+            origin_false_output = false_fn()
+            if origin_false_output is not None:
+                false_output = map_structure(copy_to_global_func,
+                                             origin_false_output)
+
+    if true_output is None and false_output is None:
+        return None
+
+    if true_output is None:
+        raise ValueError(
+            "Incompatible return values of true_fn and false_fn in cond: "
+            "true_fn returns None while false_fn returns non-None")
+    if false_output is None:
+        raise ValueError(
+            "Incompatible return values of true_fn and false_fn in cond: "
+            "true_fn returns non-None while false_fn returns None")
+
+    # Merge ture and false output if they are not None
+    try:
+        assert_same_structure(true_output, false_output, check_types=False)
+    except ValueError as e:
+        raise ValueError(
+            "Incompatible return values of true_fn and false_fn in cond: {}".
+            format(e))
+
+    mask = cast(pred, dtype='int32')
+    merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)
+    merged_output = map_structure(merge_func, false_output, true_output)
+    return merged_output
 
 
 class Switch(object):

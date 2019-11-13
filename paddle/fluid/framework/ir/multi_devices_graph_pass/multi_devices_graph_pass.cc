@@ -1011,10 +1011,10 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
 
 #if defined(PADDLE_WITH_DGC)
 bool AllReduceSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
-  auto u_name = p_name + details::g_dgc_u;
-  auto it = all_vars_.find(u_name);
+  auto k_name = p_name + details::g_dgc_k;
+  auto it = all_vars_.find(k_name);
   if (it == all_vars_.end()) {
-    VLOG(10) << "can't find u_name, so it's not encoded:" << u_name;
+    VLOG(10) << "can't find k_name, so it's not encoded:" << k_name;
     return false;
   }
 
