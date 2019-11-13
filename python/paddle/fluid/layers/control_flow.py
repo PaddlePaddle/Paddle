@@ -22,7 +22,7 @@ from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, flatten, map_structure
+from .utils import assert_same_structure, map_structure
 import numpy
 import warnings
 import six
@@ -1792,6 +1792,8 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             format(e))
 
     mask = cast(pred, dtype='int32')
+    # cast cannot back-propogate and condition shouldn't back-propogate
+    mask.stop_gradient = True
     merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)
     merged_output = map_structure(merge_func, false_output, true_output)
     return merged_output
