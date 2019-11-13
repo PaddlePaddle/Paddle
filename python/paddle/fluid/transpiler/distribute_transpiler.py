@@ -2534,7 +2534,7 @@ class DistributeTranspiler(object):
         This Function is used for special model, like PyramidDnn which has pyramid hash op.
         Some Parameters don't use optimize op to update its value, instead of updated in its own BP process.
         In these cases, Transpilse can't find these special vars by optimize op information.
-        So we add this function and add attr "distribute_update_params" to tell transpiler these Parameter
+        So we add this function and add attr "distribute_update_vars" to tell transpiler these Parameter
         need to be update in distribute training.
         We assume these special var send and recv the same var_name.
         """
@@ -2542,8 +2542,8 @@ class DistributeTranspiler(object):
         origin_var_dict = self.origin_program.global_block().vars
         params = []
         for op in block.ops:
-            if op.attr("distribute_update_params"):
-                for param_name in op.attr("distribute_update_params"):
+            if op.attr("distribute_update_vars"):
+                for param_name in op.attr("distribute_update_vars"):
                     params.append([
                         origin_var_dict[param_name], origin_var_dict[param_name]
                     ])

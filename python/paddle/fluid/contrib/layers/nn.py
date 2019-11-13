@@ -644,7 +644,7 @@ def search_pyramid_hash(input,
                         param_attr_wl=None,
                         param_attr_bl=None,
                         name=None,
-                        distribute_update_params=None,
+                        distribute_update_vars=None,
                         dtype='float32'):
     """
     **Pyramid hash embedding**
@@ -671,7 +671,7 @@ def search_pyramid_hash(input,
             default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
         param_attr_wl(ParamAttr): Specified parameters of white filter.
         param_attr_bl(ParamAttr): Specified parameters of black filter.
-        distribute_update_params(list[ParamAttr.name]): Decided which params should be update in distribute training. 
+        distribute_update_vars(list[ParamAttr.name]): Decided which params should be update in distribute training. 
             Used in Distribute Transpiler to create trainer/pserver program.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
@@ -731,7 +731,7 @@ def search_pyramid_hash(input,
             'black_list_len': black_list_len,
             'seed': seed,
             'lr': lr,
-            'distribute_update_params': distribute_update_params
+            'distribute_update_vars': distribute_update_params
         })
 
     return res

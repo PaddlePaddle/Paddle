@@ -60,7 +60,7 @@ class PyramidHashOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("seed", "seed").SetDefault(0).EqualGreaterThan(0);
     AddAttr<float>("lr", "learning rate").SetDefault(0.0).EqualGreaterThan(0.0);
     AddAttr<std::vector<std::string>>(
-        "distribute_update_params",
+        "distribute_update_vars",
         "['PyramidHash_emb_0','Filter']"
         "Decided which params should be update in distribute training. Used in "
         "Distribute Transpiler to create trainer/pserver program.");
