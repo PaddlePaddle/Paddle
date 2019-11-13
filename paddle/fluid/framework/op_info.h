@@ -56,8 +56,9 @@ struct OpInfo {
     PADDLE_ENFORCE_NOT_NULL(
         proto_,
         platform::errors::NotFound("Operator's Proto has not been registered"));
-    PADDLE_ENFORCE(proto_->IsInitialized(),
-                   "Operator's Proto must be initialized in op info");
+    PADDLE_ENFORCE_EQ(proto_->IsInitialized(), true,
+                      platform::errors::InvalidArgument(
+                          "Operator's Proto in op info is not initialized."));
     return *proto_;
   }
 
