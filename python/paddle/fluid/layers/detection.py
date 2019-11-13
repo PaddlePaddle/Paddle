@@ -1857,9 +1857,12 @@ def density_prior_box(input,
     Examples:
 
         .. code-block:: python
+
             #declarative mode
-	    import paddle.fluid as fluid
+
+            import paddle.fluid as fluid
             import numpy as np
+
 	    input = fluid.data(name="input", shape=[None,3,6,9])
 	    image = fluid.data(name="image", shape=[None,3,9,12])
 	    box, var = fluid.layers.density_prior_box(
