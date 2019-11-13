@@ -701,9 +701,9 @@ def search_pyramid_hash(input,
         black_list.stop_gradient = True
         input_vars['BlackList'] = black_list
 
-    if distribute_update_params:
-        assert isinstance(distribute_update_params, list)
-        for param in distribute_update_params:
+    if distribute_update_vars:
+        assert isinstance(distribute_update_vars, list)
+        for param in distribute_update_vars:
             if param not in [
                     param_attr.name, param_attr_wl.name, param_attr_bl.name
             ]:
@@ -731,7 +731,7 @@ def search_pyramid_hash(input,
             'black_list_len': black_list_len,
             'seed': seed,
             'lr': lr,
-            'distribute_update_vars': distribute_update_params
+            'distribute_update_vars': distribute_update_vars
         })
 
     return res
