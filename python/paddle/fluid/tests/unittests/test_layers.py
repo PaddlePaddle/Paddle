@@ -1152,7 +1152,7 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            groupNorm = nn.GroupNorm('GroupNorm', groups=2)
+            groupNorm = nn.GroupNorm(channels=shape[1], groups=2)
             ret = groupNorm(X)
             static_ret2 = self.get_static_graph_result(
                 feed={
@@ -1163,7 +1163,7 @@ class TestLayer(LayerTest):
                 with_lod=True)[0]
 
         with self.dynamic_graph():
-            groupNorm = nn.GroupNorm('GroupNorm', groups=2)
+            groupNorm = nn.GroupNorm(channels=shape[1], groups=2)
             dy_ret = groupNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 
@@ -1203,7 +1203,7 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 lod_level=1,
                 append_batch_size=False)
-            spectralNorm = nn.SpectralNorm('SpectralNorm', dim=1, power_iters=2)
+            spectralNorm = nn.SpectralNorm(shape, dim=1, power_iters=2)
             ret = spectralNorm(Weight)
             static_ret2 = self.get_static_graph_result(
                 feed={
@@ -1214,7 +1214,7 @@ class TestLayer(LayerTest):
                 with_lod=True)[0]
 
         with self.dynamic_graph():
-            spectralNorm = nn.SpectralNorm('SpectralNorm', dim=1, power_iters=2)
+            spectralNorm = nn.SpectralNorm(shape, dim=1, power_iters=2)
             dy_ret = spectralNorm(base.to_variable(input))
             dy_rlt_value = dy_ret.numpy()
 

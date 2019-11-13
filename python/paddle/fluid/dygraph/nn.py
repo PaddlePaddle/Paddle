@@ -2658,7 +2658,7 @@ class GroupNorm(layers.Layer):
     Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
     Parameters:
-        name_scope(str): The name of this class.
+        channels(int): The number of channels of input.
         groups(int): The number of groups that divided from channels.
         epsilon(float, optional): The small value added to the variance to prevent
                                   division by zero. Default: 1e-05.
@@ -2682,31 +2682,32 @@ class GroupNorm(layers.Layer):
 
           with fluid.dygraph.guard():
               x = np.random.random((8, 32, 32)).astype('float32')
-              groupNorm = fluid.dygraph.nn.GroupNorm('GroupNorm', groups=4)
+              groupNorm = fluid.dygraph.nn.GroupNorm(channels=32, groups=4)
               ret = groupNorm(fluid.dygraph.base.to_variable(x))
 
     """
 
     def __init__(self,
-                 name_scope,
+                 channels,
                  groups,
                  epsilon=1e-05,
                  param_attr=None,
                  bias_attr=None,
                  act=None,
-                 data_layout='NCHW'):
-        super(GroupNorm, self).__init__(name_scope)
+                 data_layout='NCHW',
+                 dtype='float32'):
+        super(GroupNorm, self).__init__()
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._epsilon = epsilon
+        self._channels = channels
         self._groups = groups
         self._act = act
+        self._dtype = dtype
         if data_layout != 'NCHW':
             raise ValueError("unsupported data layout:" + data_layout)
 
-    def _build_once(self, input):
-        self._dtype = self._helper.input_dtype(input)
-        param_shape = [input.shape[1]]
+        param_shape = [self._channels]
         if self._bias_attr:
             self._bias = self.create_parameter(
                 attr=self._bias_attr,
@@ -2786,11 +2787,12 @@ class SpectralNorm(layers.Layer):
     Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
 
     Parameters:
-        name_scope(str): The name of this class.
+        weight_shape(list or tuple): The shape of weight parameter.
         dim(int, optional): The index of dimension which should be permuted to the first before reshaping Input(Weight) to matrix, it should be set as 0 if Input(Weight) is the weight of fc layer, and should be set as 1 if Input(Weight) is the weight of conv layer. Default: 0.
         power_iters(int, optional): The number of power iterations to calculate spectral norm. Default: 1.
         eps(float, optional): The epsilon for numerical stability in calculating norms. Default: 1e-12.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
+        dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
     Returns:
         None
@@ -2802,23 +2804,27 @@ class SpectralNorm(layers.Layer):
             import numpy as np
 
             with fluid.dygraph.guard():
-                x = np.random.random((2, 8, 32, 32)).astype('float32')
-                spectralNorm = fluid.dygraph.nn.SpectralNorm('SpectralNorm', dim=1, power_iters=2)
-                ret = spectralNorm(fluid.dygraph.base.to_variable(x))
+                weight = np.random.random((2, 8, 32, 32)).astype('float32')
+                spectralNorm = fluid.dygraph.nn.SpectralNorm(weight.shape, dim=1, power_iters=2)
+                ret = spectralNorm(fluid.dygraph.base.to_variable(weight))
 
     """
 
-    def __init__(self, name_scope, dim=0, power_iters=1, eps=1e-12, name=None):
-        super(SpectralNorm, self).__init__(name_scope)
+    def __init__(self,
+                 weight_shape,
+                 dim=0,
+                 power_iters=1,
+                 eps=1e-12,
+                 dtype='float32'):
+        super(SpectralNorm, self).__init__()
         self._power_iters = power_iters
         self._eps = eps
         self._dim = dim
+        self._dtype = dtype
 
-    def _build_once(self, weight):
-        self._dtype = self._helper.input_dtype(weight)
-        input_shape = weight.shape
-        h = input_shape[self._dim]
-        w = np.prod(input_shape) // h
+        self._weight_shape = list(weight_shape)
+        h = self._weight_shape[self._dim]
+        w = np.prod(self._weight_shape) // h
 
         self.u = self.create_parameter(
             attr=ParamAttr(),
