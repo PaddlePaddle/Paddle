@@ -207,16 +207,6 @@ TEST(test_layer, test_dygraph_infershape_context) {
   ASSERT_EQ(have_x, true);
   bool have_z = infer_shape_ctx.HasOutputs("Z");
   ASSERT_EQ(have_z, false);
-
-  bool catch_exp = false;
-  try {
-    infer_shape_ctx.IncreaseLoDLevel("X", "Out");
-  } catch (paddle::platform::EnforceNotMet& e) {
-    // shouble be here
-    catch_exp = true;
-  }
-
-  ASSERT_EQ(catch_exp, true);
 }
 
 }  // namespace imperative

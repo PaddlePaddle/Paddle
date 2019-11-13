@@ -851,6 +851,15 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     }
   }
 
+  int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override {
+    PADDLE_THROW("GetLoDLevel function not support in dygraph mode");
+  }
+
+  void SetLoDLevel(const std::string& out, int32_t lod_level,
+                   size_t j = 0) const override {
+    PADDLE_THROW("SetLoDLevel function not support in dygraph mode");
+  }
+
  protected:
   DDim GetDim(framework::Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(var);
