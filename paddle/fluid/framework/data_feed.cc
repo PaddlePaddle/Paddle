@@ -105,7 +105,8 @@ bool DataFeed::SetFileList(const std::vector<std::string>& files) {
 }
 
 void DataFeed::SetBatchSize(int batch_size) {
-  PADDLE_ENFORCE(batch_size > 0, "Illegal batch size: %d.", batch_size);
+  PADDLE_ENFORCE_GT(batch_size, 0, platform::errors::InvalidArgument(
+                                       "Batch size is illegal.", batch_size));
   default_batch_size_ = batch_size;
 }
 
@@ -556,13 +557,14 @@ bool MultiSlotDataFeed::ParseOneInstanceFromPipe(
     for (size_t i = 0; i < use_slots_index_.size(); ++i) {
       int idx = use_slots_index_[i];
       int num = strtol(&str[pos], &endptr, 10);
-      PADDLE_ENFORCE(
-          num,
-          "The number of ids can not be zero, you need padding "
-          "it in data generator; or if there is something wrong with "
-          "the data, please check if the data contains unresolvable "
-          "characters.\nplease check this error line: %s",
-          str);
+      PADDLE_ENFORCE_NE(
+          num, 0,
+          platform::errors::InvalidArgument(
+              "The number of ids can not be zero, you need padding "
+              "it in data generator; or if there is something wrong with "
+              "the data, please check if the data contains unresolvable "
+              "characters.\nplease check this error line: %s",
+              str));
       if (idx != -1) {
         (*instance)[idx].Init(all_slots_type_[i]);
         if ((*instance)[idx].GetType()[0] == 'f') {  // float
