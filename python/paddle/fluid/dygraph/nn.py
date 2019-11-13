@@ -2138,16 +2138,18 @@ class BilinearTensorProduct(layers.Layer):
      - :math:`y^\mathrm{T}`: the transpose of :math:`y`.
 
     Parameters:
-       name_scope(str): The name of this class.
-       size (int): The dimension of this layer.
-       name (str): The default value is None. Normally there is no need for user 
-           to set this property. For more information, please refer to :ref:`api_guide_Name`.
+       input1_dim (int): The dimension of each first input.
+       input2_dim (int): The dimension of each second input.
+       output_dim (int): The dimension of output of this layer.
+       name (str, optional): The default value is None. Normally there is no need for user
+           to set this property. For more information, please refer to :ref:`api_guide_Name`. Default: None.
        act (str, optional): Activation to be applied to the output of this layer. The default value is None.
        param_attr (ParamAttr, optional): The parameter attribute for the learnable w, parameters/weights of 
            this layer. The default value is None.
        bias_attr (ParamAttr, optional): The parameter attribute for the bias
            of this layer. If it is set to False, no bias will be added to the output units.
            If it is set to None, the bias is initialized zero. The default value is None.
+       dtype (str, optional): Data type, it can be "float32" or "float64". Default: "float32".
 
     Attribute:
         **weight** (Parameter): the learnable weights of this layer.
@@ -2167,38 +2169,38 @@ class BilinearTensorProduct(layers.Layer):
              layer1 = numpy.random.random((5, 5)).astype('float32')
              layer2 = numpy.random.random((5, 4)).astype('float32')
              bilinearTensorProduct = fluid.dygraph.nn.BilinearTensorProduct(
-                    'BilinearTensorProduct', size=1000)
+                    input1_dim=5, input2_dim=4, output_dim=1000)
              ret = bilinearTensorProduct(fluid.dygraph.base.to_variable(layer1),
                                 fluid.dygraph.base.to_variable(layer2))
     """
 
     def __init__(self,
-                 name_scope,
-                 size,
+                 input1_dim,
+                 input2_dim,
+                 output_dim,
                  name=None,
                  act=None,
                  param_attr=None,
-                 bias_attr=None):
-        super(BilinearTensorProduct, self).__init__(name_scope)
+                 bias_attr=None,
+                 dtype='float32'):
+        super(BilinearTensorProduct, self).__init__()
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
-        self._size = size
         self._name = name
+        self._input1_dim = input1_dim
+        self._input2_dim = input2_dim
+        self._output_dim = output_dim
         self._inputs = dict()
+        self._dtype = dtype
 
-    def _build_once(self, x, y):
-        self._dtype = self._helper.input_dtype(x)
-
-        param_shape = [self._size, x.shape[1], y.shape[1]]
-
+        param_shape = [self._output_dim, self._input1_dim, self._input2_dim]
         self._w = self.create_parameter(
             attr=self._param_attr,
             shape=param_shape,
             dtype=self._dtype,
             is_bias=False)
-
-        bias_size = [1, self._size]
+        bias_size = [1, self._output_dim]
         self._bias_param = self.create_parameter(
             attr=self._bias_attr,
             shape=bias_size,

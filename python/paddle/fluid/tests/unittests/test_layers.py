@@ -647,7 +647,8 @@ class TestLayer(LayerTest):
                 dtype="float32",
                 append_batch_size=False)
             btp = nn.BilinearTensorProduct(
-                'btp',
+                3,
+                3,
                 6,
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
                 act='sigmoid')
@@ -657,14 +658,15 @@ class TestLayer(LayerTest):
                       'y': inp_np_y}, fetch_list=[out])[0]
         with self.dynamic_graph():
             btp = nn.BilinearTensorProduct(
-                'btp',
+                3,
+                3,
                 6,
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
                 act='sigmoid')
             dy_rlt = btp(base.to_variable(inp_np_x), base.to_variable(inp_np_y))
             dy_rlt_value = dy_rlt.numpy()
         with self.dynamic_graph():
-            btp2 = nn.BilinearTensorProduct('btp', 6, act='sigmoid')
+            btp2 = nn.BilinearTensorProduct(3, 3, 6, act='sigmoid')
             dy_rlt2 = btp2(
                 base.to_variable(inp_np_x), base.to_variable(inp_np_y))
             dy_rlt2_value = dy_rlt2.numpy()
@@ -695,9 +697,9 @@ class TestLayer(LayerTest):
             weight_attr = fluid.ParamAttr(
                 initializer=fluid.initializer.NumpyArrayInitializer(
                     custom_weight))
-            btp1 = nn.BilinearTensorProduct('btp1', 6, act='sigmoid')
+            btp1 = nn.BilinearTensorProduct(3, 3, 6, act='sigmoid')
             btp2 = nn.BilinearTensorProduct(
-                'btp2', 6, act='sigmoid', param_attr=weight_attr)
+                3, 3, 6, act='sigmoid', param_attr=weight_attr)
             dy_rlt1 = btp1(
                 base.to_variable(inp_np_x), base.to_variable(inp_np_y))
             dy_rlt2 = btp2(
