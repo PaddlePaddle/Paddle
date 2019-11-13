@@ -71,14 +71,15 @@ def check_type_and_dtype(input,
                          expected_dtype,
                          op_name,
                          extra_message=''):
-    check_type(input, input_name, expected_type, op_name)
+    check_type(input, input_name, expected_type, op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
 
 
-def check_type(input, input_name, expected_type, op_name):
+def check_type(input, input_name, expected_type, op_name, extra_message=''):
     if not isinstance(input, expected_type):
-        raise TypeError("The type of '%s' in %s must be %s, but received %s" %
-                        (input_name, op_name, expected_type, type(input)))
+        raise TypeError(
+            "The type of '%s' in %s must be %s, but received %s. %s" %
+            (input_name, op_name, expected_type, type(input), extra_message))
 
 
 def check_dtype(input_dtype,

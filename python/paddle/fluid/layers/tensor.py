@@ -257,9 +257,9 @@ def concat(input, axis=0, name=None):
             "The type of input in concat should be list, but received %s." %
             (type(input)))
         input = [input]
-    for x in input:
+    for id, x in enumerate(input):
         check_type_and_dtype(
-            x, 'each input', Variable,
+            x, 'input[' + str(id) + ']', Variable,
             ['float16', 'float32', 'float64', 'int32', 'int64'], 'concat')
     check_type(axis, 'axis', (int, Variable), 'concat')
     inputs = {'X': input}
@@ -573,7 +573,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
             if isinstance(dim, Variable):
                 dim.stop_gradient = True
                 check_dtype(
-                    dim.dtype, 'each shape', ['int32', 'int64'],
+                    dim.dtype, 'shape[' + str(idx) + ']', ['int32', 'int64'],
                     'fill_constant',
                     '(When type of shape in fill_constant is list or tuple.)')
                 if convert_dtype(dim.dtype) == 'int64':
