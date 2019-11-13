@@ -37,64 +37,45 @@ from paddle.fluid import unique_name
 from paddle.fluid.layers import dist_algo
 
 DTYPE = "float32"
-paddle.dataset.mnist.fetch()
+FEATURE_SIZE = 4
+SIZE = 10
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
+np.random.seed(0)
 
 
 def cnn_model(data, label, loss_type, rank_id, nranks):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
-        input=data,
-        filter_size=5,
-        num_filters=20,
-        pool_size=2,
-        pool_stride=2,
-        act="relu",
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.01)))
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
-        input=conv_pool_1,
-        filter_size=5,
-        num_filters=50,
-        pool_size=2,
-        pool_stride=2,
-        act="relu",
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.01)))
-    emb = fluid.layers.fc(input=conv_pool_2,
-                          size=50,
-                          act=None,
-                          param_attr=fluid.ParamAttr(
-                              initializer=fluid.initializer.Constant(
-                                  value=0.01)))
-
-    SIZE = 10
+    #param_value = np.random.rand(FEATURE_SIZE, SIZE)
     if loss_type == "softmax":
-        out = fluid.layers.fc(
-            input=emb,
-            size=SIZE,
-            act=None,
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01)))
+        out = fluid.layers.fc(input=data,
+                              size=SIZE,
+                              act=None,
+                              param_attr=fluid.param_attr.ParamAttr(
+                                  initializer=fluid.initializer.Constant(0.01)))
         loss = fluid.layers.softmax_with_cross_entropy(logits=out, label=label)
         loss = fluid.layers.mean(x=loss)
     elif loss_type == "dist_softmax":
         loss = dist_algo._distributed_softmax_classify(
-            x=emb, label=label, class_num=SIZE, nranks=nranks, rank_id=rank_id)
+            x=data,
+            label=label,
+            class_num=SIZE,
+            nranks=nranks,
+            rank_id=rank_id,
+            param_attr=fluid.param_attr.ParamAttr(
+                initializer=fluid.initializer.Constant(0.01)))
     elif loss_type == "arcface":
         input_norm = fluid.layers.sqrt(
             fluid.layers.reduce_sum(
-                fluid.layers.square(emb), dim=1))
-        input = fluid.layers.elementwise_div(emb, input_norm, axis=0)
+                fluid.layers.square(data), dim=1))
+        input = fluid.layers.elementwise_div(data, input_norm, axis=0)
 
         weight = fluid.layers.create_parameter(
-            shape=[input.shape[1], SIZE],
+            shape=[FEATURE_SIZE, SIZE],
             dtype='float32',
-            name=unique_name.generate('final_fc_w'),
-            attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01)))
+            #default_initializer=fluid.initializer.NumpyArrayInitializer(param_value))
+            default_initializer=fluid.initializer.Constant(0.01))
 
         weight_norm = fluid.layers.sqrt(
             fluid.layers.reduce_sum(
@@ -115,13 +96,14 @@ def cnn_model(data, label, loss_type, rank_id, nranks):
         one_hot.stop_gradient = True
     elif loss_type == "dist_arcface":
         loss = dist_algo._distributed_arcface_classify(
-            x=emb,
+            x=data,
             label=label,
             class_num=SIZE,
             nranks=nranks,
             rank_id=rank_id,
             param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.01)))
+                #initializer=fluid.initializer.NumpyArrayInitializer(param_value)))
+                initializer=fluid.initializer.Constant(0.01)))
     else:
         raise ValueError("Unknown loss type: {}.".format(loss_type))
 
@@ -131,8 +113,9 @@ def cnn_model(data, label, loss_type, rank_id, nranks):
 class TestDistMnist2x2DistFC(TestDistRunnerBase):
     def get_model(self, batch_size=2, use_dgc=False, dist_strategy=None):
         # Input data
+        images = fluid.layers.data(
+            name='pixel', shape=[FEATURE_SIZE], dtype=DTYPE)
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-        images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
 
         loss_type = self._distfc_loss_type
         # Train program
@@ -149,22 +132,23 @@ class TestDistMnist2x2DistFC(TestDistRunnerBase):
         #     learning_rate=0.001, beta1=0.9, beta2=0.999)
         opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
 
-        # Reader
-        train_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
-        test_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
-
         if dist_strategy:
-            dist_strategy.use_dist_fc = True
             dist_strategy.mode = "collective"
             dist_strategy.collective_mode = "grad_allreduce"
-            dist_strategy.dist_fc_config = DistFCConfig(batch_size)
             dist_opt = fleet.distributed_optimizer(
                 optimizer=opt, strategy=dist_strategy)
             dist_opt.minimize(avg_cost)
         else:
             opt.minimize(avg_cost)
+
+        # Reader
+        def reader():
+            while True:
+                yield np.random.rand(FEATURE_SIZE), np.random.randint(SIZE)
+
+        train_reader = paddle.batch(reader, batch_size=batch_size)
+        test_reader = paddle.batch(reader, batch_size=batch_size)
+
         return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
 
 

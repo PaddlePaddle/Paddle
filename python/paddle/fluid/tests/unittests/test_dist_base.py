@@ -139,6 +139,7 @@ class TestDistRunnerBase(object):
         if args.ut4grad_allreduce:
             dist_strategy._ut4grad_allreduce = True
         if args.use_dist_fc:
+            dist_strategy.use_dist_fc = True
             dist_strategy.dist_fc_config = DistFCConfig(
                 batch_size=args.batch_size)
             self._distfc_loss_type = args.distfc_loss_type
@@ -146,7 +147,7 @@ class TestDistRunnerBase(object):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         self.worker_num = fleet.worker_num()
-        self.worker_id = fleet.worker_index()
+        self.worker_index = fleet.worker_index()
         print_to_err("gpu_fleet", "fleet.node_num:")
         # "fleet.node_id:", fleet.node_id(),
         # "fleet.trainer_num:", fleet.worker_num())
@@ -154,7 +155,7 @@ class TestDistRunnerBase(object):
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
             self.get_model(batch_size=args.batch_size, dist_strategy=dist_strategy)
 
-        trainer_prog = fleet._origin_program
+        trainer_prog = fluid.default_main_program()
         dist_prog = fleet.main_program
 
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
