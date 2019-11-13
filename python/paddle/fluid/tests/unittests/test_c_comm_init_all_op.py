@@ -27,22 +27,13 @@ class TestCCommInitAllOp(unittest.TestCase):
     def test_default_attrs(self):
         program = fluid.Program()
         block = program.global_block()
-        block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
+        block.append_op(type='c_comm_init_all')
         self.exe.run(program)
-
-    def test_init_with_same_ring_id(self):
-        program = fluid.Program()
-        block = program.global_block()
-        block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
-        with self.assertRaises(core.EnforceNotMet):
-            self.exe.run(program)
 
     def test_specifying_devices(self):
         program = fluid.Program()
         block = program.global_block()
-        block.append_op(
-            type='c_comm_init_all', attrs={'devices': [0],
-                                           'ring_id': 1})
+        block.append_op(type='c_comm_init_all', attrs={'devices': [0]})
         self.exe.run(program)
 
 

@@ -62,9 +62,7 @@ class CCommInitAllOp : public framework::OperatorBase {
       places.emplace_back(platform::CUDAPlace(dev));
     }
 
-    int rid = Attr<int>("ring_id");
-
-    platform::NCCLReference::Instance().InitAllNCCLContexts(places, rid);
+    platform::NCCLReference::Instance().InitAllNCCLContexts(places);
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif
@@ -83,8 +81,6 @@ Initialize all collective communicatoin context
         "devices",
         "(std::vector<int>) which devices does the nccl comm initialized on")
         .SetDefault({});
-    AddAttr<int>("ring_id", "(int default 0) user specified ring id")
-        .SetDefault(0);
   }
 };
 

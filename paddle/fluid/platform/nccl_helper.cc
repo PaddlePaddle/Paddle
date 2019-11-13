@@ -18,6 +18,9 @@
 #include <memory>
 #include <utility>
 
+#include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
+#include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/platform/dynload/nccl.h"
 #include "paddle/fluid/string/split.h"
 
@@ -42,6 +45,7 @@ NCCLContextMap::NCCLContextMap(const std::vector<platform::Place> &places,
   const int kOrders = order_.size();
   ncclComm_t comms[kOrders];
   if (num_trainers == 1 && nccl_id == nullptr) {
+    LOG(INFO) << "Initialize all nccl ranks with GPU number: " << order_.size();
     std::lock_guard<std::mutex> guard(NCCLGroupGuard::NCCLMutex());
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclCommInitAll(
         comms, static_cast<int>(order_.size()), order_.data()));
@@ -58,8 +62,8 @@ NCCLContextMap::NCCLContextMap(const std::vector<platform::Place> &places,
         } else {
           rank = trainer_id;
         }
-        VLOG(1) << "init nccl rank:" << rank << ", nranks:" << nranks
-                << ", gpu_id:" << gpu_id;
+        LOG(INFO) << "Initialize nccl rank:" << rank << ", nranks:" << nranks
+                  << ", gpu_id:" << gpu_id;
         PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(gpu_id));
         PADDLE_ENFORCE_CUDA_SUCCESS(
             dynload::ncclCommInitRank(comms + i, nranks, *nccl_id, rank));
@@ -73,19 +77,34 @@ NCCLContextMap::NCCLContextMap(const std::vector<platform::Place> &places,
   }
 }
 
-void GenerateAndSend(framework::Scope *scope,
-                     const std::vector<std::string> &endpoints) const {
-  auto var = scope->FindVar(s_nccl_id_var_name);
+class BroadcastNCCLIdHandler : public operators::distributed::RequestHandler {
+ public:
+  explicit BroadcastNCCLIdHandler(bool sync_mode)
+      : operators::distributed::RequestHandler(sync_mode) {}
+
+  bool Handle(const std::string &varname, framework::Scope *scope,
+              framework::Variable *var, framework::Variable **outvar,
+              const int trainer_id, const std::string &out_var_name = "",
+              const std::string &table_name = "") override {
+    return true;
+  }
+};
+
+const char NCCLReference::s_nccl_id_var_name_[] = "NCCL_ID_";
+
+void NCCLReference::GenerateAndSend(framework::Scope *scope,
+                                    const std::vector<std::string> &endpoints) {
+  auto var = scope->FindVar(s_nccl_id_var_name_);
   auto id = var->GetMutable<ncclUniqueId>();
-  PADDLE_ENFORCE(dynload::ncclGetUniqueId(id));
+  PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGetUniqueId(id));
 
   operators::distributed::RPCClient *client =
       operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
-  auto &dev_ctx = DeviceContextPool::Instance().Get(CPUPlace());
+  auto dev_ctx = DeviceContextPool::Instance().Get(CPUPlace());
   for (size_t i = 1; i < endpoints.size(); ++i) {
     VLOG(3) << "sending nccl id to " << endpoints[i];
-    client->AsyncSendVar(endpoints[i], dev_ctx, scope, s_nccl_id_var_name);
+    client->AsyncSendVar(endpoints[i], *dev_ctx, *scope, s_nccl_id_var_name_);
   }
   client->Wait();
   for (size_t i = 1; i < endpoints.size(); ++i) {
@@ -95,37 +114,33 @@ void GenerateAndSend(framework::Scope *scope,
   VLOG(3) << "sending completed...";
 }
 
-void GetIdByServer(framework::Scope *scope,
-                   const std::vector<std::string> &endpoints) const {
-  operators::distributed::RequestSendHandler rpc_h(true);
-  std::unique_ptr<distributed::RPCServer> rpc_service(
+void NCCLReference::GetIdByServer(framework::Scope *scope,
+                                  const std::vector<std::string> &endpoints) {
+  BroadcastNCCLIdHandler rpc_h(true);
+  std::unique_ptr<operators::distributed::RPCServer> rpc_service(
       new RPCSERVER_T(endpoints[0], 1));
 
-  rpc_service->RegisterRPC(distributed::kRequestSend, &rpc_h);
+  rpc_service->RegisterRPC(operators::distributed::kRequestSend, &rpc_h);
   rpc_h.SetRPCServer(rpc_service.get());
 
-  framework::ProgramDesc empty_program;
-  auto &dev_ctx = DeviceContextPool::Instance().Get(CPUPlace());
-  framework::Executor executor(dev_ctx.GetPlace());
+  auto dev_ctx = DeviceContextPool::Instance().Get(CPUPlace());
   rpc_h.SetScope(scope);
-  rpc_h.SetDevCtx(&dev_ctx);
-  rpc_h.SetProgram(&empty_program);
-  rpc_h.SetExecutor(&executor);
+  rpc_h.SetDevCtx(dev_ctx);
 
-  std::thread server_thread(
-      std::bind(&distributed::RPCServer::StartServer, rpc_service.get()));
+  std::thread server_thread(std::bind(
+      &operators::distributed::RPCServer::StartServer, rpc_service.get()));
 
-  rpc_service->SetCond(distributed::kRequestSend);
+  rpc_service->SetCond(operators::distributed::kRequestSend);
   VLOG(3) << "start getting nccl id from trainer 0...";
-  rpc_service->WaitBarrier(distributed::kRequestSend);
+  rpc_service->WaitBarrier(operators::distributed::kRequestSend);
   VLOG(3) << "got nccl id and stop server...";
   rpc_service->ShutDown();
   VLOG(3) << "rpc server stopped";
   server_thread.join();
 }
 
-void AssignNCCLId(const std::vector<std::string> &endpoints, size_t trainer_id,
-                  ncclUniqueId *nccl_id) {
+void NCCLReference::AssignNCCLId(const std::vector<std::string> &endpoints,
+                                 size_t trainer_id, ncclUniqueId *nccl_id) {
   framework::Scope scope;
   auto var = scope.Var(s_nccl_id_var_name_);
   var->GetMutable<ncclUniqueId>();
@@ -142,7 +157,7 @@ void NCCLReference::InitFlattenRing(const std::vector<Place> &places,
                                     const std::vector<std::string> &endpoints,
                                     size_t trainer_id, size_t nrings) {
   ncclUniqueId id;
-  for (int i = 0; i < nrings; ++i) {
+  for (size_t i = 0; i < nrings; ++i) {
     AssignNCCLId(endpoints, trainer_id, &id);
     InitNCCLContexts(places, &id, endpoints.size(), trainer_id, &flat_rings_);
     VLOG(3) << "NCCL flatten ring " << i << " has been created";
@@ -167,21 +182,21 @@ void NCCLReference::Init2DRing(const std::vector<Place> &places,
     auto ip = ParseIP(endpoints[trainer_id]);
     std::vector<std::string> inter_eps;
     for (auto &ep : endpoints) {
-      if (ep.find(ip) != string::npos) {
+      if (ep.find(ip) != std::string::npos) {
         inter_eps.push_back(ep);
       }
     }
 
     d2_inter_ranks_ = inter_eps.size();
-    d2_exter_ranks_ = endpoints.size() / inter_ranks;
+    d2_exter_ranks_ = endpoints.size() / d2_inter_ranks_;
 
-    size_t inter_rank = trainer_id % inter_ranks;
+    size_t inter_rank = trainer_id % d2_inter_ranks_;
     std::vector<std::string> exter_eps;
-    for (size_t i = inter_rank; i < endpoints.size(); i += inter_ranks) {
+    for (size_t i = inter_rank; i < endpoints.size(); i += d2_inter_ranks_) {
       exter_eps.push_back(endpoints[i]);
     }
 
-    size_t exter_rank = trainer_id / inter_ranks;
+    size_t exter_rank = trainer_id / d2_inter_ranks_;
     for (size_t i = 0; i < nrings; ++i) {
       AssignNCCLId(inter_eps, inter_rank, &id);
       InitNCCLContexts(places, &id, endpoints.size(), trainer_id,
@@ -222,8 +237,8 @@ void NCCLReference::InitFlattenRing(const std::vector<Place> &places,
     VLOG(1) << "init local trainer";
   }
 
-  for (size_t i = 0; i < nccl_id.size(); ++i) {
-    InitNCCLContexts(places, nccl_ids[i], trianer_num, trainer_id,
+  for (size_t i = 0; i < nccl_ids.size(); ++i) {
+    InitNCCLContexts(places, nccl_ids[i], trainer_num, trainer_id,
                      &flat_rings_);
     VLOG(1) << "NCCL flatten ring " << i << " has been created";
   }
@@ -236,8 +251,8 @@ void NCCLReference::InitHierarchicalRing(
     size_t rank_id, size_t inter_ranks) {
   PADDLE_ENFORCE_GT(inter_ranks, 1, "inter_ranks:%llu must > 1", inter_ranks);
 
-  h_inter_ranks = inter_ranks;
-  h_exter_ranks = nranks / inter_ranks;
+  h_inter_ranks_ = inter_ranks;
+  h_exter_ranks_ = nranks / inter_ranks;
 
   size_t inter_rank = rank_id % inter_ranks;
   for (size_t i = 0; i < inter_nccl_ids.size(); ++i) {
@@ -258,22 +273,21 @@ void NCCLReference::InitHierarchicalRing(
 
 void NCCLReference::AllReduce(const void *send, void *recv, size_t count,
                               ncclDataType_t datatype, ncclRedOp_t op,
-                              const Place &place, cudaStream_t *stream,
+                              const Place &place, cudaStream_t stream,
                               size_t order) {
-  auto &nccl_ctx = flat_rings_[order % flat_rings_.size()].at(place);
-  auto &comm = nccl_ctx->comm();
+  auto nccl_ctx = flat_rings_[order % flat_rings_.size()]->at(place);
+  auto comm = nccl_ctx->comm();
   if (stream == nullptr) {
-    stream = &nccl_ctx->stream();
+    stream = nccl_ctx->stream();
   }
   PADDLE_ENFORCE_CUDA_SUCCESS(
-      dynload::ncclAllReduce(send, recv, numel, dtype, op, comm, *stream));
+      dynload::ncclAllReduce(send, recv, count, datatype, op, comm, stream));
 }
 
 void NCCLReference::AllReduce2D(const void *send, void *recv, size_t count,
                                 ncclDataType_t datatype, ncclRedOp_t op,
-                                const Place &place,
-                                cudaStream_t *stream = nullptr,
-                                size_t order = 0) {
+                                const Place &place, cudaStream_t stream,
+                                size_t order) {
   if (count % d2_inter_ranks_ != 0) {
     VLOG(0) << "The 2d internal ranks " << d2_inter_ranks_
             << " is an aliquant part of the data count " << count
@@ -283,23 +297,23 @@ void NCCLReference::AllReduce2D(const void *send, void *recv, size_t count,
     return;
   }
 
-  auto &inter_ctx = d2_inter_rings_[order % d2_inter_rings_.size()].at(place);
-  auto &inter_comm = inter_ctx->comm();
-  auto &exter_ctx = d2_exter_rings_[order % d2_exter_rings_.size()].at(place);
-  auto &exter_comm = exter_ctx->comm();
+  auto inter_ctx = d2_inter_rings_[order % d2_inter_rings_.size()]->at(place);
+  auto inter_comm = inter_ctx->comm();
+  auto exter_ctx = d2_exter_rings_[order % d2_exter_rings_.size()]->at(place);
+  auto exter_comm = exter_ctx->comm();
 
   if (stream == nullptr) {
     // We use the stream of internal NCCLContext to keep the nccl op order.
-    stream = &inter_ctx->stream();
+    stream = inter_ctx->stream();
   }
   size_t part_size = count / d2_inter_ranks_;
 
   PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclReduceScatter(
-      send, recv, part_size, dtype, op, inter_comm, *stream));
+      send, recv, part_size, datatype, op, inter_comm, stream));
   PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclAllReduce(
-      recv, recv, part_size, dtype, op, exter_comm, *stream));
+      recv, recv, part_size, datatype, op, exter_comm, stream));
   PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclAllGather(
-      recv, recv, part_size, dtype, exter_comm, *stream));
+      recv, recv, part_size, datatype, inter_comm, stream));
 }
 
 void NCCLReference::InitNCCLContexts(
@@ -324,18 +338,20 @@ void NCCLReference::ReleaseNCCLResource() {
   // CUDADeviceContext maintain the lifetime of nccl_comm_t, so we should not
   // destroy nccl_comm_t explicitly. Please refer to
   // platform::CUDADeviceContext::~CUDADeviceContext()
-  for (auto &p : ring2map_) {
-    p.second.reset();
+  for (auto &ring : flat_rings_) {
+    ring.reset();
   }
-}
-
-void NCCLReference::CollectNCCLContextMaps(std::vector<NCCLContextMap *> *maps,
-                                           std::vector<int> ring_ids) {
-  PADDLE_ENFORCE_NOT_NULL(maps);
-  maps->clear();
-  for (int ring_id : ring_ids) {
-    PADDLE_ENFORCE_GT(ring2map_.count(ring_id), 0);
-    maps->push_back(ring2map_[ring_id].get());
+  for (auto &ring : d2_inter_rings_) {
+    ring.reset();
+  }
+  for (auto &ring : d2_exter_rings_) {
+    ring.reset();
+  }
+  for (auto &ring : h_inter_rings_) {
+    ring.reset();
+  }
+  for (auto &ring : h_exter_rings_) {
+    ring.reset();
   }
 }
 

@@ -50,10 +50,9 @@ class CCommInitOp : public framework::OperatorBase {
 
     int nranks = Attr<int>("nranks");
     int rank_id = Attr<int>("rank");
-    int rid = Attr<int>("ring_id");
 
     platform::NCCLReference::Instance().InitNCCLContext(nccl_id, nranks,
-                                                        rank_id, place, rid);
+                                                        rank_id, place);
 #else
     PADDLE_THROW("PaddlePaddle should compile with GPU.");
 #endif
@@ -72,8 +71,6 @@ Initialize collective communicatoin context within this trainer
     AddAttr<int>("nranks", "(int) The number of ranks of distributed trainers");
     AddAttr<int>("rank",
                  "(int) The rank of the trainer in distributed training.");
-    AddAttr<int>("ring_id", "(int default 0) user specified ring id")
-        .SetDefault(0);
   }
 };
 

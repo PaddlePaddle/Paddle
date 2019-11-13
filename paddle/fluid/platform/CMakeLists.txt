@@ -79,7 +79,10 @@ cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool 
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
     ${dgc_deps} dlpack cudnn_workspace_helper)
 
-cc_library(nccl_helper SRCS nccl_helper.cc DEPS framework_proto device_context enforce)
+if(NOT WIN32)
+  cc_library(nccl_helper SRCS nccl_helper.cc DEPS framework_proto device_context
+    enforce errors sendrecvop_rpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf node)
+endif(WIN32)
 
 if(WIN32)
     if(WITH_GPU AND NOT WITH_DSO)
