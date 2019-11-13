@@ -606,7 +606,7 @@ class TestAddQuantDequantPass(unittest.TestCase):
         place = fluid.CPUPlace()
         graph = IrGraph(core.Graph(main.desc), for_test=False)
         add_quant_dequant_pass = AddQuantDequantPass(
-            scope=fluid.global_scope(), place=place)
+            scope=fluid.global_scope(), place=place, skip_pattern=skip_pattern)
         add_quant_dequant_pass.apply(graph)
         if not for_ci:
             marked_nodes = set()
