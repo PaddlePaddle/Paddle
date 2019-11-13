@@ -57,14 +57,12 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
       block_it->is_free_ = false;
     }
   } else {
-    FreeIdleChunks();
     size_t realloc_size = std::max(size, chunk_size_);
 
     try {
       chunks_.emplace_back(underlying_allocator_->Allocate(realloc_size));
     } catch (BadAlloc &ex) {
-      if (size == realloc_size) throw ex;
-      realloc_size = size;
+      FreeIdleChunks();
       chunks_.emplace_back(underlying_allocator_->Allocate(realloc_size));
     }
 

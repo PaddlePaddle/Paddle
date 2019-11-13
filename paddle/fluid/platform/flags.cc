@@ -307,7 +307,14 @@ DEFINE_double(memory_fraction_of_eager_deletion, 1.0,
  * Example:
  * Note: For selecting allocator policy of PaddlePaddle.
  */
-DEFINE_string(allocator_strategy, "naive_best_fit",
+
+#ifdef PADDLE_ON_INFERENCE
+static constexpr char kDefaultAllocatorStrategy[] = "naive_best_fit";
+#else
+static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
+#endif
+
+DEFINE_string(allocator_strategy, kDefaultAllocatorStrategy,
               "The allocation strategy. naive_best_fit means the original best "
               "fit allocator of Fluid. "
               "auto_growth means the experimental auto-growth allocator. "
