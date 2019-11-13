@@ -209,7 +209,8 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 
 #define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \
   REGISTER_OPERATOR(op_type, op_class, op_maker_class, \
-                    paddle::framework::EmptyGradOpMaker)
+        paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,   \
+        paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
 /**
  * Macro to register OperatorKernel.

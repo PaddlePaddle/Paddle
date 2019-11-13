@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/tensorrt/plugin/avg_pool_op_plugin.h"
+#include "paddle/fluid/inference/tensorrt/plugin/pool_op_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/operators/math/pooling.h"
 
@@ -21,14 +21,14 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
-AvgPoolPlugin* CreateAvgPoolPluginDeserialize(const void* buffer,
-                                              size_t length) {
-  return new AvgPoolPlugin(buffer, length);
+PoolPlugin* CreatePoolPluginDeserialize(const void* buffer, size_t length) {
+  return new PoolPlugin(buffer, length);
 }
-REGISTER_TRT_PLUGIN("avg_pool_plugin", CreateAvgPoolPluginDeserialize);
+REGISTER_TRT_PLUGIN("pool_plugin", CreatePoolPluginDeserialize);
 
-nvinfer1::Dims AvgPoolPlugin::getOutputDimensions(
-    int index, const nvinfer1::Dims* inputDims, int nbInputs) {
+nvinfer1::Dims PoolPlugin::getOutputDimensions(int index,
+                                               const nvinfer1::Dims* inputDims,
+                                               int nbInputs) {
   assert(nbInputs == 1);
   assert(index == 0);
   assert(inputDims[0].nbDims == 3);
@@ -41,26 +41,33 @@ nvinfer1::Dims AvgPoolPlugin::getOutputDimensions(
   return output_dims;
 }
 
-int AvgPoolPlugin::enqueue(int batchSize, const void* const* inputs,
-                           void** outputs, void* workspace,
-                           cudaStream_t stream) {
+int PoolPlugin::enqueue(int batchSize, const void* const* inputs,
+                        void** outputs, void* workspace, cudaStream_t stream) {
   auto const& input_dims = this->getInputDims(0);
   int input_size = 0;
   float const* idata = reinterpret_cast<float const*>(inputs[0]);
   float** odatas = reinterpret_cast<float**>(outputs);
-
-  paddle::operators::math::AvgPool<float> pool_process;
-  paddle::operators::math::Pool2dDirectCUDAFunctor<
-      paddle::operators::math::AvgPool<float>, float>
-      pool2d_forward;
 
   std::vector<int> input_shape = input_shape_;
   std::vector<int> output_shape = output_shape_;
   input_shape.insert(input_shape.begin(), batchSize);
   output_shape.insert(output_shape.begin(), batchSize);
 
-  pool2d_forward(idata, input_shape, output_shape, ksize_, strides_, paddings_,
-                 pool_process, true, odatas[0], stream);
+  if (pool_type_ == PoolType::max) {
+    paddle::operators::math::MaxPool<float> pool_process;
+    paddle::operators::math::Pool2dDirectCUDAFunctor<
+        paddle::operators::math::MaxPool<float>, float>
+        pool2d_forward;
+    pool2d_forward(idata, input_shape, output_shape, ksize_, strides_,
+                   paddings_, pool_process, true, adaptive_, odatas[0], stream);
+  } else if (pool_type_ == PoolType::avg) {
+    paddle::operators::math::AvgPool<float> pool_process;
+    paddle::operators::math::Pool2dDirectCUDAFunctor<
+        paddle::operators::math::AvgPool<float>, float>
+        pool2d_forward;
+    pool2d_forward(idata, input_shape, output_shape, ksize_, strides_,
+                   paddings_, pool_process, true, adaptive_, odatas[0], stream);
+  }
 
   return cudaGetLastError() != cudaSuccess;
 }

@@ -156,21 +156,22 @@ class RankLossGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class RankLossGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class RankLossGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("rank_loss_grad");
-    op->SetInput("Label", Input("Label"));
-    op->SetInput("Left", Input("Left"));
-    op->SetInput("Right", Input("Right"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("Left"), InputGrad("Left"));
-    op->SetOutput(framework::GradVarName("Right"), InputGrad("Right"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput("Left", this->Input("Left"));
+    op->SetInput("Right", this->Input("Right"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("Left"), this->InputGrad("Left"));
+    op->SetOutput(framework::GradVarName("Right"), this->InputGrad("Right"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -180,7 +181,8 @@ class RankLossGradDescMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(rank_loss, ops::RankLossOp, ops::RankLossOpMaker,
-                  ops::RankLossGradDescMaker);
+                  ops::RankLossGradMaker<paddle::framework::OpDesc>,
+                  ops::RankLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(rank_loss_grad, ops::RankLossGradOp);
 REGISTER_OP_CPU_KERNEL(
     rank_loss, ops::RankLossKernel<paddle::platform::CPUDeviceContext, float>);

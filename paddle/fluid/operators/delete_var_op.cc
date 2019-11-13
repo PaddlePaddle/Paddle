@@ -51,7 +51,9 @@ It should not be configured by users directly.
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OPERATOR(delete_var, paddle::operators::DeleteVarOp,
-                  paddle::framework::EmptyGradOpMaker,
-                  paddle::operators::DeleteVarOpInfoMaker,
-                  paddle::operators::DeleteVarOpShapeInference);
+REGISTER_OPERATOR(
+    delete_var, paddle::operators::DeleteVarOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    paddle::operators::DeleteVarOpInfoMaker,
+    paddle::operators::DeleteVarOpShapeInference);

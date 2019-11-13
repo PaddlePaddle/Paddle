@@ -1,4 +1,4 @@
-# Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2017 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,6 @@
 # limitations under the License.
 #
 
-IF(NOT WITH_DISTRIBUTE)
-    return()
-ENDIF()
-
 include (ExternalProject)
 
 SET(GRPC_SOURCES_DIR ${THIRD_PARTY_PATH}/grpc)
@@ -30,7 +26,11 @@ ProcessorCount(NUM_OF_PROCESSOR)
 IF(APPLE)
   SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
 ELSE()
-  SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+  if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
+    SET(BUILD_CMD make CFLAGS=-Wno-error=sizeof-pointer-memaccess CXXFLAGS=-Wno-error=ignored-qualifiers HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+  else()
+    SET(BUILD_CMD make HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+  endif()
 ENDIF()
 
 # FIXME(wuyi): do not build zlib cares protobuf twice, find a way to build grpc with them

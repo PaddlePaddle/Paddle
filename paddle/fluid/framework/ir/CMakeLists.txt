@@ -6,6 +6,7 @@ file(APPEND ${pass_file} "\#include \"paddle/fluid/framework/ir/pass.h\"\n")
 add_subdirectory(fuse_optimizer_ops_pass)
 add_subdirectory(memory_optimize_pass)
 add_subdirectory(multi_devices_graph_pass)
+add_subdirectory(fusion_group)
 
 # Usage: pass_library(target inference) will append to paddle_inference_pass.h
 unset(INFER_IR_PASSES CACHE) # clear the global variable
@@ -30,8 +31,6 @@ function(pass_library TARGET DEST)
     endif()
 endfunction()
 
-cc_library(codegen SRCS codegen.cc DEPS codegen_helper)
-cc_library(codegen_helper SRCS codegen_helper.cc DEPS graph node graph_helper)
 cc_library(node SRCS node.cc DEPS proto_desc)
 cc_library(graph SRCS graph.cc DEPS node pretty_log)
 cc_library(graph_helper SRCS graph_helper.cc DEPS graph)
@@ -111,9 +110,6 @@ set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
 
 cc_library(pass_builder SRCS pass_builder.cc DEPS pass)
 
-if(WITH_GPU)
-    cc_test(codegen_test SRCS codegen_test.cc DEPS codegen_helper codegen device_code lod_tensor)
-endif()
 cc_test(node_test SRCS node_test.cc DEPS node)
 cc_test(pass_test SRCS pass_test.cc DEPS graph pass graph_helper)
 cc_test(graph_test SRCS graph_test.cc DEPS graph graph_helper op_registry)

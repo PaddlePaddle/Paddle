@@ -37,6 +37,7 @@ import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 RUN_STEP = 5
 DEFAULT_BATCH_SIZE = 2
+DIST_UT_PORT = 0
 
 
 def print_to_out(out_losses):
@@ -197,6 +198,36 @@ class TestDistRunnerBase(object):
         else:
             sys.stdout.buffer.write(pickle.dumps(out_losses))
 
+        if args.save_model:
+            model_save_dir = "/tmp"
+            if fleet.worker_index() == 0:
+                model_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_persistables")
+                model_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_persistables")
+                infer_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_infer")
+                infer_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_infer")
+            else:
+                model_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_persistables_2")
+                model_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_persistables_2")
+                infer_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_infer_2")
+                infer_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_infer_2")
+            fluid.io.save_persistables(exe, model_save_dir_fluid,
+                                       fleet._origin_program)
+            fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
+            feeded_var_names = [var.name for var in feed_var_list]
+            fluid.io.save_inference_model(infer_save_dir_fluid,
+                                          feeded_var_names, [avg_cost], exe,
+                                          fleet._origin_program)
+            fleet.save_inference_model(exe, infer_save_dir_fleet,
+                                       feeded_var_names, [avg_cost])
+
     def run_trainer(self, args):
         self.lr = args.lr
         if args.nccl2_reduce_layer_local_run:
@@ -258,6 +289,9 @@ class TestDistRunnerBase(object):
                 "do nothing about main program, just use it")
             trainer_prog = fluid.default_main_program()
             print_to_err(type(self).__name__, "use main program done.")
+
+        # FIXME(gongwb):wait pserver initialization.
+        time.sleep(1)
 
         if args.use_cuda:
             device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
@@ -451,6 +485,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
     parser.add_argument('--hogwild', action='store_true')
+    parser.add_argument('--save_model', action='store_true')
     parser.add_argument(
         '--use_reader_alloc', action='store_true', required=False)
     parser.add_argument('--batch_size', required=False, type=int, default=2)
@@ -503,8 +538,6 @@ class TestDistBase(unittest.TestCase):
         self._trainers = 2
         self._pservers = 2
         self._port_set = set()
-        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
-            self._find_free_port(), self._find_free_port())
         self._python_interp = sys.executable
         self._sync_mode = True
         self._hogwild_mode = False
@@ -529,7 +562,22 @@ class TestDistBase(unittest.TestCase):
         self._use_dist_fc = False
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
+        self._save_model = False
         self._setup_config()
+
+        global DIST_UT_PORT
+        if DIST_UT_PORT == 0 and os.getenv("PADDLE_DIST_UT_PORT"):
+            DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
+
+        if DIST_UT_PORT == 0:
+            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+                self._find_free_port(), self._find_free_port())
+        else:
+            print("set begin_port:", DIST_UT_PORT)
+            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+                DIST_UT_PORT, DIST_UT_PORT + 1)
+            DIST_UT_PORT += 2
+
         self._after_setup_config()
 
     def _find_free_port(self):
@@ -598,7 +646,8 @@ class TestDistBase(unittest.TestCase):
                    check_error_log=False,
                    batch_size=DEFAULT_BATCH_SIZE,
                    batch_merge_repeat=1,
-                   log_name=""):
+                   log_name="",
+                   gpus="0"):
 
         cmd = self._python_interp
 
@@ -618,7 +667,7 @@ class TestDistBase(unittest.TestCase):
         if self.__use_cuda:
             cmd += " --use_cuda"
             env_local = {
-                "CUDA_VISIBLE_DEVICES": "0",
+                "CUDA_VISIBLE_DEVICES": gpus,
                 "PADDLE_TRAINERS_NUM": "1",
                 "PADDLE_TRAINER_ID": "0"
             }
@@ -631,6 +680,9 @@ class TestDistBase(unittest.TestCase):
                 cmd += " --distfc_loss_type softmax"
             elif self._distfc_loss_type == "dist_arcface":
                 cmd += " --distfc_loss_type arcface"
+        # not use dgc in single card
+        if len(gpus) > 1 and self._use_dgc:
+            cmd += " --use_dgc"
 
         env_local.update(envs)
         print("local_cmd: {}, env: {}".format(cmd, env_local))
@@ -767,6 +819,8 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_reduce"
         if self._use_reader_alloc:
             tr_cmd += " --use_reader_alloc"
+        if self._save_model:
+            tr_cmd += " --save_model"
         if self.__use_cuda:
             tr_cmd += " --use_cuda"
             env.update({
@@ -814,8 +868,16 @@ class TestDistBase(unittest.TestCase):
                            check_error_log, log_name):
         if self._use_hallreduce:
             self._ps_endpoints = ""
-            for i in range(0, 4):
-                self._ps_endpoints += "127.0.0.1:%s," % (self._find_free_port())
+
+            global DIST_UT_PORT
+            if DIST_UT_PORT == 0:
+                for i in range(0, 4):
+                    self._ps_endpoints += "127.0.0.1:%s," % (
+                        self._find_free_port())
+            else:
+                for i in range(0, 4):
+                    self._ps_endpoints += "127.0.0.1:%s," % (DIST_UT_PORT + i)
+                DIST_UT_PORT += 4
             self._ps_endpoints = self._ps_endpoints[:-1]
 
         # NOTE: we reuse ps_endpoints as nccl2 worker endpoints
@@ -862,12 +924,7 @@ class TestDistBase(unittest.TestCase):
             print("outs[1]:", outs[1])
         return pickle.loads(outs[0]), pickle.loads(outs[1])
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={},
-                         log_name=""):
+    def _get_required_envs(self, check_error_log=False, need_envs={}):
         # TODO(typhoonzero): should auto adapt GPU count on the machine.
         required_envs = {
             "PATH": os.getenv("PATH", ""),
@@ -877,19 +934,29 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_rpc_deadline": "30000",  # 5sec to fail fast
             "FLAGS_rpc_retry_bind_port": "50",
             "FLAGS_cudnn_deterministic": "1",
+            "FLAGS_rpc_disable_reuse_port": "1",
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
             "NCCL_SHM_DISABLE": "1"
         }
 
-        required_envs.update(need_envs)
-
         if check_error_log:
             required_envs["GLOG_vmodule"] = \
                 "fused_all_reduce_op_handle=10,all_reduce_op_handle=10,alloc_continuous_space_op=10,fuse_all_reduce_op_pass=10," \
                 "alloc_continuous_space_for_grad_pass=10,fast_threaded_ssa_graph_executor=10,executor=10,operator=10," \
-                "sparse_all_reduce_op_handle=10"
+                "sparse_all_reduce_op_handle=10,gen_nccl_id_op=10,nccl_helper=10,grpc_client=10,grpc_server=10,request_handler_impl=10"
             required_envs["GLOG_logtostderr"] = "1"
+
+        required_envs.update(need_envs)
+        return required_envs
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={},
+                         log_name=""):
+        required_envs = self._get_required_envs(check_error_log, need_envs)
 
         local_losses \
             = self._run_local(model_file, required_envs,
@@ -921,3 +988,38 @@ class TestDistBase(unittest.TestCase):
             dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
             print("=======", local_loss, ":", dist_loss[0], "=======")
             self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)
+
+    def check_with_place_multi_cards(self,
+                                     model_file,
+                                     delta=1e-3,
+                                     check_error_log=False,
+                                     need_envs={},
+                                     log_name=""):
+        # need open p2p or shm otherwise multi cards mode will hang
+        need_envs.update({"NCCL_P2P_DISABLE": "0", "NCCL_SHM_DISABLE": "0"})
+
+        required_envs = self._get_required_envs(check_error_log, need_envs)
+
+        if self._use_dgc:
+            multi_cards_losses = self._run_local(
+                model_file,
+                required_envs,
+                check_error_log,
+                log_name=log_name + "_dgc_2cards",
+                gpus="0,1")
+
+            self._use_dgc = False
+            base_losses = self._run_local(
+                model_file,
+                required_envs,
+                check_error_log,
+                log_name=log_name + "_base_2cards",
+                gpus="0,1")
+
+            self._use_dgc = True
+
+            for step_id in range(RUN_STEP):
+                base_loss = base_losses[step_id]
+                multi_cards_loss = multi_cards_losses[step_id]
+                print("=======", base_loss, ":", multi_cards_loss, "=======")
+                self.assertAlmostEqual(base_loss, multi_cards_loss, delta=delta)

@@ -26,7 +26,7 @@ using paddle::ConvertToACPrecision;
 extern "C" {
 
 bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
-                     int in_size, PD_Tensor* output_data, int** out_size,
+                     int in_size, PD_Tensor** output_data, int* out_size,
                      int batch_size) {
   PADDLE_ENFORCE_NOT_NULL(config);
   static std::map<std::string, std::unique_ptr<paddle::PaddlePredictor>>
@@ -43,10 +43,11 @@ bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
   std::vector<paddle::PaddleTensor> out;
   if (predictor->Run(in, &out, batch_size)) {
     int osize = out.size();
+    *output_data = new PD_Tensor[osize];
     for (int i = 0; i < osize; ++i) {
-      output_data[i].tensor = out[i];
+      output_data[i]->tensor = out[i];
     }
-    *out_size = &osize;
+    *out_size = osize;
     return true;
   }
   return false;
