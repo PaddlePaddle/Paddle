@@ -542,7 +542,7 @@ def quant_dequant_residual_block(num, quant_skip_pattern=None):
     elif isinstance(quant_skip_pattern, list):
         assert len(
             quant_skip_pattern
-        ) > 2, 'test config error: the len of quant_skip_pattern list should be greater than 1.'
+        ) > 1, 'test config error: the len of quant_skip_pattern list should be greater than 1.'
         with fluid.name_scope(quant_skip_pattern[0]):
             pool1 = fluid.layers.pool2d(
                 input=hidden, pool_size=2, pool_type='avg', pool_stride=2)
