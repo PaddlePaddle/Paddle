@@ -81,7 +81,7 @@ class DataNormOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    auto input_data_type = ctx.Input<Tensor>("X")->type();
     // By default, the type of the scale, bias, mean,
     // and var tensors should both be float. (For float or float16 input tensor)
     // or double (For double input tensor).
@@ -89,14 +89,12 @@ class DataNormOp : public framework::OperatorWithKernel {
     if (input_data_type == framework::proto::VarType::FP64) {
       dn_param_type = framework::proto::VarType::FP64;
     }
-    PADDLE_ENFORCE_EQ(dn_param_type,
-                      OperatorWithKernel::IndicateVarDataType(ctx, "BatchSize"),
+    PADDLE_ENFORCE_EQ(dn_param_type, ctx.Input<Tensor>("BatchSize")->type(),
                       "BatchSize input should be of float type");
-    PADDLE_ENFORCE_EQ(dn_param_type,
-                      OperatorWithKernel::IndicateVarDataType(ctx, "BatchSum"),
+    PADDLE_ENFORCE_EQ(dn_param_type, ctx.Input<Tensor>("BatchSum")->type(),
                       "BatchSum input should be of float type");
-    PADDLE_ENFORCE_EQ(dn_param_type, OperatorWithKernel::IndicateVarDataType(
-                                         ctx, "BatchSquareSum"),
+    PADDLE_ENFORCE_EQ(dn_param_type,
+                      ctx.Input<Tensor>("BatchSquareSum")->type(),
                       "BatchSquareSum input should be of float type");
 
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
@@ -182,7 +180,8 @@ class DataNormKernel<platform::CPUDeviceContext, T>
     auto *scales = ctx.Output<Tensor>("Scales");
 
     // alloc memory
-    y->mutable_data<T>(ctx.GetPlace());
+    //y->mutable_data<T>(ctx.GetPlace());
+    T* y_data = y->mutable_data<T>(ctx.GetPlace());
 
     Eigen::Array<T, Eigen::Dynamic, 1> inv_std(C);
     ConstEigenVectorArrayMap<T> b_size_arr(
@@ -191,6 +190,7 @@ class DataNormKernel<platform::CPUDeviceContext, T>
         ctx.Input<Tensor>("BatchSum")->data<T>(), C);
     ConstEigenVectorArrayMap<T> b_square_sum_arr(
         ctx.Input<Tensor>("BatchSquareSum")->data<T>(), C);
+
     EigenVectorArrayMap<T> means_arr(mean_out->mutable_data<T>(ctx.GetPlace()),
                                      C);
     EigenVectorArrayMap<T> scales_arr(scales->mutable_data<T>(ctx.GetPlace()),
@@ -198,14 +198,46 @@ class DataNormKernel<platform::CPUDeviceContext, T>
     means_arr = b_sum_arr / b_size_arr;
     scales_arr = (b_size_arr / b_square_sum_arr).sqrt();
 
+    const T* means_data = mean_out->data<T>();
+    const T* x_data = x->data<T>();
+    const T* scales_data = scales->data<T>();
+    const int item_size = x->numel() / N;
+    // const int slot_size = 11;
+    const int slot_size = ctx.Attr<int>("slot_dim");
+    T min_precision = 1e-7f;  
+    //printf("item_size=%d, N=%d, num=%lu\n", item_size, N, x->numel());
+
     switch (data_layout) {
       case DataLayout::kNCHW:  // because it's two dimensions, so make no
                                // difference
       case DataLayout::kNHWC: {
-        EigenArrayMap<T>(y->mutable_data<T>(ctx.GetPlace()), C, N) =
-            (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() - means_arr)
-                .colwise() *
-            scales_arr;
+        if (slot_size > 0) {
+          int offset = 0;
+          for (int k = 0; k < N; ++k) {
+            //batch
+            for (int i = 0; i < item_size; i += slot_size) {
+              // slot11
+              if (x_data[offset + i] > -min_precision && x_data[offset + i] < min_precision) {
+                // show = 0
+                memset(y_data + offset + i, 0, sizeof(T) * slot_size);
+                //printf("x_data(%d,%d) = %f, y_data=%f, mean=%f, scale=%f\n", k, i, x_data[offset+i], y_data[offset+i], means_data[i], scales_data[i]);
+              } else {
+                for ( int j = i; j < i + slot_size; ++j) {
+                  y_data[offset + j] = (x_data[offset + j] - means_data[j]) * scales_data[j];
+                  //printf("x_data(%d,%d,%d) = %f, y_data=%f, mean=%f, scale=%f\n", k, i, j, x_data[offset+j], y_data[offset+j], means_data[j], scales_data[j]);
+                }
+              }
+            }
+
+            offset += item_size;
+          }
+            
+        } else {
+          EigenArrayMap<T>(y_data, C, N) =
+              (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() - means_arr)
+                  .colwise() *
+              scales_arr;
+        }
         break;
       }
       default:
@@ -278,9 +310,8 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        layout, library);
+    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
+                                   ctx.GetPlace(), layout, library);
   }
 };
 
@@ -321,52 +352,112 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
     auto *d_batch_square_sum =
         ctx.Output<Tensor>(framework::GradVarName("BatchSquareSum"));
 
+    T* d_batch_size_data = d_batch_size->mutable_data<T>(ctx.GetPlace());
+    T* d_batch_sum_data = d_batch_sum->mutable_data<T>(ctx.GetPlace());
+    T* d_batch_square_sum_data = d_batch_square_sum->mutable_data<T>(ctx.GetPlace());
     EigenVectorArrayMap<T> d_batch_size_arr(
-        d_batch_size->mutable_data<T>(ctx.GetPlace()), C);
+        d_batch_size_data, C);
     EigenVectorArrayMap<T> d_batch_sum_arr(
-        d_batch_sum->mutable_data<T>(ctx.GetPlace()), C);
+        d_batch_sum_data, C);
     EigenVectorArrayMap<T> d_batch_square_sum_arr(
-        d_batch_square_sum->mutable_data<T>(ctx.GetPlace()), C);
+        d_batch_square_sum_data, C);
 
     d_batch_size_arr.setZero();
     d_batch_sum_arr.setZero();
     d_batch_square_sum_arr.setZero();
+    const T* x_data = x->data<T>();
+    const T* means_data = means->data<T>();
+    //const T* d_y_data = d_y->data<T>();
 
     const float epsilon = ctx.Attr<float>("epsilon");
+    T min_precision = 1e-7f;  
+    const int item_size = x->numel() / N;
+    // const int slot_size = 11;
+    const int slot_size = ctx.Attr<int>("slot_dim");
     switch (
         data_layout) {  // because it's two dimensions, so make no difference
       case DataLayout::kNCHW:
       case DataLayout::kNHWC: {
-        ConstEigenVectorArrayMap<T> scales_arr(scales->data<T>(), C);
-        ConstEigenVectorArrayMap<T> means_arr(means->data<T>(), C);
-        ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N);
-        ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N);
-        if (d_x != nullptr) {
-          EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C, N);
-          d_x_arr.setZero();
-          for (int nc = 0; nc < N; ++nc) {
-            d_x_arr.col(nc) = d_y_arr.col(nc) * scales_arr;
-          }
-        }
+        if (slot_size > 0) {
+          int offset = 0;
+          for (int k = 0; k < N; ++k) {
+            //batch
+            for (int i = 0; i < item_size; i += slot_size) {
+              // slot11
+              if (!(x_data[offset + i] > -min_precision && x_data[offset + i] < min_precision)) {
+                 //skip grad
+                 //&& !(d_y_data[offset + i] > -min_precision && d_y_data[offset + i] < min_precision)) {
+                // show != 0 & d_y != 0
+                for ( int j = i; j < i + slot_size; ++j) {
+                  //printf("x_data(%d,%d,%d) = %f, y_data=%f, mean=%f\n", k, i, j, x_data[offset+j], d_y_data[offset+j], means_data[j]);
+                  d_batch_size_data[j] += 1;
+                  d_batch_sum_data[j] += x_data[offset + j];
+                  d_batch_square_sum_data[j] += (x_data[offset + j] - means_data[j]) * (x_data[offset + j] - means_data[j]);
+                }
+              } 
+            }
 
-        // calculate data sum and squre sum
-        ConstEigenVectorArrayMap<T> batch_size_arr(batch_size->data<T>(), C);
-        ConstEigenVectorArrayMap<T> batch_sum_arr(batch_sum->data<T>(), C);
-        ConstEigenVectorArrayMap<T> batch_square_sum_arr(
-            batch_square_sum->data<T>(), C);
-        Eigen::Array<T, Eigen::Dynamic, 1> sample_sum(C);
-        Eigen::Array<T, Eigen::Dynamic, 1> sample_square_sum(C);
-        // calculate data sample sum and square sum
-        sample_sum.setZero();
-        sample_square_sum.setZero();
-        for (int nc = 0; nc < N; ++nc) {
-          sample_sum += x_arr.col(nc);
-          sample_square_sum += (x_arr.col(nc) - means_arr).square();
+            offset += item_size;
+          }
+
+          for (int i = 0; i < item_size; i += slot_size) {
+              //if (!(d_batch_size_data[i] > -min_precision && d_batch_size_data[i] < min_precision)) {
+                 //n != 0
+                 for (int j = i; j < i + slot_size; ++j) {
+                   if (d_batch_size_data[j] >= 1) {
+                     d_batch_sum_data[j] /= d_batch_size_data[j]; 
+                     d_batch_square_sum_data[j] = d_batch_square_sum_data[j] / d_batch_size_data[j] + d_batch_size_data[j] * epsilon;
+                     d_batch_size_data[j] = 1;
+                   }
+                 }
+              //}
+          }
+          //d_batch_square_sum_arr += cur_n * epsilon;
+
+          ConstEigenVectorArrayMap<T> scales_arr(scales->data<T>(), C);
+          ConstEigenVectorArrayMap<T> means_arr(means->data<T>(), C);
+          ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N);
+          ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N);
+          if (d_x != nullptr) {
+            EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C, N);
+            d_x_arr.setZero();
+            for (int nc = 0; nc < N; ++nc) {
+              d_x_arr.col(nc) = d_y_arr.col(nc) * scales_arr;
+            }
+          }
+
+        } else {
+          ConstEigenVectorArrayMap<T> scales_arr(scales->data<T>(), C);
+          ConstEigenVectorArrayMap<T> means_arr(means->data<T>(), C);
+          ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N);
+          ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N);
+          if (d_x != nullptr) {
+            EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C, N);
+            d_x_arr.setZero();
+            for (int nc = 0; nc < N; ++nc) {
+              d_x_arr.col(nc) = d_y_arr.col(nc) * scales_arr;
+            }
+          }
+
+          // calculate data sum and squre sum
+          ConstEigenVectorArrayMap<T> batch_size_arr(batch_size->data<T>(), C);
+          ConstEigenVectorArrayMap<T> batch_sum_arr(batch_sum->data<T>(), C);
+          ConstEigenVectorArrayMap<T> batch_square_sum_arr(
+              batch_square_sum->data<T>(), C);
+          Eigen::Array<T, Eigen::Dynamic, 1> sample_sum(C);
+          Eigen::Array<T, Eigen::Dynamic, 1> sample_square_sum(C);
+          // calculate data sample sum and square sum
+          sample_sum.setZero();
+          sample_square_sum.setZero();
+          for (int nc = 0; nc < N; ++nc) {
+            sample_sum += x_arr.col(nc);
+            sample_square_sum += (x_arr.col(nc) - means_arr).square();
+          }
+          // calculate gradient
+          d_batch_size_arr.setConstant(N);
+          d_batch_sum_arr = sample_sum;
+          d_batch_square_sum_arr = sample_square_sum + d_batch_size_arr * epsilon;
         }
-        // calculate gradient
-        d_batch_size_arr.setConstant(N);
-        d_batch_sum_arr = sample_sum;
-        d_batch_square_sum_arr = sample_square_sum + d_batch_size_arr * epsilon;
         break;
       }
       default:
@@ -375,35 +466,32 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
-template <typename T>
-class DataNormGradMaker : public framework::SingleGradOpMaker<T> {
+class DataNormGradMaker : public framework::SingleGradOpDescMaker {
  public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
  protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *op = new T();
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *op = new framework::OpDesc();
     op->SetType("data_norm_grad");
-    op->SetInput("X", this->Input("X"));
-    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetInput("X", Input("X"));
+    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
 
-    op->SetInput("BatchSize", this->Input("BatchSize"));
-    op->SetInput("BatchSum", this->Input("BatchSum"));
-    op->SetInput("BatchSquareSum", this->Input("BatchSquareSum"));
-    op->SetInput("Scales", this->Output("Scales"));
-    op->SetInput("Means", this->Output("Means"));
+    op->SetInput("BatchSize", Input("BatchSize"));
+    op->SetInput("BatchSum", Input("BatchSum"));
+    op->SetInput("BatchSquareSum", Input("BatchSquareSum"));
+    op->SetInput("Scales", Output("Scales"));
+    op->SetInput("Means", Output("Means"));
 
-    op->SetAttrMap(this->Attrs());
+    op->SetAttrMap(Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    op->SetOutput(framework::GradVarName("BatchSize"),
-                  this->InputGrad("BatchSize"));
-    op->SetOutput(framework::GradVarName("BatchSum"),
-                  this->InputGrad("BatchSum"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("BatchSize"), InputGrad("BatchSize"));
+    op->SetOutput(framework::GradVarName("BatchSum"), InputGrad("BatchSum"));
     op->SetOutput(framework::GradVarName("BatchSquareSum"),
-                  this->InputGrad("BatchSquareSum"));
+                  InputGrad("BatchSquareSum"));
 
-    return std::unique_ptr<T>(op);
+    return std::unique_ptr<framework::OpDesc>(op);
   }
 };
 
@@ -412,8 +500,7 @@ class DataNormGradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(data_norm, ops::DataNormOp, ops::DataNormOpMaker,
-                  ops::DataNormGradMaker<paddle::framework::OpDesc>,
-                  ops::DataNormGradMaker<paddle::imperative::OpBase>);
+                  ops::DataNormGradMaker);
 REGISTER_OPERATOR(data_norm_grad, ops::DataNormGradOp);
 
 REGISTER_OP_CPU_KERNEL(

@@ -2741,7 +2741,8 @@ def data_norm(input,
               name=None,
               moving_mean_name=None,
               moving_variance_name=None,
-              do_model_average_for_mean_and_var=True):
+              do_model_average_for_mean_and_var=True,
+              slot_dim=-1):
     """
     **Data Normalization Layer**
 
@@ -2854,7 +2855,8 @@ def data_norm(input,
         outputs={"Y": data_norm_out,
                  "Means": means,
                  "Scales": scales},
-        attrs={"epsilon": epsilon})
+        attrs={"epsilon": epsilon,
+               "slot_dim": slot_dim})
 
     return helper.append_activation(data_norm_out)
 
