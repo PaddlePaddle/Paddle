@@ -173,7 +173,7 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            index_1 = layers.data(name="index_1", shape=[1], dtype='uint8')
+            index_1 = fluid.data(name="index_1", shape=[1], dtype='uint8')
             index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
             index_3 = layers.fill_constant(shape=[1], dtype='int64', value=3)
 

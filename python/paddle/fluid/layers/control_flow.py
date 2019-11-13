@@ -2803,9 +2803,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
     Args:
         branch_index(Variable): A Tensor with shape [1] to specify which branch to execute. The data type is ``int32``, ``int64`` or ``uint8``.
-        branch_fns(dict|list|tuple): If it's a list or tuple, the elements in it could be pairs of (int, callable) or
-        simple callables whose actual index will be used as the index of callable. If it's a dict, its key is a python integer and the value is a callable.
-        All callables return the same structure of Tensors.
+        branch_fns(dict|list|tuple): If it's a list or tuple, the elements in it could be pairs of (int, callable) or simple callables whose actual index will be used as the index of callable. If it's a dict, its key is a python integer and the value is a callable. All callables return the same structure of Tensors.
         default(callable, optional): Callable that returns a structure of Tensors.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
