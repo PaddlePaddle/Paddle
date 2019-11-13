@@ -157,8 +157,7 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
       csr_row_idx_t->Resize({(batch_size + 1) * idx_width});
       auto csr_vals = csr_vals_t->mutable_data<T>(context.GetPlace());
       auto csr_colmuns = csr_colmuns_t->mutable_data<int>(context.GetPlace());
-      auto csr_row_idx = csr_row_idx_t->mutable_data<int>(
-          context.GetPlace(), (batch_size + 1) * idx_width * sizeof(int));
+      auto csr_row_idx = csr_row_idx_t->mutable_data<int>(context.GetPlace());
       prepare_csr_data<T>(offset, ids_t->data<int64_t>(), idx_width, csr_vals,
                           csr_colmuns, csr_row_idx, padding_idx);
 
