@@ -616,7 +616,11 @@ class TestSigmoidFocalLoss(unittest.TestCase):
                 name='input', shape=[7, 4], dtype='float32', lod_level=1)
             label = layers.data(
                 name='label', shape=[7, 1], dtype='int32', lod_level=1)
-            fg_num = layers.data(name='fg_num', shape=[1], dtype='int32')
+            fg_num = layers.data(
+                name='fg_num',
+                shape=[1],
+                dtype='int32',
+                append_batch_size=False)
             out = layers.sigmoid_focal_loss(input, label, fg_num)
             self.assertIsNotNone(out)
 
@@ -627,7 +631,27 @@ class TestSigmoidFocalLoss(unittest.TestCase):
                 name='input', shape=[7, 1], dtype='float32', lod_level=1)
             label = layers.data(
                 name='label', shape=[7, 1], dtype='int32', lod_level=1)
-            fg_num = layers.data(name='fg_num', shape=[1], dtype='int32')
+            fg_num = layers.data(
+                name='fg_num',
+                shape=[1],
+                dtype='int32',
+                append_batch_size=False)
+            out = layers.sigmoid_focal_loss(
+                input, label, fg_num, use_neg_weights=True)
+            self.assertIsNotNone(out)
+
+    def test_sigmoid_focal_loss2(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(
+                name='input', shape=[7, 1], dtype='float32', lod_level=1)
+            label = layers.data(
+                name='label', shape=[7, 1], dtype='float32', lod_level=1)
+            fg_num = layers.data(
+                name='fg_num',
+                shape=[1],
+                dtype='int32',
+                append_batch_size=False)
             out = layers.sigmoid_focal_loss(
                 input, label, fg_num, use_neg_weights=True)
             self.assertIsNotNone(out)

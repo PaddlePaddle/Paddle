@@ -68,22 +68,22 @@ class TestSigmoidFocalLossOp1(OpTest):
         self.gamma = 2.0
         self.alpha = 0.25
         self.use_neg_weights = False
+        self.label = np.random.randint(0, self.num_classes + 1,
+                                       (self.num_anchors, 1)).astype("int32")
 
     def setUp(self):
         self.set_argument()
 
         dims = (self.num_anchors, self.num_classes)
         X = np.random.standard_normal(dims).astype("float32")
-        L = np.random.randint(0, self.num_classes + 1,
-                              (dims[0], 1)).astype("int32")
         F = np.zeros(1)
-        F[0] = len(np.where(L > 0)[0])
+        F[0] = len(np.where(self.label > 0)[0])
         F = F.astype("int32")
 
         self.op_type = "sigmoid_focal_loss"
         self.inputs = {
             'X': X,
-            'Label': L,
+            'Label': self.label,
             'FgNum': F,
         }
         self.attrs = {
@@ -123,6 +123,8 @@ class TestSigmoidFocalLossOp3(TestSigmoidFocalLossOp1):
         self.gamma = 1.0
         self.alpha = 0.5
         self.use_neg_weights = False
+        self.label = np.random.randint(0, self.num_classes + 1,
+                                       (self.num_anchors, 1)).astype("int32")
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -145,6 +147,32 @@ class TestSigmoidFocalLossOp5(TestSigmoidFocalLossOp1):
         self.gamma = 2.0
         self.alpha = 0.5
         self.use_neg_weights = True
+        self.label = np.random.randint(0, self.num_classes + 1,
+                                       (self.num_anchors, 1)).astype("int32")
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestSigmoidFocalLossOp6(TestSigmoidFocalLossOp5):
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=2e-3)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', max_relative_error=0.002)
+
+
+class TestSigmoidFocalLossOp5(TestSigmoidFocalLossOp1):
+    def set_argument(self):
+        self.num_anchors = 200
+        self.num_classes = 1
+        self.gamma = 2.0
+        self.alpha = 0.5
+        self.use_neg_weights = True
+        self.label = np.random.rand(self.num_anchors,
+                                    self.num_classes).astype('float32')
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

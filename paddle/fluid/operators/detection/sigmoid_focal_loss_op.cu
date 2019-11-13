@@ -34,20 +34,16 @@ static inline int NumBlocks(const int N) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
        i += blockDim.x * gridDim.x)
 
-template <typename T>
-__global__ void GPUSigmoidFocalLossForward(const T *x_data,
-                                           const int *label_data,
-                                           const int *fg_num_data,
-                                           const T gamma, const T alpha,
-                                           const int num_classes,
-                                           const int limit,
-                                           const bool use_neg_weights,
-                                           T *out_data) {
+template <typename T, typename LabelT = int>
+__global__ void GPUSigmoidFocalLossForward(
+    const T *x_data, const LabelT *label_data, const int *fg_num_data,
+    const T gamma, const T alpha, const int num_classes, const int limit,
+    const bool use_neg_weights, T *out_data) {
   CUDA_1D_KERNEL_LOOP(i, limit) {
     T x = x_data[i];
-    int a = i / num_classes;  // current sample
-    int d = i % num_classes;  // current class
-    int g = label_data[a];    // target
+    int a = i / num_classes;   // current sample
+    int d = i % num_classes;   // current class
+    LabelT g = label_data[a];  // target
 
     // check whether the input data is positive or negative
     // the target classes are in range 1-81
@@ -70,7 +66,7 @@ __global__ void GPUSigmoidFocalLossForward(const T *x_data,
     T term_neg =
         std::pow(p, gamma) *
         (-1. * x * (x >= 0) - real_log(1. + real_exp(x - 2. * x * (x >= 0)))) *
-        neg_weights;;
+        neg_weights;
 
     out_data[i] = 0.0;
     out_data[i] += -c_pos * term_pos * s_pos;
@@ -78,9 +74,9 @@ __global__ void GPUSigmoidFocalLossForward(const T *x_data,
   }
 }
 
-template <typename T>
+template <typename T, typename LabelT = int>
 __global__ void GPUSigmoidFocalLossBackward(
-    const T *x_data, const int *label_data, const int *fg_num_data,
+    const T *x_data, const LabelT *label_data, const int *fg_num_data,
     const T gamma, const T alpha, const int num_classes, const T *dout_data,
     const int limit, const bool use_neg_weights, T *dx_data) {
   CUDA_1D_KERNEL_LOOP(i, limit) {
@@ -94,7 +90,7 @@ __global__ void GPUSigmoidFocalLossBackward(
     T s_neg = (1.0 - alpha) / fg_num;
     T s_pos = alpha / fg_num;
 
-    int g = label_data[a];
+    LabelT g = label_data[a];
     T c_pos = static_cast<T>(g == (d + 1));
     T c_neg = static_cast<T>((g != -1) & (g != (d + 1)));
 
@@ -109,7 +105,8 @@ __global__ void GPUSigmoidFocalLossBackward(
         std::pow(p, gamma) *
         ((-1. * x * (x >= 0) - real_log(1. + real_exp(x - 2. * x * (x >= 0)))) *
              (1. - p) * gamma -
-         p) * neg_weights;
+         p) *
+        neg_weights;
 
     dx_data[i] = 0.0;
     dx_data[i] += -c_pos * s_pos * term_pos;
@@ -138,9 +135,27 @@ class GPUSigmoidFocalLossKernel : public framework::OpKernel<T> {
     int limit = Out->numel();
     int blocks = NumBlocks(limit);
     int threads = kNumCUDAThreads;
-    GPUSigmoidFocalLossForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        X->data<T>(), Labels->data<int>(), FgNum->data<int>(), gamma, alpha,
-        num_classes, limit, use_neg_weights, out_data);
+
+    const auto &label_type = Labels->type();
+    bool label_type_match = label_type == framework::proto::VarType::INT32 ||
+                            label_type == framework::proto::VarType::FP32;
+    PADDLE_ENFORCE_EQ(
+        label_type_match, true,
+        "Label holds the wrong type, it holds %s, but desires to be %s or %s",
+        framework::DataTypeToString(label_type),
+        framework::DataTypeToString(framework::proto::VarType::INT32),
+        framework::DataTypeToString(framework::proto::VarType::FP32));
+    if (label_type == framework::proto::VarType::INT32) {
+      GPUSigmoidFocalLossForward<T,
+                                 int><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          X->data<T>(), Labels->data<int>(), FgNum->data<int>(), gamma, alpha,
+          num_classes, limit, use_neg_weights, out_data);
+    } else {
+      GPUSigmoidFocalLossForward<
+          T, float><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          X->data<T>(), Labels->data<float>(), FgNum->data<int>(), gamma, alpha,
+          num_classes, limit, use_neg_weights, out_data);
+    }
   }
 };
 
@@ -166,9 +181,26 @@ class GPUSigmoidFocalLossGradKernel : public framework::OpKernel<T> {
     int limit = dX->numel();
     int blocks = NumBlocks(limit);
     int threads = kNumCUDAThreads;
-    GPUSigmoidFocalLossBackward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        X->data<T>(), Labels->data<int>(), FgNum->data<int>(), gamma, alpha,
-        num_classes, dOut->data<T>(), limit, use_neg_weights, dx_data);
+    const auto &label_type = Labels->type();
+    bool label_type_match = label_type == framework::proto::VarType::INT32 ||
+                            label_type == framework::proto::VarType::FP32;
+    PADDLE_ENFORCE_EQ(
+        label_type_match, true,
+        "Label holds the wrong type, it holds %s, but desires to be %s or %s",
+        framework::DataTypeToString(label_type),
+        framework::DataTypeToString(framework::proto::VarType::INT32),
+        framework::DataTypeToString(framework::proto::VarType::FP32));
+    if (label_type == framework::proto::VarType::INT32) {
+      GPUSigmoidFocalLossBackward<
+          T, int><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          X->data<T>(), Labels->data<int>(), FgNum->data<int>(), gamma, alpha,
+          num_classes, dOut->data<T>(), limit, use_neg_weights, dx_data);
+    } else {
+      GPUSigmoidFocalLossBackward<
+          T, float><<<blocks, threads, 0, dev_ctx.stream()>>>(
+          X->data<T>(), Labels->data<float>(), FgNum->data<int>(), gamma, alpha,
+          num_classes, dOut->data<T>(), limit, use_neg_weights, dx_data);
+    }
   }
 };
 
