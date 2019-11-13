@@ -264,7 +264,7 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
       int width = static_cast<int>(table_dim[1]);
       int num_seq = batch_size * idx_width;
-      LOG(INFO) << "num seq = " << num_seq << " width = " << width;
+      // LOG(INFO) << "num seq = " << num_seq << " width = " << width;
       for (int i = 0; i < num_seq; ++i) {
         for (int j = csr_row_idx[i]; j < csr_row_idx[i + 1]; ++j) {
           unsigned int word_idx = csr_colmuns[j];
