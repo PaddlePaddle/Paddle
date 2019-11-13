@@ -140,6 +140,9 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__)
       int64_t padding_idx = context.Attr<int64_t>("padding_idx");
+      auto *csr_vals_t = context.Output<LoDTensor>("CSR_Vals_Temp_Out");
+      auto *csr_colmuns_t = context.Output<LoDTensor>("CSR_Colmuns_Temp_Out");
+      auto *csr_row_idx_t = context.Output<LoDTensor>("CSR_Row_Idx_Temp_Out");
       auto output = output_t->mutable_data<T>(context.GetPlace());
       int64_t table_height = table_var->dims()[0];
       int64_t table_width = table_var->dims()[1];
@@ -149,13 +152,13 @@ class FusedEmbeddingSeqPoolKernel : public framework::OpKernel<T> {
       auto len = ids_t->numel();
       int idx_width = len / offset.back();
 
-      Tensor csr_vals_t, csr_colmuns_t, csr_row_idx_t;
-      csr_vals_t.Resize({len});
-      csr_colmuns_t.Resize({len});
-      csr_row_idx_t.Resize({(batch_size + 1) * idx_width});
-      auto csr_vals = csr_vals_t.mutable_data<T>(context.GetPlace());
-      auto csr_colmuns = csr_colmuns_t.mutable_data<int>(context.GetPlace());
-      auto csr_row_idx = csr_row_idx_t.mutable_data<int>(context.GetPlace());
+      csr_vals_t->Resize({len});
+      csr_colmuns_t->Resize({len});
+      csr_row_idx_t->Resize({(batch_size + 1) * idx_width});
+      auto csr_vals = csr_vals_t->mutable_data<T>(context.GetPlace());
+      auto csr_colmuns = csr_colmuns_t->mutable_data<int>(context.GetPlace());
+      auto csr_row_idx = csr_row_idx_t->mutable_data<int>(
+          context.GetPlace(), (batch_size + 1) * idx_width * sizeof(int));
       prepare_csr_data<T>(offset, ids_t->data<int64_t>(), idx_width, csr_vals,
                           csr_colmuns, csr_row_idx, padding_idx);
 
@@ -236,7 +239,9 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
       auto *d_table = context.Output<LoDTensor>(framework::GradVarName("W"));
-      int64_t padding_idx = context.Attr<int64_t>("padding_idx");
+      auto *csr_vals_t = context.Input<LoDTensor>("CSR_Vals_Temp_Out");
+      auto *csr_colmuns_t = context.Input<LoDTensor>("CSR_Colmuns_Temp_Out");
+      auto *csr_row_idx_t = context.Input<LoDTensor>("CSR_Row_Idx_Temp_Out");
 
       d_table->Resize(table_dim);
       auto *d_table_data = d_table->mutable_data<T>(context.GetPlace());
@@ -249,16 +254,10 @@ class FusedEmbeddingSeqPoolGradKernel : public framework::OpKernel<T> {
       auto len = ids->numel();
       int idx_width = len / offset.back();
 
-      Tensor csr_vals_t, csr_colmuns_t, csr_row_idx_t;
-      csr_vals_t.Resize({len});
-      csr_colmuns_t.Resize({len});
       int64_t batch_size = ids_lod[0].size() - 1;
-      csr_row_idx_t.Resize({(batch_size + 1) * idx_width});
-      auto csr_vals = csr_vals_t.mutable_data<T>(context.GetPlace());
-      auto csr_colmuns = csr_colmuns_t.mutable_data<int>(context.GetPlace());
-      auto csr_row_idx = csr_row_idx_t.mutable_data<int>(context.GetPlace());
-      prepare_csr_data<T>(offset, ids->data<int64_t>(), idx_width, csr_vals,
-                          csr_colmuns, csr_row_idx, padding_idx);
+      auto csr_vals = csr_vals_t->data<T>();
+      auto csr_colmuns = csr_colmuns_t->data<int>();
+      auto csr_row_idx = csr_row_idx_t->data<int>();
 
       auto *d_output_data = d_output->data<T>();
       auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
