@@ -553,10 +553,11 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
               sparse_var_tables[i],
               deduplication_for_ids->at(sparse_var_names[i])));
     } else {
-      VLOG(0) << "DEBUG";
-      std::vector<std::vector<int64_t>> bucket_ids = ids_table->at(sparse_var_tables[i]);
+      std::vector<std::vector<int64_t>>& bucket_ids = ids_table->at(sparse_var_tables[i]);
       for (size_t j = 0; j < bucket_ids.size(); j++) {
-        bucket_ids[j].insert(bucket_ids[j].begin(), deduplication_for_ids->at(sparse_var_names[i])[j].begin(), deduplication_for_ids->at(sparse_var_names[i])[j].end());
+        bucket_ids[j].insert(bucket_ids[j].begin(),
+                             deduplication_for_ids->at(sparse_var_names[i])[j].begin(),
+                             deduplication_for_ids->at(sparse_var_names[i])[j].end());
       }
     }
   }
