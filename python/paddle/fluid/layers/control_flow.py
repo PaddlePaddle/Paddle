@@ -2786,18 +2786,28 @@ class DynamicRNN(object):
                 method))
 
 
+def _error_message(what, arg_name, op_name, right_value, error_value):
+    error_message = "{what} of '{arg_name}' in Op({op_name}) must be " \
+            "{right_value}, but received: {error_value}.".format(
+            what=what,
+            arg_name=arg_name,
+            op_name=op_name,
+            right_value=right_value,
+            error_value=error_value)
+    return error_message
+
+
 def switch_case(branch_index, branch_fns, default=None, name=None):
     '''
     This operator is like a C++ switch/case statement.
 
     Args:
-        branch_index(Variable): A Tensor with shape [1] to specify which branch to execute. The data type is ``int32``.
+        branch_index(Variable): A Tensor with shape [1] to specify which branch to execute. The data type is ``int32``, ``int64`` or ``uint8``.
         branch_fns(dict|list|tuple): If it's a list or tuple, the elements in it could be pairs of (int, callable) or
-        simply callables whose actual index will be used as the index of callable. If it's a dict, its key is a python integer and the value is callable.
+        simple callables whose actual index will be used as the index of callable. If it's a dict, its key is a python integer and the value is a callable.
         All callables return the same structure of Tensors.
         default(callable, optional): Callable that returns a structure of Tensors.
-        name(str, optional): The default value is None. Normally there is no need for user to set this property.
-                            For more information, please refer to :ref:`api_guide_Name`.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Variable|list(Variable): Tensors returned by the callable specified by ``branch_index`` in ``branch_fns``,
@@ -2806,7 +2816,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
     Raises:
         TypeError: If the type of ``branch_index`` is not Variable.
-        TypeError: If the data type of ``branch_index`` is not int32.
+        TypeError: If the data type of ``branch_index`` is not ``int32``, ``int64`` or ``uint8``.
         TypeError: If the type of ``branch_fns`` is not dict, list or tuple.
         TypeError: If the elements of ``branch_fns`` is not 2-tuple.
         TypeError: If the first element of 2-tuple in ``branch_fns`` is not integer.
@@ -2858,25 +2868,19 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
     helper = LayerHelper('switch_case', **locals())
 
     def _check_args(branch_index, branch_fns, default):
-        def _error_message(what, arg_name, op_name, right_value, error_value):
-            raise TypeError(
-                "{what} of '{arg_name}' in Op({op_name}) "
-                "must be {right_value}, but received: {error_value}.".format(
-                    what=what,
-                    arg_name=arg_name,
-                    op_name=op_name,
-                    right_value=right_value,
-                    error_value=error_value))
-
         if not isinstance(branch_index, Variable):
             raise TypeError(
                 _error_message("The type", "branch_index", "switch_case",
                                "Variable", type(branch_index)))
 
-        if convert_dtype(branch_index.dtype) not in ["int32"]:
+        if convert_dtype(branch_index.dtype) not in ["uint8", "int32", "int64"]:
             raise TypeError(
                 _error_message("The data type", "branch_index", "switch_case",
-                               "int32", convert_dtype(branch_index.dtype)))
+                               "uint8, int32 or int64",
+                               convert_dtype(branch_index.dtype)))
+
+        if convert_dtype(branch_index.dtype) != "int64":
+            branch_index = cast(branch_index, "int64")
 
         if not isinstance(branch_fns, (list, tuple, dict)):
             raise TypeError(
@@ -2930,7 +2934,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
         pred_fn_pairs = []
         for index, fn in branch_fns:
-            new_index = fill_constant(shape=[1], dtype="int32", value=index)
+            new_index = fill_constant(shape=[1], dtype="int64", value=index)
             pred = equal(branch_index, new_index)
             pred_fn_pairs.append((pred, fn))
 

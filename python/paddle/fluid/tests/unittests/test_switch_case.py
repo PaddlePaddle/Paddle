@@ -154,7 +154,6 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                         fn_1, x=x)
                 })
             return out
-            #return layers.fill_constant(shape=[4, 2], dtype='int32', value=2)
 
         def fn_3():
             out = layers.switch_case(
@@ -170,14 +169,13 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
                         fn_2, x=3)
                 })
             return out
-            #return layers.fill_constant(shape=[4, 3], dtype='int32', value=3)
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
+            index_1 = layers.data(name="index_1", shape=[1], dtype='uint8')
             index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
-            index_3 = layers.fill_constant(shape=[1], dtype='int32', value=3)
+            index_3 = layers.fill_constant(shape=[1], dtype='int64', value=3)
 
             out_1 = layers.switch_case(
                 branch_index=index_1, branch_fns={1: fn_1,
@@ -197,7 +195,10 @@ class TestAPISwitchCase_Nested(unittest.TestCase):
             ) else fluid.CPUPlace()
             exe = fluid.Executor(place)
 
-            res = exe.run(main_program, fetch_list=[out_1, out_2, out_3])
+            res = exe.run(main_program,
+                          feed={"index_1": np.array(
+                              [1], dtype="uint8")},
+                          fetch_list=[out_1, out_2, out_3])
 
             self.assertTrue(
                 np.allclose(res[0], 1),
@@ -237,7 +238,7 @@ class TestAPISwitchCase_Error(unittest.TestCase):
 
             self.assertRaises(TypeError, type_error_branch_index)
 
-            # The data type of 'branch_index' in Op(switch_case) must be int32
+            # The data type of 'branch_index' in Op(switch_case) must be int32, int64 or uint8
             def dtype_error_branch_index():
                 layers.switch_case(
                     branch_index=key_float32,
