@@ -360,10 +360,11 @@ struct EOFException : public std::exception {
                                            __LINE__);                          \
   } while (0)
 
-#define PADDLE_THROW_BAD_ALLOC(...)                                  \
-  do {                                                               \
-    throw ::paddle::memory::allocation::BadAlloc(                    \
-        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+#define PADDLE_THROW_BAD_ALLOC(...)                                         \
+  do {                                                                      \
+    throw ::paddle::memory::allocation::BadAlloc(                           \
+        ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString(), __FILE__, \
+        __LINE__);                                                          \
   } while (0)
 
 /** CUDA PADDLE ENFORCE FUNCTIONS AND MACROS **/
