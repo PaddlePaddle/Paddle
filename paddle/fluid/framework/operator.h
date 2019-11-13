@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
@@ -268,6 +269,10 @@ class ExecutionContext {
 
   const std::vector<const Variable*> MultiInputVar(
       const std::string& name) const {
+    if (FLAGS_enable_unused_var_check) {
+      VLOG(6) << "MultiInputVar: " << name;
+      GetThreadLocalUsedVarNameSet()->insert(name);
+    }
     auto it = ctx_.inputs.find(name);
     if (it == ctx_.inputs.end()) {
       return {};
@@ -298,6 +303,10 @@ class ExecutionContext {
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
+    if (FLAGS_enable_unused_var_check) {
+      VLOG(6) << "MultiInput: " << name;
+      GetThreadLocalUsedVarNameSet()->insert(name);
+    }
     auto it = ctx_.inputs.find(name);
     if (it == ctx_.inputs.end()) {
       return {};
@@ -349,6 +358,10 @@ class ExecutionContext {
 
   //! Get actual name vector for this input.
   const std::vector<std::string>& Inputs(const std::string& name) const {
+    if (FLAGS_enable_unused_var_check) {
+      VLOG(6) << "Inputs: " << name;
+      GetThreadLocalUsedVarNameSet()->insert(name);
+    }
     return op_.Inputs(name);
   }
 

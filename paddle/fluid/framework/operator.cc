@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
+#include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -428,6 +429,10 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
 }
 
 const Variable* ExecutionContext::InputVar(const std::string& name) const {
+  if (FLAGS_enable_unused_var_check) {
+    VLOG(6) << "InputVar: " << name;
+    GetThreadLocalUsedVarNameSet()->insert(name);
+  }
   auto it = ctx_.inputs.find(name);
   if (it == ctx_.inputs.end()) return nullptr;
 
@@ -457,6 +462,10 @@ const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
+  if (FLAGS_enable_unused_var_check) {
+    VLOG(6) << "MultiInput: " << name;
+    GetThreadLocalUsedVarNameSet()->insert(name);
+  }
   auto it = ctx_.inputs.find(name);
   if (it == ctx_.inputs.end()) {
     return {};
@@ -860,6 +869,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
+  if (FLAGS_enable_unused_var_check) {
+    GetThreadLocalUsedVarNameSet()->clear();
+  }
+
   if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
     enable_cache_runtime_context_ = true;
   if (!all_kernels_must_compute_runtime_shape_ &&
@@ -878,6 +891,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
     }
     RunImpl(scope, place, runtime_ctx_.get());
+  }
+
+  if (FLAGS_enable_unused_var_check) {
+    CheckUnusedVar(*this);
   }
 }
 
