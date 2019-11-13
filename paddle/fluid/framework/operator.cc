@@ -191,9 +191,11 @@ bool OperatorBase::HasInputs(const std::string& name) const {
 
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
-  PADDLE_ENFORCE_LE(ins.size(), 1UL,
-                    "Operator %s's input %s should contain only one variable.",
-                    type_, name);
+  PADDLE_ENFORCE_LE(
+      ins.size(), 1UL,
+      platform::errors::AlreadyExists(
+          "Operator %s's input %s should contain only one variable.", type_,
+          name));
   return ins.empty() ? kEmptyVarName : ins[0];
 }
 
@@ -429,9 +431,11 @@ const Variable* ExecutionContext::InputVar(const std::string& name) const {
   auto it = ctx_.inputs.find(name);
   if (it == ctx_.inputs.end()) return nullptr;
 
-  PADDLE_ENFORCE_LE(it->second.size(), 1UL,
-                    "Operator %s's input %s should contain only one variable.",
-                    op_.Type(), name);
+  PADDLE_ENFORCE_LE(
+      it->second.size(), 1UL,
+      platform::errors::AlreadyExists(
+          "Operator %s's input %s should contain only one variable.",
+          op_.Type(), name));
   return it->second.empty() ? nullptr : it->second[0];
 }
 
