@@ -161,7 +161,7 @@ class DistributedClassifier(object):
             use_bias=False)
 
         # normalize x
-        x_l2 = ops.sqrt(nn.reduce_sum(nn.square(x), dim=1))
+        x_l2 = ops.sqrt(nn.reduce_sum(ops.square(x), dim=1))
         norm_x = nn.elementwise_div(x, x_l2, axis=0)
 
         norm_x_all = collective._c_allgather(
@@ -179,7 +179,7 @@ class DistributedClassifier(object):
         shard_label.stop_gradient = True
 
         # normalize weight
-        weight_l2 = ops.sqrt(nn.reduce_sum(nn.square(weight), dim=0))
+        weight_l2 = ops.sqrt(nn.reduce_sum(ops.square(weight), dim=0))
         norm_weight = nn.elementwise_div(weight, weight_l2, axis=1)
 
         shard_cos = nn.mul(norm_x_all, norm_weight, x_num_col_dims=1)
