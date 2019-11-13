@@ -21,6 +21,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
@@ -267,6 +268,47 @@ struct Layers {
     std::vector<VarDesc*> outs = {y, mean_out, variance_out, saved_mean,
                                   saved_variance};
     return outs;
+  }
+
+  void backward() {
+    BlockDesc* block = program_.MutableBlock(0);
+    std::vector<OpDesc*> forward_ops = block->AllOps();
+    for (int i = forward_ops.size() - 1; i >= 0; --i) {
+      OpDesc* op = forward_ops[i];
+      OpDesc* grad_op = block->AppendOp();
+      grad_op->SetType(op->Type() + "_grad");
+      // All op's inputs are grad_op's input.
+      for (auto name : op->InputNames()) {
+        grad_op->SetInput(name, op->Input(name));
+      }
+      // All op's outputs are grad_op's input.
+      for (auto name : op->OutputNames()) {
+        grad_op->SetInput(name, op->Output(name));
+      }
+      // All op's outputs grad are grad_op's input.
+      for (auto name : op->OutputNames()) {
+        std::vector<std::string> grad_var_names;
+        for (auto var_name : op->Output(name)) {
+          VarDesc* var = block->FindVar(var_name);
+          VarDesc* grad_var =
+              lod_tensor(GradVarName(var_name), var->GetShape(), false);
+          grad_var_names.push_back(grad_var->Name());
+        }
+        grad_op->SetInput(GradVarName(name), grad_var_names);
+      }
+      // All op's inputs grad are grad_op's output.
+      for (auto name : op->InputNames()) {
+        std::vector<std::string> grad_var_names;
+        for (auto var_name : op->Input(name)) {
+          VarDesc* var = block->FindVar(var_name);
+          VarDesc* grad_var =
+              lod_tensor(GradVarName(var_name), var->GetShape(), false);
+          grad_var_names.push_back(grad_var->Name());
+        }
+        grad_op->SetOutput(GradVarName(name), grad_var_names);
+      }
+      // TODO(liuyiqun): attrs
+    }
   }
 
  private:

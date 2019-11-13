@@ -18,7 +18,9 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/ir/pass_tester_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -166,31 +168,11 @@ struct SubGraph {
             if (index >= 0) {
               to = index < to ? index : to;
             }
-
-            auto* out_op = out->Op();
-            // Input var nodes should keep the same order with op's input names.
-            bool flag = false;
-            for (auto name : out_op->InputNames()) {
-              auto var_name = out_op->Input(name)[0];
-              if (var_name == n->Name()) {
-                flag = true;
-                continue;
-              }
-              if (sorted_vars.find(var_name) != sorted_vars.end()) {
-                int index = FindIndexInSortedNodes(sorted_vars[var_name]);
-                if (index >= 0) {
-                  if (!flag) {
-                    from = index + 1 > from ? index + 1 : from;
-                  } else {
-                    to = index < to ? index : to;
-                  }
-                }
-              }
-            }
           }
         }
 
-        PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid");
+        LOG(INFO) << DebugString(n) << ", from:" << from << ", to:" << to;
+        PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid.", from, to);
         sorted_nodes.insert(sorted_nodes.begin() + to, n);
         sorted_vars[n->Name()] = n;
       }
@@ -223,6 +205,7 @@ struct SubGraph {
 
     std::vector<Node*> sorted_ops;
     sorted_ops.push_back(start_op_n);
+    LOG(INFO) << DebugString(start_op_n);
     ops.erase(start_op_n);
     while (ops.size() > 0U) {
       std::unordered_set<Node*> erased_ops;
@@ -245,7 +228,8 @@ struct SubGraph {
           }
         }
         if (found_connected_ops) {
-          PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid");
+          LOG(INFO) << DebugString(op_n) << ", from:" << from << ", to:" << to;
+          PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid.", from, to);
           sorted_ops.insert(sorted_ops.begin() + to, op_n);
           erased_ops.insert(op_n);
         }

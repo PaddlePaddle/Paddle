@@ -138,7 +138,7 @@ std::string CodeGenerator::EmitComputeBody(
   // get the right experssion code using suffix expression
   std::stringstream ret;
   for (size_t i = 0; i < expressions.size(); i++) {
-    VLOG(5) << DebugString(expressions[i]);
+    VLOG(3) << DebugString(expressions[i]);
     ret << expressions[i].GetExpression();
   }
   return ret.str();
@@ -153,7 +153,7 @@ std::unordered_map<std::string, int> CodeGenerator::EncodeVarNodes(
   std::unordered_map<std::string, int> var_ids;
   // Numbering input vars.
   for (auto* in : input_var_nodes) {
-    VLOG(5) << "Encoding input names:" << in->Name() << ", id:" << id;
+    VLOG(3) << "Encoding input names:" << in->Name() << ", id:" << id;
     if (var_ids.find(in->Name()) == var_ids.end()) {
       var_ids[in->Name()] = id++;
     }
@@ -185,7 +185,7 @@ std::unordered_map<std::string, int> CodeGenerator::EncodeVarNodes(
   }
   // Encoding output vars.
   for (auto* out : output_var_nodes) {
-    VLOG(5) << "Ecoding output names:" << out->Name() << ", id:" << id;
+    VLOG(3) << "Ecoding output names:" << out->Name() << ", id:" << id;
     if (var_ids.find(out->Name()) == var_ids.end()) {
       var_ids[out->Name()] = id++;
     }

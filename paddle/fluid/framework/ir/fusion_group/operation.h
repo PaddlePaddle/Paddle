@@ -38,7 +38,9 @@ struct Operation {
 
   bool IsGradOp() {
     std::string suffix = "_grad";
-    return op_type.rfind(suffix) == (op_type.length() - suffix.length());
+    size_t pos = op_type.rfind(suffix);
+    return pos != std::string::npos &&
+           pos == (op_type.length() - suffix.length());
   }
 
   bool IsValid() {
