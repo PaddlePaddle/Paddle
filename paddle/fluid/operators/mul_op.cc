@@ -51,7 +51,7 @@ class MulOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_NE(framework::product(y_dims), 0,
                       platform::errors::PreconditionNotMet(
-                          "Maybe the Input variable Y(%s) has not "
+                          "The Input variable Y(%s) has not "
                           "been initialized. You may need to confirm "
                           "if you put exe.run(startup_program) "
                           "after optimizer.minimize function.",
