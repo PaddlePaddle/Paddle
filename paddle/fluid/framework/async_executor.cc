@@ -86,8 +86,10 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
 
   DataFeedDesc data_feed_desc;
   bool success = data_feed_desc.ParseFromString(data_feed_desc_str);
-  PADDLE_ENFORCE(success, "Fail to parse DataFeedDesc from string:\n%s",
-                 data_feed_desc_str.c_str());
+  PADDLE_ENFORCE_EQ(success, true,
+                    platform::errors::InvalidArgument(
+                        "Fail to parse DataFeedDesc from string: %s.",
+                        data_feed_desc_str.c_str()));
 
   actual_thread_num_ = thread_num;
   int file_cnt = filelist.size();
