@@ -150,10 +150,7 @@ static __global__ void RowReductionForMax(const T* logits_data, T* max_data,
 
   cur_max = BlockReduce<T, BlockDim>(temp_storage).Reduce(cur_max, cub::Max());
 
-  if (threadIdx.x == 0) {
-    max_data[blockIdx.x] =
-        cur_max < static_cast<T>(-64) ? static_cast<T>(-64) : cur_max;
-  }
+  if (threadIdx.x == 0) max_data[blockIdx.x] = cur_max;
 }
 
 // Make sure that BlockDim <= axis_dim
