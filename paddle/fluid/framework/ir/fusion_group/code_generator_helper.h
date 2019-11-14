@@ -27,7 +27,12 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-static std::string VarName(int index) { return "var" + std::to_string(index); }
+static inline std::string ArgName(int index) {
+  return "arg" + std::to_string(index);
+}
+static inline std::string TmpName(int index) {
+  return "tmp" + std::to_string(index);
+}
 
 class OperationExpression {
  public:
@@ -40,13 +45,14 @@ class OperationExpression {
   std::vector<int> GetOutputIds() const { return output_ids_; }
 
   // Check whether this operation type is supported in OperationMap.
-  bool IsSupport();
+  bool IsSupport() const;
 
-  std::string GetExpression();
+  std::string GetExpression(std::string dtype) const;
 
+ private:
   // TODO(wangchao): make offset more flexible we add stride and basic offset
-  std::string GetRHS(size_t i = 0);
-  std::string GetLHS(size_t i = 0);
+  std::string GetRHS(size_t i = 0) const;
+  std::string GetLHS(size_t i = 0) const;
 
  private:
   std::string op_type_;

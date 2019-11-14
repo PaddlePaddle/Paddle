@@ -25,7 +25,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 
 #ifdef PADDLE_WITH_CUDA
-namespace fusion_group = paddle::framework::ir::fusion_group;
+
+namespace paddle {
+namespace framework {
+namespace ir {
+namespace fusion_group {
 
 // relu
 inline float relu(float x) { return x > 0 ? x : 0.; }
@@ -81,11 +85,10 @@ inline float elementwise_mul_grad_dy(float x, float y, float out, float dout) {
   return dout * x;
 }
 
-void CheckOutput(
-    const std::vector<fusion_group::OperationExpression>& expressions,
-    const std::vector<paddle::framework::LoDTensor> cpu_tensors,
-    const std::vector<int> input_ids_of_subgraph,
-    const std::vector<int> output_ids_of_subgraph, int i) {
+void CheckOutput(const std::vector<OperationExpression>& expressions,
+                 const std::vector<LoDTensor> cpu_tensors,
+                 const std::vector<int> input_ids_of_subgraph,
+                 const std::vector<int> output_ids_of_subgraph, int i) {
   std::vector<float> var(cpu_tensors.size());
   for (auto id : input_ids_of_subgraph) {
     var[id] = cpu_tensors[id].data<float>()[i];
@@ -139,7 +142,7 @@ void CheckOutput(
 }
 
 template <typename T>
-void SetupRandomCPUTensor(paddle::framework::LoDTensor* tensor) {
+void SetupRandomCPUTensor(LoDTensor* tensor) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
@@ -151,6 +154,13 @@ void SetupRandomCPUTensor(paddle::framework::LoDTensor* tensor) {
     ptr[i] = static_cast<T>(uniform_dist(rng)) - static_cast<T>(0.5);
   }
 }
+
+}  // namespace fusion_group
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle
+
+namespace fusion_group = paddle::framework::ir::fusion_group;
 
 void TestMainImpl(std::string func_name, std::string code_str,
                   std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
@@ -171,7 +181,7 @@ void TestMainImpl(std::string func_name, std::string code_str,
         cpu_tensors[input_ids[i]].dims(), place);
     args.push_back(&gpu_ptrs[input_ids[i]]);
 
-    SetupRandomCPUTensor<float>(&cpu_tensors[input_ids[i]]);
+    fusion_group::SetupRandomCPUTensor<float>(&cpu_tensors[input_ids[i]]);
     TensorCopySync(cpu_tensors[input_ids[i]], place,
                    &gpu_tensors[input_ids[i]]);
   }
@@ -260,7 +270,8 @@ TEST(code_generator, elementwise) {
 
   // Check the results
   for (int i = 0; i < n; i++) {
-    CheckOutput(expressions, cpu_tensors, input_ids, output_ids, i);
+    fusion_group::CheckOutput(expressions, cpu_tensors, input_ids, output_ids,
+                              i);
   }
 }
 
@@ -294,7 +305,8 @@ TEST(code_generator, elementwise_grad) {
 
   // Check the results
   for (int i = 0; i < n; i++) {
-    CheckOutput(expressions, cpu_tensors, input_ids, output_ids, i);
+    fusion_group::CheckOutput(expressions, cpu_tensors, input_ids, output_ids,
+                              i);
   }
 }
 
@@ -412,7 +424,8 @@ TEST(code_generator, subgraph) {
 
   // Check the results
   for (int i = 0; i < n; i++) {
-    CheckOutput(expressions, cpu_tensors, input_ids, output_ids, i);
+    fusion_group::CheckOutput(expressions, cpu_tensors, input_ids, output_ids,
+                              i);
   }
 }
 
@@ -443,7 +456,8 @@ TEST(code_generator, subgraph_grad) {
 
   // Check the results
   for (int i = 0; i < n; i++) {
-    CheckOutput(expressions, cpu_tensors, input_ids, output_ids, i);
+    fusion_group::CheckOutput(expressions, cpu_tensors, input_ids, output_ids,
+                              i);
   }
 }
 #endif

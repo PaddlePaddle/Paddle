@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -37,11 +38,20 @@ class CodeGenerator {
   std::vector<OperationExpression> ConvertToExpressions(SubGraph* subgraph);
 
  private:
+  std::set<int> DistilInputIds(
+      const std::vector<OperationExpression>& expressions);
+  std::set<int> DistilOutputIds(
+      const std::vector<OperationExpression>& expressions);
+
   // we get the parameter list code for the expression information
-  std::string EmitParameters(std::vector<OperationExpression> expressions,
+  std::string EmitParameters(const std::set<int>& input_ids,
+                             const std::set<int>& output_ids,
                              std::string dtype);
 
-  std::string EmitComputeBody(std::vector<OperationExpression> expressions);
+  std::string EmitComputeBody(
+      const std::vector<OperationExpression>& expressions,
+      const std::set<int>& input_ids, const std::set<int>& output_ids,
+      std::string dtype);
 
   // Encode all var nodes in the subgraph with an unique number.
   std::unordered_map<std::string, int> EncodeVarNodes(SubGraph* subgraph);
