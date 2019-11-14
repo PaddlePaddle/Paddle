@@ -13718,8 +13718,7 @@ def masked_select(input, mask):
         Variable: masked select tensor.
 
     Examples:
-
-        ..code-block:: python
+        .. code-block:: python
 
             import paddle.fluid as fluid
             import numpy as np
@@ -13753,7 +13752,6 @@ def masked_select(input, mask):
             # print(masked_select)
             # [0.38972723 0.36218056 0.7892614  0.50122297 0.14408113 0.85540855
                0.30984417 0.7577004  0.26214206 0.32359877 0.6314582  0.2128865 ]
-
 
     """
     mask_cast = fluid.layers.cast(x=mask, dtype="float32")
