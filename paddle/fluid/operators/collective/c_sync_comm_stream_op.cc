@@ -38,12 +38,13 @@ class CSyncCommStreamOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
-    PADDLE_ENFORCE(is_gpu_place(place),
-                   "Sync stream op can run on gpu place only for now.");
+    PADDLE_ENFORCE_EQ(is_gpu_place(place), true,
+                      "Sync stream op can run on gpu place only for now.");
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
     int ring_id = Attr<int>("ring_id");
-    auto stream = platform::NCCLCommContext::Instance().Get(ring_id)->stream();
+    auto stream =
+        platform::NCCLCommContext::Instance().Get(ring_id, place)->stream();
     cudaError_t e_sync = cudaStreamSynchronize(stream);
     if (e_sync != 0) {
       LOG(FATAL) << "Fail to sync nccl stream: " << cudaGetErrorString(e_sync);

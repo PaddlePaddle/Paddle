@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <paddle/fluid/platform/device_context.h>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/sum_op.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -162,8 +163,10 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   for (int i = start; i < in_num; ++i) {
     if (in_vars[i]->IsType<framework::LoDTensor>()) {
       auto &in_i = in_vars[i]->Get<framework::LoDTensor>();
-      in_data.emplace_back(in_i.data<T>());
       lod_length = in_i.numel();
+      if (lod_length && in_i.IsInitialized()) {
+        in_data.emplace_back(in_i.data<T>());
+      }
     } else if (in_vars[i]->IsType<framework::SelectedRows>()) {
       selectrow_index.push_back(i);
     }
@@ -197,8 +200,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
     }
     if (!sr_in_out_data.empty()) {
       auto tmp_sr_in_out_array =
-          platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
-              sr_in_out_data.size() * sizeof(T *));
+          memory::Alloc(dev_ctx, sr_in_out_data.size() * sizeof(T *));
 
       memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
                    tmp_sr_in_out_array->ptr(), platform::CPUPlace(),
@@ -216,9 +218,7 @@ void SumToLoDTensor(const framework::ExecutionContext &context) {
   }
   // if indata not null, merge into one kernel call.
   if (!in_data.empty()) {
-    auto tmp_in_array =
-        platform::DeviceTemporaryAllocator::Instance().Get(dev_ctx).Allocate(
-            in_data.size() * sizeof(T *));
+    auto tmp_in_array = memory::Alloc(dev_ctx, in_data.size() * sizeof(T *));
 
     memory::Copy(boost::get<platform::CUDAPlace>(dev_ctx.GetPlace()),
                  tmp_in_array->ptr(), platform::CPUPlace(),

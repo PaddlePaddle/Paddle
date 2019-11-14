@@ -61,6 +61,9 @@ class SeqConcatKernel : public framework::OpKernel<T> {
     size_t lod_size = 0;
     for (auto &x : xs) {
       if (lod_size == 0) {
+        PADDLE_ENFORCE_EQ(x.get().lod().empty(), false,
+                          "Input(X) Tensor of SequenceConcatOp does not "
+                          "contain LoD information.");
         lod_size = x.get().lod()[0].size();
       } else {
         PADDLE_ENFORCE_EQ(

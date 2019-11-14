@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
+#include <deque>
 #include <memory>
-#include <queue>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -77,9 +77,9 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
     // run the recorded operators directly. This strategy could make the
     // execution faster.
     VLOG(3) << "Run the traced ops.";
-    RunTracedOps(traced_ops_);
-    RunTracedOps(fetch_ops);
-    if (exception_.IsCaught()) {
+    bool is_exception_free =
+        RunTracedOps(traced_ops_) && RunTracedOps(fetch_ops);
+    if (!is_exception_free) {
       ExecutionFinal(&fetch_ops);
     }
   } else {
@@ -139,10 +139,12 @@ void FastThreadedSSAGraphExecutor::InsertFetchOps(
   for (size_t i = 0; i < fetch_tensors.size(); ++i) {
     auto &var_name = fetch_tensors.at(i);
     auto fetched_var_it = fetched_vars->find(var_name);
-    PADDLE_ENFORCE(fetched_var_it != fetched_vars->end(),
-                   "Cannot find fetched variable(%s).(Perhaps the main_program "
-                   "is not set to ParallelExecutor)",
-                   var_name);
+    PADDLE_ENFORCE_NE(
+        fetched_var_it, fetched_vars->end(),
+        platform::errors::PreconditionNotMet(
+            "Cannot find fetched variable(%s). Perhaps the main_program "
+            "is not set to ParallelExecutor.",
+            var_name));
 
     auto &vars = fetched_var_it->second;
 
@@ -191,13 +193,13 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
   this->pool_.enqueue([=] {
-    std::queue<OpHandleBase *> op_queue;
-    op_queue.push(op);
+    std::deque<OpHandleBase *> op_queue;
+    op_queue.push_front(op);
 
     size_t complete = 0;
     while (!op_queue.empty()) {
-      OpHandleBase *op_to_run = op_queue.front();
-      op_queue.pop();
+      OpHandleBase *op_to_run = op_queue.back();
+      op_queue.pop_back();
 
       if (!RunOp(op_to_run, complete_q, &complete)) {
         return;
@@ -213,7 +215,7 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
           // NOTE(zjl): op with highest priority should run
           // first without switching to another thread.
           if (pending_op->GetPriority() == OpHandleBase::Priority::kHighest) {
-            op_queue.push(pending_op);
+            op_queue.push_back(pending_op);
           } else {
             if (op_to_run == nullptr) {
               op_to_run = pending_op;
@@ -224,7 +226,9 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
         }
       }
 
-      if (op_to_run != nullptr) op_queue.push(op_to_run);
+      if (op_to_run != nullptr) {
+        op_queue.push_front(op_to_run);
+      }
     }
     --remaining_;
     complete_q->Push(complete);
@@ -257,27 +261,25 @@ void FastThreadedSSAGraphExecutor::ExecutionFinal(
   exception_.ReThrow();
 }
 
-void FastThreadedSSAGraphExecutor::RunTracedOps(
+bool FastThreadedSSAGraphExecutor::RunTracedOps(
     const std::vector<OpHandleBase *> &traced_ops) {
   for (auto &op : traced_ops) {
-    if (exception_.IsCaught()) {
-      return;
-    }
-    RunOpSync(op);
+    if (!RunOpSync(op)) return false;
   }
+  return true;
 }
 
-void FastThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
+bool FastThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
   try {
-    if (VLOG_IS_ON(10)) {
-      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-    }
+    VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
     if (LIKELY(!strategy_.dry_run_)) {
       op->Run(strategy_.use_cuda_);
     }
     VLOG(10) << op << " " << op->Name() << " Done ";
+    return true;
   } catch (...) {
     exception_.Catch(std::current_exception());
+    return false;
   }
 }
 

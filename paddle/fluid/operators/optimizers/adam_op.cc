@@ -43,6 +43,11 @@ void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
                  "Output(Moment2Out) of AdamOp should not be null.");
 
   auto lr_dims = ctx->GetInputDim("LearningRate");
+  PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
+                    "Maybe the Input variable LearningRate has not "
+                    "been initialized. You may need to confirm "
+                    "if you put exe.run(startup_program) "
+                    "after optimizer.minimize function.");
   PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
                     "Learning rate should have 1 dimension");
   auto beta1_pow_dims = ctx->GetInputDim("Beta1Pow");
@@ -73,7 +78,7 @@ void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType AdamOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  auto input_data_type = ctx.Input<framework::Tensor>("Param")->type();
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
   return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
 

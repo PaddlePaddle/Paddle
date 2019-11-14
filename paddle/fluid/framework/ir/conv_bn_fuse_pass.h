@@ -29,6 +29,7 @@ namespace ir {
 class ConvBNFusePass : public FusePassBase {
  public:
   virtual ~ConvBNFusePass() {}
+  virtual std::string conv_type() const { return "conv2d"; }
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
@@ -38,10 +39,21 @@ class ConvBNFusePass : public FusePassBase {
 class ConvEltwiseAddBNFusePass : public FusePassBase {
  public:
   virtual ~ConvEltwiseAddBNFusePass() {}
+  virtual std::string conv_type() const { return "conv2d"; }
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
   const std::string name_scope_{"conv_eltwiseadd_bn_fuse"};
+};
+
+class ConvTransposeBNFusePass : public ConvBNFusePass {
+ public:
+  std::string conv_type() const { return "conv2d_transpose"; }
+};
+
+class ConvTransposeEltwiseAddBNFusePass : public ConvEltwiseAddBNFusePass {
+ public:
+  std::string conv_type() const { return "conv2d_transpose"; }
 };
 
 }  // namespace ir

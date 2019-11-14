@@ -261,6 +261,10 @@ void PipelineTrainer::Finalize() {
   root_scope_->DropKids();
 }
 
+Scope* PipelineTrainer::GetWorkerScope(int thread_id) {
+  return pipeline_scopes_[thread_id];
+}
+
 }  // end namespace framework
 }  // end namespace paddle
 #endif

@@ -26,20 +26,39 @@ void InsertCallStackInfo(const std::string &type, const AttributeMap &attrs,
   if (attrs.count("sub_block") != 0) {
     return;
   }
-  auto &callstack = boost::get<std::vector<std::string>>(
-      attrs.at(OpProtoAndCheckerMaker::OpCreationCallstackAttrName()));
 
-  if (callstack.empty()) {
-    return;
+  const std::vector<std::string> *callstack = nullptr;
+  auto iter = attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+  if (iter != attrs.end()) {
+    callstack = &boost::get<std::vector<std::string>>(iter->second);
+    if (callstack->empty()) callstack = nullptr;
   }
+
   std::ostringstream sout;
-  sout << "Invoke operator " << type << " error.\n";
-  sout << "Python Call stacks: \n";
-  for (auto &line : callstack) {
-    sout << line;
+  std::ostringstream sout_py_trace;
+  // Step 1. Construct python call stack string
+  if (callstack) {
+    sout_py_trace << "\n------------------------------------------\n";
+    sout_py_trace << "Python Call Stacks (More useful to users):";
+    sout_py_trace << "\n------------------------------------------\n";
+    for (auto &line : *callstack) {
+      sout_py_trace << line;
+    }
   }
-  sout << "C++ Call stacks: \n";
+  // Step 2. Insert python traceback into err_str_
+  std::size_t found = exception->err_str_.rfind(
+      "\n----------------------\nError Message "
+      "Summary:\n----------------------\n");
+  if (found != std::string::npos) {
+    exception->err_str_.insert(found, sout_py_trace.str());
+  } else {
+    exception->err_str_.append(sout_py_trace.str());
+  }
+  // Step 3. Construct final call stack & append error op name
   sout << exception->err_str_;
+  if (callstack) {
+    sout << "  [operator < " << type << " > error]";
+  }
   exception->err_str_ = sout.str();
 }
 

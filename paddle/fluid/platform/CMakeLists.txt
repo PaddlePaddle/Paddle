@@ -1,8 +1,8 @@
 proto_library(profiler_proto SRCS profiler.proto DEPS framework_proto simple_threadpool)
 py_proto_compile(profiler_py_proto SRCS profiler.proto)
+proto_library(error_codes_proto SRCS error_codes.proto)
 
 add_custom_target(profiler_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
-
 add_dependencies(profiler_py_proto profiler_py_proto_init)
 
 if (NOT WIN32)
@@ -22,10 +22,13 @@ endif(NOT WIN32)
 
 cc_library(flags SRCS flags.cc DEPS gflags) 
 
+cc_library(errors SRCS errors.cc DEPS error_codes_proto)
+cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
+
 if(WITH_GPU)
-  nv_library(enforce SRCS enforce.cc DEPS flags)
+  nv_library(enforce SRCS enforce.cc DEPS flags errors)
 else()
-  cc_library(enforce SRCS enforce.cc DEPS flags)
+  cc_library(enforce SRCS enforce.cc DEPS flags errors)
 endif()
 cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece enforce)
 
@@ -61,8 +64,6 @@ ELSE()
     set(MKLDNN_CTX_DEPS)
 ENDIF()
 
-cc_library(temp_allocator SRCS temporary_allocator.cc DEPS  allocator_facade)
-
 nv_library(stream_callback_manager SRCS stream_callback_manager.cc DEPS simple_threadpool enforce) 
 IF(WITH_GPU)
   set(STREAM_CALLBACK_DEPS stream_callback_manager)
@@ -70,11 +71,13 @@ ELSE()
   set(STREAM_CALLBACK_DEPS)
 ENDIF()
 
+cc_library(cudnn_workspace_helper SRCS cudnn_workspace_helper.cc DEPS boost)
+
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
-cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc ${STREAM_CALLBACK_DEPS}
+cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc xxhash ${STREAM_CALLBACK_DEPS}
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS}
-    temp_allocator ${dgc_deps})
+    ${dgc_deps} dlpack cudnn_workspace_helper)
 
 if (WITH_DISTRIBUTE)
   cc_library(collective_helper SRCS collective_helper.cc DEPS framework_proto  device_context enforce)
@@ -117,8 +120,9 @@ cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
 
 nv_library(cuda_device_guard SRCS cuda_device_guard.cc DEPS gpu_info)
 
-if(WITH_GPU)
-    nv_test(temporal_allocator_test SRCS temporary_allocator_test.cc DEPS temp_allocator tensor operator)
-else()
-    cc_test(temporal_allocator_test SRCS temporary_allocator_test.cc DEPS temp_allocator tensor operator)
+if(NOT APPLE AND NOT WIN32)
+  cc_library(device_code SRCS device_code.cc DEPS device_context)
+  if(WITH_GPU)
+    cc_test(device_code_test SRCS device_code_test.cc DEPS device_code lod_tensor)
+  endif()
 endif()

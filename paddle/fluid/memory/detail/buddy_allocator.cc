@@ -19,10 +19,6 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-DEFINE_bool(free_idle_memory, false,
-            "If it is true, Paddle will try to free idle memory trunks during "
-            "running time.");
-
 #ifdef PADDLE_WITH_CUDA
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
 #endif
@@ -44,11 +40,11 @@ BuddyAllocator::~BuddyAllocator() {
               "have actually been freed";
   while (!pool_.empty()) {
     auto block = static_cast<MemoryBlock*>(std::get<2>(*pool_.begin()));
-    VLOG(10) << "Free from block (" << block << ", " << block->size(cache_)
-             << ")";
+    auto desc = cache_.LoadDesc(block);
+    VLOG(10) << "Free from block (" << block << ", " << desc->get_size() << ")";
 
-    system_allocator_->Free(block, block->size(cache_), block->index(cache_));
-    cache_.invalidate(block);
+    system_allocator_->Free(block, desc->get_size(), desc->get_index());
+    cache_.Invalidate(block);
     pool_.erase(pool_.begin());
   }
 }
@@ -88,91 +84,83 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
   } else {
     VLOG(10) << "Allocation from existing memory block " << std::get<2>(*it)
              << " at address "
-             << reinterpret_cast<MemoryBlock*>(std::get<2>(*it))->data();
+             << reinterpret_cast<MemoryBlock*>(std::get<2>(*it))->Data();
   }
 
   total_used_ += size;
   total_free_ -= size;
 
   // split the allocation and return data for use
-  return reinterpret_cast<MemoryBlock*>(SplitToAlloc(it, size))->data();
+  return reinterpret_cast<MemoryBlock*>(SplitToAlloc(it, size))->Data();
 }
 
 void BuddyAllocator::Free(void* p) {
   // Point back to metadata
-  auto block = static_cast<MemoryBlock*>(p)->metadata();
+  auto block = static_cast<MemoryBlock*>(p)->Metadata();
 
   // Acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
 
   VLOG(10) << "Free from address " << block;
 
-  if (block->type(cache_) == MemoryBlock::HUGE_CHUNK) {
+  auto* desc = cache_.LoadDesc(block);
+  if (desc->get_type() == MemoryBlock::HUGE_CHUNK) {
     VLOG(10) << "Free directly from system allocator";
-    system_allocator_->Free(block, block->total_size(cache_),
-                            block->index(cache_));
+    system_allocator_->Free(block, desc->get_total_size(), desc->get_index());
 
     // Invalidate GPU allocation from cache
-    cache_.invalidate(block);
+    cache_.Invalidate(block);
 
     return;
   }
 
-  block->mark_as_free(&cache_);
+  block->MarkAsFree(&cache_);
 
-  total_used_ -= block->total_size(cache_);
-  total_free_ += block->total_size(cache_);
+  total_used_ -= desc->get_total_size();
+  total_free_ += desc->get_total_size();
 
   // Trying to merge the right buddy
-  if (block->has_right_buddy(cache_)) {
+  MemoryBlock* right_buddy = block->GetRightBuddy(&cache_);
+  if (right_buddy) {
     VLOG(10) << "Merging this block " << block << " with its right buddy "
-             << block->right_buddy(cache_);
+             << right_buddy;
 
-    auto right_buddy = block->right_buddy(cache_);
-
-    if (right_buddy->type(cache_) == MemoryBlock::FREE_CHUNK) {
+    auto rb_desc = cache_.LoadDesc(right_buddy);
+    if (rb_desc->get_type() == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
-      pool_.erase(IndexSizeAddress(right_buddy->index(cache_),
-                                   right_buddy->total_size(cache_),
-                                   right_buddy));
+      pool_.erase(IndexSizeAddress(rb_desc->get_index(),
+                                   rb_desc->get_total_size(), right_buddy));
 
       // merge its right buddy to the block
-      block->merge(&cache_, right_buddy);
+      block->Merge(&cache_, right_buddy);
     }
   }
 
   // Trying to merge the left buddy
-  if (block->has_left_buddy(cache_)) {
+  MemoryBlock* left_buddy = block->GetLeftBuddy(&cache_);
+  if (left_buddy) {
     VLOG(10) << "Merging this block " << block << " with its left buddy "
-             << block->left_buddy(cache_);
+             << left_buddy;
 
-    auto left_buddy = block->left_buddy(cache_);
-
-    if (left_buddy->type(cache_) == MemoryBlock::FREE_CHUNK) {
+    // auto left_buddy = block->left_buddy(cache_);
+    auto* lb_desc = cache_.LoadDesc(left_buddy);
+    if (lb_desc->get_type() == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
-      pool_.erase(IndexSizeAddress(left_buddy->index(cache_),
-                                   left_buddy->total_size(cache_), left_buddy));
+      pool_.erase(IndexSizeAddress(lb_desc->get_index(),
+                                   lb_desc->get_total_size(), left_buddy));
 
       // merge the block to its left buddy
-      left_buddy->merge(&cache_, block);
+      left_buddy->Merge(&cache_, block);
       block = left_buddy;
+      desc = lb_desc;
     }
   }
 
   // Dumping this block into pool
   VLOG(10) << "Inserting free block (" << block << ", "
-           << block->total_size(cache_) << ")";
+           << desc->get_total_size() << ")";
   pool_.insert(
-      IndexSizeAddress(block->index(cache_), block->total_size(cache_), block));
-
-  if (FLAGS_free_idle_memory) {
-    // Clean up if existing too much free memory
-    // Prefer freeing fallback allocation first
-    CleanIdleFallBackAlloc();
-
-    // Free normal allocation
-    CleanIdleNormalAlloc();
-  }
+      IndexSizeAddress(desc->get_index(), desc->get_total_size(), block));
 }
 
 size_t BuddyAllocator::Used() { return total_used_; }
@@ -187,10 +175,10 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
 
   if (p == nullptr) return nullptr;
 
-  static_cast<MemoryBlock*>(p)->init(&cache_, MemoryBlock::HUGE_CHUNK, index,
+  static_cast<MemoryBlock*>(p)->Init(&cache_, MemoryBlock::HUGE_CHUNK, index,
                                      size, nullptr, nullptr);
 
-  return static_cast<MemoryBlock*>(p)->data();
+  return static_cast<MemoryBlock*>(p)->Data();
 }
 
 BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
@@ -222,14 +210,8 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
   VLOG(10) << "Creating and inserting new block " << p
            << " from system allocator";
 
-  static_cast<MemoryBlock*>(p)->init(&cache_, MemoryBlock::FREE_CHUNK, index,
+  static_cast<MemoryBlock*>(p)->Init(&cache_, MemoryBlock::FREE_CHUNK, index,
                                      allocate_bytes, nullptr, nullptr);
-
-  // gpu fallback allocation
-  if (system_allocator_->UseGpu() &&
-      static_cast<MemoryBlock*>(p)->index(cache_) == 1) {
-    fallback_alloc_count_++;
-  }
 
   total_free_ += allocate_bytes;
 
@@ -262,94 +244,30 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::FindExistChunk(size_t size) {
 void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
                                    size_t size) {
   auto block = static_cast<MemoryBlock*>(std::get<2>(*it));
+  auto desc = cache_.LoadDesc(block);
   pool_.erase(it);
 
-  VLOG(10) << "Split block (" << block << ", " << block->total_size(cache_)
+  VLOG(10) << "Split block (" << block << ", " << desc->get_total_size()
            << ") into";
-  block->split(&cache_, size);
+  block->Split(&cache_, size);
 
-  VLOG(10) << "Left block (" << block << ", " << block->total_size(cache_)
-           << ")";
-  block->set_type(&cache_, MemoryBlock::ARENA_CHUNK);
+  VLOG(10) << "Left block (" << block << ", " << desc->get_total_size() << ")";
+  desc->set_type(MemoryBlock::ARENA_CHUNK);
 
   // the rest of memory if exist
-  if (block->has_right_buddy(cache_)) {
-    if (block->right_buddy(cache_)->type(cache_) == MemoryBlock::FREE_CHUNK) {
-      VLOG(10) << "Insert right block (" << block->right_buddy(cache_) << ", "
-               << block->right_buddy(cache_)->total_size(cache_) << ")";
+  MemoryBlock* right_buddy = block->GetRightBuddy(&cache_);
+  if (right_buddy) {
+    auto* rb_desc = cache_.LoadDesc(right_buddy);
+    if (rb_desc->get_type() == MemoryBlock::FREE_CHUNK) {
+      VLOG(10) << "Insert right block (" << right_buddy << ", "
+               << rb_desc->get_total_size() << ")";
 
-      pool_.insert(
-          IndexSizeAddress(block->right_buddy(cache_)->index(cache_),
-                           block->right_buddy(cache_)->total_size(cache_),
-                           block->right_buddy(cache_)));
+      pool_.insert(IndexSizeAddress(rb_desc->get_index(),
+                                    rb_desc->get_total_size(), right_buddy));
     }
   }
 
   return block;
-}
-
-void BuddyAllocator::CleanIdleFallBackAlloc() {
-  // If fallback allocation does not exist, return directly
-  if (!fallback_alloc_count_) return;
-
-  for (auto pool = pool_.rbegin(); pool != pool_.rend();) {
-    // If free memory block less than max_chunk_size_, return directly
-    if (std::get<1>(*pool) < max_chunk_size_) return;
-
-    MemoryBlock* block = static_cast<MemoryBlock*>(std::get<2>(*pool));
-
-    // If no GPU fallback allocator, return
-    if (!system_allocator_->UseGpu() || block->index(cache_) == 0) {
-      return;
-    }
-
-    VLOG(10) << "Return block " << block << " to fallback allocator.";
-
-    system_allocator_->Free(block, block->size(cache_), block->index(cache_));
-    cache_.invalidate(block);
-
-    pool = PoolSet::reverse_iterator(pool_.erase(std::next(pool).base()));
-
-    total_free_ -= block->size(cache_);
-    fallback_alloc_count_--;
-
-    // If no fall allocation exists, return directly
-    if (!fallback_alloc_count_) return;
-  }
-}
-
-void BuddyAllocator::CleanIdleNormalAlloc() {
-  auto shall_free_alloc = [&]() -> bool {
-    // free all fallback allocations
-    if (fallback_alloc_count_ > 0) {
-      return true;
-    }
-    // keep 2x overhead if we haven't fallen back
-    if ((total_used_ + max_chunk_size_) * 2 < total_free_) {
-      return true;
-    }
-    return false;
-  };
-
-  if (!shall_free_alloc()) return;
-
-  for (auto pool = pool_.rbegin(); pool != pool_.rend();) {
-    // If free memory block less than max_chunk_size_, return directly
-    if (std::get<1>(*pool) < max_chunk_size_) return;
-
-    MemoryBlock* block = static_cast<MemoryBlock*>(std::get<2>(*pool));
-
-    VLOG(10) << "Return block " << block << " to base allocator.";
-
-    system_allocator_->Free(block, block->size(cache_), block->index(cache_));
-    cache_.invalidate(block);
-
-    pool = PoolSet::reverse_iterator(pool_.erase(std::next(pool).base()));
-
-    total_free_ -= block->size(cache_);
-
-    if (!shall_free_alloc()) return;
-  }
 }
 
 }  // namespace detail

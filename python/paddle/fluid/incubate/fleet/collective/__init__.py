@@ -16,6 +16,10 @@ import logging
 import paddle.fluid as fluid
 import paddle.fluid.io as io
 import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
+from paddle.fluid.executor import Executor
+from paddle.fluid.parallel_executor import ParallelExecutor
+from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.framework import Program
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
@@ -25,6 +29,7 @@ from paddle.fluid import compiler
 
 import os
 import sys
+import six
 
 
 class LambConfig(object):
@@ -44,6 +49,7 @@ class Collective(Fleet):
 
         self.startup_program = None
         self._origin_program = None
+        self._transpiled_program = None
         self.main_program = None
 
     def init_worker(self):
@@ -78,11 +84,47 @@ class Collective(Fleet):
                              target_vars=None,
                              main_program=None,
                              export_for_deployment=True):
+        """
+        Prune the given `main_program` to build a new program especially for
+        inference, and then save it and all related parameters to given
+        `dirname` by the `executor`.
+        """
+        assert isinstance(executor, Executor), \
+            "In fleet.save_inference_model() function, executor must be as" \
+            " Executor type."
+
+        if main_program is None:
+            main_program = self._origin_program
+        assert isinstance(main_program, Program), \
+            "In fleet.save_inference_model() function, main_program " \
+            "must be as Program type."
+
         io.save_inference_model(dirname, feeded_var_names, target_vars,
                                 executor, main_program, None, None,
                                 export_for_deployment)
 
     def save_persistables(self, executor, dirname, main_program=None):
+        """
+        This function filters out all variables with `persistable==True` from
+        the give `main_program` and then saves these variables to the folder
+        `dirname` or file `filename`.
+
+        The `dirname` is used to specify the folder where persistable variables
+        are going to be saved. If you would like to save variables in separate
+        files, set `filename` None; if you would like to save all variables in a
+        single file, use `filename` to specify the file name.
+        """
+        assert isinstance(executor, Executor), \
+            "In fleet.save_inference_model() function, executor must be as" \
+            " Executor type."
+
+        if main_program is None:
+            main_program = self._origin_program
+
+        assert isinstance(main_program, Program), \
+            "In fleet.save_inference_model() function, main_program " \
+            "must be as Program type."
+
         io.save_persistables(executor, dirname, main_program, None)
 
 
@@ -99,13 +141,17 @@ class DistributedStrategy(fluid.BuildStrategy):
         self.use_local_sgd = False
         self.use_dist_fc = False
 
-        self.local_sgd_config = None  # LocalSGDConfig
         self.dist_fc_config = None  # DistFCConfig
         self.mode = "nccl2"  # or collective
         self.collective_mode = None  # local_sgd or grad_allreduce
         self.nccl_comm_num = 1
+        self.forward_recompute = False
+        self.recompute_checkpoints = []
 
         self.exec_strategy = fluid.ExecutionStrategy()
+
+        # configurations below are used for unit test
+        self._ut4grad_allreduce = False
 
 
 class CollectiveOpBasedOptimizer(DistributedOptimizer):
@@ -146,6 +192,11 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def __init__(self, optimizer, strategy=DistributedStrategy()):
         super(CollectiveOptimizer, self).__init__(optimizer, strategy)
+        if strategy is not None and strategy.forward_recompute:
+            self.forward_recompute = True
+            self.recompute_checkpoints = strategy.recompute_checkpoints
+        else:
+            self.forward_recompute = False
         self.print_config = False
 
     def backward(self,
@@ -161,7 +212,7 @@ class CollectiveOptimizer(DistributedOptimizer):
         return self._optimizer.apply_gradients(params_grads)
 
     def _check_condition(self, name, **kwargs):
-        for k, v in kwargs.iterms():
+        for k, v in six.iteritems(kwargs):
             if v is True:
                 assert False, "you can't use %s and %s together" % (name, k)
 
@@ -170,12 +221,13 @@ class CollectiveOptimizer(DistributedOptimizer):
         Check the conflict condtions.
         """
         if strategy.use_local_sgd:
+            strategy.mode = "collective"
+            strategy.collective_mode = "local_sgd"
             self._check_condition(
                 "use_local_sgd",
                 use_dgc=main_program._enable_dgc,
                 use_dist_fc=strategy.use_dist_fc,
                 use_lamb=main_program._use_lamb)
-            assert strategy.local_sgd_config is not None, "DistributedStrategy.local_sgd_config should be set"
 
         if strategy.use_dist_fc:
             self._check_condition(
@@ -184,6 +236,14 @@ class CollectiveOptimizer(DistributedOptimizer):
                 use_local_sgd=strategy.use_local_sgd,
                 use_lamb=main_program._use_lamb)
             assert strategy.dist_fc_config is not None, "DistributedStrategy.dist_fc_config should be set"
+
+        if strategy._ut4grad_allreduce:
+            strategy.mode = "collective"
+            strategy.collective_mode = "grad_allreduce"
+            self._check_condition(
+                "_ut4grad_allreduce",
+                use_dgc=main_program._enable_dgc,
+                use_lamb=main_program._use_lamb)
 
         if self._strategy.collective_mode=="local_sgd" \
                 or self._strategy.collective_mode == "grad_allreduce":
@@ -251,7 +311,6 @@ class CollectiveOptimizer(DistributedOptimizer):
         node_num = self._node_num()
         assert node_num >= 1, "nccl2 node_num must >= 1, now:{}" % node_num
 
-        self._strategy.fuse_all_reduce_ops = True
         exec_strategy = self._strategy.exec_strategy
 
         if node_num <= 1:
@@ -334,10 +393,21 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._check_collective_mode(main_program, self._optimizer,
                                     self._strategy)
 
-        optimize_ops, param_grads = self._optimizer.minimize(
-            loss, startup_program, parameter_list, no_grad_set)
+        if self.forward_recompute:
+            assert (isinstance(self.recompute_checkpoints, list) and
+                    len(self.recompute_checkpoints) > 0)
+            self._optimizer = \
+                fluid.optimizer.RecomputeOptimizer(self._optimizer)
+            self._optimizer._set_checkpoints(self.recompute_checkpoints)
 
-        fleet._origin_program = main_program
+        optimize_ops, param_grads = self._optimizer.minimize(
+            loss,
+            startup_program=startup_program,
+            parameter_list=parameter_list,
+            no_grad_set=no_grad_set)
+
+        fleet._origin_program = main_program.clone(for_test=False)
+        fleet._transpiled_program = main_program
         fleet.main_program = self._try_to_compile(startup_program, main_program)
 
         return optimize_ops, param_grads

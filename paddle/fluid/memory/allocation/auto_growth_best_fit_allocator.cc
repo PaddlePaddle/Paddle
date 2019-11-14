@@ -57,6 +57,7 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
       block_it->is_free_ = false;
     }
   } else {
+    FreeIdleChunks();
     size_t realloc_size = std::max(size, chunk_size_);
 
     try {
@@ -117,6 +118,20 @@ void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
                        block_it);
 
   delete allocation;
+}
+
+void AutoGrowthBestFitAllocator::FreeIdleChunks() {
+  for (auto chunk_it = chunks_.begin(); chunk_it != chunks_.end();) {
+    auto &blocks = chunk_it->blocks_;
+    if (blocks.size() == 1 && blocks.begin()->is_free_) {
+      auto &block = *blocks.begin();
+      VLOG(2) << "Free chunk with size " << block.size_;
+      free_blocks_.erase(std::make_pair(block.size_, block.ptr_));
+      chunk_it = chunks_.erase(chunk_it);
+    } else {
+      ++chunk_it;
+    }
+  }
 }
 
 }  // namespace allocation

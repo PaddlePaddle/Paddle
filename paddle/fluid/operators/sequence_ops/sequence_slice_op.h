@@ -49,8 +49,11 @@ class SequenceSliceOpKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<LoDTensor>("Out");
 
     auto lod = in->lod();
-    auto n = lod[0].size() - 1;
+    PADDLE_ENFORCE_EQ(
+        lod.empty(), false,
+        "Input(X) Tensor of SequenceSliceOp does not contain LoD information.");
 
+    auto n = lod[0].size() - 1;
     PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(
         n, static_cast<size_t>(length->dims()[0]),

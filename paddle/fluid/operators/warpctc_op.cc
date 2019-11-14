@@ -52,30 +52,17 @@ class WarpCTCOp : public framework::OperatorWithKernel {
                    sequence_width);
 
     // TODO(liuyiqun): it is tricky to set the wrong dimension here.
-    ctx->SetOutputDim("Loss", {logits_dims[0], 1});
+    ctx->SetOutputDim("Loss", {-1, 1});
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     framework::LibraryType library_{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_CUDA
-    if (platform::CanCUDNNBeUsed(ctx)) {
-#if CUDA_VERSION >= 9000
-      LOG(WARNING)
-          << "The cudnnCTCLoss of CUDNN7 have some diff between "
-             "CUDA9/CUDA10 and CUDA8. You can close use_cudnn option to "
-             "use "
-             "baidu-research/warp-ctc(https://github.com/baidu-research/"
-             "warp-ctc)";
-#endif
-
-      library_ = framework::LibraryType::kCUDNN;
-    }
-#endif
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
-                                   ctx.device_context(), layout_, library_);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
+        ctx.device_context(), layout_, library_);
   }
 };
 
@@ -129,10 +116,6 @@ class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "normalize the gradients by the number of time-step, "
                   "which is also the sequence's length.")
         .SetDefault(false);
-    AddAttr<bool>("use_cudnn",
-                  "(bool, default: false), whether to "
-                  "use cudnn kernel.")
-        .SetDefault(false);
     AddComment(R"DOC(
 An operator integrating the open-source
 [warp-ctc](https://github.com/baidu-research/warp-ctc) library, which is used in
@@ -151,25 +134,26 @@ http://machinelearning.wustl.edu/mlpapers/paper_files/icml2006_GravesFGS06.pdf).
   }
 };
 
-class WarpCTCGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class WarpCTCGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
 
     op->SetType("warpctc_grad");
 
-    op->SetInput("WarpCTCGrad", Output("WarpCTCGrad"));
-    op->SetInput("Logits", Input("Logits"));
-    op->SetInput(framework::GradVarName("Loss"), OutputGrad("Loss"));
+    op->SetInput("WarpCTCGrad", this->Output("WarpCTCGrad"));
+    op->SetInput("Logits", this->Input("Logits"));
+    op->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
 
-    op->SetInput("LogitsLength", Input("LogitsLength"));
+    op->SetInput("LogitsLength", this->Input("LogitsLength"));
 
-    op->SetOutput(framework::GradVarName("Logits"), InputGrad("Logits"));
+    op->SetOutput(framework::GradVarName("Logits"), this->InputGrad("Logits"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -191,8 +175,9 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Logits")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Logits"),
+        ctx.device_context());
   }
 };
 
@@ -201,7 +186,8 @@ class WarpCTCGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(warpctc, ops::WarpCTCOp, ops::WarpCTCOpMaker,
-                  ops::WarpCTCGradOpDescMaker);
+                  ops::WarpCTCGradOpMaker<paddle::framework::OpDesc>,
+                  ops::WarpCTCGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(warpctc_grad, ops::WarpCTCGradOp);
 REGISTER_OP_CPU_KERNEL(
     warpctc, ops::WarpCTCKernel<paddle::platform::CPUDeviceContext, float>);

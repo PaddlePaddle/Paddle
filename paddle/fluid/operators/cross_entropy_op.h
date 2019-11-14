@@ -35,9 +35,20 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     int rank = x->dims().size();
+    auto label_dims = labels->dims();
     Tensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
-    Tensor labels_2d = framework::ReshapeToMatrix(*labels, rank - 1);
-    Tensor y_2d = framework::ReshapeToMatrix(*y, rank - 1);
+    Tensor labels_2d, y_2d;
+    if (label_dims.size() < rank) {
+      labels_2d.ShareDataWith(*labels);
+      labels_2d.Resize({framework::product(label_dims), 1});
+
+      y_2d.ShareDataWith(*y);
+      y_2d.Resize({framework::product(y->dims()), 1});
+
+    } else {
+      labels_2d = framework::ReshapeToMatrix(*labels, rank - 1);
+      y_2d = framework::ReshapeToMatrix(*y, rank - 1);
+    }
 
     int axis_dim = x->dims()[rank - 1];
     math::CrossEntropyFunctor<DeviceContext, T>()(
@@ -155,11 +166,11 @@ struct HardLabelCrossEntropyForwardFunctor {
   HOSTDEVICE void operator()(int64_t idx) const {
     auto label = label_[idx];
     if (label != ignore_index_) {
-      PADDLE_ASSERT_MSG(label >= 0 && label < feature_size_,
-                        "Variable value (label) of "
-                        "OP(fluid.layers.cross_entropy) expected >= 0 "
-                        "and < %ld, but got %ld. Please check label value.",
-                        feature_size_, label);
+      PADDLE_ENFORCE(label >= 0 && label < feature_size_,
+                     "Variable value (label) of "
+                     "OP(fluid.layers.cross_entropy) expected >= 0 "
+                     "and < %ld, but got %ld. Please check label value.",
+                     feature_size_, label);
       auto match_x = x_[idx * feature_size_ + label];
       y_[idx] = -math::TolerableValue<T>()(real_log(match_x));
       match_x_[idx] = match_x;

@@ -38,9 +38,11 @@ class GroupNormOp : public framework::OperatorWithKernel {
                    "Output(Mean) of GroupNormOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Variance"),
                    "Output(Variance) of GroupNormOp should not be null.");
-
     auto x_dim = ctx->GetInputDim("X");
-    auto channel_num = x_dim[1];
+    const DataLayout data_layout = framework::StringToDataLayout(
+        ctx->Attrs().Get<std::string>("data_layout"));
+    const int64_t channel_num =
+        (data_layout == DataLayout::kNCHW ? x_dim[1] : x_dim[x_dim.size() - 1]);
     auto batch_size = x_dim[0];
     auto groups = ctx->Attrs().Get<int>("groups");
     PADDLE_ENFORCE_LE(
@@ -91,7 +93,9 @@ class GroupNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker([](const int &groups) {
           PADDLE_ENFORCE_GT(groups, 0, "'groups' should be greater than zero.");
         });
-
+    AddAttr<std::string>("data_layout",
+                         "An optional string from: \"NHWC\", \"NCHW\". ")
+        .SetDefault("NCHW");
     AddComment(R"DOC(
 Group Normalization
 
@@ -147,44 +151,34 @@ class GroupNormGradOp : public framework::OperatorWithKernel {
   }
 };
 
-class GroupNormGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class GroupNormGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *op = new T();
     op->SetType("group_norm_grad");
-    op->SetInput("Scale", Input("Scale"));
-    op->SetInput("Bias", Input("Bias"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetInput("Y", Output("Y"));
-    op->SetInput("Variance", Output("Variance"));
+    op->SetInput("Scale", this->Input("Scale"));
+    op->SetInput("Bias", this->Input("Bias"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetInput("Y", this->Output("Y"));
+    op->SetInput("Variance", this->Output("Variance"));
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
-    op->SetOutput(framework::GradVarName("Scale"), InputGrad("Scale"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    return std::unique_ptr<framework::OpDesc>(op);
+    return std::unique_ptr<T>(op);
   }
 };
 
-class GroupNormInplaceInToOut : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc, bool use_cuda) const override {
-    return {{"X", "Y"}};
-  }
-};
-
-class GroupNormGradInplaceInToOut : public framework::InplaceOpInference {
- public:
-  std::unordered_map<std::string, std::string> operator()(
-      const framework::OpDesc &op_desc, bool use_cuda) const override {
-    return {{framework::GradVarName("Y"), framework::GradVarName("X")}};
-  }
-};
+DECLARE_INPLACE_OP_INFERER(GroupNormInplaceInToOut, {"X", "Y"});
+DECLARE_INPLACE_OP_INFERER(GroupNormGradInplaceInToOut,
+                           {framework::GradVarName("Y"),
+                            framework::GradVarName("X")});
 
 class GroupNormOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
@@ -200,7 +194,9 @@ class GroupNormOpInferVarType
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(group_norm, ops::GroupNormOp, ops::GroupNormOpMaker,
-                  ops::GroupNormOpInferVarType, ops::GroupNormGradMaker,
+                  ops::GroupNormOpInferVarType,
+                  ops::GroupNormGradMaker<paddle::framework::OpDesc>,
+                  ops::GroupNormGradMaker<paddle::imperative::OpBase>,
                   ops::GroupNormInplaceInToOut);
 REGISTER_OPERATOR(group_norm_grad, ops::GroupNormGradOp,
                   ops::GroupNormGradInplaceInToOut);

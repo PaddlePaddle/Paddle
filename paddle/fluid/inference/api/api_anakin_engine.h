@@ -73,7 +73,7 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
   virtual void OptimizeGraph();
   virtual void InitNet();
   virtual void SetContext();
-  virtual void Predict();
+  virtual void Predict(int batch_size);
   virtual std::unique_ptr<PaddlePredictor> New();
   static std::mutex mutex_;
   AnakinConfig config_;
@@ -85,7 +85,7 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
 
  private:
   bool RunImpl(const std::vector<PaddleTensor>& inputs,
-               std::vector<PaddleTensor>* output_data);
+               std::vector<PaddleTensor>* output_data, int batch_size = -1);
   static std::once_flag init_anakin_;
 };
 
@@ -103,7 +103,7 @@ class PaddleInferenceAnakinMLUPredictor final
   void SetContext() override;
   void OptimizeGraph() override;
   void InitNet() override;
-  void Predict() override;
+  void Predict(int batch_size) override;
 };
 #endif
 
@@ -120,7 +120,7 @@ class PaddleInferenceAnakinBMPredictor final
   std::unique_ptr<PaddlePredictor> New() override;
   void OptimizeGraph() override;
   void InitNet() override;
-  void Predict() override;
+  void Predict(int batch_size) override;
 };
 #endif
 }  // namespace paddle

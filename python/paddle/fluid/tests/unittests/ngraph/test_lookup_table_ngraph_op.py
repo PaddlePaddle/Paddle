@@ -15,7 +15,7 @@
 from __future__ import print_function
 import unittest, sys
 sys.path.append("../")
-from test_lookup_table_op import *
+from test_lookup_table_op import TestLookupTableOp, TestLookupTableOpWithTensorIds, TestLookupTableOpWithPadding, TestLookupTableOpWithTensorIdsAndPadding, TestLookupTableWIsSelectedRows, TestLookupTableWithTensorIdsWIsSelectedRows
 
 if __name__ == "__main__":
     unittest.main()

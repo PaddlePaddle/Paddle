@@ -39,10 +39,7 @@ class TestSequenceUnpadOp(OpTest):
         else:
             out_shape = out_shape + self.x_shape[2:]
 
-        self.inputs = {
-            'X': x,
-            'Length': np.array(self.length).astype('int64').reshape(-1, 1)
-        }
+        self.inputs = {'X': x, 'Length': np.array(self.length).astype('int64')}
         self.outputs = {'Out': (out.reshape(out_shape), out_lod)}
 
     def setUp(self):
@@ -51,7 +48,7 @@ class TestSequenceUnpadOp(OpTest):
         self.compute()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_compile_vs_runtime=True)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")

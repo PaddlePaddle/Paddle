@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -50,7 +51,7 @@ class StackOp : public framework::OperatorWithKernel {
         "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d", rank);
     if (axis < 0) axis += (rank + 1);
 
-    auto vec = framework::vectorize2int(input_dims[0]);
+    auto vec = framework::vectorize<int>(input_dims[0]);
     vec.insert(vec.begin() + axis, input_dims.size());
     ctx->SetOutputDim("Y", framework::make_ddim(vec));
   }
@@ -196,7 +197,7 @@ class StackOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->Outputs(framework::GradVarName("X")).size(),
                       static_cast<size_t>(dy_dim[axis]),
                       "Number of Outputs(X@Grad) is wrong");
-    auto vec = framework::vectorize2int(dy_dim);
+    auto vec = framework::vectorize<int>(dy_dim);
     vec.erase(vec.begin() + axis);
     ctx->SetOutputsDim(
         framework::GradVarName("X"),
@@ -204,17 +205,18 @@ class StackOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class StackGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class StackGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("stack_grad");
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
-    op->SetAttrMap(Attrs());
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };

@@ -25,9 +25,11 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.framework import Program, program_guard
+from dist_test_utils import *
 
 
 def run_pserver(pserver_id, use_cuda, sync_mode):
+    remove_ps_flag(os.getpid())
     scope = fluid.core.Scope()
     program = Program()
     with fluid.scope_guard(scope):

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
+#include <array>
 #include <memory>
 #include <vector>
 #include "paddle/fluid/framework/operator_kernel_configs.h"
@@ -21,6 +23,71 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_desc.h"
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
+using DataLayout = platform::DataLayout;
+template <typename T>
+using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
+using framework::AlgorithmsCache;
+static inline void GetNCDHW(const framework::DDim& dims,
+                            const DataLayout& layout, int* N, int* C, int* D,
+                            int* H, int* W) {
+  *N = dims[0];
+  *C = layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
+  int i = layout == DataLayout::kNCHW ? 0 : 1;
+  if (dims.size() == 5) {
+    *D = dims[2 - i];
+    *H = dims[3 - i];
+    *W = dims[4 - i];
+  } else {
+    *D = 1;
+    *H = dims[2 - i];
+    *W = dims[3 - i];
+  }
+}
+
+template <typename DeviceContext, typename T, size_t D>
+static void RemovePaddingSlice(const framework::ExecutionContext& context,
+                               const Tensor* input, Tensor* out,
+                               const std::vector<int>& starts,
+                               const std::vector<int>& axes) {
+  auto& place =
+      *context.template device_context<DeviceContext>().eigen_device();
+  auto in_dims = input->dims();
+  auto new_out_dims = out->dims();
+  auto offsets = Eigen::array<int, D>();
+  auto extents = Eigen::array<int, D>();
+  for (size_t i = 0; i < D; ++i) {
+    offsets[i] = 0;
+    extents[i] = new_out_dims[i];
+  }
+
+  int start;
+  for (size_t i = 0; i < axes.size(); ++i) {
+    start = starts[i];
+    if (start < 0) {
+      start = (start + in_dims[axes[i]]);
+    }
+    start = std::max(start, 0);
+    offsets[axes[i]] = start;
+  }
+  auto in_t =
+      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+          *input);
+
+  auto out_t =
+      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+          *out, new_out_dims);
+  out_t.device(place) = in_t.slice(offsets, extents);
+}
+
+template <typename T>
+std::ostream& operator<<(std::ostream& out, const std::vector<T>& v) {
+  out << "[";
+  for (auto const& tmp : v) out << tmp << ",";
+  out << "]";
+  return out;
+}
 
 using framework::AlgorithmsCache;
 
@@ -118,6 +185,11 @@ struct SearchAlgorithm<cudnnConvolutionFwdAlgoPerf_t> {
 
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());
+
+      VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t algo_cache_id:"
+               << algo_cache_id << ", x_dims:" << x_dims
+               << ", w_dims:" << w_dims << ", args.s" << args.s << ", args.p"
+               << args.p << ", args.d" << args.d;
 
       algo = algo_cache.GetAlgorithm(
           x_dims, w_dims, args.s, args.p, args.d, 0, [&]() {
@@ -247,6 +319,11 @@ struct SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t> {
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());
 
+      VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t algo_cache_id:"
+               << algo_cache_id << ", x_dims:" << x_dims
+               << ", w_dims:" << w_dims << ", args.s" << args.s << ", args.p"
+               << args.p << ", args.d" << args.d;
+
       algo = algo_cache.GetAlgorithm(
           x_dims, w_dims, args.s, args.p, args.d, 0, [&]() {
             int returned_algo_count;
@@ -367,6 +444,11 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
 
       auto x_dims = framework::vectorize(args.x->dims());
       auto w_dims = framework::vectorize(args.w->dims());
+
+      VLOG(10) << "cudnnConvolutionFwdAlgoPerf_t algo_cache_id:"
+               << algo_cache_id << ", x_dims:" << x_dims
+               << ", w_dims:" << w_dims << ", args.s" << args.s << ", args.p"
+               << args.p << ", args.d" << args.d;
 
       algo = algo_cache.GetAlgorithm(
           x_dims, w_dims, args.s, args.p, args.d, 0, [&]() {

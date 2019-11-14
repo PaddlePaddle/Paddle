@@ -18,6 +18,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import unittest
 import numpy
+import numbers
 
 
 class TestTensor(unittest.TestCase):
@@ -171,7 +172,6 @@ class TestTensor(unittest.TestCase):
         var = scope.var("test_tensor")
 
         tensor = var.get_tensor()
-
         tensor._set_dims([0, 1])
         tensor._alloc_float(place)
 
@@ -255,6 +255,69 @@ class TestTensor(unittest.TestCase):
             tensor.set(tensor_array, core.CUDAPlace(0))
             print(tensor)
             self.assertTrue(isinstance(str(tensor), str))
+
+    def test_tensor_poiter(self):
+        place = core.CPUPlace()
+        scope = core.Scope()
+        var = scope.var("test_tensor")
+        place = core.CPUPlace()
+        tensor = var.get_tensor()
+        dtype = core.VarDesc.VarType.FP32
+        self.assertTrue(
+            isinstance(tensor._mutable_data(place, dtype), numbers.Integral))
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.assertTrue(
+                isinstance(
+                    tensor._mutable_data(place, dtype), numbers.Integral))
+            place = core.CUDAPinnedPlace()
+            self.assertTrue(
+                isinstance(
+                    tensor._mutable_data(place, dtype), numbers.Integral))
+            places = fluid.cuda_pinned_places()
+            self.assertTrue(
+                isinstance(
+                    tensor._mutable_data(places[0], dtype), numbers.Integral))
+
+    def test_tensor_set_fp16(self):
+        array = numpy.random.random((300, 500)).astype("float16")
+        tensor = fluid.Tensor()
+        place = core.CPUPlace()
+        tensor.set(array, place)
+        self.assertEqual(tensor._dtype(), core.VarDesc.VarType.FP16)
+        self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            tensor.set(array, place)
+            self.assertEqual(tensor._dtype(), core.VarDesc.VarType.FP16)
+            self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
+
+            place = core.CUDAPinnedPlace()
+            tensor.set(array, place)
+            self.assertEqual(tensor._dtype(), core.VarDesc.VarType.FP16)
+            self.assertTrue(numpy.array_equal(numpy.array(tensor), array))
+
+    def test_tensor_set_from_array_list(self):
+        array = numpy.random.randint(1000, size=(200, 300))
+        list_array = [array, array]
+        tensor = fluid.Tensor()
+        place = core.CPUPlace()
+        tensor.set(list_array, place)
+        self.assertEqual([2, 200, 300], tensor.shape())
+        self.assertTrue(numpy.array_equal(numpy.array(tensor), list_array))
+
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            tensor.set(list_array, place)
+            self.assertEqual([2, 200, 300], tensor.shape())
+            self.assertTrue(numpy.array_equal(numpy.array(tensor), list_array))
+
+            place = core.CUDAPinnedPlace()
+            tensor.set(list_array, place)
+            self.assertEqual([2, 200, 300], tensor.shape())
+            self.assertTrue(numpy.array_equal(numpy.array(tensor), list_array))
 
 
 if __name__ == '__main__':

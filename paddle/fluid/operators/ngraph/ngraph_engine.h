@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <list>
 #include <memory>
+#include <mutex>  //NOLINT
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -34,7 +35,8 @@ namespace operators {
 
 // cache engine repetitives
 struct EngineCache {
-  std::shared_ptr<ngraph::runtime::Executable> ngraph_handle;
+  std::shared_ptr<ngraph::runtime::Executable> ngraph_handle = nullptr;
+  std::shared_ptr<ngraph::runtime::Backend> ngraph_backend = nullptr;
   std::set<std::string> persistables;
   std::vector<std::string> var_in;
   std::vector<std::string> var_out;
@@ -127,9 +129,7 @@ class NgraphEngine {
 
   void Run(const framework::Scope& scope, const platform::Place& place) const;
 
-  static bool is_training;
-  static const framework::BlockDesc* p_bdesc;
-  static std::vector<std::string> feed_vars, fetch_vars;
+  static std::vector<std::string> feed_vars;
 
   static void FuseNgraphOps(
       const framework::BlockDesc& prog,
@@ -149,19 +149,24 @@ class NgraphEngine {
   using main_t_in_cache =
       ThCache<std::vector<std::shared_ptr<ngraph::runtime::Tensor>>>;
 
-  static framework::Variable* pre_var_ptr;
-
   const framework::Scope& scope_;
   const platform::Place& place_;
   std::vector<std::shared_ptr<framework::OperatorBase>> fused_ops_;
   std::unordered_map<std::string, ngraph::element::Type> var_type_map_;
   std::set<std::string> persistables_;
   std::unordered_set<std::string> post_op_inputs_;
+  // it is test for a single run, it can be a validation during training
   bool is_test_{true};
+  // inference only. eg. CAPI inference
+  bool is_inference_{false};
   std::string func_cache_key_;
-
+  // use a weak pointer to keep backend_ alive
+  // to avoid it to be destropyed too earlier
+  static std::weak_ptr<ngraph::runtime::Backend> wp_backend_;
+  // use mutex to keep it thread safe
+  static std::mutex ng_mutex_;
   // ngraph backend eg. CPU
-  static std::shared_ptr<ngraph::runtime::Backend> backend_;
+  std::shared_ptr<ngraph::runtime::Backend> backend_;
   // var_name of inputs
   std::vector<std::string> var_in_;
   // var_name of outputs from  fetch in order

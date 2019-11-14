@@ -31,10 +31,10 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     auto out = ctx.Output<framework::Tensor>("Out");
 
     int rid = ctx.Attr<int>("ring_id");
-    auto comm = platform::NCCLCommContext::Instance().Get(rid);
+    auto place = ctx.GetPlace();
+    auto comm = platform::NCCLCommContext::Instance().Get(rid, place);
     int nranks = comm->nranks();
 
-    auto place = ctx.GetPlace();
     auto out_dims = in->dims();
     out_dims[0] = out_dims[0] / nranks;
     out->mutable_data<T>(out_dims, place);
@@ -52,7 +52,7 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
       stream = comm->stream();
     }
 
-    PADDLE_ENFORCE(platform::dynload::ncclReduceScatter(
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclReduceScatter(
         send_buff, recv_buff, recv_numel, static_cast<ncclDataType_t>(dtype),
         ncclSum, comm->comm(), stream));
 #else

@@ -29,6 +29,13 @@ class Strategy(object):
         self.start_epoch = start_epoch
         self.end_epoch = end_epoch
 
+    def __getstate__(self):
+        d = {}
+        for key in self.__dict__:
+            if key not in ["start_epoch", "end_epoch"]:
+                d[key] = self.__dict__[key]
+        return d
+
     def on_compression_begin(self, context):
         pass
 
