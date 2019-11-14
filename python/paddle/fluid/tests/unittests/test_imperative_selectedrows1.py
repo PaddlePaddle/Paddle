@@ -24,7 +24,8 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
-from utils import DyGraphProgramDescTracerTestHelper
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from paddle.fluid.dygraph.jit import TracedLayer
 
 
 class SimpleNet(fluid.Layer):
@@ -95,6 +96,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
         batch_num = 200
 
         for is_sparse in [True, False]:
+            traced_layer = None
             with fluid.dygraph.guard():
                 fluid.default_startup_program().random_seed = seed
                 fluid.default_main_program().random_seed = seed
@@ -112,7 +114,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
                 dy_param_init = dict()
                 dy_loss = None
 
-                helper = DyGraphProgramDescTracerTestHelper(simple_net, self)
+                helper = DyGraphProgramDescTracerTestHelper(self)
+                program = None
 
                 for i in range(batch_num):
                     x_data = np.arange(12).reshape(4, 3).astype('int64')

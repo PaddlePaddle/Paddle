@@ -105,21 +105,6 @@ bool CPUAllocator::UseGpu() const { return false; }
 
 #ifdef PADDLE_WITH_CUDA
 
-static void ClearCUDAOutOfMemoryError(cudaError_t* status) {
-  if (*status == cudaErrorMemoryAllocation) {
-    *status = cudaSuccess;
-  }
-
-  PADDLE_ENFORCE_CUDA_SUCCESS(*status);
-
-  *status = cudaGetLastError();
-  if (*status == cudaErrorMemoryAllocation) {
-    *status = cudaSuccess;
-  }
-
-  PADDLE_ENFORCE_CUDA_SUCCESS(*status);
-}
-
 void* GPUAllocator::Alloc(size_t* index, size_t size) {
   // CUDA documentation doesn't explain if cudaMalloc returns nullptr
   // if size is 0.  We just make sure it does.
@@ -135,7 +120,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     gpu_alloc_size_ += size;
     return p;
   } else {
-    ClearCUDAOutOfMemoryError(&result);
+    platform::RaiseNonOutOfMemoryError(&result);
 
     /**
      * NOTE(zjl): Sometimes cudaMemGetInfo would raise OOM error
@@ -147,9 +132,9 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     size_t avail = 0, total = 0;
     result = cudaMemGetInfo(&avail, &total);
     if (result != cudaSuccess) avail = 0;
-    ClearCUDAOutOfMemoryError(&result);
+    platform::RaiseNonOutOfMemoryError(&result);
 
-    PADDLE_THROW_BAD_ALLOC(
+    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
         "\n\nOut of memory error on GPU %d. "
         "Cannot allocate %s memory on GPU %d, "
         "available memory is only %s.\n\n"
@@ -163,7 +148,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
         "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.\n\n",
         gpu_id_, string::HumanReadableSize(size), gpu_id_,
         string::HumanReadableSize(avail), gpu_id_,
-        FLAGS_fraction_of_gpu_memory_to_use);
+        FLAGS_fraction_of_gpu_memory_to_use));
   }
 }
 

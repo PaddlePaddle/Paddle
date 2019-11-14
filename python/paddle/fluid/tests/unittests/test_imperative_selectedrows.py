@@ -105,7 +105,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                 dy_param_init = dict()
                 dy_loss = None
 
-                helper = DyGraphProgramDescTracerTestHelper(simple_net, self)
+                helper = DyGraphProgramDescTracerTestHelper(self)
 
                 for i in range(batch_num):
                     x_data = np.arange(12).reshape(4, 3).astype('int64')

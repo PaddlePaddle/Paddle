@@ -303,7 +303,7 @@ class TestWarpCTCOpWithPadding(OpTest):
 
         self.inputs = {
             "Logits": new_logits,
-            "Label": labels,
+            "Label": new_labels,
             "LogitsLength": self.logits_length,
             "LabelLength": self.labels_length
         }
