@@ -130,10 +130,15 @@ class TestDistRunnerBase(object):
         exec_strategy = fluid.ExecutionStrategy()
         exec_strategy.num_threads = 1
 
+        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+        fleet.init(role)
+
         dist_strategy = DistributedStrategy()
         dist_strategy.exec_strategy = exec_strategy
         dist_strategy.fuse_memory_size = 1  # MB
         dist_strategy.fuse_laryer_size = 1
+        self._worker_num = fleet.worker_num()
+        self._worker_index = fleet.worker_index()
         if args.use_local_sgd:
             dist_strategy.use_local_sgd = True
         if args.ut4grad_allreduce:
@@ -141,13 +146,9 @@ class TestDistRunnerBase(object):
         if args.use_dist_fc:
             dist_strategy.use_dist_fc = True
             dist_strategy.dist_fc_config = DistFCConfig(
-                batch_size=args.batch_size)
+                batch_size=args.batch_size * self._worker_num)
             self._distfc_loss_type = args.distfc_loss_type
 
-        role = role_maker.PaddleCloudRoleMaker(is_collective=True)
-        fleet.init(role)
-        self.worker_num = fleet.worker_num()
-        self.worker_index = fleet.worker_index()
         print_to_err("gpu_fleet", "fleet.node_num:")
         # "fleet.node_id:", fleet.node_id(),
         # "fleet.trainer_num:", fleet.worker_num())
@@ -240,8 +241,8 @@ class TestDistRunnerBase(object):
         else:
             if args.use_dist_fc:
                 self._distfc_loss_type = args.distfc_loss_type
-                self.worker_num = 1
-                self.worker_index = 0
+                self._worker_num = 1
+                self._worker_index = 0
             test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
                 self.get_model(batch_size=args.batch_size)
 
@@ -899,7 +900,7 @@ class TestDistBase(unittest.TestCase):
             print("use_hallreduce:{} tr_cmd:{}, env: {}".format(
                 self._use_hallreduce, tr_cmd, tr_env))
 
-            tr_pipe = open(log_name + "_tr{}_err.log".format(i), "wb")
+            tr_pipe = open("/tmp/tr{}_err.log".format(i), "wb")
 
             print_to_err(
                 type(self).__name__,

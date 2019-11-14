@@ -16,9 +16,6 @@ from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 
-RUN_STEP = 5
-DEFAULT_BATCH_SIZE = 2
-
 
 class TestDistMnistNCCL2FleetApiDistFCSoftmax(TestDistBase):
     def _setup_config(self):
@@ -33,7 +30,7 @@ class TestDistMnistNCCL2FleetApiDistFCSoftmax(TestDistBase):
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("dist_mnist_distfc.py", delta=1e-1)
+            self.check_with_place("dist_mnist_distfc.py", delta=1e-5)
 
 
 class TestDistMnistNCCL2FleetApiDistFCArcface(TestDistBase):
@@ -49,7 +46,7 @@ class TestDistMnistNCCL2FleetApiDistFCArcface(TestDistBase):
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place("dist_mnist_distfc.py", delta=100)
+            self.check_with_place("dist_mnist_distfc.py", delta=1e-5)
 
 
 if __name__ == "__main__":

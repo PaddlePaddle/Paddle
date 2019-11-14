@@ -43,7 +43,7 @@ SIZE = 10
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
-np.random.seed(0)
+np.random.seed(1024)
 
 
 def cnn_model(data, label, loss_type, rank_id, nranks):
@@ -102,7 +102,6 @@ def cnn_model(data, label, loss_type, rank_id, nranks):
             nranks=nranks,
             rank_id=rank_id,
             param_attr=fluid.param_attr.ParamAttr(
-                #initializer=fluid.initializer.NumpyArrayInitializer(param_value)))
                 initializer=fluid.initializer.Constant(0.01)))
     else:
         raise ValueError("Unknown loss type: {}.".format(loss_type))
@@ -119,11 +118,11 @@ class TestDistMnist2x2DistFC(TestDistRunnerBase):
 
         loss_type = self._distfc_loss_type
         # Train program
-        avg_cost = cnn_model(images, label, loss_type, self.worker_index,
-                             self.worker_num)
+        avg_cost = cnn_model(images, label, loss_type, self._worker_index,
+                             self._worker_num)
         # Evaluator
-        predict = 1.0
-        batch_acc = 1.0
+        predict = None
+        batch_acc = None
 
         inference_program = fluid.default_main_program().clone()
         # Optimization
@@ -141,9 +140,19 @@ class TestDistMnist2x2DistFC(TestDistRunnerBase):
         else:
             opt.minimize(avg_cost)
 
+        if not "dist" in loss_type:
+            batch_size *= 2
+
         # Reader
         def reader():
+            step = 0
+            i = 0
             while True:
+                if i % batch_size == 0:
+                    step += 1
+                seed = step + 1
+                np.random.seed(seed)
+                i += 1
                 yield np.random.rand(FEATURE_SIZE), np.random.randint(SIZE)
 
         train_reader = paddle.batch(reader, batch_size=batch_size)

@@ -105,8 +105,8 @@ class DistributedClassifier(object):
                          x,
                          label,
                          param_attr=None,
-                         bias_attr=None,
-                         use_bias=True):
+                         use_bias=True,
+                         bias_attr=None):
         flatten_dim = reduce(lambda a, b: a * b, x.shape[1:], 1)
         weight, bias = self.create_parameter(
             dtype=x.dtype,
@@ -215,6 +215,7 @@ def _distributed_softmax_classify(x,
                                   rank_id,
                                   param_attr=None,
                                   use_bias=True,
+                                  bias_attr=None,
                                   name=None):
     '''
     Classification layer with FC, softmax and cross entropy calculation of
@@ -260,7 +261,8 @@ def _distributed_softmax_classify(x,
         name = 'dist_softmax'
     helper = LayerHelper(name, **locals())
     classifier = DistributedClassifier(class_num, nranks, rank_id, helper)
-    return classifier.softmax_classify(x, label, param_attr, use_bias)
+    return classifier.softmax_classify(x, label, param_attr, use_bias,
+                                       bias_attr)
 
 
 def _distributed_arcface_classify(x,
