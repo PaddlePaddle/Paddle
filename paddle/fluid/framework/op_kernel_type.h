@@ -68,6 +68,19 @@ class OpKernelType {
 
   bool operator!=(const OpKernelType& o) const { return !(*this == o); }
 
+  bool operator<(const OpKernelType& o) const {
+    return data_type_ != o.data_type_
+               ? data_type_ < o.data_type_
+               : (data_layout_ != o.data_layout_
+                      ? data_layout_ < o.data_layout_
+                      : (place_.which() != o.place_.which()
+                             ? place_.which() < o.place_.which()
+                             : (library_type_ != o.library_type_
+                                    ? library_type_ < o.library_type_
+                                    : customized_type_value_ <
+                                          o.customized_type_value_)));
+  }
+
   proto::VarType::Type data_type_;
   DataLayout data_layout_;
   platform::Place place_;

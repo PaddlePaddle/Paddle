@@ -25,6 +25,14 @@
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
+namespace framework {
+
+imperative::OpBase* NewOpBase() { return new imperative::OpBase(); }
+
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace imperative {
 
 using framework::Variable;

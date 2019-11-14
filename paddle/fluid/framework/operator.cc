@@ -967,6 +967,8 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
+  LOG(INFO) << "Choose kernel for " << type_;
+
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
@@ -993,6 +995,7 @@ void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
   }
 #endif
   if (kernel_iter == kernels.end()) {
+    LOG(INFO) << "Cannot find kernel " << type_;
     PADDLE_THROW("op %s does not have kernel for %s", type_,
                  KernelTypeToString(expected_kernel_key));
   }

@@ -306,6 +306,12 @@ PYBIND11_MODULE(core_noavx, m) {
 
   BindException(&m);
 
+  m.def("sizeof", []() -> std::vector<int> {
+    return {sizeof(Tensor),           sizeof(LoDTensor),
+            sizeof(std::list<int>),   sizeof(std::string),
+            sizeof(GradToVarMapType), sizeof(GradOpMakerFN)};
+  });
+
   m.def("set_num_threads", &platform::SetNumThreads);
 
   m.def("from_dlpack", [](py::capsule *dltensor) {
@@ -1030,7 +1036,9 @@ All parameter, weight, gradient are variables in Paddle.
       "get_grad_op_desc", [](const OpDesc &op_desc,
                              const std::unordered_set<std::string> &no_grad_set,
                              const std::vector<BlockDesc *> &grad_sub_block) {
-        std::unordered_map<std::string, std::string> grad_to_var;
+        // std::unordered_map<std::string, std::string> grad_to_var;
+        GradToVarMapType grad_to_var;
+        LOG(INFO) << "Pybind addr of " << op_desc.Type() << " " << &grad_to_var;
         std::vector<std::unique_ptr<OpDesc>> grad_op_descs =
             framework::OpInfoMap::Instance()
                 .Get(op_desc.Type())

@@ -459,8 +459,7 @@ void OpDesc::SetBlocksAttr(const std::string &name,
   need_update_ = true;
 }
 
-void OpDesc::SetAttrMap(
-    const std::unordered_map<std::string, Attribute> &attr_map) {
+void OpDesc::SetAttrMap(const AttributeMap &attr_map) {
   attrs_ = attr_map;
   need_update_ = true;
 }
@@ -512,9 +511,7 @@ int OpDesc::GetBlockAttrId(const std::string &name) const {
   return boost::get<BlockDesc *>(it->second)->ID();
 }
 
-const std::unordered_map<std::string, Attribute> &OpDesc::GetAttrMap() const {
-  return attrs_;
-}
+const AttributeMap &OpDesc::GetAttrMap() const { return attrs_; }
 
 void OpDesc::Rename(const std::string &old_name, const std::string &new_name) {
   RenameInput(old_name, new_name);

@@ -21,6 +21,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
@@ -37,6 +38,8 @@ using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 // TODO(panyx0718): Replace vector with something like gtl::Vector.
 using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
 
+using GradToVarMapType = std::unordered_map<std::string, std::string>;
+
 // The order should be as same as framework.proto
 using Attribute =
     boost::variant<boost::blank, int, float, std::string, std::vector<int>,
@@ -44,16 +47,69 @@ using Attribute =
                    std::vector<bool>, BlockDesc*, int64_t,
                    std::vector<BlockDesc*>, std::vector<int64_t>>;
 
-using AttributeMap = std::unordered_map<std::string, Attribute>;
+using AttributeMap = std::map<std::string, Attribute>;
 
 using OpCreator = std::function<OperatorBase*(
     const std::string& /*type*/, const VariableNameMap& /*inputs*/,
     const VariableNameMap& /*outputs*/, const AttributeMap& /*attrs*/)>;
 
+class GradOpMakerFN {
+ public:
+  using GradOpMakerRawFN = std::vector<std::unique_ptr<OpDesc>> (*)(
+      const OpDesc&, const std::unordered_set<std::string>&, GradToVarMapType*,
+      const std::vector<BlockDesc*>&);
+
+  using GradOpMakerRawFNWithReserved = std::vector<std::unique_ptr<OpDesc>> (*)(
+      const OpDesc&, const std::unordered_set<std::string>&, GradToVarMapType*,
+      const std::vector<BlockDesc*>&, void*);
+
+  GradOpMakerFN() {}
+  GradOpMakerFN(std::nullptr_t) {}  // NOLINT
+
+  GradOpMakerRawFN RawFunc() const { return func_; }
+
+  void Reset(GradOpMakerRawFN func) {
+    PADDLE_ENFORCE_NOT_NULL(func);
+    func_ = func;
+    reserved_func_ = nullptr;
+    reserved_ = nullptr;
+  }
+
+  void Reset(GradOpMakerRawFNWithReserved func_reserved, void* reserved) {
+    PADDLE_ENFORCE_NOT_NULL(func_reserved);
+    func_ = nullptr;
+    reserved_func_ = func_reserved;
+    reserved_ = reserved;
+  }
+
+  std::vector<std::unique_ptr<OpDesc>> operator()(
+      const OpDesc& op_desc, const std::unordered_set<std::string>& no_grad_set,
+      GradToVarMapType* grad_to_var,
+      const std::vector<BlockDesc*>& grad_blocks) const;
+
+  explicit operator bool() const { return func_ || reserved_func_; }
+
+  DEFINE_NULLABLE_COMPARE();
+
+ private:
+  GradOpMakerRawFN func_{nullptr};
+  GradOpMakerRawFNWithReserved reserved_func_{nullptr};
+  void* reserved_{nullptr};
+};
+
+DEFINE_REVERSE_NULLABLE_COMPARE(GradOpMakerFN);
+
+/*
+using GradOpMakerRawFN = std::vector<std::unique_ptr<OpDesc>> (*)(
+    const OpDesc&, const std::unordered_set<std::string>&, GradToVarMapType*,
+    // std::unordered_map<std::string, std::string>*,
+    const std::vector<BlockDesc*>&);
+
 using GradOpMakerFN = std::function<std::vector<std::unique_ptr<OpDesc>>(
-    const OpDesc&, const std::unordered_set<std::string>& /*no_grad_set*/,
-    std::unordered_map<std::string, std::string>* /*grad_to_var*/,
-    const std::vector<BlockDesc*>& grad_block)>;
+    const OpDesc&, const std::unordered_set<std::string>&,
+    std::unordered_map<std::string, std::string>*,
+    const std::vector<BlockDesc*>&)>;
+*/
 
 using DygraphGradOpMakerFN =
     std::function<std::vector<std::unique_ptr<imperative::OpBase>>(

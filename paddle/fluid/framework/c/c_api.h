@@ -38,7 +38,8 @@ void PD_InitDevicesPool(paddle::platform::DeviceContextPool *pool);
 std::vector<std::string> PD_GetGradOpDescStrs(
     const paddle::framework::OpDesc &op_desc,
     const std::unordered_set<std::string> &no_grad_set,
-    std::unordered_map<std::string, std::string> *grad_to_var,
+    paddle::framework::GradToVarMapType *grad_to_var,
+    // std::unordered_map<std::string, std::string> *grad_to_var,
     const std::vector<paddle::framework::BlockDesc *> &grad_block);
 
 #ifdef __cplusplus

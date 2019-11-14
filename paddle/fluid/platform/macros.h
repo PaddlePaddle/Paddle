@@ -25,6 +25,20 @@ limitations under the License. */
   classname& operator=(classname&&) = delete
 #endif
 
+#ifndef DEFINE_NULLABLE_COMPARE
+#define DEFINE_NULLABLE_COMPARE()                                    \
+  inline bool operator!() const { return !(this->operator bool()); } \
+  inline bool operator==(std::nullptr_t) const { return !(*this); }  \
+  inline bool operator!=(std::nullptr_t) const { return !(*this == nullptr); }
+#define DEFINE_REVERSE_NULLABLE_COMPARE(...)                              \
+  inline static bool operator==(std::nullptr_t, const __VA_ARGS__& obj) { \
+    return obj == nullptr;                                                \
+  }                                                                       \
+  inline static bool operator!=(std::nullptr_t, const __VA_ARGS__& obj) { \
+    return obj != nullptr;                                                \
+  }
+#endif
+
 #if defined(__FLT_MAX__)
 #define FLT_MAX __FLT_MAX__
 #endif  // __FLT_MAX__

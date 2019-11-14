@@ -179,16 +179,33 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
 };
 
 template <typename T>
+inline std::vector<std::unique_ptr<OpDesc>> GradOpDescMakerImpl(
+    const OpDesc& fwd_op, const std::unordered_set<std::string>& no_grad_set,
+    GradToVarMapType* grad_to_var, const std::vector<BlockDesc*>& grad_block) {
+  LOG(INFO) << "Addr of " << fwd_op.Type() << " is " << grad_to_var;
+  T maker(fwd_op, no_grad_set, grad_to_var, grad_block);
+  return maker();
+}
+
+template <typename T>
 struct OpInfoFiller<T, kGradOpDescMaker> {
   void operator()(const char* op_type, OpInfo* info) const {
+    /*
     info->grad_op_maker_ = [](
         const OpDesc& fwd_op,
         const std::unordered_set<std::string>& no_grad_set,
-        std::unordered_map<std::string, std::string>* grad_to_var,
+        GradToVarMapType* grad_to_var,
+        // std::unordered_map<std::string, std::string>* grad_to_var,
         const std::vector<BlockDesc*>& grad_block) {
+      LOG(INFO) << "Addr of " << fwd_op.Type() << " is " << grad_to_var;
       T maker(fwd_op, no_grad_set, grad_to_var, grad_block);
       return maker();
     };
+    */
+    auto* func = GradOpDescMakerImpl<T>;
+    LOG(INFO) << "Register " << reinterpret_cast<void*>(func) << " for "
+              << op_type;
+    info->grad_op_maker_.Reset(func);
 
     info->use_default_grad_op_desc_maker_ =
         std::is_base_of<DefaultGradOpMaker<OpDesc, true>, T>::value ||

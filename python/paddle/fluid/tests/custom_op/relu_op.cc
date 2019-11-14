@@ -30,6 +30,19 @@ class Relu2Op : public framework::OperatorWithKernel {
 class Relu2OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    LOG(INFO) << "Relu2 " << sizeof(framework::GradToVarMapType);
+    LOG(INFO) << "Relu2 " << sizeof(std::string);
+    LOG(INFO) << "Relu2 " << sizeof(framework::GradOpMakerFN);
+
+    /*
+    framework::GradToVarMapType m;
+    framework::AnyFunc(&m);
+    LOG(INFO) << m.size();
+    for (auto& pair : m) {
+      LOG(INFO) << pair.first << "-> " << pair.second;
+    }
+    */
+
     AddInput("X", "The input tensor.");
     AddOutput("Y", "Output of relu_op");
     AddComment(R"DOC(
@@ -55,11 +68,20 @@ class Relu2GradMaker : public framework::SingleGradOpMaker<T> {
 
   std::unique_ptr<T> Apply() const override {
     auto* op = new T();
+    LOG(INFO) << "Relu 2 type";
     op->SetType("relu2_grad");
+    LOG(INFO) << "Relu 2 output Y";
     op->SetInput("Y", this->Output("Y"));
-    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
-    op->SetAttrMap(this->Attrs());
+    LOG(INFO) << "Relu 2 Input Y@GRAD";
+    auto out_grad = this->OutputGrad("Y");
+    LOG(INFO) << "Get out_grad success";
+    op->SetInput(framework::GradVarName("Y"), out_grad);
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    LOG(INFO) << "Relu 2 Attr";
+    op->SetAttrMap(this->Attrs());
+    LOG(INFO) << "Relu 2 X@GRAD";
+    // op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    LOG(INFO) << "Returns";
     return std::unique_ptr<T>(op);
   }
 };
@@ -84,6 +106,9 @@ template <typename DeviceContext, typename T>
 class Relu2GradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    LOG(INFO) << sizeof(std::unordered_map<std::string, std::string>);
+    LOG(INFO) << sizeof(std::string);
+
     auto* dy_t = ctx.Input<Tensor>(framework::GradVarName("Y"));
     auto* y_t = ctx.Input<Tensor>("Y");
     auto* dx_t = ctx.Output<Tensor>(framework::GradVarName("X"));

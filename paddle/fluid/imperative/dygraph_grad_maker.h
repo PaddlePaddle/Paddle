@@ -79,9 +79,7 @@ class GradOpBaseMakerBase {
     return vec_temp;
   }
 
-  const std::unordered_map<std::string, framework::Attribute>& Attrs() const {
-    return fw_op_base_->Attrs();
-  }
+  const framework::AttributeMap& Attrs() const { return fw_op_base_->Attrs(); }
 
   const framework::Attribute& GetAttr(const std::string& name) const {
     auto& map = fw_op_base_->Attrs();

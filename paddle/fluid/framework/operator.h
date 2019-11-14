@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
+#include <map>
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -223,9 +224,7 @@ using KernelConfig = boost::variant<
 using KernelConfig = boost::variant<boost::blank>;
 #endif
 
-using OpKernelConfigsMap =
-    std::unordered_map<OpKernelType, std::vector<KernelConfig>,
-                       OpKernelType::Hash>;
+using OpKernelConfigsMap = std::map<OpKernelType, std::vector<KernelConfig>>;
 
 class ExecutionContext {
  public:

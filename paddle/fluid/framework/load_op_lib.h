@@ -39,22 +39,41 @@ T *DynLoad(void *handle, std::string name) {
   return func;
 }
 
+using GradOpDescStrsFN = std::vector<std::string>(
+    const OpDesc &, const std::unordered_set<std::string> &,
+    // std::unordered_map<std::string, std::string> *,
+    paddle::framework::GradToVarMapType *, const std::vector<BlockDesc *> &);
+
+static std::vector<std::unique_ptr<framework::OpDesc>>
+CustomGradOpDescMakerFunc(const OpDesc &op_desc,
+                          const std::unordered_set<std::string> &no_grad_set,
+                          paddle::framework::GradToVarMapType *grad_to_var,
+                          const std::vector<BlockDesc *> &grad_block,
+                          void *reserved) {
+  auto grad_op_desc_maker = reinterpret_cast<GradOpDescStrsFN *>(reserved);
+  LOG(INFO) << "Grad_to_var addr of " << op_desc.Type() << " " << grad_to_var;
+  std::vector<std::string> strs =
+      grad_op_desc_maker(op_desc, no_grad_set, grad_to_var, grad_block);
+  std::vector<std::unique_ptr<OpDesc>> ret;
+  for (auto &str : strs) {
+    proto::OpDesc proto_desc;
+    PADDLE_ENFORCE_EQ(proto_desc.ParseFromString(str), true,
+                      "Failed to parse OpDesc from string");
+    ret.emplace_back(new OpDesc(proto_desc, nullptr));
+  }
+  return ret;
+}
+
 void LoadOpLib(const std::string &dso_name) {
   void *handle = paddle::platform::dynload::GetOpDsoHandle(dso_name);
 
   typedef OpInfoMap &get_op_info_t();
-  get_op_info_t *get_op_info =
-      DynLoad<get_op_info_t>(handle, "PD_GetOpInfoMap");
+  auto get_op_info = DynLoad<get_op_info_t>(handle, "PD_GetOpInfoMap");
   auto &op_info = get_op_info();
   auto *dyn_info_map = op_info.mutable_map();
 
-  typedef std::vector<std::string> grad_op_desc_maker_t(
-      const OpDesc &, const std::unordered_set<std::string> &,
-      std::unordered_map<std::string, std::string> *,
-      const std::vector<BlockDesc *> &);
-
-  grad_op_desc_maker_t *grad_op_desc_maker =
-      DynLoad<grad_op_desc_maker_t>(handle, "PD_GetGradOpDescStrs");
+  auto grad_op_desc_maker =
+      DynLoad<GradOpDescStrsFN>(handle, "PD_GetGradOpDescStrs");
 
   auto &info_map = OpInfoMap::Instance();
   for (const auto &n : *(dyn_info_map)) {
@@ -77,11 +96,28 @@ void LoadOpLib(const std::string &dso_name) {
     // https://github.com/protocolbuffers/protobuf/issues/435
     // So, get the serialized binary string from dynamic library,
     // then deserialize to protocol buffer.
+    /*
+    using TargetType = framework::GradOpMakerRawFN;
+    auto &externel_grad_maker = n.second.grad_op_maker_;
+    LOG(INFO) << "Load from externel so " << n.first
+              << externel_grad_maker.target_type().name();
+    LOG(INFO) << "Target is " << reinterpret_cast<void *>(
+                                     *externel_grad_maker.target<TargetType>());
+
+    */
+    static_assert(std::is_pointer<decltype(grad_op_desc_maker)>::value, "abc");
+
+    info.grad_op_maker_.Reset(CustomGradOpDescMakerFunc,
+                              reinterpret_cast<void *>(grad_op_desc_maker));
+    /*
     info.grad_op_maker_ = [grad_op_desc_maker](
         const OpDesc &op_desc,
         const std::unordered_set<std::string> &no_grad_set,
-        std::unordered_map<std::string, std::string> *grad_to_var,
+        paddle::framework::GradToVarMapType *grad_to_var,
+        // std::unordered_map<std::string, std::string> *grad_to_var,
         const std::vector<BlockDesc *> &grad_block) {
+      LOG(INFO) << "Grad_to_var addr of " << op_desc.Type() << " "
+                << grad_to_var;
       std::vector<std::string> strs =
           grad_op_desc_maker(op_desc, no_grad_set, grad_to_var, grad_block);
       std::vector<std::unique_ptr<OpDesc>> ret;
@@ -93,6 +129,10 @@ void LoadOpLib(const std::string &dso_name) {
       }
       return ret;
     };
+    */
+
+    // info.grad_op_maker_ = n.second.grad_op_maker_;
+
     info.proto_ = n.second.proto_;
     info.checker_ = n.second.checker_;
     info.infer_var_type_ = n.second.infer_var_type_;

@@ -35,7 +35,7 @@ class InferShapeBase {
 
 struct OpInfo {
   OpCreator creator_;
-  GradOpMakerFN grad_op_maker_;
+  GradOpMakerFN grad_op_maker_{nullptr};
   proto::OpProto* proto_{nullptr};
   OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;

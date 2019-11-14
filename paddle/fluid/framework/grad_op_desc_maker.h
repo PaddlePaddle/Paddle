@@ -36,115 +36,52 @@ namespace framework {
   gradient varialbe will be ignored or kEmptyVarName depending on the template
   argument DropEmptyIG in the derived classes.
  */
+
 class GradOpDescMakerBase {
  public:
   explicit GradOpDescMakerBase(
       const OpDesc& fwd_op, const std::unordered_set<std::string>& no_grad_set,
-      std::unordered_map<std::string, std::string>* grad_to_var,
-      const std::vector<BlockDesc*>& grad_block = std::vector<BlockDesc*>())
-      : fwd_op_(fwd_op),
-        no_grad_set_(no_grad_set),
-        grad_to_var_(grad_to_var),
-        grad_block_(grad_block) {}
+      GradToVarMapType* grad_to_var,
+      const std::vector<BlockDesc*>& grad_block = std::vector<BlockDesc*>());
 
-  virtual ~GradOpDescMakerBase() = default;
+  virtual ~GradOpDescMakerBase();
   virtual std::vector<std::unique_ptr<OpDesc>> operator()() const = 0;
 
  protected:
   std::vector<std::string> InputGrad(const std::string& name,
-                                     bool drop_empty_grad = true) const {
-    std::vector<std::string> ret_val;
-    auto var_names = this->Input(name);
-    ret_val.reserve(var_names.size());
-    std::transform(var_names.begin(), var_names.end(),
-                   std::back_inserter(ret_val),
-                   [this](const std::string& fwd_var_name) -> std::string {
-                     auto g_name = GradVarName(fwd_var_name);
-                     if (no_grad_set_.empty() || !no_grad_set_.count(g_name)) {
-                       (*this->grad_to_var_)[g_name] = fwd_var_name;
-                       return g_name;
-                     } else {
-                       return kEmptyVarName;
-                     }
-                   });
-    if (!drop_empty_grad) {
-      return ret_val;
-    }
-    PADDLE_ENFORCE_LE(var_names.size(), 1UL,
-                      "BUG from operator developer:"
-                      " for input argument with a list of variables, "
-                      " drop_empty_grad is not allowed because it makes"
-                      " the correspondence bewteen a variable and its gradient"
-                      " ambiguous."
-                      " Op type %s",
-                      fwd_op_.Type());
+                                     bool drop_empty_grad = true) const;
 
-    std::vector<std::string> dropped_ret_val;
-    dropped_ret_val.reserve(ret_val.size());
-    std::copy_if(ret_val.begin(), ret_val.end(),
-                 std::back_inserter(dropped_ret_val),
-                 [](const std::string& str) { return str != kEmptyVarName; });
-    return dropped_ret_val;
-  }
+  std::vector<std::string> OutputGrad(const std::string& name) const;
 
-  std::vector<std::string> OutputGrad(const std::string& name) const {
-    std::vector<std::string> ret_val;
-    auto onames = this->Output(name);
-    ret_val.reserve(onames.size());
-    std::transform(onames.begin(), onames.end(), std::back_inserter(ret_val),
-                   [this](const std::string& fwd_var_name) -> std::string {
-                     auto g_name = GradVarName(fwd_var_name);
-                     (*this->grad_to_var_)[g_name] = fwd_var_name;
-                     return g_name;
-                   });
-    return ret_val;
-  }
+  std::vector<std::string> Empty() const;
 
-  std::vector<std::string> Empty() const { return {}; }
+  std::vector<std::string> InputNames() const;
 
-  std::vector<std::string> InputNames() const {
-    return this->fwd_op_.InputNames();
-  }
+  std::vector<std::string> OutputNames() const;
 
-  std::vector<std::string> OutputNames() const {
-    return this->fwd_op_.OutputNames();
-  }
+  std::vector<std::string> Input(const std::string& name) const;
 
-  std::vector<std::string> Input(const std::string& name) const {
-    return fwd_op_.Input(name);
-  }
+  std::vector<std::string> Output(const std::string& name) const;
 
-  std::vector<std::string> Output(const std::string& name) const {
-    return fwd_op_.Output(name);
-  }
+  const AttributeMap& Attrs() const;
 
-  const std::unordered_map<std::string, Attribute>& Attrs() const {
-    return fwd_op_.GetAttrMap();
-  }
-
-  const Attribute& GetAttr(const std::string& name) const {
-    auto& map = fwd_op_.GetAttrMap();
-    auto it = map.find(name);
-    PADDLE_ENFORCE(it != map.end(), "Cannot find attribute %s", name);
-    return it->second;
-  }
+  const Attribute& GetAttr(const std::string& name) const;
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
     return boost::get<T>(GetAttr(name));
   }
 
-  std::string ForwardOpType() const { return this->fwd_op_.Type(); }
+  std::string ForwardOpType() const;
 
  protected:
-  bool HasInput(const std::string& name) const {
-    return (fwd_op_.Inputs().count(name) > 0);
-  }
+  bool HasInput(const std::string& name) const;
 
  private:
   const OpDesc& fwd_op_;
   const std::unordered_set<std::string>& no_grad_set_;
-  std::unordered_map<std::string, std::string>* grad_to_var_;
+  // std::unordered_map<std::string, std::string>* grad_to_var_;
+  GradToVarMapType* grad_to_var_;
 
  protected:
   std::vector<BlockDesc*> grad_block_;
@@ -247,6 +184,25 @@ class EmptyGradOpMaker<imperative::OpBase> final
     return {};
   }
 };
+
+void* AnyFunc(void*);
+
+OpDesc* NewOpDesc();
+
+imperative::OpBase* NewOpBase();
+
+template <typename T>
+T* CreateOp();
+
+template <>
+inline OpDesc* CreateOp<OpDesc>() {
+  return NewOpDesc();
+}
+
+template <>
+inline imperative::OpBase* CreateOp<imperative::OpBase>() {
+  return NewOpBase();
+}
 
 }  // namespace framework
 }  // namespace paddle
