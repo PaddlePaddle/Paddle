@@ -85,6 +85,33 @@ int GetCUDAComputeCapability(int id) {
   return device_prop.major * 10 + device_prop.minor;
 }
 
+dim3 GetGpuMaxGridDimSize(int id) {
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
+  dim3 ret;
+  int size;
+  auto error_code_x = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimX, id);
+  PADDLE_ENFORCE_EQ(error_code_x, 0,
+                    "cudaDevAttrMaxGridDimX failed in "
+                    "paddle::platform::GpuMaxGridDimSize, error code : %d, %s",
+                    error_code_x, CudaErrorWebsite());
+  ret.x = size;
+
+  auto error_code_y = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimY, id);
+  PADDLE_ENFORCE_EQ(error_code_y, 0,
+                    "cudaDevAttrMaxGridDimY failed in "
+                    "paddle::platform::GpuMaxGridDimSize, error code : %d, %s",
+                    error_code_y, CudaErrorWebsite());
+  ret.y = size;
+
+  auto error_code_z = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimZ, id);
+  PADDLE_ENFORCE_EQ(error_code_z, 0,
+                    "cudaDevAttrMaxGridDimZ failed in "
+                    "paddle::platform::GpuMaxGridDimSize, error code : %d, %s",
+                    error_code_z, CudaErrorWebsite());
+  ret.z = size;
+  return ret;
+}
+
 int GetCUDARuntimeVersion(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   int runtime_version = 0;
