@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include <sstream>
+#include <unordered_set>
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 
@@ -106,7 +107,9 @@ std::set<int> CodeGenerator::DistilInputIds(
   // Use std::set to remove the reptead id and get a ordered list.
   for (size_t i = 0; i < expressions.size(); i++) {
     for (auto id : expressions[i].GetInputIds()) {
-      input_ids.insert(id);
+      if (id >= 0) {
+        input_ids.insert(id);
+      }
     }
   }
   return input_ids;

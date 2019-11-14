@@ -91,7 +91,9 @@ void CheckOutput(const std::vector<OperationExpression>& expressions,
                  const std::vector<int> output_ids_of_subgraph, int i) {
   std::vector<float> var(cpu_tensors.size());
   for (auto id : input_ids_of_subgraph) {
-    var[id] = cpu_tensors[id].data<float>()[i];
+    if (id >= 0) {
+      var[id] = cpu_tensors[id].data<float>()[i];
+    }
   }
 
   for (auto expression : expressions) {
@@ -182,10 +184,8 @@ void TestMainImpl(std::string func_name, std::string code_str,
           gpu_tensors[id].mutable_data<float>(cpu_tensors[id].dims(), place);
       fusion_group::SetupRandomCPUTensor<float>(&cpu_tensors[id]);
       TensorCopySync(cpu_tensors[id], place, &gpu_tensors[id]);
-    } else {
-      gpu_ptrs[id] = nullptr;
+      args.push_back(&gpu_ptrs[id]);
     }
-    args.push_back(&gpu_ptrs[id]);
   }
 
   for (auto id : output_ids) {
@@ -283,7 +283,7 @@ TEST(code_generator, elementwise_grad) {
   // t3 = relu(t2)
   // t2' = relu_grad(t2, t3, t3')
   // t0', t1' = elementwise_mul_grad(t0, t1, t2, t2')
-  fusion_group::OperationExpression exp1("relu_grad", {2, 3, 7}, {6});
+  fusion_group::OperationExpression exp1("relu_grad", {2, -1, 7}, {6});
   fusion_group::OperationExpression exp2("elementwise_mul_grad", {0, 1, 2, 6},
                                          {4, 5});
   std::vector<fusion_group::OperationExpression> expressions = {exp1, exp2};
@@ -300,7 +300,7 @@ TEST(code_generator, elementwise_grad) {
   //  Op(relu_grad), inputs:{2,3,7}, outputs:{6}
   //  Op(elementwise_mul_grad), inputs:{0,1,2,6}, outputs:{4,5}
   int n = cpu_tensors[0].numel();
-  std::vector<int> input_ids = {0, 1, 2, 3, 7};
+  std::vector<int> input_ids = {0, 1, 2, -1, 7};
   std::vector<int> output_ids = {4, 5, 6};
   TestMain("elementwise_grad_kernel_0", expressions, cpu_tensors, n, input_ids,
            output_ids);
