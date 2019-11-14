@@ -13707,7 +13707,8 @@ def masked_select(input, mask):
     """
     This OP selects elements of the input tensor according to the mask tensor.
     The shapes of the mask tensor don't have to match shapes of input tensor, but they must be broadcastable, and the result is a new 1-D tensor.
-    NOTE: The broadcastable concept is consistent with expand_as.
+
+    NOTE: The meaning of broadcastable is consistent with expand_as.
 
     Parameters:
 
@@ -13715,7 +13716,7 @@ def masked_select(input, mask):
         mask(Variable): The boolean mask tensor, the data type should be bool.
 
     Returns:
-        Variable: masked select tensor.
+        Variable: masked select tensor, its data type is same as the input.
 
     Examples:
         .. code-block:: python
