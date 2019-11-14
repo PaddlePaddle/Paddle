@@ -94,6 +94,18 @@ class BlockingQueue {
     std::lock_guard<std::mutex> lock(mutex_);
     return queue_.size();
   }
+ 
+  void Pop_Bulk(std::vector<T>& rc, size_t bulk_size) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    cv_.wait(lock, [=] { return queue_.size() >= bulk_size; });
+    for (int i = 0; i < bulk_size; i++) {
+      T r(std::move(queue_.front()));
+      rc.push_back(r);
+      queue_.pop_front();
+    }
+    cv_.notify_one();
+    return;
+  }
 
  private:
   const size_t capacity_;
@@ -364,7 +376,7 @@ class GeoSgdCommunicator : public Communicator {
   void CopyDenseVars(const std::string& var_name);
   void CopySparseVars(const std::string& var_name,
                       const std::string& splited_var_name,
-                      const std::vector<SparseIdsMap>& ids_send_vec);
+                      const std::vector<std::shared_ptr<SparseIdsMap>>& ids_send_vec);
 
   void SendUpdateDenseVars(const std::string& var_name);
   void SendUpdateSparseVars(const std::string& var_name,
@@ -437,7 +449,7 @@ class GeoSgdCommunicator : public Communicator {
 
   std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>>
       need_push_queue_;
-  std::vector<SparseIdsMap> ids_send_vec_;
+  std::vector<std::shared_ptr<SparseIdsMap>> ids_send_vec_;
 
   std::unordered_map<std::string, std::vector<int64_t>> absolute_section_;
 

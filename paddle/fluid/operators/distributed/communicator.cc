@@ -555,7 +555,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
     } else {
       std::vector<std::vector<int64_t>>& bucket_ids = ids_table->at(sparse_var_tables[i]);
       for (size_t j = 0; j < bucket_ids.size(); j++) {
-        bucket_ids[j].insert(bucket_ids[j].begin(),
+        bucket_ids[j].insert(bucket_ids[j].end(),
                              deduplication_for_ids->at(sparse_var_names[i])[j].begin(),
                              deduplication_for_ids->at(sparse_var_names[i])[j].end());
       }
@@ -581,24 +581,9 @@ void GeoSgdCommunicator::SendThread() {
 
   bool first_loop = true;
 
+  ids_send_vec_.reserve(geo_need_push_nums_);
   while (running_) {
-    size_t wait_times = 0;
-    while (ids_send_vec_.size() < geo_need_push_nums_) {
-      VLOG(4) << "ids_send_vec_ Size: " << ids_send_vec_.size();
-      if (need_push_queue_->Size() > 0) {
-        wait_times = 0;
-        ids_send_vec_.push_back(*(need_push_queue_->Pop()));
-        VLOG(4) << "ids_send_vec_ pushed";
-      } else if (need_push_queue_->Size() == 0) {
-        VLOG(3) << "wait_times -> " << wait_times;
-        if (wait_times >= FLAGS_communicator_send_wait_times) {
-          break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        wait_times++;
-        continue;
-      }
-    }
+    need_push_queue_->Pop_Bulk(ids_send_vec_, geo_need_push_nums_);
 
     if (ids_send_vec_.size() >= geo_need_push_nums_) {
       auto after_run_training = GetCurrentUS();
@@ -690,7 +675,7 @@ void GeoSgdCommunicator::SendThread() {
 
 void GeoSgdCommunicator::CopySparseVars(
     const std::string &var_name, const std::string &splited_var_name,
-    const std::vector<SparseIdsMap> &ids_send_vec) {
+    const std::vector<std::shared_ptr<SparseIdsMap>> &ids_send_vec) {
   auto before_run = GetCurrentUS();
   auto origin_var_name = DeltaVarToVar(var_name);
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
@@ -707,7 +692,8 @@ void GeoSgdCommunicator::CopySparseVars(
   std::vector<float> update_delta;
   std::vector<int64_t> send_rows;
   std::unordered_map<int64_t, bool> id_exist;
-  for (auto ids_map : ids_send_vec) {
+  for (auto ids_map_pointer : ids_send_vec) {
+    auto ids_map = *ids_map_pointer;
     auto ids_vec = ids_map[origin_var_name][splited_var_index];
     for (int y = 0; y < ids_vec.size(); y++) {
       auto ids = ids_vec[y];
