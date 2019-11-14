@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   include(ExternalProject)
   set(LITE_PROJECT extern_lite)
@@ -35,7 +36,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
       ${LITE_PROJECT}
       ${EXTERNAL_PROJECT_LOG_ARGS}
       GIT_REPOSITORY      "https://github.com/Shixiaowei02/Paddle-Lite.git"
-      GIT_TAG             "2a6362da32a2250ec7f7941b2263ad5ccd444241"
+      GIT_TAG             "v2.0.0"
       PREFIX              ${LITE_SOURCES_DIR}
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}

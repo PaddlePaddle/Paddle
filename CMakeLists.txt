@@ -75,6 +75,7 @@ option(WITH_HIGH_LEVEL_API_TEST   "Test fluid python high-level api interface"  
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 option(WITH_DGC   "Use DGC(Deep Gradient Compression) or not" ON)
 option(SANITIZER_TYPE "Choose the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined" OFF)
+option(WITH_LITE   "Compile Paddle Fluid with Lite Engine" OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -153,7 +154,9 @@ include(external/xxhash)    # download xxhash
 include(external/dlpack)
 include(external/warpctc)   # download, build, install warpctc
 
-include(external/lite)
+if (WITH_LITE)
+    include(external/lite)
+endif (WITH_LITE)
 
 if (NOT WIN32)
 # there is no official support of nccl, cupti in windows

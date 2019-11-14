@@ -38,7 +38,9 @@ if (ANAKIN_SUBGRAPH)
     add_subdirectory(anakin)
 endif()
 
-add_subdirectory(lite)
+if (WITH_LITE)
+    add_subdirectory(lite)
+endif()
 
 SET(OP_HEADER_DEPS xxhash)
 if (WITH_GPU)

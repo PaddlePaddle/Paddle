@@ -27,7 +27,7 @@ if (ANAKIN_SUBGRAPH)
   set(INFER_IR_PASSES ${INFER_IR_PASSES} anakin_subgraph_pass CACHE INTERNAL "")
 endif()
 
-if (1) 
+if (WITH_LITE) 
   cc_library(lite_subgraph_pass SRCS lite_subgraph_pass.cc DEPS subgraph_detector lite_op_teller)
 
   set(analysis_deps ${analysis_deps}
