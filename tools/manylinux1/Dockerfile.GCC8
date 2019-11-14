@@ -49,7 +49,7 @@ RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/local/bin/g++
 RUN ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/gcc
 RUN ln -s /usr/local/gcc-8.2/bin/g++ /usr/bin/g++
 ENV PATH=/usr/local/gcc-8.2/bin:$PATH
-RUN cd .. && rm -rf temp_gcc82
+RUN cd .. && rm -rf /usr/bin/temp_gcc82
 
 # Install Python3.6
 RUN mkdir -p /root/python_build/ && wget -q https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz && \
