@@ -88,11 +88,8 @@ function(prepare_qat_int8_model target qat_model_dir qat_int8_save_model_dir)
             ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
                  FLAGS_use_mkldnn=${use_mkldnn}
-            ARGS --qat_model ${model_dir}/model
-                 --infer_data ${data_dir}/data.bin
-                 --batch_size 25
-                 --batch_num 2
-                 --acc_diff_threshold 0.1)
+            ARGS --qat_model_path ${qat_model_dir}/float
+	         --save_model_path ${qat_int8_save_model_dir})
 
 endfunction()
 
@@ -112,7 +109,8 @@ endfunction()
 
 
 function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_dir qat_model_dir qat_int8_save_model_dir data_path)
-	prepare_qat_int8_model(${qat_model_dir} ${qat_int8_save_model_dir})
+	set(SAVE_QAT_INT8_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/qat_save_model.py")
+	prepare_qat_int8_model(${qat_model_dir} ${qat_int8_save_model_dir} ${SAVE_QAT_INT8_MODEL_SCRIPT})
 	inference_analysis_test_run(${TARGET_NAME}
 	COMMAND ${test_binary}
         ARGS --fp32_model=${fp32_model_dir}/model
@@ -324,9 +322,9 @@ if(WITH_MKLDNN)
 
   # ResNet50 FP32 vs. QAT INT8
   set(QAT_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_QAT")
+  set(QAT_INT8_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_QAT_INT8")
   download_qat_data(${QAT_RESNET50_MODEL_DIR} "ResNet50_qat_model.tar.gz" )
-  inference_analysis_api_qat_test_run(test_analyzer_qat_resnet50 ${QAT_IMG_CLASS_TEST_APP} ${QAT_RESNET50_MODEL_DIR} ${INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
-  add_dependencies(test_analyzer_qat_resnet50 save_qat2_int8_resnet50_mkldnn)
+  inference_analysis_api_qat_test_run(test_analyzer_qat_int8_resnet50 ${QAT_IMG_CLASS_TEST_APP} ${INT8_RESNET50_MODEL_DIR} ${QAT_RESNET50_MODEL_DIR} ${QAT_INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
 endif()
 

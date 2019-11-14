@@ -636,6 +636,41 @@ void CompareQuantizedAndAnalysis(
   CompareAccuracy(quantized_outputs, analysis_outputs, compared_idx);
 }
 
+void CompareAnalysisAndAnalysis(
+    const AnalysisConfig *config1, const AnalysisConfig *config2,
+    const std::vector<std::vector<PaddleTensor>> &inputs,
+    const int compared_idx = 1) {
+  PADDLE_ENFORCE_EQ(inputs[0][0].shape[0], FLAGS_batch_size,
+                    "Input data has to be packed batch by batch.");
+  LOG(INFO) << "FP32 & INT8 prediction run: batch_size " << FLAGS_batch_size
+            << ", warmup batch size " << FLAGS_warmup_batch_size << ".";
+
+  LOG(INFO) << "--- FP32 prediction start ---";
+  auto *cfg1 = reinterpret_cast<const PaddlePredictor::Config *>(config1);
+  PrintConfig(cfg1, true);
+  std::vector<std::vector<PaddleTensor>> analysis_outputs;
+  float sample_latency_fp32{-1};
+
+  if (FLAGS_enable_fp32) {
+    TestOneThreadPrediction(cfg1, inputs, &analysis_outputs, true,
+                            VarType::FP32, &sample_latency_fp32);
+  }
+
+  LOG(INFO) << "--- INT8 prediction start ---";
+  auto *cfg2 = reinterpret_cast<const PaddlePredictor::Config *>(config2);
+  PrintConfig(cfg2, true);
+  std::vector<std::vector<PaddleTensor>> int8_outputs;
+  float sample_latency_int8{-1};
+
+  if (FLAGS_enable_int8) {
+    TestOneThreadPrediction(cfg2, inputs, &int8_outputs, true, VarType::INT8,
+                            &sample_latency_int8);
+  }
+  SummarizePerformance(sample_latency_fp32, sample_latency_int8);
+
+  CompareAccuracy(int8_outputs, analysis_outputs, compared_idx);
+}
+
 void CompareNativeAndAnalysis(
     PaddlePredictor *native_pred, PaddlePredictor *analysis_pred,
     const std::vector<std::vector<PaddleTensor>> &inputs) {

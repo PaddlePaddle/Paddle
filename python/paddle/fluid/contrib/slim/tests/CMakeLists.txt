@@ -46,12 +46,14 @@ function(inference_qat2_int8_test target model_dir data_dir test_script use_mkld
 endfunction()
 
 function(save_qat2_int8_model target qat_model_dir qat_int8_save_model_dir test_script)
-    py_test(${target} SRCS ${test_script}
-            ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-                 OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-                 FLAGS_use_mkldnn=true
-            ARGS --qat2_model ${qat_model_dir}/float
-	         --save_int8_model_dir ${qat_int8_save_model_dir})
+	add_custom_target(${target} ALL
+		COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+		FLAGS_cpu_deterministic=true PYTHONPATH=${PADDLE_BINARY_DIR}/python
+		${PYTHON_EXECUTABLE} -u ${test_script}
+		 --qat_model_path ${qat_model_dir}/model
+	         --save_model_path ${qat_int8_save_model_dir}
+	 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+	 add_dependencies(${target} paddle_python)
 endfunction()
 
 
@@ -174,8 +176,8 @@ if(LINUX AND WITH_MKLDNN)
         inference_qat2_int8_test(test_qat2_int8_resnet50_mkldnn ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
 
 	set(QAT_INT8_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_QAT_INT8")
-	set(SAVE_QAT_INT8_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/save_qat_int8_model.py")
-	save_qat2_int8_model(save_qat2_int8_resnet50_mkldnn ${QAT_RESNET50_MODEL_DIR} ${QAT_INT8_RESNET50_MODEL_DIR} $SAVE_QAT_INT8_MODEL_SCRIPT true)
+	set(SAVE_QAT_INT8_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/qat_save_model.py")
+	save_qat2_int8_model(save_qat2_int8_resnet50_mkldnn ${QAT_RESNET50_MODEL_DIR} ${QAT_INT8_RESNET50_MODEL_DIR} ${SAVE_QAT_INT8_MODEL_SCRIPT} true)
 
 
 

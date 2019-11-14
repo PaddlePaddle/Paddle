@@ -48,8 +48,9 @@ def save_transformed_model(args):
     inference_scope = fluid.executor.global_scope()
     with fluid.scope_guard(inference_scope):
         if os.path.exists(os.path.join(args.qat_model_path, '__model__')):
-            [inference_program, feed_target_names, fetch_targets
-             ] = fluid.io.load_inference_model(args.qat_model_path, exe)
+            [inference_program, feed_target_names,
+             fetch_targets] = fluid.io.load_inference_model(args.qat_model_path,
+                                                            exe)
         else:
             [inference_program, feed_target_names,
              fetch_targets] = fluid.io.load_inference_model(
