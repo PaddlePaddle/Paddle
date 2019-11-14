@@ -12985,8 +12985,8 @@ def expand(x, expand_times, name=None):
     """
     if not isinstance(x, Variable):
         raise TypeError(
-            "The type of 'input' in reduce_sum must be Variable, but received %s"
-            % (type(x)))
+            "The type of 'input' in expand must be Variable, but received %s" %
+            (type(x)))
     if not isinstance(expand_times, (list, tuple, Variable)):
         raise ValueError(
             "Input expand_times must be an Variable, python list or tuple.")
