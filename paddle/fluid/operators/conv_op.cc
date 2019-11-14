@@ -150,7 +150,10 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
       platform::CanMKLDNNBeUsed(ctx)) {
     // TODO(jczaja): Add support for NHWC
     const std::string data_format = ctx.Attr<std::string>("data_format");
-    PADDLE_ENFORCE_NE(data_format,"NHWC","Conv MKLDNN does not support NHWC data format yet"); 
+    PADDLE_ENFORCE_NE(data_format, "NHWC",
+                      "Conv MKLDNN does not support NHWC data format yet");
+    PADDLE_ENFORCE_NE(data_format, "NDHWC",
+                      "Conv MKLDNN does not support NDHWC data format yet");
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
     customized_type_value =
@@ -526,7 +529,11 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
       platform::CanMKLDNNBeUsed(ctx)) {
     // TODO(jczaja): Add support for NHWC
     const std::string data_format = ctx.Attr<std::string>("data_format");
-    PADDLE_ENFORCE_NE(data_format,"NHWC","Conv MKLDNN grad does not support NHWC data format yet"); 
+    PADDLE_ENFORCE_NE(data_format, "NHWC",
+                      "Conv MKLDNN grad does not support NHWC data format yet");
+    PADDLE_ENFORCE_NE(
+        data_format, "NDHWC",
+        "Conv MKLDNN Grad does not support NDHWC data format yet");
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
     customized_type_value = kConvMKLDNNFP32;
@@ -705,6 +712,14 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
+    // TODO(jczaja): Add support for NHWC and NDHWC
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_NE(
+        data_format, "NHWC",
+        "Conv MKLDNN Double Grad does not support NHWC data format yet");
+    PADDLE_ENFORCE_NE(
+        data_format, "NDHWC",
+        "Conv MKLDNN Double Grad does not support NDHWC data format yet");
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
     customized_type_value = kConvMKLDNNFP32;
