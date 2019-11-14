@@ -2197,6 +2197,14 @@ class TestBook(LayerTest):
             return (out)
             return (out_1)
 
+    def make_celu(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = self._get_data(
+                name="input", shape=[3, 4, 5, 6], dtype="float32")
+            out = layers.celu(input, alpha=0.2)
+            return (out)
+
     def make_prelu(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):

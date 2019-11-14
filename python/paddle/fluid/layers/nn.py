@@ -103,6 +103,7 @@ __all__ = [
     'random_crop',
     'mean_iou',
     'relu',
+    'celu',
     'selu',
     'log',
     'crop',
@@ -7616,6 +7617,45 @@ def relu(x, name=None):
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="relu", inputs={"X": helper.input('x')}, outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def celu(x, alpha=1.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        alpha(${alpha_type}|1.0): ${alpha_comment}
+        name(str|None): The default value is None. Normally there is no need for user to set this property. 
+                        For more information, please refer to :ref:`api_guide_Name`.
+    Returns:
+        ${out_type}: ${out_comment}
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+         
+            input_celu = np.array([[-1,6],[1,15.6]])
+            with fluid.dygraph.guard():
+                x = fluid.dygraph.to_variable(input_elu)
+                y = fluid.layers.celu(x, alpha=0.2)
+                print(y.numpy())
+                # [[-0.12642411  6.        ]
+                # [ 1.          15.6       ]]
+    """
+    helper = LayerHelper('celu', **locals())
+    check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
+                         'celu')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='celu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'alpha': alpha})
     return out
 
 

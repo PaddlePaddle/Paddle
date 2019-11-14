@@ -549,6 +549,36 @@ class TestELUOpError(OpTest):
             self.assertRaises(TypeError, fluid.layers.elu, x2)
 
 
+class TestCELU(TestActivation):
+    def setUp(self):
+        self.op_type = "celu"
+        self.init_dtype()
+
+        x = np.random.uniform(-3, 3, [4, 4]).astype(self.dtype)
+        alpha = 1.
+        out = np.maximum(0, x) + np.minimum(0, alpha * (np.exp(x / alpha) - 1))
+        self.inputs = {'X': x}
+        self.attrs = {'alpha': alpha}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+
+
+class TestCELUOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of celu_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.celu, x1)
+            # The input dtype of celu_op must be float16 float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.celu, x2)
+
+
 class TestReciprocal(TestActivation):
     def setUp(self):
         self.op_type = "reciprocal"

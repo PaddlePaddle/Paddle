@@ -1137,34 +1137,6 @@ struct CELUGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
-template <typename T>
-struct SELUFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    float alpha = 1.67326;
-    float scale = 1.05070;
-    out.device(d) =
-        scale *
-        (x.cwiseMax(static_cast<T>(0)) +
-         (alpha * (x.exp() - static_cast<T>(1))).cwiseMin(static_cast<T>(0)));
-  }
-};
-
-template <typename T>
-struct SELUGradFunctor : public BaseActivationFunctor<T> {
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    float alpha = 1.67326;
-    float scale = 1.05070;
-    dx.device(d) = scale * (dout * (x > static_cast<T>(0)).template cast<T>() +
-                            dout * alpha * x.exp() *
-                                (x < static_cast<T>(0)).template cast<T>());
-  }
-
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
-};
-
 // FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5198
 template <typename T>
 struct PowFunctor : public BaseActivationFunctor<T> {
