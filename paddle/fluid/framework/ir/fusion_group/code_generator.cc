@@ -155,26 +155,29 @@ std::string CodeGenerator::EmitComputeBody(
     const std::vector<OperationExpression>& expressions,
     const std::set<int>& input_ids, const std::set<int>& output_ids,
     std::string dtype) {
-  std::stringstream ret;
+  std::ostringstream compute;
+  std::unordered_set<int> used;
+  for (size_t i = 0; i < expressions.size(); i++) {
+    VLOG(3) << DebugString(expressions[i]);
+    compute << expressions[i].GetExpression(dtype, &used);
+  }
 
   // Load input to temporal variables.
+  std::ostringstream load;
   for (auto id : input_ids) {
-    if (output_ids.find(id) == output_ids.end()) {
-      ret << dtype << " " << TmpName(id) << " = " << ArgName(id) << "[idx];";
+    if (output_ids.find(id) == output_ids.end() &&
+        used.find(id) != used.end()) {
+      load << dtype << " " << TmpName(id) << " = " << ArgName(id) << "[idx];";
     }
   }
 
-  for (size_t i = 0; i < expressions.size(); i++) {
-    VLOG(3) << DebugString(expressions[i]);
-    ret << expressions[i].GetExpression(dtype);
-  }
-
   // Store temporal variables to memory.
+  std::ostringstream store;
   for (auto id : output_ids) {
-    ret << ArgName(id) << "[idx] = " << TmpName(id) << ";";
+    store << ArgName(id) << "[idx] = " << TmpName(id) << ";";
   }
 
-  return ret.str();
+  return load.str() + compute.str() + store.str();
 }
 
 std::unordered_map<std::string, int> CodeGenerator::EncodeVarNodes(

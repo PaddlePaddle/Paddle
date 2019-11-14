@@ -176,20 +176,22 @@ void TestMainImpl(std::string func_name, std::string code_str,
   std::vector<void*> args;
   args.push_back(&n);
 
-  for (size_t i = 0; i < input_ids.size(); ++i) {
-    gpu_ptrs[input_ids[i]] = gpu_tensors[input_ids[i]].mutable_data<float>(
-        cpu_tensors[input_ids[i]].dims(), place);
-    args.push_back(&gpu_ptrs[input_ids[i]]);
-
-    fusion_group::SetupRandomCPUTensor<float>(&cpu_tensors[input_ids[i]]);
-    TensorCopySync(cpu_tensors[input_ids[i]], place,
-                   &gpu_tensors[input_ids[i]]);
+  for (auto id : input_ids) {
+    if (id >= 0) {
+      gpu_ptrs[id] =
+          gpu_tensors[id].mutable_data<float>(cpu_tensors[id].dims(), place);
+      fusion_group::SetupRandomCPUTensor<float>(&cpu_tensors[id]);
+      TensorCopySync(cpu_tensors[id], place, &gpu_tensors[id]);
+    } else {
+      gpu_ptrs[id] = nullptr;
+    }
+    args.push_back(&gpu_ptrs[id]);
   }
 
-  for (size_t i = 0; i < output_ids.size(); ++i) {
-    gpu_ptrs[output_ids[i]] = gpu_tensors[output_ids[i]].mutable_data<float>(
-        cpu_tensors[output_ids[i]].dims(), place);
-    args.push_back(&gpu_ptrs[output_ids[i]]);
+  for (auto id : output_ids) {
+    gpu_ptrs[id] =
+        gpu_tensors[id].mutable_data<float>(cpu_tensors[id].dims(), place);
+    args.push_back(&gpu_ptrs[id]);
   }
 
   device_code.SetNumThreads(1024);
@@ -200,9 +202,9 @@ void TestMainImpl(std::string func_name, std::string code_str,
       paddle::platform::DeviceContextPool::Instance().Get(place));
   dev_ctx->Wait();
 
-  for (size_t i = 0; i < output_ids.size(); ++i) {
-    TensorCopySync(gpu_tensors[output_ids[i]], paddle::platform::CPUPlace(),
-                   &cpu_tensors[output_ids[i]]);
+  for (auto id : output_ids) {
+    TensorCopySync(gpu_tensors[id], paddle::platform::CPUPlace(),
+                   &cpu_tensors[id]);
   }
 }
 

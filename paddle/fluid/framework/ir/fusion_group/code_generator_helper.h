@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
-#include <set>
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/platform/enforce.h"
@@ -47,11 +47,12 @@ class OperationExpression {
   // Check whether this operation type is supported in OperationMap.
   bool IsSupport() const;
 
-  std::string GetExpression(std::string dtype) const;
+  std::string GetExpression(std::string dtype,
+                            std::unordered_set<int>* used) const;
 
  private:
   // TODO(wangchao): make offset more flexible we add stride and basic offset
-  std::string GetRHS(size_t i = 0) const;
+  std::string GetRHS(std::unordered_set<int>* used, size_t i = 0) const;
   std::string GetLHS(size_t i = 0) const;
 
  private:
