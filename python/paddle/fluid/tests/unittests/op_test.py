@@ -1047,7 +1047,6 @@ class OpTest(unittest.TestCase):
                    check_dygraph=True):
         places = self._get_places()
         for place in places:
-            #check_dygraph = False  ##delete
             self.check_grad_with_place(place, inputs_to_check, output_names,
                                        no_grad_set, numeric_grad_delta,
                                        in_place, max_relative_error,
@@ -1206,8 +1205,7 @@ class OpTest(unittest.TestCase):
 
             fetch_list_grad = []
             for inputs_to_check_name in inputs_to_check:
-                a = np.array((inputs_grad_dict[inputs_to_check_name]
-                              ._ivar._grad_ivar().value().get_tensor()))
+                a = inputs_grad_dict[inputs_to_check_name].gradient()
                 fetch_list_grad.append(a)
             return fetch_list_grad
 
