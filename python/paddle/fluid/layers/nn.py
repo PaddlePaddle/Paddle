@@ -34,7 +34,7 @@ from .. import unique_name
 from functools import reduce
 from .. import core
 from ..dygraph import layers
-from ..data_feeder import convert_dtype
+from ..data_feeder import convert_dtype, check_type_and_dtype, check_type, check_dtype
 
 __all__ = [
     'fc',
@@ -301,26 +301,12 @@ def fc(input,
           fc = fluid.layers.fc(input=[data_1, data_2], size=1000, act="tanh")
     """
     helper = LayerHelper("fc", **locals())
+    check_type(input, 'input', (list, tuple, Variable), 'fc')
     if isinstance(input, (list, tuple)):
         for i, input_x in enumerate(input):
-            if not isinstance(input_x, Variable):
-                raise TypeError(
-                    "The type of input[%d] in fc must be Variable, but received %s"
-                    % (i, type(input_x)))
-    else:
-        if not isinstance(input, Variable):
-            raise TypeError(
-                "The type of 'input' in fc must be Variable, but received %s" %
-                (type(input)))
+            check_type(input_x, 'input[' + str(i) + ']', Variable, 'fc')
     dtype = helper.input_dtype()
-    if convert_dtype(dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'input' in fc only support float16 in GPU now.")
-    if convert_dtype(dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'input' in fc must be float16, float32 or float64, but received %s."
-            % (convert_dtype(dtype)))
-
+    check_dtype(dtype, 'input', ['float16', 'float32', 'float64'], 'fc')
     mul_results = []
     for input_var, param_attr in helper.iter_inputs_and_params():
         input_shape = input_var.shape
@@ -470,21 +456,10 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
-    if not isinstance(input, Variable):
-        raise TypeError(
-            "The type of 'input' in layers.embedding must be Variable, but received %s"
-            % (type(input)))
-    if convert_dtype(input.dtype) not in ['int64']:
-        raise TypeError(
-            "The data type of 'input' in layers.embedding must be int64, but received %s."
-            % (convert_dtype(input.dtype)))
-    if convert_dtype(dtype) in ['float16']:
-        warnings.warn(
-            "The 'dtype' of layers.embedding only support float16 in GPU now.")
-    if convert_dtype(dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The 'dtype' of layers.embedding must be float16, float32 or float64, but received %s."
-            % (convert_dtype(dtype)))
+    check_type_and_dtype(input, 'input', Variable, ['int64'],
+                         'fluid.layers.embedding')
+    check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
+                'fluid.layers.embedding')
     remote_prefetch = is_sparse and (not is_distributed)
     if remote_prefetch:
         assert is_sparse is True and is_distributed is False
@@ -830,20 +805,8 @@ def dropout(x,
     """
 
     helper = LayerHelper('dropout', **locals())
-
-    if not isinstance(x, Variable):
-        raise TypeError(
-            "The type of 'input' in dropout must be Variable, but received %s" %
-            (type(x)))
-    if convert_dtype(x.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'input' in dropout only support float16 on GPU now."
-        )
-    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'input' in dropout must be float16 or float32 or float64, but received %s."
-            % (convert_dtype(x.dtype)))
-
+    check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
+                         'dropout')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     mask = helper.create_variable_for_type_inference(
         dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
@@ -1125,18 +1088,8 @@ def softmax(input, use_cudnn=False, name=None, axis=-1):
             print(output)
     """
     helper = LayerHelper('softmax', **locals())
-    if not isinstance(input, Variable):
-        raise TypeError(
-            "The type of 'input' in softmax must be Variable, but received %s" %
-            (type(input)))
-    if convert_dtype(input.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'input' in softmax only support float16 in GPU now."
-        )
-    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'input' in softmax must be float16, float32 or float64, but received %s."
-            % (convert_dtype(input.dtype)))
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float16', 'float32', 'float64'], 'softmax')
 
     dtype = helper.input_dtype()
     softmax_out = helper.create_variable_for_type_inference(dtype)
@@ -1278,19 +1231,8 @@ def conv2d(input,
           conv2d = fluid.layers.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
     """
 
-    if not isinstance(input, Variable):
-        raise TypeError(
-            "The type of 'input' in conv2d must be Variable, but received %s" %
-            (type(input)))
-    if convert_dtype(input.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'input' in conv2d only support float16 on GPU now."
-        )
-    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'input' in conv2d must be float16 or float32 or float64, but received %s."
-            % (convert_dtype(input.dtype)))
-
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float16', 'float32', 'float64'], 'conv2d')
     num_channels = input.shape[1]
     if not isinstance(use_cudnn, bool):
         raise ValueError("Attr(use_cudnn) should be True or False. Received "
@@ -2518,19 +2460,8 @@ def batch_norm(input,
     assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('batch_norm', **locals())
 
-    if not isinstance(input, Variable):
-        raise TypeError(
-            "The type of 'input' in batch_norm must be Variable, but received %s"
-            % (type(input)))
-    if convert_dtype(input.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'input' in batch_norm only support float16 on GPU now."
-        )
-    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'input' in batch_norm must be float16 or float32 or float64, but received %s."
-            % (convert_dtype(input.dtype)))
-
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float16', 'float32', 'float64'], 'batch_norm')
     dtype = helper.input_dtype()
     # use fp32 for bn parameter
     if dtype == core.VarDesc.VarType.FP16:
@@ -3786,15 +3717,8 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
 
     """
     helper = LayerHelper('reduce_sum', **locals())
-    if not isinstance(input, Variable):
-        raise TypeError(
-            "The type of 'input' in reduce_sum must be Variable, but received %s"
-            % (type(input)))
-    if convert_dtype(
-            input.dtype) not in ['float32', 'float64', 'int32', 'int64']:
-        raise TypeError(
-            "The data type of 'input' in reduce_sum  must be float32 or float64 or int32 or int64, but received %s."
-            % (convert_dtype(input.dtype)))
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float32', 'float64', 'int32', 'int64'], 'reduce_sum')
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
@@ -3860,15 +3784,9 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
             fluid.layers.reduce_mean(y, dim=[0, 1]) # [4.0, 5.0]
     """
     helper = LayerHelper('reduce_mean', **locals())
-    if not isinstance(input, Variable):
-        raise TypeError(
-            "The type of 'input' in reduce_mean must be Variable, but received %s"
-            % (type(input)))
-    if convert_dtype(
-            input.dtype) not in ['float32', 'float64', 'int32', 'int64']:
-        raise TypeError(
-            "The data type of 'input' in reduce_mean  must be float32 or float64 or int32 or int64, but received %s."
-            % (convert_dtype(input.dtype)))
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float32', 'float64', 'int32', 'int64'],
+                         'reduce_mean')
     out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     if dim is not None and not isinstance(dim, list):
         dim = [dim]
@@ -4463,20 +4381,8 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
         for name, val in var_names.items():
-            if not isinstance(val, Variable):
-                raise TypeError(
-                    "The type of %s in matmul must be Variable, but received %s.\n"
-                    % (name, (type(val))))
-            if convert_dtype(val.dtype) in ['float16']:
-                warnings.warn(
-                    "The data type of %s in matmul only support float16 in GPU now."
-                    % name)
-            if convert_dtype(
-                    val.dtype) not in ['float16', 'float32', 'float64']:
-                raise TypeError(
-                    "The data type of %s in matmul must be float16 or float32 or float64, but received %s.\n"
-                    % (name, (convert_dtype(val.dtype))))
-
+            check_type_and_dtype(val, name, Variable,
+                                 ['float16', 'float32', 'float64'], 'matmul')
         x_shape = list(x.shape)
         y_shape = list(y.shape)
         if len(x_shape) == 1:
@@ -4964,20 +4870,10 @@ def transpose(x, perm, name=None):
             #(3L, 2L, 4L)
 
     """
-    if not isinstance(x, Variable):
-        raise TypeError(
-            "The type of Input(x) in transpose must be Variable, but received %s"
-            % (type(x)))
-    if convert_dtype(x.dtype) not in [
-            "float16", "float32", "float64", "int32", "int64"
-    ]:
-        raise TypeError(
-            "The data type of Input(x) in transpose must be one of [float16, float32, float64, int32, int64], but received %s."
-            % (convert_dtype(x.dtype)))
-    if not isinstance(perm, list):
-        raise TypeError(
-            "The type of Input(perm) in transpose must be list, but received %s"
-            % (type(perm)))
+    check_type_and_dtype(x, 'x', Variable,
+                         ['float16', 'float32', 'float64', 'int32', 'int64'],
+                         'transpose')
+    check_type(perm, 'perm', list, 'transpose')
     if len(perm) != len(x.shape):
         raise ValueError(
             "Input(perm) is the permutation of dimensions of Input(x), "
@@ -5569,32 +5465,11 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             reshaped_2 = fluid.layers.reshape(data_2, shape=[dim, 10])
             # the shape of reshaped_2 is [5,10].
     """
-    if not isinstance(x, Variable):
-        raise TypeError(
-            "The type of 'x' in reshape must be Variable, but received %s." %
-            (type(x)))
-
-    if convert_dtype(x.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'x' in reshape only support float16 in GPU now.")
-
-    if convert_dtype(x.dtype) not in [
-            'float16', 'float32', 'float64', 'int32', 'int64'
-    ]:
-        raise TypeError(
-            "The data type of 'x' in reshape must be float16, float32, float64, int32 or int64, "
-            "but received %s." % (convert_dtype(x.dtype)))
-
-    if not isinstance(shape, (list, tuple, Variable)):
-        raise TypeError(
-            "The type of 'shape' in reshape must be Variable, list or tuple, but "
-            "received %s." % (type(shape)))
-
-    if not isinstance(actual_shape, Variable) and (actual_shape is not None):
-        raise TypeError(
-            "The type of 'actual_shape' in reshape must be Variable "
-            "or None, but received %s." % (type(actual_shape)))
-
+    check_type_and_dtype(x, 'x', Variable,
+                         ['float16', 'float32', 'float64', 'int32', 'int64'],
+                         'reshape')
+    check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
+    check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
     helper = LayerHelper("reshape2", **locals())
     inputs = {"X": x}
     attrs = {}
@@ -5730,23 +5605,10 @@ def squeeze(input, axes, name=None):
 
     """
     helper = LayerHelper("squeeze", **locals())
-
-    if not isinstance(input, Variable):
-        raise TypeError(
-            "The type of 'input' in squeeze must be Variable, but received %s" %
-            (type(input)))
-
-    if convert_dtype(input.dtype
-                     ) not in ['float32', 'float64', 'int8', 'int32', 'int64']:
-        raise TypeError(
-            "The data type of 'input' in squeeze must be float32, float64, int8, int32,"
-            "int64, but received %s." % (convert_dtype(input.dtype)))
-
-    if not isinstance(axes, list):
-        raise TypeError(
-            "The type of 'axes' in squeeze must be list, but received %s" %
-            (type(axes)))
-
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float32', 'float64', 'int8', 'int32', 'int64'],
+                         'squeeze')
+    check_type(axes, 'axes', list, 'squeeze')
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
@@ -8228,26 +8090,15 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
 
     """
     helper = LayerHelper('crop_tensor', **locals())
-
-    if convert_dtype(x.dtype) not in ['float32', 'float64', 'int32', 'int64']:
-        raise TypeError(
-            "Input(x)'s dtype of Op(crop_tensor) must be float32, float64, int32 or int64, "
-            "but received %s." % (convert_dtype(x.dtype)))
-
-    if not (isinstance(shape, list) or isinstance(shape, tuple) or \
-            isinstance(shape, Variable)):
-        raise TypeError(
-            "Attr(shape) of Op(crop_tensor) should be a list, tuple or Variable."
-        )
+    check_type_and_dtype(x, 'x', Variable,
+                         ['float32', 'float64', 'int32', 'int64'],
+                         'crop_tensor')
+    check_type(shape, 'shape', (list, tuple, Variable), 'crop_tensor')
+    check_type(offsets, 'offsets', (list, tuple, Variable, type(None)),
+               'crop_tensor')
 
     if offsets is None:
         offsets = [0] * len(x.shape)
-
-    if not (isinstance(offsets, list) or isinstance(offsets, tuple) or \
-            isinstance(offsets, Variable)):
-        raise TypeError(
-            "Attr(offsets) of Op(crop_tensor) should be a list, tuple or Variable."
-        )
 
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x}
@@ -8537,17 +8388,8 @@ def elu(x, alpha=1.0, name=None):
                 # [ 1.          15.6       ]]
     """
     helper = LayerHelper('elu', **locals())
-    if not isinstance(x, Variable):
-        raise TypeError(
-            "The type of 'x' in elu must be Variable, but received %s" %
-            (type(x)))
-    if convert_dtype(x.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'x' in elu only support float16 in GPU now.")
-    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'x' in elu must be float16 (only support on GPU), float32 or float64, but received %s."
-            % (convert_dtype(x.dtype)))
+    check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
+                         'elu')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='elu',
@@ -9344,18 +9186,10 @@ def expand(x, expand_times, name=None):
             expanded_2 = fluid.layers.expand(data_2, expand_times=expand_times)
             # the shape of expanded_2 is [48, 56].
     """
-    if not isinstance(x, Variable):
-        raise TypeError(
-            "The type of 'input' in reduce_sum must be Variable, but received %s"
-            % (type(x)))
-    if not isinstance(expand_times, (list, tuple, Variable)):
-        raise ValueError(
-            "Input expand_times must be an Variable, python list or tuple.")
-    if convert_dtype(
-            x.dtype) not in ['bool', 'float32', 'float64', 'int32', 'int64']:
-        raise TypeError(
-            "The data type of input  in expand  must be one of bool float32, float64, int32 or int64, but received %s."
-            % (convert_dtype(x.dtype)))
+    check_type_and_dtype(x, 'x', Variable,
+                         ['bool', 'float32', 'float64', 'int32', 'int64'],
+                         'expand')
+    check_type(expand_times, 'expand_times', (list, tuple, Variable), 'expand')
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == True:
         raise ValueError(
             "expand op bool date type must set the stop_gradient to be False")
@@ -10289,34 +10123,12 @@ def _elementwise_op(helper):
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
     assert y is not None, 'y cannot be None in {}'.format(op_type)
-    if not isinstance(x, Variable):
-        raise TypeError(
-            "The type of 'x' in %s must be Variable, but received %s" %
-            (op_type, type(x)))
-    if not isinstance(y, Variable):
-        raise TypeError(
-            "The type of 'y' in %s must be Variable, but received %s" %
-            (op_type, type(y)))
-    if convert_dtype(x.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'x' in %s only support float16 on GPU now." %
-            (op_type))
-    if convert_dtype(y.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'y' in %s only support float16 on GPU now." %
-            (op_type))
-    if convert_dtype(x.dtype) not in [
-            'float16', 'float32', 'float64', 'int32', 'int64'
-    ]:
-        raise TypeError(
-            "The data type of 'x' in %s must be float16 or float32 or float64 or int32 or int64, "
-            "but received %s." % (op_type, convert_dtype(x.dtype)))
-    if convert_dtype(y.dtype) not in [
-            'float16', 'float32', 'float64', 'int32', 'int64'
-    ]:
-        raise TypeError(
-            "The data type of 'y' in %s must be float16 or float32 or float64 or int32 or int64, "
-            "but received %s." % (op_type, convert_dtype(y.dtype)))
+    check_type_and_dtype(x, 'x', Variable,
+                         ['float16', 'float32', 'float64', 'int32', 'int64'],
+                         op_type)
+    check_type_and_dtype(y, 'y', Variable,
+                         ['float16', 'float32', 'float64', 'int32', 'int64'],
+                         op_type)
 
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
@@ -11308,21 +11120,8 @@ def mean(x, name=None):
     """
 
     helper = LayerHelper("mean", **locals())
-
-    if not isinstance(x, Variable):
-        raise TypeError(
-            "The type of 'x' in mean must be Variable, but received %s.\n" %
-            (type(x)))
-
-    if convert_dtype(x.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'x' in mean only support float16 in GPU now.")
-
-    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'x' in mean must be float16 or float32 or float64, but received %s.\n"
-            % (convert_dtype(x.dtype)))
-
+    check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
+                         'mean')
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
@@ -11403,30 +11202,10 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
     """
 
     helper = LayerHelper("mul", **locals())
-
-    if not isinstance(x, Variable):
-        raise TypeError(
-            "The type of 'x' in mul must be Variable, but received %s" %
-            (type(x)))
-    if not isinstance(y, Variable):
-        raise TypeError(
-            "The type of 'y' in mul must be Variable, but received %s" %
-            (type(y)))
-    if convert_dtype(x.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'x' in mul only support float16 in GPU now.")
-    if convert_dtype(y.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'y' in mul only support float16 in GPU now.")
-    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'x' in mul must be float16, float32 or float64, but received %s."
-            % (convert_dtype(x.dtype)))
-    if convert_dtype(y.dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'y' in mul must be float16, float32 or float64, but received %s."
-            % (convert_dtype(y.dtype)))
-
+    check_type_and_dtype(x, 'x', Variable, ['float16', 'float32', 'float64'],
+                         'mul')
+    check_type_and_dtype(y, 'y', Variable, ['float16', 'float32', 'float64'],
+                         'mul')
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
     else:
@@ -12884,23 +12663,10 @@ def sign(x):
     """
 
     helper = LayerHelper("sign", **locals())
-
-    if not isinstance(x, Variable):
-        if isinstance(x, np.ndarray):
-            x = assign(x)
-        else:
-            raise TypeError(
-                "The type of 'x' in sign_op must be Variable or numpy.ndarray, but received %s."
-                % (type(x)))
-
-    if convert_dtype(x.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'x' in sign_op only support float16 in GPU now.")
-    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'x' in sign_op must be float16, float32 or float64, but received %s."
-            % (convert_dtype(x.dtype)))
-
+    check_type(x, 'x', (Variable, np.ndarray), 'sign')
+    if isinstance(x, np.ndarray):
+        x = assign(x)
+    check_dtype(x.dtype, 'x', ['float16', 'float32', 'float64'], 'sign')
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
     helper.append_op(type='sign', inputs={'X': [x]}, outputs={'Out': [out]})
@@ -13771,18 +13537,10 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
 
 
     """
-    if not (isinstance(shape, (list, tuple, Variable))):
-        raise TypeError(
-            "Input shape must be a python list,Variable or tuple. But received %s"
-            % (type(shape)))
-
+    check_type(shape, 'shape', (list, tuple, Variable), 'uniform_random')
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-
-    if convert_dtype(dtype) not in ['float32', 'float64']:
-        raise TypeError(
-            "The attribute dtype in uniform_random op must be float32 or float64, but received %s."
-            % (convert_dtype(dtype)))
+    check_dtype(dtype, 'dtype', ['float32', 'float64'], 'uniform_random')
 
     def contain_var(one_list):
         for ele in one_list:
