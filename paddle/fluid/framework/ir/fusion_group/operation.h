@@ -76,7 +76,8 @@ class OperationMap {
   Operation& Get(std::string op_type) {
     auto iter = operations_.find(op_type);
     PADDLE_ENFORCE_NE(iter, operations_.end(),
-                      "Operation %s is not supported yet.", op_type);
+                      platform::errors::Unimplemented(
+                          "Operation %s is not supported yet.", op_type));
     return iter->second;
   }
 
