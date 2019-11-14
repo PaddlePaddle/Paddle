@@ -24,6 +24,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid import Conv2D, Pool2D, BatchNorm, FC
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper
 
 batch_size = 8
 train_parameters = {
@@ -86,7 +87,8 @@ class ConvBNLayer(fluid.Layer):
             padding=(filter_size - 1) // 2,
             groups=groups,
             act=None,
-            bias_attr=None)
+            bias_attr=None,
+            use_cudnn=False)
 
         self._batch_norm = BatchNorm(self.full_name(), num_filters, act=act)
 
@@ -248,6 +250,8 @@ class TestDygraphResnet(unittest.TestCase):
             for param in resnet.parameters():
                 dy_param_init_value[param.name] = param.numpy()
 
+            helper = DyGraphProgramDescTracerTestHelper(resnet, self)
+
             for batch_id, data in enumerate(batch_py_reader()):
                 if batch_id >= batch_num:
                     break
@@ -256,7 +260,14 @@ class TestDygraphResnet(unittest.TestCase):
                 label = data[1]
                 label.stop_gradient = True
 
-                out = resnet(img)
+                if batch_id % 5 == 0:
+                    out, out_static = helper.run(img,
+                                                 feed_names=['image'],
+                                                 fetch_names=['logits'])
+                    helper.assertEachVar(out, out_static)
+                else:
+                    out = resnet(img)
+
                 loss = fluid.layers.cross_entropy(input=out, label=label)
                 avg_loss = fluid.layers.mean(x=loss)
 
@@ -357,6 +368,8 @@ class TestDygraphResnet(unittest.TestCase):
                     static_grad_value[static_grad_name_list[
                         i - grad_start_pos]] = out[i]
 
+        print("static", static_out)
+        print("dygraph", dy_out)
         self.assertTrue(np.allclose(static_out, dy_out))
 
         self.assertEqual(len(dy_param_init_value), len(static_param_init_value))

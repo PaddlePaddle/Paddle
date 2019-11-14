@@ -55,8 +55,9 @@ class MultiplexOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.MultiInput<Tensor>("X")[0]->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -125,24 +126,25 @@ class MultiplexGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
-class MultiplexGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class MultiplexGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("multiplex_grad");
-    op->SetInput("Ids", Input("Ids"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
-    op->SetAttrMap(Attrs());
+    op->SetInput("Ids", this->Input("Ids"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -153,7 +155,8 @@ class MultiplexGradDescMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(multiplex, ops::MultiplexOp, ops::MultiplexOpMaker,
-                  ops::MultiplexGradDescMaker);
+                  ops::MultiplexGradMaker<paddle::framework::OpDesc>,
+                  ops::MultiplexGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(multiplex_grad, ops::MultiplexGradOp);
 REGISTER_OP_CPU_KERNEL(
     multiplex,

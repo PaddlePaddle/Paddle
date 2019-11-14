@@ -100,6 +100,10 @@ class TrainerDesc(object):
     def _set_dump_converter(self, converter):
         self.proto_desc.dump_converter = converter
 
+    def _set_dump_param(self, dump_param):
+        for param in dump_param:
+            self.proto_desc.dump_param.append(param)
+
     def _set_check_nan_var_names(self, check_nan_var_names):
         for var in check_nan_var_names:
             self.proto_desc.check_nan_var_names.append(var)

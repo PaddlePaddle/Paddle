@@ -65,8 +65,10 @@ class InferShapeContext {
   virtual void ShareLoD(const std::string &in, const std::string &out,
                         size_t i = 0, size_t j = 0) const = 0;
 
-  virtual void DecreaseLoDLevel(const std::string &in, const std::string &out,
-                                size_t i = 0, size_t j = 0) const = 0;
+  virtual int32_t GetLoDLevel(const std::string &in, size_t i = 0) const = 0;
+
+  virtual void SetLoDLevel(const std::string &out, int32_t lod_level,
+                           size_t j = 0) const = 0;
 
   virtual bool IsRuntime() const = 0;
 

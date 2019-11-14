@@ -40,10 +40,6 @@ __all__ = [
     'fc',
     'center_loss',
     'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
     'linear_chain_crf',
     'crf_decoding',
     'cos_sim',
@@ -51,11 +47,8 @@ __all__ = [
     'bpr_loss',
     'square_error_cost',
     'chunk_eval',
-    'sequence_conv',
     'conv2d',
     'conv3d',
-    'sequence_pool',
-    'sequence_softmax',
     'softmax',
     'pool2d',
     'pool3d',
@@ -64,14 +57,8 @@ __all__ = [
     'batch_norm',
     'instance_norm',
     'data_norm',
-    'beam_search_decode',
     'conv2d_transpose',
     'conv3d_transpose',
-    'sequence_expand',
-    'sequence_expand_as',
-    'sequence_pad',
-    'sequence_unpad',
-    'lstm_unit',
     'reduce_sum',
     'reduce_mean',
     'reduce_max',
@@ -79,9 +66,6 @@ __all__ = [
     'reduce_prod',
     'reduce_all',
     'reduce_any',
-    'sequence_first_step',
-    'sequence_last_step',
-    'sequence_slice',
     'dropout',
     'split',
     'ctc_greedy_decoder',
@@ -90,13 +74,11 @@ __all__ = [
     'matmul',
     'topk',
     'warpctc',
-    'sequence_reshape',
     'transpose',
     'im2sequence',
     'nce',
     'sampled_softmax_with_cross_entropy',
     'hsigmoid',
-    'beam_search',
     'row_conv',
     'multiplex',
     'layer_norm',
@@ -128,7 +110,6 @@ __all__ = [
     'scatter',
     'scatter_nd_add',
     'scatter_nd',
-    'sequence_scatter',
     'random_crop',
     'mean_iou',
     'relu',
@@ -149,16 +130,13 @@ __all__ = [
     'leaky_relu',
     'soft_relu',
     'flatten',
-    'sequence_mask',
     'stack',
     'pad2d',
     'unstack',
-    'sequence_enumerate',
     'unique',
     'unique_with_counts',
     'expand',
     'expand_as',
-    'sequence_concat',
     'scale',
     'elementwise_add',
     'elementwise_div',
@@ -191,7 +169,6 @@ __all__ = [
     'maxout',
     'space_to_depth',
     'affine_grid',
-    'sequence_reverse',
     'affine_channel',
     'similarity_focus',
     'hash',
@@ -201,7 +178,6 @@ __all__ = [
     'bilinear_tensor_product',
     'merge_selected_rows',
     'get_tensor_from_selected_rows',
-    'lstm',
     'shuffle_channel',
     'temporal_shift',
     'py_func',
@@ -703,844 +679,6 @@ def _pull_box_sparse(input, size, dtype='float32'):
     if len(outs) == 1:
         return outs[0]
     return outs
-
-
-def dynamic_lstm(input,
-                 size,
-                 h_0=None,
-                 c_0=None,
-                 param_attr=None,
-                 bias_attr=None,
-                 use_peepholes=True,
-                 is_reverse=False,
-                 gate_activation='sigmoid',
-                 cell_activation='tanh',
-                 candidate_activation='tanh',
-                 dtype='float32',
-                 name=None):
-    """
-    **Note**:
-        1. This OP only supports LoDTensor as inputs. If you need to deal with Tensor, please use :ref:`api_fluid_layers_lstm` .
-        2. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
-
-    The implementation of this OP include diagonal/peephole connections.
-    Please refer to `Gers, F. A., & Schmidhuber, J. (2000) <ftp://ftp.idsia.ch/pub/juergen/TimeCount-IJCNN2000.pdf>`_ .
-    If you do not need peephole connections, please set use_peepholes to False .
-
-    This OP computes each timestep as follows:
-
-    .. math::
-      i_t = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + b_{x_i} + b_{h_i})
-    .. math::
-      f_t = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + b_{x_f} + b_{h_f})
-    .. math::
-      o_t = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + b_{x_o} + b_{h_o})
-    .. math::
-      \widetilde{c_t} = tanh(W_{cx}x_t + W_{ch}h_{t-1} + b{x_c} + b_{h_c})
-    .. math::
-      c_t = f_t \odot c_{t-1} + i_t \odot \widetilde{c_t}
-    .. math::
-      h_t = o_t \odot tanh(c_t)
-
-    The symbolic meanings in the formula are as follows:
-
-    - :math:`x_{t}` represents the input at timestep :math:`t`
-    - :math:`h_{t}` represents the hidden state at timestep :math:`t`
-    - :math:`h_{t-1}, c_{t-1}` represent the hidden state and cell state at timestep :math:`t-1` , respectively
-    - :math:`\widetilde{c_t}` represents the candidate cell state
-    - :math:`i_t` , :math:`f_t` and :math:`o_t` represent input gate, forget gate, output gate, respectively
-    - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
-    - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
-    - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
-    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
-
-    Parameters:
-        input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, multi-dimensional LODTensor of shape :math:`[T, 4*hidden\_size]` . Data type is float32 or float64.
-        size (int): must be 4 * hidden_size.
-        h_0( :ref:`api_guide_Variable_en` , optional): The initial hidden state of the LSTM, multi-dimensional Tensor of shape :math:`[batch\_size, hidden\_size]` .
-                       Data type is float32 or float64. If set to None, it will be a vector of all 0. Default: None.
-        c_0( :ref:`api_guide_Variable_en` , optional): The initial hidden state of the LSTM, multi-dimensional Tensor of shape :math:`[batch\_size, hidden\_size]` .
-                       Data type is float32 or float64. If set to None, it will be a vector of all 0. `h_0` and `c_0` can be None but only at the same time. Default: None.
-        param_attr(ParamAttr, optional): Parameter attribute of weight. If it is None, the default weight parameter attribute is used. Please refer to ref:`api_fluid_ParamAttr' .
-                              If the user needs to set this parameter, the dimension must be :math:`[hidden\_size, 4*hidden\_size]` . Default: None.
-
-                              - Weights = :math:`\{ W_{cr},W_{ir},W_{fr},W_{or} \}` , the shape is [hidden_size, 4*hidden_size].
-
-        bias_attr (ParamAttr, optional): The bias attribute for the learnable bias
-                              weights, which contains two parts, input-hidden
-                              bias weights and peephole connections weights if
-                              setting `use_peepholes` to `True`.
-                              Please refer to ref:`api_fluid_ParamAttr' . Default: None.
-
-                              1. `use_peepholes = False`
-                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
-                                 - The shape is [1, 4*hidden_size].
-                              2. `use_peepholes = True`
-                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
-                                                 W_{fc}, W_{oc}`}.
-                                 - The shape is [1, 7*hidden_size].
-                                 
-        use_peepholes (bool, optional): Whether to use peephole connection or not. Default: True.
-        is_reverse (bool, optional): Whether to calculate reverse LSTM. Default: False.
-        gate_activation (str, optional): The activation for input gate, forget gate and output gate. Default: "sigmoid".
-        cell_activation (str, optional): The activation for cell output. Default: "tanh".
-        candidate_activation (str, optional): The activation for candidate hidden state. Default: "tanh".
-        dtype (str, optional): Data type, can be "float32" or "float64". Default: "float32".
-        name (str, optional): A name for this layer. Please refer to :ref:`api_guide_Name` . Default: None.
-
-    Returns:
-        tuple ( :ref:`api_guide_Variable` , :ref:`api_guide_Variable` ) :
-
-            The hidden state and cell state of LSTM
-
-                - hidden: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
-                - cell: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
-
-    Examples:
-        .. code-block:: python
-            
-            import paddle.fluid as fluid
-            emb_dim = 256
-            vocab_size = 10000
-            hidden_dim = 512
-            
-            data = fluid.data(name='x', shape=[None], dtype='int64', lod_level=1)
-            emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
-
-            forward_proj = fluid.layers.fc(input=emb, size=hidden_dim * 4,
-                                           bias_attr=False)
-
-            forward, cell = fluid.layers.dynamic_lstm(
-                input=forward_proj, size=hidden_dim * 4, use_peepholes=False)
-            forward.shape  # (-1, 512)
-            cell.shape  # (-1, 512)
-    """
-    assert in_dygraph_mode(
-    ) is not True, "please use lstm instead of dynamic_lstm in dygraph mode!"
-    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
-    helper = LayerHelper('lstm', **locals())
-    size = size // 4
-    weight = helper.create_parameter(
-        attr=helper.param_attr, shape=[size, 4 * size], dtype=dtype)
-    bias_size = [1, 7 * size]
-    if not use_peepholes:
-        bias_size[1] = 4 * size
-    bias = helper.create_parameter(
-        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
-
-    hidden = helper.create_variable_for_type_inference(dtype)
-    cell = helper.create_variable_for_type_inference(dtype)
-    batch_gate = helper.create_variable_for_type_inference(dtype)
-    batch_cell_pre_act = helper.create_variable_for_type_inference(dtype)
-    inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
-    batch_size = input.shape[0]
-    if h_0:
-        assert h_0.shape == (batch_size, size), \
-            'The shape of h0 should be (batch_size, %d)' % size
-        inputs['H0'] = h_0
-    if c_0:
-        assert c_0.shape == (batch_size, size), \
-            'The shape of c0 should be (batch_size, %d)' % size
-        inputs['C0'] = c_0
-
-    helper.append_op(
-        type='lstm',
-        inputs=inputs,
-        outputs={
-            'Hidden': hidden,
-            'Cell': cell,
-            'BatchGate': batch_gate,
-            'BatchCellPreAct': batch_cell_pre_act
-        },
-        attrs={
-            'use_peepholes': use_peepholes,
-            'is_reverse': is_reverse,
-            'gate_activation': gate_activation,
-            'cell_activation': cell_activation,
-            'candidate_activation': candidate_activation
-        })
-    return hidden, cell
-
-
-def lstm(input,
-         init_h,
-         init_c,
-         max_len,
-         hidden_size,
-         num_layers,
-         dropout_prob=0.0,
-         is_bidirec=False,
-         is_test=False,
-         name=None,
-         default_initializer=None,
-         seed=-1):
-    """
-    **Note**:
-        This OP only supports running on GPU devices.
-
-    This OP implements LSTM operation - `Hochreiter, S., & Schmidhuber, J. (1997) <http://deeplearning.cs.cmu.edu/pdfs/Hochreiter97_lstm.pdf>`_ .
-
-    The implementation of this OP does not include diagonal/peephole connections.
-    Please refer to `Gers, F. A., & Schmidhuber, J. (2000) <ftp://ftp.idsia.ch/pub/juergen/TimeCount-IJCNN2000.pdf>`_ .
-    If you need peephole connections, please use :ref:`api_fluid_layers_dynamic_lstm` .
-
-    This OP computes each timestep as follows:
-
-    .. math::
-      i_t = \sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + b_{x_i} + b_{h_i})
-    .. math::
-      f_t = \sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + b_{x_f} + b_{h_f})
-    .. math::
-      o_t = \sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + b_{x_o} + b_{h_o})
-    .. math::
-      \widetilde{c_t} = tanh(W_{cx}x_t + W_{ch}h_{t-1} + b{x_c} + b_{h_c})
-    .. math::
-      c_t = f_t \odot c_{t-1} + i_t \odot \widetilde{c_t}
-    .. math::
-      h_t = o_t \odot tanh(c_t)
-
-    The symbolic meanings in the formula are as follows:
-
-    - :math:`x_{t}` represents the input at timestep :math:`t`
-    - :math:`h_{t}` represents the hidden state at timestep :math:`t`
-    - :math:`h_{t-1}, c_{t-1}` represent the hidden state and cell state at timestep :math:`t-1` , respectively
-    - :math:`\widetilde{c_t}` represents the candidate cell state
-    - :math:`i_t` , :math:`f_t` and :math:`o_t` represent input gate, forget gate, output gate, respectively
-    - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
-    - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
-    - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
-    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
-
-    Parameters:
-        input ( :ref:`api_guide_Variable_en` ): LSTM input tensor, 3-D Tensor of shape :math:`[batch\_size, seq\_len, input\_dim]` . Data type is float32 or float64
-        init_h( :ref:`api_guide_Variable_en` ): The initial hidden state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
-                       If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
-        init_c( :ref:`api_guide_Variable_en` ): The initial cell state of the LSTM, 3-D Tensor of shape :math:`[num\_layers, batch\_size, hidden\_size]` .
-                       If is_bidirec = True, shape should be :math:`[num\_layers*2, batch\_size, hidden\_size]` . Data type is float32 or float64.
-        max_len (int): max length of LSTM. the first dim of input tensor CAN NOT greater than max_len.
-        hidden_size (int): hidden size of the LSTM.
-        num_layers (int): total layers number of the LSTM.
-        dropout_prob(float, optional): dropout prob, dropout ONLY work between rnn layers, NOT between time steps
-                             There is NO dropout work on rnn output of the last RNN layers.
-                             Default: 0.0.
-        is_bidirec (bool, optional): If it is bidirectional. Default: False.
-        is_test (bool, optional): If it is in test phrase. Default: False.
-        name (str, optional): A name for this layer. If set None, the layer
-                         will be named automatically. Default: None.
-        default_initializer(Initializer, optional): Where use initializer to initialize the Weight
-                         If set None, defaule initializer will be used. Default: None.
-        seed(int, optional): Seed for dropout in LSTM, If it's -1, dropout will use random seed. Default: 1.
-
-
-    Returns:
-        tuple ( :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` , :ref:`api_guide_Variable_en` ) :
-
-                        Three tensors, rnn_out, last_h, last_c:
-
-                        - rnn_out is result of LSTM hidden, shape is :math:`[seq\_len, batch\_size, hidden\_size]` \
-                          if is_bidirec set to True, shape will be :math:`[seq\_len, batch\_size, hidden\_size*2]`
-                        - last_h is the hidden state of the last step of LSTM \
-                          shape is :math:`[num\_layers, batch\_size, hidden\_size]` \
-                          if is_bidirec set to True, shape will be :math:`[num\_layers*2, batch\_size, hidden\_size]`
-                        - last_c(Tensor): the cell state of the last step of LSTM \
-                          shape is :math:`[num\_layers, batch\_size, hidden\_size]` \
-                          if is_bidirec set to True, shape will be :math:`[num\_layers*2, batch\_size, hidden\_size]`
-
-
-    Examples:
-        .. code-block:: python
-            
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-
-            emb_dim = 256
-            vocab_size = 10000
-            data = fluid.data(name='x', shape=[None, 100], dtype='int64')
-            emb = fluid.embedding(input=data, size=[vocab_size, emb_dim], is_sparse=True)
-            batch_size = 20
-            max_len = 100
-            dropout_prob = 0.2
-            input_size = 100
-            hidden_size = 150
-            num_layers = 1
-            init_h = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
-            init_c = layers.fill_constant( [num_layers, batch_size, hidden_size], 'float32', 0.0 )
-            rnn_out, last_h, last_c = layers.lstm( emb, init_h, init_c, \
-                    max_len, hidden_size, num_layers, \
-                    dropout_prob=dropout_prob)
-            rnn_out.shape  # (-1, 100, 150)
-            last_h.shape  # (1, 20, 150)
-            last_c.shape  # (1, 20, 150)
-    """
-
-    helper = LayerHelper('cudnn_lstm', **locals())
-
-    dtype = input.dtype
-    input_shape = list(input.shape)
-    input_size = input_shape[-1]
-    weight_size = 0
-    for i in range(num_layers):
-        if i == 0:
-            input_weight_size = (input_size * hidden_size) * 4
-        else:
-            if is_bidirec:
-                input_weight_size = (hidden_size * 2 * hidden_size) * 4
-            else:
-                input_weight_size = (hidden_size * hidden_size) * 4
-
-        hidden_weight_size = (hidden_size * hidden_size) * 4
-
-        if is_bidirec:
-            weight_size += (input_weight_size + hidden_weight_size) * 2
-            weight_size += hidden_size * 8 * 2
-        else:
-            weight_size += input_weight_size + hidden_weight_size
-            weight_size += hidden_size * 8
-
-    weight = helper.create_parameter(
-        attr=helper.param_attr,
-        shape=[weight_size],
-        dtype=dtype,
-        default_initializer=default_initializer)
-
-    out = helper.create_variable_for_type_inference(dtype)
-    last_h = helper.create_variable_for_type_inference(dtype)
-    last_c = helper.create_variable_for_type_inference(dtype)
-
-    cache = helper.create_variable(
-        persistable=True, type=core.VarDesc.VarType.RAW, stop_gradient=True)
-
-    helper.append_op(
-        type='cudnn_lstm',
-        inputs={
-            'Input': input,
-            'InitH': init_h,
-            'InitC': init_c,
-            'W': weight,
-            'Cache': cache,
-        },
-        outputs={
-            'Out': out,
-            'last_h': last_h,
-            'last_c': last_c,
-        },
-        attrs={
-            'max_len': max_len,
-            'is_bidirec': is_bidirec,
-            'input_size': input_size,
-            'hidden_size': hidden_size,
-            'num_layers': num_layers,
-            'is_test': is_test,
-            'dropout_prob': dropout_prob,
-            'seed': seed,
-        })
-    return out, last_h, last_c
-
-
-def dynamic_lstmp(input,
-                  size,
-                  proj_size,
-                  param_attr=None,
-                  bias_attr=None,
-                  use_peepholes=True,
-                  is_reverse=False,
-                  gate_activation='sigmoid',
-                  cell_activation='tanh',
-                  candidate_activation='tanh',
-                  proj_activation='tanh',
-                  dtype='float32',
-                  name=None,
-                  h_0=None,
-                  c_0=None,
-                  cell_clip=None,
-                  proj_clip=None):
-    """
-    **Note**:
-        1. In order to improve efficiency, users must first map the input of dimension [T, hidden_size] to input of [T, 4 * hidden_size], and then pass it to this OP.
-
-    This OP implements the LSTMP (LSTM Projected) layer.
-    The LSTMP layer has a separate linear mapping layer behind the LSTM layer. -- `Sak, H., Senior, A., & Beaufays, F. (2014) <https://ai.google/research/pubs/pub43905.pdf>`_ .
-
-    Compared with the standard LSTM layer, LSTMP has an additional linear mapping layer,
-    which is used to map from the original hidden state :math:`h_t` to the lower dimensional state :math:`r_t` .
-    This reduces the total number of parameters and computational complexity, especially when the output unit is relatively large.
-
-    The default implementation of the OP contains diagonal/peephole connections,
-    please refer to `Gers, F. A., & Schmidhuber, J. (2000) <ftp://ftp.idsia.ch/pub/juergen/TimeCount-IJCNN2000.pdf>`_ .
-    If you need to disable the peephole connections, set use_peepholes to False.
-
-    This OP computes each timestep as follows:
-
-    .. math::
-      i_t = \sigma(W_{ix}x_{t} + W_{ir}r_{t-1} + W_{ic}c_{t-1} + b_i)
-    .. math::
-          f_t = \sigma(W_{fx}x_{t} + W_{fr}r_{t-1} + W_{fc}c_{t-1} + b_f)
-    .. math::
-          o_t = \sigma(W_{ox}x_{t} + W_{or}r_{t-1} + W_{oc}c_{t-1} + b_o)
-    .. math::
-          \widetilde{c_t} = act_g(W_{cx}x_t + W_{cr}r_{t-1} + b_c)
-    .. math::
-          c_t = f_t \odot c_{t-1} + i_t \odot \widetilde{c_t}
-    .. math::
-          h_t = o_t \odot act_h(c_t)
-    .. math::
-          r_t = \overline{act_h}(W_{rh}h_t)
-
-    The symbolic meanings in the formula are as follows:
-
-    - :math:`x_{t}` represents the input at timestep :math:`t`
-    - :math:`h_{t}` represents the hidden state at timestep :math:`t`
-    - :math:`r_{t}` : represents the state of the projected output of the hidden state :math:`h_{t}`
-    - :math:`h_{t-1}, c_{t-1}, r_{t-1}` represent the hidden state, cell state and projected output at timestep :math:`t-1` , respectively
-    - :math:`\widetilde{c_t}` represents the candidate cell state
-    - :math:`i_t` , :math:`f_t` and :math:`o_t` represent input gate, forget gate, output gate, respectively
-    - :math:`W` represents weight (e.g., :math:`W_{ix}` is the weight of a linear transformation of input :math:`x_{t}` when calculating input gate :math:`i_t` )
-    - :math:`b` represents bias (e.g., :math:`b_{i}` is the bias of input gate)
-    - :math:`\sigma` represents nonlinear activation function for gate, default sigmoid
-    - :math:`\odot` represents the Hadamard product of a matrix, i.e. multiplying the elements of the same position for two matrices with the same dimension to get another matrix with the same dimension
-
-    Parameters:
-        input( :ref:`api_guide_Variable_en` ): The input of dynamic_lstmp layer, which supports
-                         variable-time length input sequence.
-                         It is a multi-dimensional LODTensor of shape :math:`[T, 4*hidden\_size]` . Data type is float32 or float64.
-        size(int): must be 4 * hidden_size.
-        proj_size(int): The size of projection output.
-        param_attr(ParamAttr, optional): Parameter attribute of weight. If it is None, the default weight parameter attribute is used. Please refer to ref:`api_fluid_ParamAttr' .
-                              If the user needs to set this parameter, the dimension must be :math:`[hidden\_size, 4*hidden\_size]` . Default: None.
-
-                              - Weights = :math:`\{ W_{cr},W_{ir},W_{fr},W_{or} \}` , the shape is [P, 4*hidden_size] , where P is the projection size.
-                              - Projection weight  = :math:`\{ W_{rh} \}` , the shape is [hidden_size, P].
-
-        bias_attr (ParamAttr, optional): The bias attribute for the learnable bias
-                              weights, which contains two parts, input-hidden
-                              bias weights and peephole connections weights if
-                              setting `use_peepholes` to `True`.
-                              Please refer to ref:`api_fluid_ParamAttr' . Default: None.
-
-                              1. `use_peepholes = False`
-                                 - Biases = {:math:`b_c, b_i, b_f, b_o`}.
-                                 - The shape is [1, 4*hidden_size].
-                              2. `use_peepholes = True`
-                                 - Biases = { :math:`b_c, b_i, b_f, b_o, W_{ic}, \
-                                                 W_{fc}, W_{oc}`}.
-                                 - The shape is [1, 7*hidden_size].
-
-        use_peepholes (bool, optional): Whether to use peephole connection or not. Default True.
-        is_reverse (bool, optional): Whether to calculate reverse LSTM. Default False.
-        gate_activation (str, optional): The activation for input gate, forget gate and output gate. Default "sigmoid".
-        cell_activation (str, optional): The activation for cell output. Default "tanh".
-        candidate_activation (str, optional): The activation for candidate hidden state. Default "tanh".
-        proj_activation(str, optional): The activation for projection output. Default "tanh".
-        dtype (str, optional): Data type, can be "float32" or "float64". Default "float32".
-        name (str, optional): A name for this layer. Please refer to :ref:`api_guide_Name` . Default: None.
-        h_0( :ref:`api_guide_Variable` , optional): The initial hidden state is an optional input, default is zero.
-                       This is a tensor with shape :math:`[batch\_size, P]` , where P is the projection size. Default: None.
-        c_0( :ref:`api_guide_Variable` , optional): The initial cell state is an optional input, default is zero.
-                       This is a tensor with shape :math:`[batch\_size, P]` , where P is the projection size.
-                       `h_0` and `c_0` can be None but only at the same time. Default: None.
-        cell_clip(float, optional): If not None, the cell state is clipped
-                             by this value prior to the cell output activation. Default: None.
-        proj_clip(float, optional): If `num_proj > 0` and `proj_clip` is
-                            provided, then the projected values are clipped elementwise to within
-                            `[-proj_clip, proj_clip]`. Default: None.
-
-    Returns:
-        tuple ( :ref:`api_guide_Variable` , :ref:`api_guide_Variable` ) :
-
-                The hidden state and cell state of LSTMP
-
-                - hidden: LoDTensor with shape of :math:`[T, P]` , and its lod and dtype is the same as the input.
-                - cell: LoDTensor with shape of :math:`[T, hidden\_size]` , and its lod and dtype is the same as the input.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            dict_dim, emb_dim = 128, 64
-            data = fluid.data(name='sequence', shape=[None], dtype='int64', lod_level=1)
-            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
-            hidden_dim, proj_dim = 512, 256
-            fc_out = fluid.layers.fc(input=emb, size=hidden_dim * 4,
-                                    act=None, bias_attr=None)
-            proj_out, last_c = fluid.layers.dynamic_lstmp(input=fc_out,
-                                                    size=hidden_dim * 4,
-                                                    proj_size=proj_dim,
-                                                    use_peepholes=False,
-                                                    is_reverse=True,
-                                                    cell_activation="tanh",
-                                                    proj_activation="tanh")
-            proj_out.shape  # (-1, 256)
-            last_c.shape  # (-1, 512)
-    """
-
-    assert in_dygraph_mode(
-    ) is not True, "please use lstm instead of dynamic_lstmp in dygraph mode!"
-
-    assert bias_attr is not False, "bias_attr should not be False in dynamic_lstmp."
-    helper = LayerHelper('lstmp', **locals())
-    size = size // 4
-    weight = helper.create_parameter(
-        attr=helper.param_attr, shape=[proj_size, 4 * size], dtype=dtype)
-    proj_weight = helper.create_parameter(
-        attr=helper.param_attr, shape=[size, proj_size], dtype=dtype)
-    bias_size = [1, 7 * size]
-    if not use_peepholes:
-        bias_size[1] = 4 * size
-    bias = helper.create_parameter(
-        attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
-
-    projection = helper.create_variable_for_type_inference(dtype)
-    cell = helper.create_variable_for_type_inference(dtype)
-    ordered_proj0 = helper.create_variable_for_type_inference(dtype)
-    batch_hidden = helper.create_variable_for_type_inference(dtype)
-    batch_gate = helper.create_variable_for_type_inference(dtype)
-    batch_cell_pre_act = helper.create_variable_for_type_inference(dtype)
-    inputs = {
-        'Input': input,
-        'Weight': weight,
-        'ProjWeight': proj_weight,
-        'Bias': bias
-    }
-    batch_size = input.shape[0]
-    if h_0:
-        assert h_0.shape == (batch_size, proj_size), \
-            'The shape of h0 should be (batch_size, %d)' % proj_size
-        inputs['H0'] = h_0
-    if c_0:
-        assert c_0.shape == (batch_size, size), \
-            'The shape of c0 should be (batch_size, %d)' % size
-        inputs['C0'] = c_0
-
-    if cell_clip:
-        assert cell_clip >= 0, "cell_clip should not be negtive."
-    if proj_clip:
-        assert proj_clip >= 0, "proj_clip should not be negtive."
-
-    helper.append_op(
-        type='lstmp',
-        inputs=inputs,
-        outputs={
-            'Projection': projection,
-            'Cell': cell,
-            'BatchHidden': batch_hidden,
-            'BatchGate': batch_gate,
-            'BatchCellPreAct': batch_cell_pre_act
-        },
-        attrs={
-            'use_peepholes': use_peepholes,
-            'cell_clip': cell_clip,
-            'proj_clip': proj_clip,
-            'is_reverse': is_reverse,
-            'gate_activation': gate_activation,
-            'cell_activation': cell_activation,
-            'candidate_activation': candidate_activation,
-            'proj_activation': proj_activation
-        })
-    return projection, cell
-
-
-def dynamic_gru(input,
-                size,
-                param_attr=None,
-                bias_attr=None,
-                is_reverse=False,
-                gate_activation='sigmoid',
-                candidate_activation='tanh',
-                h_0=None,
-                origin_mode=False):
-    """
-    **Note: The input type of this must be LoDTensor. If the input type to be
-    processed is Tensor, use** :ref:`api_fluid_layers_StaticRNN` .
-
-    This operator is used to perform the calculations for a single layer of
-    Gated Recurrent Unit (GRU) on full sequences step by step. The calculations
-    in one time step support these two modes:
-
-    If ``origin_mode`` is True, then the formula used is from paper
-    `Learning Phrase Representations using RNN Encoder Decoder for Statistical
-    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_ .
-
-    .. math::
-
-        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
-
-        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
-
-        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
-
-        h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \\tilde{h_t}
-
-
-    if ``origin_mode`` is False, then the formula used is from paper
-    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
-    Modeling  <https://arxiv.org/pdf/1412.3555.pdf>`_
-
-    .. math::
-
-        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
-
-        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
-
-        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
-
-        h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
-
-    :math:`x_t` is the input of current time step, but it is not from ``input`` .
-    This operator does not include the calculations :math:`W_{ux}x_{t}, W_{rx}x_{t}, W_{cx}x_{t}` ,
-    **Note** thus a fully-connect layer whose size is 3 times of ``size`` should
-    be used before this operator, and the output should be used as ``input`` here.
-    :math:`h_{t-1}` is the hidden state from previous time step. 
-    :math:`u_t` , :math:`r_t` , :math:`\\tilde{h_t}` and :math:`h_t` stand for
-    update gate, reset gate, candidate hidden and hidden output separately.
-    :math:`W_{uh}, b_u` , :math:`W_{rh}, b_r` and :math:`W_{ch}, b_c` stand for
-    the weight matrix and bias used in update gate, reset gate, candidate hidden
-    calculations. For implementation, the three weight matrix are merged into a
-    tensor shaped :math:`[D, D \\times 3]` , the three bias are concatenated as
-    a tensor shaped :math:`[1, D \\times 3]` , where :math:`D` stands for the
-    hidden size; The data layout of weight tensor is: :math:`W_{uh}` and :math:`W_{rh}`
-    are concatenated with shape :math:`[D, D  \\times 2]` lying on the first part,
-    and :math:`W_{ch}` lying on the latter part with shape :math:`[D, D]` .
-
-
-    Args:
-        input(Variable): A LoDTensor whose lod level is 1, representing the input
-            after linear projection. Its shape should be :math:`[T, D \\times 3]` ,
-            where :math:`T` stands for the total sequence lengths in this mini-batch,
-            :math:`D` for the hidden size. The data type should be float32 or float64.
-        size(int): Indicate the hidden size.
-        param_attr(ParamAttr, optional):  To specify the weight parameter property.
-            Default: None, which means the default weight parameter property is used.
-            See usage for details in :ref:`api_fluid_ParamAttr` .
-        bias_attr (ParamAttr, optional): To specify the bias parameter property.
-            Default: None, which means the default bias parameter property is used.
-            See usage for details in :ref:`api_fluid_ParamAttr` .
-        is_reverse(bool, optional): Whether to compute in the reversed order of
-            input sequences. Default False.
-        gate_activation(str, optional): The activation fuction corresponding to
-            :math:`act_g` in the formula. "sigmoid", "tanh", "relu" and "identity"
-            are supported. Default "sigmoid".
-        candidate_activation(str, optional): The activation fuction corresponding to
-            :math:`act_c` in the formula. "sigmoid", "tanh", "relu" and "identity"
-            are supported. Default "tanh".
-        h_0 (Variable, optional): A Tensor representing the initial hidden state.
-            It not provided, the default initial hidden state is 0. The shape is
-            :math:`[N, D]` , where :math:`N` is the number of sequences in the
-            mini-batch, :math:`D` for the hidden size. The data type should be
-            same as ``input`` . Default None.
-
-    Returns:
-        Variable: A LoDTensor whose lod level is 1 and shape is :math:`[T, D]` , \
-            where :math:`T` stands for the total sequence lengths in this mini-batch \
-            :math:`D` for the hidden size. It represents GRU transformed sequence output, \
-            and has the same lod and data type with ``input`` .
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            dict_dim, emb_dim = 128, 64
-            data = fluid.data(name='sequence',
-                      shape=[None],
-                      dtype='int64',
-                      lod_level=1)
-            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
-            hidden_dim = 512
-            x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
-            hidden = fluid.layers.dynamic_gru(input=x, size=hidden_dim)
-    """
-
-    assert in_dygraph_mode(
-    ) is not True, "please use gru instead of dynamic_gru in dygraph mode!"
-
-    helper = LayerHelper('gru', **locals())
-    dtype = helper.input_dtype()
-
-    weight = helper.create_parameter(
-        attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
-    bias = helper.create_parameter(
-        attr=helper.bias_attr, shape=[1, 3 * size], dtype=dtype, is_bias=True)
-    batch_size = input.shape[0]
-    inputs = {'Input': input, 'Weight': weight, 'Bias': bias}
-    if h_0:
-        assert h_0.shape == (
-            batch_size, size
-        ), 'The shape of h0 should be(batch_size, %d)' % size
-        inputs['H0'] = h_0
-
-    hidden = helper.create_variable_for_type_inference(dtype)
-    batch_gate = helper.create_variable_for_type_inference(dtype)
-    batch_reset_hidden_prev = helper.create_variable_for_type_inference(dtype)
-    batch_hidden = helper.create_variable_for_type_inference(dtype)
-
-    helper.append_op(
-        type='gru',
-        inputs=inputs,
-        outputs={
-            'Hidden': hidden,
-            'BatchGate': batch_gate,
-            'BatchResetHiddenPrev': batch_reset_hidden_prev,
-            'BatchHidden': batch_hidden
-        },
-        attrs={
-            'is_reverse': is_reverse,
-            'gate_activation': gate_activation,
-            'activation': candidate_activation,
-            'origin_mode': origin_mode
-        })
-    return hidden
-
-
-def gru_unit(input,
-             hidden,
-             size,
-             param_attr=None,
-             bias_attr=None,
-             activation='tanh',
-             gate_activation='sigmoid',
-             origin_mode=False):
-    """
-    Gated Recurrent Unit (GRU) RNN cell. This operator performs GRU calculations for
-    one time step and it supports these two modes:
-
-    If ``origin_mode`` is True, then the formula used is from paper
-    `Learning Phrase Representations using RNN Encoder Decoder for Statistical
-    Machine Translation <https://arxiv.org/pdf/1406.1078.pdf>`_ .
-
-    .. math::
-
-        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
-
-        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
-
-        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
-
-        h_t & = u_t \odot h_{t-1} + (1-u_t) \odot \\tilde{h_t}
-
-
-    if ``origin_mode`` is False, then the formula used is from paper
-    `Empirical Evaluation of Gated Recurrent Neural Networks on Sequence
-    Modeling  <https://arxiv.org/pdf/1412.3555.pdf>`_
-
-    .. math::
-
-        u_t & = act_g(W_{ux}x_{t} + W_{uh}h_{t-1} + b_u)
-
-        r_t & = act_g(W_{rx}x_{t} + W_{rh}h_{t-1} + b_r)
-
-        \\tilde{h_t} & = act_c(W_{cx}x_{t} + W_{ch}(r_t \odot h_{t-1}) + b_c)
-
-        h_t & = (1-u_t) \odot h_{t-1} + u_t \odot \\tilde{h_t}
-
-    :math:`x_t` is the input of current time step, but it is not ``input`` .
-    This operator does not include the calculations :math:`W_{ux}x_{t}, W_{rx}x_{t}, W_{cx}x_{t}` ,
-    **Note** thus a fully-connect layer whose size is 3 times of GRU hidden size should
-    be used before this operator, and the output should be used as ``input`` here.
-    :math:`h_{t-1}` is the hidden state from previous time step. 
-    :math:`u_t` , :math:`r_t` , :math:`\\tilde{h_t}` and :math:`h_t` stand for
-    update gate, reset gate, candidate hidden and hidden output separately.
-    :math:`W_{uh}, b_u` , :math:`W_{rh}, b_r` and :math:`W_{ch}, b_c` stand for
-    the weight matrix and bias used in update gate, reset gate, candidate hidden
-    calculations. For implementation, the three weight matrix are merged into a
-    tensor shaped :math:`[D, D \\times 3]` , the three bias are concatenated as
-    a tensor shaped :math:`[1, D \\times 3]` , where :math:`D` stands for the
-    hidden size; The data layout of weight tensor is: :math:`W_{uh}` and :math:`W_{rh}`
-    are concatenated with shape :math:`[D, D  \\times 2]` lying on the first part,
-    and :math:`W_{ch}` lying on the latter part with shape :math:`[D, D]` .
-
-
-    Args:
-        input(Variable): A 2D Tensor representing the input after linear projection
-            after linear projection. Its shape should be :math:`[N, D \\times 3]` ,
-            where :math:`N` stands for batch size, :math:`D` for the hidden size.
-            The data type should be float32 or float64.
-        hidden(Variable): A 2D Tensor representing the hidden state from previous step.
-            Its shape should be :math:`[N, D]` , where :math:`N` stands for batch size,
-            :math:`D` for the hidden size. The data type should be same as ``input`` .
-        size(int): Indicate the hidden size.
-        param_attr(ParamAttr, optional):  To specify the weight parameter property.
-            Default: None, which means the default weight parameter property is used.
-            See usage for details in :ref:`api_fluid_ParamAttr` .
-        bias_attr (ParamAttr, optional): To specify the bias parameter property.
-            Default: None, which means the default bias parameter property is used.
-            See usage for details in :ref:`api_fluid_ParamAttr` .
-        activation(str, optional): The activation fuction corresponding to
-            :math:`act_c` in the formula. "sigmoid", "tanh", "relu" and "identity"
-            are supported. Default "tanh".
-        gate_activation(str, optional): The activation fuction corresponding to
-            :math:`act_g` in the formula. "sigmoid", "tanh", "relu" and "identity"
-            are supported. Default "sigmoid".
-
-    Returns:
-        tuple: The tuple contains three Tensor variables with the same data type \
-            as ``input`` . They represent the hidden state for next time step ( :math:`h_t` ), \
-            reseted previous hidden state ( :math:`r_t \odot h_{t-1}` ), and the \
-            concatenation of :math:`h_t, r_t, \\tilde{h_t}` . And they have shape \
-            :math:`[N, D]` , :math:`[N, D]` , :math:`[N, D \times 3]` separately. \
-            Usually only the hidden state for next time step ( :math:`h_t` ) is used \
-            as output and state, the other two are intermediate results of calculations.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            dict_dim, emb_dim = 128, 64
-            data = fluid.data(name='step_data', shape=[None], dtype='int64')
-            emb = fluid.embedding(input=data, size=[dict_dim, emb_dim])
-            hidden_dim = 512
-            x = fluid.layers.fc(input=emb, size=hidden_dim * 3)
-            pre_hidden = fluid.data(
-                name='pre_hidden', shape=[None, hidden_dim], dtype='float32')
-            hidden = fluid.layers.gru_unit(
-                input=x, hidden=pre_hidden, size=hidden_dim * 3)
-
-    """
-    activation_dict = dict(
-        identity=0,
-        sigmoid=1,
-        tanh=2,
-        relu=3, )
-    activation = activation_dict[activation]
-    gate_activation = activation_dict[gate_activation]
-
-    helper = LayerHelper('gru_unit', **locals())
-    dtype = helper.input_dtype()
-    size = size // 3
-
-    # create weight
-    weight = helper.create_parameter(
-        attr=helper.param_attr, shape=[size, 3 * size], dtype=dtype)
-
-    gate = helper.create_variable_for_type_inference(dtype)
-    reset_hidden_pre = helper.create_variable_for_type_inference(dtype)
-    updated_hidden = helper.create_variable_for_type_inference(dtype)
-    inputs = {'Input': input, 'HiddenPrev': hidden, 'Weight': weight}
-    # create bias
-    if helper.bias_attr:
-        bias_size = [1, 3 * size]
-        bias = helper.create_parameter(
-            attr=helper.bias_attr, shape=bias_size, dtype=dtype, is_bias=True)
-        inputs['Bias'] = bias
-
-    helper.append_op(
-        type='gru_unit',
-        inputs=inputs,
-        outputs={
-            'Gate': gate,
-            'ResetHiddenPrev': reset_hidden_pre,
-            'Hidden': updated_hidden,
-        },
-        attrs={
-            'activation': 2,  # tanh
-            'gate_activation': 1,  # sigmoid
-            'origin_mode': origin_mode
-        })
-
-    return updated_hidden, reset_hidden_pre, gate
 
 
 @templatedoc()
@@ -2215,216 +1353,6 @@ def chunk_eval(input,
             num_correct_chunks)
 
 
-@templatedoc()
-def sequence_conv(input,
-                  num_filters,
-                  filter_size=3,
-                  filter_stride=1,
-                  padding=True,
-                  padding_start=None,
-                  bias_attr=None,
-                  param_attr=None,
-                  act=None,
-                  name=None):
-    """
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use conv2d Op.(fluid.layers.** :ref:`api_fluid_layers_conv2d` ).
-
-    This operator receives input sequences with variable length and other convolutional
-    configuration parameters(num_filters, filter_size) to apply the convolution operation.
-    It fills all-zero padding data on both sides of the sequence by default to ensure that
-    the output is the same length as the input. You can customize the padding behavior by
-    configuring the parameter :attr:`padding\_start` .
-    
-    **Warning:** the parameter :attr:`padding` take no effect and will be deprecated in the future.
-
-    .. code-block:: text
-
-            Here we will illustrate the details of the padding operation:
-            For a mini-batch of 2 variable lengths sentences, containing 3, and 1 time-steps:
-            Assumed input (X) is a [4, N] float LoDTensor, and for the sake of simplicity, we assume N=2.
-            input.data = [[1, 1],
-                          [2, 2],
-                          [3, 3],
-                          [4, 4]]
-
-            This is to say that input (X) has 4 words and the dimension of each word
-            representation is 2.
-
-            * Case1:
-
-                If padding_start is -1 and filter_size is 3.
-                The length of padding data is calculated as follows:
-                up_pad_len = max(0, -padding_start) = 1
-                down_pad_len = max(0, filter_size + padding_start - 1) = 1
-
-                The output of the input sequence after padding is:
-                data_aftet_padding = [[0, 0, 1, 1, 2, 2],
-                                      [1, 1, 2, 2, 3, 3],
-                                      [2, 2, 3, 3, 0, 0],
-                                      [0, 0, 4, 4, 0, 0]]
-
-                It will be multiplied by the filter weight to get the final output.
-                Assume num_filters = 3
-                output.data = [[ 0.3234, -0.2334,  0.7433],
-                               [ 0.5646,  0.9464, -0.1223],
-                               [-0.1343,  0.5653,  0.4555],
-                               [ 0.9954, -0.1234, -0.1234]]
-                output.shape = [4, 3]     # 3 = num_filters
-                output.lod = [[0, 3, 4]]  # Remain the same
-
-
-    Args:
-        input (Variable): LoDTensor with shape :math:`(M, K)`, where M is the total time-step of mini-batch
-            and K is hidden_size of input. Only lod_level of 1 is supported. The data type should be float32 or
-            float64.
-        num_filters (int): the number of filters.
-        filter_size (int): the height of filter. Specified filter width is not supported, the width is
-            hidden_size by default. Default: 3.
-        filter_stride (int): stride of the filter. Currently only supports :attr:`stride` = 1.
-        padding (bool): the parameter :attr:`padding` take no effect and will be discarded in the
-            future. Currently, it will always pad input to make sure the length of the output is
-            the same as input whether :attr:`padding` is set true or false. Because the length of
-            input sequence may be shorter than :attr:`filter\_size`, which will cause the convolution
-            result to not be computed correctly. These padding data will not be trainable or updated
-            while trainnig. Default: True.
-        padding_start (int): It is used to indicate the start index for padding the input
-            sequence, which can be negative. The negative number means to pad
-            :attr:`|padding_start|` time-steps of all-zero data at the beginning of each instance.
-            The positive number means to skip :attr:`padding_start` time-steps of each instance,
-            and it will pad :math:`filter\_size + padding\_start - 1` time-steps of all-zero data
-            at the end of the sequence to ensure that the output is the same length as the input.
-            If set None, the same length :math:`\\frac{filter\_size}{2}` of data will be filled
-            on both sides of the sequence. If set 0, the length of :math:`filter\_size - 1` data
-            is padded at the end of each input sequence. Default: None.
-        bias_attr (ParamAttr): To specify the bias parameter property. Default: None, which means the
-            default bias parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
-        param_attr (ParamAttr): To specify the weight parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr` .
-        act (str): Activation to be applied to the output of this layer, such as tanh, softmax,
-            sigmoid, relu. For more information, please refer to :ref:`api_guide_activations_en` . Default: None.
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Variable: LoDTensor with the same length as input. The data type is float32 or float64, which is same as input.
-
-    Examples:
-
-        .. code-block:: python
-
-             import paddle.fluid as fluid
-
-             x = fluid.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
-             x_conved = fluid.layers.sequence_conv(input=x, num_filters=2, filter_size=3, padding_start=-1)
-    """
-
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_conv', **locals())
-    dtype = helper.input_dtype()
-    filter_shape = [filter_size * input.shape[1], num_filters]
-    filter_param = helper.create_parameter(
-        attr=helper.param_attr, shape=filter_shape, dtype=dtype)
-    pre_bias = helper.create_variable_for_type_inference(dtype)
-    if padding_start is None:
-        padding_start = -int(filter_size // 2)
-
-    helper.append_op(
-        type='sequence_conv',
-        inputs={
-            'X': [input],
-            'Filter': [filter_param],
-        },
-        outputs={"Out": pre_bias},
-        attrs={
-            'contextStride': filter_stride,
-            'contextStart': padding_start,
-            'contextLength': filter_size,
-        })
-    pre_act = helper.append_bias_op(pre_bias)
-    return helper.append_activation(pre_act)
-
-
-def sequence_softmax(input, use_cudnn=False, name=None):
-    """
-    **Note**:
-    
-    **The input type of the OP must be LoDTensor. For Tensor, use:** :ref:`api_fluid_layers_softmax` 
-
-    A LoD-tensor can be regarded as several sequences, and this op apply softmax algo on each sequence.
-    The shape of input Tensor can be :math:`[N, 1]` or :math:`[N]`, where :math:`N`
-    is the sum of the length of all sequences. Recommended usage: :math:`[N]`.
-
-    For i-th sequence in a mini-batch:
-
-    .. math::
-
-        Out(X[lod[i]:lod[i+1]], :) = \\frac{\exp(X[lod[i]:lod[i+1], :])}{\sum(\exp(X[lod[i]:lod[i+1], :]))}
-
-    For example, for a LoD-Tensor with 6 sequences ([3, 2, 4, 1, 2, 3] - sequence length list in order), 
-    the lod in the runtime is [[0, 3, 5, 9, 10, 12, 15]],
-    then softmax will be computed among :math:`X[0:3,:],X[3:5,:],X[5:9,:],X[9:10,:],X[10:12,:],X[12:15,:]`,
-    and :math:`N` turns out to be 15.
-
-    .. code-block:: text
-
-        *Case 1:
-
-            Given:
-                input.data = [0.7, 1, 0.6,
-                              1.5, 1.1,
-                              1.2, 0.2, 0.6, 1.9,
-                              3.1,
-                              2.5, 0.8,
-                              0.1, 2.4, 1.3]
-                input.lod = [[0, 3, 5, 9, 10, 12, 15]]
-            then:
-                 output.data = [0.30724832, 0.41474187, 0.2780098,
-                                0.59868765, 0.40131235,
-                                0.2544242, 0.09359743, 0.13963096, 0.5123474, 
-                                1.,
-                                0.84553474, 0.15446526,
-                                0.06995796, 0.69777346, 0.23226859]
-                 output.lod = [[0, 3, 5, 9, 10, 12, 15]]    
-    
-
-    Args:
-        input (Variable):A LoDTensor with shape of  :math:`[N, 1]` or  :math:`[N]`, Recommended usage: :math:`[N]`. 
-                         Supported data types: float32, float64. 
-        use_cudnn (bool, optional): Use cudnn kernel or not. Effective only when the cudnn version of the paddle 
-                                    library is installed and GPU is used for training or reasoning. Default: False.
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. 
-                              For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: A LoD-Tensor which has the same shape and data type with input.
-
-    Examples:
-
-        .. code-block:: python
-
-             import paddle.fluid as fluid
-             x = fluid.data(name='x', shape=[7, 1],
-                              dtype='float32', lod_level=1)
-             x_sequence_softmax_1 = fluid.layers.sequence_softmax(input=x)  
-
-             y = fluid.data(name='y', shape=[7],
-                 dtype='float32', lod_level=1)
-             x_sequence_softmax_2 = fluid.layers.sequence_softmax(input=y)  
-    """
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_softmax', **locals())
-    dtype = helper.input_dtype()
-    softmax_out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="sequence_softmax",
-        inputs={"X": input},
-        outputs={"Out": softmax_out},
-        attrs={"use_cudnn": use_cudnn})
-    return softmax_out
-
-
 def softmax(input, use_cudnn=False, name=None, axis=-1):
     """
     This operator implements the softmax layer. The calculation process is as follows:
@@ -2762,9 +1690,11 @@ def conv2d(input,
                 padding = padding[1:3]
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 4, 'padding')
+            if utils._is_symmetric_padding(padding, 2):
+                padding = [padding[0], padding[2]]
+
         else:
             padding = utils.convert_to_list(padding, 2, 'padding')
-            padding = [padding[0], padding[0], padding[1], padding[1]]
 
         return padding
 
@@ -2777,10 +1707,10 @@ def conv2d(input,
                 str(padding))
         if padding == "VALID":
             padding_algorithm = "VALID"
-            padding = [0, 0, 0, 0]
+            padding = [0, 0]
         elif padding == "SAME":
             padding_algorithm = "SAME"
-            padding = [0, 0, 0, 0]
+            padding = [0, 0]
 
     padding = _update_padding(padding, data_format)
 
@@ -3006,15 +1936,14 @@ def conv3d(input,
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 6, 'padding')
-
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
         elif is_list_or_tuple(padding) and len(padding) == 6:
             padding = utils.convert_to_list(padding, 6, 'padding')
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
         else:
             padding = utils.convert_to_list(padding, 3, 'padding')
-            padding = [
-                padding[0], padding[0], padding[1], padding[1], padding[2],
-                padding[2]
-            ]
 
         return padding
 
@@ -3027,10 +1956,10 @@ def conv3d(input,
                 str(padding))
         if padding == "VALID":
             padding_algorithm = "VALID"
-            padding = [0, 0, 0, 0, 0, 0]
+            padding = [0, 0, 0]
         elif padding == "SAME":
             padding_algorithm = "SAME"
-            padding = [0, 0, 0, 0, 0, 0]
+            padding = [0, 0, 0]
 
     padding = _update_padding(padding, data_format)
 
@@ -3075,351 +2004,6 @@ def conv3d(input,
         pre_act = helper.append_bias_op(pre_bias, dim_start=4, dim_end=5)
 
     return helper.append_activation(pre_act)
-
-
-def sequence_pool(input, pool_type, is_test=False, pad_value=0.0):
-    """
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use pool2d Op.(fluid.layers.** :ref:`api_fluid_layers_pool2d` ).
-
-    This operator only supports LoDTensor as input. It will apply specified pooling
-    operation on the input LoDTensor. It pools features of all time-steps of each
-    sequence at the last lod_level using :attr:`pool_type` mentioned in the parameters,
-    such as sum, average, sqrt, etc.
-
-    It supports six pool_type:
-
-    - average: :math:`Out[i] = \\frac{\sum_i X_i}{N}`
-    - sum:     :math:`Out[i] = \sum_jX_{ij}`
-    - sqrt:    :math:`Out[i] = \\frac{\sum_jX_{ij}}{\sqrt{len(X_i)}}`
-    - max:     :math:`Out[i] = max(X_i)`
-    - last:    :math:`Out[i] = X_{N_i}`
-    - first:   :math:`Out[i]` = X_0
-
-    where :math:`N_i` is the length of i-th input sequence.
-
-    .. code-block:: text
-
-        Case 1:
-        input is a 1-level LoDTensor and pad_value = 0.0:
-            input.lod = [[0, 2, 5, 7, 7]]
-            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
-            input.shape = [7, 1]
-
-        output is LoDTensor:
-            out.shape = [4, 1]
-            with condition out.shape[0] == len(x.lod[-1]) == 4
-
-        for different pool_type:
-            average: out.data = [[2.], [4.], [3.], [0.0]], where 2.=(1. + 3.)/2, 4.=(2. + 4. + 6.)/3, 3.=(5. + 1.)/2
-            sum    : out.data = [[4.], [12.], [6.], [0.0]], where 4.=1. + 3., 12.=2. + 4. + 6., 6.=5. + 1.
-            sqrt   : out.data = [[2.82], [6.93], [4.24], [0.0]], where 2.82=(1. + 3.)/sqrt(2), 6.93=(2. + 4. + 6.)/sqrt(3), 4.24=(5. + 1.)/sqrt(2)
-            max    : out.data = [[3.], [6.], [5.], [0.0]], where 3.=max(1., 3.), 6.=max(2., 4., 6.), 5.=max(5., 1.)
-            last   : out.data = [[3.], [6.], [1.], [0.0]], where 3.=last(1., 3.), 6.=last(2., 4., 6.), 1.=last(5., 1.)
-            first  : out.data = [[1.], [2.], [5.], [0.0]], where 1.=first(1., 3.), 2.=first(2., 4., 6.), 5.=first(5., 1.)
-
-            and all above [0.0] at last of out.data is padding data.
-
-        Case 2:
-        input is a 2-level LoDTensor containing 3 sequences with length info [2, 0, 3],
-        where 0 means empty sequence.
-        The first sequence contains 2 subsequence with length info [1, 2];
-        The last sequence contains 3 subsequence with length info [1, 0, 3].
-            input.lod = [[0, 2, 2, 5], [0, 1, 3, 4, 4, 7]]
-            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
-            input.shape = [7, 1]
-
-        If pool_typ = sum, it will apply pooling on last lod_level [0, 1, 3, 4, 4, 7]. pad_value = 0.0
-        output is LoDTensor:
-            out.shape= [5, 1]
-            out.lod = [[0, 2, 2, 5]]
-            where out.shape[0] == len(x.lod[-1]) == 5
-            sum: out.data = [[1.], [5.], [4.], [0.0], [12.]]
-            where 1.=1., 5.=3. + 2., 4.=4., 0.0=pad_value, 12.=6. + 5. + 1.
-
-    Args:
-        input (variable): LoDTensor with lod_level no more than 2. The data type should be float32.
-        pool_type (str): The pooling type that supports average, sum, sqrt, max, last or first.
-        is_test (bool): Only works when :attr:`pool_type` is max. If set False, a temporary Tenosr maxIndex is
-            created to record the index information corresponding to the maximum value, which is used for backward
-            gradient calculation in the training phase. Default: False.
-        pad_value (float): Used to pad the pooling result for empty input sequence. Default: 0.0
-
-    Returns:
-        Variable: LoDTensor after pooling with data type float32.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
-            avg_x = fluid.layers.sequence_pool(input=x, pool_type='average')
-            sum_x = fluid.layers.sequence_pool(input=x, pool_type='sum')
-            sqrt_x = fluid.layers.sequence_pool(input=x, pool_type='sqrt')
-            max_x = fluid.layers.sequence_pool(input=x, pool_type='max')
-            last_x = fluid.layers.sequence_pool(input=x, pool_type='last')
-            first_x = fluid.layers.sequence_pool(input=x, pool_type='first')
-    """
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_pool', **locals())
-    dtype = helper.input_dtype()
-    pool_out = helper.create_variable_for_type_inference(dtype)
-    max_index = helper.create_variable_for_type_inference(dtype)
-
-    helper.append_op(
-        type="sequence_pool",
-        inputs={"X": input},
-        outputs={"Out": pool_out,
-                 "MaxIndex": max_index},
-        attrs={
-            "pooltype": pool_type.upper(),
-            "is_test": is_test,
-            "pad_value": pad_value
-        })
-
-    # when pool_type is max, variable max_index is initialized,
-    # so we stop the gradient explicitly here
-    if pool_type == 'max':
-        max_index.stop_gradient = True
-
-    return pool_out
-
-
-@templatedoc()
-def sequence_concat(input, name=None):
-    """
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use concat Op.(fluid.layers.** :ref:`api_fluid_layers_concat` ).
-
-    This operator only supports LoDTensor as input. It concatenates the multiple LoDTensor from input by the LoD information,
-    and outputs the concatenated LoDTensor.
-
-    .. code-block:: text
-
-        input is a list of LoDTensor:
-            input = [x1, x2]
-        where:
-            x1.lod = [[0, 3, 5]]
-            x1.data = [[1], [2], [3], [4], [5]]
-            x1.shape = [5, 1]
-
-            x2.lod = [[0, 2, 4]]
-            x2.data = [[6], [7], [8], [9]]
-            x2.shape = [4, 1]
-        and should satisfy: len(x1.lod[0]) == len(x2.lod[0])
-
-        output is LoDTensor:
-            out.lod = [[0, 3+2, 5+4]]
-            out.data = [[1], [2], [3], [6], [7], [4], [5], [8], [9]]
-            out.shape = [9, 1]
-
-    Args:
-        input(list of Variable): List of LoDTensor to be concatenated. The length of each LoDTensor should be same.
-            The data type can be float32, float64 or int64.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Variable: Output the concatenated LoDTensor. The data type is same as input.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[-1, 10], dtype='float32', lod_level=1)
-            y = fluid.data(name='y', shape=[-1, 10], dtype='float32', lod_level=1)
-            out = fluid.layers.sequence_concat(input=[x, y])
-    """
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_concat', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-    helper.append_op(
-        type='sequence_concat', inputs={'X': input}, outputs={'Out': [out]})
-    return out
-
-
-def sequence_first_step(input):
-    """
-    This operator only supports LoDTensor as input. Given the input LoDTensor, it will
-    select first time-step feature of each sequence as output.
-
-    .. code-block:: text
-
-       Case 1:
-        input is 1-level LoDTensor:
-            input.lod = [[0, 2, 5, 7]]
-            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
-            input.shape = [7, 1]
-
-        output is a LoDTensor:
-            out.shape = [3, 1]
-            out.shape[0] == len(x.lod[-1]) == 3
-            out.data = [[1.], [2.], [5.]], where 1.=first(1., 3.), 2.=first(2., 4., 6.), 5.=first(5., 1.)
-
-        Case 2:
-        input is a 2-level LoDTensor containing 3 sequences with length info [2, 0, 3],
-        where 0 means empty sequence.
-        The first sequence contains 2 subsequence with length info [1, 2];
-        The last sequence contains 3 subsequence with length info [1, 0, 3].
-            input.lod = [[0, 2, 2, 5], [0, 1, 3, 4, 4, 7]]
-            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
-            input.shape = [7, 1]
-
-        It will apply pooling on last lod_level [0, 1, 3, 4, 4, 7]. pad_value = 0.0
-        output is a LoDTensor:
-            out.shape= [5, 1]
-            out.lod = [[0, 2, 2, 5]]
-            out.shape[0] == len(x.lod[-1]) == 5
-            out.data = [[1.], [3.], [4.], [0.0], [6.]]
-            where 1.=first(1.), 3.=first(3., 2.), 4.=first(4.), 0.0 = pad_value, 6.=first(6., 5., 1.)
-
-    Args:
-        input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32.
-
-    Returns:
-        Variable: LoDTensor consist of the sequence's first step vector. The data type is float32.
-
-    Examples:
-
-        .. code-block:: python
-
-             import paddle.fluid as fluid
-             x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
-             x_first_step = fluid.layers.sequence_first_step(input=x)
-    """
-    return sequence_pool(input=input, pool_type="first")
-
-
-def sequence_last_step(input):
-    """
-    This operator only supports LoDTensor as input. Given the input LoDTensor, it will
-    select last time-step feature of each sequence as output.
-
-    .. code-block:: text
-
-        Case 1:
-        input is 1-level LoDTensor:
-            input.lod = [[0, 2, 5, 7]]
-            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
-            input.shape = [7, 1]
-
-        output is a LoDTensor:
-            out.shape = [3, 1]
-            out.shape[0] == len(x.lod[-1]) == 3
-            out.data = [[3.], [6.], [1.]], where 3.=last(1., 3.), 6.=last(2., 4., 6.), 1.=last(5., 1.)
-
-        Case 2:
-        input is a 2-level LoDTensor containing 3 sequences with length info [2, 0, 3],
-        where 0 means empty sequence.
-        The first sequence contains 2 subsequence with length info [1, 2];
-        The last sequence contains 3 subsequence with length info [1, 0, 3].
-            input.lod = [[0, 2, 2, 5], [0, 1, 3, 4, 4, 7]]
-            input.data = [[1.], [3.], [2.], [4.], [6.], [5.], [1.]]
-            input.shape = [7, 1]
-
-        It will apply pooling on last lod_level [0, 1, 3, 4, 4, 7]. pad_value = 0.0
-        output is a LoDTensor:
-            out.shape= [5, 1]
-            out.lod = [[0, 2, 2, 5]]
-            out.shape[0] == len(x.lod[-1]) == 5
-            out.data = [[1.], [2.], [4.], [0.0], [1.]]
-            where 1.=last(1.), 2.=last(3., 2.), 4.=last(4.), 0.0 = pad_value, 1=last(6., 5., 1.)
-
-
-    Args:
-        input(Variable): LoDTensor with lod_level no more than 2. The data type should be float32.
-
-    Returns:
-        Variable: LoDTensor consist of the sequence's last step vector. The data type is float32.
-
-    Examples:
-
-        .. code-block:: python
-
-             import paddle.fluid as fluid
-             x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
-             x_last_step = fluid.layers.sequence_last_step(input=x)
-    """
-    return sequence_pool(input=input, pool_type="last")
-
-
-def sequence_slice(input, offset, length, name=None):
-    """
-    **Sequence Slice Layer**
-
-    The layer crops a subsequence from given sequence with given start
-    offset and subsequence length.
-
-    It only supports sequence data (LoDTensor with lod_level equal to 1).
-
-    .. code-block:: text
-
-              - Case:
-
-            Given the input Variable **input**:
-
-                input.data = [[a1, a2], [b1, b2], [c1, c2], [d1, d2], [e1, e2]],
-                input.lod = [[3, 2]],
-                input.dims = (5, 2),
-
-            with offset.data = [[0], [1]] and length.data = [[2], [1]],
-
-            the output Variable will be
-
-                out.data = [[a1, a2], [b1, b2], [e1, e2]],
-                out.lod = [[2, 1]],
-                out.dims = (3, 2).
-
-    Note:
-          The first dimension size of **input**, **offset** and **length**
-          should be equal. The **offset** should start from 0.
-
-    Args:
-        input(Variable): LoDTensor, The input Variable which consists of the complete
-                         sequences.The data type is float32 or float64.
-        offset(Variable): LoDTensor, The offset to slice each sequence.The data
-                         type is int32 or int64.
-        length(Variable): LoDTensor, The length of each subsequence.The data
-                         type is int32 or int64.
-        name(str|None): The default value is None.  Normally there is no need
-                        for user to set this property.  For more information,
-                        please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: The output subsequences.
-
-    Examples:
-
-        .. code-block:: python
-
-             import paddle.fluid as fluid
-             import numpy as np
-             seqs = fluid.data(name='x', shape=[10, 5],
-                              dtype='float32', lod_level=1)
-             offset = fluid.layers.assign(input=np.array([[0, 1]]).astype("int32"))
-             length = fluid.layers.assign(input=np.array([[2, 1]]).astype("int32"))
-             subseqs = fluid.layers.sequence_slice(input=seqs, offset=offset,
-                                                   length=length)
-    """
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper("sequence_slice", **locals())
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-
-    offset.stop_gradient = True
-    length.stop_gradient = True
-
-    helper.append_op(
-        type="sequence_slice",
-        inputs={"X": input,
-                "Offset": offset,
-                "Length": length},
-        outputs={"Out": out})
-
-    return out
 
 
 @templatedoc()
@@ -3474,9 +2058,18 @@ def pool2d(input,
         Variable: The output tensor of pooling result. The data type is same as input tensor.
 
     Raises:
-        ValueError: If `pool_type` is not "max" nor "avg"
-        ValueError: If `global_pooling` is False and `pool_size` is -1
-        ValueError: If `use_cudnn` is not a bool value.
+        ValueError: If `pool_type` is not "max" nor "avg".
+        ValueError: If `global_pooling` is False and `pool_size` is -1.
+        TypeError: If `use_cudnn` is not a bool value.
+        ValueError: If `data_format` is not "NCHW" or "NHWC".
+        ValueError: If `pool_padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `pool_padding` is "VALID", but `ceil_mode` is True.
+        ValueError: If `pool_padding` is a list or tuple, but the elements in the batch or channel dimensions are non-zero.
+        ShapeError: If the input is not a 4-D or 5-D Tensor.
+        ShapeError: If the dimension of input minus the size of `pool_stride` is not 2.
+        ShapeError: If the size of `pool_size` and `pool_stride` is not equal.
+        ShapeError: If the output's shape calculated is not greater than 0.
+
 
     Examples:
 
@@ -3539,8 +2132,8 @@ def pool2d(input,
             "and be a valid value. Received pool_size: %s." % str(pool_size))
 
     if not isinstance(use_cudnn, bool):
-        raise ValueError("Attr(use_cudnn) should be True or False. Received "
-                         "Attr(use_cudnn): %s." % str(use_cudnn))
+        raise TypeError("Attr(use_cudnn) should be True or False. Received "
+                        "Attr(use_cudnn): %s." % str(use_cudnn))
 
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
@@ -3573,6 +2166,8 @@ def pool2d(input,
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 4, 'padding')
 
+            if utils._is_symmetric_padding(padding, 2):
+                padding = [padding[0], padding[2]]
         else:
             padding = utils.convert_to_list(padding, 2, 'padding')
 
@@ -3587,14 +2182,14 @@ def pool2d(input,
                 % str(pool_padding))
         if pool_padding == "VALID":
             padding_algorithm = "VALID"
-            pool_padding = [0, 0, 0, 0]
+            pool_padding = [0, 0]
             if ceil_mode != False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", Attr(ceil_mode) must be False. "
                     "Received ceil_mode: True.")
         elif pool_padding == "SAME":
             padding_algorithm = "SAME"
-            pool_padding = [0, 0, 0, 0]
+            pool_padding = [0, 0]
 
     pool_padding = update_padding(pool_padding, data_format)
 
@@ -3677,6 +2272,19 @@ def pool3d(input,
     Returns:
         Variable: The output tensor of pooling result. The data type is same as input tensor.
 
+    Raises:
+        ValueError: If `pool_type` is not "max" nor "avg".
+        ValueError: If `global_pooling` is False and `pool_size` is -1.
+        TypeError: If `use_cudnn` is not a bool value.
+        ValueError: If `data_format` is not "NCDHW" or "NDHWC".
+        ValueError: If `pool_padding` is a string, but not "SAME" or "VALID".
+        ValueError: If `pool_padding` is "VALID", but `ceil_mode` is True.
+        ValueError: If `pool_padding` is a list or tuple, but the elements in the batch or channel dimensions are non-zero.
+        ShapeError: If the input is not a 4-D or 5-D Tensor.
+        ShapeError: If the dimension of input minus the size of `pool_stride` is not 2.
+        ShapeError: If the size of `pool_size` and `pool_stride` is not equal.
+        ShapeError: If the output's shape calculated is not greater than 0.
+
     Examples:
 
         .. code-block:: python
@@ -3744,8 +2352,8 @@ def pool3d(input,
             str(pool_size))
 
     if not isinstance(use_cudnn, bool):
-        raise ValueError("Attr(use_cudnn) should be True or False. Received "
-                         "Attr(use_cudnn): %s. " % str(use_cudnn))
+        raise TypeError("Attr(use_cudnn) should be True or False. Received "
+                        "Attr(use_cudnn): %s. " % str(use_cudnn))
 
     if data_format not in ["NCDHW", "NDHWC"]:
         raise ValueError(
@@ -3777,10 +2385,13 @@ def pool3d(input,
                 padding = padding[1:4]
                 padding = [ele for a_list in padding for ele in a_list]
             padding = utils.convert_to_list(padding, 6, 'padding')
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
 
         elif is_list_or_tuple(padding) and len(padding) == 6:
             padding = utils.convert_to_list(padding, 6, 'padding')
-
+            if utils._is_symmetric_padding(padding, 3):
+                padding = [padding[0], padding[2], padding[4]]
         else:
             padding = utils.convert_to_list(padding, 3, 'padding')
 
@@ -3795,14 +2406,14 @@ def pool3d(input,
                 % str(pool_padding))
         if pool_padding == "VALID":
             padding_algorithm = "VALID"
-            pool_padding = [0, 0, 0, 0, 0, 0]
+            pool_padding = [0, 0, 0]
             if ceil_mode != False:
                 raise ValueError(
                     "When Attr(pool_padding) is \"VALID\", ceil_mode must be False. "
                     "Received ceil_mode: True.")
         elif pool_padding == "SAME":
             padding_algorithm = "SAME"
-            pool_padding = [0, 0, 0, 0, 0, 0]
+            pool_padding = [0, 0, 0]
 
     pool_padding = update_padding(pool_padding, data_format)
 
@@ -4137,7 +2748,6 @@ def batch_norm(input,
                moving_mean_name=None,
                moving_variance_name=None,
                do_model_average_for_mean_and_var=True,
-               fuse_with_relu=False,
                use_global_stats=False):
     """
     **Batch Normalization Layer**
@@ -4222,7 +2832,6 @@ def batch_norm(input,
             will save global variance with the string.
         do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance should do model
             average when model average is enabled.
-        fuse_with_relu (bool): if True, this OP performs relu after batch norm.
         use_global_stats(bool, Default False): Whether to use global mean and
             variance. In inference or test mode, set use_global_stats to true
             or is_test to true, and the behavior is equivalent.
@@ -4338,7 +2947,7 @@ def batch_norm(input,
             "is_test": is_test,
             "data_layout": data_layout,
             "use_mkldnn": False,
-            "fuse_with_relu": fuse_with_relu,
+            "fuse_with_relu": False,
             "use_global_stats": use_global_stats
         })
 
@@ -5142,6 +3751,9 @@ def conv2d_transpose(input,
         filter_size = utils.convert_to_list(filter_size, 2,
                                             'conv2d_transpose.filter_size')
 
+    if len(padding) == 4 and utils._is_symmetric_padding(padding, 2):
+        padding = [padding[0], padding[2]]
+
     if output_size is None:
         output_size = []
     elif isinstance(output_size, list) or isinstance(output_size, int):
@@ -5377,13 +3989,13 @@ def conv3d_transpose(input,
 
         elif is_list_or_tuple(padding) and len(padding) == 6:
             padding = utils.convert_to_list(padding, 6, 'padding')
+
         else:
             padding = utils.convert_to_list(padding, 3, 'padding')
             padding = [
                 padding[0], padding[0], padding[1], padding[1], padding[2],
                 padding[2]
             ]
-
         return padding
 
     padding_algorithm = "EXPLICIT"
@@ -5423,6 +4035,9 @@ def conv3d_transpose(input,
         filter_size = utils.convert_to_list(filter_size, 3,
                                             'conv3d_transpose.filter_size')
 
+    if len(padding) == 6 and utils._is_symmetric_padding(padding, 3):
+        padding = [padding[0], padding[2], padding[4]]
+
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
     img_filter = helper.create_parameter(
@@ -5455,781 +4070,6 @@ def conv3d_transpose(input,
         pre_act = helper.append_bias_op(pre_bias, dim_start=4, dim_end=5)
     out = helper.append_activation(pre_act)
     return out
-
-
-def sequence_expand(x, y, ref_level=-1, name=None):
-    """Sequence Expand Layer. This layer will expand the input variable ``x`` \
-        according to specified level ``ref_level`` lod of ``y``. Please note that \
-        the lod level of ``x`` is at most 1. If the lod level of ``x`` is 1, than \
-        the size of lod of ``x`` must be equal to the length of ``ref_level`` lod \
-        of ``y``. If the lod level of ``x`` is 0, then the first dim of ``x`` should \
-        be equal to the size of ``ref_level`` of ``y``. The rank of **x** is at least 2. \
-        When rank of ``x`` is greater than 2, then it would be viewed as a 2-D tensor.
-
-    Please note that the input ``x`` should be LodTensor or Tensor, \
-        and input ``y`` must be LodTensor.
-
-    Following examples will explain how sequence_expand works:
-
-    .. code-block:: text
-
-        Case 1
-
-        Consider 2 sequences [a][b] and [c][d], now we want to expand them to [a][b], [a][b], [c][d] and [c][d].
-        Sequence [a][b] expand twice and [c][d] expands twice, so the lod which according to is [2, 2].
-
-        Input x is a 1-level LoDTensor:
-            x.lod  = [[2,        2]]    #lod based on length may be easier to understand
-            x.data = [[a], [b], [c], [d]]
-            x.dims = [4, 1]
-
-        input y is a LoDTensor:
-            y.lod = [[2,    2],    #the 0th level lod, according to this level
-                     [3, 3, 1, 1]] #the 1st level lod, it has nothing to do with this level
-
-        ref_level: 0
-
-        then output is a 1-level LoDTensor out:
-            out.lod =  [[2,        2,        2,        2]]    #lod based on offfset
-            out.data = [[a], [b], [a], [b], [c], [d], [c], [d]]
-            out.dims = [8, 1]
-
-
-        Case 2
-
-        Consider 3 sequences [a], [b], [c], now we want to expand them to [a][a], [c][c][c].
-        It's obvious that the lod info of expanded sequences is [2, 0, 3].
-
-        x is a Tensor:
-            x.data = [[a], [b], [c]]
-            x.dims = [3, 1]
-
-        y is a LoDTensor:
-            y.lod = [[2, 0, 3]]
-
-        ref_level: -1
-
-        then output is a 1-level LodTensor:
-            out.data = [[a], [a], [c], [c], [c]]
-            out.dims = [5, 1]
-
-    Args:
-        x (Variable): The input variable which is a Tensor or LoDTensor, with the \
-            dims ``[M, K]``. The lod level is at most 1. The data type should be \
-            float32, float64, int8, int32 or int64.
-        y (Variable): The input variable which is a LoDTensor, the lod level is \
-            at least 1.
-        ref_level (int): Lod level of ``y`` to be referred by ``x``. If set to -1, \
-                         refer the last level of lod.
-        name(str, optional): For detailed information, please refer \
-            to :ref:`api_guide_Name`. Usually name is no need to set and \
-            None by default. 
-
-    Returns: The expanded variable which is a LoDTensor, with dims ``[N, K]``. \
-            ``N`` depends on the lod info of ``x`` and ``y``. \
-            The data type is same as input.
-
-    Return Type: Variable
-
-    Examples:
-        .. code-block:: python
-	
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            import numpy as np
-
-            x = fluid.data(name='x', shape=[4, 1], dtype='float32')
-            y = fluid.data(name='y', shape=[8, 1],
-                        dtype='float32', lod_level=1)
-            out = layers.sequence_expand(x=x, y=y, ref_level=0)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            place = fluid.CPUPlace()
-
-            np_data = np.array([[1], [2], [3], [4]]).astype('float32')
-            x_lod_tensor = fluid.create_lod_tensor(np_data, [[2, 2]], place)
-            print(x_lod_tensor)
-            #lod: [[0, 2, 4]]
-            #    dim: 4, 1
-            #    layout: NCHW
-            #    dtype: float
-            #    data: [1 2 3 4]
-
-            np_data = np.array([[1], [2], [3], [4], [5], [6], [7], [8]]).astype('float32')
-	    y_lod_tensor = fluid.create_lod_tensor(np_data, [[2, 2], [3,3,1,1]], place)
-            print(y_lod_tensor)
-            #lod: [[0, 2, 4][0, 3, 6, 7, 8]]
-            #    dim: 8, 1
-            #    layout: NCHW
-            #    dtype: int64_t
-            #    data: [0 0 1 1 1 1 1 0]
-
-            out_main = exe.run(fluid.default_main_program(),
-                            feed={'x': x_lod_tensor, 'y': y_lod_tensor},
-                            fetch_list=[out], return_numpy=False)
-            print(out_main[0])
-            #lod: [[0, 2, 4, 6, 8]]
-            #    dim: 8, 1
-            #    layout: NCHW
-            #    dtype: float
-            #    data: [1 2 1 2 3 4 3 4]
-    """
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_expand', input=x, **locals())
-    dtype = helper.input_dtype()
-    tmp = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='sequence_expand',
-        inputs={'X': x,
-                'Y': y},
-        outputs={'Out': tmp},
-        attrs={'ref_level': ref_level})
-    return tmp
-
-
-def sequence_expand_as(x, y, name=None):
-    """Sequence Expand As Layer. This OP will expand the input variable ``x`` \
-        according to the zeroth level lod of ``y``. Current implementation requires \
-        the level number of ``y``'s lod must be 1, and the first dimension of \
-        ``x`` should be equal to the size of ``y``'s zeroth level lod, thus \
-        the expanded LodTensor has the same lod info as ``y``. The expanded result \
-        has nothing to do with ``x``'s lod, so the lod of Input(X) is not considered.
-
-    Please note that the input ``x`` should be LodTensor or Tensor, \
-        and input ``y`` must be LodTensor.
-
-    Following examples will explain how sequence_expand_as works:
-
-    .. code-block:: text
-
-        Case 1:
-
-        Consider 4 sequences [a], [b], [c], [d], now we want to expand them to [a][a][a], [b][b][b], [c] and [d].
-        It's obvious that the lod info of expanded sequences is [0, 3, 6, 7, 8].
-        Given a 1-level LodTensor ``x``: 
-            x.data = [[a], [b], [c], [d]]
-            x.dims = [4, 1]
-        and input ``y``
-            y.lod = [[3, 3, 1, 1]] #lod based on length may be easier to understand
-
-        then we get 1-level LoDTensor out:
-            Out.lod =  [[0,            3,              6,  7,  8]] #based on offset
-            Out.data = [[a], [a], [a], [b], [b], [b], [c], [d]]
-            Out.dims = [8, 1]
-
-
-        Case 2:
-
-        Given a common Tensor ``x``:
-            x.data = [[a, b], [c, d], [e, f]]
-            x.dims = [3, 2]
-        and input ``y``:
-            y.lod = [[0, 2, 3, 6]]
-
-        then we get a 1-level LoDTensor:
-            out.lod =  [[0,             2,     3,                    6]]
-            out.data = [[a, b], [a, b] [c, d], [e, f], [e, f], [e, f]]
-            out.dims = [6, 2]
-
-    Args:
-        x (Variable): The input variable which is a Tensor or LoDTensor, with the \
-            dims ``[M, K]``. The data type should be float32, float64, int8, int32 \
-            or int64.
-        y (Variable): The input variable which is a LoDTensor with 1-level lod.
-        name (str, optional): For detailed information, please refer \
-            to :ref:`api_guide_Name`. Usually name is no need to set and \
-            None by default.
-
-    Returns: The expanded variable which is a LoDTensor with the dims ``[N, K]``. \
-            ``N`` depends on the lod of ``y``, and the lod level must be 1. \
-            The data type is same as input.
-
-    Return Type: Variable
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-            import numpy as np
-
-            x = fluid.data(name='x', shape=[4, 1], dtype='float32')
-            y = fluid.data(name='y', shape=[8, 1], dtype='float32', lod_level=1)
-            out = layers.sequence_expand_as(x=x, y=y)
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            place = fluid.CPUPlace()
-
-            np_data = np.array([[1], [2], [3], [4]]).astype('float32')
-            x_lod_tensor = fluid.create_lod_tensor(np_data, [[2, 2]], place)
-            print(x_lod_tensor)
-            #lod: [[0, 2, 4]]
-            #    dim: 4, 1
-            #    layout: NCHW
-            #    dtype: float
-            #    data: [1 2 3 4]
-
-            np_data = np.array([[1], [2], [3], [4], [5], [6], [7], [8]]).astype('float32')
-	    y_lod_tensor = fluid.create_lod_tensor(np_data, [[3,3,1,1]], place)
-            print(y_lod_tensor)
-            #lod: [[0, 3, 6, 7, 8]]
-            #    dim: 8, 1
-            #    layout: NCHW
-            #    dtype: int64_t
-            #    data: [0 0 1 0 1 1 1 0]
-
-            out_main = exe.run(fluid.default_main_program(),
-                            feed={'x': x_lod_tensor, 'y': y_lod_tensor},
-                            fetch_list=[out], return_numpy=False)
-            print(out_main[0])
-            #lod: [[0, 3, 6, 7, 8]]
-            #    dim: 8, 1
-            #    layout: NCHW
-            #    dtype: float
-            #    data: [1 1 1 2 2 2 3 4]
-    """
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_expand_as', input=x, **locals())
-    dtype = helper.input_dtype()
-    tmp = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type='sequence_expand_as',
-        inputs={'X': x,
-                'Y': y},
-        outputs={'Out': tmp})
-    return tmp
-
-
-def sequence_pad(x, pad_value, maxlen=None, name=None):
-    """
-    This layer padding the sequences in a same batch to a common length (according \
-         to ``maxlen``). The padding value is defined by ``pad_value``, and will be \
-        appended to the tail of sequences. The result is a Python tuple ``(Out, Length)``: \
-        the LodTensor ``Out`` is the padded sequences, and LodTensor ``Length`` is \
-        the length information of input sequences. For removing paddding data (unpadding \
-	operation), See :ref:`api_fluid_layers_sequence_unpad` .
-
-    Please note that the input ``x`` should be LodTensor.
-
-    .. code-block:: text
-
-        Case 1:
-        Given input 1-level LoDTensor x:
-            x.lod = [[0,  2,   5]]
-            x.data = [[a],[b],[c],[d],[e]]
-        pad_value:
-            pad_value.data = [0]
-        maxlen = 4
-
-        the output tuple (Out, Length):
-            Out.data = [[[a],[b],[0],[0]],[[c],[d],[e],[0]]]
-            Length.data = [2, 3]      #Original sequences length
-
-        Case 2:
-        Given input 1-level LoDTensor x:
-            x.lod =  [[0,             2,                     5]]
-            x.data = [[a1,a2],[b1,b2],[c1,c2],[d1,d2],[e1,e2]]
-        pad_value:
-            pad_value.data = [0]
-        defualt maxlen = None, (the virtual value is 3, according to the shape of x)
-
-        the output tuple (Out, Length):
-            Out.data = [[[a1,a2],[b1,b2],[0,0]],[[c1,c2],[d1,d2],[e1,e2]]]
-            Length.data = [2, 3]
-
-        Case 3:
-        Given input 1-level LoDTensor x:
-            x.lod =  [[0,             2,                     5]]
-            x.data = [[a1,a2],[b1,b2],[c1,c2],[d1,d2],[e1,e2]]
-        pad_value:
-            pad_value.data = [p1,p2]
-        defualt maxlen = None, (the virtual value is 3)
-
-        get tuple (Out, Length):
-            Out.data = [[[a1,a2],[b1,b2],[p1,p2]],[[c1,c2],[d1,d2],[e1,e2]]]
-            Length.data = [2, 3]
-
-
-
-    Args:
-        x (Variable): Input 1-level LodTensor with dims ``[M, K]``. The batch \
-            size is described by lod infor (the number of sequnces ). \
-            The data type should be float32, float64, int8, int32 or int64.
-        pad_value (Variable): Padding value. It can be a scalar or a 1D tensor \
-            with length ``K``. If it's a scalar, it will be automatically broadcasted \
-            to a Tensor. The data type should be as same as ``x``.
-        maxlen (int, optional): The length of padded sequences, None by default. \
-            When it is None, all sequences will be padded up to the length of the \
-            longest one among them; when it a certain positive value, it must be \
-            greater than the length of the longest original sequence.
-        name (str, optional): For detailed information, please refer \
-            to :ref:`api_guide_Name`. Usually name is no need to set and \
-            None by default.
-
-    Returns: A Python tuple (Out, Length): the 1st is a 0 level LodTensor \
-            ``Out``, with the shape ``[batch_size, maxlen, K]``; the second is the original \
-            sequences length infor ``Length``, which should be a 0-level 1D LodTensor. \
-            The size of ``Length`` is equal to batch size, and the data type is int64.
-
-    Return Type: tuple
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy
-
-            x = fluid.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
-            pad_value = fluid.layers.assign(
-                input=numpy.array([0.0], dtype=numpy.float32))
-            out = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
-    """
-
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_pad', input=x, **locals())
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-    length = helper.create_variable_for_type_inference(dtype)
-
-    pad_value.stop_gradient = True
-    length.stop_gradient = True
-
-    if maxlen is None:
-        maxlen = -1
-    helper.append_op(
-        type='sequence_pad',
-        inputs={'X': x,
-                'PadValue': pad_value},
-        outputs={'Out': out,
-                 'Length': length},
-        attrs={'padded_length': maxlen})
-    return out, length
-
-
-def sequence_unpad(x, length, name=None):
-    """
-    **Note**:
-    
-    **The input of the OP is Tensor and the output is LoDTensor.  For padding operation, See:**  :ref:`api_fluid_layers_sequence_pad`  
-     
-    The OP removes the padding data from the input based on the length information and returns a LoDTensor.
-
-    .. code-block:: text
-
-	Case 1:
-
-	Given input Variable **x**:
-	    x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
-		      [ 6.0,  7.0,  8.0,  9.0, 10.0],
-		      [11.0, 12.0, 13.0, 14.0, 15.0]],
-
-	in which there are 3 sequences padded to length 5, and the acutal length
-	specified by input Variable **length**:
-
-	    length.data = [2, 3, 4],
-
-	after unpadding, the output Variable will be:
-
-	    out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
-	    out.lod = [[0, 2, 5, 9]]
-
-    Args:
-        x(Variable): A Tensor which contains padding data, and its shape size can not be less than 2.
-                     Supported data types: float32, float64, int32, int64.
-        length(Variable): A 1D Tensor that stores the actual length of each sample, and the Tensor 
-                          has the same shape with the 0th dimension of the X . Supported data types: int64.
-        name(str|None):  The default value is None.  Normally there is no need for user to set this property.  
-                         For more information, please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: A LoDTensor whose recursive sequence length is consistent with the information of the length parameter and it has the same data type with input.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy
-
-            # pad data
-            x = fluid.data(name='x', shape=[10, 5], dtype='float32', lod_level=1)
-            pad_value = fluid.layers.assign(input=numpy.array([0.0], dtype=numpy.float32))
-            pad_data, len = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
-            
-            # unpad data
-            unpad_data = fluid.layers.sequence_unpad(x=pad_data, length=len)
-    """
-
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_unpad', input=x, **locals())
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-
-    length.stop_gradient = True
-
-    helper.append_op(
-        type='sequence_unpad',
-        inputs={'X': x,
-                'Length': length},
-        outputs={'Out': out})
-    return out
-
-
-def beam_search(pre_ids,
-                pre_scores,
-                ids,
-                scores,
-                beam_size,
-                end_id,
-                level=0,
-                is_accumulated=True,
-                name=None,
-                return_parent_idx=False):
-    """
-    Beam search is a classical algorithm for selecting candidate words in a
-    machine translation task.
-
-    Refer to `Beam search <https://en.wikipedia.org/wiki/Beam_search>`_
-    for more details.
-
-    **This operator only supports LoDTensor.** It is used after finishing
-    scores calculation to perform beam search for one time step. Specifically,
-    after ``ids`` and ``scores`` have been produced, it selects the top-K
-    ( `k` is ``beam_size`` ) candidate word ids of current step from ``ids``
-    according to the correspongding ``scores``. Additionally, ``pre_id`` and
-    ``pre_scores`` are the output of `beam_search` at previous step, they
-    are needed for special use to handle ended candidate translations.
-
-    Note that if ``is_accumulated`` is True, the ``scores`` passed in should
-    be accumulated scores. Otherwise, the ``scores`` are
-    considered as the probabilities of single step and would be transformed to
-    the log field and added up with ``pre_scores`` for final scores in this
-    operator. Length penalty should be done with extra operators before calculating
-    the accumulated scores if needed.
-
-    Please see the following demo for a fully beam search usage example:
-
-        fluid/tests/book/test_machine_translation.py
-
-    Args:
-        pre_ids(Variable): A LodTensor variable (lod level is 2), representing
-            the selected ids of previous step. It is the output of beam_search
-            at previous step. Its shape is `[batch_size, 1]` and its lod is
-            `[[0, 1, ... , batch_size], [0, 1, ..., batch_size]]` at the
-            first step. The data type should be int64.
-        pre_scores(Variable): A LodTensor variable has the same shape and lod
-            with ``pre_ids`` , representing the accumulated scores corresponding
-            to the selected ids of previous step. It is the output of
-            beam_search at previous step. The data type should be float32.
-        ids(Variable|None): A LodTensor variable containing the candidates ids.
-            It has the same lod with ``pre_ids`` and its shape should be
-            `[batch_size * beam_size, K]`, where `K` supposed to be greater than
-            ``beam_size`` and the first dimension size (decrease as samples reach
-            to the end) should be same as that of ``pre_ids`` . The data type
-            should be int64. It can be None, which use indice in ``scores`` as
-            ids.
-        scores(Variable): A LodTensor variable containing the accumulated
-            scores corresponding to ``ids`` . Both its shape and lod are same as
-            thoes of ``ids`` . The data type should be float32.
-        beam_size(int): The beam width used in beam search.
-        end_id(int): The id of end token.
-        level(int): **It can be ignored and mustn't change currently.**
-            The 2 level lod used in this operator has the following
-            meaning: The first level describes how many beams each sample has,
-            which would change to 0 when beams of the sample all end (batch reduce);
-            The second level describes how many times each beam is selected.
-            Default 0, which shouldn't be changed currently.
-        is_accumulated(bool): Whether the input ``score`` is accumulated scores.
-            Default True.
-        name(str, optional): For detailed information, please refer 
-            to :ref:`api_guide_Name`. Usually name is no need to set and 
-            None by default.
-        return_parent_idx(bool, optional): Whether to return an extra Tensor variable
-            in output, which stores the selected ids' parent indice in
-            ``pre_ids`` and can be used to update RNN's states by gather operator.
-            Default False.
-
-    Returns:
-        tuple: The tuple contains two or three LodTensor variables. The two LodTensor, \
-            representing the selected ids and the corresponding accumulated scores of \
-            current step, have the same shape `[batch_size, beam_size]` and lod with 2 levels, \
-            and have data types int64 and float32. If ``return_parent_idx`` is True, \
-            an extra Tensor variable preserving the selected ids' parent indice \
-            is included, whose shape is `[batch_size * beam_size]` and data type \
-            is int64.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            # Suppose `probs` contains predicted results from the computation
-            # cell and `pre_ids` and `pre_scores` is the output of beam_search
-            # at previous step.
-            beam_size = 4
-            end_id = 1
-            pre_ids = fluid.data(
-                name='pre_id', shape=[None, 1], lod_level=2, dtype='int64')
-            pre_scores = fluid.data(
-                name='pre_scores', shape=[None, 1], lod_level=2, dtype='float32')
-            probs = fluid.data(
-                name='probs', shape=[None, 10000], dtype='float32')
-            topk_scores, topk_indices = fluid.layers.topk(probs, k=beam_size)
-            accu_scores = fluid.layers.elementwise_add(
-                x=fluid.layers.log(x=topk_scores),
-                y=fluid.layers.reshape(pre_scores, shape=[-1]),
-                axis=0)
-            selected_ids, selected_scores = fluid.layers.beam_search(
-                pre_ids=pre_ids,
-                pre_scores=pre_scores,
-                ids=topk_indices,
-                scores=accu_scores,
-                beam_size=beam_size,
-                end_id=end_id)
-    """
-    helper = LayerHelper('beam_search', **locals())
-    score_type = pre_scores.dtype
-    id_type = pre_ids.dtype
-
-    inputs = {"pre_ids": pre_ids, "pre_scores": pre_scores, "scores": scores}
-    if ids is not None:
-        inputs["ids"] = ids
-
-    selected_scores = helper.create_variable_for_type_inference(
-        dtype=score_type)
-    selected_ids = helper.create_variable_for_type_inference(dtype=id_type)
-    # parent_idx is a tensor used to gather cell states at the next time
-    # step. Though lod in selected_ids can also be used to gather by
-    # sequence_expand, it is not efficient.
-    # gather_op's index input only supports int32 dtype currently
-    parent_idx = helper.create_variable_for_type_inference(dtype="int32")
-
-    helper.append_op(
-        type='beam_search',
-        inputs=inputs,
-        outputs={
-            'selected_ids': selected_ids,
-            'selected_scores': selected_scores,
-            'parent_idx': parent_idx
-        },
-        attrs={
-            # TODO(ChunweiYan) to assure other value support
-            'level': level,
-            'beam_size': beam_size,
-            'end_id': end_id,
-            'is_accumulated': is_accumulated,
-        })
-    if return_parent_idx:
-        return selected_ids, selected_scores, parent_idx
-    else:
-        return selected_ids, selected_scores
-
-
-def beam_search_decode(ids, scores, beam_size, end_id, name=None):
-    """
-    This operator is used after beam search has completed. It constructs the
-    full predicted sequences for each sample by walking back along the search
-    paths stored in lod of ``ids`` . The result sequences are stored in a
-    LoDTensor, which uses the following way to parse:
-
-    .. code-block:: text
-
-        If lod = [[0, 3, 6], [0, 12, 24, 40, 54, 67, 82]]
-
-        The first level of lod stands for: There are 2 samples each having 3
-        (beam width) predicted sequence.
-
-        The second level of lod stands for: The lengths of the first sample's
-        3 predicted sequences are 12, 12, 16; The lengths of the second sample's
-        3 predicted sequences are 14, 13, 15.
-
-
-    Please see the following demo for a fully beam search usage example:
-        fluid/tests/book/test_machine_translation.py
-
-    Args:
-        ids(Variable): The LoDTensorArray variable containing the selected ids
-            of all steps. Each LoDTensor in it has int64 data type and 2 level
-            lod which can be used to get the search paths.
-        scores(Variable): The LodTensorArray variable containing the accumulated
-            scores corresponding to selected ids of all steps. It has the same size
-            as ``ids`` . Each LoDTensor in it has the same shape and lod as the
-            counterpart in ``ids`` , and has a float32 data type.
-        beam_size(int): The beam width used in beam search.
-        end_id(int): The id of end token.
-        name(str, optional): For detailed information, please refer 
-            to :ref:`api_guide_Name`. Usually name is no need to set and 
-            None by default.
-
-    Returns:
-        tuple: The tuple contains two LodTensor variables. The two LodTensor, \
-            containing the full sequences of ids and the correspongding accumulated \
-            scores, have the same shape flattened to 1D and have the same 2 level \
-            lod. The lod can be used to get how many predicted sequences each sample \
-            has and how many ids each predicted sequence has.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            # Suppose `ids` and `scores` are LodTensorArray variables reserving
-            # the selected ids and scores of all steps
-            ids = fluid.layers.create_array(dtype='int64')
-            scores = fluid.layers.create_array(dtype='float32')
-            finished_ids, finished_scores = fluid.layers.beam_search_decode(
-                ids, scores, beam_size=5, end_id=0)
-    """
-    helper = LayerHelper('beam_search_decode', **locals())
-    sentence_ids = helper.create_variable_for_type_inference(dtype=ids.dtype)
-    sentence_scores = helper.create_variable_for_type_inference(dtype=ids.dtype)
-
-    helper.append_op(
-        type="beam_search_decode",
-        inputs={"Ids": ids,
-                "Scores": scores},
-        outputs={
-            "SentenceIds": sentence_ids,
-            "SentenceScores": sentence_scores
-        },
-        attrs={"beam_size": beam_size,
-               "end_id": end_id})
-
-    return sentence_ids, sentence_scores
-
-
-def lstm_unit(x_t,
-              hidden_t_prev,
-              cell_t_prev,
-              forget_bias=0.0,
-              param_attr=None,
-              bias_attr=None,
-              name=None):
-    """
-    Long-Short Term Memory (LSTM) RNN cell. This operator performs LSTM calculations for
-    one time step, whose implementation is based on calculations described in `RECURRENT
-    NEURAL NETWORK REGULARIZATION <http://arxiv.org/abs/1409.2329>`_  .
-
-    We add forget_bias to the biases of the forget gate in order to
-    reduce the scale of forgetting. The formula is as follows:
-    
-    .. math::
-
-        i_{t} & = \sigma(W_{x_{i}}x_{t} + W_{h_{i}}h_{t-1} + b_{i})
-
-        f_{t} & = \sigma(W_{x_{f}}x_{t} + W_{h_{f}}h_{t-1} + b_{f} + forget\\_bias)
-
-        c_{t} & = f_{t}c_{t-1} + i_{t} tanh (W_{x_{c}}x_{t} + W_{h_{c}}h_{t-1} + b_{c})
-
-        o_{t} & = \sigma(W_{x_{o}}x_{t} + W_{h_{o}}h_{t-1} + b_{o})
-
-        h_{t} & = o_{t} tanh (c_{t})
-
-    :math:`x_{t}` stands for ``x_t`` , corresponding to the input of current time step;
-    :math:`h_{t-1}` and :math:`c_{t-1}` correspond to ``hidden_t_prev`` and ``cell_t_prev`` ,
-    representing the output of from previous time step.
-    :math:`i_{t}, f_{t}, c_{t}, o_{t}, h_{t}` are input gate, forget gate, cell, output gate
-    and hidden calculation.
-
-    Args:
-        x_t(Variable): A 2D Tensor representing the input of current time step.
-            Its shape should be :math:`[N, M]` , where :math:`N` stands for batch
-            size, :math:`M` for the feature size of input. The data type should
-            be float32 or float64.
-        hidden_t_prev(Variable): A 2D Tensor representing the hidden value from
-            previous step. Its shape should be :math:`[N, D]` , where :math:`N`
-            stands for batch size, :math:`D` for the hidden size. The data type
-            should be same as ``x_t`` .
-        cell_t_prev(Variable): A 2D Tensor representing the cell value from
-            previous step. It has the same shape and data type with ``hidden_t_prev`` .
-        forget_bias (float, optional): :math:`forget\\_bias` added to the biases
-            of the forget gate. Default 0.
-        param_attr(ParamAttr, optional):  To specify the weight parameter property.
-            Default: None, which means the default weight parameter property is used.
-            See usage for details in :ref:`api_fluid_ParamAttr` .
-        bias_attr (ParamAttr, optional): To specify the bias parameter property.
-            Default: None, which means the default bias parameter property is used.
-            See usage for details in :ref:`api_fluid_ParamAttr` .
-        name(str, optional): For detailed information, please refer 
-            to :ref:`api_guide_Name`. Usually name is no need to set and 
-            None by default.
-
-    Returns:
-        tuple: The tuple contains two Tensor variables with the same shape and \
-            data type with ``hidden_t_prev`` , representing the hidden value and \
-            cell value which correspond to :math:`h_{t}` and :math:`c_{t}` in \
-            the formula.
-
-    Raises:
-        ValueError: Rank of x_t must be 2.
-        ValueError: Rank of hidden_t_prev must be 2.
-        ValueError: Rank of cell_t_prev must be 2.
-        ValueError: The 1st dimensions of x_t, hidden_t_prev and cell_t_prev must be the same.
-        ValueError: The 2nd dimensions of hidden_t_prev and cell_t_prev must be the same.
-
-    Examples:
-
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            dict_dim, emb_dim, hidden_dim = 128, 64, 512
-            data = fluid.data(name='step_data', shape=[None], dtype='int64')
-            x = fluid.embedding(input=data, size=[dict_dim, emb_dim])
-            pre_hidden = fluid.data(
-                name='pre_hidden', shape=[None, hidden_dim], dtype='float32')
-            pre_cell = fluid.data(
-                name='pre_cell', shape=[None, hidden_dim], dtype='float32')
-            hidden = fluid.layers.lstm_unit(
-                x_t=x,
-                hidden_t_prev=pre_hidden,
-                cell_t_prev=pre_cell)
-    """
-    helper = LayerHelper('lstm_unit', **locals())
-
-    if len(x_t.shape) != 2:
-        raise ValueError("Rank of x_t must be 2.")
-
-    if len(hidden_t_prev.shape) != 2:
-        raise ValueError("Rank of hidden_t_prev must be 2.")
-
-    if len(cell_t_prev.shape) != 2:
-        raise ValueError("Rank of cell_t_prev must be 2.")
-
-    if x_t.shape[0] != hidden_t_prev.shape[0] or x_t.shape[
-            0] != cell_t_prev.shape[0]:
-        raise ValueError("The 1st dimensions of x_t, hidden_t_prev and "
-                         "cell_t_prev must be the same.")
-
-    if hidden_t_prev.shape[1] != cell_t_prev.shape[1]:
-        raise ValueError("The 2nd dimensions of hidden_t_prev and "
-                         "cell_t_prev must be the same.")
-
-    if bias_attr is None:
-        bias_attr = ParamAttr()
-
-    size = cell_t_prev.shape[1]
-    concat_out = concat(input=[x_t, hidden_t_prev], axis=1)
-    fc_out = fc(input=concat_out,
-                size=4 * size,
-                param_attr=param_attr,
-                bias_attr=bias_attr)
-    dtype = x_t.dtype
-    c = helper.create_variable_for_type_inference(dtype)
-    h = helper.create_variable_for_type_inference(dtype)
-
-    helper.append_op(
-        type='lstm_unit',
-        inputs={"X": fc_out,
-                "C_prev": cell_t_prev},
-        outputs={"C": c,
-                 "H": h},
-        attrs={"forget_bias": forget_bias})
-
-    return h, c
 
 
 def reduce_sum(input, dim=None, keep_dim=False, name=None):
@@ -6686,62 +4526,117 @@ def split(input, num_or_sections, dim=-1, name=None):
 
     Args:
         input (Variable): The input variable which is an N-D Tensor or LoDTensor, data type being float32, float64, int32 or int64.
-        num_or_sections (int|list): Integer or list of Integers. If :attr:`num_or_sections` is an integer,
+        num_or_sections (int|list|tuple): If :attr:`num_or_sections` is an integer,
             then the integer indicates the number of equal sized sub-Tensors
             that the Tensor will be divided into. If :attr:`num_or_sections`
-            is a list of integers, the length of list indicates the number of
-            sub-Tensors and the integers indicate the sizes of sub-Tensors'
-            :attr:`dim` dimension orderly. The the length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
-        dim (int): The dimension along which to split. If :math:`dim < 0`, the
-            dimension to split along is :math:`rank(input) + dim`.
+            is a list or tuple, the length of it indicates the number of
+            sub-Tensors and the elements in it indicate the sizes of sub-Tensors'
+            :attr:`dim` dimension orderly. The length of the list mustn't be larger than the Tensor's size of :attr:`dim` .
+        dim (int32|Varible, optional): A scalar with type ``int32`` or a ``Tensor`` with shape [1] and type ``int32``. The dimension along which to split. If :math:`dim < 0`, the
+            dimension to split along is :math:`rank(input) + dim`. Default is -1.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
         list(Variable): The list of segmented Tensor variables.
+
+    Raises:
+        TypeError: num_or_sections is not int, list or tuple.
+        TypeError: dim is not int or Variable.
 
     Example:
         .. code-block:: python
 
             import paddle.fluid as fluid
 
-            # input is a variable which shape is [-1, 3, 9, 5]
-            input = fluid.layers.data(
+            # input is a variable which shape is [3, 9, 5]
+            input = fluid.data(
                  name="input", shape=[3, 9, 5], dtype="float32")
 
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=2)
-            # x0.shape [-1, 3, 3, 5]
-            # x1.shape [-1, 3, 3, 5]
-            # x2.shape [-1, 3, 3, 5]
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=3, dim=1)
+            # x0.shape [3, 3, 5]
+            # x1.shape [3, 3, 5]
+            # x2.shape [3, 3, 5]
 
-            x0, x1, x2 = fluid.layers.split(input, num_or_sections=[2, 3, 4], dim=2)
-            # x0.shape [-1, 3, 2, 5]
-            # x1.shape [-1, 3, 3, 5]
-            # x2.shape [-1, 3, 4, 5]
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=[2, 3, 4], dim=1)
+            # x0.shape [3, 2, 5]
+            # x1.shape [3, 3, 5]
+            # x2.shape [3, 4, 5]
+
+            x0, x1, x2 = fluid.layers.split(input, num_or_sections=[2, 3, -1], dim=1)
+            # x0.shape [3, 2, 5]
+            # x1.shape [3, 3, 5]
+            # x2.shape [3, 4, 5]
     """
+    if not isinstance(num_or_sections, (int, list, tuple)):
+        raise TypeError(
+            "The type of 'num_or_sections' in split must be int, list or "
+            "tuple, but received %s." % (type(num_or_sections)))
+    if not isinstance(dim, (int, Variable)):
+        raise TypeError(
+            "The type of 'dim' in split must be int or Variable, but "
+            "received %s." % (type(dim)))
+
     helper = LayerHelper('split', **locals())
     input_shape = input.shape
-    dim = (len(input_shape) + dim) if dim < 0 else dim
+    inputs = {'X': input}
+    attrs = {'num': num_or_sections if isinstance(num_or_sections, int) else 0}
+
+    def _get_SectionsTensorList(one_list):
+        tensor_list = []
+        unk_dim_idx = -1
+        for idx, dim_size in enumerate(one_list):
+            if isinstance(dim_size, Variable):
+                dim_size.stop_gradient = True
+                tensor_list.append(dim_size)
+            else:
+                assert (isinstance(dim_size, int))
+                if dim_size == -1:
+                    assert unk_dim_idx == -1, (
+                        "Only one value of 'num_or_section' in split can "
+                        "be -1. But received num_or_section[%d] is also -1." %
+                        idx)
+                    unk_dim_idx = idx
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant(
+                    [1], 'int32', dim_size, force_cpu=True, out=temp_out)
+                tensor_list.append(temp_out)
+        return tensor_list
+
+    if isinstance(dim, Variable):
+        dim.stop_gradient = True
+        inputs['AxisTensor'] = dim
+    else:
+        dim = (len(input_shape) + dim) if dim < 0 else dim
+        attrs['axis'] = dim
+
     if isinstance(num_or_sections, int):
         assert num_or_sections > 1, 'num_or_sections must be more than 1.'
+        if isinstance(dim, int) and input_shape[dim] > 0:
+            assert input_shape[dim] % num_or_sections ==0, \
+                "The input's size along the split dimension " \
+                "must be evenly divisible by Attr(num_or_sections). " \
+                "But %d is not evenly divisible by %d. " % (num_or_sections,input_shape[dim])
         num = num_or_sections
     else:
-        assert len(num_or_sections) <= input_shape[
-            dim], 'len(num_or_sections) must not be more than input.shape[dim].'
+        if isinstance(dim, int) and input_shape[dim] > 0:
+            assert len(num_or_sections) <= input_shape[
+                dim], 'len(num_or_sections) must not be more than input.shape[dim].'
         num = len(num_or_sections)
+        attrs['sections'] = list(
+            map(lambda ele: -1 if isinstance(ele, Variable) else ele,
+                num_or_sections))
+        contain_var = not all(not isinstance(ele, Variable)
+                              for ele in num_or_sections)
+        if contain_var:
+            inputs['SectionsTensorList'] = _get_SectionsTensorList(
+                num_or_sections)
+
     outs = [
         helper.create_variable_for_type_inference(dtype=helper.input_dtype())
         for i in range(num)
     ]
     helper.append_op(
-        type='split',
-        inputs={'X': input},
-        outputs={'Out': outs},
-        attrs={
-            'num': num_or_sections if isinstance(num_or_sections, int) else 0,
-            'sections': num_or_sections
-            if isinstance(num_or_sections, list) else [],
-            'axis': dim
-        })
+        type='split', inputs=inputs, outputs={'Out': outs}, attrs=attrs)
     return outs
 
 
@@ -6931,11 +4826,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if transpose_y:
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
-            raise ValueError(
-                "After performing an optional transpose, Input X's width should be "
-                "equal to Y's width for multiplication "
-                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %
-                (x_shape, y_shape))
+            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
+                "After performing an optional transpose, Input X's width should be "   \
+                "equal to Y's width for multiplication "                               \
+                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
+                (x_shape, y_shape)
 
         if len(y_shape) > 2 and len(x_shape) > 2:
             for i, dim_x in enumerate(x_shape[:-2]):
@@ -7449,63 +5344,6 @@ def warpctc(input,
             'norm_by_times': norm_by_times,
         })
     return loss_out
-
-
-def sequence_reshape(input, new_dim):
-    """
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use reshape Op.(fluid.layers.** :ref:`api_fluid_layers_reshape` ).
-
-    This operator only supports LoDTensor as input. Given :attr:`new_dim` ,
-    it will compute new shape according to original length of each sequence,
-    original dimensions and :attr:`new_dim` . Then it will output a new LoDTensor
-    containing :attr:`new_dim` . Currently it only supports 1-level LoDTensor.
-    Please make sure that (original length * original dimensions) can be divided
-    by the :attr:`new_dim` with no remainder for each sequence.
-
-    .. code-block:: text
-
-        input is a LoDTensor:
-            input.lod  = [[0, 2, 6]]
-            input.data = [[1,  2], [3,  4],
-                          [5,  6], [7,  8],
-                          [9, 10], [11, 12]]
-            input.shape = [6, 2]
-
-        set new_dim = 4
-        out is a LoDTensor:
-            out.lod  = [[0, 1, 3]]
-            out.data = [[1,  2,  3,  4],
-                        [5,  6,  7,  8],
-                        [9, 10, 11, 12]]
-            out.shape = [3, 4]
-
-
-    Args:
-
-       input (Variable): 1-level LoDTensor with shape :math:`[M, K]` . The data type should
-            be int32, int64, float32 or float64.
-       new_dim (int): New dimension that the input LoDTensor is reshaped to.
-
-    Returns:
-        Variable: Reshaped LoDTensor according to new dimension. The data type is same as input.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[None, 16], dtype='float32', lod_level=1)
-            x_reshaped = fluid.layers.sequence_reshape(input=x, new_dim=4)
-    """
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_reshape', **locals())
-    out = helper.create_variable_for_type_inference(helper.input_dtype())
-    helper.append_op(
-        type='sequence_reshape',
-        inputs={'X': [input]},
-        outputs={'Out': [out]},
-        attrs={'new_dim': new_dim})
-    return out
 
 
 # FIXME(wuyi): let docstring_checker.py understand @autodoc.
@@ -8969,8 +6807,6 @@ def squeeze(input, axes, name=None):
             y = layers.squeeze(input=x, axes=[2]) # y.shape=[None, 5, 10]
 
     """
-    assert not in_dygraph_mode(), (
-        "squeeze layer is not supported in dygraph mode yet.")
     helper = LayerHelper("squeeze", **locals())
 
     if not isinstance(input, Variable):
@@ -9016,7 +6852,7 @@ def unsqueeze(input, axes, name=None):
 
     Args:
         input (Variable): The input Tensor to be unsqueezed. It is a N-D Tensor of data types float32, float64, int32.
-        axes (list): List of integers, indicating the dimensions to be inserted.
+        axes (int|list|tuple|Variable): Indicates the dimensions to be inserted. The data type is ``int32`` . If ``axes`` is a list or tuple, the elements of it should be integers or Tensors with shape [1]. If ``axes`` is an Variable, it should be an 1-D Tensor .
         name (str|None): Name for this layer.
 
     Returns:
@@ -9030,13 +6866,45 @@ def unsqueeze(input, axes, name=None):
             y = fluid.layers.unsqueeze(input=x, axes=[1])
 
     """
-    helper = LayerHelper("unsqueeze", **locals())
+    if not isinstance(axes, (int, list, tuple, Variable)):
+        raise TypeError(
+            "The type of 'axes' in unsqueeze must be int, list, tuple or Variable, but "
+            "received %s." % (type(axes)))
+    helper = LayerHelper("unsqueeze2", **locals())
+    inputs = {"X": input}
+    attrs = {}
+
+    def _to_Variable_list(one_list):
+        Variable_list = []
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                ele.stop_gradient = True
+                Variable_list.append(ele)
+            else:
+                assert (isinstance(ele, int))
+                temp_out = helper.create_variable_for_type_inference('int32')
+                fill_constant([1], 'int32', ele, force_cpu=True, out=temp_out)
+                Variable_list.append(temp_out)
+        return Variable_list
+
+    if isinstance(axes, int):
+        axes = [axes]
+    if isinstance(axes, Variable):
+        axes.stop_gradient = True
+        inputs["AxesTensor"] = axes
+    elif isinstance(axes, (list, tuple)):
+        contain_var = not all(not isinstance(ele, Variable) for ele in axes)
+        if contain_var:
+            inputs["AxesTensorList"] = _to_Variable_list(axes)
+        else:
+            attrs["axes"] = axes
+
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
         type="unsqueeze2",
-        inputs={"X": input},
-        attrs={"axes": axes},
+        inputs=inputs,
+        attrs=attrs,
         outputs={"Out": out,
                  "XShape": x_shape})
 
@@ -9197,7 +7065,8 @@ def lod_append(x, level):
     return out
 
 
-def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
+def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None,
+        data_format='NCHW'):
     """
     This operator implements the Local Response Normalization Layer.
     This layer performs a type of "lateral inhibition" by normalizing over local input regions.
@@ -9218,13 +7087,18 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
 
     Args:
-        input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W], where N is the batch size, C is the input channel, H is Height, W is weight. The data type is float32. The rank of this tensor must be 4, otherwise it will raise ValueError.
+        input (Variable): Input feature, 4D-Tensor with the shape of [N,C,H,W] or [N, H, W, C], 
+            where N is the batch size, C is the input channel, H is Height, W is weight. The data 
+            type is float32. The rank of this tensor must be 4, otherwise it will raise ValueError.
         n (int, optional): The number of channels to sum over. Default: 5
         k (float, optional): An offset, positive. Default: 1.0
         alpha (float, optional): The scaling parameter, positive. Default:1e-4
         beta (float, optional): The exponent, positive. Default:0.75
-        name (str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` 
-
+        name (str, optional): The default value is None. Normally there is no need for user to set 
+            this property. For more information, please refer to :ref:`api_guide_Name` 
+        data_format(str, optional): The data format of the input and output data. An optional string
+            from: `"NCHW"`, `"NHWC"`. When it is `"NCHW"`, the data is stored in the order of:
+            `[batch_size, input_channels, input_height, input_width]`. Default: 'NCHW'.
     Returns:
         Variable: A tensor variable storing the transformation result with the same shape and data type as input.
 
@@ -9247,8 +7121,12 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
 
     if dims != 4:
         raise ValueError(
-            "dims of input must be 4(not %d), and it's order must be NCHW" %
+            "Input's dimension size of Op(lrn) must be 4, but received %d." %
             (dims))
+    if data_format not in ['NCHW', 'NHWC']:
+        raise ValueError(
+            "Attr(data_format) of Op(lrn) got wrong value: received " +
+            data_format + " but only NCHW or NHWC supported.")
 
     mid_out = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
@@ -9260,10 +7138,13 @@ def lrn(input, n=5, k=1.0, alpha=1e-4, beta=0.75, name=None):
             "Out": lrn_out,
             "MidOut": mid_out,
         },
-        attrs={"n": n,
-               "k": k,
-               "alpha": alpha,
-               "beta": beta})
+        attrs={
+            "n": n,
+            "k": k,
+            "alpha": alpha,
+            "beta": beta,
+            "data_format": data_format
+        })
 
     return lrn_out
 
@@ -10961,84 +8842,6 @@ def scatter_nd(index, updates, shape, name=None):
     return scatter_nd_add(zeros(shape, updates.dtype), index, updates, name)
 
 
-def sequence_scatter(input, index, updates, name=None):
-    """
-    **Note**:
-    
-    **The index and updates parameters of the OP must be LoDTensor.**
-     
-    Plus the updates data to the correspoding input according to the index.
- 
-    The updated algorithm is as follows: output[instance_index][index [pos]] = input[instance_index][index [pos]] +  updates[pos], 
-    where instance_idx is the K sample corresponding to pos in batch.
-
-    The value of output[i][j] depends on whether j can be found in the i+1th interval of the index. If found, 
-    out[i][j] = input[i][j] + update[m] [n], otherwise, out[i][j] = input[i][j].
-
-    For example, in the following example, the lod information for index is divided into three sequences. Among 
-    them, because the element 0 can be found in the first interval of the index, it is updated with the value of 
-    the corresponding position of the updates, out[0][0] = input[0][0]+updates[0][0] . Because element 1 cannot 
-    be found in the third interval of index, out[2][1] = input[2][1].
-
-    .. code-block:: text
-        
-        *Case 1:
-
-            Given:
-                input.data = [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-                              [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-                              [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
-                              input.dims = [3, 6]
-
-                index.data = [[0], [1], [2], [5], [4], [3], [2], [1], [3], [2], [5], [4]]
-                index.lod =  [[0,        3,                       8,                 12]]
-
-                updates.data = [[0.3], [0.3], [0.4], [0.1], [0.2], [0.3], [0.4], [0.0], [0.2], [0.3], [0.1], [0.4]]
-                updates.lod =  [[  0,            3,                                 8,                         12]]
-
-            Then:
-                out.data = [[1.3, 1.3, 1.4, 1.0, 1.0, 1.0],
-                            [1.0, 1.0, 1.4, 1.3, 1.2, 1.1],
-                            [1.0, 1.0, 1.3, 1.2, 1.4, 1.1]]
-                out.dims = X.dims = [3, 6]
-
-    Args:
-        input (Variable): A Tensor with shape of  :math:`[N, k_1... k_n]`. Supported data types: float32, float64, int32, int64.
-        index (Variable):  A LoDTensor contains index information. Its LoD level must be 1 and its data type must be int64.
-        updates (Variable): A LodTensor contains updates information. It has the same  LoD level with the index and has the 
-                            same data type  with the input. Supported data types: float32, float64, int32, int64.
-        name (str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, 
-                              please refer to :ref:`api_guide_Name`
-
-    Returns:
-        Variable: A Tensor which has been updated. It has the same shape and data type with input.
-
-    Examples:
-
-        .. code-block:: python
-	
-            import paddle.fluid as fluid
-
-            input = fluid.data( name="x", shape=[None, 3, 6], dtype='float32' )
-            index = fluid.data( name='index', shape=[12, 1],  dtype='int64', lod_level=1)
-            updates = fluid.data( name='updates', shape=[12, 1], dtype='float32', lod_level=1)
-            output = fluid.layers.sequence_scatter(input, index, updates)
-
-    """
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_scatter', **locals())
-    dtype = helper.input_dtype()
-    out = helper.create_variable_for_type_inference(dtype)
-    helper.append_op(
-        type="sequence_scatter",
-        inputs={"X": input,
-                "Ids": index,
-                "Updates": updates},
-        outputs={"Out": out})
-    return out
-
-
 @templatedoc()
 def random_crop(x, shape, seed=None):
     """
@@ -11410,7 +9213,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
 
         * Case 1 (input is a 2-D Tensor):
             Input:
-                X.shape = [3. 5]
+                X.shape = [3, 5]
                 X.data = [[0, 1, 2, 0, 0],
                           [0, 3, 4, 0, 0],
                           [0, 0, 0, 0, 0]]
@@ -11418,8 +9221,9 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
                 shape = [2, 2]
                 offsets = [0, 1]
             Output:
-                Out = [[1, 2],
-                       [3, 4]]
+                Out.shape = [2, 2]
+                Out.data = [[1, 2],
+                            [3, 4]]
         * Case 2 (input is a 3-D Tensor):
             Input:
                 X.shape = [2, 3, 4]
@@ -11430,24 +9234,23 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
                             [0, 6, 7, 8],
                             [0, 0, 0, 0]]]
             Parameters:
-                shape = [2, 2, 3]
+                shape = [2, 2, -1]
                 offsets = [0, 0, 1]
             Output:
-                Out = [[[1, 2, 3],
-                        [5, 6, 7]],
-                       [[3, 4, 5],
-                        [6, 7, 8]]]
+                Out.shape = [2, 2, 3]
+                Out.data  = [[[1, 2, 3],
+                              [5, 6, 7]],
+                             [[3, 4, 5],
+                              [6, 7, 8]]]
 
     Parameters:
-        x (Variable): 1-D to 6-D Tensor, the data type is float32 or float64.
+        x (Variable): 1-D to 6-D Tensor, the data type is float32, float64, int32 or int64.
         shape (list|tuple|Variable): The output shape is specified
             by `shape`. Its data type is int32. If a list/tuple, it's length must be
             the same as the dimension size of `x`. If a Variable, it shoule be a 1-D Tensor.
             When it is a list, each element can be an integer or a Tensor of shape: [1].
-            If Variable contained, it is suitable for the case that the shape may 
-            be changed each iteration. Only the first element of list/tuple can be 
-            set to -1, it means that the first dimension's size of the output is the same 
-            as the input.
+            If Variable contained, it is suitable for the case that the shape may
+            be changed each iteration.
         offsets (list|tuple|Variable, optional): Specifies the cropping
             offsets at each dimension. Its data type is int32. If a list/tuple, it's length
             must be the same as the dimension size of `x`. If a Variable, it shoule be a 1-D
@@ -11461,8 +9264,12 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
         Variable: The cropped Tensor has same data type with `x`.
 
     Raises:
-        ValueError: If shape is not a list, tuple or Variable.
-        ValueError: If offsets is not None and not a list, tuple or Variable.
+        TypeError: If the data type of `x` is not in: float32, float64, int32, int64.
+        TypeError: If `shape` is not a list, tuple or Variable.
+        TypeError: If the data type of `shape` is not int32.
+        TypeError: If `offsets` is not None and not a list, tuple or Variable.
+        TypeError: If the data type of `offsets` is not int32.
+        ValueError: If the element in `offsets` is less than zero.
 
     Examples:
 
@@ -11478,7 +9285,7 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
             # crop0.shape = [-1, -1, -1], it means crop0.shape[0] = x.shape[0] in runtime.
 
             # or shape is a list in which each element is a constant
-            crop1 = fluid.layers.crop_tensor(x, shape=[-1, 2, 3])
+            crop1 = fluid.layers.crop_tensor(x, shape=[-1, -1, 3], offsets=[0, 1, 0])
             # crop1.shape = [-1, 2, 3]
 
             # or shape is a list in which each element is a constant or Variable
@@ -11500,70 +9307,98 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
     """
     helper = LayerHelper('crop_tensor', **locals())
 
+    if convert_dtype(x.dtype) not in ['float32', 'float64', 'int32', 'int64']:
+        raise TypeError(
+            "Input(x)'s dtype of Op(crop_tensor) must be float32, float64, int32 or int64, "
+            "but received %s." % (convert_dtype(x.dtype)))
+
     if not (isinstance(shape, list) or isinstance(shape, tuple) or \
             isinstance(shape, Variable)):
-        raise ValueError("The shape should be a list, tuple or Variable.")
+        raise TypeError(
+            "Attr(shape) of Op(crop_tensor) should be a list, tuple or Variable."
+        )
 
     if offsets is None:
         offsets = [0] * len(x.shape)
 
     if not (isinstance(offsets, list) or isinstance(offsets, tuple) or \
             isinstance(offsets, Variable)):
-        raise ValueError("The offsets should be a list, tuple or Variable.")
+        raise TypeError(
+            "Attr(offsets) of Op(crop_tensor) should be a list, tuple or Variable."
+        )
 
     out = helper.create_variable_for_type_inference(x.dtype)
     ipts = {'X': x}
     attrs = {}
 
-    def contain_var(input_list):
+    def _contain_var(input_list):
         for ele in input_list:
             if isinstance(ele, Variable):
                 return True
         return False
 
+    def _attr_shape_check(shape_val):
+        if not isinstance(shape_val, int):
+            raise TypeError(
+                "Attr(shape)'s dtype of Op(crop_tensor) should be int32, but received: %s."
+                % type(shape_val))
+        if shape_val == 0:
+            raise ValueError(
+                "Attr(shape) of Op(crop_tensor) should not be zero, but received: %s."
+                % str(shape_val))
+        if shape_val < -1:
+            raise ValueError(
+                "When the element in Attr(shape) of Op(crop_tensor) is negative, only -1 is supported, but received: %s."
+                % str(shape_val))
+
+    def _attr_offsets_check(offset_val):
+        if not isinstance(offset_val, int):
+            raise TypeError(
+                "Attr(offsets)'s dtype of Op(crop_tensor) should be int32, but received: %s."
+                % type(offset_val))
+        if offset_val < 0:
+            raise ValueError(
+                "Attr(offsets) of Op(crop_tensor) should be greater or equal to zero, but received: %s."
+                % str(offset_val))
+
     if isinstance(offsets, Variable):
         offsets.stop_gradient = True
         ipts['Offsets'] = offsets
-    elif contain_var(offsets):
+        attrs['offsets'] = [-1] * len(x.shape)
+    elif _contain_var(offsets):
         new_offsets_tensor = []
+        offsets_attr = []
         for dim in offsets:
             if isinstance(dim, Variable):
                 dim.stop_gradient = True
                 new_offsets_tensor.append(dim)
+                offsets_attr.append(-1)
             else:
-                assert (isinstance(dim, int))
-                assert dim >= 0, ("offsets should be greater or equal to zero.")
+                _attr_offsets_check(dim)
                 temp_out = helper.create_variable_for_type_inference('int32')
                 fill_constant([1], 'int32', dim, force_cpu=True, out=temp_out)
                 new_offsets_tensor.append(temp_out)
+                offsets_attr.append(dim)
         ipts['OffsetsTensor'] = new_offsets_tensor
+        attrs['offsets'] = offsets_attr
     else:
+        for offset in offsets:
+            _attr_offsets_check(offset)
         attrs['offsets'] = offsets
 
-    unk_dim_idx = -1
     if isinstance(shape, Variable):
         shape.stop_gradient = True
         ipts['Shape'] = shape
-    elif contain_var(shape):
+    elif _contain_var(shape):
         new_shape_tensor = []
         shape_attr = []
-        for dim_idx, dim_size in enumerate(shape):
+        for dim_size in shape:
             if isinstance(dim_size, Variable):
                 dim_size.stop_gradient = True
                 new_shape_tensor.append(dim_size)
-                shape_attr.append(-1)
+                shape_attr.append(0)
             else:
-                assert (isinstance(dim_size, int))
-                if dim_size == -1:
-                    assert unk_dim_idx == -1, (
-                        "Only one element in shape can be unknown.")
-                    assert dim_idx == 0, (
-                        "Only the first element in shape can be -1.")
-                    unk_dim_idx = dim_idx
-                else:
-                    assert dim_size > 0, (
-                        "Each dimension size given in shape must be greater than zero."
-                    )
+                _attr_shape_check(dim_size)
                 temp_out = helper.create_variable_for_type_inference('int32')
                 fill_constant(
                     [1], 'int32', dim_size, force_cpu=True, out=temp_out)
@@ -11572,6 +9407,8 @@ def crop_tensor(x, shape=None, offsets=None, name=None):
         ipts['ShapeTensor'] = new_shape_tensor
         attrs['shape'] = shape_attr
     else:
+        for dim_size in shape:
+            _attr_shape_check(dim_size)
         attrs['shape'] = shape
 
     helper.append_op(
@@ -12214,14 +10051,14 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode == 'channel':
         alpha_shape = [1, x.shape[1], 1, 1]
     elif mode == 'element':
-        alpha_shape = x.shape
+        alpha_shape = x.shape[1:]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,
         shape=alpha_shape,
         dtype='float32',
         is_bias=False,
-        default_initializer=Constant(1.0))
+        default_initializer=Constant(0.25))
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type="prelu",
@@ -12432,146 +10269,6 @@ def flatten(x, axis=1, name=None):
         outputs={'Out': out,
                  'XShape': x_shape},
         attrs={"axis": axis})
-    return out
-
-
-def sequence_enumerate(input, win_size, pad_value=0, name=None):
-    """
-    Generate a new sequence for the input index sequence with \
-        shape ``[d_1, win_size]``, which enumerates all the \
-        sub-sequences with length ``win_size`` of the input with \
-        shape ``[d_1, 1]``, and padded by ``pad_value`` if necessary in generation.
-
-    Please note that the `input` must be LodTensor.
-
-    .. code-block:: text
-
-        Input x:
-            x.lod = [[0, 3, 5]]
-            x.data = [[1], [2], [3], [4], [5]]
-            x.dims = [5, 1]
-
-        Attrs:
-            win_size = 2
-            pad_value = 0
-
-        Output:
-            out.lod = [[0, 3, 5]]
-            out.data = [[1, 2], [2, 3], [3, 0], [4, 5], [5, 0]]
-            out.dims = [5, 2]
-
-
-    Args:
-        input (Variable): The input variable which is a index sequence, \
-            which should be a LodTensor with shape ``[d_1, 1]`` and 1-level lod info. \
-            The data type should be float32, float64, int8, int32 or int64.
-        win_size (int): The window size for enumerating all sub-sequences.
-        pad_value (int, optional): The padding value, default 0.
-        name(str, optional): For detailed information, please refer \
-            to :ref:`api_guide_Name`. Usually name is no need to set and \
-            None by default.
-
-    Returns: The enumerate sequence variable which is a LoDTensor with \
-            shape ``[d_1, win_size]`` and 1-level lod info. \
-            The data type is same as ``input``.
-
-    Return Type: Variable
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-
-            x = fluid.data(name='x', shape=[-1, 1], dtype='int32', lod_level=1)
-            out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
-    """
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper('sequence_enumerate', **locals())
-    out = helper.create_variable_for_type_inference(
-        helper.input_dtype(), stop_gradient=True)
-    helper.append_op(
-        type='sequence_enumerate',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs={'win_size': win_size,
-               'pad_value': pad_value})
-    return out
-
-
-def sequence_mask(x, maxlen=None, dtype='int64', name=None):
-    """
-    **SequenceMask Layer**
-
-    This layer outputs a mask according to the input :code:`x` and
-    :code:`maxlen` with data type of :code:`dtype`.
-
-    Supposing :code:`x` is a Tensor with shape [d_1, d_2, ..., d_n], the
-    :code:`y` is a mask with shape [d_1, d_2, ..., d_n, maxlen], where:
-
-    .. math::
-
-        y(i_1, i_2,..., i_n, j) = (j < x(i_1, i_2,..., i_n))
-
-    .. code-block:: text
-
-        Case:
-
-        Consider input:
-            x = [3, 1, 1, 0]    max_len = 4
-
-        then we get out:
-            mask = [[1, 1, 1, 0],
-                    [1, 0, 0, 0],
-                    [1, 0, 0, 0],
-                    [0, 0, 0, 0]]
-
-    Args:
-        x (Variable): Input tensor of sequence_mask layer, \
-            whose elements are integers less than :code:`maxlen`. \
-            Tensor or LodTensor with shape [d_1, d_2, ..., d_n].
-        maxlen (int, optional): Maximum length of the sequence. If :code:`maxlen` \
-                           is None, it would be replace with :math:`max(x)`.
-        dtype (np.dtype|core.VarDesc.VarType|str, optional): Data type of the output, \
-             ``int64`` by default.
-        name(str, optional): For detailed information, please refer \
-            to :ref:`api_guide_Name`. Usually name is no need to set and \
-            None by default.
-
-    Returns: The output sequence mask. Tensor or LodTensor with shape [d_1, d_2, ..., d_n, maxlen] \
-            and data type of :code:`dtype`. The data type should be float32, float64, int8, \
-            int32 or int64.
-
-    Return Type: Variable
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
-
-            x = fluid.data(name='x', shape=[10], dtype='float32', lod_level=1)
-            mask = layers.sequence_mask(x=x)
-
-    """
-    helper = LayerHelper('sequence_mask', **locals())
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=dtype)
-    else:
-        out = helper.create_variable_for_type_inference(dtype=dtype, name=name)
-
-    inputs = {'X': [x]}
-    attrs = {'out_dtype': out.dtype}
-    if maxlen is not None:
-        if isinstance(maxlen, Variable):
-            inputs['MaxLenTensor'] = maxlen
-        else:
-            attrs['maxlen'] = maxlen
-
-    helper.append_op(
-        type='sequence_mask', inputs=inputs, outputs={'Y': out}, attrs=attrs)
-
-    out.stop_gradient = True
     return out
 
 
@@ -15004,22 +12701,23 @@ def sigmoid_cross_entropy_with_logits(x,
 
 
 @templatedoc()
-def maxout(x, groups, name=None):
+def maxout(x, groups, name=None, axis=1):
     """
     ${comment}
 
     Args:
         x(${x_type}): ${x_comment}
-        groups(${groups_type}): ${groups_comment}
+        groups(int): ${groups_comment}
+        axis(int, optional): ${axis_comment}
         name(str, optional): For detailed information, please refer 
             to :ref:`api_guide_Name`. Usually name is no need to set and 
             None by default.
 
     Returns:
-        Variable:
+        Variable: ${out_comment}
 
-        out(${out_type}): ${out_comment}
-
+    Raises:
+        ValueError: If `axis` is not 1, -1 or 3.
 
     Examples:
         .. code-block:: python
@@ -15032,6 +12730,12 @@ def maxout(x, groups, name=None):
             out = fluid.layers.maxout(input, groups=2)
     """
     helper = LayerHelper("maxout", **locals())
+    if axis not in [1, -1, 3]:
+        raise ValueError(
+            "Attr(axis) should be 1 when data format is NCHW, -1 or 3 when data format is NHWC. Received "
+            "Attr(axis): %s." % str(axis))
+    if axis == -1:
+        axis = 3
 
     if name is None:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -15042,7 +12746,8 @@ def maxout(x, groups, name=None):
     helper.append_op(
         type="maxout",
         inputs={"X": x},
-        attrs={"groups": groups},
+        attrs={"groups": groups,
+               "axis": axis},
         outputs={"Out": out})
     return out
 
@@ -15148,68 +12853,6 @@ def space_to_depth(x, blocksize, name=None):
         inputs={"X": x},
         attrs={"blocksize": blocksize},
         outputs={"Out": out})
-    return out
-
-
-@templatedoc()
-def sequence_reverse(x, name=None):
-    """
-    **Notes: The Op only receives LoDTensor as input. If your input is Tensor, please use reverse Op.(fluid.layers.** :ref:`api_fluid_layers_reverse` ).
-
-    This operator only supports LoDTensor as input. It will reverse each sequence for input LoDTensor.
-    Currently it only supports 1-level LoDTensor. This operator is very useful when building a
-    reverse :ref:`api_fluid_layers_DynamicRNN` network.
-
-    .. code-block:: text
-
-        input(x) is a LoDTensor:
-            x.lod  = [[0, 2, 5]]
-            x.data = [[1,  2,  3,  4],
-                      [5,  6,  7,  8],
-                      [9, 10, 11, 12],
-                      [13,14, 15, 16],
-                      [17,18, 19, 20]]
-            x.shape = [5, 4]
-
-        output LoDTensor with same shape and LoD info:
-            out.lod  = [[0, 2, 5]]
-            out.data = [[5,  6,  7,  8],
-                        [1,  2,  3,  4],
-                        [17,18, 19, 20],
-                        [13,14, 15, 16],
-                        [9, 10, 11, 12]]
-            out.shape = [5, 4]
-
-    Args:
-        x(Variable): LoDTensor with 1-level LoD info. Currently it only supports 1-level LoDTensor.
-            The data type should be float32, float64, int8, int32 or int64.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property.
-            For more information, please refer to :ref:`api_guide_Name` .
-
-    Returns:
-        Variable: LoDTensor reversed from input. The data type is same with input.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            x = fluid.data(name='x', shape=[None, 10], dtype='float32', lod_level=1)
-            x_reversed = fluid.layers.sequence_reverse(x)
-    """
-    assert not in_dygraph_mode(), (
-        "sequence layer is not supported in dygraph mode yet.")
-    helper = LayerHelper("sequence_reverse", **locals())
-    if name is None:
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    else:
-        out = helper.create_variable(
-            name=name, dtype=x.dtype, persistable=False)
-
-    helper.append_op(
-        type="sequence_reverse",
-        inputs={"X": x},
-        outputs={"Y": out},
-        attrs=dict())
     return out
 
 
@@ -16891,9 +14534,9 @@ def deformable_conv(input,
             float32, float64.
         offset (Variable): The input coordinate offset of deformable convolution layer.
             A Tensor with type float32, float64.
-        Mask (Variable, Optional): The input mask of deformable covolution layer.
-            A Tensor with type float32, float64.It should be None when you use
-            deformable_conv_v2.
+        Mask (Variable, Optional): The input mask of deformable convolution layer.
+            A Tensor with type float32, float64. It should be None when you use
+            deformable convolution v1.
         num_filters(int): The number of filter. It is as same as the output
             image channel.
         filter_size (int|tuple): The filter size. If filter_size is a tuple,
@@ -17608,8 +15251,8 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     Args:
         shape (list|tuple|Variable): The shape of the output Tensor,  if the shape is a list or tuple, 
                                      its elements can be an integer
-                                     or a Tensor with the shape [1], and the type of the Tensor is int64. 
-                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor is int64.
+                                     or a Tensor with the shape [1], and the type of the Tensor must be int32 or int64. 
+                                     If the shape is a Variable, it is a 1-D Tensor, and the type of the Tensor must be int32 or int64.
         dtype(np.dtype|core.VarDesc.VarType|str, optional): The type of the output Tensor. Supported data types: float32, float64.
                                                   Default: float32.
         min (float, optional): The lower bound on the range of random values to generate, the min is included in the range. Default -1.0.
@@ -17637,12 +15280,17 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
             # example 2:
             # attr shape is a list which contains tensor Variable.
             dim_1 = fluid.layers.fill_constant([1],"int64",3)
-            result_2 = fluid.layers.uniform_random(shape=[dim_1, 5])
+            dim_2 = fluid.layers.fill_constant([1],"int32",5)
+            result_2 = fluid.layers.uniform_random(shape=[dim_1, dim_2])
 
             # example 3:
-            # attr shape is a Variable, the data type must be int64
+            # attr shape is a Variable, the data type must be int64 or int32.
             var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
             result_3 = fluid.layers.uniform_random(var_shape)
+            var_shape_int32 = fluid.data(name='var_shape_int32', shape=[2], dtype="int32")
+            result_4 = fluid.layers.uniform_random(var_shape_int32)
+             
+
 
     """
     if not (isinstance(shape, (list, tuple, Variable))):
@@ -17694,7 +15342,7 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
     inputs = dict()
     attrs = {'seed': seed, 'min': min, 'max': max}
     if in_dygraph_mode():
-        attrs = {'shape': shape}
+        attrs['shape'] = shape
     else:
         if isinstance(shape, Variable):
             shape.stop_gradient = True

@@ -66,6 +66,7 @@ __global__ void ReduceKernel2D(const Tx* x, Ty* y, ReduceOp reducer,
   Ty reduce_var = init;
   for (int idx_y = threadIdx.x; idx_y < reduce_num; idx_y += BlockDim)
     reduce_var = reducer(reduce_var, transformer(x[idx_x + idx_y]));
+  __syncthreads();
 
   reduce_var =
       cub::BlockReduce<Ty, BlockDim>(temp_storage).Reduce(reduce_var, reducer);
@@ -113,6 +114,7 @@ __global__ void ReduceKernel(const Tx* x, Ty* y, ReduceOp reducer,
     for (int k = 0; k < Rank; ++k) idx_x += (sub_index[k] * x_strides[k]);
     reduce_var = static_cast<Ty>(reducer(reduce_var, transformer(x[idx_x])));
   }
+  __syncthreads();
 
   reduce_var =
       cub::BlockReduce<Ty, BlockDim>(temp_storage).Reduce(reduce_var, reducer);

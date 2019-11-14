@@ -48,16 +48,6 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
-proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
-  if (var->IsType<framework::LoDTensor>()) {
-    return var->Get<framework::LoDTensor>().type();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    return var->Get<framework::SelectedRows>().value().type();
-  } else {
-    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
-  }
-}
-
 static DDim GetDimsDebug(const Scope& scope, const std::string& name,
                          bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
@@ -183,7 +173,14 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
+  } catch (platform::EOFException&) {
+    std::rethrow_exception(std::current_exception());
+  } catch (std::exception& ex) {
+    LOG(WARNING) << Type() << " raises an exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    std::rethrow_exception(std::current_exception());
   } catch (...) {
+    LOG(WARNING) << Type() << " raises an unknown exception";
     std::rethrow_exception(std::current_exception());
   }
 }
@@ -236,15 +233,17 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
 
-  std::unordered_set<std::string> no_need_buffer_vars;
+  const std::unordered_set<std::string>* no_need_buffer_vars = nullptr;
   if (info_ && info_->NoNeedBufferVarsInferer()) {
     no_need_buffer_vars =
-        Info().NoNeedBufferVarsInferer()(Inputs(), Outputs(), Attrs());
+        &(Info().NoNeedBufferVarsInferer()(Inputs(), Outputs(), Attrs()));
+    if (no_need_buffer_vars->empty()) no_need_buffer_vars = nullptr;
   }
 
   for (auto it = inputs_.begin(); it != inputs_.end();) {
     auto& input = *it;
-    bool is_no_need_buffer_var = (no_need_buffer_vars.count(input.first) > 0);
+    bool is_no_need_buffer_var =
+        (no_need_buffer_vars && no_need_buffer_vars->count(input.first) > 0);
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
       auto var_name = input.second[i];
@@ -417,34 +416,12 @@ Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var) {
 }
 
 bool ExecutionContext::HasInput(const std::string& name) const {
-  if (!op_.HasInputs(name)) {
-    return false;
-  }
-  auto& ins = Inputs(name);
-  size_t length = ins.size();
-  if (length == 0) {
-    return false;
-  }
-  PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Input %s should not have more than one inputs", name);
-  auto arg = ins[0];
-  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  auto* var = InputVar(name);
   return var != nullptr;
 }
 
 bool ExecutionContext::HasOutput(const std::string& name) const {
-  if (!op_.HasOutputs(name)) {
-    return false;
-  }
-  auto& outs = Outputs(name);
-  size_t length = outs.size();
-  if (length == 0) {
-    return false;
-  }
-  PADDLE_ENFORCE_EQ(length, 1UL,
-                    "Output %s should not have more than one inputs", name);
-  auto arg = outs[0];
-  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  auto* var = OutputVar(name);
   return var != nullptr;
 }
 
@@ -680,9 +657,19 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_tensor->set_layout(in_tensor.layout());
   }
 
-  void DecreaseLoDLevel(const std::string& in, const std::string& out,
-                        size_t i = 0, size_t j = 0) const override {
-    PADDLE_THROW("DecreaseLoDLevel is only used in compile time.");
+  int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override {
+    PADDLE_THROW(
+        "GetLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
+  }
+
+  void SetLoDLevel(const std::string& out, int32_t lod_level,
+                   size_t j = 0) const override {
+    PADDLE_THROW(
+        "SetLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
   }
 
   bool IsRuntime() const override { return true; }
@@ -1041,21 +1028,18 @@ Scope* OperatorWithKernel::PrepareData(
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
 
-  std::unordered_set<std::string> no_buffer_ins;
+  const std::unordered_set<std::string>* no_buffer_ins = nullptr;
   if (info_) {
     auto& no_buffer_inferer = info_->NoNeedBufferVarsInferer();
     // Some op may not register NoNeedBufferVarsInferer
     if (no_buffer_inferer) {
-      no_buffer_ins = no_buffer_inferer(Inputs(), Outputs(), Attrs());
+      no_buffer_ins = &(no_buffer_inferer(Inputs(), Outputs(), Attrs()));
+      if (no_buffer_ins->empty()) no_buffer_ins = nullptr;
     }
   }
 
   for (auto& var_name_item : Inputs()) {
-    // NOTE(zjl): STL does not guarantee fast std::unordered_set::count when set
-    // is empty. At least STL implemented on my mac does calculate hash code
-    // of search key even though the set is empty.
-    if (!no_buffer_ins.empty() &&
-        no_buffer_ins.count(var_name_item.first) > 0) {
+    if (no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0) {
       VLOG(7) << "Skip scanning input " << var_name_item.first
               << " in Operator " << type_;
       continue;
@@ -1185,7 +1169,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto& input : this->inputs_) {
+  for (auto& input : ctx.Context().inputs) {
     ParseInputDataType(ctx, input.first, &data_type);
   }
   PADDLE_ENFORCE_NE(data_type, dafault_data_type,

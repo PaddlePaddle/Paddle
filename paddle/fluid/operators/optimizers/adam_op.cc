@@ -78,8 +78,8 @@ void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType AdamOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
-  return framework::OpKernelType(data_type, ctx.device_context());
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Param");
+  return framework::OpKernelType(input_data_type, ctx.GetPlace());
 }
 
 class AdamOpMaker : public framework::OpProtoAndCheckerMaker {

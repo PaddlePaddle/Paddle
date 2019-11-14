@@ -113,7 +113,8 @@ class TestDistCTR2x2_ASYNC2(TestDistBase):
             "FLAGS_communicator_send_queue_size": "2",
             "FLAGS_communicator_max_merge_var_num": "2",
             "FLAGS_communicator_max_send_grad_num_before_recv": "2",
-            "FLAGS_communicator_independent_recv_thread": "0"
+            "FLAGS_communicator_independent_recv_thread": "0",
+            "FLAGS_communicator_is_sgd_optimizer": "0"
         }
 
         self.check_with_place(

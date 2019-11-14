@@ -124,7 +124,8 @@ class LogicalOp : public framework::OperatorWithKernel {
       op_type, ::paddle::operators::LogicalOp,                             \
       ::paddle::operators::BinaryLogicalOpProtoMaker<_##op_type##Comment>, \
       ::paddle::operators::BinaryLogicalOpInferShape<_##op_type##Comment>, \
-      ::paddle::framework::EmptyGradOpMaker);
+      ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,    \
+      ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 #define REGISTER_UNARY_LOGICAL_OP(op_type, _equation)                     \
   struct _##op_type##Comment {                                            \
@@ -137,7 +138,8 @@ class LogicalOp : public framework::OperatorWithKernel {
       op_type, ::paddle::operators::LogicalOp,                            \
       ::paddle::operators::UnaryLogicalOpProtoMaker<_##op_type##Comment>, \
       ::paddle::operators::UnaryLogicalOpInferShape<_##op_type##Comment>, \
-      ::paddle::framework::EmptyGradOpMaker);
+      ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,   \
+      ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_BINARY_LOGICAL_OP(logical_and, "$$Out = X \\&\\& Y$$");
 REGISTER_BINARY_LOGICAL_KERNEL(logical_and, CPU,
