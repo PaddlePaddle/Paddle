@@ -105,8 +105,9 @@ bool DataFeed::SetFileList(const std::vector<std::string>& files) {
 }
 
 void DataFeed::SetBatchSize(int batch_size) {
-  PADDLE_ENFORCE_GT(batch_size, 0, platform::errors::InvalidArgument(
-                                       "Batch size is illegal.", batch_size));
+  PADDLE_ENFORCE_GT(batch_size, 0,
+                    platform::errors::InvalidArgument(
+                        "Batch size %d is illegal.", batch_size));
   default_batch_size_ = batch_size;
 }
 

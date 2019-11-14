@@ -20,7 +20,7 @@ from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable
-from ..data_feeder import convert_dtype
+from ..data_feeder import check_type_and_dtype
 from ..param_attr import ParamAttr
 from ..initializer import NumpyArrayInitializer
 
@@ -233,19 +233,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
             predict = fluid.layers.fc(input=x, size=class_num, act='softmax')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
-    if not isinstance(input, Variable):
-        raise TypeError(
-            "The type of 'input' in cross_entropy must be Variable, but received %s"
-            % (type(input)))
-    if convert_dtype(input.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'input' in cross_entropy only support float16 on GPU now."
-        )
-    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'input' in cross_entropy must be float16 or float32 or float64, but received %s."
-            % (convert_dtype(input.dtype)))
-
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float16', 'float32', 'float64'], 'cross_entropy')
     if not soft_label:
         return cross_entropy2(input, label, ignore_index)
     helper = LayerHelper('cross_entropy', **locals())
@@ -674,23 +663,9 @@ def nce(input,
                        custom_dist=dist)
     """
     helper = LayerHelper('nce', **locals())
-
-    if not isinstance(input, Variable):
-        raise TypeError(
-            "The type of 'input' in nce layer must be Variable, but received %s"
-            % (type(input)))
-    if not isinstance(label, Variable):
-        raise TypeError(
-            "The type of 'label' in nce layer must be Variable, but received %s"
-            % (type(label)))
-    if convert_dtype(input.dtype) not in ['float32', 'float64']:
-        raise TypeError(
-            "The data type of 'input' in nce layer must be float32 or float64, but received %s."
-            % (convert_dtype(input.dtype)))
-    if convert_dtype(label.dtype) not in ['int64']:
-        raise TypeError(
-            "The data type of 'label' in nce layer must be int64, but received %s."
-            % (convert_dtype(label.dtype)))
+    check_type_and_dtype(input, 'input', Variable, ['float32', 'float64'],
+                         'nce')
+    check_type_and_dtype(label, 'label', Variable, ['int64'], 'nce')
 
     dim = input.shape[1]
     num_true_class = label.shape[1]
