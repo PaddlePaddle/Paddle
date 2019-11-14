@@ -514,11 +514,11 @@ class FakeQAT2MkldnnINT8PerfPass(object):
                     weights = np.array(
                         self._load_param(self._scope, weight_var_name))
                     scales = 1.0 / np.amax(
-                        np.abs(weights.reshape(weights.shape[0], -1)),
+                        np.abs(weights.reshape(weights.shape[0], -1)).astype(
+                            np.float64),
                         axis=axis)
 
-                    lod_tensor = self._convert_scale2tensor(
-                        scales.astype(np.float64))
+                    lod_tensor = self._convert_scale2tensor(scales)
                     use_unsigned_int = False
                     self._var_quant_scales[weight_var_name] = (use_unsigned_int,
                                                                lod_tensor)
