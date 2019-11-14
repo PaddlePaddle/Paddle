@@ -156,7 +156,6 @@ class PtbModel(fluid.Layer):
             init_scale=init_scale,
             dropout=dropout)
         self.embedding = Embedding(
-            self.full_name(),
             size=[vocab_size, hidden_size],
             dtype='float32',
             is_sparse=False,
