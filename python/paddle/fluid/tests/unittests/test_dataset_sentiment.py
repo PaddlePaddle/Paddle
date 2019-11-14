@@ -26,11 +26,19 @@ import paddle
 class TestDatasetSentiment(unittest.TestCase):
     """  TestCases for Sentiment. """
 
+    def setUp(self):
+        os.environ['http_proxy'] = "10.135.112.150:3128"
+        os.environ['https_proxy'] = "10.135.112.150:3128"
+
     def test_get_word_dict(self):
         """ Testcase for get_word_dict. """
         words_freq_sorted = paddle.dataset.sentiment.get_word_dict()
         print(words_freq_sorted)
         self.assertTrue(len(words_freq_sorted) == 39768)
+
+    def tearDown(self):
+        os.environ['http_proxy'] = ""
+        os.environ['https_proxy'] = ""
 
 
 if __name__ == '__main__':
