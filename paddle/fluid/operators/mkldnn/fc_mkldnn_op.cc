@@ -207,8 +207,10 @@ class FCPrimitiveFactory {
   void RecomputeOutputDims(const ExecutionContext& ctx, const LoDTensor* input,
                            const Tensor* w, LoDTensor* output) {
     int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
+    bool weight_pass = ctx.Attr<bool>("padding_weights");
     std::vector<int64_t> output_dims;
-    FCOutputSize(input->dims(), w->dims(), output_dims, in_num_col_dims);
+    FCOutputSize(input->dims(), w->dims(), output_dims, in_num_col_dims,
+                 weight_pass);
     output->Resize(framework::make_ddim(output_dims));
     output->set_lod(input->lod());
   }

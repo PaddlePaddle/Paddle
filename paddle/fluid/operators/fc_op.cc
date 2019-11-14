@@ -32,17 +32,30 @@ class FCOp : public framework::OperatorWithKernel {
 
     auto in_dims = ctx->GetInputDim("Input");
     auto w_dims = ctx->GetInputDim("W");
+    bool weight_pass = ctx->Attrs().Get<bool>("padding_weights");
 
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
-      if (bias_dims.size() == 2) {
-        PADDLE_ENFORCE_EQ(bias_dims[0], 1,
-                          "The shape of Bias must be [1, dim].");
-        PADDLE_ENFORCE_EQ(bias_dims[1], w_dims[1],
-                          "The shape of Bias must be [1, dim].");
-      } else if (bias_dims.size() == 1) {
-        PADDLE_ENFORCE_EQ(bias_dims[0], w_dims[1],
-                          "The shape of Bias must be [1, dim].");
+      if (weight_pass) {
+        if (bias_dims.size() == 2) {
+          PADDLE_ENFORCE_EQ(bias_dims[0], 1,
+                            "The shape of Bias must be [1, dim].");
+          PADDLE_ENFORCE_EQ(bias_dims[1], w_dims[1] - 4,
+                            "The shape of Bias must be [1, dim].");
+        } else if (bias_dims.size() == 1) {
+          PADDLE_ENFORCE_EQ(bias_dims[0], w_dims[1] - 4,
+                            "The shape of Bias must be [1, dim].");
+        }
+      } else {
+        if (bias_dims.size() == 2) {
+          PADDLE_ENFORCE_EQ(bias_dims[0], 1,
+                            "The shape of Bias must be [1, dim].");
+          PADDLE_ENFORCE_EQ(bias_dims[1], w_dims[1],
+                            "The shape of Bias must be [1, dim].");
+        } else if (bias_dims.size() == 1) {
+          PADDLE_ENFORCE_EQ(bias_dims[0], w_dims[1],
+                            "The shape of Bias must be [1, dim].");
+        }
       }
     }
 
@@ -65,7 +78,7 @@ class FCOp : public framework::OperatorWithKernel {
         "in_num_col_dims.");
 
     std::vector<int64_t> output_dims;
-    FCOutputSize(in_dims, w_dims, output_dims, in_num_col_dims);
+    FCOutputSize(in_dims, w_dims, output_dims, in_num_col_dims, weight_pass);
 
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
     ctx->ShareLoD("Input", "Out");
@@ -106,6 +119,9 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<bool>("padding_weights",
+                  "(bool, default false) Only used when weight padding in pass")
         .SetDefault(false);
     AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
                   "Skip calling InferShape() function in the runtime.")

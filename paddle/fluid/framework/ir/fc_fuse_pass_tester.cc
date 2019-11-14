@@ -21,6 +21,24 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+void AddVarToScope(Scope* param_scope, const std::string& name,
+                   const DDim& dims) {
+  auto* tensor = param_scope->Var(name)->GetMutable<LoDTensor>();
+  tensor->Resize(dims);
+  tensor->mutable_data<float>(platform::CPUPlace());
+}
+
+Scope* CreateParamScope() {
+  auto param_scope = new Scope();
+  AddVarToScope(param_scope, "conv2d_filters_0", {});
+  AddVarToScope(param_scope, "conv2d_bias_0", {});
+  AddVarToScope(param_scope, "weights_0", {});
+  AddVarToScope(param_scope, "weights_1", {});
+  AddVarToScope(param_scope, "bias_1", {});
+  AddVarToScope(param_scope, "bias_2", {});
+  return param_scope;
+}
+
 TEST(FCFusePass, basic) {
   // inputs                     operator            output
   // --------------------------------------------------------
@@ -49,6 +67,7 @@ TEST(FCFusePass, basic) {
   VLOG(4) << add_out_1;
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
+  graph->Set("__param_scope__", CreateParamScope());
   auto pass = PassRegistry::Instance().Get("fc_fuse_pass");
   int num_nodes_before = graph->Nodes().size();
   int num_mul_nodes_before = GetNumOpNodes(graph, "mul");

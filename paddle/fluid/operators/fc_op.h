@@ -27,17 +27,27 @@ using Tensor = framework::Tensor;
 inline void FCOutputSize(const framework::DDim& in_dims,
                          const framework::DDim& w_dims,
                          std::vector<int64_t>& out_dims,  // NOLINT
-                         int in_num_col_dims) {
+                         int in_num_col_dims, bool weight_pass) {
   auto in_mat_dims = framework::flatten_to_2d(in_dims, in_num_col_dims);
-  PADDLE_ENFORCE_EQ(
-      in_mat_dims[1], w_dims[0],
-      "Fully Connected input and weigth size do not match. %s, %s");
+  if (weight_pass) {
+    PADDLE_ENFORCE_EQ(
+        in_mat_dims[1], w_dims[0] - 4,
+        "Fully Connected input and weigth size do not match. %s, %s");
+  } else {
+    PADDLE_ENFORCE_EQ(
+        in_mat_dims[1], w_dims[0],
+        "Fully Connected input and weigth size do not match. %s, %s");
+  }
 
   out_dims.reserve(static_cast<size_t>(in_num_col_dims + 1));
   for (int i = 0; i < in_num_col_dims; ++i) {
     out_dims.push_back(in_dims[i]);
   }
-  out_dims.push_back(w_dims[1]);
+  if (weight_pass) {
+    out_dims.push_back(w_dims[1] - 4);
+  } else {
+    out_dims.push_back(w_dims[1]);
+  }
 }
 
 template <typename DeviceContext, typename T>
@@ -53,14 +63,21 @@ class FCOpKernel : public framework::OpKernel<T> {
         (ctx.Attr<std::string>("activation_type") == "relu") ? true : false;
 
     auto w_dims = w->dims();
+    bool weight_pass = ctx.Attr<bool>("padding_weights");
 
     std::vector<int64_t> output_dims;
-    FCOutputSize(input->dims(), w_dims, output_dims, in_num_col_dims);
+    FCOutputSize(input->dims(), w_dims, output_dims, in_num_col_dims,
+                 weight_pass);
     output->Resize(framework::make_ddim(output_dims));
     output->set_lod(input->lod());
 
     auto out_dims = output->dims();
-    int M = framework::product(out_dims) / w_dims[1];
+    int M = 0;
+    if (weight_pass) {
+      M = framework::product(out_dims) / (w_dims[1] - 4);
+    } else {
+      M = framework::product(out_dims) / w_dims[1];
+    }
 
     const T* input_data = input->data<T>();
     const T* w_data = w->data<T>();
@@ -68,8 +85,13 @@ class FCOpKernel : public framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     math::FCFunctor<DeviceContext, T> fc;
-    fc(dev_ctx, M, w_dims[1], w_dims[0], input_data, w_data, output_data,
-       bias ? bias->data<T>() : NULL, with_relu);
+    if (weight_pass) {
+      fc(dev_ctx, M, w_dims[1] - 4, w_dims[0] - 4, input_data, w_data,
+         output_data, bias ? bias->data<T>() : NULL, with_relu, weight_pass);
+    } else {
+      fc(dev_ctx, M, w_dims[1], w_dims[0], input_data, w_data, output_data,
+         bias ? bias->data<T>() : NULL, with_relu);
+    }
   }
 };
 
