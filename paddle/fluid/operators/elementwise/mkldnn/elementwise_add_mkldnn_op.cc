@@ -156,8 +156,8 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       auto sum_pd = handler.AcquireSumPrimitiveDescriptor(
           {src_x_memory, src_y_memory}, scales, dst_md);
 
-      T* z_data = z->mutable_data<T>(ctx.GetPlace(),
-                                     sum_pd->dst_primitive_desc().get_size());
+      T* z_data =
+          z->mutable_data<T>(ctx.GetPlace(), sum_pd->dst_desc().get_size());
 
       auto dst_memory = handler.AcquireDstMemoryFromPrimitive(z_data);
 

@@ -71,9 +71,11 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
       src_memory = std::make_shared<mkldnn::memory>(
           src_md, engine, to_void_cast<T>(input_data));
 
-      auto dst_md = platform::MKLDNNMemDesc({dst_tz}, memory::data_type::f32,
-                                            platform::MKLDNNFormatForSize(dst_tz.size(), memory::format::nchw));
-                                            
+      auto dst_md =
+          platform::MKLDNNMemDesc({dst_tz}, memory::data_type::f32,
+                                  platform::MKLDNNFormatForSize(
+                                      dst_tz.size(), MKLDNNMemoryFormat::nchw));
+
       dst_memory = std::make_shared<mkldnn::memory>(
           dst_md, engine, to_void_cast<float>(output_data));
 

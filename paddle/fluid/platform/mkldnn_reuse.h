@@ -655,7 +655,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
         logical_axis_[i] = i;
       }
 
-      auto src_md = fmt != mkldnn::memory::format::nchw
+      auto src_md = fmt != MKLDNNMemoryFormat::nchw
                         ? platform::MKLDNNMemDesc(
                               dims_, platform::MKLDNNGetDataType<T>(), fmt)
                         : Axis2MemoryDesc(dims_, logical_axis_);
@@ -675,7 +675,7 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
     if (mem_p == nullptr) {
       auto dst_md = Axis2MemoryDesc(dims_, axis_);
 
-      auto dst_data = output->mutable_data<T>(place, dst_mdp.get_size());
+      auto dst_data = output->mutable_data<T>(place, dst_md.get_size());
 
       mem_p = std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
       dev_ctx_.SetBlob(local_key, mem_p);
