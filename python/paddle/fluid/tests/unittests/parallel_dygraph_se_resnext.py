@@ -79,11 +79,12 @@ class ConvBNLayer(fluid.dygraph.Layer):
             bias_attr=False,
             param_attr=fluid.ParamAttr(name="weights"))
 
-        self._batch_norm = BatchNorm(num_filters, act=act)
+        # disable BatchNorm in multi-card. disable LayerNorm because of complex input_shape
+        # self._batch_norm = BatchNorm(num_filters, act=act)
 
     def forward(self, inputs):
         y = self._conv(inputs)
-        y = self._batch_norm(y)
+        # y = self._batch_norm(y)
 
         return y
 
