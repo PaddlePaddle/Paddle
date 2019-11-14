@@ -95,7 +95,6 @@ POD_IP (current node ip address, not needed for local training)
         help="The current node ip. ")
     parser.add_argument(
         "--use_paddlecloud",
-        default=False,
         action='store_true',
         help="wheter to use paddlecloud platform to run your multi-process job. If false, no need to set this argument."
     )
