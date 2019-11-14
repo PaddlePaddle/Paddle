@@ -834,8 +834,7 @@ class OpTest(unittest.TestCase):
                     if check_dygraph:
                         imperative_actual = find_imperative_actual(
                             sub_out_name, dygraph_outs, place)
-                        imperative_actual_t = np.array(
-                            imperative_actual._ivar.value().get_tensor())
+                        imperative_actual_t = imperative_actual.numpy()
                     idx = find_actual(sub_out_name, fetch_list)
                     actual = outs[idx]
                     actual_t = np.array(actual)
@@ -1206,8 +1205,7 @@ class OpTest(unittest.TestCase):
 
             fetch_list_grad = []
             for inputs_to_check_name in inputs_to_check:
-                a = np.array((inputs_grad_dict[inputs_to_check_name]
-                              ._ivar._grad_ivar().value().get_tensor()))
+                a = inputs_grad_dict[inputs_to_check_name].gradient()
                 fetch_list_grad.append(a)
             return fetch_list_grad
 
