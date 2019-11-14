@@ -168,28 +168,33 @@ class ConditionalBlockGradInferShape : public framework::InferShapeBase {
   }
 };
 
-class ConditionalBlockGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ConditionalBlockGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto grad_op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto grad_op = new T();
     grad_op->SetType("conditional_block_grad");
     grad_op->SetInput(ConditionalOp::kCondition,
-                      Input(ConditionalOp::kCondition));
-    grad_op->SetInput(ConditionalOp::kInputs, Input(ConditionalOp::kInputs));
-    grad_op->SetInput(ConditionalOp::kOutputs, Output(ConditionalOp::kOutputs));
+                      this->Input(ConditionalOp::kCondition));
+    grad_op->SetInput(ConditionalOp::kInputs,
+                      this->Input(ConditionalOp::kInputs));
+    grad_op->SetInput(ConditionalOp::kOutputs,
+                      this->Output(ConditionalOp::kOutputs));
     grad_op->SetInput(framework::GradVarName(ConditionalOp::kOutputs),
-                      OutputGrad(ConditionalOp::kOutputs));
-    grad_op->SetInput(ConditionalOp::kScope, Output(ConditionalOp::kScope));
+                      this->OutputGrad(ConditionalOp::kOutputs));
+    grad_op->SetInput(ConditionalOp::kScope,
+                      this->Output(ConditionalOp::kScope));
     grad_op->SetOutput(framework::GradVarName(ConditionalOp::kCondition),
-                       InputGrad(ConditionalOp::kCondition, false));
+                       this->InputGrad(ConditionalOp::kCondition, false));
     grad_op->SetOutput(framework::GradVarName(ConditionalOp::kInputs),
-                       InputGrad(ConditionalOp::kInputs, false));
+                       this->InputGrad(ConditionalOp::kInputs, false));
     grad_op->SetBlockAttr("sub_block", this->grad_block_[0]);
-    grad_op->SetAttr("is_scalar_condition", GetAttr("is_scalar_condition"));
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+    grad_op->SetAttr("is_scalar_condition",
+                     this->GetAttr("is_scalar_condition"));
+    return std::unique_ptr<T>(grad_op);
   }
 };
 
@@ -199,6 +204,6 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpDescMaker {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conditional_block, ops::ConditionalBlockOp,
                   ops::ConditionalBlockOpProtoMaker,
-                  ops::ConditionalBlockGradMaker);
+                  ops::ConditionalBlockGradMaker<paddle::framework::OpDesc>);
 REGISTER_OPERATOR(conditional_block_grad, ops::ConditionalBlockGradOp,
                   ops::ConditionalBlockGradInferShape);

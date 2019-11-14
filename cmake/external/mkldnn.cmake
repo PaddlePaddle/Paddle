@@ -12,24 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_MKLDNN})
-  return()
-ENDIF(NOT ${WITH_MKLDNN})
-
 INCLUDE(ExternalProject)
 
 SET(MKLDNN_PROJECT        "extern_mkldnn")
 SET(MKLDNN_SOURCES_DIR    ${THIRD_PARTY_PATH}/mkldnn)
 SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
-
-IF(APPLE)
-    MESSAGE(WARNING
-        "Mac is not supported with MKLDNN in Paddle yet."
-        "Force WITH_MKLDNN=OFF")
-    SET(WITH_MKLDNN OFF CACHE STRING "Disable MKLDNN in MacOS" FORCE)
-    return()
-ENDIF()
 
 # Introduce variables:
 # * CMAKE_INSTALL_LIBDIR
@@ -64,6 +52,7 @@ ENDIF(NOT WIN32)
 ExternalProject_Add(
     ${MKLDNN_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
     DEPENDS             ${MKLDNN_DEPENDS}
     GIT_REPOSITORY      "https://github.com/intel/mkl-dnn.git"
     GIT_TAG             "aef88b7c233f48f8b945da310f1b973da31ad033"
@@ -112,9 +101,6 @@ if(WIN32)
     SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/bin/mkldnn.dll)
 else(WIN32)
     SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libmkldnn.so.0)
-    ADD_CUSTOM_COMMAND(OUTPUT ${MKLDNN_SHARED_LIB}
-            COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB}
-            DEPENDS mkldnn shared_mkldnn)
+    ADD_CUSTOM_COMMAND(TARGET ${MKLDNN_PROJECT} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB})
 endif(WIN32)
-ADD_CUSTOM_TARGET(mkldnn_shared_lib ALL DEPENDS ${MKLDNN_SHARED_LIB})
-ADD_DEPENDENCIES(mkldnn_shared_lib ${MKLDNN_PROJECT} mkldnn)

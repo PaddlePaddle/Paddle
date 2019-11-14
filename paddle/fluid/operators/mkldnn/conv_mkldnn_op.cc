@@ -171,7 +171,19 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     float fuse_beta = ctx.Attr<float>("fuse_beta");
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
     int groups = ctx.Attr<int>("groups");
+    std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
     bool is_conv3d = strides.size() == 3U;
+
+    auto input_dims = input->dims();
+    auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
+    auto filter_dims = filter->dims();
+    auto filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+
+    auto ksize = framework::vectorize<int>(filter_data_dims);
+
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             data_dims, strides, ksize);
 
     PADDLE_ENFORCE(
         is_conv3d
@@ -338,19 +350,12 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     auto* input = ctx.Input<Tensor>("Input");
-    auto* filter = ctx.Input<Tensor>("Filter");
-    auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
     PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
                       "Wrong layout set for Input tensor");
     PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::format_undef,
                       "Wrong format set for Input tensor");
-
-    PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
-                      "Wrong layout set for Filter tensor");
-    PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::format_undef,
-                      "Wrong format set for Filter tensor");
 
     PADDLE_ENFORCE_GE(
         input->dims().size(), 4,
@@ -359,57 +364,14 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         input->dims().size(), 5,
         "Input must be with 4 or 5 dimensions, i.e. NCHW or NCDHW");
 
-    PADDLE_ENFORCE_GE(
-        filter->dims().size(), 4,
-        "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
-    PADDLE_ENFORCE_LE(
-        filter->dims().size(), 5,
-        "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
-
-    if (bias) {
-      PADDLE_ENFORCE_EQ(bias->layout(), DataLayout::kMKLDNN,
-                        "Wrong layout set for Bias tensor");
-      PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::format_undef,
-                        "Wrong format set for Bias tensor");
-
-      PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
-                        "Bias must only have 1 dimension, i.e. X");
-    }
-
-    std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
-    std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
-    std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
-    int groups = ctx.Attr<int>("groups");
     std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
-    float fuse_alpha = ctx.Attr<float>("fuse_alpha");
-    float fuse_beta = ctx.Attr<float>("fuse_beta");
     bool fuse_residual_conn = ctx.Attr<bool>("fuse_residual_connection");
-    bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
     bool unsigned_output =
         (fuse_activation == "relu" || fuse_activation == "relu6");
-
-    PADDLE_ENFORCE(!fuse_residual_conn || !force_fp32_output,
-                   "residual fusion does not support force output with fp32");
-
-    bool is_conv3d = strides.size() == 3U;
-    PADDLE_ENFORCE(
-        is_conv3d
-            ? dilations.size() == 3 && dilations[0] == 1 && dilations[1] == 1 &&
-                  dilations[2] == 1
-            : dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
-        "dilation in convolution is not implemented yet");
-
-    PADDLE_ENFORCE_NE(is_conv3d, true,
-                      "int8 does not support conv3d currently");
 
     const T* input_data = input->data<T>();
 
     auto src_tz = paddle::framework::vectorize<int>(input->dims());
-    auto weights_tz = paddle::framework::vectorize<int>(filter->dims());
-    int g = std::max(groups, 1);
-
-    GetWeightsTz(weights_tz, g, is_conv3d);
-    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
 
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
@@ -448,6 +410,76 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         dev_ctx.GetBlob(prim_key));
 
     if (conv_p == nullptr || !is_test) {
+      float fuse_alpha = ctx.Attr<float>("fuse_alpha");
+      float fuse_beta = ctx.Attr<float>("fuse_beta");
+      bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
+
+      auto* filter = ctx.Input<Tensor>("Filter");
+
+      PADDLE_ENFORCE_EQ(filter->layout(), DataLayout::kMKLDNN,
+                        "Wrong layout set for Filter tensor");
+      PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::format_undef,
+                        "Wrong format set for Filter tensor");
+
+      PADDLE_ENFORCE_GE(
+          filter->dims().size(), 4,
+          "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+      PADDLE_ENFORCE_LE(
+          filter->dims().size(), 5,
+          "Filter must be with 4 or 5 dimensions, i.e. OIHW or OIDHW");
+
+      PADDLE_ENFORCE_EQ(
+          !fuse_residual_conn || !force_fp32_output, true,
+          "residual fusion does not support force output with fp32");
+
+      auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
+
+      if (bias) {
+        PADDLE_ENFORCE_EQ(bias->layout(), DataLayout::kMKLDNN,
+                          "Wrong layout set for Bias tensor");
+        PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::format_undef,
+                          "Wrong format set for Bias tensor");
+
+        PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
+                          "Bias must only have 1 dimension, i.e. X");
+      }
+
+      std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
+      std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
+      std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
+      std::string padding_algorithm =
+          ctx.Attr<std::string>("padding_algorithm");
+
+      bool is_conv3d = strides.size() == 3U;
+
+      PADDLE_ENFORCE_NE(is_conv3d, true,
+                        "int8 does not support conv3d currently");
+
+      auto input_dims = input->dims();
+      auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
+      auto filter_dims = filter->dims();
+      auto filter_data_dims =
+          framework::slice_ddim(filter_dims, 2, filter_dims.size());
+
+      auto ksize = framework::vectorize<int>(filter_data_dims);
+
+      UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                               data_dims, strides, ksize);
+
+      int groups = ctx.Attr<int>("groups");
+      auto weights_tz = paddle::framework::vectorize<int>(filter->dims());
+      int g = std::max(groups, 1);
+
+      GetWeightsTz(weights_tz, g, is_conv3d);
+      auto dst_tz = paddle::framework::vectorize<int>(output->dims());
+
+      PADDLE_ENFORCE_EQ(
+          is_conv3d
+              ? dilations.size() == 3 && dilations[0] == 1 &&
+                    dilations[1] == 1 && dilations[2] == 1
+              : dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
+          true, "dilation in convolution is not implemented yet");
+
       const K* filter_data = filter->data<K>();
       auto scale_in_data = ctx.Attr<float>("Scale_in");
       auto scale_in_eltwise_data = ctx.Attr<float>("Scale_in_eltwise");
@@ -689,6 +721,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
+    std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
     int groups = ctx.Attr<int>("groups");
 
     bool is_conv3d = strides.size() == 3U;
@@ -697,6 +730,17 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const T* output_grad_data = output_grad->data<T>();
     T* input_grad_data = nullptr;
     T* filter_grad_data = nullptr;
+
+    auto input_dims = input->dims();
+    auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
+    auto filter_dims = filter->dims();
+    auto filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+
+    auto ksize = framework::vectorize<int>(filter_data_dims);
+
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             data_dims, strides, ksize);
 
     auto src_tz = paddle::framework::vectorize<int>(input->dims());
     auto weights_tz = paddle::framework::vectorize<int>(filter->dims());
@@ -759,10 +803,13 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE_NE(conv_pd, nullptr,
                       "Fail to find conv_pd in device context");
 
+    auto mkldnn_paddings = platform::ToMkldnnPadding(paddings);
+
     // create backward convolution weights primitive descriptor
     auto conv_bwd_weights_desc = mkldnn::convolution_backward_weights::desc(
         mkldnn::convolution_direct, src_md, diff_weights_md, diff_dst_md,
-        strides, paddings, paddings, mkldnn::padding_kind::zero);
+        strides, mkldnn_paddings[0], mkldnn_paddings[1],
+        mkldnn::padding_kind::zero);
     auto conv_bwd_weights_pd =
         std::make_shared<mkldnn::convolution_backward_weights::primitive_desc>(
             conv_bwd_weights_desc, mkldnn_engine, *conv_pd);
@@ -770,7 +817,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // create backward convolution data primitive descriptor
     auto conv_bwd_data_desc = mkldnn::convolution_backward_data::desc(
         mkldnn::convolution_direct, diff_src_md, weights_md, diff_dst_md,
-        strides, paddings, paddings, mkldnn::padding_kind::zero);
+        strides, mkldnn_paddings[0], mkldnn_paddings[1],
+        mkldnn::padding_kind::zero);
     auto conv_bwd_data_pd =
         std::make_shared<mkldnn::convolution_backward_data::primitive_desc>(
             conv_bwd_data_desc, mkldnn_engine, *conv_pd);

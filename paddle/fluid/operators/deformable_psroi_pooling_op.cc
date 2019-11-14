@@ -199,31 +199,32 @@ class DeformablePSROIPoolOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+        ctx.device_context());
   }
 };
 
-class DeformablePSROIPoolGradOpDescMaker
-    : public framework::SingleGradOpDescMaker {
+template <typename T>
+class DeformablePSROIPoolGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
 
     op->SetType("deformable_psroi_pooling_grad");
-    op->SetInput("Input", Input("Input"));
-    op->SetInput("Trans", Input("Trans"));
-    op->SetInput("ROIs", Input("ROIs"));
-    op->SetInput("TopCount", Output("TopCount"));
-    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Trans", this->Input("Trans"));
+    op->SetInput("ROIs", this->Input("ROIs"));
+    op->SetInput("TopCount", this->Output("TopCount"));
+    op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
 
-    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
-    op->SetOutput(framework::GradVarName("Trans"), InputGrad("Trans"));
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Trans"), this->InputGrad("Trans"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -247,8 +248,9 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Trans")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Trans"),
+        ctx.device_context());
   }
 };
 
@@ -257,9 +259,11 @@ class DeformablePSROIPoolGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 using CPU = paddle::platform::CPUDeviceContext;
-REGISTER_OPERATOR(deformable_psroi_pooling, ops::DeformablePSROIPoolOp,
-                  ops::DeformablePSROIPoolOpMaker,
-                  ops::DeformablePSROIPoolGradOpDescMaker);
+REGISTER_OPERATOR(
+    deformable_psroi_pooling, ops::DeformablePSROIPoolOp,
+    ops::DeformablePSROIPoolOpMaker,
+    ops::DeformablePSROIPoolGradOpMaker<paddle::framework::OpDesc>,
+    ops::DeformablePSROIPoolGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(deformable_psroi_pooling_grad,
                   ops::DeformablePSROIPoolGradOp);
 REGISTER_OP_CPU_KERNEL(deformable_psroi_pooling,
