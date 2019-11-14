@@ -486,6 +486,50 @@ $out = \max(0, x) + \min(0, \alpha * (e^x - 1))$
   }
 };
 
+class CELUOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "The input is a multi-dimension tensor. The data type is"
+             "float32 ot float64.")
+        AddOutput("Out",
+                  "The output is a multi-dimension Tensor which has same "
+                  "dimension and data type as the ``x``.");
+    AddAttr<float>("alpha", "The alpha value of CELU").SetDefault(1.0f);
+    AddComment(R"DOC(
+CELU Activation Operator.
+Appiled the following element-wise computation on the input accroding to
+https://arxiv.org/abs/1704.07483.
+
+$out = \max(0,x) + \min(0, \alpha * (e^(x / \alpha) - 1))$
+
+)DOC");
+  }
+};
+
+class SELUOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "The input is a multi-dimension tensor. The data type is"
+             "float32 or float64.");
+    AddOutput("Out",
+              "The output is a multi-dimension Tensor which has same "
+              "dimension and data type as the ``x``.");
+    AddComment(R"DOC(
+SELU Activation Operator.
+Applied the following element-wise computation on the input accroding to 
+https://arxiv.org/abs/1706.02515.
+
+$out = \scale * (\max(0,x) + \min(0, (\alpha * (e^x -1))))$
+
+with $\alpha = 1.6732632423543772848170429916717$ and 
+$\scale = 1.0507009873554804934193349852946$ 
+
+)DOC");
+  }
+};
+
 class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {

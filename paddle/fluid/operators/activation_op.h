@@ -1105,6 +1105,66 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
+template <typename T>
+struct CELUFunction : public BaseActivationFunction<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttr() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    out.device(d) = x.cwiseMax(static_cast<T>(0)) +
+                    (static_cast<T>(alpha) *
+                     ((x / static<T>(alpha)).exp() - static_cast<T>(1)))
+                        .cwiseMin(static_cast<T>(0));
+  }
+};
+
+template <typename T>
+struct CELUGradFunctor : public BaseActivationFunctor<T> {
+  float alpha;
+  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
+    return {{"alpha", &alpha}};
+  }
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    dx.device(d) = dout * (x > static_cast<T>(0)).template cast<T>() +
+                   dout * (x / ststic_cast<T>(alpha)).exp() *
+                       (x < static_cast<T>(0)).template cast<T>();
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
+template <typename T>
+struct SELUFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out>
+  void operator()(Device d, X x, Out out) const {
+    float alpha = 1.67326;
+    float scale = 1.05070;
+    out.device(d) =
+        scale *
+        (x.cwiseMax(static_cast<T>(0)) +
+         (alpha * (x.exp() - static_cast<T>(1))).cwiseMin(static_cast<T>(0)));
+  }
+};
+
+template <typename T>
+struct SELUGradFunctor : public BaseActivationFunctor<T> {
+  template <typename Device, typename X, typename Out, typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+    float alpha = 1.67326;
+    float scale = 1.05070;
+    dx.device(d) = scale * (dout * (x > static_cast<T>(0)).template cast<T>() +
+                            dout * alpha * x.exp() *
+                                (x < static_cast<T>(0)).template cast<T>());
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
+};
+
 // FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5198
 template <typename T>
 struct PowFunctor : public BaseActivationFunctor<T> {
@@ -1706,6 +1766,8 @@ class PowGradKernel
   __macro(relu6, Relu6, Relu6Functor, Relu6GradFunctor);                      \
   __macro(tanh_shrink, TanhShrink, TanhShrinkFunctor, TanhShrinkGradFunctor); \
   __macro(elu, ELU, ELUFunctor, ELUGradFunctor);                              \
+  __macro(celu, CELU, CELUFunctor, CELUGradFunctor);                          \
+  __macro(selu, SELU, SELUFunctor, SELUGradFunctor);                          \
   __macro(hard_shrink, HardShrink, HardShrinkFunctor, HardShrinkGradFunctor); \
   __macro(hard_sigmoid, HardSigmoid, HardSigmoidFunctor,                      \
           HardSigmoidGradFunctor);                                            \
