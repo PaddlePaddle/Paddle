@@ -136,15 +136,35 @@ class GeoSgdTranspiler(DistributeTranspiler):
         # send sparse id to communicator
         self.sparse_var = []
         self.sparse_tables = []
+        unique_sparse_var = {}
         for op in self.origin_program.global_block().ops:
             if op.type == "lookup_table":
                 op._set_attr('remote_prefetch', False)
                 for input_var_name, sparse_var_name in zip(
                         op.input("Ids"), op.input("W")):
                     if sparse_var_name in self.sparse_var_list:
+                        if input_var_name in unique_sparse_var:
+                            if unique_sparse_var[
+                                    input_var_name] == sparse_var_name:
+                                continue
                         input_var = program.global_block().var(input_var_name)
                         self.sparse_var.append(input_var)
                         self.sparse_tables.append(sparse_var_name)
+                        unique_sparse_var[input_var_name] = sparse_var_name
+
+            # designd for pyramiddnn which sparse var in fused_embedding_seq_pool op
+            elif "is_sparse" in op.all_attrs():
+                for input_var_name, sparse_var_name in zip(
+                        op.input("Ids"), op.input("W")):
+                    if sparse_var_name in self.sparse_var_list:
+                        if input_var_name in unique_sparse_var:
+                            if unique_sparse_var[
+                                    input_var_name] == sparse_var_name:
+                                continue
+                        input_var = program.global_block().var(input_var_name)
+                        self.sparse_var.append(input_var)
+                        self.sparse_tables.append(sparse_var_name)
+                        unique_sparse_var[input_var_name] = sparse_var_name
 
         # batch training loop end flag
         dummy_output = program.global_block().create_var(
