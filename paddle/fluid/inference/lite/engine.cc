@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define LITE_WITH_CUDA 1
-
 #include "paddle/fluid/inference/lite/engine.h"
 
 namespace paddle {
