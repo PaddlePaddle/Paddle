@@ -183,6 +183,7 @@ __all__ = [
     'hard_swish',
     'gather_tree',
     'uniform_random',
+    'masked_select',
 ]
 
 
