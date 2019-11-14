@@ -108,18 +108,44 @@ endfunction()
 
 
 
-function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_dir qat_model_dir qat_int8_save_model_dir data_path)
-	set(SAVE_QAT_INT8_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/qat_save_model.py")
-	prepare_qat_int8_model(${qat_model_dir} ${qat_int8_save_model_dir} ${SAVE_QAT_INT8_MODEL_SCRIPT})
-	inference_analysis_test_run(${TARGET_NAME}
+#function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_dir qat_model_dir qat_int8_save_model_dir data_path)
+#	set(SAVE_QAT_INT8_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/qat_save_model.py")
+#	prepare_qat_int8_model(${qat_model_dir} ${qat_int8_save_model_dir} ${SAVE_QAT_INT8_MODEL_SCRIPT})
+#	inference_analysis_test_run(${TARGET_NAME}
+#	COMMAND ${test_binary}
+#        ARGS --fp32_model=${fp32_model_dir}/model
+#             --int8_model=${qat_int8_save_model_dir}/model
+#             --infer_data=${data_path}
+#             --batch_size=50
+#             --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+#	     --iterations=2)
+#endfunction()
+
+function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_dir qat_int8_save_model_dir data_path)
+       add_custom_target(${TARGET_NAME} ALL 
 	COMMAND ${test_binary}
-        ARGS --fp32_model=${fp32_model_dir}/model
-             --int8_model=${qat_int8_save_model_dir}/model
+        ARGS --fp32_model=${fp32_model_dir}
+             --int8_model=${qat_int8_save_model_dir}
              --infer_data=${data_path}
              --batch_size=50
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+             --with_label=false
 	     --iterations=2)
+  add_dependencies(test_analyzer_qat_int8_resnet50 save_qat2_int8_resnet50_mkldnn)
 endfunction()
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 if(NOT APPLE AND WITH_MKLML)
     # RNN1
@@ -139,107 +165,107 @@ else()
 endif()
 
 
-# RNN2
-set(RNN2_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn2")
-download_model_and_data(${RNN2_INSTALL_DIR} "rnn2_model.tar.gz" "rnn2_data.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR} analyzer_rnn2_tester.cc)
-
-# TODO(luotao, Superjom) Disable DAM test, temporarily fix
-# https://github.com/PaddlePaddle/Paddle/issues/15032#issuecomment-455990914.
-# After inference framework refactor, will reopen it.
-# normal DAM
-set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
-download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.gz")
-#inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc EXTRA_DEPS legacy_allocator)
-
-# small DAM
-set(DAM_SMALL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_dam")
-download_model_and_data(${DAM_SMALL_INSTALL_DIR} "dam_small_model.tar.gz" "dam_small_data.txt.tar.gz")
-inference_analysis_test(test_analyzer_small_dam SRCS analyzer_dam_tester.cc
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-        ARGS --infer_model=${DAM_SMALL_INSTALL_DIR}/model --infer_data=${DAM_SMALL_INSTALL_DIR}/data.txt --max_turn_num=1)
-
-#save model 
-inference_analysis_api_test(test_analyzer_save_model ${DAM_SMALL_INSTALL_DIR} analyzer_save_model_tester.cc)
-
-# chinese_ner
-set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
-download_model_and_data(${CHINESE_NER_INSTALL_DIR} "chinese_ner_model.tar.gz" "chinese_ner-data.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_ner ${CHINESE_NER_INSTALL_DIR} analyzer_ner_tester.cc)
-
-# lac
-set(LAC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lac")
-download_model_and_data(${LAC_INSTALL_DIR} "lac_model.tar.gz" "lac_data.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR} analyzer_lac_tester.cc)
-
-# Pyramid DNN
-set(PYRAMID_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/pyramid_dnn")
-download_model_and_data(${PYRAMID_DNN_INSTALL_DIR} "PyramidDNN_model.tar.gz" "PyramidDNN_data.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_pyramid_dnn ${PYRAMID_DNN_INSTALL_DIR} analyzer_pyramid_dnn_tester.cc)
-
-#Ernie
-set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
-download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_model.tar.gz" "Ernie_data.txt.tar.gz" "Ernie_result.txt.tar.gz")
-download_result(${ERNIE_INSTALL_DIR} "Ernie_result.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_tester.cc)
-
-# text_classification
-set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
-download_model_and_data(${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz" "text_classification_data.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR} analyzer_text_classification_tester.cc)
-
-# seq_conv1
-set(SEQ_CONV1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_conv1")
-download_model_and_data(${SEQ_CONV1_INSTALL_DIR} "seq_conv1_model.tar.gz" "seq_conv1_data.txt.tar.gz")
-inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR} analyzer_seq_conv1_tester.cc)
-
-# transformer, the dataset only works on batch_size=8 now
-set(TRANSFORMER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/transformer")
-download_model_and_data(${TRANSFORMER_INSTALL_DIR} "temp%2Ftransformer_model.tar.gz" "temp%2Ftransformer_data.txt.tar.gz")
-inference_analysis_test(test_analyzer_transformer SRCS analyzer_transformer_tester.cc 
-  EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-  ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8 
-       --paddle_num_threads=${CPU_NUM_THREADS_ON_CI})
-
-# ocr
-set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
-if (NOT EXISTS ${OCR_INSTALL_DIR})
-    inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Focr.tar.gz")
-endif()
-inference_analysis_api_test_with_refer_result(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
-
-# mobilenet with transpose op
-set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
-if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
-    inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Fmobilenet.tar.gz")
-endif()
-inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc)
-
-### Image classification tests with fake data
-set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
-set(IMG_CLASS_TEST_APP_SRC "analyzer_image_classification_tester.cc")
-
-# build test binary to be used in subsequent tests
-inference_analysis_api_test_with_fake_data_build(${IMG_CLASS_TEST_APP} ${IMG_CLASS_TEST_APP_SRC})
-
-# googlenet
-set(GOOGLENET_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/googlenet")
-download_data(${GOOGLENET_MODEL_DIR} "googlenet.tar.gz")
-inference_analysis_api_test_with_fake_data_run(test_analyzer_googlenet ${IMG_CLASS_TEST_APP}
-	${GOOGLENET_MODEL_DIR} false)
-
-# resnet50
-set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
-download_data(${RESNET50_MODEL_DIR} "resnet50_model.tar.gz")
-inference_analysis_api_test_with_fake_data_run(test_analyzer_resnet50 ${IMG_CLASS_TEST_APP}
-	${RESNET50_MODEL_DIR} true)
-
-# mobilenet with depthwise_conv op
-set(MOBILENET_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv")
-download_data(${MOBILENET_MODEL_DIR} "mobilenet_model.tar.gz")
-inference_analysis_api_test_with_fake_data_run(test_analyzer_mobilenet_depthwise_conv ${IMG_CLASS_TEST_APP}
-	${MOBILENET_MODEL_DIR} false)
-
+## RNN2
+#set(RNN2_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/rnn2")
+#download_model_and_data(${RNN2_INSTALL_DIR} "rnn2_model.tar.gz" "rnn2_data.txt.tar.gz")
+#inference_analysis_api_test(test_analyzer_rnn2 ${RNN2_INSTALL_DIR} analyzer_rnn2_tester.cc)
+#
+## TODO(luotao, Superjom) Disable DAM test, temporarily fix
+## https://github.com/PaddlePaddle/Paddle/issues/15032#issuecomment-455990914.
+## After inference framework refactor, will reopen it.
+## normal DAM
+#set(DAM_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/dam")
+#download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.gz")
+##inference_analysis_api_test(test_analyzer_dam ${DAM_INSTALL_DIR} analyzer_dam_tester.cc EXTRA_DEPS legacy_allocator)
+#
+## small DAM
+#set(DAM_SMALL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_dam")
+#download_model_and_data(${DAM_SMALL_INSTALL_DIR} "dam_small_model.tar.gz" "dam_small_data.txt.tar.gz")
+#inference_analysis_test(test_analyzer_small_dam SRCS analyzer_dam_tester.cc
+#        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+#        ARGS --infer_model=${DAM_SMALL_INSTALL_DIR}/model --infer_data=${DAM_SMALL_INSTALL_DIR}/data.txt --max_turn_num=1)
+#
+##save model 
+#inference_analysis_api_test(test_analyzer_save_model ${DAM_SMALL_INSTALL_DIR} analyzer_save_model_tester.cc)
+#
+## chinese_ner
+#set(CHINESE_NER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/chinese_ner")
+#download_model_and_data(${CHINESE_NER_INSTALL_DIR} "chinese_ner_model.tar.gz" "chinese_ner-data.txt.tar.gz")
+#inference_analysis_api_test(test_analyzer_ner ${CHINESE_NER_INSTALL_DIR} analyzer_ner_tester.cc)
+#
+## lac
+#set(LAC_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/lac")
+#download_model_and_data(${LAC_INSTALL_DIR} "lac_model.tar.gz" "lac_data.txt.tar.gz")
+#inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR} analyzer_lac_tester.cc)
+#
+## Pyramid DNN
+#set(PYRAMID_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/pyramid_dnn")
+#download_model_and_data(${PYRAMID_DNN_INSTALL_DIR} "PyramidDNN_model.tar.gz" "PyramidDNN_data.txt.tar.gz")
+#inference_analysis_api_test(test_analyzer_pyramid_dnn ${PYRAMID_DNN_INSTALL_DIR} analyzer_pyramid_dnn_tester.cc)
+#
+##Ernie
+#set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
+#download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_model.tar.gz" "Ernie_data.txt.tar.gz" "Ernie_result.txt.tar.gz")
+#download_result(${ERNIE_INSTALL_DIR} "Ernie_result.txt.tar.gz")
+#inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_tester.cc)
+#
+## text_classification
+#set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
+#download_model_and_data(${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz" "text_classification_data.txt.tar.gz")
+#inference_analysis_api_test(test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR} analyzer_text_classification_tester.cc)
+#
+## seq_conv1
+#set(SEQ_CONV1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_conv1")
+#download_model_and_data(${SEQ_CONV1_INSTALL_DIR} "seq_conv1_model.tar.gz" "seq_conv1_data.txt.tar.gz")
+#inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR} analyzer_seq_conv1_tester.cc)
+#
+## transformer, the dataset only works on batch_size=8 now
+#set(TRANSFORMER_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/transformer")
+#download_model_and_data(${TRANSFORMER_INSTALL_DIR} "temp%2Ftransformer_model.tar.gz" "temp%2Ftransformer_data.txt.tar.gz")
+#inference_analysis_test(test_analyzer_transformer SRCS analyzer_transformer_tester.cc 
+#  EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+#  ARGS --infer_model=${TRANSFORMER_INSTALL_DIR}/model --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt --batch_size=8 
+#       --paddle_num_threads=${CPU_NUM_THREADS_ON_CI})
+#
+## ocr
+#set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
+#if (NOT EXISTS ${OCR_INSTALL_DIR})
+#    inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Focr.tar.gz")
+#endif()
+#inference_analysis_api_test_with_refer_result(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
+#
+## mobilenet with transpose op
+#set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
+#if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
+#    inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Fmobilenet.tar.gz")
+#endif()
+#inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc)
+#
+#### Image classification tests with fake data
+#set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
+#set(IMG_CLASS_TEST_APP_SRC "analyzer_image_classification_tester.cc")
+#
+## build test binary to be used in subsequent tests
+#inference_analysis_api_test_with_fake_data_build(${IMG_CLASS_TEST_APP} ${IMG_CLASS_TEST_APP_SRC})
+#
+## googlenet
+#set(GOOGLENET_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/googlenet")
+#download_data(${GOOGLENET_MODEL_DIR} "googlenet.tar.gz")
+#inference_analysis_api_test_with_fake_data_run(test_analyzer_googlenet ${IMG_CLASS_TEST_APP}
+#	${GOOGLENET_MODEL_DIR} false)
+#
+## resnet50
+#set(RESNET50_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
+#download_data(${RESNET50_MODEL_DIR} "resnet50_model.tar.gz")
+#inference_analysis_api_test_with_fake_data_run(test_analyzer_resnet50 ${IMG_CLASS_TEST_APP}
+#	${RESNET50_MODEL_DIR} true)
+#
+## mobilenet with depthwise_conv op
+#set(MOBILENET_MODEL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet_depthwise_conv")
+#download_data(${MOBILENET_MODEL_DIR} "mobilenet_model.tar.gz")
+#inference_analysis_api_test_with_fake_data_run(test_analyzer_mobilenet_depthwise_conv ${IMG_CLASS_TEST_APP}
+#	${MOBILENET_MODEL_DIR} false)
+#
 if(WITH_MKLDNN)
 
   ### INT8 tests
@@ -321,10 +347,14 @@ if(WITH_MKLDNN)
   inference_analysis_api_test_build(${QAT_IMG_CLASS_TEST_APP} ${QAT_IMG_CLASS_TEST_APP_SRC})
 
   # ResNet50 FP32 vs. QAT INT8
-  set(QAT_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_QAT")
+  set(QAT2_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_qat_perf/ResNet50_qat_perf")
   set(QAT_INT8_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_QAT_INT8")
-  download_qat_data(${QAT_RESNET50_MODEL_DIR} "ResNet50_qat_model.tar.gz" )
-  inference_analysis_api_qat_test_run(test_analyzer_qat_int8_resnet50 ${QAT_IMG_CLASS_TEST_APP} ${INT8_RESNET50_MODEL_DIR} ${QAT_RESNET50_MODEL_DIR} ${QAT_INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  #  download_qat_data(${QAT_RESNET50_MODEL_DIR} "ResNet50_qat_model.tar.gz" )
+  set(QAT_RESNET50_MODEL_DIR "/home/lidanqing/data/qat_models_0927/resnet50" )
+
+  #  set(SAVE_QAT_INT8_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/qat_save_model.py")
+  # prepare_qat_int8_model(${QAT_RESNET50_MODEL_DIR} ${QAT_INT8_RESNET50_MODEL_DIR} ${SAVE_QAT_INT8_MODEL_SCRIPT})
+  inference_analysis_api_qat_test_run(test_analyzer_qat_int8_resnet50 ${QAT_IMG_CLASS_TEST_APP} ${QAT2_RESNET50_MODEL_DIR}/float ${QAT_INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
 endif()
 

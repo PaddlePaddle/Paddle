@@ -44,6 +44,7 @@ DEFINE_string(int8_model, "", "INT8 model path");
 DEFINE_string(infer_data, "", "data file");
 DEFINE_string(refer_result, "", "reference result for comparison");
 DEFINE_int32(batch_size, 1, "batch size");
+DEFINE_bool(with_label, true, "with label or not");
 DEFINE_bool(enable_fp32, true, "Enable FP32 type prediction");
 DEFINE_bool(enable_int8, true, "Enable INT8 type prediction");
 DEFINE_int32(warmup_batch_size, 100, "batch size for quantization warmup");
@@ -639,7 +640,7 @@ void CompareQuantizedAndAnalysis(
 void CompareAnalysisAndAnalysis(
     const AnalysisConfig *config1, const AnalysisConfig *config2,
     const std::vector<std::vector<PaddleTensor>> &inputs,
-    const int compared_idx = 1) {
+    const bool with_label = FLAGS_with_label, const int compared_idx = 1) {
   PADDLE_ENFORCE_EQ(inputs[0][0].shape[0], FLAGS_batch_size,
                     "Input data has to be packed batch by batch.");
   LOG(INFO) << "FP32 & INT8 prediction run: batch_size " << FLAGS_batch_size
@@ -667,8 +668,9 @@ void CompareAnalysisAndAnalysis(
                             &sample_latency_int8);
   }
   SummarizePerformance(sample_latency_fp32, sample_latency_int8);
-
-  CompareAccuracy(int8_outputs, analysis_outputs, compared_idx);
+  if (with_label) {
+    CompareAccuracy(int8_outputs, analysis_outputs, compared_idx);
+  }
 }
 
 void CompareNativeAndAnalysis(
