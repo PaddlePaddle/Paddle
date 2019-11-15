@@ -1106,7 +1106,7 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CELUFunction : public BaseActivationFunction<T> {
+struct CELUFunction : public BaseActivationFunctor<T> {
   float alpha;
   typename BaseActivationFunctor<T>::AttrPair GetAttr() {
     return {{"alpha", &alpha}};
@@ -1115,7 +1115,7 @@ struct CELUFunction : public BaseActivationFunction<T> {
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.cwiseMax(static_cast<T>(0)) +
                     (static_cast<T>(alpha) *
-                     ((x / static<T>(alpha)).exp() - static_cast<T>(1)))
+                     ((x / static_cast<T>(alpha)).exp() - static_cast<T>(1)))
                         .cwiseMin(static_cast<T>(0));
   }
 };
@@ -1130,7 +1130,7 @@ struct CELUGradFunctor : public BaseActivationFunctor<T> {
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
     dx.device(d) = dout * (x > static_cast<T>(0)).template cast<T>() +
-                   dout * (x / ststic_cast<T>(alpha)).exp() *
+                   dout * (x / static_cast<T>(alpha)).exp() *
                        (x < static_cast<T>(0)).template cast<T>();
   }
 
