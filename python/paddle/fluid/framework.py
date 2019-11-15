@@ -558,7 +558,24 @@ def _debug_string_(proto, throw_on_error=True):
     return proto.__str__()
 
 
+class VariableMetaClass(type):
+    @classmethod
+    def __instancecheck__(cls, instance):
+        t = type(instance)
+        if in_dygraph_mode():
+            return issubclass(t, Variable) or issubclass(t, core.VarBase)
+        else:
+            return issubclass(t, Variable)
+
+
+class ParameterMetaClass(VariableMetaClass):
+    @classmethod
+    def __instancecheck__(cls, instance):
+        return issubclass(type(instance), Parameter)
+
+
 class Variable(object):
+    __metaclass__ = VariableMetaClass
     """
     **Notes**:
         **The constructor of Variable should not be invoked directly.**
@@ -4457,6 +4474,7 @@ class Program(object):
 
 
 class Parameter(Variable):
+    __metaclass__ = ParameterMetaClass
     """
     Parameter is derived from Variable. A parameter is a persistable
     Variable, and will be updated by optimizers after each iteration.
