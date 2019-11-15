@@ -36,26 +36,19 @@ class FCOp : public framework::OperatorWithKernel {
 
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
-      if (weight_pass) {
-        if (bias_dims.size() == 2) {
-          PADDLE_ENFORCE_EQ(bias_dims[0], 1,
-                            "The shape of Bias must be [1, dim].");
-          PADDLE_ENFORCE_EQ(bias_dims[1], w_dims[1] - 4,
-                            "The shape of Bias must be [1, dim].");
-        } else if (bias_dims.size() == 1) {
-          PADDLE_ENFORCE_EQ(bias_dims[0], w_dims[1] - 4,
-                            "The shape of Bias must be [1, dim].");
-        }
-      } else {
-        if (bias_dims.size() == 2) {
-          PADDLE_ENFORCE_EQ(bias_dims[0], 1,
-                            "The shape of Bias must be [1, dim].");
-          PADDLE_ENFORCE_EQ(bias_dims[1], w_dims[1],
-                            "The shape of Bias must be [1, dim].");
-        } else if (bias_dims.size() == 1) {
-          PADDLE_ENFORCE_EQ(bias_dims[0], w_dims[1],
-                            "The shape of Bias must be [1, dim].");
-        }
+      auto w_dims1 = weight_pass ? w_dims[1] - 4 : w_dims[1];
+      if (bias_dims.size() == 2) {
+        PADDLE_ENFORCE_EQ(bias_dims[0], 1,
+                          platform::errors::InvalidArgument(
+                              "The shape of Bias should be [1, dim]."));
+        PADDLE_ENFORCE_EQ(bias_dims[1], w_dims1,
+                          platform::errors::InvalidArgument(
+                              "The width of Bias should be equal to Weight."));
+      } else if (bias_dims.size() == 1) {
+        PADDLE_ENFORCE_EQ(
+            bias_dims[0], w_dims1,
+            platform::errors::InvalidArgument(
+                "The shape of Bias should be equal to the width of weight."));
       }
     }
 
@@ -123,6 +116,10 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("padding_weights",
                   "(bool, default false) Only used when weight padding in pass")
         .SetDefault(false);
+    AddAttr<bool>(
+        "use_gpu",
+        "(bool, default true) Guaranteed weight padding is used in cpu scope")
+        .SetDefault(true);
     AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
                   "Skip calling InferShape() function in the runtime.")
         .SetDefault(true);
