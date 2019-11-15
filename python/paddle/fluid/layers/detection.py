@@ -1858,7 +1858,7 @@ def density_prior_box(input,
 
         .. code-block:: python
 
-            #declarative mode
+	    #declarative mode
 
 	    import paddle.fluid as fluid
 	    import numpy as np
