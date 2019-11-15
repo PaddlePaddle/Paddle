@@ -5400,8 +5400,8 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
                 actual_shape.stop_gradient = True
                 inputs["Shape"] = actual_shape
 
-    out = x if inplace else helper.create_variable_for_type_inference(
-        dtype=x.dtype)
+    out = x if inplace and not in_dygraph_mode(
+    ) else helper.create_variable_for_type_inference(dtype=x.dtype)
     x_shape = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type="reshape2",
