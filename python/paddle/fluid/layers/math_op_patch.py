@@ -49,13 +49,18 @@ def monkey_patch_variable():
     def create_tensor(block, value, dtype, shape):
         value = float(value)
         var = create_new_tmp_var(block, dtype)
+        str_value = "0.0f"
+        if convert_dtype(dtype) in 'int64':
+            str_value = str(int(self.value))
+        else:
+            str_value = str(float(self.value))
         block.append_op(
             type="fill_constant",
             outputs={'Out': [var]},
             attrs={
                 'dtype': var.dtype,
                 'shape': shape,
-                'value': value,
+                'value': str_value,
                 'force_cpu': force_init_on_cpu()
             },
             stop_gradient=True)

@@ -115,12 +115,15 @@ class FillConstantKernel : public framework::OpKernel<T> {
       math::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
-    } else {
+    }
+#ifdef PADDLE_WITH_CUDA
+    if (ctx.GetPlace() == platform::CUDAPlace()) {
       tensor->mutable_data(platform::CUDAPlace(), data_type);
       math::SetConstant<platform::CUDADeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
     }
+#endif
   }
 };
 }  // namespace operators

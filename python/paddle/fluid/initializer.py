@@ -176,6 +176,11 @@ class ConstantInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
+        str_value = "0.0f"
+        if convert_dtype(dtype) in 'int64':
+            str_value = str(int(self.value))
+        else:
+            str_value = str(float(self.value))
         # Initialization Ops should be prepended and not appended
         op = block._prepend_op(
             type="fill_constant",
@@ -183,7 +188,7 @@ class ConstantInitializer(Initializer):
             attrs={
                 "shape": var.shape,
                 "dtype": int(out_dtype),
-                "value": float(self._value),
+                "value": str_value,
                 'force_cpu': self._force_cpu or force_init_on_cpu()
             },
             stop_gradient=True)
