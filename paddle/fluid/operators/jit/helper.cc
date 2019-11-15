@@ -22,6 +22,12 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
+std::unordered_map<std::string, std::shared_ptr<void>>& GetFuncCacheMap() {
+  static thread_local std::unordered_map<std::string, std::shared_ptr<void>>
+      g_func_cache_map;
+  return g_func_cache_map;
+}
+
 #define ONE_CASE(key) \
   case key:           \
     return #key
