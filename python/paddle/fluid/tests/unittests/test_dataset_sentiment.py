@@ -21,24 +21,30 @@ import numpy as np
 import unittest
 import os
 import paddle
+import zipfile
+import paddle.dataset.common
+
+URL = "https://corpora.bj.bcebos.com/movie_reviews%2Fmovie_reviews.zip"
+MD5 = '155de2b77c6834dd8eea7cbe88e93acb'
 
 
 class TestDatasetSentiment(unittest.TestCase):
     """  TestCases for Sentiment. """
 
     def setUp(self):
-        os.environ['http_proxy'] = "10.135.112.150:3128"
-        os.environ['https_proxy'] = "10.135.112.150:3128"
+        paddle.dataset.common.download(
+            URL, 'corpora', md5sum=MD5, save_name='movie_reviews.zip')
+        path = os.path.join(paddle.dataset.common.DATA_HOME, 'corpora')
+        filename = os.path.join(path, 'movie_reviews.zip')
+        zip_file = zipfile.ZipFile(filename)
+        zip_file.extractall(path)
+        zip_file.close()
 
     def test_get_word_dict(self):
         """ Testcase for get_word_dict. """
         words_freq_sorted = paddle.dataset.sentiment.get_word_dict()
         print(words_freq_sorted)
         self.assertTrue(len(words_freq_sorted) == 39768)
-
-    def tearDown(self):
-        os.environ['http_proxy'] = ""
-        os.environ['https_proxy'] = ""
 
 
 if __name__ == '__main__':
