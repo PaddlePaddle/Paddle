@@ -282,6 +282,7 @@ class TestDataset(unittest.TestCase):
         dataset.wait_preload_done()
         fleet_ptr = fluid.core.Fleet()
         fleet_ptr.set_client2client_config(1, 1, 1)
+        fleet_ptr.get_cache_threshold(0)
 
         os.remove("./test_in_memory_dataset_run_a.txt")
         os.remove("./test_in_memory_dataset_run_b.txt")

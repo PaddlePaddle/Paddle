@@ -238,6 +238,15 @@ class DistributedAdam(DistributedOptimizerImplBase):
         if len(ps_param.trainer_param.skip_op) == 0:
             ps_param.trainer_param.skip_op.extend(worker_skipped_ops)
 
+        ps_param.fs_client_param.uri = \
+            strategy.get("fs_uri", "hdfs://your_hdfs_uri")
+        ps_param.fs_client_param.user = \
+            strategy.get("fs_user", "your_hdfs_user")
+        ps_param.fs_client_param.passwd = \
+            strategy.get("fs_passwd", "your_hdfs_passwd")
+        ps_param.fs_client_param.hadoop_bin = \
+            strategy.get("fs_hadoop_bin", "$HADOOP_HOME/bin/hadoop")
+
         opt_info = {}
         opt_info["program_configs"] = program_configs
         opt_info["trainer"] = "DistMultiTrainer"
