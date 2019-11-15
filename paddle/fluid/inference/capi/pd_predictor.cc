@@ -65,10 +65,9 @@ struct PD_ZeroCopyFunctor {
                         1, std::multiplies<int>());
     out_data.resize(out_num);
     output_t->copy_to_cpu(out_data.data());
-    memmove(static_cast<OutT*>(output_i->data), out_data.data(),
-            out_num * sizeof(OutT));
-    // std::copy_n(out_data.data(), out_num * sizeof(OutT),
-    //             static_cast<OutT*>(output_i->data));
+    output_i->data = reinterpret_cast<void*>(malloc(out_num * sizeof(OutT)));
+    std::copy_n(out_data.data(), out_num * sizeof(OutT),
+                static_cast<OutT*>(output_i->data));
     LOG(INFO) << out_data[0];
   }
 };
@@ -149,20 +148,22 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
   int osize = output_names.size();
   *out_size = osize;
   LOG(INFO) << "output size is: " << osize;
-  *output = new PD_ZeroCopyData[osize];
+  *output = reinterpret_cast<PD_ZeroCopyData*>(
+      malloc(osize * sizeof(PD_ZeroCopyData)));
   VLOG(3) << "The output size is " << osize;
   for (int i = 0; i < *out_size; ++i) {
     auto& output_i = (*output)[i];
-    output_i.name = new char[output_names[i].length() + 1];
+    output_i.name = reinterpret_cast<char*>(
+        malloc((output_names[i].length() + 1) * sizeof(char)));
     snprintf(output_i.name, output_names[i].length() + 1, "%s",
              output_names[i].c_str());
     auto output_t = predictor->GetOutputTensor(output_names[i]);
     output_i.dtype = ConvertToPDDataType(output_t->type());
     std::vector<int> output_shape = output_t->shape();
-    output_i.shape = new int[output_shape.size()];
+    output_i.shape =
+        reinterpret_cast<int*>(malloc(output_shape.size() * sizeof(int)));
     std::copy_n(output_shape.data(), output_shape.size() * sizeof(int),
                 output_i.shape);
-    // output_i.shape = output_shape.data();
     output_i.shape_size = output_shape.size();
     VisitDataType(output_i.dtype,
                   PD_ZeroCopyFunctor(&output_i, std::move(output_t.get())));
