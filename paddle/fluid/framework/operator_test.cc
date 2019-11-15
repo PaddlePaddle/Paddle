@@ -429,7 +429,7 @@ TEST(IndicateVarDataTypeTest, lodtensor) {
   bool caught = false;
   try {
     op->Run(scope, cpu_place);
-  } catch (paddle::platform::EnforceNotMet err) {
+  } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
     EXPECT_TRUE(
@@ -457,7 +457,7 @@ TEST(IndicateVarDataTypeTest, selectedrows) {
   bool caught = false;
   try {
     op->Run(scope, cpu_place);
-  } catch (paddle::platform::EnforceNotMet err) {
+  } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
     EXPECT_TRUE(
@@ -484,7 +484,7 @@ TEST(IndicateVarDataTypeTest, other) {
   bool caught = false;
   try {
     op->Run(scope, cpu_place);
-  } catch (paddle::platform::EnforceNotMet err) {
+  } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
     EXPECT_TRUE(ex_msg.find("The Input Variable(Other) of "
@@ -580,7 +580,7 @@ void SetGetLoDLevelTestMain(std::string op_type) {
       "kernel.";
   try {
     op->Run(scope, place);
-  } catch (paddle::platform::EnforceNotMet err) {
+  } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
     EXPECT_TRUE(ex_msg.find(err_str) != std::string::npos);
