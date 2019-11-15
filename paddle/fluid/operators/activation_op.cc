@@ -491,10 +491,10 @@ class CELUOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "The input is a multi-dimension tensor. The data type is"
-             "float32 ot float64.")
-        AddOutput("Out",
-                  "The output is a multi-dimension Tensor which has same "
-                  "dimension and data type as the ``x``.");
+             "float32 ot float64.");
+    AddOutput("Out",
+              "The output is a multi-dimension Tensor which has same "
+              "dimension and data type as the ``x``.");
     AddAttr<float>("alpha", "The alpha value of CELU").SetDefault(1.0f);
     AddComment(R"DOC(
 CELU Activation Operator.

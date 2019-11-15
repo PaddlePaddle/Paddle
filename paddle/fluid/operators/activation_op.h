@@ -1106,7 +1106,7 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
-struct CELUFunction : public BaseActivationFunctor<T> {
+struct CELUFunctor : public BaseActivationFunctor<T> {
   float alpha;
   typename BaseActivationFunctor<T>::AttrPair GetAttr() {
     return {{"alpha", &alpha}};
