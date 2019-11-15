@@ -15,6 +15,7 @@
 #pragma once
 
 #include <iostream>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>  // for std::move
@@ -175,13 +176,25 @@ typename KernelTuple::func_type GetDefaultBestFunc(
   return funcs[0];
 }
 
+extern std::unordered_map<std::string, std::shared_ptr<void>>&
+GetFuncCacheMap();
+
 template <typename KernelTuple, typename PlaceType>
 class KernelFuncs {
  public:
   KernelFuncs() = default;
   static KernelFuncs& Cache() {
-    static thread_local KernelFuncs<KernelTuple, PlaceType> g_func_cache;
-    return g_func_cache;
+    auto& func_cache_map = GetFuncCacheMap();
+    std::string key = typeid(KernelFuncs<KernelTuple, PlaceType>).name();
+    auto iter = func_cache_map.find(key);
+    if (iter != func_cache_map.end()) {
+      return *(KernelFuncs<KernelTuple, PlaceType>*)(iter->second.get());
+    } else {
+      std::shared_ptr<void> cache =
+          std::make_shared<KernelFuncs<KernelTuple, PlaceType>>();
+      func_cache_map.emplace(key, cache);
+      return *(KernelFuncs<KernelTuple, PlaceType>*)(cache.get());
+    }
   }
 
   // the exposed interface to use
