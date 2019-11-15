@@ -29,7 +29,7 @@ ELSE()
   if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0)
     SET(BUILD_CMD make CFLAGS=-Wno-error CXXFLAGS=-Wno-error HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
   else()
-    SET(BUILD_CMD make CFLAGS=-Wno-error CXXFLAGS=-Wno-error HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+    SET(BUILD_CMD make CFLAGS=-Wno-error CXXFLAGS='-Wno-error -std=c++11' HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
   endif()
 ENDIF()
 
