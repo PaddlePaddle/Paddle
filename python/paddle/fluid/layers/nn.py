@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant, zeros
+from .tensor import concat, assign, fill_constant, zeros, cast
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -13755,9 +13755,9 @@ def masked_select(input, mask):
             #   0.30984417 0.7577004  0.26214206 0.32359877 0.6314582  0.2128865 ]
 
     """
-    mask_cast = fluid.layers.cast(x=mask, dtype="float32")
-    mask_expand = fluid.layers.expand_as(x=mask_cast, target_tensor=input)
-    mask_expand_cast_back_bool = fluid.layers.cast(x=mask_expand, dtype="bool")
-    select = fluid.layers.where(mask_expand_cast_back_bool)
-    result = fluid.layers.gather_nd(input, select)
+    mask_cast = cast(x=mask, dtype="float32")
+    mask_expand = expand_as(x=mask_cast, target_tensor=input)
+    mask_expand_cast_back_bool = cast(x=mask_expand, dtype="bool")
+    select = where(mask_expand_cast_back_bool)
+    result = gather_nd(input, select)
     return result
