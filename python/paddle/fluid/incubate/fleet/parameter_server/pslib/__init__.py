@@ -273,7 +273,8 @@ class PSLib(Fleet):
             main_program(Program): fluid program, default None
             kwargs: use define property, current support following
                 mode(int): define for feature extension in the future,
-                           currently no use, will pass a default value 0 
+                           currently no use, will pass a default value 0
+                table_id(int): which table to save cache, default is 0
 
         Returns:
             feasign_num(int): cache feasign num
@@ -285,23 +286,25 @@ class PSLib(Fleet):
 
         """
         mode = kwargs.get("mode", 0)
+        table_id = kwargs.get("table_id", 0)
         self._fleet_ptr.client_flush()
         self._role_maker._barrier_worker()
         cache_threshold = 0.0
 
         if self._role_maker.is_first_worker():
-            cache_threshold = self._fleet_ptr.get_cache_threshold()
+            cache_threshold = self._fleet_ptr.get_cache_threshold(table_id)
         #check cache threshold right or not
         self._role_maker._barrier_worker()
 
         if self._role_maker.is_first_worker():
-            self._fleet_ptr.cache_shuffle(0, dirname, mode, cache_threshold)
+            self._fleet_ptr.cache_shuffle(table_id, dirname, mode,
+                                          cache_threshold)
 
         self._role_maker._barrier_worker()
 
         feasign_num = -1
         if self._role_maker.is_first_worker():
-            feasign_num = self._fleet_ptr.save_cache(0, dirname, mode)
+            feasign_num = self._fleet_ptr.save_cache(table_id, dirname, mode)
 
         self._role_maker._barrier_worker()
         return feasign_num
