@@ -11,15 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-
-IF(NOT WITH_DISTRIBUTE)
-    return()
-ENDIF()
-
-include (ExternalProject)
 
 # NOTE: c-ares is needed when linking with grpc.
+
+include (ExternalProject)
 
 SET(CARES_SOURCES_DIR ${THIRD_PARTY_PATH}/cares)
 SET(CARES_INSTALL_DIR ${THIRD_PARTY_PATH}/install/cares)
@@ -33,6 +28,7 @@ endif()
 
 ExternalProject_Add(
     extern_cares
+    ${SHALLOW_CLONE}
     GIT_REPOSITORY "https://github.com/c-ares/c-ares.git"
     GIT_TAG "cares-1_13_0"
     PREFIX          ${CARES_SOURCES_DIR}

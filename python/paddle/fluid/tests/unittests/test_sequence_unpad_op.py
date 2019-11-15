@@ -48,7 +48,7 @@ class TestSequenceUnpadOp(OpTest):
         self.compute()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_compile_vs_runtime=True)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")

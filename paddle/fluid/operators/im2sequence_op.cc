@@ -39,6 +39,12 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
     auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
     auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
     auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
+    if (!ctx->IsRuntime()) {
+      // set lod level for compile-time
+      framework::VarDesc* out_desc =
+          boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
+      out_desc->SetLoDLevel(1);
+    }
 
     ctx->SetOutputDim("Out",
                       {in_dim[0], img_channels * kernels[0] * kernels[1]});

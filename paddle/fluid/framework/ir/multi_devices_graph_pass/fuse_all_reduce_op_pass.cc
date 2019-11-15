@@ -61,10 +61,12 @@ class FuseAllReduceOpPass : public ir::Pass {
       return;
     }
 
-    PADDLE_ENFORCE_EQ(all_reduce_ops.size(), grads.size(),
-                      "The number of all_reduce OpHandle is not equal to the "
-                      "number of grads. Maybe some gradients are sparse type, "
-                      "it is not supported currently.");
+    PADDLE_ENFORCE_EQ(
+        all_reduce_ops.size(), grads.size(),
+        platform::errors::Unimplemented(
+            "The number of all_reduce OpHandle is not equal to the "
+            "number of grads. Maybe some gradients are sparse type, "
+            "it is not supported currently."));
 
     auto &group_params_grads = graph->Get<details::GroupParamsAndGrads>(
         details::kGroupParamsAndDenseGrads);
