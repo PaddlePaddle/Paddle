@@ -204,8 +204,8 @@ class DataNormKernel<platform::CPUDeviceContext, T>
     const T* x_data = x->data<T>();
     const T* scales_data = scales->data<T>();
     const int item_size = x->numel() / N;
-    PADDLE_ENFORCE(item_size % slot_dim == 0, "slot_dim divisible by item_size");
     const int slot_dim = ctx.Attr<int>("slot_dim");
+    PADDLE_ENFORCE(item_size % slot_dim == 0, "slot_dim divisible by item_size");
     T min_precision = 1e-7f;
     switch (data_layout) {
       case DataLayout::kNCHW:  // It's two dimensions, so make no difference
@@ -334,6 +334,7 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE(x_dims.size() == 2, "The Input dim size should be 2");
     const int N = x_dims[0];
+    PADDLE_ENFORCE(N > 0, "The Input dim[0] size should be larger than 0");
     const int C =
         (data_layout == DataLayout::kNCHW ? x_dims[1]
                                           : x_dims[x_dims.size() - 1]);
@@ -370,6 +371,7 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
     T min_precision = 1e-7f;
     const int item_size = x->numel() / N;
     const int slot_dim = ctx.Attr<int>("slot_dim");
+    PADDLE_ENFORCE(item_size % slot_dim == 0, "slot_dim divisible by item_size");
     switch (
         data_layout) {  // because it's two dimensions, so make no difference
       case DataLayout::kNCHW:
