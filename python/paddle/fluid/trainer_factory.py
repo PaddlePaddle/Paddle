@@ -51,6 +51,7 @@ class TrainerFactory(object):
                 trainer._set_dump_fields(opt_info["dump_fields"])
                 trainer._set_dump_fields_path(opt_info["dump_fields_path"])
                 trainer._set_dump_file_num(opt_info["dump_file_num"])
+                trainer._set_user_define_dump_filename(opt_info["user_define_dump_filename"])
                 trainer._set_dump_converter(opt_info["dump_converter"])
                 trainer._set_adjust_ins_weight(opt_info["adjust_ins_weight"])
                 trainer._set_dump_param(opt_info["dump_param"])

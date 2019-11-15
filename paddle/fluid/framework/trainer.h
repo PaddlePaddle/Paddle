@@ -103,6 +103,7 @@ class DistMultiTrainer : public MultiTrainer {
   std::shared_ptr<paddle::framework::ChannelObject<std::string>> queue_;
 
   bool need_dump_field_;
+  std::string user_define_dump_filename_;
   std::string dump_fields_path_;
   std::string dump_converter_;
   int mpi_rank_;
