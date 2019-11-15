@@ -253,7 +253,7 @@ def _create_loss_op_desc_(loss):
     op_desc = _create_op_desc_(
         "fill_constant", {}, {"Out": [_append_grad_suffix_(loss.name)]}, {
             "shape": [1],
-            "value": 1.0,
+            "value": str(float(1.0)),
             "dtype": loss.dtype,
             "force_cpu": False,
             core.op_proto_and_checker_maker.kOpRoleAttrName():
@@ -1256,7 +1256,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
                                        {"ShapeTensor": [target_shape]},
                                        {"Out": [grad_name]}, {
                                            "shape": target.shape,
-                                           "value": 1.0,
+                                           "value": str(float(1.0)),
                                            "dtype": target.dtype,
                                        })
 

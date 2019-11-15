@@ -32,7 +32,7 @@ class TestFillConstantOp1(OpTest):
         self.op_type = "fill_constant"
 
         self.inputs = {}
-        self.attrs = {'shape': [123, 92], 'value': 3.8}
+        self.attrs = {'shape': [123, 92], 'value': "3.8"}
         self.outputs = {'Out': np.full((123, 92), 3.8)}
 
     def test_check_output(self):
@@ -60,7 +60,7 @@ class TestFillConstantOp3(OpTest):
         self.op_type = "fill_constant"
 
         self.inputs = {}
-        self.attrs = {'shape': [123, 92], 'value': 10000000000}
+        self.attrs = {'shape': [123, 92], 'value': "10000000000"}
         self.outputs = {'Out': np.full((123, 92), 10000000000)}
 
     def test_check_output(self):
@@ -74,7 +74,7 @@ class TestFillConstantOp4(OpTest):
         self.op_type = "fill_constant"
 
         self.inputs = {}
-        self.attrs = {'shape': [123, 92], 'value': 3}
+        self.attrs = {'shape': [123, 92], 'value': "3"}
         self.outputs = {'Out': np.full((123, 92), 3)}
 
     def test_check_output(self):
@@ -89,12 +89,12 @@ class TestFillConstantOpWithSelectedRows(OpTest):
 
         # create and run fill_constant_op operator
         fill_constant_op = Operator(
-            "fill_constant", shape=[123, 92], value=3.8, Out='Out')
+            "fill_constant", shape=[123, 92], value="3.8", Out='Out')
         fill_constant_op.run(scope, place)
 
         # get result from Out
         result_array = np.array(out.get_tensor())
-        full_array = np.full((123, 92), 3.8, 'float32')
+        full_array = np.full((123, 92), "3.8", 'float32')
 
         self.assertTrue(np.array_equal(result_array, full_array))
 
@@ -120,13 +120,14 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
                 (1)).astype('int32') * ele))
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
-        self.attrs = {'shape': self.infer_shape, 'value': self.value}
+        self.attrs = {'shape': self.infer_shape, 'value': self.str_value}
         self.outputs = {'Out': np.full(self.shape, self.value)}
 
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [-1, 92]
         self.value = 3.8
+        self.str_value = str(float(self.value))
 
     def test_check_output(self):
         self.check_output()
@@ -150,6 +151,8 @@ class TestFillConstantOp2_ShapeTensorList(OpTest):
     def init_data(self):
         self.shape = [123, 92]
         self.infer_shape = [-1, -1]
+        self.value = 0.0
+        self.str_value = str(float(self.value))
 
     def test_check_output(self):
         self.check_output()
@@ -160,6 +163,7 @@ class TestFillConstantOp3_ShapeTensorList(TestFillConstantOp1_ShapeTensorList):
         self.shape = [123, 92]
         self.infer_shape = [123, -1]
         self.value = 10000000000
+        self.str_value = str(float(self.value))
 
 
 class TestFillConstantOp4_ShapeTensorList(TestFillConstantOp1_ShapeTensorList):
@@ -167,6 +171,7 @@ class TestFillConstantOp4_ShapeTensorList(TestFillConstantOp1_ShapeTensorList):
         self.shape = [123, 92]
         self.infer_shape = [123, -1]
         self.value = 3
+        self.str_value = str(float(self.value))
 
 
 # Situation 3: shape is a tensor
@@ -178,12 +183,13 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
         self.init_data()
 
         self.inputs = {"ShapeTensor": np.array(self.shape).astype("int32")}
-        self.attrs = {'value': self.value}
+        self.attrs = {'value': self.str_value}
         self.outputs = {'Out': np.full(self.shape, self.value)}
 
     def init_data(self):
         self.shape = [123, 92]
         self.value = 3.8
+        self.str_value = str(float(self.value))
 
     def test_check_output(self):
         self.check_output()

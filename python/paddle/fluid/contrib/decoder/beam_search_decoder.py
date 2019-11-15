@@ -134,7 +134,7 @@ class _ArrayState(object):
             attrs={
                 'shape': [1],
                 'dtype': self._counter.dtype,
-                'value': float(0.0),
+                'value': str(float(0.0)),
                 'force_cpu': True
             })
 

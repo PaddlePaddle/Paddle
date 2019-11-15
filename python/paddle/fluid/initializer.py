@@ -19,6 +19,7 @@ import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 from .core import VarDesc
 from . import unique_name
+from .data_feeder import convert_dtype
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
@@ -177,7 +178,7 @@ class ConstantInitializer(Initializer):
             out_var = var
 
         str_value = "0.0f"
-        if convert_dtype(dtype) in 'int64':
+        if convert_dtype(out_dtype) in ['int64']:
             str_value = str(int(self.value))
         else:
             str_value = str(float(self.value))

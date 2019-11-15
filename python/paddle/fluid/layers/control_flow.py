@@ -2767,7 +2767,7 @@ class DynamicRNN(object):
                 attrs={
                     'shape': [1],
                     'dtype': self.zero_idx.dtype,
-                    'value': float(0),
+                    'value': str(float(0)),
                     'force_cpu': True
                 })
 

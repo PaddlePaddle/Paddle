@@ -81,7 +81,6 @@ class FillConstantKernel : public framework::OpKernel<T> {
     framework::Tensor *tensor = nullptr;
 
     framework::Variable *out_var = ctx.OutputVar("Out");
-
     T value;
     std::stringstream convert_stream(str_value);
     if (std::is_same<int64_t, T>::value) {
@@ -89,11 +88,10 @@ class FillConstantKernel : public framework::OpKernel<T> {
       convert_stream >> tmp_value;
       value = static_cast<T>(tmp_value);
     } else {
-      float tmp_value;
+      double tmp_value;
       convert_stream >> tmp_value;
       value = static_cast<T>(tmp_value);
     }
-
     auto shape = GetShape(ctx);
 
     if (out_var->IsType<framework::LoDTensor>()) {

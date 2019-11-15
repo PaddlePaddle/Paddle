@@ -550,7 +550,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     attrs = {'force_cpu': force_cpu or force_init_on_cpu()}
 
-    if convert_dtype(dtype) in 'int64':
+    if convert_dtype(dtype) in ['int64']:
         attrs['value'] = str(int(value))
     else:
         attrs['value'] = str(float(value))
