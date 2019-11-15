@@ -349,6 +349,15 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 tp = ps_param.trainer_param.add()
                 tp.CopyFrom(prog_id_to_worker[k].get_desc())
 
+        ps_param.fs_client_param.uri = \
+            strategy.get("fs_uri", "hdfs://your_hdfs_uri")
+        ps_param.fs_client_param.user = \
+            strategy.get("fs_user", "your_hdfs_user")
+        ps_param.fs_client_param.passwd = \
+            strategy.get("fs_passwd", "your_hdfs_passwd")
+        ps_param.fs_client_param.hadoop_bin = \
+            strategy.get("fs_hadoop_bin", "$HADOOP_HOME/bin/hadoop")
+
         opt_info = {}
         opt_info["program_id_to_worker"] = prog_id_to_worker
         opt_info["program_configs"] = program_configs
