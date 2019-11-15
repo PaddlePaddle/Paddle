@@ -1739,7 +1739,6 @@ class PowGradKernel
   __macro(tanh_shrink, TanhShrink, TanhShrinkFunctor, TanhShrinkGradFunctor); \
   __macro(elu, ELU, ELUFunctor, ELUGradFunctor);                              \
   __macro(celu, CELU, CELUFunctor, CELUGradFunctor);                          \
-  __macro(selu, SELU, SELUFunctor, SELUGradFunctor);                          \
   __macro(hard_shrink, HardShrink, HardShrinkFunctor, HardShrinkGradFunctor); \
   __macro(hard_sigmoid, HardSigmoid, HardSigmoidFunctor,                      \
           HardSigmoidGradFunctor);                                            \
