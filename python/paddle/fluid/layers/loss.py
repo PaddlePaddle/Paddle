@@ -20,7 +20,7 @@ from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable
-from ..data_feeder import convert_dtype
+from ..data_feeder import check_type_and_dtype
 from ..param_attr import ParamAttr
 from ..initializer import NumpyArrayInitializer
 
@@ -233,19 +233,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
             predict = fluid.layers.fc(input=x, size=class_num, act='softmax')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
-    if not isinstance(input, Variable):
-        raise TypeError(
-            "The type of 'input' in cross_entropy must be Variable, but received %s"
-            % (type(input)))
-    if convert_dtype(input.dtype) in ['float16']:
-        warnings.warn(
-            "The data type of 'input' in cross_entropy only support float16 on GPU now."
-        )
-    if convert_dtype(input.dtype) not in ['float16', 'float32', 'float64']:
-        raise TypeError(
-            "The data type of 'input' in cross_entropy must be float16 or float32 or float64, but received %s."
-            % (convert_dtype(input.dtype)))
-
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float16', 'float32', 'float64'], 'cross_entropy')
     if not soft_label:
         return cross_entropy2(input, label, ignore_index)
     helper = LayerHelper('cross_entropy', **locals())
@@ -354,49 +343,51 @@ def edit_distance(input,
                   input_length=None,
                   label_length=None):
     """
-    This op computes the edit distances between a batch of
-    hypothesis strings and their references. Edit distance, also called
-    Levenshtein distance, measures how dissimilar two strings are by counting
-    the minimum number of operations to transform one string into anthor.
-    Here the operations include insertion, deletion, and substitution.
+    This op computes the edit distances, also called Levenshtein distance, between a batch of
+    hypothesis strings and their references. It measures how dissimilar two strings are by counting
+    the minimum number of operations to transform one string into another.
+    The operations include insertion, deletion, and substitution.
 
     For example, given hypothesis string A = "kitten" and reference
-    B = "sitting", the edit distance is 3 for A will be transformed into B
+    B = "sitting", A will be transformed into B
     at least after two substitutions and one insertion:
 
     "kitten" -> "sitten" -> "sittin" -> "sitting"
 
-    The input is a LoDTensor/Tensor consisting of all the hypothesis strings with
-    the total number denoted by `batch_size`, and the separation is specified
-    by the LoD information or input_length. And the `batch_size` reference strings are arranged
-    in order in the same way as `input`.
+    So the edit distance between A and B is 3.
 
-    The output contains the `batch_size` results and each stands for the edit
-    distance for a pair of strings respectively. If Attr(normalized) is true,
-    the edit distance will be divided by the length of reference string.
+    The input is a LoDTensor or Tensor.
+    If it is a LoDTensor, The separation is specified by the LoD information.
+    If it is a Tensor, The input_length and label_length should be supported.
+
+    The `batch_size` of labels should be same as `input`.
+
+    The output include the edit distance value between every pair of input and related label, and the number of sequence.
+    If Attr(normalized) is true,
+    the edit distance value will be divided by the length of label.
 
     Parameters:
-        input(Variable): The indices for hypothesis strings, its rank should equals to 2 and its data type should be int64.
-        label(Variable): The indices for reference strings, its rank should equals to 2 and its data type should be int64.
-        normalized(bool, default True): Indicated whether to normalize the edit distance by
-                          the length of reference string.
-        ignored_tokens(list<int>, default None): Tokens that should be removed before
+        input(Variable): The input variable which is a tensor or LoDTensor, its rank should be equal to 2 and its data type should be int64.
+        label(Variable): The label variable which is a tensor or LoDTensor, its rank should be equal to 2 and its data type should be int64.
+        normalized(bool, default True): Indicated whether to normalize the edit distance.
+        ignored_tokens(list<int>, default None): Tokens that will be removed before
                                      calculating edit distance.
-        input_length(Variable): The length for each sequence in `input` if it's of Tensor type, it should have shape `[batch_size]` and dtype int64.
-        label_length(Variable): The length for each sequence in `label` if it's of Tensor type, it should have shape `[batch_size]` and dtype int64.
+        input_length(Variable): The length for each sequence in `input` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
+        label_length(Variable): The length for each sequence in `label` if it's of Tensor type, it should have shape `(batch_size, )` and its data type should be int64.
+        NOTE: To be avoid unexpected result, the value of every elements in input_length and label_length should be equal to the value of the second dimension of input and label. For example, The input: [[1,2,3,4],[5,6,7,8],[9,10,11,12]], the shape of input is [3,4] and the input_length should be [4,4,4]
+        NOTE: This Api is different from fluid.metrics.EditDistance
 
     Returns:
 	Tuple:
 
-        edit_distance_out(Variable): edit distance result in shape [batch_size, 1].
-        sequence_num(Variable): sequence number in shape [].
-        
-
+        distance(Variable): edit distance result, its data type is float32, and its shape is (batch_size, 1).
+        sequence_num(Variable): sequence number, its data type is float32, and its shape is (1,).
 
     Examples:
         .. code-block:: python
             
             import paddle.fluid as fluid
+            import numpy as np
 
             # using LoDTensor
             x_lod = fluid.data(name='x_lod', shape=[None,1], dtype='int64', lod_level=1)
@@ -404,13 +395,43 @@ def edit_distance(input,
             distance_lod, seq_num_lod = fluid.layers.edit_distance(input=x_lod, label=y_lod)
 
             # using Tensor
-            x_seq_len = 5
-            y_seq_len = 6
-            x_pad = fluid.data(name='x_pad', shape=[None,x_seq_len], dtype='int64')
-            y_pad = fluid.data(name='y_pad', shape=[None,y_seq_len], dtype='int64')
-            x_len = fluid.data(name='x_len', shape=[None], dtype='int64')
-            y_len = fluid.data(name='y_len', shape=[None], dtype='int64')
-            distance_pad, seq_num_pad = fluid.layers.edit_distance(input=x_pad, label=y_pad, input_length=x_len, label_length=y_len)
+            input_data = np.array([[1,2,3],[4,5,6],[4,4,4],[1,1,1]]).astype('int64')
+            label_data = np.array([[1,3,4,1],[4,5,8,1],[7,7,7,1],[1,1,1,1]]).astype('int64')
+            input_len = np.array([3,3,3,3]).astype('int64')
+            label_len = np.array([4,4,4,4]).astype('int64')
+
+            input_t = fluid.data(name='input', shape=[None,3], dtype='int64')
+            label_t = fluid.data(name='label', shape=[None,4], dtype='int64')
+            input_len_t = fluid.data(name='input_length', shape=[None], dtype='int64')
+            label_len_t = fluid.data(name='label_length', shape=[None], dtype='int64')
+
+            distance, sequence_num = fluid.layers.edit_distance(input=input_t, label=label_t, input_length=input_len_t, label_length=label_len_t,normalized=False)
+
+            # print(input_data.shape, label_data.shape)
+            # ((4,3), (4,4))
+
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            dis, seq_num = exe.run(fluid.default_main_program(),
+                                   feed={"input":input_data,
+                                         "label":label_data,
+                                         "input_length": input_len,
+                                         "label_length": label_len},
+            fetch_list=[distance,sequence_num])
+            # print(dis)
+            # [[3.]
+            #  [2.]
+            #  [4.]
+            #  [1.]]
+            # if set normalized to True
+            # [[0.75]
+            #  [0.5 ]
+            #  [1.  ]
+            #  [0.25]
+            #
+            # print(seq_num)
+            # [4]
 
     """
     helper = LayerHelper("edit_distance", **locals())
@@ -674,23 +695,9 @@ def nce(input,
                        custom_dist=dist)
     """
     helper = LayerHelper('nce', **locals())
-
-    if not isinstance(input, Variable):
-        raise TypeError(
-            "The type of 'input' in nce layer must be Variable, but received %s"
-            % (type(input)))
-    if not isinstance(label, Variable):
-        raise TypeError(
-            "The type of 'label' in nce layer must be Variable, but received %s"
-            % (type(label)))
-    if convert_dtype(input.dtype) not in ['float32', 'float64']:
-        raise TypeError(
-            "The data type of 'input' in nce layer must be float32 or float64, but received %s."
-            % (convert_dtype(input.dtype)))
-    if convert_dtype(label.dtype) not in ['int64']:
-        raise TypeError(
-            "The data type of 'label' in nce layer must be int64, but received %s."
-            % (convert_dtype(label.dtype)))
+    check_type_and_dtype(input, 'input', Variable, ['float32', 'float64'],
+                         'nce')
+    check_type_and_dtype(label, 'label', Variable, ['int64'], 'nce')
 
     dim = input.shape[1]
     num_true_class = label.shape[1]
