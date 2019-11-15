@@ -51,7 +51,7 @@ void zero_copy_run() {
   int shape[4] = {batch_size, channels, height, width};
   int shape_size = 4;
   int in_size = 1;
-  int *out_size;
+  int out_size;
   PD_ZeroCopyData *inputs = new PD_ZeroCopyData;
   PD_ZeroCopyData *outputs = new PD_ZeroCopyData;
   inputs->data = static_cast<void *>(input);
@@ -75,6 +75,9 @@ void zero_copy_run() {
   inputs->shape_size = shape_size;
 
   PD_PredictorZeroCopyRun(config, inputs, in_size, &outputs, &out_size);
+
+  delete[] inputs;
+  delete[] outputs;
 }
 
 TEST(PD_ZeroCopyRun, zero_copy_run) { zero_copy_run<float>(); }

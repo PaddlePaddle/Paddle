@@ -50,9 +50,9 @@ void zero_copy_run() {
   int shape[4] = {batch_size, channels, height, width};
   int shape_size = 4;
   int in_size = 2;
-  int *out_size;
+  int out_size;
   PD_ZeroCopyData *inputs = new PD_ZeroCopyData[2];
-  PD_ZeroCopyData *outputs = new PD_ZeroCopyData;
+  PD_ZeroCopyData *outputs = nullptr;
   inputs[0].data = static_cast<void *>(input);
   std::string nm = typeid(T).name();
   if ("f" == nm) {
@@ -94,8 +94,19 @@ void zero_copy_run() {
 
   PD_PredictorZeroCopyRun(config, inputs, in_size, &outputs, &out_size);
 
+  LOG(INFO) << "output size is: " << out_size;
   LOG(INFO) << outputs[0].name;
-  LOG(INFO) << outputs[0].shape_size;
+  for (int j = 0; j < out_size; ++j) {
+    LOG(INFO) << "output[" << j
+              << "]'s shape_size is: " << outputs[j].shape_size;
+    for (int i = 0; i < outputs[0].shape_size; ++i) {
+      LOG(INFO) << "output[" << j << "]'s shape is: " << outputs[j].shape[i];
+    }
+    LOG(INFO) << "output[" << j
+              << "]'s DATA is: " << *(static_cast<float *>(outputs[j].data));
+  }
+  delete[] outputs;
+  delete[] inputs;
 }
 
 TEST(PD_ZeroCopyRun, zero_copy_run) {
