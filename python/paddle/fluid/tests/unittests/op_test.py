@@ -264,32 +264,29 @@ class OpTest(unittest.TestCase):
     def append_input_output_for_dygraph(self, op_proto, np_list, is_input,
                                         if_return_inputs_grad_dict, block):
         def create_var(np_value, name, is_input, if_return_inputs_grad_dict):
+            np_value_temp = np_value
+            has_lod = False
+            lod_temp = None
             if isinstance(np_value, tuple):
-                if is_input:
-                    v = self._create_var_from_numpy(np_value[0])
-                    if if_return_inputs_grad_dict:
-                        v.stop_gradient = False
+                np_value_temp = np_value[0]
+                has_lod = True
+                lod_temp = np_value[1]
+
+            if is_input:
+                v = self._create_var_from_numpy(np_value_temp)
+                if if_return_inputs_grad_dict:
+                    v.stop_gradient = False
+                if has_lod:
                     v._ivar.value().get_tensor().set_recursive_sequence_lengths(
-                        np_value[1])
-                else:
-                    v = block.create_var(
-                        name=name,
-                        dtype=np_value[0].dtype,
-                        type=core.VarDesc.VarType.LOD_TENSOR,
-                        persistable=False,
-                        stop_gradient=False)
+                        lod_temp)
             else:
-                if is_input:
-                    v = self._create_var_from_numpy(np_value)
-                    if if_return_inputs_grad_dict:
-                        v.stop_gradient = False
-                else:
-                    v = block.create_var(
-                        name=name,
-                        dtype=np_value.dtype,
-                        type=core.VarDesc.VarType.LOD_TENSOR,
-                        persistable=False,
-                        stop_gradient=False)
+                v = block.create_var(
+                    name=name,
+                    dtype=np_value_temp.dtype,
+                    type=core.VarDesc.VarType.LOD_TENSOR,
+                    persistable=False,
+                    stop_gradient=False)
+
             return v
 
         # prepare variable for input or output
@@ -323,22 +320,19 @@ class OpTest(unittest.TestCase):
                         inputs_grad_dict[name] = v
                 var_dict[slot_name] = var_list
             else:
-                np_value = np_list[name]
+                nplist_value_temp = None
+                name_temp = None
                 if isinstance(np_list[name], list):
-                    slot_name = name
-                    for name, np_value in np_list[name]:
-                        v = create_var(np_value, name, is_input,
-                                       if_return_inputs_grad_dict)
-                        var_dict[slot_name].append(v)
-                        if if_return_inputs_grad_dict:
-                            inputs_grad_dict[name] = v
+                    nplist_value_temp = np_list[name][0]
+                    name_temp = name
                 else:
-                    v = create_var(np_list[name],
-                                   unique_name.generate("%s_out" % (name)),
-                                   is_input, if_return_inputs_grad_dict)
-                    var_dict[name].append(v)
-                    if if_return_inputs_grad_dict:
-                        inputs_grad_dict[name] = v
+                    nplist_value_temp = np_list[name]
+                    name_temp = unique_name.generate("%s_out" % (name))
+                v = create_var(nplist_value_temp, name_temp, is_input,
+                               if_return_inputs_grad_dict)
+                var_dict[name].append(v)
+                if if_return_inputs_grad_dict:
+                    inputs_grad_dict[name] = v
 
         if if_return_inputs_grad_dict:
             return var_dict, inputs_grad_dict

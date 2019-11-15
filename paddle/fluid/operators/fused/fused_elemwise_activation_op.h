@@ -415,13 +415,12 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto in_y = ctx.Input<framework::Tensor>("Y");
-    PADDLE_ENFORCE_EQ(in_y != nullptr, true, "Input(Y) should not be nullptr.");
+    PADDLE_ENFORCE_NE(in_y, nullptr, "Input(Y) should not be nullptr.");
     auto in_out = ctx.Input<framework::Tensor>("Out");
-    PADDLE_ENFORCE_EQ(in_out != nullptr, true,
-                      "Input(Out) should not be nullptr.");
+    PADDLE_ENFORCE_NE(in_out, nullptr, "Input(Out) should not be nullptr.");
     auto in_out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(in_out_grad != nullptr, true,
+    PADDLE_ENFORCE_NE(in_out_grad, nullptr,
                       "Input(Out@Grad) should not be nullptr.");
     framework::Tensor *in_x =
         const_cast<framework::Tensor *>(ctx.Input<framework::Tensor>("X"));
@@ -442,20 +441,18 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
       // recompute.
       in_intermediate_out = const_cast<framework::Tensor *>(
           ctx.Input<framework::Tensor>("IntermediateOut"));
-      PADDLE_ENFORCE_EQ(in_intermediate_out != nullptr, true,
+      PADDLE_ENFORCE_NE(in_intermediate_out, nullptr,
                         "The option of 'save_intermediate_out' is opened, "
                         "so the number of 'Out' should be two.");
     } else {
       if (!InputXCanBeAbsent(functor_list)) {
-        PADDLE_ENFORCE_EQ(in_x != nullptr, true,
-                          "Input(X) should not be null.");
+        PADDLE_ENFORCE_NE(in_x, nullptr, "Input(X) should not be null.");
       }
     }
 
     // Get in_x
     if (ctx.HasInput("X")) {
-      PADDLE_ENFORCE_EQ(in_x != nullptr, true,
-                        "Input(X) should not be nullptr.");
+      PADDLE_ENFORCE_NE(in_x, nullptr, "Input(X) should not be nullptr.");
     } else {
       // If functor_list contains elementwise_add, the backward doesn't use
       // in_x, in_y and in_out.
