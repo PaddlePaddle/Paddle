@@ -2547,9 +2547,9 @@ class TestBook(LayerTest):
     def make_masked_select(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
-            input = self._get_data(name="input", shape=[4, 4], dtype="float32")
-            mask = self._get_data(name="mask", shape=[1, 4], dtype="bool")
-            out = layers.masked_select(input=input, mask=mask)
+            x = self._get_data(name="X", shape=[4, 4], dtype="float32")
+            y = self._get_data(name="Y", shape=[1, 4], dtype="bool")
+            out = layers.masked_select(input=x, mask=y)
             return (out)
 
     def test_dynamic_lstmp(self):
