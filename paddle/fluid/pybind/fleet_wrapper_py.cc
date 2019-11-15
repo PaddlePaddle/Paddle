@@ -67,7 +67,10 @@ void BindFleetWrapper(py::module* m) {
            &framework::FleetWrapper::LoadFromPaddleModel)
       .def("load_model_one_table", &framework::FleetWrapper::LoadModelOneTable)
       .def("set_client2client_config",
-           &framework::FleetWrapper::SetClient2ClientConfig);
+           &framework::FleetWrapper::SetClient2ClientConfig)
+      .def("copy_table", &framework::FleetWrapper::CopyTable)
+      .def("copy_table_by_feasign",
+           &framework::FleetWrapper::CopyTableByFeasign);
 }  // end FleetWrapper
 }  // end namespace pybind
 }  // end namespace paddle
