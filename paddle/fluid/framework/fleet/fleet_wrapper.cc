@@ -571,12 +571,12 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 #endif
 }
 
-double FleetWrapper::GetCacheThreshold() {
+double FleetWrapper::GetCacheThreshold(int table_id) {
 #ifdef PADDLE_WITH_PSLIB
   double cache_threshold = 0.0;
   auto ret = pslib_ptr_->_worker_ptr->flush();
   ret.wait();
-  ret = pslib_ptr_->_worker_ptr->get_cache_threshold(0, cache_threshold);
+  ret = pslib_ptr_->_worker_ptr->get_cache_threshold(table_id, cache_threshold);
   ret.wait();
   if (cache_threshold < 0) {
     LOG(ERROR) << "get cache threshold failed";
@@ -610,7 +610,8 @@ void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
 int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
                                 const int mode) {
 #ifdef PADDLE_WITH_PSLIB
-  auto ret = pslib_ptr_->_worker_ptr->save_cache(0, path, std::to_string(mode));
+  auto ret =
+      pslib_ptr_->_worker_ptr->save_cache(table_id, path, std::to_string(mode));
   ret.wait();
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
