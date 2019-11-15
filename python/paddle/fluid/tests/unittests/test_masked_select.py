@@ -47,7 +47,7 @@ class TestMaskedSelect(unittest.TestCase):
                                    "mask": mask_data},
                              fetch_list=[output])
 
-            self.assertTrue(np.isclose(np_result, result).all())
+            self.assertTrue(np.isclose(npresult, result).all())
 
 
 if __name__ == "__main__":
