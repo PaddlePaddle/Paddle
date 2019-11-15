@@ -350,7 +350,7 @@ class DownpourWorker(Worker):
         target_table = None
         for table in self._worker.sparse_table:
             if table.table_id == table_id:
-                keys = self._worker.sparse_table[table_id].slot_key
+                keys = table.slot_key
                 key_names = [var.name for var in sorted_slot_key_vars]
                 for key_name in key_names:
                     if key_name not in keys:
