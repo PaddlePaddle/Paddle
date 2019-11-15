@@ -41,12 +41,13 @@ def force_init_on_cpu():
     Examples:
 
         .. code-block:: python
-
+            
+            import paddle
             import paddle.fluid as fluid
-            if fluid.initializer.force_init_on_cpu():
-                step = fluid.layers.create_global_var(
-                    shape=[2,3], value=1.0, dtype='float32')
-
+            from paddle.fluid.initializer import init_on_cpu
+            with init_on_cpu():
+                print(paddle.fluid.initializer.force_init_on_cpu())
+                
     """
     return _force_init_on_cpu_
 
