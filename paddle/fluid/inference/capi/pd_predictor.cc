@@ -20,6 +20,11 @@
 #include "paddle/fluid/inference/capi/c_api.h"
 #include "paddle/fluid/inference/capi/c_api_internal.h"
 
+using paddle::ConvertToPaddleDType;
+using paddle::ConvertToPDDataType;
+using paddle::ConvertToACPrecision;
+
+namespace {
 #define _ForEachDataTypeHelper_(callback, cpp_type, pd_type) \
   callback(cpp_type, PD_DataType::pd_type);
 
@@ -44,10 +49,6 @@ inline void VisitDataType(PD_DataType type, Visitor visitor) {
   PADDLE_THROW("Not supported %d", type);
 }
 
-using paddle::ConvertToPaddleDType;
-using paddle::ConvertToPDDataType;
-using paddle::ConvertToACPrecision;
-
 struct PD_ZeroCopyFunctor {
   PD_ZeroCopyData* output_i;
   paddle::ZeroCopyTensor* output_t;
@@ -71,6 +72,8 @@ struct PD_ZeroCopyFunctor {
     LOG(INFO) << out_data[0];
   }
 };
+
+}  // namespace
 
 extern "C" {
 bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
