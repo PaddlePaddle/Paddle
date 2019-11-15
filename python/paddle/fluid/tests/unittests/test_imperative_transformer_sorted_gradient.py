@@ -229,11 +229,11 @@ seq_len = ModelHyperParams.max_length
 # compile time.
 input_descs = {
     # The actual data shape of src_word is:
-    # [batch_size, max_src_len_in_batch, 1]
-    "src_word": [(batch_size, seq_len, 1), "int64", 2],
+    # [batch_size, max_src_len_in_batch]
+    "src_word": [(batch_size, seq_len), "int64", 2],
     # The actual data shape of src_pos is:
-    # [batch_size, max_src_len_in_batch, 1]
-    "src_pos": [(batch_size, seq_len, 1), "int64"],
+    # [batch_size, max_src_len_in_batch]
+    "src_pos": [(batch_size, seq_len), "int64"],
     # This input is used to remove attention weights on paddings in the
     # encoder.
     # The actual data shape of src_slf_attn_bias is:
@@ -241,12 +241,12 @@ input_descs = {
     "src_slf_attn_bias": [(batch_size, ModelHyperParams.n_head, seq_len,
                            seq_len), "float32"],
     # The actual data shape of trg_word is:
-    # [batch_size, max_trg_len_in_batch, 1]
-    "trg_word": [(batch_size, seq_len, 1), "int64",
+    # [batch_size, max_trg_len_in_batch]
+    "trg_word": [(batch_size, seq_len), "int64",
                  2],  # lod_level is only used in fast decoder.
     # The actual data shape of trg_pos is:
-    # [batch_size, max_trg_len_in_batch, 1]
-    "trg_pos": [(batch_size, seq_len, 1), "int64"],
+    # [batch_size, max_trg_len_in_batch]
+    "trg_pos": [(batch_size, seq_len), "int64"],
     # This input is used to remove attention weights on paddings and
     # subsequent words in the decoder.
     # The actual data shape of trg_slf_attn_bias is:
@@ -317,17 +317,17 @@ batch_num = 5
 
 np.random.seed = 90
 src_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
-    [TrainTaskConfig.batch_size, seq_len, 1]).astype('int64')
+    [TrainTaskConfig.batch_size, seq_len]).astype('int64')
 src_pos_np = np.random.randint(
-    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len, 1), dtype='int64')
+    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len), dtype='int64')
 src_slf_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
                                        ModelHyperParams.n_head, seq_len,
                                        seq_len).astype('float32')
 
 trg_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
-    [TrainTaskConfig.batch_size, seq_len, 1]).astype('int64')
+    [TrainTaskConfig.batch_size, seq_len]).astype('int64')
 trg_pos_np = np.random.randint(
-    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len, 1), dtype='int64')
+    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len), dtype='int64')
 trg_slf_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
                                        ModelHyperParams.n_head, seq_len,
                                        seq_len).astype('float32')
