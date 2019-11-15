@@ -11171,6 +11171,7 @@ def maxout(x, groups, name=None, axis=1):
 
     Raises:
         ValueError: If `axis` is not 1, -1 or 3.
+        ValueError: If the number of input channels can not be divisible by `groups`.
 
     Examples:
         .. code-block:: python
