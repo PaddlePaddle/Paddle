@@ -834,8 +834,9 @@ class FleetUtil(object):
         """
         fleet._role_maker._barrier_worker()
         if fleet._role_maker.is_first_worker():
-            tables = fleet._dist_desc.trainer_param.dense_table
             prog_id = str(id(program))
+            tables = fleet._opt_info["program_id_to_worker"][prog_id].\
+                get_desc().dense_table
             prog_conf = fleet._opt_info['program_configs'][prog_id]
             prog_tables = {}
             for key in prog_conf:

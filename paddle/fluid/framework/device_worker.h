@@ -20,7 +20,10 @@ limitations under the License. */
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
-#include <thread>  // NOLINT
+#include <thread>         // NOLINT
+#include <unordered_map>  // NOLINT
+#include <unordered_set>  // NOLINT
+#include <utility>        // NOLINT
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
@@ -194,6 +197,10 @@ class DownpourWorker : public HogwildWorker {
   void PushGradients();
   void CollectLabelInfo(size_t table_id);
   void AdjustInsWeight();
+  void DumpParam();
+  void CopySparseTable();
+  void CopyDenseTable();
+  void CopyDenseVars();
 
  private:
   bool need_to_push_dense_;
@@ -234,6 +241,12 @@ class DownpourWorker : public HogwildWorker {
   std::vector<float> nid_show_;
   // check nan and inf during training
   std::vector<std::string> check_nan_var_names_;
+  // copy table
+  CopyTableConfig copy_table_config_;
+  std::map<uint64_t, uint64_t> table_dependency_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
