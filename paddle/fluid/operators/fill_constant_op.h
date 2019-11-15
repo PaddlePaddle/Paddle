@@ -14,8 +14,9 @@ limitations under the License. */
 
 #pragma once
 
+#include <sstream>
+#include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -75,12 +76,23 @@ class FillConstantKernel : public framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext &ctx) const override {
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
-    auto value = ctx.Attr<float>("value");
+    auto str_value = ctx.Attr<std::string>("value");
     auto force_cpu = ctx.Attr<bool>("force_cpu");
-
     framework::Tensor *tensor = nullptr;
 
     framework::Variable *out_var = ctx.OutputVar("Out");
+
+    T value;
+    std::stringstream convert_stream(str_value);
+    if (std::is_same<int64_t, T>::value) {
+      int64_t tmp_value;
+      convert_stream >> tmp_value;
+      value = static_cast<T>(tmp_value);
+    } else {
+      float tmp_value;
+      convert_stream >> tmp_value;
+      value = static_cast<T>(tmp_value);
+    }
 
     auto shape = GetShape(ctx);
 
@@ -96,15 +108,19 @@ class FillConstantKernel : public framework::OpKernel<T> {
           "supports SelectedRows and LoDTensor");
     }
 
-    if (force_cpu) {
-      tensor->mutable_data(platform::CPUPlace(), data_type);
-    } else {
-      tensor->mutable_data(ctx.GetPlace(), data_type);
-    }
-
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
-    math::set_constant(dev_ctx, tensor, value);
+    if (force_cpu || ctx.GetPlace() == platform::CPUPlace()) {
+      tensor->mutable_data(platform::CPUPlace(), data_type);
+      math::SetConstant<platform::CPUDeviceContext, T> functor;
+      functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
+              tensor, static_cast<T>(value));
+    } else {
+      tensor->mutable_data(platform::CUDAPlace(), data_type);
+      math::SetConstant<platform::CUDADeviceContext, T> functor;
+      functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
+              tensor, static_cast<T>(value));
+    }
   }
 };
 }  // namespace operators
