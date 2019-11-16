@@ -24,14 +24,22 @@ from op_test import OpTest
 from paddle.fluid.framework import grad_var_name
 
 
-def _reference_testing(x, batch_size, batch_sum, batch_square_sum):
+def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
     x_shape = x.shape
     means_arr = batch_sum / batch_size
     scales_arr = np.sqrt(batch_size / batch_square_sum)
-    for i in range(x_shape[0]):
-        x[i] -= means_arr
-        x[i] *= scales_arr
-    y = np.array(x)
+    if slot_dim <= 0:
+        for i in range(x_shape[0]):
+            x[i] -= means_arr
+            x[i] *= scales_arr
+        y = np.array(x)
+    else:
+        y = np.zeros(x_shape).astype(np.float32)
+        for i in range(x_shape[0]):
+            for j in range(0, x_shape[1], slot_dim):
+                if x[i][j] <= -1e-7 or x[i][j] > 1e-7:
+                    for k in range(0,slot_dim):
+                        y[i][j+k] = (x[i][j+k] - means_arr[j+k]) * scales_arr[j+k]
     return y
 
 
@@ -60,7 +68,7 @@ class TestDataNormOpInference(unittest.TestCase):
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
-    def check_with_place(self, place, data_layout, dtype, shape):
+    def check_with_place(self, place, data_layout, dtype, shape, slot_dim=-1):
         """
         do forward and check
 
@@ -81,6 +89,8 @@ class TestDataNormOpInference(unittest.TestCase):
 
         x_val = np.random.random_sample(x_shape).astype(dtype)
         x_val = x_val - 0.5
+        x_val[0][1] = 0.0
+        x_val[1][1] = 0.0
         batch_size = np.ones(scale_shape).astype(np.float32)
         batch_size *= 1e4
         batch_sum = np.zeros(scale_shape).astype(np.float32)
@@ -88,7 +98,7 @@ class TestDataNormOpInference(unittest.TestCase):
         batch_square_sum *= 1e4
 
         y_out = _reference_testing(x_val, batch_size, batch_sum,
-                                   batch_square_sum).astype(dtype)
+                                   batch_square_sum, slot_dim).astype(dtype)
 
         scope = core.Scope()
 
@@ -124,7 +134,8 @@ class TestDataNormOpInference(unittest.TestCase):
             Scales="scales",
             # attrs
             epsilon=epsilon,
-            use_mkldnn=self.use_mkldnn)
+            use_mkldnn=self.use_mkldnn,
+            slot_dim=slot_dim)
 
         data_norm_op.run(scope, place)
 
@@ -144,7 +155,8 @@ class TestDataNormOpInference(unittest.TestCase):
         places = [core.CPUPlace()]
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
-                self.check_with_place(place, data_format, self.dtype, [2, 3])
+                for slot_dim in [-1, 1]: 
+                    self.check_with_place(place, data_format, self.dtype, [2, 3], slot_dim=slot_dim)
 
 
 class TestDataNormOp(OpTest):
