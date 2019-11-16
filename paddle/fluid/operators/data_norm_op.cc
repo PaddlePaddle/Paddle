@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/data_norm_op.h"
-#include "paddle/fluid/framework/data_layout.h"
 #include <memory>
 #include <string>
+#include "paddle/fluid/framework/data_layout.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -209,36 +209,36 @@ class DataNormKernel<platform::CPUDeviceContext, T>
                    "slot_dim divisible by item_size");
     T min_precision = 1e-7f;
     switch (data_layout) {
-    case DataLayout::kNCHW: // It's two dimensions, so make no difference
-    case DataLayout::kNHWC: {
-      if (slot_dim > 0) {
-        int offset = 0;
-        for (int k = 0; k < N; ++k) {
-          for (int i = 0; i < item_size; i += slot_dim) {
-            if (x_data[offset + i] > -min_precision &&
-                x_data[offset + i] < min_precision) {
-              // show = 0
-              memset(y_data + offset + i, 0, sizeof(T) * slot_dim);
-            } else {
-              for (int j = i; j < i + slot_dim; ++j) {
-                y_data[offset + j] =
+      case DataLayout::kNCHW:  // It's two dimensions, so make no difference
+      case DataLayout::kNHWC: {
+        if (slot_dim > 0) {
+          int offset = 0;
+          for (int k = 0; k < N; ++k) {
+            for (int i = 0; i < item_size; i += slot_dim) {
+              if (x_data[offset + i] > -min_precision &&
+                  x_data[offset + i] < min_precision) {
+                // show = 0
+                memset(y_data + offset + i, 0, sizeof(T) * slot_dim);
+              } else {
+                for (int j = i; j < i + slot_dim; ++j) {
+                  y_data[offset + j] =
                     (x_data[offset + j] - means_data[j]) * scales_data[j];
+                }
               }
             }
-          }
 
-          offset += item_size;
+            offset += item_size;
+          }
+        } else {
+          EigenArrayMap<T>(y_data, C, N) =
+              (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() - means_arr)
+                  .colwise() *
+              scales_arr;
         }
-      } else {
-        EigenArrayMap<T>(y_data, C, N) =
-            (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() - means_arr)
-                .colwise() *
-            scales_arr;
+        break;
       }
-      break;
-    }
-    default:
-      PADDLE_THROW("Unknown storage order: %d", data_layout);
+      default:
+        PADDLE_THROW("Unknown storage order: %d", data_layout);
     }
   }
 };
@@ -372,74 +372,75 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
     PADDLE_ENFORCE(item_size % slot_dim == 0,
                    "slot_dim divisible by item_size");
     switch (data_layout) { // because it's two dimensions, so make no difference
-    case DataLayout::kNCHW:
-    case DataLayout::kNHWC: {
-      ConstEigenVectorArrayMap<T> scales_arr(scales->data<T>(), C);
-      ConstEigenVectorArrayMap<T> means_arr(means->data<T>(), C);
-      ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N);
-      ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N);
-      if (d_x != nullptr) {
-        EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C, N);
-        d_x_arr.setZero();
-        for (int nc = 0; nc < N; ++nc) {
-          d_x_arr.col(nc) = d_y_arr.col(nc) * scales_arr;
+      case DataLayout::kNCHW:
+      case DataLayout::kNHWC: {
+        ConstEigenVectorArrayMap<T> scales_arr(scales->data<T>(), C);
+        ConstEigenVectorArrayMap<T> means_arr(means->data<T>(), C);
+        ConstEigenArrayMap<T> x_arr(x->data<T>(), C, N);
+        ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), C, N);
+        if (d_x != nullptr) {
+          EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C, N);
+          d_x_arr.setZero();
+          for (int nc = 0; nc < N; ++nc) {
+            d_x_arr.col(nc) = d_y_arr.col(nc) * scales_arr;
+          }
         }
-      }
 
-      if (slot_dim > 0) {
-        int offset = 0;
-        for (int k = 0; k < N; ++k) {
-          for (int i = 0; i < item_size; i += slot_dim) {
-            if (!(x_data[offset + i] > -min_precision &&
+        if (slot_dim > 0) {
+          int offset = 0;
+          for (int k = 0; k < N; ++k) {
+            for (int i = 0; i < item_size; i += slot_dim) {
+              if (!(x_data[offset + i] > -min_precision &&
                   x_data[offset + i] < min_precision)) {
-              // show != 0
-              for (int j = i; j < i + slot_dim; ++j) {
-                d_batch_size_data[j] += 1;
-                d_batch_sum_data[j] += x_data[offset + j];
-                d_batch_square_sum_data[j] +=
+                // show != 0
+                for (int j = i; j < i + slot_dim; ++j) {
+                  d_batch_size_data[j] += 1;
+                  d_batch_sum_data[j] += x_data[offset + j];
+                  d_batch_square_sum_data[j] +=
                     (x_data[offset + j] - means_data[j]) *
                     (x_data[offset + j] - means_data[j]);
+                }
+              }
+            }
+            offset += item_size;
+          }
+
+          for (int i = 0; i < item_size; i += slot_dim) {
+            for (int j = i; j < i + slot_dim; ++j) {
+              if (d_batch_size_data[j] >= 1) {
+                d_batch_sum_data[j] /= d_batch_size_data[j];
+                d_batch_square_sum_data[j] =
+                    d_batch_square_sum_data[j] / d_batch_size_data[j] +
+                    d_batch_size_data[j] * epsilon;
+                d_batch_size_data[j] = 1;
               }
             }
           }
-          offset += item_size;
-        }
-
-        for (int i = 0; i < item_size; i += slot_dim) {
-          for (int j = i; j < i + slot_dim; ++j) {
-            if (d_batch_size_data[j] >= 1) {
-              d_batch_sum_data[j] /= d_batch_size_data[j];
-              d_batch_square_sum_data[j] =
-                  d_batch_square_sum_data[j] / d_batch_size_data[j] +
-                  d_batch_size_data[j] * epsilon;
-              d_batch_size_data[j] = 1;
-            }
+        } else {
+          // calculate data sum and squre sum
+          ConstEigenVectorArrayMap<T> batch_size_arr(batch_size->data<T>(), C);
+          ConstEigenVectorArrayMap<T> batch_sum_arr(batch_sum->data<T>(), C);
+          ConstEigenVectorArrayMap<T> batch_square_sum_arr(
+              batch_square_sum->data<T>(), C);
+          Eigen::Array<T, Eigen::Dynamic, 1> sample_sum(C);
+          Eigen::Array<T, Eigen::Dynamic, 1> sample_square_sum(C);
+          // calculate data sample sum and square sum
+          sample_sum.setZero();
+          sample_square_sum.setZero();
+          for (int nc = 0; nc < N; ++nc) {
+            sample_sum += x_arr.col(nc);
+            sample_square_sum += (x_arr.col(nc) - means_arr).square();
           }
+          // calculate gradient
+          d_batch_size_arr.setConstant(N);
+          d_batch_sum_arr = sample_sum;
+          d_batch_square_sum_arr =
+            sample_square_sum + d_batch_size_arr * epsilon;
         }
-      } else {
-        // calculate data sum and squre sum
-        ConstEigenVectorArrayMap<T> batch_size_arr(batch_size->data<T>(), C);
-        ConstEigenVectorArrayMap<T> batch_sum_arr(batch_sum->data<T>(), C);
-        ConstEigenVectorArrayMap<T> batch_square_sum_arr(
-            batch_square_sum->data<T>(), C);
-        Eigen::Array<T, Eigen::Dynamic, 1> sample_sum(C);
-        Eigen::Array<T, Eigen::Dynamic, 1> sample_square_sum(C);
-        // calculate data sample sum and square sum
-        sample_sum.setZero();
-        sample_square_sum.setZero();
-        for (int nc = 0; nc < N; ++nc) {
-          sample_sum += x_arr.col(nc);
-          sample_square_sum += (x_arr.col(nc) - means_arr).square();
-        }
-        // calculate gradient
-        d_batch_size_arr.setConstant(N);
-        d_batch_sum_arr = sample_sum;
-        d_batch_square_sum_arr = sample_square_sum + d_batch_size_arr * epsilon;
+        break;
       }
-      break;
-    }
-    default:
-      PADDLE_THROW("Unknown storage order: %s", data_layout_str);
+      default:
+        PADDLE_THROW("Unknown storage order: %s", data_layout_str);
     }
   }
 };
