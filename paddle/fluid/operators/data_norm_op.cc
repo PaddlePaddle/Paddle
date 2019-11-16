@@ -222,7 +222,7 @@ class DataNormKernel<platform::CPUDeviceContext, T>
               } else {
                 for (int j = i; j < i + slot_dim; ++j) {
                   y_data[offset + j] =
-                    (x_data[offset + j] - means_data[j]) * scales_data[j];
+                      (x_data[offset + j] - means_data[j]) * scales_data[j];
                 }
               }
             }
@@ -371,7 +371,7 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
     const int slot_dim = ctx.Attr<int>("slot_dim");
     PADDLE_ENFORCE(item_size % slot_dim == 0,
                    "slot_dim divisible by item_size");
-    switch (data_layout) { // because it's two dimensions, so make no difference
+    switch (data_layout) { // it's two dimensions, make no difference
       case DataLayout::kNCHW:
       case DataLayout::kNHWC: {
         ConstEigenVectorArrayMap<T> scales_arr(scales->data<T>(), C);
@@ -391,14 +391,14 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
           for (int k = 0; k < N; ++k) {
             for (int i = 0; i < item_size; i += slot_dim) {
               if (!(x_data[offset + i] > -min_precision &&
-                  x_data[offset + i] < min_precision)) {
+                    x_data[offset + i] < min_precision)) {
                 // show != 0
                 for (int j = i; j < i + slot_dim; ++j) {
                   d_batch_size_data[j] += 1;
                   d_batch_sum_data[j] += x_data[offset + j];
                   d_batch_square_sum_data[j] +=
                     (x_data[offset + j] - means_data[j]) *
-                    (x_data[offset + j] - means_data[j]);
+                      (x_data[offset + j] - means_data[j]);
                 }
               }
             }
