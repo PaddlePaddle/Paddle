@@ -371,7 +371,7 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
     const int slot_dim = ctx.Attr<int>("slot_dim");
     PADDLE_ENFORCE(item_size % slot_dim == 0,
                    "slot_dim divisible by item_size");
-    switch (data_layout) { // it's two dimensions, make no difference
+    switch (data_layout) {  // it's two dimensions, make no difference
       case DataLayout::kNCHW:
       case DataLayout::kNHWC: {
         ConstEigenVectorArrayMap<T> scales_arr(scales->data<T>(), C);
@@ -397,7 +397,7 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
                   d_batch_size_data[j] += 1;
                   d_batch_sum_data[j] += x_data[offset + j];
                   d_batch_square_sum_data[j] +=
-                    (x_data[offset + j] - means_data[j]) *
+                      (x_data[offset + j] - means_data[j]) *
                       (x_data[offset + j] - means_data[j]);
                 }
               }
@@ -435,7 +435,7 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
           d_batch_size_arr.setConstant(N);
           d_batch_sum_arr = sample_sum;
           d_batch_square_sum_arr =
-            sample_square_sum + d_batch_size_arr * epsilon;
+              sample_square_sum + d_batch_size_arr * epsilon;
         }
         break;
       }
