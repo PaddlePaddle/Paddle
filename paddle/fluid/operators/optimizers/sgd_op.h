@@ -123,7 +123,7 @@ class SGDOpKernel<platform::CPUDeviceContext, T>
       const auto *grad_data = grad.value().data<T>();
       auto *out_data = param_out->mutable_value()->data<T>();
       for (size_t i = 0; i < grad.rows().size(); i++) {
-        int64_t id_index = param_out->AutoGrownIndex(grad.rows()[i], false);
+        int64_t id_index = param_out->AutoGrownIndex(grad.rows()[i], true);
         PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
                           "id should be in the table");
         for (int64_t j = 0; j < grad_row_width; j++) {
