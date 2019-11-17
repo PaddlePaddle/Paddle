@@ -33,7 +33,6 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
     auto abs_sections = ToAbsoluteSection(height_sections);
 
     auto& x_rows = x->rows();
-    auto height = x->height();
     std::vector<std::vector<int>> outs_rows_idx;
     std::vector<std::vector<int>> outs_dense_idx;
 
@@ -46,8 +45,7 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
     // split rows index into output sparse vars
     for (size_t i = 0; i < x_rows.size(); ++i) {
       auto& id = x_rows[i];
-      PADDLE_ENFORCE_LT(id, height);
-      int out_idx = GetSectionIndex(id, abs_sections);
+      int out_idx = GetHashIndex(id, abs_sections.size());
       outs_rows_idx[out_idx].push_back(id);
       outs_dense_idx[out_idx].push_back(i);
     }
@@ -63,7 +61,6 @@ class SplitSelectedRowsOpKernel : public framework::OpKernel<T> {
       if (rows_idx.size() > 0) {
         for (auto idx : rows_idx) {
           auto id_offset = idx - abs_sections[i];
-          PADDLE_ENFORCE_LT(id_offset, height_sections[i]);
           outs[i]->mutable_rows()->push_back(id_offset);
         }
         auto dst = outs[i]->mutable_value()->mutable_data<T>(ctx.GetPlace());
