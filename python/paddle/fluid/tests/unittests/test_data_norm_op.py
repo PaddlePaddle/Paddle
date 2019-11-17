@@ -39,8 +39,8 @@ def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
             for j in range(0, x_shape[1], slot_dim):
                 if x[i][j] <= -1e-7 or x[i][j] > 1e-7:
                     for k in range(0, slot_dim):
-                        y[i][j + k] = (x[i][j + k] -
-                                       means_arr[j + k]) * scales_arr[j + k]
+                        y[i][j + k] = (
+                            x[i][j + k] - means_arr[j + k]) * scales_arr[j + k]
     return y
 
 
@@ -58,6 +58,7 @@ class TestDataNormOpInference(unittest.TestCase):
     test class for data norm op
     test forward
     """
+
     def setUp(self):
         """
         init members of this class
@@ -108,11 +109,11 @@ class TestDataNormOpInference(unittest.TestCase):
                                         OpTest.np_dtype_to_fluid_dtype(x_val),
                                         place)
         batch_size_tensor = create_or_get_tensor(
-            scope, "batch_size", OpTest.np_dtype_to_fluid_dtype(batch_size),
-            place)
+            scope, "batch_size",
+            OpTest.np_dtype_to_fluid_dtype(batch_size), place)
         batch_sum_tensor = create_or_get_tensor(
-            scope, "batch_sum", OpTest.np_dtype_to_fluid_dtype(batch_sum),
-            place)
+            scope, "batch_sum",
+            OpTest.np_dtype_to_fluid_dtype(batch_sum), place)
         batch_square_sum_tensor = create_or_get_tensor(
             scope, "batch_square_sum",
             OpTest.np_dtype_to_fluid_dtype(batch_square_sum), place)
@@ -141,12 +142,13 @@ class TestDataNormOpInference(unittest.TestCase):
         data_norm_op.run(scope, place)
 
         # check inference result
-        self.__assert_close(y_tensor,
-                            y_out,
-                            "inference output are different at " + str(place) +
-                            ", " + data_layout + ", " + str(np.dtype(dtype)) +
-                            str(np.array(y_tensor)) + str(y_out),
-                            atol=1e-3)
+        self.__assert_close(
+            y_tensor,
+            y_out,
+            "inference output are different at " + str(place) + ", " +
+            data_layout + ", " + str(np.dtype(dtype)) +
+            str(np.array(y_tensor)) + str(y_out),
+            atol=1e-3)
 
     def test_check_output(self):
         """
@@ -156,10 +158,11 @@ class TestDataNormOpInference(unittest.TestCase):
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
                 for slot_dim in [-1, 1]:
-                    self.check_with_place(place,
-                                          data_format,
-                                          self.dtype, [2, 3],
-                                          slot_dim=slot_dim)
+                    self.check_with_place(
+                        place,
+                        data_format,
+                        self.dtype, [2, 3],
+                        slot_dim=slot_dim)
 
 
 class TestDataNormOp(OpTest):
@@ -167,6 +170,7 @@ class TestDataNormOp(OpTest):
     test class for data norm op
     test forward and backward
     """
+
     def setUp(self):
         """
         init data norm op test env
@@ -218,6 +222,7 @@ class TestDataNormOpWithSlotDim(OpTest):
     test class for data norm op
     test forward and backward
     """
+
     def setUp(self):
         """
         init data norm op test env
