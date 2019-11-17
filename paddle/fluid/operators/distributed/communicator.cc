@@ -183,20 +183,20 @@ void AsyncCommunicator::SendThread() {
   while (running_) {
     std::vector<std::future<void>> task_futures;
     task_futures.reserve(send_varname_to_ctx_.size());
-    VLOG(3) << "run send graph";
+    VLOG(4) << "run send graph";
     auto before_run_send_graph = GetCurrentUS();
     for (auto &iter : send_varname_to_queue_) {
       auto &var_name = iter.first;
       auto &var_queue = iter.second;
       if (var_queue->Size() > 0) {
         auto send_task = [this, &var_name, &var_queue] {
-          VLOG(3) << var_name << " merge and send";
+          VLOG(4) << var_name << " merge and send";
           std::vector<std::shared_ptr<Variable>> vars;
           size_t merged_var_num = 0;
           size_t wait_times = 0;
           while (merged_var_num < FLAGS_communicator_max_merge_var_num) {
             if (var_queue->Size() == 0) {
-              VLOG(3) << "wait_times -> " << wait_times;
+              VLOG(4) << "wait_times -> " << wait_times;
               if (wait_times >= FLAGS_communicator_send_wait_times) {
                 break;
               }
@@ -223,14 +223,14 @@ void AsyncCommunicator::SendThread() {
                                ctx.merge_add);
           }
           auto after_merge = GetCurrentUS();
-          VLOG(3) << "merge " << merged_var_num << " " << var_name
+          VLOG(4) << "merge " << merged_var_num << " " << var_name
                   << " use time " << after_merge - before_merge;
           auto send_functor = distributed::ParameterSend<float>();
           if (!FLAGS_communicator_fake_rpc) {
             send_functor(ctx, *send_scope_, true, 1);
           }
           auto after_send = GetCurrentUS();
-          VLOG(3) << "send " << var_name << " use time "
+          VLOG(4) << "send " << var_name << " use time "
                   << after_send - after_merge;
         };
         task_futures.emplace_back(
@@ -244,7 +244,7 @@ void AsyncCommunicator::SendThread() {
     }
     auto after_run_send_graph = GetCurrentUS();
 
-    VLOG(3) << "run send graph use time "
+    VLOG(4) << "run send graph use time "
             << after_run_send_graph - before_run_send_graph;
     Recv();
   }
