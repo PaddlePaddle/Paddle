@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 from paddle.fluid.tests.unittests.test_lrn_op import TestLRNOp
+import paddle.fluid as fluid
 
 
 class TestLRNMKLDNNOp(TestLRNOp):
