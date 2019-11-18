@@ -62,8 +62,16 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
             node->Op()->GetNullableAttr("sections"));
         auto trainer_id =
             boost::get<int>(node->Op()->GetNullableAttr("trainer_id"));
+        auto merge_add =
+            boost::get<bool>(node->Op()->GetNullableAttr("merge_add"));
+        if (!merge_add) {
+          merge_add = FLAGS_communicator_is_sgd_optimizer;
+        }
+        auto use_send_handler =
+            boost::get<bool>(node->Op()->GetNullableAttr("use_send_handler"));
         send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
-            send_var_name, send_varnames, epmap, height_section, trainer_id);
+            send_var_name, send_varnames, epmap, height_section, trainer_id,
+            merge_add, use_send_handler);
         VLOG(3) << "find and init an send op: "
                 << send_varname_to_ctx[send_var_name];
       } else if (node->Name() == "recv") {
@@ -86,13 +94,10 @@ void ProcessGraph(std::vector<ir::Graph *> graphs, Scope *scope) {
   if (send_varname_to_ctx.size() > 0) {
     VLOG(3) << "this is distribute mode, will use communicator";
 
-    if (operators::distributed::Communicator::GetInstance() == nullptr) {
-      operators::distributed::Communicator::Init(send_varname_to_ctx,
-                                                 recv_varname_to_ctx, scope);
-      operators::distributed::Communicator::GetInstance()->Start();
-    } else {
-      VLOG(3) << "communicator has been initialized, skip";
-    }
+    auto *instance = operators::distributed::Communicator::InitInstance<
+        operators::distributed::AsyncCommunicator>(send_varname_to_ctx,
+                                                   recv_varname_to_ctx, scope);
+    if (!instance->IsRunning()) instance->Start();
   }
 #endif
 }

@@ -42,10 +42,21 @@ class PReluOp : public framework::OperatorWithKernel {
                      "equal to the number of channels, should be %d",
                      x_dim[1]);
     } else if (mode == "element") {
-      PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == product(x_dim),
-                     "For element-wise mode, size of weight Alpha must be "
-                     "equal to the number of input, should be %d",
-                     product(x_dim));
+      auto alpha_dim = ctx->GetInputDim("Alpha");
+      auto alpha_rank = alpha_dim.size();
+      auto x_rank = x_dim.size();
+      size_t x_product = 1;
+      size_t alpha_product = 1;
+      PADDLE_ENFORCE_EQ(alpha_rank, x_rank,
+                        "For element-wise mode, rank of weight Alpha must be ",
+                        "equal to the rank of input.");
+      for (int64_t i = x_rank - 1; i > 0; i--) {
+        x_product *= x_dim[i];
+        alpha_product *= alpha_dim[i];
+      }
+      PADDLE_ENFORCE_EQ(x_product, alpha_product,
+                        "For element-wise mode, size of weight Alpha must be "
+                        "equal to the number of input.");
     } else {
       PADDLE_THROW("Unkown mode %s", mode);
     }
@@ -56,8 +67,9 @@ class PReluOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -112,8 +124,9 @@ class PReluGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -122,8 +135,10 @@ class PReluGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(prelu, ops::PReluOp, ops::PReluOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    prelu, ops::PReluOp, ops::PReluOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(prelu_grad, ops::PReluGradOp);
 REGISTER_OP_CPU_KERNEL(
     prelu, ops::PReluKernel<paddle::platform::CPUDeviceContext, float>);

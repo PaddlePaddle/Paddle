@@ -26,6 +26,8 @@ from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from paddle.fluid.dygraph.jit import TracedLayer
 
 
 class SimpleImgConvPool(fluid.dygraph.Layer):
@@ -118,6 +120,8 @@ class TestImperativeMnist(unittest.TestCase):
         batch_size = 128
         batch_num = 50
 
+        traced_layer = None
+
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -135,6 +139,9 @@ class TestImperativeMnist(unittest.TestCase):
 
             mnist.train()
             dy_param_init_value = {}
+
+            helper = DyGraphProgramDescTracerTestHelper(self)
+            program = None
             for epoch in range(epoch_num):
                 for batch_id, data in enumerate(batch_py_reader()):
                     if batch_id >= batch_num:
@@ -144,7 +151,21 @@ class TestImperativeMnist(unittest.TestCase):
                     label = data[1]
                     label.stop_gradient = True
 
-                    cost = mnist(img)
+                    if batch_id % 10 == 0:
+                        cost, traced_layer = TracedLayer.trace(
+                            mnist, inputs=img)
+                        if program is not None:
+                            self.assertTrue(program, traced_layer.program)
+                        program = traced_layer.program
+                        traced_layer.save_inference_model(
+                            './infer_imperative_mnist')
+                    else:
+                        cost = mnist(img)
+
+                    if traced_layer is not None:
+                        cost_static = traced_layer([img])
+                        helper.assertEachVar(cost, cost_static)
+
                     loss = fluid.layers.cross_entropy(cost, label)
                     avg_loss = fluid.layers.mean(loss)
 
@@ -209,6 +230,10 @@ class TestImperativeMnist(unittest.TestCase):
 
                     fetch_list = [avg_loss.name]
                     fetch_list.extend(static_param_name_list)
+
+                    if traced_layer is not None:
+                        traced_layer([static_x_data])
+
                     out = exe.run(
                         fluid.default_main_program(),
                         feed={"pixel": static_x_data,

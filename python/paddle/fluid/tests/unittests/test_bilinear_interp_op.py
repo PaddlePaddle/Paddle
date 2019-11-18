@@ -486,25 +486,13 @@ class TestBilinearInterp_attr_tensor_Case3(TestBilinearInterpOp_attr_tensor):
 
 class TestBilinearInterpOpAPI(OpTest):
     def test_case(self):
-        x = fluid.layers.data(name="x", shape=[3, 6, 6], dtype="float32")
+        x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
 
-        dim = fluid.layers.data(
-            name="dim", shape=[1], dtype="int32", append_batch_size=False)
-        shape_tensor = fluid.layers.data(
-            name="shape_tensor",
-            shape=[2],
-            dtype="int32",
-            append_batch_size=False)
-        actual_size = fluid.layers.data(
-            name="actual_size",
-            shape=[2],
-            dtype="int32",
-            append_batch_size=False)
-        scale_tensor = fluid.layers.data(
-            name="scale_tensor",
-            shape=[1],
-            dtype="float32",
-            append_batch_size=False)
+        dim = fluid.data(name="dim", shape=[1], dtype="int32")
+        shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
+        actual_size = fluid.data(name="actual_size", shape=[2], dtype="int32")
+        scale_tensor = fluid.data(
+            name="scale_tensor", shape=[1], dtype="float32")
 
         out1 = fluid.layers.resize_bilinear(x, out_shape=[12, 12])
         out2 = fluid.layers.resize_bilinear(x, out_shape=[12, dim])
@@ -513,14 +501,18 @@ class TestBilinearInterpOpAPI(OpTest):
             x, out_shape=[4, 4], actual_shape=actual_size)
         out5 = fluid.layers.resize_bilinear(x, scale=scale_tensor)
 
-        x_data = np.random.random((1, 3, 6, 6)).astype("float32")
+        x_data = np.random.random((2, 3, 6, 6)).astype("float32")
         dim_data = np.array([12]).astype("int32")
         shape_data = np.array([12, 12]).astype("int32")
         actual_size_data = np.array([12, 12]).astype("int32")
         scale_data = np.array([2.0]).astype("float32")
 
-        place = core.CPUPlace()
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
         exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
         results = exe.run(fluid.default_main_program(),
                           feed={
                               "x": x_data,

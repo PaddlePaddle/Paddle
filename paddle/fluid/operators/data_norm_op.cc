@@ -81,7 +81,7 @@ class DataNormOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input_data_type = ctx.Input<Tensor>("X")->type();
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     // By default, the type of the scale, bias, mean,
     // and var tensors should both be float. (For float or float16 input tensor)
     // or double (For double input tensor).
@@ -89,12 +89,14 @@ class DataNormOp : public framework::OperatorWithKernel {
     if (input_data_type == framework::proto::VarType::FP64) {
       dn_param_type = framework::proto::VarType::FP64;
     }
-    PADDLE_ENFORCE_EQ(dn_param_type, ctx.Input<Tensor>("BatchSize")->type(),
-                      "BatchSize input should be of float type");
-    PADDLE_ENFORCE_EQ(dn_param_type, ctx.Input<Tensor>("BatchSum")->type(),
-                      "BatchSum input should be of float type");
     PADDLE_ENFORCE_EQ(dn_param_type,
-                      ctx.Input<Tensor>("BatchSquareSum")->type(),
+                      OperatorWithKernel::IndicateVarDataType(ctx, "BatchSize"),
+                      "BatchSize input should be of float type");
+    PADDLE_ENFORCE_EQ(dn_param_type,
+                      OperatorWithKernel::IndicateVarDataType(ctx, "BatchSum"),
+                      "BatchSum input should be of float type");
+    PADDLE_ENFORCE_EQ(dn_param_type, OperatorWithKernel::IndicateVarDataType(
+                                         ctx, "BatchSquareSum"),
                       "BatchSquareSum input should be of float type");
 
     // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
@@ -276,8 +278,9 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     }
 #endif
 
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.GetPlace(), layout, library);
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout, library);
   }
 };
 
@@ -372,32 +375,35 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
-class DataNormGradMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class DataNormGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op = new framework::OpDesc();
+  std::unique_ptr<T> Apply() const override {
+    auto *op = new T();
     op->SetType("data_norm_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 
-    op->SetInput("BatchSize", Input("BatchSize"));
-    op->SetInput("BatchSum", Input("BatchSum"));
-    op->SetInput("BatchSquareSum", Input("BatchSquareSum"));
-    op->SetInput("Scales", Output("Scales"));
-    op->SetInput("Means", Output("Means"));
+    op->SetInput("BatchSize", this->Input("BatchSize"));
+    op->SetInput("BatchSum", this->Input("BatchSum"));
+    op->SetInput("BatchSquareSum", this->Input("BatchSquareSum"));
+    op->SetInput("Scales", this->Output("Scales"));
+    op->SetInput("Means", this->Output("Means"));
 
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("BatchSize"), InputGrad("BatchSize"));
-    op->SetOutput(framework::GradVarName("BatchSum"), InputGrad("BatchSum"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("BatchSize"),
+                  this->InputGrad("BatchSize"));
+    op->SetOutput(framework::GradVarName("BatchSum"),
+                  this->InputGrad("BatchSum"));
     op->SetOutput(framework::GradVarName("BatchSquareSum"),
-                  InputGrad("BatchSquareSum"));
+                  this->InputGrad("BatchSquareSum"));
 
-    return std::unique_ptr<framework::OpDesc>(op);
+    return std::unique_ptr<T>(op);
   }
 };
 
@@ -406,7 +412,8 @@ class DataNormGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(data_norm, ops::DataNormOp, ops::DataNormOpMaker,
-                  ops::DataNormGradMaker);
+                  ops::DataNormGradMaker<paddle::framework::OpDesc>,
+                  ops::DataNormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(data_norm_grad, ops::DataNormGradOp);
 
 REGISTER_OP_CPU_KERNEL(

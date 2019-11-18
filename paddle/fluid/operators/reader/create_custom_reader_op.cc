@@ -183,7 +183,9 @@ void CustomReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
 }  // namespace paddle
 
 namespace ops = paddle::operators::reader;
-REGISTER_OPERATOR(create_custom_reader, ops::CreateCustomReaderOp,
-                  ops::CreateCustomReaderOpMaker, ops::CustomReaderInferShape,
-                  ops::CustomReaderInferVarType,
-                  paddle::framework::EmptyGradOpMaker)
+REGISTER_OPERATOR(
+    create_custom_reader, ops::CreateCustomReaderOp,
+    ops::CreateCustomReaderOpMaker, ops::CustomReaderInferShape,
+    ops::CustomReaderInferVarType,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)

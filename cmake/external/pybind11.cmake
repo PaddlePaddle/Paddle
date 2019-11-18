@@ -12,10 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(NOT WITH_PYTHON)
-    return()
-endif()
-
 include(ExternalProject)
 
 set(PYBIND_SOURCE_DIR ${THIRD_PARTY_PATH}/pybind)
@@ -25,6 +21,7 @@ include_directories(${PYBIND_SOURCE_DIR}/src/extern_pybind/include)
 ExternalProject_Add(
         extern_pybind
         ${EXTERNAL_PROJECT_LOG_ARGS}
+        ${SHALLOW_CLONE}
         GIT_REPOSITORY  "https://github.com/pybind/pybind11.git"
         GIT_TAG         "v2.2.4"
         PREFIX          ${PYBIND_SOURCE_DIR}

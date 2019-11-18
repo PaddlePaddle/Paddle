@@ -12,16 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_MKLML})
-  return()
-ENDIF(NOT ${WITH_MKLML})
-
-IF(APPLE)
-    MESSAGE(WARNING "Mac is not supported with MKLML in Paddle yet. Force WITH_MKLML=OFF.")
-    SET(WITH_MKLML OFF CACHE STRING "Disable MKLML package in MacOS" FORCE)
-    return()
-ENDIF()
-
 INCLUDE(ExternalProject)
 SET(MKLML_DST_DIR       "mklml")
 SET(MKLML_INSTALL_ROOT  "${THIRD_PARTY_PATH}/install")

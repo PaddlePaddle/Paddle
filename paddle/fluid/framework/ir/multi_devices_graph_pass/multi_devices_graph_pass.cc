@@ -242,7 +242,7 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
               InsertCollectiveOp(&result, p_name, g_name);
             }
           }
-        } catch (boost::bad_get e) {
+        } catch (boost::bad_get &e) {
         }
       }
     }
@@ -465,8 +465,7 @@ void MultiDevSSAGraphBuilderBase::CreateAllReduceOp(ir::Graph *result,
           new details::SparseAllReduceOpHandle(
               result->CreateEmptyNode("allreduce", ir::Node::Type::kOperation),
               scopes, places, multi_nccl_ctxs_, is_encoded,
-              static_cast<int>(strategy_.trainers_endpoints_.size()) *
-                  places_.size()));
+              strategy_.num_trainers_ * places_.size()));
     } else {
       result->Get<GraphOps>(kGraphOps).emplace_back(
           new details::AllReduceOpHandle(
@@ -778,7 +777,7 @@ std::vector<ir::Node *> ReduceSSAGraphBuilder::SortForReduceMode(
         backward_vars =
             boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
                 OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-      } catch (boost::bad_get e) {
+      } catch (boost::bad_get &e) {
       }
       PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
 
@@ -1012,10 +1011,10 @@ int DistSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
 
 #if defined(PADDLE_WITH_DGC)
 bool AllReduceSSAGraphBuilder::IsEncoded(const std::string &p_name) const {
-  auto u_name = p_name + details::g_dgc_u;
-  auto it = all_vars_.find(u_name);
+  auto k_name = p_name + details::g_dgc_k;
+  auto it = all_vars_.find(k_name);
   if (it == all_vars_.end()) {
-    VLOG(10) << "can't find u_name, so it's not encoded:" << u_name;
+    VLOG(10) << "can't find k_name, so it's not encoded:" << k_name;
     return false;
   }
 

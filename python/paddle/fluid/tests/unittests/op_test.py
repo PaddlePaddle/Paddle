@@ -99,7 +99,7 @@ def get_numeric_gradient(place,
             shape = numpy_tensor.shape
             numpy_tensor = numpy_tensor.flatten()
             numpy_tensor[i] = e
-            numpy_tensor = numpy_tensor.reshape(shape).view(np.uint16)
+            numpy_tensor = numpy_tensor.reshape(shape)
             tensor.set(numpy_tensor, place)
         elif tensor_to_check_dtype == np.float32:
             tensor._set_float_element(i, e)
@@ -155,11 +155,6 @@ class OpTest(unittest.TestCase):
         if not self.call_once:
             self.call_once = True
             self.dtype = data_type
-            # See the comment of np_dtype_to_fluid_dtype
-            # If the input type is uint16, we assume use float16
-            # for lodtensor dtype.
-            if self.dtype == np.uint16:
-                self.dtype == np.float16
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def infer_dtype(numpy_dict):
@@ -188,25 +183,19 @@ class OpTest(unittest.TestCase):
                 for name, np_value in self.inputs[var_name]:
                     tensor = core.LoDTensor()
                     if isinstance(np_value, tuple):
-                        tensor.set(
-                            OpTest.np_value_to_fluid_value(np_value[0]), place)
+                        tensor.set(np_value[0], place)
                         tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
-                        tensor.set(
-                            OpTest.np_value_to_fluid_value(np_value), place)
+                        tensor.set(np_value, place)
                     feed_map[name] = tensor
             else:
                 tensor = core.LoDTensor()
                 if isinstance(self.inputs[var_name], tuple):
-                    tensor.set(
-                        OpTest.np_value_to_fluid_value(self.inputs[var_name][
-                            0]), place)
+                    tensor.set(self.inputs[var_name][0], place)
                     tensor.set_recursive_sequence_lengths(self.inputs[var_name][
                         1])
                 else:
-                    tensor.set(
-                        OpTest.np_value_to_fluid_value(self.inputs[var_name]),
-                        place)
+                    tensor.set(self.inputs[var_name], place)
                 feed_map[var_name] = tensor
 
         return feed_map
@@ -380,6 +369,8 @@ class OpTest(unittest.TestCase):
                             feed=feed_map,
                             fetch_list=fetch_list,
                             return_numpy=False)
+        self.op = op
+        self.program = original_program
         if for_inplace_test:
             return outs, fetch_list, feed_map, original_program, op.desc
         else:
@@ -844,6 +835,54 @@ class OpTest(unittest.TestCase):
         self.check_inplace_output_with_place(
             place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
+        if check_dygraph:
+            return outs, dygraph_outs, fetch_list
+        else:
+            return outs, fetch_list
+
+    def check_compile_vs_runtime(self, fetch_list, fetch_outs):
+        def find_fetch_index(target_name, fetch_list):
+            found = [
+                i for i, var_name in enumerate(fetch_list)
+                if var_name == target_name
+            ]
+            if len(found) == 0:
+                return -1
+            else:
+                self.assertTrue(
+                    len(found) == 1,
+                    "Found {} {}".format(len(found), target_name))
+                return found[0]
+
+        for name in self.op.desc.output_names():
+            var_names = self.op.desc.output(name)
+            for var_name in var_names:
+                i = find_fetch_index(var_name, fetch_list)
+                if i == -1:
+                    # The output is dispensiable or intermediate.
+                    break
+                out = fetch_outs[i]
+                if isinstance(out, core.LoDTensor):
+                    lod_level_runtime = len(out.lod())
+                else:
+                    if isinstance(out, core.LoDTensorArray):
+                        warnings.warn(
+                            "The check of LoDTensorArray's lod_level is not implemented now!"
+                        )
+                    lod_level_runtime = 0
+
+                var = self.program.global_block().var(var_name)
+                if var.type == core.VarDesc.VarType.LOD_TENSOR:
+                    lod_level_compile = var.lod_level
+                else:
+                    lod_level_compile = 0
+                self.assertEqual(
+                    lod_level_compile, lod_level_runtime,
+                    "The lod_level of Output (" + name +
+                    ") is different between compile-time and runtime (" +
+                    str(lod_level_compile) + " vs " + str(lod_level_runtime) +
+                    ")")
+
     def _get_places(self):
         if self.dtype == np.float16:
             if core.is_compiled_with_cuda() and core.op_support_gpu(
@@ -871,11 +910,18 @@ class OpTest(unittest.TestCase):
                      no_check_set=None,
                      equal_nan=False,
                      check_dygraph=False,
-                     inplace_atol=None):
+                     inplace_atol=None,
+                     check_compile_vs_runtime=False):
         places = self._get_places()
         for place in places:
-            self.check_output_with_place(place, atol, no_check_set, equal_nan,
-                                         check_dygraph)
+            res = self.check_output_with_place(place, atol, no_check_set,
+                                               equal_nan, check_dygraph)
+            if check_dygraph:
+                outs, dygraph_outs, fetch_list = res
+            else:
+                outs, fetch_list = res
+            if check_compile_vs_runtime:
+                self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker):
         places = self._get_places()
@@ -978,39 +1024,14 @@ class OpTest(unittest.TestCase):
 
     @staticmethod
     def np_dtype_to_fluid_dtype(input):
-        """Change the dtype of float16 numpy array
-
-        numpy float16 is binded to paddle::platform::float16
-        in tensor_py.h via the help of uint16 data type since
-        the internal memory representation of float16 is
-        uint16_t in paddle and np.uint16 in numpy, which are
-        themselves binded together by pybind.
-
-        Args:
-            input: input numpy array
-
-        Returns:
-            input: The dtype of input will be changed to np.uint16 if
-                it is originally np.float16, such that the internal memory
-                of input will be reinterpreted as of dtype np.uint16.
-        """
-        if input.dtype == np.float16:
-            input.dtype = np.uint16
         return input
 
     @staticmethod
     def fluid_dtype_to_np_dtype(self, dtype):
-        """
-        See above, convert the dtype to normal type.
-        """
-        if dtype == np.uint16:
-            dtype = np.float16
         return dtype
 
     @staticmethod
     def np_value_to_fluid_value(input):
-        if input.dtype == np.float16:
-            input = input.view(np.uint16)
         return input
 
     def _get_gradient(self,

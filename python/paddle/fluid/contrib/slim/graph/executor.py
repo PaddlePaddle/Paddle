@@ -42,7 +42,10 @@ class SlimGraphExecutor(object):
         """
         assert isinstance(graph, GraphWrapper)
         feed = None
-        if data is not None:
+        if data is not None and isinstance(data[0], dict):
+            # return list = False
+            feed = data
+        elif data is not None:
             feeder = DataFeeder(
                 feed_list=list(graph.in_nodes.values()),
                 place=self.place,

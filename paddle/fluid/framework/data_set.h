@@ -62,9 +62,7 @@ class Dataset {
   virtual void SetParseInsId(bool parse_ins_id) = 0;
   virtual void SetParseContent(bool parse_content) = 0;
   // set merge by ins id
-  virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
-                               bool erase_duplicate_feas, int min_merge_size,
-                               bool keep_unmerged_ins) = 0;
+  virtual void SetMergeByInsId(int merge_size) = 0;
   // set fea eval mode
   virtual void SetFeaEval(bool fea_eval, int record_candidate_size) = 0;
   // get file list
@@ -149,9 +147,7 @@ class DatasetImpl : public Dataset {
   virtual void SetChannelNum(int channel_num);
   virtual void SetParseInsId(bool parse_ins_id);
   virtual void SetParseContent(bool parse_content);
-  virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
-                               bool erase_duplicate_feas, int min_merge_size,
-                               bool keep_unmerged_ins);
+  virtual void SetMergeByInsId(int merge_size);
 
   virtual void SetFeaEval(bool fea_eval, int record_candidate_size);
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
@@ -219,10 +215,7 @@ class DatasetImpl : public Dataset {
   bool merge_by_insid_;
   bool parse_ins_id_;
   bool parse_content_;
-  bool erase_duplicate_feas_;
-  bool keep_unmerged_ins_;
-  int min_merge_size_;
-  std::vector<std::string> merge_slots_list_;
+  int merge_size_;
   bool slots_shuffle_fea_eval_ = false;
   int preload_thread_num_;
   std::mutex global_index_mutex_;

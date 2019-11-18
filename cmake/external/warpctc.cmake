@@ -29,15 +29,13 @@ ELSE()
     SET(USE_OMP ON)
 ENDIF()
 
-IF(WIN32)
-    SET(WARPCTC_REPOSITORY "https://github.com/wopeizl/warp-ctc.git")
-ELSE()
-    SET(WARPCTC_REPOSITORY "https://github.com/dzhwinter/warp-ctc.git")
-ENDIF()
+# TODO: Use the official github address instead of private branch
+SET(WARPCTC_REPOSITORY "https://github.com/wopeizl/warp-ctc.git")
 
 ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
     GIT_REPOSITORY ${WARPCTC_REPOSITORY}
     PREFIX          ${WARPCTC_SOURCES_DIR}
     UPDATE_COMMAND  ""

@@ -180,28 +180,36 @@ void BindImperative(py::module *m_ptr) {
   py::class_<imperative::detail::BackwardStrategy> backward_strategy(
       m, "BackwardStrategy", R"DOC(
 
-    BackwardStrategy is a descriptor of a how to run the backward process. Now it has:
+    BackwardStrategy is a descriptor of how to run the backward process.
 
-    1. :code:`sort_sum_gradient`, which will sum the gradient by the reverse order of trace.
+    **Note**:
+        **This API is only avaliable in** `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_ **Mode**
 
-    Examples:
+    Attribute:
+        **sort_sum_gradient**:
 
-        .. code-block:: python
+        If framework will sum the gradient by the reverse order of trace. eg. x_var ( :ref:`api_guide_Variable` ) will be the input of multiple OP such as :ref:`api_fluid_layers_scale` , this attr will decide if framework will sum gradient of `x_var` by the reverse order.
 
-          import numpy as np
-          import paddle.fluid as fluid
-          from paddle.fluid import FC
+        By Default: False
 
-          x = np.ones([2, 2], np.float32)
-          with fluid.dygraph.guard():
-              inputs2 = []
-              for _ in range(10):
-                  inputs2.append(fluid.dygraph.base.to_variable(x))
-              ret2 = fluid.layers.sums(inputs2)
-              loss2 = fluid.layers.reduce_sum(ret2)
-              backward_strategy = fluid.dygraph.BackwardStrategy()
-              backward_strategy.sort_sum_gradient = True
-              loss2.backward(backward_strategy)
+        Examples:
+            .. code-block:: python
+
+                import numpy as np
+                import paddle.fluid as fluid
+
+                x = np.ones([2, 2], np.float32)
+                with fluid.dygraph.guard():
+                    x_var = fluid.dygraph.to_variable(x)
+                    sums_inputs = []
+                    # x_var will be multi-scales' input here
+                    for _ in range(10):
+                        sums_inputs.append(fluid.layers.scale(x_var))
+                    ret2 = fluid.layers.sums(sums_inputs)
+                    loss2 = fluid.layers.reduce_sum(ret2)
+                    backward_strategy = fluid.dygraph.BackwardStrategy()
+                    backward_strategy.sort_sum_gradient = True
+                    loss2.backward(backward_strategy)
       )DOC");
   backward_strategy.def(py::init())
       .def_property("sort_sum_gradient",
@@ -221,6 +229,10 @@ void BindImperative(py::module *m_ptr) {
   m.def("_is_dygraph_debug_enabled",
         []() { return imperative::IsDebugEnabled(); });
   m.def("_dygraph_debug_level", []() { return imperative::GetDebugLevel(); });
+  m.def("_switch_tracer",
+        [](const std::shared_ptr<imperative::Tracer> &tracer) {
+          imperative::SetCurrentTracer(tracer);
+        });
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase",
@@ -265,7 +277,10 @@ void BindImperative(py::module *m_ptr) {
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
-             if (grad_var && grad_var->Var().IsInitialized()) {
+             auto *tensor =
+                 grad_var->MutableVar()->GetMutable<framework::LoDTensor>();
+             if (grad_var && grad_var->Var().IsInitialized() &&
+                 tensor->IsInitialized()) {
                return grad_var;
              } else {
                return std::shared_ptr<imperative::VarBase>(nullptr);
@@ -312,9 +327,50 @@ void BindImperative(py::module *m_ptr) {
              return self.Forward(inputs);
            });
 
-  py::class_<imperative::Tracer>(m, "Tracer", "")
+  py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
+      .def("set_name_prefix",
+           &imperative::jit::ProgramDescTracer::SetNamePrefix)
+      .def("set_feed_vars", &imperative::jit::ProgramDescTracer::SetFeedVars)
+      .def("set_fetch_vars", &imperative::jit::ProgramDescTracer::SetFetchVars)
+      .def("create_program_desc",
+           &imperative::jit::ProgramDescTracer::CreateProgramDesc)
+      .def("reset", &imperative::jit::ProgramDescTracer::Reset);
+
+  py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
+      m, "Tracer",
+      R"DOC()DOC")
       .def("__init__",
            [](imperative::Tracer &self) { new (&self) imperative::Tracer(); })
+      .def_property("_enable_program_desc_tracing",
+                    &imperative::Tracer::IsProgramDescTracingEnabled,
+                    &imperative::Tracer::SetEnableProgramDescTracing)
+      .def_property("_train_mode", &imperative::Tracer::NoGrad,
+                    &imperative::Tracer::SetNoGrad)
+      .def_property(
+          "_expected_place",
+          [](const imperative::Tracer &self) -> py::object {
+            return py::cast(self.ExpectedPlace());
+          },
+          [](imperative::Tracer &self, const py::object &obj) {
+            if (py::isinstance<platform::CUDAPlace>(obj)) {
+              auto p = obj.cast<platform::CUDAPlace *>();
+              self.SetExpectedPlace<platform::CUDAPlace>(*p);
+            } else if (py::isinstance<platform::CPUPlace>(obj)) {
+              auto p = obj.cast<platform::CPUPlace *>();
+              self.SetExpectedPlace<platform::CPUPlace>(*p);
+            } else if (py::isinstance<platform::CUDAPinnedPlace>(obj)) {
+              auto p = obj.cast<platform::CUDAPinnedPlace *>();
+              self.SetExpectedPlace<platform::CUDAPinnedPlace>(*p);
+            } else {
+              PADDLE_THROW(
+                  "Incompatible Place Type: supports CUDAPlace, CPUPlace, "
+                  "CUDAPinnedPlace, "
+                  "but got Unknown Type!");
+            }
+          })
+      .def("_get_program_desc_tracer",
+           &imperative::Tracer::GetProgramDescTracer,
+           py::return_value_policy::reference)
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
               const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,

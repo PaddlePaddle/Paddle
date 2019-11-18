@@ -36,7 +36,7 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
         if (op_types_list.empty()) {
           op->SetAttr("use_quantizer", true);
         } else if (std::find(op_types_list.begin(), op_types_list.end(),
-                             n->Name()) != op_types_list.end()) {
+                             op->Type()) != op_types_list.end()) {
           op->SetAttr("use_quantizer", true);
         }
       }

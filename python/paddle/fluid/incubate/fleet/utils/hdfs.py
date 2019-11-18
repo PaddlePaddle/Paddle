@@ -44,10 +44,10 @@ _logger = get_logger(
 
 class HDFSClient(object):
     """
-    A tool of HDFS 
+    A tool of HDFS
 
     Args:
-        hadoop_home (string): hadoop_home 
+        hadoop_home (string): hadoop_home
         configs (dict): hadoop config, it is a dict, please contain \
             key "fs.default.name" and "hadoop.job.ugi"
         Can be a float value
@@ -467,7 +467,7 @@ class HDFSClient(object):
 
         self.make_local_dirs(local_path)
 
-        all_files = client.ls(hdfs_path)
+        all_files = self.ls(hdfs_path)
 
         procs = []
         for i in range(multi_processes):

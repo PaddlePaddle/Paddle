@@ -257,6 +257,15 @@ struct AnalysisConfig {
    */
   bool profile_enabled() const { return with_profile_; }
 
+  /** \brief Disable GLOG information output for security.
+   *
+   * If called, no LOG(INFO) logs will be generated.
+   */
+  void DisableGlogInfo();
+  /** A boolean state telling whether the GLOG info is disabled.
+   */
+  bool glog_info_disabled() const { return !with_glog_info_; }
+
   void SetInValid() const { is_valid_ = false; }
   bool is_valid() const { return is_valid_; }
 
@@ -324,6 +333,8 @@ struct AnalysisConfig {
   int cpu_math_library_num_threads_{1};
 
   bool with_profile_{false};
+
+  bool with_glog_info_{true};
 
   // A runtime cache, shouldn't be transferred to others.
   std::string serialized_info_cache_;
