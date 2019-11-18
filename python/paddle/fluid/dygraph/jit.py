@@ -376,7 +376,7 @@ class TracedLayer(object):
             if partial_vars is None:
                 return all_vars
 
-            return [all_vars[idx] for idx in feed]
+            return [all_vars[idx] for idx in partial_vars]
 
         with scope_guard(self._scope):
             feeded_var_names = get_feed_fetch(self._feed_names, feed)
