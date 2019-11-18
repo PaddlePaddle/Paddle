@@ -110,27 +110,30 @@ class LookupTableKernel : public framework::OpKernel<T> {
 
         auto is_test = context.Attr<bool>("is_test");
 
-        auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-        for (int64_t i = 0; i < ids_numel; ++i) {
-          if (padding_idx != kNoPadding && ids[i] == padding_idx) {
-            memset(output + i * row_width, 0, row_width * sizeof(T));
-          } else {
-            PADDLE_ENFORCE_GE(
-                ids[i], 0,
-                "Variable value (input) of OP(fluid.layers.embedding) "
-                "expected >= 0. But received %ld",
-                ids[i]);
-            auto id_index = table_t.Index(ids[i]);
-
-            if (id_index == -1) {
-              if (is_test) {
-                memset(output + i * row_width, 0, row_width * sizeof(T));
-              } else {
-                PADDLE_THROW("the input key %d do not exist in table.", ids[i]);
-              }
+        if (is_test) {
+          auto w_var = context.scope().FindVar(embedding_name);
+          auto w_t = w_var->GetMutable<framework::SelectedRows>();
+          w_t->Get(*ids_t, output_t, false, true);
+        } else {
+          auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+          for (int64_t i = 0; i < ids_numel; ++i) {
+            if (padding_idx != kNoPadding && ids[i] == padding_idx) {
+              memset(output + i * row_width, 0, row_width * sizeof(T));
             } else {
-              blas.VCOPY(row_width, table + id_index * row_width,
-                         output + i * row_width);
+              PADDLE_ENFORCE_GE(
+                  ids[i], 0,
+                  "Variable value (input) of OP(fluid.layers.embedding) "
+                  "expected >= 0. But received %ld",
+                  ids[i]);
+              auto id_index = table_t.Index(ids[i]);
+
+              if (id_index == -1) {
+                PADDLE_THROW("the input key %d do not exist in table.", ids[i]);
+
+              } else {
+                blas.VCOPY(row_width, table + id_index * row_width,
+                           output + i * row_width);
+              }
             }
           }
         }
