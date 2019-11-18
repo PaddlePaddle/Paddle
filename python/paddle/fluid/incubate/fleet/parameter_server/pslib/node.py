@@ -101,6 +101,10 @@ class DownpourServer(Server):
             table.compress_in_save = strategy.get('sparse_compress_in_save',
                                                   True)
             table.shard_num = strategy.get('sparse_shard_num', 1000)
+            
+            # DownpourFeatureValueAccessor: for ctr task, has cvm, embedding and sgd info
+            # DownpourCtrAccessor         : for ctr task, has cvm, slot, embedding and sgd info
+            # DownpourSparseValueAccessor : for general task, has embedding and sgd info
 
             support_accessor_class = [
                 'DownpourFeatureValueAccessor', 'DownpourCtrAccessor', 'DownpourSparseValueAccessor'
