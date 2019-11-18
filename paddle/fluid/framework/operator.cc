@@ -191,9 +191,11 @@ bool OperatorBase::HasInputs(const std::string& name) const {
 
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
-  PADDLE_ENFORCE_LE(ins.size(), 1UL,
-                    "Operator %s's input %s should contain only one variable.",
-                    type_, name);
+  PADDLE_ENFORCE_LE(
+      ins.size(), 1UL,
+      platform::errors::AlreadyExists(
+          "Operator %s's input %s should contain only one variable.", type_,
+          name));
   return ins.empty() ? kEmptyVarName : ins[0];
 }
 
@@ -429,9 +431,11 @@ const Variable* ExecutionContext::InputVar(const std::string& name) const {
   auto it = ctx_.inputs.find(name);
   if (it == ctx_.inputs.end()) return nullptr;
 
-  PADDLE_ENFORCE_LE(it->second.size(), 1UL,
-                    "Operator %s's input %s should contain only one variable.",
-                    op_.Type(), name);
+  PADDLE_ENFORCE_LE(
+      it->second.size(), 1UL,
+      platform::errors::AlreadyExists(
+          "Operator %s's input %s should contain only one variable.",
+          op_.Type(), name));
   return it->second.empty() ? nullptr : it->second[0];
 }
 
@@ -1147,17 +1151,21 @@ void OperatorWithKernel::ParseInputDataType(
         t = &(var->Get<SelectedRows>().value());
       }
       if (t != nullptr) {
-        PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                          "The Tensor in the %s Op's Input Variable %s(%s) is "
-                          "not initialized.",
-                          Type(), name, ctx.Inputs(name).at(i));
+        PADDLE_ENFORCE_EQ(
+            t->IsInitialized(), true,
+            platform::errors::InvalidArgument(
+                "The Tensor in the %s Op's Input Variable %s(%s) is "
+                "not initialized.",
+                Type(), name, ctx.Inputs(name).at(i)));
         proto::VarType::Type tmp = t->type();
-        PADDLE_ENFORCE(tmp == *data_type || *data_type == dafault_data_type,
-                       "The DataType of %s Op's duplicable Variable %s must be "
-                       "consistent. The current variable type is (%s), but the "
-                       "previous variable type is (%s).",
-                       Type(), name, DataTypeToString(tmp),
-                       DataTypeToString(*data_type));
+        PADDLE_ENFORCE(
+            tmp == *data_type || *data_type == dafault_data_type,
+            platform::errors::InvalidArgument(
+                "The DataType of %s Op's duplicable Variable %s must be "
+                "consistent. The current variable type is (%s), but the "
+                "previous variable type is (%s).",
+                Type(), name, DataTypeToString(tmp),
+                DataTypeToString(*data_type)));
         *data_type = tmp;
       }
     }
