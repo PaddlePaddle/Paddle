@@ -2709,6 +2709,8 @@ def data_norm(input,
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
         do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance
             should do model average when model average is enabled.
+        slot_dim(int): The dimention of one slots used for judging if the show num is zero to skip
+            normalization.
 
     Returns:
         Variable: A tensor variable which is the result after applying data normalization on the input.
