@@ -376,6 +376,17 @@ class TestDataset(unittest.TestCase):
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(adam)
             adam.minimize([fake_cost], [scope])
+            exe.run(startup_program)
+            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset.set_batch_size(32)
+            dataset.set_thread(3)
+            dataset.set_filelist([
+                "test_in_memory_dataset_run_a.txt",
+                "test_in_memory_dataset_run_b.txt"
+            ])
+            dataset.set_pipe_command("cat")
+            dataset.set_use_var(slots_vars)
+            dataset.load_into_memory()
         fleet._opt_info = None
         fleet._fleet_ptr = None
 
