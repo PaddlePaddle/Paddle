@@ -12,28 +12,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/dynload/cuda_driver.h"
+#include "paddle/fluid/operators/fused/fusion_group_op.h"
 
-namespace paddle {
-namespace platform {
-namespace dynload {
-
-std::once_flag cuda_dso_flag;
-void* cuda_dso_handle = nullptr;
-
-#define DEFINE_WRAP(__name) DynLoad__##__name __name
-
-CUDA_ROUTINE_EACH(DEFINE_WRAP);
-
-#ifdef PADDLE_USE_DSO
-bool HasCUDADriver() {
-  std::call_once(cuda_dso_flag, []() { cuda_dso_handle = GetCUDADsoHandle(); });
-  return cuda_dso_handle != nullptr;
-}
-#else
-bool HasCUDADriver() { return false; }
-#endif
-
-}  // namespace dynload
-}  // namespace platform
-}  // namespace paddle
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+REGISTER_OP_CUDA_KERNEL(
+    fusion_group,
+    ops::FusionGroupKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::FusionGroupKernel<paddle::platform::CUDADeviceContext, float>);

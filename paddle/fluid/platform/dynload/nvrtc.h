@@ -25,6 +25,7 @@ namespace dynload {
 
 extern std::once_flag nvrtc_dso_flag;
 extern void* nvrtc_dso_handle;
+extern bool HasNVRTC();
 
 #ifdef PADDLE_USE_DSO
 

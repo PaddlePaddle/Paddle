@@ -25,6 +25,7 @@ namespace dynload {
 
 extern std::once_flag cuda_dso_flag;
 extern void* cuda_dso_handle;
+extern bool HasCUDADriver();
 
 #ifdef PADDLE_USE_DSO
 
