@@ -52,25 +52,24 @@ class SimpleNet(fluid.Layer):
                     low=-init_scale, high=init_scale)))
         self.softmax_weight = self.create_parameter(
             attr=fluid.ParamAttr(),
-            shape=[self.hidden_size, self.vocab_size],
+            shape=[self.hidden_size, self.hidden_size],
             dtype="float32",
             default_initializer=fluid.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale))
         self.softmax_bias = self.create_parameter(
             attr=fluid.ParamAttr(),
-            shape=[self.vocab_size],
+            shape=[self.hidden_size],
             dtype="float32",
             default_initializer=fluid.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale))
 
-    def forward(self, input1, input2, label):
-        matmul_output = fluid.layers.matmul(
-            input2, fluid.layers.transpose(
+    def forward(self, input, label):
+        x_emb = self.embedding(input)
+        fc = fluid.layers.matmul(x_emb, self.softmax_weight)
+        fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
+        projection = fluid.layers.matmul(
+            fc, fluid.layers.transpose(
                 self.embedding._w, perm=[1, 0]))
-        x_emb = self.embedding(input1)
-        projection = fluid.layers.matmul(x_emb, self.softmax_weight)
-        projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
-        projection = projection + matmul_output
         projection = fluid.layers.reshape(
             projection, shape=[-1, self.vocab_size])
         loss = fluid.layers.softmax_with_cross_entropy(
@@ -85,13 +84,18 @@ class SimpleNet(fluid.Layer):
 
 class TestDygraphSimpleNet(unittest.TestCase):
     def test_simple_net_cpu_float32(self):
+        #for i in range(2000):
+        #    print(i)
+        self.simple_net_cpu_float32(200)
+
+    def simple_net_cpu_float32(self, batch_num):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
         num_steps = 3
         init_scale = 0.1
         batch_size = 4
-        batch_num = 200
+        batch_num = batch_num
 
         for is_sparse in [True, False]:
             for is_sort_sum_gradient in [True]:
@@ -120,19 +124,15 @@ class TestDygraphSimpleNet(unittest.TestCase):
 
                     for i in range(batch_num):
                         x_data = np.array(
-                            [1, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 4]).reshape(
+                            [1, 2, 3, 3, 2, 3, 2, 3, 2, 2, 3, 1]).reshape(
                                 4, 3).astype('int64')
                         y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                        z_data = np.arange(12 * hidden_size).reshape(
-                            4, 3, hidden_size).astype('float32')
                         x_data = x_data.reshape((-1, num_steps, 1))
                         y_data = y_data.reshape((-1, 1))
-                        z_data = z_data.reshape((-1, num_steps, hidden_size))
 
                         x = to_variable(x_data)
                         y = to_variable(y_data)
-                        z = to_variable(z_data)
-                        outs = simple_net(x, z, y)
+                        outs = simple_net(x, y)
                         dy_loss = outs
                         if i == 0:
                             for param in simple_net.parameters():
@@ -162,14 +162,10 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     sgd = SGDOptimizer(learning_rate=1e-3)
                     x = fluid.layers.data(
                         name="x", shape=[-1, num_steps, 1], dtype='int64')
-                    z = fluid.layers.data(
-                        name="z",
-                        shape=[-1, num_steps, hidden_size],
-                        dtype='float32')
                     y = fluid.layers.data(
                         name="y", shape=[-1, 1], dtype='float32')
 
-                    static_loss = simple_net(x, z, y)
+                    static_loss = simple_net(x, y)
                     sgd.minimize(static_loss)
                     static_param_updated = dict()
                     static_param_init = dict()
@@ -184,22 +180,17 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     static_loss_value = None
                     for i in range(batch_num):
                         x_data = np.array(
-                            [1, 2, 3, 4, 4, 3, 2, 1, 1, 2, 3, 4]).reshape(
+                            [1, 2, 3, 3, 2, 3, 2, 3, 2, 2, 3, 1]).reshape(
                                 4, 3).astype('int64')
                         y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                        z_data = np.arange(12 * hidden_size).reshape(
-                            4, 3, hidden_size).astype('float32')
                         x_data = x_data.reshape((-1, num_steps, 1))
                         y_data = y_data.reshape((-1, 1))
-                        z_data = z_data.reshape((-1, num_steps, hidden_size))
                         fetch_list = [static_loss]
                         fetch_list.extend(static_param_name_list)
-                        out = exe.run(
-                            fluid.default_main_program(),
-                            feed={"x": x_data,
-                                  "y": y_data,
-                                  "z": z_data},
-                            fetch_list=fetch_list)
+                        out = exe.run(fluid.default_main_program(),
+                                      feed={"x": x_data,
+                                            "y": y_data},
+                                      fetch_list=fetch_list)
                         static_loss_value = out[0]
 
                         if i == batch_num - 1:

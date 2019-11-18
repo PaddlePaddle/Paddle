@@ -1034,8 +1034,9 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                         outs, traced_layer = TracedLayer.trace(
                             transformer,
                             [enc_inputs, dec_inputs, label, weights])
-                        outs_static = traced_layer(enc_inputs + dec_inputs +
-                                                   [label, weights])
+
+                        ins_static = enc_inputs + dec_inputs + [label, weights]
+                        outs_static = traced_layer(ins_static)
                         helper.assertEachVar(outs, outs_static)
                         if program is not None:
                             self.assertTrue(
@@ -1043,7 +1044,9 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
 
                         program = traced_layer.program
                         traced_layer.save_inference_model(
-                            './infer_imperative_transformer')
+                            './infer_imperative_transformer',
+                            feed=range(len(ins_static)),
+                            fetch=range(len(outs_static)))
                     else:
                         outs = transformer(enc_inputs, dec_inputs, label,
                                            weights)

@@ -76,13 +76,18 @@ class SimpleNet(fluid.Layer):
 
 class TestDygraphSimpleNet(unittest.TestCase):
     def test_simple_net_cpu_float32(self):
+        #for i in range(200):
+        #print("num: ", i)
+        self.simple_net_cpu_float32(200)
+
+    def simple_net_cpu_float32(self, batch_norm):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
         num_steps = 3
         init_scale = 0.1
         batch_size = 4
-        batch_num = 200
+        batch_num = batch_norm  #200
 
         for is_sparse in [True, False]:
             for is_sort_sum_gradient in [True]:
