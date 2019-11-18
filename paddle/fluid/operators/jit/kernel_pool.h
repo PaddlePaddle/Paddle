@@ -28,6 +28,8 @@ namespace paddle {
 namespace operators {
 namespace jit {
 
+extern std::unordered_map<std::string, std::shared_ptr<void>>& GetJITCodesMap();
+
 template <KernelType KT>
 class JitCodePool {
   typedef std::unique_ptr<GenBase> GenBasePtr;
@@ -36,8 +38,16 @@ class JitCodePool {
  public:
   JitCodePool() = default;
   static JitCodePool& Instance() {
-    static thread_local JitCodePool<KT> g_jit_codes;
-    return g_jit_codes;
+    auto& jit_codes_map = GetJITCodesMap();
+    std::string key = typeid(JitCodePool<KT>).name();
+    auto iter = jit_codes_map.find(key);
+    if (iter != jit_codes_map.end()) {
+      return *(JitCodePool<KT>*)(iter->second.get());
+    } else {
+      std::shared_ptr<void> cache = std::make_shared<JitCodePool<KT>>();
+      jit_codes_map.emplace(key, cache);
+      return *(JitCodePool<KT>*)(cache.get());
+    }
   }
 
   const JitCodeMap& AllKernels() { return codes_; }

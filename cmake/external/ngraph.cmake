@@ -37,6 +37,7 @@ SET(NGRAPH_TBB_LIB         ${NGRAPH_LIB_DIR}/${NGRAPH_TBB_LIB_NAME})
 ExternalProject_Add(
     ${NGRAPH_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
     DEPENDS                  ${MKLDNN_PROJECT} ${MKLML_PROJECT}
     GIT_REPOSITORY           ${NGRAPH_GIT_REPO}
     GIT_TAG                  ${NGRAPH_GIT_TAG}
