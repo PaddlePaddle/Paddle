@@ -356,6 +356,28 @@ class TestDataset(unittest.TestCase):
         fleet_ptr.set_client2client_config(1, 1, 1)
         fleet_ptr.get_cache_threshold(0)
 
+        train_program = fluid.Program()
+        startup_program = fluid.Program()
+        scope = fluid.Scope()
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+        with fluid.program_guard(train_program, startup_program):
+            with fluid.unique_name.guard():
+                slots = ["slot1_f", "slot2_f", "slot3_f", "slot4_f"]
+                slots_vars = []
+                for slot in slots:
+                    var = fluid.layers.data(\
+                        name=slot, shape=[1], dtype="float32", lod_level=1)
+                slots_vars.append(var)
+                fake_cost = \
+                    fluid.layers.elementwise_sub(slots_vars[0],slots_vars[-1])
+                fake_cost = fluid.layers.mean(fake_cost)
+                place = fluid.CPUPlace()
+                exe = fluid.Executor(place)
+                fleet.init(exe)
+                adam = fluid.optimizer.Adam(learning_rate=0.000005)
+                adam = fleet.distributed_optimizer(adam)
+                adam.minimize([fake_cost], [scope])
+
         os.remove("./test_in_memory_dataset_run_a.txt")
         os.remove("./test_in_memory_dataset_run_b.txt")
 
