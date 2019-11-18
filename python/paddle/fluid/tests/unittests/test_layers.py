@@ -1640,6 +1640,9 @@ class TestBook(LayerTest):
         elif dtype == 'int64':
             return np.random.randint(self._low_data_bound,
                                      self._high_data_bound, shape).astype(dtype)
+        elif dtype == 'bool':
+            return np.random.randint(self._low_data_bound,
+                                     self._high_data_bound, shape).astype(dtype)
 
     def _get_data(self,
                   name,
