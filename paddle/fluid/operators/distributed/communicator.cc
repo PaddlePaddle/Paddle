@@ -616,32 +616,35 @@ void GeoSgdCommunicator::SendThread() {
             auto send_update_task = [this, &var_name, &splited_var_name] {
               SendUpdateSparseVars(var_name, splited_var_name);
             };
+            auto send_task = [this, &var_name, &splited_var_name] {
+              SendSparseVars(var_name, splited_var_name);
+            };
             task_futures.emplace_back(
                 send_threadpool_->enqueue(std::move(recv_task)));
             task_futures.emplace_back(
-                send_threadpool_->enqueue(std::move(copy_training_scope_task)));
+                send_threadpool_->enqueue(std::move(send_update_task)));
 
             task_futures_second.emplace_back(std::move(recv_update_task));
-            task_futures_third.emplace_back(std::move(send_update_task));
+            task_futures_third.emplace_back(std::move(send_task));
           }
         } else {
           auto recv_task = [this, &var_name] { RecvDenseVars(var_name); };
           auto recv_update_task = [this, &var_name] {
             RecvUpdateDenseVars(var_name);
           };
-          auto copy_training_scope_task = [this, &var_name] {
-            CopyDenseVars(var_name);
-          };
           auto send_update_task = [this, &var_name] {
             SendUpdateDenseVars(var_name);
+          };
+          auto send_task = [this, &var_name] {
+            SendDenseVars(var_name);
           };
           task_futures.emplace_back(
               send_threadpool_->enqueue(std::move(recv_task)));
           task_futures.emplace_back(
-              send_threadpool_->enqueue(std::move(copy_training_scope_task)));
+              send_threadpool_->enqueue(std::move(send_update_task)));
 
           task_futures_second.emplace_back(std::move(recv_update_task));
-          task_futures_third.emplace_back(std::move(send_update_task));
+          task_futures_third.emplace_back(std::move(send_task));
         }
       }
       for (auto &task_f : task_futures) {
@@ -652,15 +655,13 @@ void GeoSgdCommunicator::SendThread() {
         task_futures.emplace_back(
             send_threadpool_->enqueue(std::move(f)));
       }
+      for (auto &task_f : task_futures) {
+        task_f.wait();
+      }
+      task_futures.clear();
       for (auto &f : task_futures_third) {
         task_futures.emplace_back(
             send_threadpool_->enqueue(std::move(f)));
-      }
-      int need_wait = task_futures.size() / 2;
-      for (int i = need_wait - 1; i >= 0; i--) {
-        auto &task_f = task_futures[i];
-        task_f.wait();
-        task_futures.erase(task_futures.begin() + i);
       }
       task_futures_second.clear();
       task_futures_third.clear();
@@ -671,19 +672,19 @@ void GeoSgdCommunicator::SendThread() {
 
 void GeoSgdCommunicator::SendUpdateDenseVars(const std::string &var_name) {
   // calc var_delata = (var_training - var_old)/trainer_nums
-  // calc var_old += var_delta
+  // calc var_old += var_delta @diff
   // var_name: param.delta
   auto origin_var_name = DeltaVarToVar(var_name);
   auto before_run_send_dense = GetCurrentUS();
 
-  auto var_x = dense_variables_copy.at(origin_var_name);
-  auto *var_x_data = var_x.data();
+  auto *var_x = training_scope_->FindVar(origin_var_name);
+  auto var_x_tensor = var_x->Get<framework::LoDTensor>();
 
   auto *var_y = old_scope_->FindVar(origin_var_name);
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
 
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
-  auto dims = var_y_tensor.dims();
+  auto dims = var_x_tensor.dims();
 
   // create temp var for sub
   auto *var_y_sub = old_scope_->Var(var_name);
@@ -693,8 +694,8 @@ void GeoSgdCommunicator::SendUpdateDenseVars(const std::string &var_name) {
   // create delta var in delta scope
   auto *var_z = delta_scope_->Var(var_name);
   auto *var_z_tensor = var_z->GetMutable<framework::LoDTensor>();
-  var_z_tensor->mutable_data<float>(dims, var_y_tensor.place());
-  var_z_tensor->set_lod(var_y_tensor.lod());
+  var_z_tensor->mutable_data<float>(dims, var_x_tensor.place());
+  var_z_tensor->set_lod(var_x_tensor.lod());
 
   math::SetConstant<paddle::platform::CPUDeviceContext, float> constant_functor;
   constant_functor(cpu_ctx, var_z_tensor, static_cast<float>(0));
@@ -703,7 +704,8 @@ void GeoSgdCommunicator::SendUpdateDenseVars(const std::string &var_name) {
   auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
   blas.SCAL(var_y_sub_tensor.numel(), -1,
             var_y_sub_tensor.mutable_data<float>(var_y_sub_tensor.place()));
-  blas.VADD(var_x.size(), var_x_data,
+  blas.VADD(var_x_tensor.numel(),
+            var_x_tensor.mutable_data<float>(var_x_tensor.place()),
             var_y_sub_tensor.mutable_data<float>(var_y_sub_tensor.place()),
             var_z_tensor->mutable_data<float>(var_z_tensor->place()));
 
@@ -713,8 +715,37 @@ void GeoSgdCommunicator::SendUpdateDenseVars(const std::string &var_name) {
             var_z_tensor->mutable_data<float>(var_z_tensor->place()));
 
   auto after_run_send_dense = GetCurrentUS();
-  VLOG(3) << "run send update dense var " << var_name << " use time "
+  VLOG(1) << "run send update dense var " << var_name << " use time "
           << after_run_send_dense - before_run_send_dense;
+}
+
+void GeoSgdCommunicator::SendDenseVars(const std::string &var_name) {
+  auto send_functor = distributed::ParameterSend<float>();
+  auto &ctx = send_varname_to_ctx_.at(var_name);
+
+  auto before_send_dense = GetCurrentUS();
+  send_functor(ctx, *delta_scope_.get(), true, 1);
+
+  auto after_send_dense = GetCurrentUS();
+  VLOG(1) << "send " << var_name << " and update old scope use time "
+          << after_send_dense - before_send_dense;
+
+  auto origin_var_name = DeltaVarToVar(var_name);
+
+  auto before_update_old = GetCurrentUS();
+  auto *var_x = delta_scope_->FindVar(var_name);
+  auto var_x_tensor = var_x->Get<framework::LoDTensor>();
+
+  auto *var_y = old_scope_->FindVar(origin_var_name);
+  auto var_y_tensor = var_y->Get<framework::LoDTensor>();
+
+  blas.VADD(var_y_tensor.numel(),
+            var_x_tensor.mutable_data<float>(var_x_tensor.place()),
+            var_y_tensor.mutable_data<float>(var_y_tensor.place()),
+            var_y_tensor.mutable_data<float>(var_y_tensor.place()));
+  auto after_update_old = GetCurrentUS();
+  VLOG(1) << "update old_scope " << var_name << " use time "
+          << after_update_old - before_update_old;
 }
 
 void GeoSgdCommunicator::SendUpdateSparseVars(
@@ -780,8 +811,55 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
       send_varname_to_ctx_[var_name].height_sections[splited_var_index]);
 
   auto after_run_send_sparse = GetCurrentUS();
-  VLOG(3) << "run send update sparse var " << splited_var_name << " use time "
+  VLOG(1) << "run send update sparse var " << splited_var_name << " use time "
           << after_run_send_sparse - before_run_send_sparse << " id num " << send_rows.size();
+  return new_rows;
+}
+
+void GeoSgdCommunicator::SendSparseVars(
+    const std::string &var_name, const std::string &splited_var_name) {
+  auto before_send_sparse = GetCurrentUS();
+  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
+  RpcSend(var_name, splited_var_name, splited_var_index);
+
+  auto after_send_sparse = GetCurrentUS();
+  VLOG(1) << "send " << splited_var_name << " has nums " << new_rows.size()
+          << " use time " << after_send_sparse - before_send_sparse;
+  
+  auto origin_var_name = DeltaVarToVar(var_name);
+
+  auto before_update_old = GetCurrentUS();
+  auto *var_x = delta_scope_->FindVar(splited_var_name);
+  auto var_x_slr = var_x->GetMutable<framework::SelectedRows>();
+  auto row_size = var_x_slr->rows().size();
+
+  std::vector<int64_t> new_rows;
+  new_rows.reserve(row_size);
+
+  for (auto ids : var_x_slr->rows()) {
+    new_rows.push_back(ids +
+                       absolute_section_[origin_var_name][splited_var_index]);
+  }
+
+  auto *var_y = old_scope_->FindVar(origin_var_name);
+  auto var_y_tensor = var_y->Get<framework::LoDTensor>();
+  float *y_value = var_y_tensor.mutable_data<float>(var_y_tensor.place());
+
+  auto *new_value = var_x_slr->mutable_value();
+  auto *x_value = new_value->mutable_data<float>(var_y_tensor.place());
+
+  auto dims = var_y_tensor.dims();
+  auto row_numel = dims[1];
+  for (int y = 0; y < new_rows.size(); y++) {
+    auto ids = new_rows[y];
+    float *x_val = x_value + y * row_numel;
+    float *y_val = y_value + ids * row_numel;
+
+    blas.VADD(row_numel, x_val, y_val, y_val);
+  }
+  auto after_update_old = GetCurrentUS();
+  VLOG(1) << "update old_scope " << splited_var_name << " use time "
+          << after_update_old - before_update_old; 
 }
 
 void GeoSgdCommunicator::RecvDenseVars(const std::string &var_name) {
@@ -797,7 +875,7 @@ void GeoSgdCommunicator::RecvDenseVars(const std::string &var_name) {
 
 void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
   // calc var_training += var_pserver - var_old
-  // calc var_old = var_pserver
+  // calc var_old = var_pserver + var_delta@diff
   // var_name: param.delta
 
   // step1: recv dense var from pserver
@@ -807,6 +885,9 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
   auto before_run_update = GetCurrentUS();
   auto *var_x = training_scope_->FindVar(origin_var_name);
   auto var_x_tensor = var_x->Get<framework::LoDTensor>();
+
+  auto *var_delta = delta_scope_->FindVar(origin_var_name);
+  auto *var_delta_tensor = var_delta->Get<framework::LoDTensor>();
 
   auto *var_y = old_scope_->FindVar(origin_var_name);
   auto var_y_tensor = var_y->Get<framework::LoDTensor>();
@@ -900,83 +981,13 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
 
     VSUB(row_numel, z_val, y_val, row_delta.data());
     blas.VADD(row_numel, row_delta.data(), x_val, x_val);
-    blas.VCOPY(row_numel, z_val, y_val);
+    blas.VCOPY(row_numel, z_val, y_val);;
   }
 
   auto after_run_update = GetCurrentUS();
   VLOG(1) << "sparse var recv update " << origin_splited_var_name << " has num "
           << new_rows.size() << " use time "
           << after_run_update - before_run_update;
-}
-
-void GeoSgdCommunicator::SendDenseVars(const std::string &var_name) {
-  auto send_functor = distributed::ParameterSend<float>();
-  auto &ctx = send_varname_to_ctx_.at(var_name);
-
-  auto before_send_dense = GetCurrentUS();
-  send_functor(ctx, *delta_scope_.get(), true, 1);
-
-  auto *var_x = delta_scope_->FindVar(origin_var_name);
-  auto var_x_tensor = var_x->Get<framework::LoDTensor>();
-  
-  auto *var_y = pserver_scope_.get()->FindVar(origin_var_name);
-  auto var_y_tensor = var_y->Get<framework::LoDTensor>();
-
-  auto *var_z = old_scope_->FindVar(origin_var_name);
-  auto var_z_tensor = var_z->Get<framework::LoDTensor>();
-
-  blas.VADD(var_z_tensor.numel(),
-            var_x_tensor.mutable_data<float>(var_x_tensor.place()),
-            var_y_tensor.mutable_data<float>(var_y_tensor.place()),
-            var_z_tensor.mutable_data<float>(var_z_tensor.place()));
-  auto after_send_dense = GetCurrentUS();
-  VLOG(3) << "send " << var_name << " and update old scope use time "
-          << after_send_dense - before_send_dense;
-}
-
-void GeoSgdCommunicator::SendSparseVars(
-    const std::string &var_name, const std::string &splited_var_name) {
-  auto before_send_sparse = GetCurrentUS();
-  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
-  RpcSend(var_name, splited_var_name, splited_var_index);
-  
-  auto *var_x = delta_scope_->FindVar(origin_var_name);
-  auto var_x_tensor = var_x->Get<framework::LoDTensor>();
-  float *x_value = var_x_tensor.mutable_data<float>(var_x_tensor.place());
-
-  auto *var_y = old_scope_->FindVar(origin_var_name);
-  auto var_y_tensor = var_y->Get<framework::LoDTensor>();
-  float *y_value = var_y_tensor.mutable_data<float>(var_y_tensor.place());
-
-  auto *var_z = pserver_scope_.get()->FindVar(origin_splited_var_name);
-  auto var_z_slr = var_z->GetMutable<framework::SelectedRows>();
-  auto row_size = var_z_slr->rows().size();
-
-  std::vector<int64_t> new_rows;
-  new_rows.reserve(row_size);
-
-  for (auto ids : var_z_slr->rows()) {
-    new_rows.push_back(ids +
-                       absolute_section_[origin_var_name][splited_var_index]);
-  }
-  auto dims = var_x_tensor.dims();
-  auto row_numel = dims[1];
-
-  auto cpu_ctx = paddle::platform::CPUDeviceContext();
-  auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
-
-  for (int y = 0; y < new_rows.size(); y++) {
-    auto ids = new_rows[y];
-
-    float *x_val = x_value + ids * row_numel;
-    float *y_val = y_value + ids * row_numel;
-    float *z_val = z_value + y * row_numel;
-
-    blas.VADD(row_numel, z_val, x_val, y_val);
-  }
-  auto after_send_sparse = GetCurrentUS();
-  VLOG(3) << "send " << splited_var_name << " has nums " << new_rows.size()
-          << " use time " << after_send_sparse - before_send_sparse;
 }
 
 void GeoSgdCommunicator::GeoSgdSparseParamInit(framework::Scope *scope_x,

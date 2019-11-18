@@ -64,13 +64,13 @@ class TestAccuracyOpError(OpTest):
             # The input type of accuracy_op must be Variable.
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, fluid.layers.accuracy, x1)
-            # The input dtype of accuracy_op must be float32 or float64.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.accuracy, x2)
-            x3 = fluid.layers.data(name='input', shape=[-1, 2], dtype="float16")
             label = fluid.layers.data(
                 name='label', shape=[-1, 1], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.accuracy, x1, label)
+            # The input dtype of accuracy_op must be float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.accuracy, x2, label)
+            x3 = fluid.layers.data(name='input', shape=[-1, 2], dtype="float16")
             fluid.layers.accuracy(input=x3, label=label)
 
 
