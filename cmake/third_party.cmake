@@ -116,8 +116,7 @@ endif()
 include(cblas)              	# find first, then download, build, install openblas
 if(${CBLAS_PROVIDER} STREQUAL MKLML)
     list(APPEND third_party_deps extern_mklml)
-endif()
-if(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
+elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
     list(APPEND third_party_deps extern_openblas)
 endif()
 
