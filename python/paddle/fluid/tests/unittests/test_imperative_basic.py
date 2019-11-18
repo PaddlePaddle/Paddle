@@ -177,6 +177,14 @@ class SimpleRNN(fluid.Layer):
 
 
 class TestImperative(unittest.TestCase):
+    def test_isinstance(self):
+        var = fluid.layers.data(shape=[1], name='x', dtype='float32')
+        self.assertTrue(isinstance(var, fluid.Variable))
+        with fluid.dygraph.guard():
+            var_base = fluid.dygraph.base.to_variable(np.array([3, 4, 5]))
+            self.assertTrue(isinstance(var_base, core.VarBase))
+            self.assertTrue(isinstance(var_base, fluid.Variable))
+
     def test_create_VarBase(self):
         x = np.ones([2, 2], np.float32)
         y = np.zeros([3, 3], np.float32)

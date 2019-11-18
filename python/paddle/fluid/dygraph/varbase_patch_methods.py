@@ -15,7 +15,7 @@
 from .. import framework
 from .. import core
 from . import BackwardStrategy
-from ..framework import Variable, is_variable
+from ..framework import Variable
 from .. import unique_name
 import numpy as np
 
@@ -270,7 +270,7 @@ def monkey_patch_varbase():
                 slice_axis.append(dim)
                 slice_start.append(slice_item)
                 slice_step.append(1)
-                if is_variable(slice_item, Variable):
+                if isinstance(slice_item, Variable):
                     temp_1 = framework.default_main_program().global_block(
                     ).create_var(dtype='int32')
                     fill_constant([1], 1, force_cpu=True, out=temp_1)
@@ -289,14 +289,14 @@ def monkey_patch_varbase():
 
         def contain_var(one_list):
             for ele in one_list:
-                if is_variable(ele, Variable):
+                if isinstance(ele, Variable):
                     return True
             return False
 
         def get_new_list_tensor(old_list):
             new_list_tensor = []
             for dim in old_list:
-                if is_variable(dim, Variable):
+                if isinstance(dim, Variable):
                     dim.stop_gradient = True
                     new_list_tensor.append(dim)
                 else:
@@ -323,7 +323,7 @@ def monkey_patch_varbase():
         else:
             inputs['StartsTensorList'] = get_new_list_tensor(slice_start)
             for i, dim in enumerate(slice_start):
-                if is_variable(dim, Variable):
+                if isinstance(dim, Variable):
                     attrs['starts'].append(-1)
                     infer_flags[i] = -1
                 else:
@@ -334,7 +334,7 @@ def monkey_patch_varbase():
         else:
             inputs['EndsTensorList'] = get_new_list_tensor(slice_end)
             for i, dim in enumerate(slice_end):
-                if is_variable(dim, Variable):
+                if isinstance(dim, Variable):
                     attrs['ends'].append(-1)
                     infer_flags[i] = -1
                 else:
@@ -346,7 +346,7 @@ def monkey_patch_varbase():
             else:
                 inputs['StridesTensorList'] = get_new_list_tensor(slice_step)
                 for i, dim in enumerate(slice_step):
-                    if is_variable(dim, Variable):
+                    if isinstance(dim, Variable):
                         attrs['strides'].append(-1)
                         infer_flags[i] = -1
                     else:

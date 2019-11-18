@@ -562,6 +562,28 @@ def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
                         if persistable else False)
 
 
+class VariableMetaClass(type):
+    @classmethod
+    def __instancecheck__(cls, instance):
+        t = type(instance)
+        if in_dygraph_mode():
+
+            return issubclass(t, core.VarBase)
+        else:
+            return issubclass(t, Variable)
+
+
+class ParameterMetaClass(VariableMetaClass):
+    @classmethod
+    def __instancecheck__(cls, instance):
+        t = type(instance)
+        if in_dygraph_mode():
+            return issubclass(t, ParamBase)
+        else:
+            return issubclass(t, Parameter)
+
+
+@six.add_metaclass(VariableMetaClass)
 class Variable(object):
     """
     **Notes**:
@@ -4275,6 +4297,7 @@ class Program(object):
                 yield each_var
 
 
+@six.add_metaclass(ParameterMetaClass)
 class Parameter(Variable):
     """
     Parameter is derived from Variable. A parameter is a persistable

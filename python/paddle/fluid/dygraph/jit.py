@@ -33,7 +33,7 @@ def create_program_from_desc(program_desc):
 
 def _extract_vars(inputs, result_list):
     if isinstance(inputs, Variable):
-        result_list.append(inputs._ivar)
+        result_list.append(inputs)
 
     if isinstance(inputs, (list, tuple)):
         for var in inputs:
@@ -172,7 +172,7 @@ class TracedLayer(object):
 
         self._scope = core.Scope()
         for p in parameters:
-            src_tensor = p._ivar.value().get_tensor()
+            src_tensor = p.value().get_tensor()
             dst_tensor = self._scope.var(p.name).get_tensor()
             dst_tensor._share_data_with(src_tensor)
 
@@ -304,7 +304,7 @@ class TracedLayer(object):
         feed_dict = {}
         if in_dygraph_mode():
             for x, name in zip(inputs, self._feed_names):
-                feed_dict[name] = x._ivar.value().get_tensor()
+                feed_dict[name] = x.value().get_tensor()
         else:
             for x, name in zip(inputs, self._feed_names):
                 feed_dict[name] = x

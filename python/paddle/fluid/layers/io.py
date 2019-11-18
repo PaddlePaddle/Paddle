@@ -26,7 +26,7 @@ from .layer_function_generator import templatedoc
 from .. import core
 from ..executor import global_scope
 from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
-    default_startup_program, program_guard, Program, Variable, is_variable
+    default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 import logging
@@ -251,7 +251,7 @@ def Send(endpoints, send_vars, dummy_output=None, sync=True):
 
     if dummy_output is None:
         dummy_output = []
-    elif is_variable(dummy_output):
+    elif isinstance(dummy_output, Variable):
         dummy_output = [dummy_output]
 
     assert (type(dummy_output) == list)
@@ -296,7 +296,7 @@ def Recv(endpoints, get_vars, dummy_input=None, sync=True):
 
     if dummy_input is None:
         dummy_input = []
-    elif is_variable(dummy_input):
+    elif isinstance(dummy_input, Variable):
         dummy_input = [dummy_input]
 
     assert (type(dummy_input) == list)
