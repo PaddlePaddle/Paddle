@@ -172,9 +172,9 @@ class DownpourServer(Server):
                 table.accessor.embedx_dim = strategy.get('sparse_embedx_dim', 8)
                 table.accessor.fea_dim = int(table.accessor.embedx_dim)
                 if optimizer_name == "naive":
-                    table.accessor.sparse_commonsgd_param.naive.learning_rate = 
+                    table.accessor.sparse_commonsgd_param.naive.learning_rate = \
                         strategy.get('sparse_learning_rate', 0.05)
-                    table.accessor.sparse_commonsgd_param.naive.initial_range = 
+                    table.accessor.sparse_commonsgd_param.naive.initial_range = \
                         strategy.get('sparse_initial_range', 1e-4)
                     if strategy.get('sparse_weight_bounds') is None:
                         table.accessor.sparse_commonsgd_param.naive.weight_bounds.extend(
@@ -183,9 +183,9 @@ class DownpourServer(Server):
                         table.accessor.sparse_commonsgd_param.naive.weight_bounds.extend(
                             strategy.get('sparse_weight_bounds'))
                 elif optimizer_name == "adagrad":
-                    table.accessor.sparse_commonsgd_param.adagrad.learning_rate = 
+                    table.accessor.sparse_commonsgd_param.adagrad.learning_rate = \
                         strategy.get('sparse_learning_rate', 0.05)
-                    table.accessor.sparse_commonsgd_param.adagrad.initial_range = 
+                    table.accessor.sparse_commonsgd_param.adagrad.initial_range = \
                         strategy.get('sparse_initial_range', 1e-4)
                     table.accessor.sparse_commonsgd_param.adagrad.initial_g2sum = strategy.get(
                         'sparse_initial_g2sum', 3)
@@ -196,9 +196,9 @@ class DownpourServer(Server):
                         table.accessor.sparse_commonsgd_param.adagrad.weight_bounds.extend(
                             strategy.get('sparse_weight_bounds'))
                 elif optimizer_name == "adam":
-                    table.accessor.sparse_commonsgd_param.adam.learning_rate = 
+                    table.accessor.sparse_commonsgd_param.adam.learning_rate = \
                         strategy.get('sparse_learning_rate', 0.001)
-                    table.accessor.sparse_commonsgd_param.adam.initial_range = 
+                    table.accessor.sparse_commonsgd_param.adam.initial_range = \
                         strategy.get('sparse_initial_range', 1e-4)
                     table.accessor.sparse_commonsgd_param.adam.beta1_decay_rate = strategy.get(
                         'sparse_beta1_decay_rate', 0.9)
