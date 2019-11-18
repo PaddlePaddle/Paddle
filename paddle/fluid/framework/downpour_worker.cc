@@ -75,7 +75,7 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   fleet_ptr_ = FleetWrapper::GetInstance();
   fetch_config_ = desc.fetch_config();
   use_cvm_ = desc.use_cvm();
-  no_cvm_ = true;
+  no_cvm_ = desc.no_cvm();
   scale_datanorm_ = desc.scale_datanorm();
   dump_slot_ = desc.dump_slot();
   dump_fields_.resize(desc.dump_fields_size());
