@@ -141,5 +141,17 @@ class TestAsymPadValid(TestAsymPad):
         self.padding_algorithm = "VALID"
 
 
+class TestAsymPadValidNHWC(TestAsymPadValid):
+    def init_data_format(self):
+        self.data_format = "NHWC"
+
+    def init_shape(self):
+        self.shape = [2, 7, 7, 3]
+
+    #TODO(jczaja): Enable once GRAD op is adjusted
+    def test_check_grad(self):
+        pass
+
+
 if __name__ == '__main__':
     unittest.main()
