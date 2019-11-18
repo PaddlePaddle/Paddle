@@ -46,7 +46,7 @@ namespace platform {
 
 class DeviceContext {
  public:
-  virtual ~DeviceContext() {}
+  virtual ~DeviceContext() PADDLE_MAY_THROW {}
   virtual Place GetPlace() const = 0;
 
   virtual void Wait() const {}
