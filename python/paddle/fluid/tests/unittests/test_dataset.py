@@ -368,7 +368,7 @@ class TestDataset(unittest.TestCase):
                     name=slot, shape=[1], dtype="float32", lod_level=1)
             slots_vars.append(var)
             fake_cost = \
-                fluid.layers.elementwise_sub(slots_vars[0],slots_vars[-1])
+                fluid.layers.elementwise_sub(slots_vars[0], slots_vars[-1])
             fake_cost = fluid.layers.mean(fake_cost)
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
