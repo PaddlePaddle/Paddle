@@ -32,7 +32,12 @@ void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
 
 int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
   std::vector<fusion_group::SubGraph> subgraphs;
+  std::vector<Node*> begin_of_forward_subgraph;
+
+  // Detect subgraph of forward ops.
+  fusion_group::ElementwiseGroupDetector forward_detector(graph, false);
   std::unordered_set<Node*> all_nodes = graph->Nodes();
+  int index = 0;
   for (Node* n : all_nodes) {
     bool is_found = false;
     for (auto& subgraph : subgraphs) {
@@ -45,17 +50,27 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
       continue;
     }
 
-    fusion_group::SubGraph subgraph;
     if (type == 0) {
-      fusion_group::ElementwiseGroupDetector detector;
-      int num_operations = detector(n);
-      if (num_operations >= 2) {
-        subgraph = detector.GetSubgraph();
+      fusion_group::SubGraph subgraph = forward_detector(n);
+      if (subgraph.GetNumOperations() >= 2) {
+        std::string func_name = "fused_elementwise_" + std::to_string(index++);
+        subgraph.SetFuncName(func_name);
+        subgraphs.push_back(subgraph);
+        begin_of_forward_subgraph.push_back(n);
       }
     }
-
-    if (!subgraph.IsEmpty()) {
-      subgraphs.push_back(subgraph);
+  }
+  // Detect subgraph of backward ops.
+  fusion_group::ElementwiseGroupDetector backward_detector(graph, true);
+  for (size_t i = 0; i < begin_of_forward_subgraph.size(); ++i) {
+    if (type == 0) {
+      fusion_group::SubGraph subgraph =
+          backward_detector(begin_of_forward_subgraph[i]);
+      if (subgraph.GetNumOperations() >= 2) {
+        std::string func_name = "fused_elementwise_grad_" + std::to_string(i);
+        subgraph.SetFuncName(func_name);
+        subgraphs.push_back(subgraph);
+      }
     }
   }
 
@@ -90,8 +105,8 @@ void FusionGroupPass::InsertFusionGroupOp(
     external_nodes.insert(n);
   }
   op_desc.SetOutput("Outs", output_names);
-  op_desc.SetAttr("type", subgraph->type);
-  op_desc.SetAttr("func_name", subgraph->func_name);
+  op_desc.SetAttr("type", subgraph->GetType());
+  op_desc.SetAttr("func_name", subgraph->GetFuncName());
 
   auto fusion_group_node = graph->CreateOpNode(&op_desc);
   for (auto* in : input_vars_of_subgraph) {

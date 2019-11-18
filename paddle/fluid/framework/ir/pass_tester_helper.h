@@ -429,8 +429,17 @@ static std::string DebugString(Node* node) {
     }
     os << "}.";
   } else if (node->IsVar() && node->Var()) {
-    os << "Node(" << node->Name() << "), inputs:{";
+    os << "Node(" << node->Name() << "{";
     bool is_first = true;
+    for (auto dim : node->Var()->GetShape()) {
+      if (!is_first) {
+        os << "x";
+      }
+      os << dim;
+      is_first = false;
+    }
+    os << "}), inputs:{";
+    is_first = true;
     for (auto* in : node->inputs) {
       if (!is_first) {
         os << ", ";
@@ -477,10 +486,14 @@ static std::string DebugString(const std::unordered_set<Node*>& nodes) {
   return DebugString(vec);
 }
 
-static std::string DebugString(const std::unique_ptr<Graph>& graph) {
+static std::string DebugString(Graph* graph) {
   std::ostringstream os;
   os << "Graph: {\n" << DebugString(graph->Nodes()) << "}\n";
   return os.str();
+}
+
+static std::string DebugString(const std::unique_ptr<Graph>& graph) {
+  return DebugString(graph.get());
 }
 
 static int GetNumOpNodes(const std::unique_ptr<Graph>& graph,
