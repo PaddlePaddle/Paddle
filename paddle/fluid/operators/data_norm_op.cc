@@ -127,7 +127,7 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
         });
     AddAttr<int>("slot_dim",
                  "(int, default -1) Dimension of one slot if set, "
-                 "when the input is cocated by slot-wise embeddings")
+                 "when the input is concated by slot-wise embeddings")
         .SetDefault(-1);
     AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
     AddAttr<bool>("use_mkldnn",
@@ -386,6 +386,8 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
         }
 
         if (slot_dim > 0 && N > 0) {
+          // if slot_dim is set and batch size is larger than zero, we choose
+          // to check if show number is zero, if so, skip update statistics.
           int offset = 0;
           const int item_size = x->numel() / N;
           for (int k = 0; k < N; ++k) {
