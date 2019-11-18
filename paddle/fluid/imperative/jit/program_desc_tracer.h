@@ -31,8 +31,7 @@ namespace imperative {
 namespace jit {
 
 using VarDescMetaMap =
-    std::map<std::weak_ptr<VarBase>,
-             std::pair<size_t, std::unique_ptr<framework::VarDesc>>,
+    std::map<std::weak_ptr<VarBase>, std::unique_ptr<framework::VarDesc>,
              std::owner_less<std::weak_ptr<VarBase>>>;
 
 using TracedProgramTuple =

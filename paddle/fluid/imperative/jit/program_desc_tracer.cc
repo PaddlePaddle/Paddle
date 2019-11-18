@@ -50,7 +50,7 @@ UniqueBlockVarGenerator::UniqueBlockVarGenerator(const VarDescMetaMap &all_vars,
                                                  framework::BlockDesc *block)
     : all_vars_(all_vars), block_(block) {
   for (auto &var_pair : all_vars_) {
-    auto *var_desc = var_pair.second.second.get();
+    auto *var_desc = var_pair.second.get();
     if (var_desc->Persistable()) {
       InsertNewVarInBlock(var_pair.first, *var_desc, var_desc->Name());
     }
@@ -83,7 +83,7 @@ std::string UniqueBlockVarGenerator::NameOf(const std::weak_ptr<VarBase> &var,
 
     auto unique_name = generate_unique_name();
     VLOG(5) << "Generate new var name " << unique_name;
-    InsertNewVarInBlock(var, *(all_vars_iter->second.second), unique_name);
+    InsertNewVarInBlock(var, *(all_vars_iter->second), unique_name);
     return unique_name;
   }
 }
@@ -173,10 +173,8 @@ void ProgramDescTracer::InsertVarIfNotExist(
   PADDLE_ENFORCE_NOT_NULL(new_var);
   if (vars_.count(new_var) != 0) return;
 
-  size_t var_id = vars_.size();
   auto new_var_desc = new framework::VarDesc("");
-  vars_[new_var] =
-      std::make_pair(var_id, std::unique_ptr<framework::VarDesc>(new_var_desc));
+  vars_[new_var].reset(new_var_desc);
 
   if (new_var->Persistable()) {
     new_var_desc->SetName(new_var->Name());
