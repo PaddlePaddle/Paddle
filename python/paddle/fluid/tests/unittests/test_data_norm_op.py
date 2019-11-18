@@ -38,7 +38,7 @@ def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
         y = np.zeros(x_shape).astype(np.float32)
         for i in range(x_shape[0]):
             for j in range(0, x_shape[1], slot_dim):
-                if x[i][j] <= -min_precision or x[i][j] > min_precision:
+                if x[i][j] <= -min_precision or x[i][j] >= min_precision:
                     for k in range(0, slot_dim):
                         y[i][j + k] = (
                             x[i][j + k] - means_arr[j + k]) * scales_arr[j + k]
