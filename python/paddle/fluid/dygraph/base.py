@@ -27,6 +27,17 @@ __all__ = [
 ]
 
 
+def _switch_to_static_graph_(func):
+    def __impl__(*args, **kwargs):
+        with framework._dygraph_guard(None):
+            return func(*args, **kwargs)
+
+    return __impl__
+
+
+switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
+
+
 @signature_safe_contextmanager
 def program_desc_tracing_guard(enable):
     tracer = framework._dygraph_tracer()

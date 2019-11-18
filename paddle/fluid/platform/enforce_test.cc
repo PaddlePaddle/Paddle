@@ -87,8 +87,10 @@ TEST(ENFORCE_EQ, EXTRA_MSG_FAIL) {
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
     std::string ex_msg = error.what();
-    EXPECT_TRUE(ex_msg.find("Expected a == 1 + 3, but received a:2 != 1 + "
-                            "3:4.\ntheir size not match") != std::string::npos);
+    EXPECT_TRUE(ex_msg.find("their size not match") != std::string::npos);
+    EXPECT_TRUE(
+        ex_msg.find("Expected a == 1 + 3, but received a:2 != 1 + 3:4.") !=
+        std::string::npos);
   }
   EXPECT_TRUE(caught_exception);
 }

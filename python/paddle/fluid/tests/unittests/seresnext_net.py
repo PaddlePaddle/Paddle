@@ -36,8 +36,14 @@ remove_dropout = False
 # and Executor is different.
 remove_bn = False
 
+# FIXME(huihuangzheng): Temporarily disable cudnn of conv2d in unit test because
+# it will cause random test failure. We have to re-enable it after someone fixs
+# cudnn_conv
+remove_cudnn_conv = False
+
 remove_dropout = True
 remove_bn = True
+remove_cudnn_conv = True
 
 
 def squeeze_excitation(input, num_channels, reduction_ratio):
@@ -69,6 +75,7 @@ def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
         padding=(filter_size - 1) // 2,
         groups=groups,
         act=None,
+        use_cudnn=(not remove_cudnn_conv),
         bias_attr=False)
     return conv if remove_bn else fluid.layers.batch_norm(
         input=conv, act=act, momentum=0.1)

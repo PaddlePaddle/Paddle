@@ -145,7 +145,7 @@ endif ()
 if (TENSORRT_FOUND)
     set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/tensorrt")
     copy(inference_lib_dist
-            SRCS ${TENSORRT_ROOT}/include/Nv*.h ${TENSORRT_ROOT}/lib/*nvinfer*
+            SRCS ${TENSORRT_INCLUDE_DIR}/Nv*.h ${TENSORRT_LIBRARY_DIR}/*nvinfer*
             DSTS ${dst_dir}/include ${dst_dir}/lib)
 endif ()
 
@@ -207,8 +207,8 @@ set(module "platform")
 set(platform_lib_deps profiler_proto)
 add_dependencies(fluid_lib_dist ${platform_lib_deps})
 copy(fluid_lib_dist
-        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/profiler.pb.h
-        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details ${dst_dir}/${module}
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/profiler.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/error_codes.pb.h
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module}
         )
 
 set(module "string")

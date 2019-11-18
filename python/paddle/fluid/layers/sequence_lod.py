@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .layer_function_generator import templatedoc
-from ..framework import Variable, in_dygraph_mode, is_variable
+from ..framework import Variable, in_dygraph_mode
 from ..layer_helper import LayerHelper
 
 __all__ = [
@@ -1277,7 +1277,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     inputs = {'X': [x]}
     attrs = {'out_dtype': out.dtype}
     if maxlen is not None:
-        if is_variable(maxlen, Variable):
+        if isinstance(maxlen, Variable):
             inputs['MaxLenTensor'] = maxlen
         else:
             attrs['maxlen'] = maxlen

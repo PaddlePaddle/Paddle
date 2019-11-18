@@ -173,15 +173,16 @@ class ReshapeOp : public framework::OperatorWithKernel {
         // capacity = -24, in_size = -8, output_shape[0] = 0
         // the following check will fail.
         output_shape[unk_dim_idx] = -in_size / capacity;
-        PADDLE_ENFORCE_EQ(output_shape[unk_dim_idx] * capacity, -in_size,
-                          "ShapeError: The 'shape' in ReshapeOp is invalid. "
-                          "The input tensor X'size must be divisible by known "
-                          "capacity of 'shape'. "
-                          "But received X's shape = [%s], X's size = %d, "
-                          "'shape' is [%s], known "
-                          "capacity of 'shape' is %d.",
-                          in_dims, in_size, framework::make_ddim(shape),
-                          capacity);
+        PADDLE_ENFORCE_EQ(
+            output_shape[unk_dim_idx] * capacity, -in_size,
+            platform::errors::InvalidArgument(
+                "The 'shape' attribute in ReshapeOp is invalid. "
+                "The input tensor X'size must be divisible by known "
+                "capacity of 'shape'. "
+                "But received X's shape = [%s], X's size = %d, "
+                "'shape' is [%s], known "
+                "capacity of 'shape' is %d.",
+                in_dims, in_size, framework::make_ddim(shape), capacity));
       } else {
         output_shape[unk_dim_idx] = -1;
       }
