@@ -179,9 +179,9 @@ class ConstantInitializer(Initializer):
 
         str_value = "0.0f"
         if convert_dtype(out_dtype) in ['int64']:
-            str_value = str(int(self.value))
+            str_value = str(int(self._value))
         else:
-            str_value = str(float(self.value))
+            str_value = str(float(self._value))
         # Initialization Ops should be prepended and not appended
         op = block._prepend_op(
             type="fill_constant",
