@@ -192,7 +192,6 @@ class AllReduceDepsPass : public ir::Pass {
       auto backward_vars = details::GetOpRoleVarsOrEmpty(*op_desc);
       if (backward_vars.empty()) continue;
 
-      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
       for (size_t i = 1; i < backward_vars.size(); i += 2) {
         vars[order].emplace_back(backward_vars[i]);
         VLOG(1) << "get parameter and gradient: " << backward_vars[i - 1]

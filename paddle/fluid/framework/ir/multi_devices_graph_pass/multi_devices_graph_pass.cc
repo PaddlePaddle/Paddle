@@ -227,7 +227,6 @@ void MultiDevSSAGraphBuilderBase::ApplyImpl(ir::Graph *graph) const {
         // Currently, we assume that once gradient is generated, it can be
         // broadcast, and each gradient is only broadcast once.
         auto backward_vars = details::GetOpRoleVarsOrEmpty(op_desc);
-        PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
         for (size_t i = 0; i < backward_vars.size(); i += 2) {
           auto &p_name = backward_vars[i];
           auto &g_name = backward_vars[i + 1];
@@ -766,8 +765,6 @@ std::vector<ir::Node *> ReduceSSAGraphBuilder::SortForReduceMode(
       // Currently, we assume that once gradient is generated, it can be
       // broadcast, and each gradient is only broadcast once.
       auto backward_vars = details::GetOpRoleVarsOrEmpty(*(node->Op()));
-      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, 0);
-
       for (size_t i = 0; i < backward_vars.size(); i += 2) {
         auto &g_name = backward_vars[i + 1];
         size_t cur_device_id = GetAppropriateDeviceID({g_name});

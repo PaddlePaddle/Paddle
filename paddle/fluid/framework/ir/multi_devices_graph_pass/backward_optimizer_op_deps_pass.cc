@@ -179,8 +179,9 @@ class BackWardOpDepsPass : public ir::Pass {
     // Currently, we assume that once gradient is generated, it can be
     // broadcast, and each gradient is only broadcast once.
     auto backward_vars = details::GetOpRoleVarsOrEmpty(op_desc);
-    PADDLE_ENFORCE_EQ(backward_vars.size() % 2, static_cast<size_t>(0));
-    PADDLE_ENFORCE(node->IsWrappedBy<details::OpHandleBase>());
+    PADDLE_ENFORCE_EQ(node->IsWrappedBy<details::OpHandleBase>(), true,
+                      platform::errors::InvalidArgument(
+                          "Node must be wrapped by OpHandleBase"));
 
     backward_op_handles->emplace_back(&node->Wrapper<details::OpHandleBase>());
 

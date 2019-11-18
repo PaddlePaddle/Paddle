@@ -439,7 +439,6 @@ class CoalesceGradTensorPass : public ir::Pass {
       // Currently, we assume that once gradient is generated, it can be
       // broadcast, and each gradient is only broadcast once.
       auto backward_vars = details::GetOpRoleVarsOrEmpty(op_desc);
-      PADDLE_ENFORCE_EQ(backward_vars.size() % 2, static_cast<size_t>(0));
       for (size_t i = 0; i < backward_vars.size(); i += 2) {
         VLOG(10) << "Trainable parameter: " << backward_vars[i]
                  << ", gradient: " << backward_vars[i + 1];
