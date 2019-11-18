@@ -207,7 +207,7 @@ class DataNormKernel<platform::CPUDeviceContext, T>
     switch (data_layout) {
       case DataLayout::kNCHW:  // It's two dimensions, so make no difference
       case DataLayout::kNHWC: {
-        if (slot_dim > 0 && N > 0) { 
+        if (slot_dim > 0 && N > 0) {
           const int item_size = x->numel() / N;
           int offset = 0;
           for (int k = 0; k < N; ++k) {
