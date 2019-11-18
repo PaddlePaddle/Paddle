@@ -373,14 +373,14 @@ class GeoSgdCommunicator : public Communicator {
  private:
   void SendThread();
 
-  void CopyDenseVars(const std::string& var_name);
-  void CopySparseVars(const std::string& var_name,
-                      const std::string& splited_var_name,
-                      const std::vector<std::shared_ptr<SparseIdsMap>>& ids_send_vec);
+  void SendDenseVars(const std::string& var_name);
+  void SendSparseVars(const std::string& var_name,
+                      const std::string& splited_var_name);
 
   void SendUpdateDenseVars(const std::string& var_name);
   void SendUpdateSparseVars(const std::string& var_name,
-                            const std::string& splited_var_name);
+                            const std::string& splited_var_name,
+                            const std::vector<std::shared_ptr<SparseIdsMap>>& ids_send_vec);
 
   void RecvDenseVars(const std::string& var_name);
   void RecvSparseVars(const std::string& var_name,
@@ -455,10 +455,6 @@ class GeoSgdCommunicator : public Communicator {
 
   std::unique_ptr<::ThreadPool> send_threadpool_{nullptr};
   std::unique_ptr<std::thread> send_thread_{nullptr};
-
-  std::unordered_map<std::string, std::vector<float>> dense_variables_copy;
-  std::unordered_map<std::string, std::vector<float>> sparse_variables_copy;
-  std::unordered_map<std::string, std::vector<int64_t>> sparse_variables_rows;
 
   size_t need_thread_nums_{0};
 };
