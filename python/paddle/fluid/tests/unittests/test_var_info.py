@@ -34,6 +34,8 @@ class TestVarInfo(unittest.TestCase):
         var._set_info("name", "test")
         ret = var._get_info("name")
         assert ret == "test"
+        ret2 = var._get_info("not_exist")
+        assert ret == None
 
 
 if __name__ == '__main__':
