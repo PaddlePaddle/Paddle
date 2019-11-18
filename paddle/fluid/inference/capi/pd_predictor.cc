@@ -25,28 +25,30 @@ using paddle::ConvertToPDDataType;
 using paddle::ConvertToACPrecision;
 
 namespace {
-#define _ForEachDataTypeHelper_(callback, cpp_type, pd_type) \
-  callback(cpp_type, PD_DataType::pd_type);
+#define _DataTypeHelper_(CALLBACK, CPP_TYPE, PD_TYPE) \
+  CALLBACK(CPP_TYPE, PD_DataType::PD_TYPE);
 
-#define _ForEachDataType_(callback)                     \
-  _ForEachDataTypeHelper_(callback, float, PD_FLOAT32); \
-  _ForEachDataTypeHelper_(callback, int32_t, PD_INT32); \
-  _ForEachDataTypeHelper_(callback, int64_t, PD_INT64); \
-  _ForEachDataTypeHelper_(callback, uint8_t, PD_UINT8);
+#define _DataType_(CALLBACK)                     \
+  _DataTypeHelper_(CALLBACK, float, PD_FLOAT32); \
+  _DataTypeHelper_(CALLBACK, int32_t, PD_INT32); \
+  _DataTypeHelper_(CALLBACK, int64_t, PD_INT64); \
+  _DataTypeHelper_(CALLBACK, uint8_t, PD_UINT8);
 
 template <typename Visitor>
 inline void VisitDataType(PD_DataType type, Visitor visitor) {
-#define VisitDataTypeCallback(cpp_type, pd_type) \
+#define VisitDataTypeCallback(CPP_TYPE, PD_TYPE) \
   do {                                           \
-    if (type == pd_type) {                       \
-      visitor.template apply<cpp_type>();        \
+    if (type == PD_TYPE) {                       \
+      visitor.template apply<CPP_TYPE>();        \
       return;                                    \
     }                                            \
   } while (0)
 
-  _ForEachDataType_(VisitDataTypeCallback);
+  _DataType_(VisitDataTypeCallback);
 #undef VisitDataTypeCallback
-  PADDLE_THROW("Not supported %d", type);
+  LOG(ERROR)
+      << "Unsupported data type. The Predictor will treat input as float. ";
+  visitor.template apply<float>();
 }
 
 struct PD_ZeroCopyFunctor {
@@ -79,6 +81,7 @@ bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
                      int in_size, PD_Tensor** output_data, int* out_size,
                      int batch_size) {
   PADDLE_ENFORCE_NOT_NULL(config);
+  VLOG(3) << "Predoctor: PD_PredictorRun. ";
   static std::map<std::string, std::unique_ptr<paddle::PaddlePredictor>>
       predictors;
   if (!predictors.count(config->config.model_dir())) {
@@ -91,6 +94,7 @@ bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
     in.emplace_back(inputs->tensor);
   }
   std::vector<paddle::PaddleTensor> out;
+  VLOG(3) << "Run predictor in CAPI encapsulation. ";
   if (predictor->Run(in, &out, batch_size)) {
     int osize = out.size();
     *output_data = new PD_Tensor[osize];
@@ -100,6 +104,7 @@ bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
     *out_size = osize;
     return true;
   }
+  VLOG(3) << "The predictor runs but failed. ";
   return false;
 }
 
@@ -143,6 +148,7 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
         break;
     }
   }
+  VLOG(3) << "Run ZeroCopyRun() in CAPI encapsulation. ";
   CHECK(predictor->ZeroCopyRun());
   auto output_names = predictor->GetOutputNames();
   int osize = output_names.size();
