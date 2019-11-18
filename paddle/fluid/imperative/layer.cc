@@ -193,9 +193,12 @@ void VarBase::ClearGradient() {
     if (grad_var_->var_.IsType<framework::SelectedRows>()) {
       auto* grad_t = grad_var_->var_.GetMutable<framework::SelectedRows>();
       if (grad_t->mutable_value()->IsInitialized()) {
-        auto* dev_ctx =
-            platform::DeviceContextPool::Instance().Get(grad_t->place());
-        operators::math::set_constant(*dev_ctx, grad_t->mutable_value(), 0.0);
+        // auto* dev_ctx =
+        // platform::DeviceContextPool::Instance().Get(grad_t->place());
+        // operators::math::set_constant(*dev_ctx, grad_t->mutable_value(),
+        // 0.0);
+        grad_t->mutable_rows()->clear();
+        grad_t->mutable_value()->clear();
       }
     } else {
       auto* grad_t = grad_var_->var_.GetMutable<framework::LoDTensor>();

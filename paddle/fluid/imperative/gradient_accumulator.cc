@@ -389,19 +389,47 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
                   return p1.second > p2.second;
                 });
 
-      if (tmp_grad_vars_[0].first->Var().IsType<framework::SelectedRows>()) {
-        auto temp = std::make_shared<VarBase>(false, "temp");
-        SelectedRowsAddToSelectedRows(*(tmp_grad_vars_[0].first->MutableVar()),
-                                      temp->MutableVar());
-        var_->SetType(framework::proto::VarType::SELECTED_ROWS);
-        *dst_var = std::move(*(temp->MutableVar()));
+      if (paddle::platform::is_gpu_place(place)) {
+        bool is_initialized = false;
+        for (size_t i = 0; i < tmp_grad_vars_.size(); ++i) {
+          if (tmp_grad_vars_[i]
+                  .first->Var()
+                  .IsType<framework::SelectedRows>()) {
+            if (!is_initialized) {
+              is_initialized = true;
+              auto temp = std::make_shared<VarBase>(false, "temp");
+              SelectedRowsAddToSelectedRows(
+                  *(tmp_grad_vars_[i].first->MutableVar()), temp->MutableVar());
+              var_->SetType(framework::proto::VarType::SELECTED_ROWS);
+              *dst_var = std::move(*(temp->MutableVar()));
+            } else {
+              VarBaseAdd(tmp_grad_vars_[i].first, var_);
+            }
+          }
+        }
+        if (!is_initialized) {
+          is_initialized = true;
+          *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
+        }
+        for (size_t i = 0; i < tmp_grad_vars_.size(); ++i) {
+          if (tmp_grad_vars_[i].first->Var().IsType<framework::LoDTensor>()) {
+            VarBaseAdd(tmp_grad_vars_[i].first, var_);
+          }
+        }
       } else {
-        *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
+        if (tmp_grad_vars_[0].first->Var().IsType<framework::SelectedRows>()) {
+          auto temp = std::make_shared<VarBase>(false, "temp");
+          SelectedRowsAddToSelectedRows(
+              *(tmp_grad_vars_[0].first->MutableVar()), temp->MutableVar());
+          var_->SetType(framework::proto::VarType::SELECTED_ROWS);
+          *dst_var = std::move(*(temp->MutableVar()));
+        } else {
+          *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
+        }
+        for (size_t i = 1; i < tmp_grad_vars_.size(); ++i) {
+          VarBaseAdd(tmp_grad_vars_[i].first, var_);
+        }
       }
-      for (size_t i = 1; i < tmp_grad_vars_.size(); ++i) {
-        VarBaseAdd(tmp_grad_vars_[i].first, var_);
-      }
-
       tmp_grad_vars_.clear();
     }
   } else {

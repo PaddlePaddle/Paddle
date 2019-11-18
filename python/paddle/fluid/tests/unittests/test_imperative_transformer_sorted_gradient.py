@@ -324,9 +324,8 @@ src_slf_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
                                        ModelHyperParams.n_head, seq_len,
                                        seq_len).astype('float32')
 
-trg_word_np = np.arange(
-    1 + 2000, TrainTaskConfig.batch_size * seq_len + 1 + 2000).reshape(
-        [TrainTaskConfig.batch_size, seq_len, 1]).astype('int64')
+trg_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
+    [TrainTaskConfig.batch_size, seq_len, 1]).astype('int64')
 trg_pos_np = np.random.randint(
     1, seq_len, size=(TrainTaskConfig.batch_size, seq_len, 1), dtype='int64')
 trg_slf_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,

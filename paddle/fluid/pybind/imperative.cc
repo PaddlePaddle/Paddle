@@ -298,14 +298,7 @@ void BindImperative(py::module *m_ptr) {
                  return std::shared_ptr<imperative::VarBase>(nullptr);
                }
              } else {
-               auto *tensor =
-                   grad_var->MutableVar()->GetMutable<framework::LoDTensor>();
-               if (grad_var && grad_var->Var().IsInitialized() &&
-                   tensor->IsInitialized()) {
-                 return grad_var;
-               } else {
-                 return std::shared_ptr<imperative::VarBase>(nullptr);
-               }
+               return std::shared_ptr<imperative::VarBase>(nullptr);
              }
            },
            py::return_value_policy::copy)
@@ -327,6 +320,10 @@ void BindImperative(py::module *m_ptr) {
             if (self.Var().IsType<framework::LoDTensor>()) {
               return framework::vectorize<int>(
                   self.Var().Get<framework::LoDTensor>().dims());
+            }
+            if (self.Var().IsType<framework::SelectedRows>()) {
+              return framework::vectorize<int>(
+                  self.Var().Get<framework::SelectedRows>().value().dims());
             } else {
               VLOG(2) << "It is meaningless to get shape of variable type "
                       << GetTypeName(self);
