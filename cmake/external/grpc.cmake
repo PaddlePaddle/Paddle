@@ -23,6 +23,10 @@ SET(GRPC_CPP_PLUGIN "${GRPC_INSTALL_DIR}/bin/grpc_cpp_plugin" CACHE FILEPATH "GR
 include(ProcessorCount)
 ProcessorCount(NUM_OF_PROCESSOR)
 
+SET(GRPC_CFLAGS "${GRPC_FLAGS}" -Wno-error)
+SET(GRPC_CXXFLAGS "${GRPC_CFLAGS} -Wno-error -std=c++11")
+SET(BUILD_CMD make CFLAGS=${GRPC_CFLAGS} CXXFLAGS=${GRPC_CXXFLAGS} HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin)
+
 IF(APPLE)
   SET(BUILD_CMD make -n HAS_SYSTEM_PROTOBUF=false -s -j ${NUM_OF_PROCESSOR} static grpc_cpp_plugin | sed "s/-Werror//g" | sh)
 ELSE()
@@ -56,8 +60,8 @@ ExternalProject_Add(
     # Disable -Werror, otherwise the compile will fail in MacOS.
     # It seems that we cannot configure that by make command.
     # Just dry run make command and remove `-Werror`, then use a shell to run make commands
-    BUILD_COMMAND  ${BUILD_CMD}
-    INSTALL_COMMAND make prefix=${GRPC_INSTALL_DIR} install CFLAGS=-Wno-error CXXFLAGS=-Wno-error
+    BUILD_COMMAND  ${BUILD_CMD} ${BUILD_CMD}
+    INSTALL_COMMAND make prefix=${GRPC_INSTALL_DIR} install CFLAGS=${GRPC_CFLAGS} CXXFLAGS=${GRPC_CXXFLAGS} 
 )
 
 ADD_LIBRARY(grpc++_unsecure STATIC IMPORTED GLOBAL)
