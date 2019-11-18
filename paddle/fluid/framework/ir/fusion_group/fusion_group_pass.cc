@@ -36,7 +36,7 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
   for (Node* n : all_nodes) {
     bool is_found = false;
     for (auto& subgraph : subgraphs) {
-      if (subgraph.nodes_set.find(n) != subgraph.nodes_set.end()) {
+      if (subgraph.Has(n)) {
         is_found = true;
         break;
       }
@@ -61,15 +61,17 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
 
   // TODO(liuyiqun): check whether there are intersection between subgraphs
   for (size_t i = 0; i < subgraphs.size(); ++i) {
-    InsertFusionGroupOp(graph, subgraphs[i]);
+    InsertFusionGroupOp(graph, &subgraphs[i]);
   }
   return subgraphs.size();
 }
 
 void FusionGroupPass::InsertFusionGroupOp(
-    Graph* graph, const fusion_group::SubGraph& subgraph) const {
-  std::vector<Node*> input_vars_of_subgraph = subgraph.GetInputVarNodes();
-  std::vector<Node*> output_vars_of_subgraph = subgraph.GetOutputVarNodes();
+    Graph* graph, fusion_group::SubGraph* subgraph) const {
+  const std::vector<Node*>& input_vars_of_subgraph =
+      subgraph->GetInputVarNodes();
+  const std::vector<Node*>& output_vars_of_subgraph =
+      subgraph->GetOutputVarNodes();
   std::unordered_set<Node*> external_nodes;
 
   OpDesc op_desc;
@@ -88,8 +90,8 @@ void FusionGroupPass::InsertFusionGroupOp(
     external_nodes.insert(n);
   }
   op_desc.SetOutput("Outs", output_names);
-  op_desc.SetAttr("type", subgraph.type);
-  op_desc.SetAttr("func_name", subgraph.func_name);
+  op_desc.SetAttr("type", subgraph->type);
+  op_desc.SetAttr("func_name", subgraph->func_name);
 
   auto fusion_group_node = graph->CreateOpNode(&op_desc);
   for (auto* in : input_vars_of_subgraph) {
@@ -100,7 +102,7 @@ void FusionGroupPass::InsertFusionGroupOp(
   }
 
   std::unordered_set<const Node*> internal_nodes;
-  for (auto* n : subgraph.nodes_set) {
+  for (auto* n : subgraph->Nodes()) {
     if (external_nodes.find(n) == external_nodes.end()) {
       internal_nodes.insert(n);
     }
