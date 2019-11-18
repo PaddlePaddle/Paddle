@@ -76,7 +76,8 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   auto& block = main_program.Block(0);
   for (auto var_name : fetch_var_names) {
     auto var_desc = block.FindVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(var_desc, "%s is not found.", var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var_desc, platform::errors::NotFound("%s is not found.", var_name));
     auto shapes = var_desc->GetShape();
     PADDLE_ENFORCE(shapes[shapes.size() - 1] == 1,
                    "var %s: Fetched var has wrong shape, "
@@ -93,7 +94,8 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
 
   actual_thread_num_ = thread_num;
   int file_cnt = filelist.size();
-  PADDLE_ENFORCE(file_cnt > 0, "File list cannot be empty");
+  PADDLE_ENFORCE_GT(file_cnt, 0,
+                    platform::errors::NotFound("Input file list is empty"));
 
   if (actual_thread_num_ > file_cnt) {
     VLOG(1) << "Thread num = " << thread_num << ", file num = " << file_cnt
