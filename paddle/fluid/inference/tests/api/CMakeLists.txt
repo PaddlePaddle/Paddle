@@ -122,8 +122,8 @@ endfunction()
 #endfunction()
 
 function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_dir qat_int8_save_model_dir data_path)
-       add_custom_target(${TARGET_NAME} ALL 
-	COMMAND ${test_binary}
+    inference_analysis_test_run(${TARGET_NAME}
+    COMMAND ${test_binary}
         ARGS --fp32_model=${fp32_model_dir}
              --int8_model=${qat_int8_save_model_dir}
              --infer_data=${data_path}
@@ -131,7 +131,7 @@ function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_label=false
 	     --iterations=2)
-  add_dependencies(test_analyzer_qat_int8_resnet50 save_qat2_int8_resnet50_mkldnn)
+#   add_dependencies(test_analyzer_qat_int8_resnet50 save_qat2_int8_resnet50_mkldnn)
 endfunction()
 
 
@@ -353,7 +353,6 @@ if(WITH_MKLDNN)
   set(QAT_RESNET50_MODEL_DIR "/home/lidanqing/data/qat_models_0927/resnet50" )
 
   #  set(SAVE_QAT_INT8_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/qat_save_model.py")
-  # prepare_qat_int8_model(${QAT_RESNET50_MODEL_DIR} ${QAT_INT8_RESNET50_MODEL_DIR} ${SAVE_QAT_INT8_MODEL_SCRIPT})
   inference_analysis_api_qat_test_run(test_analyzer_qat_int8_resnet50 ${QAT_IMG_CLASS_TEST_APP} ${QAT2_RESNET50_MODEL_DIR}/float ${QAT_INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
 endif()

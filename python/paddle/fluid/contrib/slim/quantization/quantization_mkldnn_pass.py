@@ -330,6 +330,21 @@ class FakeQAT2MkldnnINT8PerfPass(object):
         graph = self._remove_unused_var_nodes(graph)
         return graph
 
+    def apply_fp32_passes(self, graph):
+        assert isinstance(graph,
+                          IrGraph), 'graph must be the instance of IrGraph.'
+
+        graph = self._gather_scales(graph)
+        graph = self._remove_fake_ops(graph)
+        graph = self._dequantize_weights(graph)
+        graph = self._optimize_fp32_graph(graph)
+        # graph = self._compute_weight_scales(graph)
+        # graph = self._update_conv_relu_scales(graph)
+        # graph = self._update_pooling_scales(graph)
+        # graph = self._quantize_fp32_graph(graph)
+        graph = self._remove_unused_var_nodes(graph)
+        return graph
+
     def _convert_scale2tensor(self, scale):
         tensor = core.LoDTensor()
         tensor.set(scale, core.CPUPlace())

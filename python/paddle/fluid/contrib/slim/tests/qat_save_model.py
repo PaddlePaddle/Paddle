@@ -33,43 +33,55 @@ def parse_args():
     parser.add_argument(
         '--qat_model_path', type=str, default='', help='A path to a QAT model.')
     parser.add_argument(
-        '--save_model_path',
+        '--qat_fp32_model_path',
         type=str,
         default='',
-        help='Saved transformed model to the path')
+        help='Saved fused fp32 model')
+    parser.add_argument(
+        '--qat_int8_model_path',
+        type=str,
+        default='',
+        help='Saved fused and quantized INT8 model')
 
     test_args, args = parser.parse_known_args(namespace=unittest)
     return test_args, sys.argv[:1] + args
 
 
-def save_transformed_model(args):
+def save_transformed_model(saved_type, original_path, saved_path):
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
     inference_scope = fluid.executor.global_scope()
     with fluid.scope_guard(inference_scope):
-        if os.path.exists(os.path.join(args.qat_model_path, '__model__')):
+        if os.path.exists(os.path.join(original_path, '__model__')):
             [inference_program, feed_target_names,
-             fetch_targets] = fluid.io.load_inference_model(args.qat_model_path,
-                                                            exe)
+             fetch_targets] = fluid.io.load_inference_model(original_path, exe)
         else:
             [inference_program, feed_target_names,
-             fetch_targets] = fluid.io.load_inference_model(
-                 args.qat_model_path, exe, 'model', 'params')
+             fetch_targets] = fluid.io.load_inference_model(original_path, exe,
+                                                            'model', 'params')
 
-        graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
         transform_to_mkldnn_int8_pass = FakeQAT2MkldnnINT8PerfPass(
             _scope=inference_scope, _place=place, _core=core)
-        graph = transform_to_mkldnn_int8_pass.apply(graph)
 
+        graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
+        if saved_type == 'FP32':
+            graph = transform_to_mkldnn_int8_pass.apply_fp32_passes(graph)
+        else:
+            graph = transform_to_mkldnn_int8_pass.apply(graph)
         inference_program = graph.to_program()
-        if args.save_model_path:
-            with fluid.scope_guard(inference_scope):
-                fluid.io.save_inference_model(args.save_model_path,
-                                              feed_target_names, fetch_targets,
-                                              exe, inference_program)
+        with fluid.scope_guard(inference_scope):
+            fluid.io.save_inference_model(saved_path, feed_target_names,
+                                          fetch_targets, exe, inference_program)
+        print("Success! QAT_{0} model can be found at {1}\n".format(saved_type,
+                                                                    saved_path))
 
 
 if __name__ == '__main__':
-    global test_case_args
-    test_case_args, remaining_args = parse_args()
-    save_transformed_model(test_case_args)
+    global test_args
+    test_args, remaining_args = parse_args()
+    if test_args.qat_fp32_model_path:
+        save_transformed_model('FP32', test_args.qat_model_path,
+                               test_args.qat_fp32_model_path)
+    if test_args.qat_int8_model_path:
+        save_transformed_model('INT8', test_args.qat_model_path,
+                               test_args.qat_int8_model_path)
