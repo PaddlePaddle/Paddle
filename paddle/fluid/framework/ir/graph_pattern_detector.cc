@@ -77,7 +77,8 @@ PDNode *PDPattern::RetrieveNode(const std::string &id) const {
 void PDPattern::AddEdge(PDNode *a, PDNode *b) {
   PADDLE_ENFORCE(a);
   PADDLE_ENFORCE(b);
-  PADDLE_ENFORCE(a != b, "can't connect to the same nodes.");
+  PADDLE_ENFORCE_NE(a, b, platform::errors::PermissionDenied(
+                              "Cannot connect the same node in the graph."));
   edges_.emplace_back(a, b);
 }
 

@@ -76,8 +76,8 @@ if(WIN32 OR APPLE)
 endif()
 
 set(WITH_MKLML ${WITH_MKL})
-if (NOT DEFINED WITH_MKLDNN)
-    if (WITH_MKL AND AVX2_FOUND)
+if(NOT DEFINED WITH_MKLDNN)
+    if(WITH_MKL AND AVX2_FOUND)
         set(WITH_MKLDNN ON)
     else()
         message(STATUS "Do not have AVX2 intrinsics and disabled MKL-DNN")
@@ -87,6 +87,10 @@ endif()
 
 if(WIN32 OR APPLE OR NOT WITH_GPU OR ON_INFER)
     set(WITH_DGC OFF)
+endif()
+
+if(${CMAKE_VERSION} VERSION_GREATER "3.5.2")
+    set(SHALLOW_CLONE "GIT_SHALLOW TRUE") # adds --depth=1 arg to git clone of External_Projects
 endif()
 
 ########################### include third_party accoring to flags ###############################
@@ -109,12 +113,11 @@ if(WITH_AMD_GPU)
     list(APPEND third_party_deps extern_rocprim)
 endif()
 
-if(WITH_MKLML)
-    include(external/mklml)     # download, install mklml package
+include(cblas)              	# find first, then download, build, install openblas
+if(${CBLAS_PROVIDER} STREQUAL MKLML)
     list(APPEND third_party_deps extern_mklml)
 endif()
-include(external/openblas)      # find first, then download, build, install openblas
-if(NOT CBLAS_FOUND)
+if(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
     list(APPEND third_party_deps extern_openblas)
 endif()
 
@@ -123,7 +126,7 @@ if(WITH_MKLDNN)
     list(APPEND third_party_deps extern_mkldnn)
 endif()
 
-include(external/protobuf)  # find first, then download, build, install protobuf
+include(external/protobuf)  	# find first, then download, build, install protobuf
 if(NOT PROTOBUF_FOUND OR WIN32)
     list(APPEND third_party_deps extern_protobuf)
 endif()
@@ -185,18 +188,18 @@ if(WITH_NGRAPH)
 endif()
 
 if(WITH_XBYAK)
-    include(external/xbyak)     # download, build, install xbyak
+    include(external/xbyak)         # download, build, install xbyak
     list(APPEND third_party_deps extern_xbyak)
 endif()
 
 if(WITH_LIBXSMM)
-    include(external/libxsmm)   # download, build, install libxsmm
+    include(external/libxsmm)       # download, build, install libxsmm
     list(APPEND third_party_deps extern_libxsmm)
 endif()
 
 if(WITH_DGC)
     message(STATUS "add dgc lib.")
-    include(external/dgc)       # download, build, install dgc
+    include(external/dgc)           # download, build, install dgc
     add_definitions(-DPADDLE_WITH_DGC)
     list(APPEND third_party_deps extern_dgc)
 endif()

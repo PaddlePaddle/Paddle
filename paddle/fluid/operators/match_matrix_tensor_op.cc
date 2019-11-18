@@ -101,6 +101,7 @@ void MatchMatrixTensorOP::InferShape(framework::InferShapeContext* ctx) const {
     framework::VarDesc* y_desc =
         boost::get<framework::VarDesc*>(ctx->GetInputVarPtrs("Y")[0]);
     PADDLE_ENFORCE_GE(y_desc->GetLoDLevel(), 1);
+    ctx->ShareLoD("X", "Out");
   }
 
   std::vector<int64_t> out_dims_vec{out_dim_0};
