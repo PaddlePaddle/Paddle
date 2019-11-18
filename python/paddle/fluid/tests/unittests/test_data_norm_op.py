@@ -28,6 +28,7 @@ def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
     x_shape = x.shape
     means_arr = batch_sum / batch_size
     scales_arr = np.sqrt(batch_size / batch_square_sum)
+    min_precision = 1e-7
     if slot_dim <= 0:
         for i in range(x_shape[0]):
             x[i] -= means_arr
@@ -37,7 +38,7 @@ def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
         y = np.zeros(x_shape).astype(np.float32)
         for i in range(x_shape[0]):
             for j in range(0, x_shape[1], slot_dim):
-                if x[i][j] <= -1e-7 or x[i][j] > 1e-7:
+                if x[i][j] <= -min_precision or x[i][j] > min_precision:
                     for k in range(0, slot_dim):
                         y[i][j + k] = (
                             x[i][j + k] - means_arr[j + k]) * scales_arr[j + k]
@@ -78,7 +79,8 @@ class TestDataNormOpInference(unittest.TestCase):
             data_layout(str): NCHW or NWHC
             dtype(dtype): np.float32
             shape(list): input shape
-            slot_dim(int): dim for one slot
+            slot_dim(int): dimension of one slot. Refer to data_norm api.
+
 
         """
         epsilon = 0.00001

@@ -125,7 +125,10 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
                          "'epsilon' should be between 0.0 and 0.001.");
         });
-    AddAttr<int>("slot_dim", "").SetDefault(-1);
+    AddAttr<int>("slot_dim",
+                 "(int, default -1) Dimention of one slot if set, "
+                 "when the input is cocated by slot-wise embedding")
+        .SetDefault(-1);
     AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
@@ -207,8 +210,11 @@ class DataNormKernel<platform::CPUDeviceContext, T>
     switch (data_layout) {
       case DataLayout::kNCHW:  // It's two dimensions, so make no difference
       case DataLayout::kNHWC: {
+        // if slot_dim is set and batch size is larger than zero, we choose
+        // to check if show number is zero, if so, skip normalization.
         if (slot_dim > 0 && N > 0) {
           const int item_size = x->numel() / N;
+          // location of show number in one embedding
           int offset = 0;
           for (int k = 0; k < N; ++k) {
             for (int i = 0; i < item_size; i += slot_dim) {
