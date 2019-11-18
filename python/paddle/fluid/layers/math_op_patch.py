@@ -18,6 +18,7 @@ from .. import core
 from ..framework import Variable, unique_name
 from .layer_function_generator import OpProtoHolder
 from ..initializer import force_init_on_cpu
+from ..data_feeder import convert_dtype
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,

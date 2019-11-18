@@ -1440,11 +1440,12 @@ class Variable(object):
 
         def fill_constant(shape, value, force_cpu=False, out=None):
 
+            from .data_feeder import convert_dtype
             str_value = "0.0f"
-            if convert_dtype(dtype) in ['int64']:
-                str_value = str(int(self.value))
+            if convert_dtype(out.dtype) in ['int64']:
+                str_value = str(int(value))
             else:
-                str_value = str(float(self.value))
+                str_value = str(float(value))
             self.block.append_op(
                 type='fill_constant',
                 inputs={},
