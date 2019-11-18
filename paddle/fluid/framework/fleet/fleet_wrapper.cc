@@ -314,10 +314,9 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     offset = 0;
     grad_dim = emb_dim - 2;
   }
-  
   if (no_cvm) {
-      offset = 0;
-      grad_dim = emb_dim; 
+    offset = 0;
+    grad_dim = emb_dim;
   }
   if (dump_slot) {
     slot_offset = 1;

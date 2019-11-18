@@ -105,7 +105,10 @@ class PullDenseWorker {
 // should incorporate different type of device
 class DeviceWorker {
  public:
-  DeviceWorker() { no_cvm_ = true; use_cvm_ = false; }
+  DeviceWorker() {
+    no_cvm_ = true;
+    use_cvm_ = false;
+  }
   virtual ~DeviceWorker() {}
   virtual void Initialize(const TrainerDesc& desc) = 0;
   virtual void SetDeviceIndex(int tid) = 0;

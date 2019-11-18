@@ -214,7 +214,7 @@ void DownpourWorker::DumpParam() {
 
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {
   if (no_cvm_) {
-      return;
+    return;
   }
   uint64_t table_id = static_cast<uint64_t>(
       param_.program_config(0).pull_sparse_table_id(table_idx));
