@@ -31,10 +31,9 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   std::vector<int> res;
   int rank = ctx.Input<Tensor>("X")->dims().size();
   if (ctx.HasInput("Offsets")) {
-    PADDLE_ENFORCE_EQ(
-        ctx.Attr<std::vector<int>>("offsets").empty(), true,
-        "Input 'Offsets' and attribute 'offsets' should not be used "
-        "at the same time.");
+    PADDLE_ENFORCE(ctx.Attr<std::vector<int>>("offsets").empty(),
+                   "Input 'Offsets' and attribute 'offsets' should not be used "
+                   "at the same time.");
     const auto* offsets_tensor = ctx.Input<Tensor>("Offsets");
     PADDLE_ENFORCE_EQ(offsets_tensor->dims().size(), 1);
     PADDLE_ENFORCE_EQ(

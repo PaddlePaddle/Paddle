@@ -60,12 +60,12 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
                                     framework::Tensor** Out) {
   auto x_var = context.InputVar("X");
   auto out_var = context.OutputVar("Out");
-  PADDLE_ENFORCE_NE(x_var, nullptr,
-                    "Cannot get input Variable X, variable name = %s",
-                    context.op().Input("X"));
-  PADDLE_ENFORCE_NE(out_var, nullptr,
-                    "Cannot get output Variable Out, variable name = %s",
-                    context.op().Output("Out"));
+  PADDLE_ENFORCE(x_var != nullptr,
+                 "Cannot get input Variable X, variable name = %s",
+                 context.op().Input("X"));
+  PADDLE_ENFORCE(out_var != nullptr,
+                 "Cannot get output Variable Out, variable name = %s",
+                 context.op().Output("Out"));
   if (CanBeUsedBySelectedRows.count(context.op().Type())) {
     *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
     *Out = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
@@ -75,9 +75,9 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
     *Out = context.Output<framework::Tensor>("Out");
   }
 
-  PADDLE_ENFORCE_NE(*Out, nullptr,
-                    "Cannot get output tensor Out, variable name = %s",
-                    context.op().Output("Out"));
+  PADDLE_ENFORCE(*Out != nullptr,
+                 "Cannot get output tensor Out, variable name = %s",
+                 context.op().Output("Out"));
 }
 
 template <ActBwdOpFwdDeps kDepValue>
@@ -91,18 +91,18 @@ inline void ExtractActivationGradTensor(
 
   if (static_cast<int>(kDepValue) & static_cast<int>(kDepOut)) {
     out_var = context.InputVar("Out");
-    PADDLE_ENFORCE_NE(out_var, nullptr,
-                      "Cannot get input Variable Out, variable name = %s",
-                      context.op().Input("Out"));
+    PADDLE_ENFORCE(out_var != nullptr,
+                   "Cannot get input Variable Out, variable name = %s",
+                   context.op().Input("Out"));
   }
-  PADDLE_ENFORCE_NE(out_grad_var, nullptr,
-                    "Cannot get input Variable %s, variable name = %s",
-                    framework::GradVarName("Out"),
-                    context.op().Input(framework::GradVarName("Out")));
-  PADDLE_ENFORCE_NE(x_grad_var, nullptr,
-                    "Cannot get output Variable %s, variable name = %s",
-                    framework::GradVarName("X"),
-                    context.op().Output(framework::GradVarName("X")));
+  PADDLE_ENFORCE(out_grad_var != nullptr,
+                 "Cannot get input Variable %s, variable name = %s",
+                 framework::GradVarName("Out"),
+                 context.op().Input(framework::GradVarName("Out")));
+  PADDLE_ENFORCE(x_grad_var != nullptr,
+                 "Cannot get output Variable %s, variable name = %s",
+                 framework::GradVarName("X"),
+                 context.op().Output(framework::GradVarName("X")));
 
   if (CanBeUsedBySelectedRows.count(context.op().Type())) {
     *dOut = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(
@@ -129,16 +129,16 @@ inline void ExtractActivationGradTensor(
     }
   }
 
-  PADDLE_ENFORCE_NE(*dX, nullptr,
-                    "Cannot get output tensor %s, variable name = %s",
-                    framework::GradVarName("X"),
-                    context.op().Output(framework::GradVarName("X")));
+  PADDLE_ENFORCE(*dX != nullptr,
+                 "Cannot get output tensor %s, variable name = %s",
+                 framework::GradVarName("X"),
+                 context.op().Output(framework::GradVarName("X")));
 
   if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
     auto x_var = context.InputVar("X");
-    PADDLE_ENFORCE_NE(x_var, nullptr,
-                      "Cannot get input tensor X, variable name = %s",
-                      context.op().Input("X"));
+    PADDLE_ENFORCE(x_var != nullptr,
+                   "Cannot get input tensor X, variable name = %s",
+                   context.op().Input("X"));
     if (CanBeUsedBySelectedRows.count(context.op().Type())) {
       *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
     } else {
@@ -1280,9 +1280,9 @@ inline void ExtractActivationDoubleGradTensor(
     framework::Tensor** ddOut) {
   auto ddx_var = ctx.InputVar("DDX");
   auto ddo_var = ctx.OutputVar("DDOut");
-  PADDLE_ENFORCE_NE(ddx_var, nullptr,
-                    "Cannot get input Variable Out, variable name = %s",
-                    ctx.op().Input("DDX"));
+  PADDLE_ENFORCE(ddx_var != nullptr,
+                 "Cannot get input Variable Out, variable name = %s",
+                 ctx.op().Input("DDX"));
   if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
     *ddX = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*ddx_var);
     if (ddo_var) {
@@ -1295,15 +1295,15 @@ inline void ExtractActivationDoubleGradTensor(
       *ddOut = ctx.Output<framework::Tensor>("DDOut");
     }
   }
-  PADDLE_ENFORCE_NE(*ddX, nullptr,
-                    "Cannot get output tensor DDX, variable name = %s",
-                    ctx.op().Output("DDX"));
+  PADDLE_ENFORCE(*ddX != nullptr,
+                 "Cannot get output tensor DDX, variable name = %s",
+                 ctx.op().Output("DDX"));
 
   if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
     auto x_var = ctx.InputVar("X");
-    PADDLE_ENFORCE_NE(x_var, nullptr,
-                      "Cannot get input Variable Out, variable name = %s",
-                      ctx.op().Input("X"));
+    PADDLE_ENFORCE(x_var != nullptr,
+                   "Cannot get input Variable Out, variable name = %s",
+                   ctx.op().Input("X"));
     auto dx_var = ctx.OutputVar("DX");
     if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
       *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
@@ -1323,9 +1323,9 @@ inline void ExtractActivationDoubleGradTensor(
   }
   if (static_cast<int>(kDepValue) & static_cast<int>(kDepOut)) {
     auto out_var = ctx.InputVar("Out");
-    PADDLE_ENFORCE_NE(out_var, nullptr,
-                      "Cannot get input tensor Out, variable name = %s",
-                      ctx.op().Input("Out"));
+    PADDLE_ENFORCE(out_var != nullptr,
+                   "Cannot get input tensor Out, variable name = %s",
+                   ctx.op().Input("Out"));
     auto dout_var = ctx.OutputVar("DOut");
     if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
       *Out =
@@ -1478,22 +1478,22 @@ inline void ExtractDoubleGradTensorWithInputDOut(
   // extract ddX(output), ddOut(input)
   auto ddx_var = ctx.InputVar("DDX");
   auto ddo_var = ctx.OutputVar("DDOut");
-  PADDLE_ENFORCE_NE(ddx_var, nullptr,
-                    "Cannot get input Variable Out, variable name = %s",
-                    ctx.op().Input("DDX"));
+  PADDLE_ENFORCE(ddx_var != nullptr,
+                 "Cannot get input Variable Out, variable name = %s",
+                 ctx.op().Input("DDX"));
   *ddX = ctx.Input<framework::Tensor>("DDX");
   if (ddo_var) {
     *ddOut = ctx.Output<framework::Tensor>("DDOut");
   }
-  PADDLE_ENFORCE_NE(*ddX, nullptr,
-                    "Cannot get output tensor DDX, variable name = %s",
-                    ctx.op().Output("DDX"));
+  PADDLE_ENFORCE(*ddX != nullptr,
+                 "Cannot get output tensor DDX, variable name = %s",
+                 ctx.op().Output("DDX"));
 
   // extract x(input), dx(output)
   auto x_var = ctx.InputVar("X");
-  PADDLE_ENFORCE_NE(x_var, nullptr,
-                    "Cannot get input Variable Out, variable name = %s",
-                    ctx.op().Input("X"));
+  PADDLE_ENFORCE(x_var != nullptr,
+                 "Cannot get input Variable Out, variable name = %s",
+                 ctx.op().Input("X"));
   auto dx_var = ctx.OutputVar("DX");
   *X = ctx.Input<framework::Tensor>("X");
   if (dx_var) {
@@ -1544,22 +1544,22 @@ class SqrtDoubleGradKernel
     // extract ddx(input), ddout(output)
     auto ddx_var = ctx.InputVar("DDX");
     auto ddo_var = ctx.OutputVar("DDOut");
-    PADDLE_ENFORCE_NE(ddx_var, nullptr,
-                      "Cannot get input Variable DDX, variable name = %s",
-                      ctx.op().Input("DDX"));
+    PADDLE_ENFORCE(ddx_var != nullptr,
+                   "Cannot get input Variable DDX, variable name = %s",
+                   ctx.op().Input("DDX"));
     ddX = ctx.Input<framework::Tensor>("DDX");
     if (ddo_var) {
       ddOut = ctx.Output<framework::Tensor>("DDOut");
     }
-    PADDLE_ENFORCE_NE(ddX, nullptr,
-                      "Cannot get input Variable DDX, variable name = %s",
-                      ctx.op().Input("DDX"));
+    PADDLE_ENFORCE(ddX != nullptr,
+                   "Cannot get input Variable DDX, variable name = %s",
+                   ctx.op().Input("DDX"));
 
     // extract out(input), dout(output)
     auto out_var = ctx.InputVar("Out");
-    PADDLE_ENFORCE_NE(out_var, nullptr,
-                      "Cannot get input Variable Out, variable name = %s",
-                      ctx.op().Input("Out"));
+    PADDLE_ENFORCE(out_var != nullptr,
+                   "Cannot get input Variable Out, variable name = %s",
+                   ctx.op().Input("Out"));
     auto dout_var = ctx.OutputVar("DOut");
     Out = ctx.Input<framework::Tensor>("Out");
     if (dout_var) {
@@ -1568,9 +1568,9 @@ class SqrtDoubleGradKernel
 
     // extract dx(input)
     auto dx_var = ctx.InputVar("DX");
-    PADDLE_ENFORCE_NE(dx_var, nullptr,
-                      "Cannot get input Variable DX, variable name = %s",
-                      ctx.op().Input("DX"));
+    PADDLE_ENFORCE(dx_var != nullptr,
+                   "Cannot get input Variable DX, variable name = %s",
+                   ctx.op().Input("DX"));
     if (dx_var) {
       dX = ctx.Input<framework::Tensor>("DX");
     }
