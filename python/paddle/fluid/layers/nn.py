@@ -2709,9 +2709,9 @@ def data_norm(input,
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
         do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance
             should do model average when model average is enabled.
-        slot_dim(int): The embedding dimention of one slot. Slot is a set of one specific feature. In pslib mode, we 
-            distinguish feature ids by slot and pull there embeddings from parameter server (pslib). The first
-            place of the embedding is the historical show number (occurance time of this feature id with a lable 0).
+        slot_dim(int): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode, we 
+            distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
+            place of the embedding is the historical show number (occurence time of this feature id with a label 0).
             If the input of this op is concated by slot-wise embeddings, and the show number is zero when this slot 
             is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate 
             the show number and judge if the show number is zero. If so, we choose to skip normalization on this

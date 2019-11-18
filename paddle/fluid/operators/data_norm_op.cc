@@ -126,8 +126,8 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
                          "'epsilon' should be between 0.0 and 0.001.");
         });
     AddAttr<int>("slot_dim",
-                 "(int, default -1) Dimention of one slot if set, "
-                 "when the input is cocated by slot-wise embedding")
+                 "(int, default -1) Dimension of one slot if set, "
+                 "when the input is cocated by slot-wise embeddings")
         .SetDefault(-1);
     AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
     AddAttr<bool>("use_mkldnn",
