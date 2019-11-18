@@ -55,22 +55,32 @@ class BlockingQueue {
   }
 
   bool Push(const T& elem) {
+    int size_ = 0;
     {
       std::unique_lock<std::mutex> lock(mutex_);
       cv_.wait(lock, [&] { return queue_.size() < capacity_; });
       PADDLE_ENFORCE_LT(queue_.size(), capacity_);
       queue_.push_back(elem);
+      size_ = queue_.size();
+    }
+    if (size_ == capacity_) {
+      bulk_cv_.notify_one();
     }
     cv_.notify_one();
     return true;
   }
 
   bool Push(T&& elem) {
+    int size_ = 0;
     {
       std::unique_lock<std::mutex> lock(mutex_);
       cv_.wait(lock, [&] { return queue_.size() < capacity_; });
       PADDLE_ENFORCE_LT(queue_.size(), capacity_);
       queue_.emplace_back(std::move(elem));
+      size_ = queue_.size();
+    }
+    if (size_ == capacity_) {
+      bulk_cv_.notify_one();
     }
     cv_.notify_one();
     return true;
@@ -97,7 +107,7 @@ class BlockingQueue {
  
   void Pop_Bulk(std::vector<T>& rc, size_t bulk_size) {
     std::unique_lock<std::mutex> lock(mutex_);
-    cv_.wait(lock, [=] { return queue_.size() >= bulk_size; });
+    bulk_cv_.wait(lock, [=] { return queue_.size() >= bulk_size; });
     for (int i = 0; i < bulk_size; i++) {
       T r(std::move(queue_.front()));
       rc.push_back(r);
@@ -113,6 +123,7 @@ class BlockingQueue {
 
   mutable std::mutex mutex_;
   std::condition_variable cv_;
+  std::condition_variable bulk_cv_;
 };
 
 template <typename T, int MajorType = Eigen::RowMajor,
