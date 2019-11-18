@@ -102,7 +102,9 @@ const std::vector<std::string> kAnakinSubgraphPasses({
 });
 
 const std::vector<std::string> kLiteSubgraphPasses({
+#ifdef PADDLE_WITH_LITE
     "lite_subgraph_pass",
+#endif
 });
 
 GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {

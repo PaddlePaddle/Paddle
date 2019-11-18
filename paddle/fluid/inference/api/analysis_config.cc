@@ -358,6 +358,10 @@ void AnalysisConfig::Update() {
   }
 
   if (use_lite_) {
+#ifndef PADDLE_WITH_LITE
+    LOG(WARNING) << "You tried to enable the lite subgraph "
+                    "but did not have the option -DWITH_LITE compiled.";
+#endif
     pass_builder()->ClearPasses();
     for (const auto &pass : kLiteSubgraphPasses) {
       if (std::find(lite_passes_filter_.begin(), lite_passes_filter_.end(),

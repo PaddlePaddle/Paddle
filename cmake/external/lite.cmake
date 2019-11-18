@@ -76,3 +76,5 @@ function(external_lite_static_libs alias path)
 endfunction()
 
 external_lite_static_libs(lite_full_static ${LITE_BINARY_DIR}/lite/api/libapi_full_static.a)
+
+add_definitions(-DPADDLE_WITH_LITE)
