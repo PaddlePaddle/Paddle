@@ -53,6 +53,15 @@ class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
 
         self.assertRaises(AttributeError, check_raise_is_test)
 
+# Designed to Fail
+# TODO(jczaja): Once mkl-dnn integration support NHWC input
+# then those tests should be changed to actual functional positive tests
+class TestLRNMKLDNNOpNHWC(TestLRNMKLDNNOp):
+    def init_test_case(self):
+        self.data_format = 'NHWC'
+
+    def test_check_output(self):
+        self.assertRaises(fluid.core_avx.EnforceNotMet, self.check_output);            
 
 if __name__ == "__main__":
     unittest.main()
