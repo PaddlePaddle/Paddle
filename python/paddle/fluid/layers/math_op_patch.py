@@ -52,9 +52,9 @@ def monkey_patch_variable():
         var = create_new_tmp_var(block, dtype)
         str_value = "0.0f"
         if convert_dtype(dtype) in 'int64':
-            str_value = str(int(self.value))
+            str_value = str(int(value))
         else:
-            str_value = str(float(self.value))
+            str_value = str(float(value))
         block.append_op(
             type="fill_constant",
             outputs={'Out': [var]},
