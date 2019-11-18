@@ -35,7 +35,7 @@ class PostTrainingQuantization(object):
     def __init__(self,
                  executor,
                  sample_generator,
-                 model_params_path,
+                 model_dir,
                  model_filename=None,
                  params_filename=None,
                  batch_size=10,
@@ -56,8 +56,8 @@ class PostTrainingQuantization(object):
             sample_generator(Python Generator): The sample generator provides 
                 calibrate data for DataLoader, and it only returns a sample every 
                 time.
-            model_params_path(str): The path of the fp32 model that will be 
-                quantized, and the model and params files ars under the path.
+            model_dir(str): The path of the fp32 model that will be quantized, 
+                and the model and params files are under the path.
             model_filename(str, optional): The name of file to load the inference 
                 program. If it is None, the default filename '__model__' will 
                 be used. Default is 'None'.
@@ -90,7 +90,7 @@ class PostTrainingQuantization(object):
             from paddle.fluid.contrib.slim.quantization import PostTrainingQuantization
             
             exe = fluid.Executor(fluid.CPUPlace())
-            model_params_path = path/to/fp32_model_params
+            model_dir = path/to/fp32_model_params
             # set model_filename as None when the filename is __model__, 
             # otherwise set it as the real filename
             model_filename = None 
@@ -110,7 +110,7 @@ class PostTrainingQuantization(object):
             ptq = PostTrainingQuantization(
                         executor=exe,
                         sample_generator=sample_generator,
-                        model_params_path=model_params_path,
+                        model_dir=model_dir,
                         model_filename=model_filename,
                         params_filename=params_filename,
                         batch_size=batch_size,
@@ -122,7 +122,7 @@ class PostTrainingQuantization(object):
         '''
         self._executor = executor
         self._sample_generator = sample_generator
-        self._model_params_path = model_params_path
+        self._model_dir = model_dir
         self._model_filename = model_filename
         self._params_filename = params_filename
         self._batch_size = batch_size
@@ -214,7 +214,7 @@ class PostTrainingQuantization(object):
         '''
         # load model and set data loader
         [self._program, self._feed_list, self._fetch_list] = \
-            io.load_inference_model(dirname=self._model_params_path,
+            io.load_inference_model(dirname=self._model_dir,
                                     executor=self._executor,
                                     model_filename=self._model_filename,
                                     params_filename=self._params_filename)
@@ -246,9 +246,8 @@ class PostTrainingQuantization(object):
                     if self._is_input_all_not_persistable(
                             op, persistable_var_names):
                         op._set_attr("skip_quant", True)
-                        _logger.warning(
-                            "Detect a mul op has two non-persistable inputs and skip it."
-                        )
+                        _logger.warning("Skip quant a mul op for two "
+                                        "input variables are not persistable")
                     else:
                         self._quantized_act_var_name.append(op.input("X")[0])
                         self._quantized_weight_var_name.append(op.input("Y")[0])
