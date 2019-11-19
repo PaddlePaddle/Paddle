@@ -35,7 +35,7 @@ class ScaleOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ScaleOp should not be null.");
 
-    if (ctx->HasInput("ScaleTensor")) {
+    if (ctx->IsRuntime() && ctx->HasInput("ScaleTensor")) {
       auto scale_dims = ctx->GetInputDim("ScaleTensor");
       PADDLE_ENFORCE_EQ(scale_dims.size(), 1,
                         "Input(ScaleTensor) dimensions must be 1");
@@ -104,7 +104,9 @@ class ScaleGradMaker : public framework::SingleGradOpMaker<T> {
     auto *grad_op = new T();
     grad_op->SetType("scale");
     grad_op->SetInput("X", this->OutputGrad("Out"));
-    grad_op->SetInput("ScaleTensor", this->Input("ScaleTensor"));
+    if (this->HasInput("ScaleTensor") > 0) {
+      grad_op->SetInput("ScaleTensor", this->Input("ScaleTensor"));
+    }
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttr("scale", this->GetAttr("scale"));
     grad_op->SetAttr("bias", 0.0f);

@@ -35,13 +35,13 @@ void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(ctx->HasInput("Beta2Pow"), true,
                     "Input(Beta2Pow) of AdamOp should not be null.");
 
-  if (ctx->HasInput("Beta1Tensor")) {
+  if (ctx->IsRuntime() && ctx->HasInput("Beta1Tensor")) {
     auto beta1_dims = ctx->GetInputDim("Beta1Tensor");
     PADDLE_ENFORCE_EQ(beta1_dims.size(), 1,
                       "Input(Beta1Tensor) dimensions must be 1");
     PADDLE_ENFORCE_EQ(beta1_dims[0], 1, "Input(Beta1Tensor) shape must be [1]");
   }
-  if (ctx->HasInput("Beta2Tensor")) {
+  if (ctx->IsRuntime() && ctx->HasInput("Beta2Tensor")) {
     auto beta2_dims = ctx->GetInputDim("Beta2Tensor");
     PADDLE_ENFORCE_EQ(beta2_dims.size(), 1,
                       "Input(Beta2Tensor) dimensions must be 1");
