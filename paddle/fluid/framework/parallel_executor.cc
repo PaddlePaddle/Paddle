@@ -349,6 +349,15 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
                  "strategy is disabled, which is not recommended";
   }
 
+  if (build_strategy_.enable_inplace_) {
+    auto inplace_pass =
+        ir::PassRegistry::Instance().Get("buffer_shared_identity_inplace_pass");
+    inplace_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
+    inplace_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
+    inplace_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    graph = inplace_pass->Apply(graph);
+  }
+
   if (!is_gc_enabled) {
     return graph;
   }
@@ -1065,3 +1074,4 @@ USE_PASS(reference_count_pass);
 USE_PASS(eager_deletion_pass);
 USE_PASS(buffer_shared_inplace_pass);
 USE_PASS(buffer_shared_cross_op_memory_reuse_pass);
+USE_PASS(buffer_shared_identity_inplace_pass);

@@ -42,6 +42,9 @@ class InplaceTestBase(unittest.TestCase):
             self.device_count = 4
         assert batch_size % self.device_count == 0
 
+    def net(self):
+        return simple_fc_net
+
     def build_program_and_scope(self):
         self.place = fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace()
         startup_program = fluid.Program()
@@ -52,7 +55,7 @@ class InplaceTestBase(unittest.TestCase):
         scope = fluid.Scope()
         with fluid.program_guard(main_program, startup_program):
             with fluid.unique_name.guard():
-                loss = simple_fc_net()
+                loss = self.net()()
                 adam = fluid.optimizer.Adam(learning_rate=1e-3)
                 adam.minimize(loss)
 

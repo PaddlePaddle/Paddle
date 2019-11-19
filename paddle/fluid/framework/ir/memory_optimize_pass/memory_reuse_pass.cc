@@ -80,7 +80,7 @@ bool MemoryReusePass::TryReuseVar(details::VarHandle *in_var,
 }
 
 std::unordered_set<Node *> MemoryReusePass::FindNodesByName(
-    const std::string &name, const std::vector<Node *> &nodes) const {
+    const std::string &name, const std::vector<Node *> &nodes) {
   std::unordered_set<ir::Node *> ret;
   for (auto *node : nodes) {
     if (node->Name() == name) {
@@ -386,6 +386,50 @@ void MemoryReusePass::UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
       platform::errors::NotFound("Cannot find variable %s.", in_var->Name()));
 
   in_var_info_iter->second->SetRefCnt(1);
+}
+
+using InplaceOpMeta = std::unordered_map<std::string, InplaceInToOutMap>;
+
+static InplaceOpMeta *BuildIdentityInplaceOpMeta() {
+  auto *meta = new InplaceOpMeta();
+#define PADDLE_REGISTER_IDENTITY_OP(op_type, ...) \
+  do {                                            \
+    meta->insert({op_type, {__VA_ARGS__}});       \
+  } while (0)
+
+  PADDLE_REGISTER_IDENTITY_OP("reshape2", {"X", "Out"});
+  PADDLE_REGISTER_IDENTITY_OP("reshape2_grad", {framework::GradVarName("Out"),
+                                                framework::GradVarName("X")});
+
+  PADDLE_REGISTER_IDENTITY_OP("assign", {"X", "Out"});
+
+  PADDLE_REGISTER_IDENTITY_OP("squeeze2", {"X", "Out"});
+  PADDLE_REGISTER_IDENTITY_OP("squeeze2_grad", {framework::GradVarName("Out"),
+                                                framework::GradVarName("X")});
+
+  PADDLE_REGISTER_IDENTITY_OP("unsqueeze2", {"X", "Out"});
+  PADDLE_REGISTER_IDENTITY_OP("unsqueeze2_grad", {framework::GradVarName("Out"),
+                                                  framework::GradVarName("X")});
+
+  return meta;
+
+#undef PADDLE_REGISTER_IDENTITY_OP
+}
+
+const InplaceOpMeta &GetIdentityInplaceOpMeta() {
+  static auto *meta = BuildIdentityInplaceOpMeta();
+  return *meta;
+}
+
+bool IsIdentityOp(const std::string &type) {
+  return GetIdentityInplaceOpMeta().count(type) > 0;
+}
+
+const InplaceInToOutMap &InOutPairOfIdentityOp(const std::string &type) {
+  const auto &ops = GetIdentityInplaceOpMeta();
+  auto iter = ops.find(type);
+  PADDLE_ENFORCE_EQ(iter != ops.end(), true);
+  return iter->second;
 }
 
 }  // namespace ir

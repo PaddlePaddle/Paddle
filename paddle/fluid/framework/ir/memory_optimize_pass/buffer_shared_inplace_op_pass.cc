@@ -84,6 +84,18 @@ void BufferSharedInplaceOpPass::Run(Graph *graph) const {
 
     auto in_to_outs =
         OpInfoMap::Instance().Get(op_type).infer_inplace_(use_cuda);
+
+    if (IsIdentityOp(op_type)) {
+      auto identity_in_to_outs = InOutPairOfIdentityOp(op_type);
+      for (auto &in_out_pair : identity_in_to_outs) {
+        VLOG(4) << "WARN: identity inplace op " << op_type << " "
+                << in_out_pair.first << " -> " << in_out_pair.second
+                << " would be considered inside "
+                   "buffer_shared_identity_inplace_op_pass";
+        in_to_outs.erase(in_out_pair.first);
+      }
+    }
+
     for (auto &pair : in_to_outs) {
       auto &in_param = pair.first;
       auto &in_args = op_desc->Input(in_param);

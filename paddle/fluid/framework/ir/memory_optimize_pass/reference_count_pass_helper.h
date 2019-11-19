@@ -43,7 +43,7 @@ const char kUseCuda[] = "use_cuda";
 
 class LastLiveOpOfVarInfo {
  public:
-  details::VarHandle *var() { return var_; }
+  details::VarHandle *var() const { return var_; }
 
   void set_var(details::VarHandle *var) { var_ = var; }
 
