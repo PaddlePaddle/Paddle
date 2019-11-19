@@ -162,6 +162,41 @@ class TestElementwiseMulOpFp16(ElementwiseMulOp):
         self.dtype = np.float16
 
 
+class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 4).astype(np.float64),
+            'Y': np.random.rand(1, 1, 4).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+
+
+class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 1, 5).astype(np.float64),
+            'Y': np.random.rand(2, 1, 4, 1).astype(np.float64)
+        }
+        self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+
+
+class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
+    def setUp(self):
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'X': np.random.rand(4, 5).astype(np.float64),
+            'Y': np.random.rand(2, 3, 4, 5).astype(np.float64)
+        }
+
+        self.attrs = {'axis': 2}
+
+        self.outputs = {
+            'Out': self.inputs['X'].reshape(1, 1, 4, 5) * self.inputs['Y']
+        }
+
+
 class TestElementwiseMulOpError(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):

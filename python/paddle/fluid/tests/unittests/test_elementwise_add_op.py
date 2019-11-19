@@ -308,6 +308,36 @@ class TestFP16ElementwiseAddOp_channelwise_add(TestFP16ElementwiseAddOp):
         self.axis = -1
 
 
+class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(1, 1, 4).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 1, 5).astype(self.dtype)
+        self.y = np.random.rand(2, 1, 4, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(4, 5).astype(self.dtype)
+        self.y = np.random.rand(2, 3, 4, 5).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = 2
+
+
 class TestElementwiseAddOpError(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):

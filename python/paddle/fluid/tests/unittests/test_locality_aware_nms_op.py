@@ -200,7 +200,9 @@ class TestLocalAwareNMSOp(OpTest):
         scores = np.random.random((N * M, C)).astype('float32')
 
         def softmax(x):
-            shiftx = x - np.max(x).clip(-64.)
+            # clip to shiftx, otherwise, when calc loss with
+            # log(exp(shiftx)), may get log(0)=INF
+            shiftx = (x - np.max(x)).clip(-64.)
             exps = np.exp(shiftx)
             return exps / np.sum(exps)
 
