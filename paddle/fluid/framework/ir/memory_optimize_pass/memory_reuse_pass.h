@@ -95,6 +95,8 @@ class MemoryReusePass : public Pass {
   void AddReuseVar(details::ComputationOpHandle *op, details::VarHandle *in_var,
                    details::VarHandle *out_var) const;
 
+  void MarkAsNotReusableInVar(const details::VarHandle &var) const;
+
  private:
   VarDesc *GetVarDesc(const details::VarHandle &var) const;
 
@@ -117,6 +119,9 @@ class MemoryReusePass : public Pass {
                              details::VarHandle *out_var) const;
 
  private:
+  bool IsPinnedVar(const VarDesc &out_var_desc) const;
+
+ private:
   mutable Graph *graph_;
   mutable bool use_cuda_;
 
@@ -135,7 +140,7 @@ class MemoryReusePass : public Pass {
   mutable std::vector<std::unordered_map<std::string, VarDesc *>> var_descs_;
   mutable details::PinnedVars *pinned_var_set_;
 
-  bool IsPinnedVar(const VarDesc &out_var_desc) const;
+  mutable std::vector<SkipReuseVars> *skip_reuse_vars_;
 };
 
 using InplaceInToOutMap = std::unordered_map<std::string, std::string>;

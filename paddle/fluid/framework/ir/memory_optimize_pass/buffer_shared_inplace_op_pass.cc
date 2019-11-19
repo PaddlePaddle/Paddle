@@ -171,4 +171,5 @@ REGISTER_PASS(buffer_shared_inplace_pass,
               paddle::framework::ir::BufferSharedInplaceOpPass)
     .RequirePassAttr(paddle::framework::ir::kMemOptVarInfoMapList)
     .RequirePassAttr(paddle::framework::ir::kLastLiveOpsOfVars)
-    .RequirePassAttr(paddle::framework::ir::kUseCuda);
+    .RequirePassAttr(paddle::framework::ir::kUseCuda)
+    .RequirePassAttr(paddle::framework::ir::kSkipReuseVars);

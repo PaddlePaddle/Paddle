@@ -320,17 +320,40 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
   graph = ref_cnt_pass->Apply(graph);
   VLOG(10) << "ReferenceCountPass Applied";
 
+  std::vector<ir::SkipReuseVars> skip_reuse_vars;
   if (build_strategy_.enable_inplace_) {
-    auto inplace_pass =
-        ir::PassRegistry::Instance().Get("buffer_shared_inplace_pass");
-    inplace_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
-    inplace_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
-    inplace_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
-    VLOG(10) << "Start to apply buffer_shared_inplace_pass";
-    graph = inplace_pass->Apply(graph);
-    VLOG(10) << "buffer_shared_inplace_pass Applied";
-    VLOG(1) << "Inplace strategy is enabled, when "
-               "build_strategy.enable_inplace = True";
+    std::vector<std::unique_ptr<ir::Pass>> inplace_passes;
+    inplace_passes.emplace_back(
+        ir::PassRegistry::Instance().Get("buffer_shared_inplace_pass"));
+    inplace_passes.emplace_back(ir::PassRegistry::Instance().Get(
+        "buffer_shared_identity_inplace_pass"));
+
+    for (auto &inplace_pass : inplace_passes) {
+      inplace_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
+      inplace_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
+      inplace_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+      inplace_pass->SetNotOwned(ir::kSkipReuseVars, &skip_reuse_vars);
+      VLOG(10) << "Start to apply " << inplace_pass->Type();
+      graph = inplace_pass->Apply(graph);
+      VLOG(10) << "Finish to apply " << inplace_pass->Type();
+    }
+    LOG_FIRST_N(INFO, 1) << "Inplace strategy is enabled, when "
+                            "build_strategy.enable_inplace = True";
+  }
+
+  /**
+   * NOTE(zengjinle): If BuildStrategy.memory_optimize = None in Python,
+   * set BuildStrategy.memory_optimize according to whether gc is enabled.
+   * If gc is enabled, BuildStrategy.memory_optimize = False.
+   * If gc is disabled, BuildStrategy.memory_optimize = True.
+   * This is because gc+memory_optimize is worse than gc only.
+   *
+   * As an option, users can enable BuildStrategy.memory_optimize forcely
+   * by setting True, and disable it forcely by setting False.
+   */
+  bool is_gc_enabled = (GetEagerDeletionThreshold() >= 0);
+  if (!build_strategy_.memory_optimize_) {
+    build_strategy_.memory_optimize_ = !is_gc_enabled;
   }
 
   if (build_strategy_.memory_optimize_.get()) {
@@ -341,21 +364,14 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     cross_op_memory_reuse_pass->SetNotOwned(ir::kLastLiveOpsOfVars,
                                             &last_live_ops_of_vars);
     cross_op_memory_reuse_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
+    cross_op_memory_reuse_pass->SetNotOwned(ir::kSkipReuseVars,
+                                            &skip_reuse_vars);
     VLOG(10) << "Start to apply buffer_shared_cross_op_memory_reuse_pass";
     graph = cross_op_memory_reuse_pass->Apply(graph);
     VLOG(10) << "buffer_shared_cross_op_memory_reuse_pass Applied";
     LOG(INFO) << "Cross op memory reuse strategy is enabled, when "
                  "build_strategy.memory_optimize = True or garbage collection "
                  "strategy is disabled, which is not recommended";
-  }
-
-  if (build_strategy_.enable_inplace_) {
-    auto inplace_pass =
-        ir::PassRegistry::Instance().Get("buffer_shared_identity_inplace_pass");
-    inplace_pass->SetNotOwned(ir::kMemOptVarInfoMapList, &mem_opt_var_infos_);
-    inplace_pass->SetNotOwned(ir::kLastLiveOpsOfVars, &last_live_ops_of_vars);
-    inplace_pass->SetNotOwned(ir::kUseCuda, &use_cuda_);
-    graph = inplace_pass->Apply(graph);
   }
 
   if (!is_gc_enabled) {

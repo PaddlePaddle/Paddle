@@ -41,6 +41,15 @@ void MemoryReusePass::ApplyImpl(Graph *graph) const {
     pinned_var_set_ = &graph->Get<details::PinnedVars>(details::kPinnedVars);
   }
 
+  skip_reuse_vars_ = &Get<std::vector<SkipReuseVars>>(kSkipReuseVars);
+  if (skip_reuse_vars_->empty()) {
+    skip_reuse_vars_->resize(all_vars_->size());
+  } else {
+    PADDLE_ENFORCE_EQ(
+        skip_reuse_vars_->size(), all_vars_->size(),
+        platform::errors::InvalidArgument("Size not match, this may be a bug"));
+  }
+
   // Collect the existing ShareTensorBufferOpHandles.
   // This is because (1) we want to reuse the existing
   // ShareTensorBufferOpHandles to avoid inserting too many ops;
@@ -73,6 +82,7 @@ bool MemoryReusePass::TryReuseVar(details::VarHandle *in_var,
           out_var->Name()));
   if (IsVarPairReusable(*in_var, *out_var)) {
     AddReuseVar(op, in_var, out_var);
+    UpdateLastLiveOpOfVar(op, in_var, out_var);
     return true;
   } else {
     return false;
@@ -217,6 +227,10 @@ bool MemoryReusePass::IsInVarReusable(const details::VarHandle &in_var) const {
     return false;
   }
 
+  if ((*skip_reuse_vars_)[in_var.scope_idx()].count(in_var.Name()) > 0) {
+    return false;
+  }
+
   return true;
 }
 
@@ -349,8 +363,6 @@ void MemoryReusePass::AddReuseVar(details::ComputationOpHandle *op,
       out_var->Name());
   reused_in_var_names_[op->GetScopeIdx()].insert(in_var->Name());
   reused_out_var_names_[op->GetScopeIdx()].insert(out_var->Name());
-
-  UpdateLastLiveOpOfVar(op, in_var, out_var);
 }
 
 // 1. Set last living op of in_var to be any last living op of out_var
@@ -388,6 +400,11 @@ void MemoryReusePass::UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
   in_var_info_iter->second->SetRefCnt(1);
 }
 
+void MemoryReusePass::MarkAsNotReusableInVar(
+    const details::VarHandle &var) const {
+  (*skip_reuse_vars_)[var.scope_idx()].insert(var.Name());
+}
+
 using InplaceOpMeta = std::unordered_map<std::string, InplaceInToOutMap>;
 
 static InplaceOpMeta *BuildIdentityInplaceOpMeta() {
@@ -416,7 +433,7 @@ static InplaceOpMeta *BuildIdentityInplaceOpMeta() {
 #undef PADDLE_REGISTER_IDENTITY_OP
 }
 
-const InplaceOpMeta &GetIdentityInplaceOpMeta() {
+static const InplaceOpMeta &GetIdentityInplaceOpMeta() {
   static auto *meta = BuildIdentityInplaceOpMeta();
   return *meta;
 }
@@ -428,7 +445,9 @@ bool IsIdentityOp(const std::string &type) {
 const InplaceInToOutMap &InOutPairOfIdentityOp(const std::string &type) {
   const auto &ops = GetIdentityInplaceOpMeta();
   auto iter = ops.find(type);
-  PADDLE_ENFORCE_EQ(iter != ops.end(), true);
+  PADDLE_ENFORCE_EQ(
+      iter != ops.end(), true,
+      platform::errors::NotFound("%s does not support identity inplace", type));
   return iter->second;
 }
 
