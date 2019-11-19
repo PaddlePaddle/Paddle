@@ -21,6 +21,7 @@ from .layer_function_generator import generate_layer_fn
 from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable
+from .loss import softmax_with_cross_entropy
 from . import tensor
 from . import nn
 from . import ops
@@ -53,6 +54,7 @@ __all__ = [
     'yolo_box',
     'box_clip',
     'multiclass_nms',
+    'locality_aware_nms',
     'retinanet_detection_output',
     'distribute_fpn_proposals',
     'box_decoder_and_assign',
@@ -1539,7 +1541,7 @@ def ssd_loss(location,
     target_label = tensor.cast(x=target_label, dtype='int64')
     target_label = __reshape_to_2d(target_label)
     target_label.stop_gradient = True
-    conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
+    conf_loss = softmax_with_cross_entropy(confidence, target_label)
     # 3. Mining hard examples
     actual_shape = nn.slice(conf_shape, axes=[0], starts=[0], ends=[2])
     actual_shape.stop_gradient = True
@@ -1593,7 +1595,7 @@ def ssd_loss(location,
     target_label = __reshape_to_2d(target_label)
     target_label = tensor.cast(x=target_label, dtype='int64')
 
-    conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
+    conf_loss = softmax_with_cross_entropy(confidence, target_label)
     target_conf_weight = __reshape_to_2d(target_conf_weight)
     conf_loss = conf_loss * target_conf_weight
 
@@ -1856,7 +1858,7 @@ def density_prior_box(input,
 
         .. code-block:: python
 
-            #declarative mode
+	    #declarative mode
 
 	    import paddle.fluid as fluid
 	    import numpy as np
@@ -3129,6 +3131,124 @@ def multiclass_nms(bboxes,
     output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
     helper.append_op(
         type="multiclass_nms",
+        inputs={'BBoxes': bboxes,
+                'Scores': scores},
+        attrs={
+            'background_label': background_label,
+            'score_threshold': score_threshold,
+            'nms_top_k': nms_top_k,
+            'nms_threshold': nms_threshold,
+            'nms_eta': nms_eta,
+            'keep_top_k': keep_top_k,
+            'nms_eta': nms_eta,
+            'normalized': normalized
+        },
+        outputs={'Out': output})
+    output.stop_gradient = True
+
+    return output
+
+
+def locality_aware_nms(bboxes,
+                       scores,
+                       score_threshold,
+                       nms_top_k,
+                       keep_top_k,
+                       nms_threshold=0.3,
+                       normalized=True,
+                       nms_eta=1.,
+                       background_label=-1,
+                       name=None):
+    """
+    **Local Aware NMS**
+    
+    `Local Aware NMS <https://arxiv.org/abs/1704.03155>`_ is to do locality-aware non maximum
+    suppression (LANMS) on boxes and scores.
+
+    Firstly, this operator merge box and score according their IOU
+    (intersection over union). In the NMS step, this operator greedily selects a
+    subset of detection bounding boxes that have high scores larger than score_threshold,
+    if providing this threshold, then selects the largest nms_top_k confidences scores
+    if nms_top_k is larger than -1. Then this operator pruns away boxes that have high
+    IOU overlap with already selected boxes by adaptive threshold NMS based on parameters
+    of nms_threshold and nms_eta.
+
+    Aftern NMS step, at most keep_top_k number of total bboxes are to be kept
+    per image if keep_top_k is larger than -1.
+
+    Args:
+        bboxes (Variable): A 3-D Tensor with shape [N, M, 4 or 8 16 24 32]
+                           represents the predicted locations of M bounding
+                           bboxes, N is the batch size. Each bounding box
+                           has four coordinate values and the layout is
+                           [xmin, ymin, xmax, ymax], when box size equals to 4.
+                           The data type is float32 or float64.
+        scores (Variable): A 3-D Tensor with shape [N, C, M] represents the
+                           predicted confidence predictions. N is the batch
+                           size, C is the class number, M is number of bounding
+                           boxes. Now only support 1 class. For each category
+                           there are total M scores which corresponding M bounding
+                           boxes. Please note, M is equal to the 2nd dimension of
+                           BBoxes. The data type is float32 or float64.
+        background_label (int): The index of background label, the background
+                                label will be ignored. If set to -1, then all
+                                categories will be considered. Default: -1
+        score_threshold (float): Threshold to filter out bounding boxes with
+                                 low confidence score. If not provided,
+                                 consider all boxes.
+        nms_top_k (int): Maximum number of detections to be kept according to
+                         the confidences aftern the filtering detections based
+                         on score_threshold.
+        nms_threshold (float): The threshold to be used in NMS. Default: 0.3
+        nms_eta (float): The threshold to be used in NMS. Default: 1.0
+        keep_top_k (int): Number of total bboxes to be kept per image after NMS
+                          step. -1 means keeping all bboxes after NMS step.
+        normalized (bool): Whether detections are normalized. Default: True
+        name(str): Name of the locality aware nms op, please refer to :ref:`api_guide_Name` .
+                          Default: None.
+
+    Returns:
+        Variable: A 2-D LoDTensor with shape [No, 6] represents the detections.
+             Each row has 6 values: [label, confidence, xmin, ymin, xmax, ymax]
+             or A 2-D LoDTensor with shape [No, 10] represents the detections.
+             Each row has 10 values:
+             [label, confidence, x1, y1, x2, y2, x3, y3, x4, y4]. No is the
+             total number of detections. If there is no detected boxes for all
+             images, lod will be set to {1} and Out only contains one value
+             which is -1.
+             (After version 1.3, when no boxes detected, the lod is changed
+             from {0} to {1}). The data type is float32 or float64.
+
+
+    Examples:
+        .. code-block:: python
+
+
+            import paddle.fluid as fluid
+            boxes = fluid.data(name='bboxes', shape=[None, 81, 8],
+                                      dtype='float32')
+            scores = fluid.data(name='scores', shape=[None, 1, 81],
+                                      dtype='float32')
+            out = fluid.layers.locality_aware_nms(bboxes=boxes,
+                                              scores=scores,
+                                              score_threshold=0.5,
+                                              nms_top_k=400,
+                                              nms_threshold=0.3,
+                                              keep_top_k=200,
+                                              normalized=False)
+    """
+    shape = scores.shape
+    assert len(shape) == 3, "dim size of scores must be 3"
+    assert shape[
+        1] == 1, "locality_aware_nms only support one class, Tensor score shape must be [N, 1, M]"
+
+    helper = LayerHelper('locality_aware_nms', **locals())
+
+    output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
+    out = {'Out': output}
+
+    helper.append_op(
+        type="locality_aware_nms",
         inputs={'BBoxes': bboxes,
                 'Scores': scores},
         attrs={

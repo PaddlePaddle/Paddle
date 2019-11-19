@@ -170,6 +170,8 @@ if(NOT APPLE)
                 -Wno-error=nonnull-compare # Warning in boost gcc 8.2
                 -Wno-error=address # Warning in boost gcc 8.2
                 -Wno-ignored-qualifiers # Warning in boost gcc 8.2
+                -Wno-ignored-attributes # Warning in Eigen gcc 8.3 
+                -Wno-parentheses # Warning in Eigen gcc 8.3
                 )
     endif()
 endif(NOT APPLE)

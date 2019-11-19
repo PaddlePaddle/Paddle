@@ -21,6 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+enum { kTransposeMKLDNNFP32 = 1, kTransposeMKLDNNINT8 = 2 };
+
 template <typename DeviceContext, typename T>
 inline void TransCompute(const int dim, const DeviceContext& dev_ctx,
                          const framework::Tensor& in, framework::Tensor* out,

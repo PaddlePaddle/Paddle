@@ -16,6 +16,10 @@ import logging
 import paddle.fluid as fluid
 import paddle.fluid.io as io
 import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
+from paddle.fluid.executor import Executor
+from paddle.fluid.parallel_executor import ParallelExecutor
+from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.framework import Program
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
@@ -80,11 +84,47 @@ class Collective(Fleet):
                              target_vars=None,
                              main_program=None,
                              export_for_deployment=True):
+        """
+        Prune the given `main_program` to build a new program especially for
+        inference, and then save it and all related parameters to given
+        `dirname` by the `executor`.
+        """
+        assert isinstance(executor, Executor), \
+            "In fleet.save_inference_model() function, executor must be as" \
+            " Executor type."
+
+        if main_program is None:
+            main_program = self._origin_program
+        assert isinstance(main_program, Program), \
+            "In fleet.save_inference_model() function, main_program " \
+            "must be as Program type."
+
         io.save_inference_model(dirname, feeded_var_names, target_vars,
                                 executor, main_program, None, None,
                                 export_for_deployment)
 
     def save_persistables(self, executor, dirname, main_program=None):
+        """
+        This function filters out all variables with `persistable==True` from
+        the give `main_program` and then saves these variables to the folder
+        `dirname` or file `filename`.
+
+        The `dirname` is used to specify the folder where persistable variables
+        are going to be saved. If you would like to save variables in separate
+        files, set `filename` None; if you would like to save all variables in a
+        single file, use `filename` to specify the file name.
+        """
+        assert isinstance(executor, Executor), \
+            "In fleet.save_inference_model() function, executor must be as" \
+            " Executor type."
+
+        if main_program is None:
+            main_program = self._origin_program
+
+        assert isinstance(main_program, Program), \
+            "In fleet.save_inference_model() function, main_program " \
+            "must be as Program type."
+
         io.save_persistables(executor, dirname, main_program, None)
 
 

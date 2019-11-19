@@ -635,11 +635,9 @@ class RecurrentGradOpShapeInference : public framework::InferShapeBase {
                       RecurrentBase::kOutputs);
 
     // In some case the kInitialStates is empty.
-    if (ctx->HasInputs(RecurrentBase::kInitialStates)) {
-      PADDLE_ENFORCE_EQ(ctx->HasOutputs(framework::GradVarName(
-                            RecurrentBase::kInitialStates)),
-                        true, "The output of(%s) should not be empty.",
-                        framework::GradVarName(RecurrentBase::kInitialStates));
+    if (ctx->HasInputs(RecurrentBase::kInitialStates) &&
+        ctx->HasOutputs(
+            framework::GradVarName(RecurrentBase::kInitialStates))) {
       ctx->SetOutputsDim(framework::GradVarName(RecurrentBase::kInitialStates),
                          ctx->GetInputsDim(RecurrentBase::kInitialStates));
     }

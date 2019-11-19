@@ -29,7 +29,7 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             return self._accumulators
 
         def get_velocity_str(self):
-            return self._velocity_acc_str
+            return self._u_velocity_acc_str
 
     def check_dgc_momentum_optimizer(self, dims=[5, 10, 8], name="momentum"):
         init_program = framework.Program()
@@ -66,8 +66,10 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             type="mean", inputs={"X": mul_out}, outputs={"Out": mean_out})
         # params_grads = append_backward(mean_out)
         params_grads = dgc_momentum_optimizer.backward(mean_out)
+        accumulator_count = 1 if name == "momentum" else 2
         self.assertEqual(len(params_grads), 1)
-        self.assertEqual(len(dgc_momentum_optimizer.get_accumulators()), 0)
+        self.assertEqual(
+            len(dgc_momentum_optimizer.get_accumulators()), accumulator_count)
         with framework.program_guard(program, init_program):
             opts = dgc_momentum_optimizer.apply_gradients(params_grads)
         self.assertEqual(len(opts), 2)
@@ -77,7 +79,7 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
 
         # Check accumulators
         accumulators = dgc_momentum_optimizer.get_accumulators()
-        self.assertEqual(len(accumulators), 1)
+        self.assertEqual(len(accumulators), accumulator_count)
         self.assertTrue(
             dgc_momentum_optimizer.get_velocity_str() in accumulators)
         velocity_acc = accumulators[dgc_momentum_optimizer.get_velocity_str()]
@@ -86,11 +88,9 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
 
         # Check init_program
         init_ops = init_program.global_block().ops
-        self.assertEqual(len(init_ops), 2)
+        self.assertEqual(len(init_ops), 1)
         self.assertEqual(init_ops[0].type, "fill_constant")
         self.assertAlmostEqual(init_ops[0].attr('value'), learning_rate)
-        self.assertEqual(init_ops[1].type, "fill_constant")
-        self.assertAlmostEqual(init_ops[1].attr('value'), 0.0)
 
         with open("test_dgc_optimizer_" + name + ".log", "w") as f:
             program_to_code(program, fout=f)

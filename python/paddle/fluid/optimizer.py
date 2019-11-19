@@ -867,7 +867,7 @@ class MomentumOptimizer(Optimizer):
         return momentum_op
 
 
-class DGCMomentumOptimizer(MomentumOptimizer):
+class DGCMomentumOptimizer(Optimizer):
     """
     DGC (Deep Gradient Compression) Momentum Optimizer. Original paper is https://arxiv.org/abs/1712.01887
 
@@ -923,6 +923,8 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                         sparsity=[0.999, 0.999])
 
     """
+    _u_velocity_acc_str = "_dgc_u_"
+    _v_velocity_acc_str = "_dgc_v_"
 
     def __init__(self,
                  learning_rate,
@@ -935,17 +937,25 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                  num_trainers=None,
                  regularization=None,
                  name=None):
-        self._sparsity = sparsity
-        self._rampup_step = rampup_step
-        self._rampup_step_var = None
+        assert learning_rate is not None
+        assert momentum is not None
+        super(DGCMomentumOptimizer, self).__init__(
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
+        self.type = "dgc_momentum"
+        self._momentum = momentum
+        self._use_nesterov = bool(use_nesterov)
 
         self._rampup_begin_step = rampup_begin_step
-        self._rampup_begin_step_var = None
+        self._rampup_step = rampup_step
+        self._sparsity = sparsity
 
+        self._rampup_begin_step_var = None
         self._global_step_var = None
+
         self._local_grad_clip_norm = None
         self._clip_norm = None
-
         if local_grad_clip_norm is not None:
             assert isinstance(num_trainers, int)
             assert isinstance(local_grad_clip_norm, float)
@@ -955,9 +965,6 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             self._num_trainers = num_trainers
             self._clip_norm = local_grad_clip_norm / (num_trainers *
                                                       num_trainers)
-
-        super(DGCMomentumOptimizer, self).__init__(
-            learning_rate, momentum, use_nesterov, regularization, name)
 
     def _is_use_dgc(self, param_var, grad_var):
         var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
@@ -970,34 +977,36 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+        velocity_acc = self._get_accumulator(self._u_velocity_acc_str,
+                                             param_and_grad[0])
+        assert velocity_acc is not None
+
+        inputs = {
+            "Param": param_and_grad[0],
+            "Grad": param_and_grad[1],
+            "Velocity": velocity_acc,
+            "LearningRate": self._create_param_lr(param_and_grad),
+        }
+        outputs = {
+            "ParamOut": param_and_grad[0],
+            "VelocityOut": velocity_acc,
+        }
+        attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
 
         if not self._is_use_dgc(param_and_grad[0], param_and_grad[1]):
-            return super(DGCMomentumOptimizer, self)._append_optimize_op(
-                block, param_and_grad)
+            type = "momentum"
+        else:
+            type = "dgc_momentum"
+            inputs.update({"current_step": self._global_step_var})
+            attrs.update({"rampup_begin_step": float(self._rampup_begin_step)})
 
-        velocity_acc = self._get_accumulator(self._velocity_acc_str,
-                                             param_and_grad[0])
         # create the dgc momentum optimize op
         dgc_momentum_op = block.append_op(
-            type="dgc_momentum",
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "Velocity": velocity_acc,
-                "LearningRate": self._create_param_lr(param_and_grad),
-                "current_step": self._global_step_var,
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "VelocityOut": velocity_acc
-            },
-            attrs={
-                "mu": self._momentum,
-                "use_nesterov": self._use_nesterov,
-                "rampup_begin_step": float(self._rampup_begin_step)
-            },
+            type=type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
             stop_gradient=True)
-
         return dgc_momentum_op
 
     def _add_auto_increment_var(self, counter_name, begin, step=1):
@@ -1019,14 +1028,29 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
         return counter
 
+    def _add_nranks_var(self, name, value=-1):
+        helper = LayerHelper('global_step_counter')
+        counter, is_new_var = helper.create_or_get_global_variable(
+            name=name, dtype='float32', shape=[1], persistable=True)
+        if is_new_var:
+            helper.set_variable_initializer(
+                counter,
+                initializer=Constant(
+                    value=float(value), force_cpu=True))
+            counter.stop_gradient = True
+
+        return counter
+
     def _append_dgc_ops(self, param_and_grads):
-        start_program = default_startup_program()
         main_program = default_main_program()
         main_program._enable_dgc = True
 
         # step counter
         self._global_step_var = self._add_auto_increment_var(
             counter_name=core.dgc.kDGCCounterName(), begin=0)
+
+        self._nranks_var = self._add_nranks_var(
+            name=core.dgc.kDGCNRanksName(), value=-1)
 
         # rampup begin step var for all_reduce_op_handle
         self._rampup_begin_step_var = tensor.create_global_var(
@@ -1037,22 +1061,16 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             value=self._rampup_begin_step * 1.0,
             force_cpu=True)
 
+        self.helper = LayerHelper(self.__class__.__name__)
+
         for param_var, grad_var in param_and_grads:
+            # reuse velocity in dgc_op and dgc_momentum_op
+            u_var = self._add_accumulator(self._u_velocity_acc_str, param_var)
+
             if not self._is_use_dgc(param_var, grad_var):
                 continue
 
-            u_var = tensor.create_global_var(
-                shape=param_var.shape,
-                dtype=param_var.dtype,
-                persistable=True,
-                name=param_var.name + core.dgc.kDGCUName(),
-                value=0.0)
-            v_var = tensor.create_global_var(
-                shape=param_var.shape,
-                dtype=param_var.dtype,
-                persistable=True,
-                name=param_var.name + core.dgc.kDGCVName(),
-                value=0.0)
+            v_var = self._add_accumulator(self._v_velocity_acc_str, param_var)
 
             k_var = tensor.create_global_var(
                 shape=[1],
@@ -1067,6 +1085,14 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                 dtype=param_var.dtype,
                 persistable=True,
                 name=param_var.name + core.dgc.kDGCEncodedName(),
+                value=0.0,
+                force_cpu=False)
+
+            gather_var = tensor.create_global_var(
+                shape=[1],
+                dtype=param_var.dtype,
+                persistable=True,
+                name=param_var.name + core.dgc.kDGCGatherName(),
                 value=0.0,
                 force_cpu=False)
 
@@ -1092,7 +1118,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             if self._local_grad_clip_norm is not None:
                 clip_var = self._append_clip_norm(grad_var, self._clip_norm)
             self._dgc_op(param_var, clip_var, grad_var, u_var, v_var, k_var,
-                         encoded_var)
+                         encoded_var, gather_var)
 
     def _is_the_backward_op(self, op):
         op_maker = core.op_proto_and_checker_maker
@@ -1131,7 +1157,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                 x=grad_var, max_norm=clip_norm, name=grad_var.name)
 
     def _dgc_op(self, param_var, clip_var, grad_var, u_var, v_var, k_var,
-                encoded_var):
+                encoded_var, gather_var):
         block = framework.default_main_program().global_block()
         op_maker = core.op_proto_and_checker_maker
         dgc_op = block.append_op(
@@ -1140,21 +1166,23 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                 "U": u_var,
                 "V": v_var,
                 "Grad": clip_var,
-                "current_step": self._global_step_var
+                "current_step": self._global_step_var,
+                "nranks": self._nranks_var,
             },
             outputs={
                 "U_out": u_var,
                 "V_out": v_var,
                 "EncodeGrad": encoded_var,
                 "k": k_var,
-                "Grad_out": grad_var
+                "Grad_out": grad_var,
+                "GatherBuff": gather_var,
             },
             attrs={
                 "m": self._momentum,
                 "sparsity": self._sparsity,
                 "use_nesterov": self._use_nesterov,
                 "rampup_begin_step": float(self._rampup_begin_step),
-                "rampup_step": float(self._rampup_step)
+                "rampup_step": float(self._rampup_step),
             },
             stop_gradient=True)
 
