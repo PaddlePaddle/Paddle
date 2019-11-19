@@ -418,7 +418,10 @@ class TestAdamOptimizerBetaVariable(unittest.TestCase):
             assert rets[0] is not None
 
         shape = [2, 3, 8, 8]
-        for place in [fluid.CPUPlace(), fluid.CUDAPlace(0)]:
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for place in places:
             test_with_place(place, shape)
 
 
