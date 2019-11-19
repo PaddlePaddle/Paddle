@@ -40,7 +40,7 @@ class ElementwiseMulOp : public ElementwiseOp {
     auto x_dims = vectorize(x->dims());
     const bool are_dims_divisable = !(x_dims[1] % simd_width);
     const bool is_x_format_correct = x->format() == x_format;
-    const bool is_y_format_correct = y->format() == memory::format::nc;
+    const bool is_y_format_correct = vectorize(y->dims()).size() == 2;
     return are_dims_divisable && is_x_format_correct && is_y_format_correct;
   }
 #endif
