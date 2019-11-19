@@ -125,6 +125,10 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
           PADDLE_ENFORCE(epsilon >= 0.0f && epsilon <= 0.001f,
                          "'epsilon' should be between 0.0 and 0.001.");
         });
+    AddAttr<int>("slot_dim",
+                 "(int, default -1) Dimension of one slot if set, "
+                 "when the input is concated by slot-wise embeddings")
+        .SetDefault(-1);
     AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
@@ -182,7 +186,7 @@ class DataNormKernel<platform::CPUDeviceContext, T>
     auto *scales = ctx.Output<Tensor>("Scales");
 
     // alloc memory
-    y->mutable_data<T>(ctx.GetPlace());
+    T *y_data = y->mutable_data<T>(ctx.GetPlace());
 
     Eigen::Array<T, Eigen::Dynamic, 1> inv_std(C);
     ConstEigenVectorArrayMap<T> b_size_arr(
@@ -198,14 +202,42 @@ class DataNormKernel<platform::CPUDeviceContext, T>
     means_arr = b_sum_arr / b_size_arr;
     scales_arr = (b_size_arr / b_square_sum_arr).sqrt();
 
+    const T *means_data = mean_out->data<T>();
+    const T *x_data = x->data<T>();
+    const T *scales_data = scales->data<T>();
+    const int slot_dim = ctx.Attr<int>("slot_dim");
+    T min_precision = 1e-7f;
     switch (data_layout) {
-      case DataLayout::kNCHW:  // because it's two dimensions, so make no
-                               // difference
+      case DataLayout::kNCHW:  // It's two dimensions, so make no difference
       case DataLayout::kNHWC: {
-        EigenArrayMap<T>(y->mutable_data<T>(ctx.GetPlace()), C, N) =
-            (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() - means_arr)
-                .colwise() *
-            scales_arr;
+        // if slot_dim is set and batch size is larger than zero, we choose
+        // to check if show number is zero, if so, skip normalization.
+        if (slot_dim > 0 && N > 0) {
+          const int item_size = x->numel() / N;
+          // location of show number in one embedding
+          int offset = 0;
+          for (int k = 0; k < N; ++k) {
+            for (int i = 0; i < item_size; i += slot_dim) {
+              if (x_data[offset + i] > -min_precision &&
+                  x_data[offset + i] < min_precision) {
+                // show = 0
+                memset(y_data + offset + i, 0, sizeof(T) * slot_dim);
+              } else {
+                for (int j = i; j < i + slot_dim; ++j) {
+                  y_data[offset + j] =
+                      (x_data[offset + j] - means_data[j]) * scales_data[j];
+                }
+              }
+            }
+
+            offset += item_size;
+          }
+        } else {
+          EigenArrayMap<T>(y_data, C, N) =
+              (ConstEigenArrayMap<T>(x->data<T>(), C, N).colwise() - means_arr)
+                  .colwise() *
+              scales_arr;
+        }
         break;
       }
       default:
@@ -321,20 +353,24 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
     auto *d_batch_square_sum =
         ctx.Output<Tensor>(framework::GradVarName("BatchSquareSum"));
 
-    EigenVectorArrayMap<T> d_batch_size_arr(
-        d_batch_size->mutable_data<T>(ctx.GetPlace()), C);
-    EigenVectorArrayMap<T> d_batch_sum_arr(
-        d_batch_sum->mutable_data<T>(ctx.GetPlace()), C);
-    EigenVectorArrayMap<T> d_batch_square_sum_arr(
-        d_batch_square_sum->mutable_data<T>(ctx.GetPlace()), C);
+    T *d_batch_size_data = d_batch_size->mutable_data<T>(ctx.GetPlace());
+    T *d_batch_sum_data = d_batch_sum->mutable_data<T>(ctx.GetPlace());
+    T *d_batch_square_sum_data =
+        d_batch_square_sum->mutable_data<T>(ctx.GetPlace());
+    EigenVectorArrayMap<T> d_batch_size_arr(d_batch_size_data, C);
+    EigenVectorArrayMap<T> d_batch_sum_arr(d_batch_sum_data, C);
+    EigenVectorArrayMap<T> d_batch_square_sum_arr(d_batch_square_sum_data, C);
 
     d_batch_size_arr.setZero();
     d_batch_sum_arr.setZero();
     d_batch_square_sum_arr.setZero();
+    const T *x_data = x->data<T>();
+    const T *means_data = means->data<T>();
 
     const float epsilon = ctx.Attr<float>("epsilon");
-    switch (
-        data_layout) {  // because it's two dimensions, so make no difference
+    T min_precision = 1e-7f;
+    const int slot_dim = ctx.Attr<int>("slot_dim");
+    switch (data_layout) {  // it's two dimensions, make no difference
       case DataLayout::kNCHW:
       case DataLayout::kNHWC: {
         ConstEigenVectorArrayMap<T> scales_arr(scales->data<T>(), C);
@@ -349,24 +385,60 @@ class DataNormGradKernel<platform::CPUDeviceContext, T>
           }
         }
 
-        // calculate data sum and squre sum
-        ConstEigenVectorArrayMap<T> batch_size_arr(batch_size->data<T>(), C);
-        ConstEigenVectorArrayMap<T> batch_sum_arr(batch_sum->data<T>(), C);
-        ConstEigenVectorArrayMap<T> batch_square_sum_arr(
-            batch_square_sum->data<T>(), C);
-        Eigen::Array<T, Eigen::Dynamic, 1> sample_sum(C);
-        Eigen::Array<T, Eigen::Dynamic, 1> sample_square_sum(C);
-        // calculate data sample sum and square sum
-        sample_sum.setZero();
-        sample_square_sum.setZero();
-        for (int nc = 0; nc < N; ++nc) {
-          sample_sum += x_arr.col(nc);
-          sample_square_sum += (x_arr.col(nc) - means_arr).square();
+        if (slot_dim > 0 && N > 0) {
+          // if slot_dim is set and batch size is larger than zero, we choose
+          // to check if show number is zero, if so, skip update statistics.
+          int offset = 0;
+          const int item_size = x->numel() / N;
+          for (int k = 0; k < N; ++k) {
+            for (int i = 0; i < item_size; i += slot_dim) {
+              if (!(x_data[offset + i] > -min_precision &&
+                    x_data[offset + i] < min_precision)) {
+                // show != 0
+                for (int j = i; j < i + slot_dim; ++j) {
+                  d_batch_size_data[j] += 1;
+                  d_batch_sum_data[j] += x_data[offset + j];
+                  d_batch_square_sum_data[j] +=
+                      (x_data[offset + j] - means_data[j]) *
+                      (x_data[offset + j] - means_data[j]);
+                }
+              }
+            }
+            offset += item_size;
+          }
+
+          for (int i = 0; i < item_size; i += slot_dim) {
+            for (int j = i; j < i + slot_dim; ++j) {
+              if (d_batch_size_data[j] >= 1) {
+                d_batch_sum_data[j] /= d_batch_size_data[j];
+                d_batch_square_sum_data[j] =
+                    d_batch_square_sum_data[j] / d_batch_size_data[j] +
+                    d_batch_size_data[j] * epsilon;
+                d_batch_size_data[j] = 1;
+              }
+            }
+          }
+        } else {
+          // calculate data sum and squre sum
+          ConstEigenVectorArrayMap<T> batch_size_arr(batch_size->data<T>(), C);
+          ConstEigenVectorArrayMap<T> batch_sum_arr(batch_sum->data<T>(), C);
+          ConstEigenVectorArrayMap<T> batch_square_sum_arr(
+              batch_square_sum->data<T>(), C);
+          Eigen::Array<T, Eigen::Dynamic, 1> sample_sum(C);
+          Eigen::Array<T, Eigen::Dynamic, 1> sample_square_sum(C);
+          // calculate data sample sum and square sum
+          sample_sum.setZero();
+          sample_square_sum.setZero();
+          for (int nc = 0; nc < N; ++nc) {
+            sample_sum += x_arr.col(nc);
+            sample_square_sum += (x_arr.col(nc) - means_arr).square();
+          }
+          // calculate gradient
+          d_batch_size_arr.setConstant(N);
+          d_batch_sum_arr = sample_sum;
+          d_batch_square_sum_arr =
+              sample_square_sum + d_batch_size_arr * epsilon;
         }
-        // calculate gradient
-        d_batch_size_arr.setConstant(N);
-        d_batch_sum_arr = sample_sum;
-        d_batch_square_sum_arr = sample_square_sum + d_batch_size_arr * epsilon;
         break;
       }
       default:
