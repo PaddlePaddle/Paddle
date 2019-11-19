@@ -68,8 +68,8 @@ struct PD_ZeroCopyFunctor {
     out_data.resize(out_num);
     output_t->copy_to_cpu(out_data.data());
     output_i->data = reinterpret_cast<void*>(malloc(out_num * sizeof(OutT)));
-    std::copy_n(out_data.data(), out_num * sizeof(OutT),
-                static_cast<OutT*>(output_i->data));
+    memmove(static_cast<OutT*>(output_i->data), out_data.data(),
+            out_num * sizeof(OutT));
     LOG(INFO) << out_data[0];
   }
 };
