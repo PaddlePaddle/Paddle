@@ -293,7 +293,7 @@ class WhileGradOp : public framework::OperatorBase {
             framework::AttributeMap attrs;
             attrs["dtype"] = inside_tensor.type();
             attrs["shape"] = framework::vectorize<int>(inside_tensor.dims());
-            attrs["value"] = 0.0f;
+            attrs["value"] = std::to_string(0.0f);
 
             auto var_name = pg_ig_names[param_id];
             auto zero_op = framework::OpRegistry::CreateOp(

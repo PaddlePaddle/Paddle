@@ -47,7 +47,7 @@ class TestConstantInitializer(unittest.TestCase):
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'fill_constant')
-        self.assertAlmostEqual(init_op.attr('value'), 0.0, delta=DELTA)
+        self.assertAlmostEqual(float(init_op.attr('value')), 0.0, delta=DELTA)
         return block
 
     def test_constant_initializer(self, dtype="float32"):
@@ -66,7 +66,7 @@ class TestConstantInitializer(unittest.TestCase):
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'fill_constant')
-        self.assertAlmostEqual(init_op.attr('value'), 2.3, delta=DELTA)
+        self.assertAlmostEqual(float(init_op.attr('value')), 2.3, delta=DELTA)
         return block
 
     def test_constant_initializer_fp16(self):
