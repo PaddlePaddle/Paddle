@@ -17,125 +17,176 @@ limitations under the License. */
 #include <cmath>
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
+#include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/operators/math.h"
 #include "paddle/fluid/platform/device_code.h"
 #include "paddle/fluid/platform/init.h"
 
 #ifdef PADDLE_WITH_CUDA
-TEST(code_generator, cuda) {
-  std::vector<int> mul_input{1, 2};
-  std::vector<int> add_input{3, 4};
-  std::vector<int> sub_input{5, 6};
-  std::vector<int> relu_input{7};
-  std::vector<int> sigmoid_input{8};
+namespace fusion_group = paddle::framework::ir::fusion_group;
 
-  int mul_out = 3;
-  int add_out = 5;
-  int sub_out = 7;
-  int relu_out = 8;
-  int sigmoid_out = 9;
+template <typename T>
+void SetupRandomCPUTensor(paddle::framework::LoDTensor* tensor) {
+  static unsigned int seed = 100;
+  std::mt19937 rng(seed++);
+  std::uniform_real_distribution<double> uniform_dist(0, 1);
 
-  std::string op1 = "elementwise_mul";
-  std::string op2 = "elementwise_add";
-  std::string op3 = "elementwise_sub";
-  std::string op4 = "relu";
-  std::string op5 = "sigmoid";
-  paddle::framework::ir::OperationExpression opexp1(mul_input, mul_out, op1);
-  paddle::framework::ir::OperationExpression opexp2(add_input, add_out, op2);
-  paddle::framework::ir::OperationExpression opexp3(sub_input, sub_out, op3);
-  paddle::framework::ir::OperationExpression opexp4(relu_input, relu_out, op4);
-  paddle::framework::ir::OperationExpression opexp5(sigmoid_input, sigmoid_out,
-                                                    op5);
+  T* ptr = tensor->data<T>();
+  PADDLE_ENFORCE_NOT_NULL(
+      ptr, "Call mutable_data to alloc memory for Tensor first.");
+  for (int64_t i = 0; i < tensor->numel(); ++i) {
+    ptr[i] = static_cast<T>(uniform_dist(rng)) - static_cast<T>(0.5);
+  }
+}
 
-  std::vector<paddle::framework::ir::OperationExpression> fused_op = {
-      opexp1, opexp2, opexp3, opexp4, opexp5};
-  paddle::framework::ir::CodeTemplate code_template(
-      paddle::framework::ir::kernel_elementwise_template);
-  paddle::framework::ir::CodeGenerator codegen(code_template);
-  paddle::framework::ir::TemplateVariable template_var;
-  template_var.Add("$name", EmitUniqueName(fused_op));
-  template_var.Add("$parameter", EmitDeclarationCode(fused_op, "float"));
-  template_var.Add("$compute", EmitComputeCode(fused_op));
-  std::string saxpy_code = codegen.GenerateCode(template_var);
+void TestMain(std::string func_name,
+              std::vector<fusion_group::OperationExpression> expressions,
+              std::vector<paddle::framework::LoDTensor> cpu_tensors, int n,
+              std::vector<int> input_ids, std::vector<int> output_ids) {
+  fusion_group::OperationMap::Init();
+  fusion_group::CodeGenerator code_generator;
+  std::string code_str = code_generator.GenerateCode(func_name, expressions);
+  VLOG(3) << code_str;
 
-  std::cout << saxpy_code << std::endl;
   paddle::framework::InitDevices(false, {0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
-  paddle::platform::CUDADeviceCode code(place, EmitUniqueName(fused_op),
-                                        saxpy_code);
+  paddle::platform::CUDADeviceCode device_code(place, func_name, code_str);
+  device_code.Compile();
 
-  paddle::framework::Tensor cpu_a;
-  paddle::framework::Tensor cpu_b;
-  paddle::framework::Tensor cpu_c;
-  paddle::framework::Tensor cpu_d;
-  paddle::framework::Tensor cpu_e;
-  paddle::framework::Tensor cpu_f;
-  paddle::framework::Tensor cpu_g;
-  paddle::framework::Tensor cpu_h;
-  paddle::framework::Tensor cpu_o;
+  std::vector<paddle::framework::LoDTensor> gpu_tensors(cpu_tensors.size());
+
+  std::vector<float*> gpu_ptrs(gpu_tensors.size());
+  std::vector<void*> args;
+  args.push_back(&n);
+
+  for (size_t i = 0; i < input_ids.size(); ++i) {
+    gpu_ptrs[input_ids[i]] = gpu_tensors[input_ids[i]].mutable_data<float>(
+        cpu_tensors[input_ids[i]].dims(), place);
+    args.push_back(&gpu_ptrs[input_ids[i]]);
+
+    SetupRandomCPUTensor<float>(&cpu_tensors[input_ids[i]]);
+    TensorCopySync(cpu_tensors[input_ids[i]], place,
+                   &gpu_tensors[input_ids[i]]);
+  }
+
+  for (size_t i = 0; i < output_ids.size(); ++i) {
+    gpu_ptrs[output_ids[i]] = gpu_tensors[output_ids[i]].mutable_data<float>(
+        cpu_tensors[output_ids[i]].dims(), place);
+    args.push_back(&gpu_ptrs[output_ids[i]]);
+  }
+
+  device_code.SetNumThreads(1024);
+  device_code.SetWorkloadPerThread(1);
+  device_code.Launch(n, &args);
+
+  auto* dev_ctx = reinterpret_cast<paddle::platform::CUDADeviceContext*>(
+      paddle::platform::DeviceContextPool::Instance().Get(place));
+  dev_ctx->Wait();
+
+  for (size_t i = 0; i < output_ids.size(); ++i) {
+    TensorCopySync(gpu_tensors[output_ids[i]], paddle::platform::CPUPlace(),
+                   &cpu_tensors[output_ids[i]]);
+  }
+}
+
+TEST(code_generator, elementwise) {
+  // t2 = t0 * t1
+  // t4 = t2 + t3
+  // t6 = t4 - t5
+  // t7 = relu(t6)
+  // t8 = sigmoid(t7)
+  fusion_group::OperationExpression exp1("elementwise_mul", {0, 1}, {2});
+  fusion_group::OperationExpression exp2("elementwise_add", {2, 3}, {4});
+  fusion_group::OperationExpression exp3("elementwise_sub", {4, 5}, {6});
+  fusion_group::OperationExpression exp4("relu", {6}, {7});
+  fusion_group::OperationExpression exp5("sigmoid", {7}, {8});
+
+  std::vector<fusion_group::OperationExpression> expressions = {
+      exp1, exp2, exp3, exp4, exp5};
+
+  // Prepare CPU tensors
+  std::vector<paddle::framework::LoDTensor> cpu_tensors(9);
+  std::vector<int> input_ids = {0, 1, 3, 5};
+  std::vector<int> output_ids = {2, 4, 6, 7, 8};
 
   auto dims = paddle::framework::make_ddim(
       {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
-  cpu_a.mutable_data<float>(dims, paddle::platform::CPUPlace());
-  cpu_b.mutable_data<float>(dims, paddle::platform::CPUPlace());
-  cpu_c.mutable_data<float>(dims, paddle::platform::CPUPlace());
-  cpu_d.mutable_data<float>(dims, paddle::platform::CPUPlace());
-  cpu_e.mutable_data<float>(dims, paddle::platform::CPUPlace());
-  cpu_f.mutable_data<float>(dims, paddle::platform::CPUPlace());
-  cpu_g.mutable_data<float>(dims, paddle::platform::CPUPlace());
-  cpu_o.mutable_data<float>(dims, paddle::platform::CPUPlace());
-
-  size_t n = cpu_a.numel();
-  for (size_t i = 0; i < n; ++i) {
-    cpu_a.data<float>()[i] = static_cast<float>(i);
-  }
-  for (size_t i = 0; i < n; ++i) {
-    cpu_b.data<float>()[i] = static_cast<float>(0.5);
-    cpu_d.data<float>()[i] = static_cast<float>(10.0);
-    cpu_f.data<float>()[i] = static_cast<float>(0.0);
+  for (size_t i = 0; i < cpu_tensors.size(); ++i) {
+    cpu_tensors[i].mutable_data<float>(dims, paddle::platform::CPUPlace());
   }
 
-  paddle::framework::Tensor a;
-  paddle::framework::Tensor b;
-  paddle::framework::Tensor c;
-  paddle::framework::Tensor d;
-  paddle::framework::Tensor e;
-  paddle::framework::Tensor f;
-  paddle::framework::Tensor g;
-  paddle::framework::Tensor h;
-  paddle::framework::Tensor o;
+  int n = cpu_tensors[0].numel();
+  TestMain("fused_elementwise_0", expressions, cpu_tensors, n, input_ids,
+           output_ids);
 
-  float* a_data = a.mutable_data<float>(dims, place);
-  float* b_data = b.mutable_data<float>(dims, place);
-  float* c_data = c.mutable_data<float>(dims, place);
-  float* d_data = d.mutable_data<float>(dims, place);
-  float* e_data = e.mutable_data<float>(dims, place);
-  float* f_data = f.mutable_data<float>(dims, place);
-  float* g_data = g.mutable_data<float>(dims, place);
-  float* h_data = h.mutable_data<float>(dims, place);
-  float* o_data = o.mutable_data<float>(dims, place);
+  auto cpu_kernel_handler = [&](float* var0, float* var1, float* var3,
+                                float* var5, int i) -> float {
+    float var2_i = var0[i] * var1[i];
+    float var4_i = var2_i + var3[i];
+    float var6_i = var4_i - var5[i];
+    float var7_i = var6_i > 0.0 ? var6_i : 0.0;
+    float var8_i = 1.0 / (1.0 + std::exp(-var7_i));
+    return var8_i;
+  };
 
-  TensorCopySync(cpu_a, place, &a);
-  TensorCopySync(cpu_b, place, &b);
-  TensorCopySync(cpu_d, place, &d);
-  TensorCopySync(cpu_f, place, &f);
+  // Check the results
+  for (int i = 0; i < n; i++) {
+    float result = cpu_kernel_handler(
+        cpu_tensors[0].data<float>(), cpu_tensors[1].data<float>(),
+        cpu_tensors[3].data<float>(), cpu_tensors[5].data<float>(), i);
+    PADDLE_ENFORCE_LT(fabs(cpu_tensors[8].data<float>()[i] - result), 1.E-05);
+  }
+}
 
-  code.Compile();
+TEST(code_generator, elementwise_grad) {
+  // The var order: t0, t1, t2, t3, t0', t1', t2', t3'
+  // t2 = t0 * t1
+  // t3 = relu(t2)
+  // t2' = relu_grad(t2, t3, t3')
+  // t0', t1' = elementwise_mul_grad(t0, t1, t2, t2')
+  fusion_group::OperationExpression exp1("relu_grad", {2, 3, 7}, {6});
+  fusion_group::OperationExpression exp2("elementwise_mul_grad", {0, 1, 2, 6},
+                                         {4, 5});
 
-  std::vector<void*> args = {&n,      &a_data, &b_data, &d_data, &f_data,
-                             &c_data, &e_data, &g_data, &h_data, &o_data};
-  code.SetNumThreads(1024);
-  code.SetWorkloadPerThread(1);
-  code.Launch(n, &args);
+  std::vector<fusion_group::OperationExpression> expressions = {exp1, exp2};
 
-  TensorCopySync(o, paddle::platform::CPUPlace(), &cpu_o);
-  for (size_t i = 0; i < n; i++) {
-    float result =
-        (1.0 / (1.0 + std::exp(-std::max(
-                          0.0, static_cast<float>(i) * 0.5 + 10.0 - 0.0))));
-    PADDLE_ENFORCE_EQ(cpu_o.data<float>()[i], result);
+  // Prepare CPU tensors
+  std::vector<paddle::framework::LoDTensor> cpu_tensors(8);
+  std::vector<int> input_ids = {0, 1, 2, 3, 7};
+  std::vector<int> output_ids = {4, 5, 6};
+
+  auto dims = paddle::framework::make_ddim(
+      {static_cast<int64_t>(256), static_cast<int64_t>(1024)});
+  for (size_t i = 0; i < cpu_tensors.size(); ++i) {
+    cpu_tensors[i].mutable_data<float>(dims, paddle::platform::CPUPlace());
+  }
+
+  int n = cpu_tensors[0].numel();
+  TestMain("fused_elementwise_grad_0", expressions, cpu_tensors, n, input_ids,
+           output_ids);
+
+  auto cpu_kernel_handler = [&](float* var0, float* var1, float* var2,
+                                float* var3, float* var7,
+                                int i) -> std::vector<float> {
+    float var6_i = var2[i] > 0 ? var7[i] : 0;
+    float var4_i = var6_i * var1[i];
+    float var5_i = var6_i * var0[i];
+    return std::vector<float>{var4_i, var5_i, var6_i};
+  };
+
+  // Check the results
+  for (int i = 0; i < n; i++) {
+    std::vector<float> results = cpu_kernel_handler(
+        cpu_tensors[0].data<float>(), cpu_tensors[1].data<float>(),
+        cpu_tensors[2].data<float>(), cpu_tensors[3].data<float>(),
+        cpu_tensors[7].data<float>(), i);
+    PADDLE_ENFORCE_LT(fabs(cpu_tensors[4].data<float>()[i] - results[0]),
+                      1.E-05);
+    PADDLE_ENFORCE_LT(fabs(cpu_tensors[5].data<float>()[i] - results[1]),
+                      1.E-05);
+    PADDLE_ENFORCE_LT(fabs(cpu_tensors[6].data<float>()[i] - results[2]),
+                      1.E-05);
   }
 }
 #endif

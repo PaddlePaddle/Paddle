@@ -32,12 +32,15 @@ class MulOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of MulOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Y"), true,
-                      "Input(Y) of MulOp should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of MulOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) of MulOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Y"), true,
+        platform::errors::NotFound("Input(Y) of MulOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::NotFound("Output(Out) of MulOp should not be null."));
 
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
@@ -50,32 +53,41 @@ class MulOp : public framework::OperatorWithKernel {
             << " y_num_col_dims=" << y_num_col_dims;
 
     PADDLE_ENFORCE_NE(framework::product(y_dims), 0,
-                      "Maybe the Input variable Y(%s) has not "
-                      "been initialized. You may need to confirm "
-                      "if you put exe.run(startup_program) "
-                      "after optimizer.minimize function.",
-                      ctx->Inputs("Y").front());
-    PADDLE_ENFORCE_GT(x_dims.size(), x_num_col_dims,
-                      "ShapeError: The input tensor X's dimensions of MulOp "
-                      "should be larger than x_num_col_dims. But received X's "
-                      "dimensions = %d, X's shape = [%s], x_num_col_dims = %d.",
-                      x_dims.size(), x_dims, x_num_col_dims);
-    PADDLE_ENFORCE_GT(y_dims.size(), y_num_col_dims,
-                      "ShapeError: The input tensor Y's dimensions of MulOp "
-                      "should be larger than y_num_col_dims. But received Y's "
-                      "dimensions = %d, Y's shape = [%s], y_num_col_dims = %d.",
-                      y_dims.size(), y_dims, y_num_col_dims);
+                      platform::errors::PreconditionNotMet(
+                          "The Input variable Y(%s) has not "
+                          "been initialized. You may need to confirm "
+                          "if you put exe.run(startup_program) "
+                          "after optimizer.minimize function.",
+                          ctx->Inputs("Y").front()));
+    PADDLE_ENFORCE_GT(
+        x_dims.size(), x_num_col_dims,
+        platform::errors::InvalidArgument(
+            "The input tensor X's dimensions of MulOp "
+            "should be larger than x_num_col_dims. But received X's "
+            "dimensions = %d, X's shape = [%s], x_num_col_dims = %d.",
+            x_dims.size(), x_dims, x_num_col_dims));
+    PADDLE_ENFORCE_GT(
+        y_dims.size(), y_num_col_dims,
+        platform::errors::InvalidArgument(
+            "The input tensor Y's dimensions of MulOp "
+            "should be larger than y_num_col_dims. But received Y's "
+            "dimensions = %d, Y's shape = [%s], y_num_col_dims = %d.",
+            y_dims.size(), y_dims, y_num_col_dims));
 
     auto x_mat_dims = framework::flatten_to_2d(x_dims, x_num_col_dims);
     auto y_mat_dims = framework::flatten_to_2d(y_dims, y_num_col_dims);
 
     PADDLE_ENFORCE_EQ(
         x_mat_dims[1], y_mat_dims[0],
-        "ShapeError: After flatten the input tensor X and Y to 2-D dimensions "
-        "matrix X1 and Y1, the matrix X1's width must be equal with matrix "
-        "Y1's height. But received X's shape = [%s], X1's shape = [%s], X1's "
-        "width = %s; Y's shape = [%s], Y1's shape = [%s], Y1's height = %s.",
-        x_dims, x_mat_dims, x_mat_dims[1], y_dims, y_mat_dims, y_mat_dims[0]);
+        platform::errors::InvalidArgument(
+            "After flatten the input tensor X and Y to 2-D dimensions "
+            "matrix X1 and Y1, the matrix X1's width must be equal with matrix "
+            "Y1's height. But received X's shape = [%s], X1's shape = [%s], "
+            "X1's "
+            "width = %s; Y's shape = [%s], Y1's shape = [%s], Y1's height = "
+            "%s.",
+            x_dims, x_mat_dims, x_mat_dims[1], y_dims, y_mat_dims,
+            y_mat_dims[0]));
     std::vector<int64_t> output_dims;
     output_dims.reserve(
         static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));

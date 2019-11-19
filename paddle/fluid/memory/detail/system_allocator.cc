@@ -120,21 +120,21 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
     gpu_alloc_size_ += size;
     return p;
   } else {
-    if (result == cudaErrorMemoryAllocation) {
-      result = cudaSuccess;
-    }
-    PADDLE_ENFORCE_CUDA_SUCCESS(result);
+    platform::RaiseNonOutOfMemoryError(&result);
 
-    result = cudaGetLastError();
-    if (result == cudaErrorMemoryAllocation) {
-      result = cudaSuccess;
-    }
-    PADDLE_ENFORCE_CUDA_SUCCESS(result);
+    /**
+     * NOTE(zjl): Sometimes cudaMemGetInfo would raise OOM error
+     * if there is very little GPU memory left. In this case, we
+     * should consider the available GPU memory to be 0, and throw
+     * exception inside this function instead of throwing exception
+     * inside cudaMemGetInfo.
+     */
+    size_t avail = 0, total = 0;
+    result = cudaMemGetInfo(&avail, &total);
+    if (result != cudaSuccess) avail = 0;
+    platform::RaiseNonOutOfMemoryError(&result);
 
-    size_t avail, total;
-    platform::GpuMemoryUsage(&avail, &total);
-
-    PADDLE_THROW_BAD_ALLOC(
+    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
         "\n\nOut of memory error on GPU %d. "
         "Cannot allocate %s memory on GPU %d, "
         "available memory is only %s.\n\n"
@@ -148,7 +148,7 @@ void* GPUAllocator::Alloc(size_t* index, size_t size) {
         "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.\n\n",
         gpu_id_, string::HumanReadableSize(size), gpu_id_,
         string::HumanReadableSize(avail), gpu_id_,
-        FLAGS_fraction_of_gpu_memory_to_use);
+        FLAGS_fraction_of_gpu_memory_to_use));
   }
 }
 

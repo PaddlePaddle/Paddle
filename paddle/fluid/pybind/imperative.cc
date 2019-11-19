@@ -229,6 +229,10 @@ void BindImperative(py::module *m_ptr) {
   m.def("_is_dygraph_debug_enabled",
         []() { return imperative::IsDebugEnabled(); });
   m.def("_dygraph_debug_level", []() { return imperative::GetDebugLevel(); });
+  m.def("_switch_tracer",
+        [](const std::shared_ptr<imperative::Tracer> &tracer) {
+          imperative::SetCurrentTracer(tracer);
+        });
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase",
@@ -324,20 +328,42 @@ void BindImperative(py::module *m_ptr) {
            });
 
   py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
-      .def("set_name_prefix",
-           &imperative::jit::ProgramDescTracer::SetNamePrefix)
-      .def("set_feed_vars", &imperative::jit::ProgramDescTracer::SetFeedVars)
-      .def("set_fetch_vars", &imperative::jit::ProgramDescTracer::SetFetchVars)
       .def("create_program_desc",
            &imperative::jit::ProgramDescTracer::CreateProgramDesc)
       .def("reset", &imperative::jit::ProgramDescTracer::Reset);
 
-  py::class_<imperative::Tracer>(m, "Tracer", "")
+  py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
+      m, "Tracer",
+      R"DOC()DOC")
       .def("__init__",
            [](imperative::Tracer &self) { new (&self) imperative::Tracer(); })
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
+      .def_property("_train_mode", &imperative::Tracer::NoGrad,
+                    &imperative::Tracer::SetNoGrad)
+      .def_property(
+          "_expected_place",
+          [](const imperative::Tracer &self) -> py::object {
+            return py::cast(self.ExpectedPlace());
+          },
+          [](imperative::Tracer &self, const py::object &obj) {
+            if (py::isinstance<platform::CUDAPlace>(obj)) {
+              auto p = obj.cast<platform::CUDAPlace *>();
+              self.SetExpectedPlace<platform::CUDAPlace>(*p);
+            } else if (py::isinstance<platform::CPUPlace>(obj)) {
+              auto p = obj.cast<platform::CPUPlace *>();
+              self.SetExpectedPlace<platform::CPUPlace>(*p);
+            } else if (py::isinstance<platform::CUDAPinnedPlace>(obj)) {
+              auto p = obj.cast<platform::CUDAPinnedPlace *>();
+              self.SetExpectedPlace<platform::CUDAPinnedPlace>(*p);
+            } else {
+              PADDLE_THROW(
+                  "Incompatible Place Type: supports CUDAPlace, CPUPlace, "
+                  "CUDAPinnedPlace, "
+                  "but got Unknown Type!");
+            }
+          })
       .def("_get_program_desc_tracer",
            &imperative::Tracer::GetProgramDescTracer,
            py::return_value_policy::reference)

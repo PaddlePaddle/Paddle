@@ -151,6 +151,39 @@ class TestElementwiseDivOp_broadcast_5(ElementwiseDivOp):
         self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
 
 
+class TestElementwiseDivOp_commonuse_1(ElementwiseDivOp):
+    def setUp(self):
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 4]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [1, 1, 4]).astype("float32"),
+        }
+        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseDivOp_commonuse_2(ElementwiseDivOp):
+    def setUp(self):
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [2, 3, 1, 5]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [2, 1, 4, 1]).astype("float32"),
+        }
+        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
+
+
+class TestElementwiseDivOp_xsize_lessthan_ysize(ElementwiseDivOp):
+    def setUp(self):
+        self.op_type = "elementwise_div"
+        self.inputs = {
+            'X': np.random.uniform(0.1, 1, [4, 5]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float32"),
+        }
+
+        self.attrs = {'axis': 2}
+
+        self.outputs = {'Out': np.divide(self.inputs['X'], self.inputs['Y'])}
+
+
 class TestElementwiseDivOp_INT(OpTest):
     def setUp(self):
         self.op_type = "elementwise_div"

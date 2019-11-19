@@ -105,7 +105,7 @@ __global__ void KeGruForwardFinalOutput(OpFinalOutput op_final_output,
  * threads(tile_size, 1)
  * grid(frame_blocks, 1)
  */
-template <class T>
+template <class T, int Tiled_size>
 __global__ void KeFastCollectiveGruGate(T *gate_value, T *prev_output_value,
                                         T *gate_weight, T *reset_output,
                                         int frame_size,
@@ -113,9 +113,7 @@ __global__ void KeFastCollectiveGruGate(T *gate_value, T *prev_output_value,
   T xt_0 = 0.0f;
   T a0 = 0.0f;
   T c0 = 0.0f;
-
-  int Tiled_size = blockDim.x;
-  T b0[16];
+  T b0[Tiled_size];
 
   int COL = blockIdx.x * blockDim.x + threadIdx.x;
   int Tiled_mask = ((1 << Tiled_size) - 1);
@@ -165,7 +163,7 @@ __global__ void KeFastCollectiveGruGate(T *gate_value, T *prev_output_value,
  * threads(tile_size, 1)
  * grid(frame_blocks, 1)
  */
-template <class T>
+template <class T, int Tiled_size>
 __global__ void KeFastCollectiveGruOut(T *gate_weight, T *prev_out_value,
                                        T *output_value, T *gate_value,
                                        T *reset_value, int frame_size,
@@ -174,10 +172,9 @@ __global__ void KeFastCollectiveGruOut(T *gate_weight, T *prev_out_value,
   int COL = blockIdx.x * blockDim.x + threadIdx.x;
 
   T a0 = 0.0f;
-  T b0[16];
+  T b0[Tiled_size];
   T c0 = 0.0f;
 
-  int Tiled_size = blockDim.x;
   int Tiled_mask = ((1 << Tiled_size) - 1);
   //- Tiled  matrix multiply with register shift
   if (prev_out_value) {
