@@ -398,7 +398,7 @@ void RecurrentGradOp::RunImpl(const framework::Scope &scope,
           framework::AttributeMap attrs;
           attrs["dtype"] = inside_tensor.type();
           attrs["shape"] = framework::vectorize<int>(inside_tensor.dims());
-          attrs["value"] = 0.0f;
+          attrs["value"] = std::to_string(0.0);
 
           auto zero_op = framework::OpRegistry::CreateOp(
               "fill_constant", framework::VariableNameMap{},

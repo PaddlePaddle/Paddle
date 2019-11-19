@@ -80,6 +80,25 @@ struct ExtractAttribute<bool> {
 };
 
 template <>
+struct ExtractAttribute<std::string> {
+  explicit ExtractAttribute(const std::string& attr_name)
+      : attr_name_(attr_name) {}
+
+  std::string* operator()(Attribute& attr) const {
+    std::string* attr_value = nullptr;
+    try {
+      attr_value = &boost::get<std::string>(attr);
+    } catch (boost::bad_get& bad_get) {
+      PADDLE_THROW("Cannot get attribute %s by type int64_t, its type is %s",
+                   attr_name_, paddle::platform::demangle(attr.type().name()));
+    }
+    return attr_value;
+  }
+
+  const std::string& attr_name_;
+};
+
+template <>
 struct ExtractAttribute<int64_t> {
   explicit ExtractAttribute(const std::string& attr_name)
       : attr_name_(attr_name) {}
