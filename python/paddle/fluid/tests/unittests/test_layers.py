@@ -2471,7 +2471,9 @@ class TestBook(LayerTest):
             data = self._get_data(
                 name='data', shape=[32, 128, 128], dtype="float32")
             momentum = self._get_data(
-                name='momentum', shape=[1], dtype='float32',
+                name='momentum',
+                shape=[1],
+                dtype='float32',
                 append_batch_size=False)
             out = layers.batch_norm(data, momentum=momentum)
             return (out)
