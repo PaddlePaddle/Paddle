@@ -2593,8 +2593,7 @@ _PSPARAMETER.fields_by_name['worker_param'].message_type = _WORKERPARAMETER
 _PSPARAMETER.fields_by_name['server_param'].message_type = _SERVERPARAMETER
 _PSPARAMETER.fields_by_name[
     'trainer_param'].message_type = _DOWNPOURTRAINERPARAMETER
-_PSPARAMETER.fields_by_name[
-    'fs_client_param'].message_type = _FSCLIENTPARAMETER
+_PSPARAMETER.fields_by_name['fs_client_param'].message_type = _FSCLIENTPARAMETER
 _WORKERPARAMETER.fields_by_name[
     'downpour_worker_param'].message_type = _DOWNPOURWORKERPARAMETER
 _SERVERPARAMETER.fields_by_name[
@@ -2628,8 +2627,7 @@ _SPARSECOMMONSGDRULEPARAMETER.fields_by_name[
     'naive'].message_type = _SPARSENAIVESGDRULEPARAMETER
 _SPARSECOMMONSGDRULEPARAMETER.fields_by_name[
     'adagrad'].message_type = _SPARSEADAGRADSGDRULEPARAMETER
-_SPARSECOMMONSGDRULEPARAMETER.fields_by_name[
-    'adam'].message_type = _SPARSEADAMSGDPARAMETER
+_SPARSECOMMONSGDRULEPARAMETER.fields_by_name['adam'].message_type = _SPARSEADAMSGDPARAMETER
 _DENSESGDRULEPARAMETER.fields_by_name['adam'].message_type = _ADAMSGDPARAMETER
 _DENSESGDRULEPARAMETER.fields_by_name[
     'naive'].message_type = _NAIVESGDPARAMETER
