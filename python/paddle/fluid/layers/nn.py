@@ -2552,14 +2552,14 @@ def batch_norm(input,
     batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
         dtype)
 
-    inputs={
+    inputs = {
         "X": input,
         "Scale": scale,
         "Bias": bias,
         "Mean": mean,
         "Variance": variance
     }
-    attrs={
+    attrs = {
         "epsilon": epsilon,
         "is_test": is_test,
         "data_layout": data_layout,

@@ -60,8 +60,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
 
   if (ctx->IsRuntime() && ctx->HasInput("MomentumTensor")) {
     auto mom = ctx->Inputs("MomentumTensor");
-    PADDLE_ENFORCE_EQ(mom.size(), 1,
-                      "Input(MomentumTensor) size must be 1");
+    PADDLE_ENFORCE_EQ(mom.size(), 1, "Input(MomentumTensor) size must be 1");
   }
 
   PADDLE_ENFORCE_GE(
@@ -183,7 +182,7 @@ void BatchNormOpMaker::Make() {
            "(Tensor<float32>, optional) If provided, batch_norm will "
            "use this as momentum, this has a higher priority than "
            "attr(momentum), the shape of this tensor MUST BE [1].")
-    .AsDispensable();
+      .AsDispensable();
   AddOutput("Y", "result after normalization");
   AddOutput("MeanOut",
             "Share memory with Mean. "
@@ -243,7 +242,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
 
     float momentum = ctx.Attr<float>("momentum");
     if (ctx.HasInput("MomentumTensor")) {
-      const auto* mom_tensor = ctx.Input<Tensor>("MomentumTensor");
+      const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
       momentum = mom_tensor->data<float>()[0];
     }
 

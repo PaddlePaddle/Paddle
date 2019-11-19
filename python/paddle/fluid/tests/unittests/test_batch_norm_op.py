@@ -394,14 +394,14 @@ class TestBatchNormOpTraining(unittest.TestCase):
                         name=name,
                         dtype='float32',
                         shape=ground_truth[name].shape)
-                inputs={
+                inputs = {
                     "X": block.var('x'),
                     "Scale": block.var('scale'),
                     "Bias": block.var('bias'),
                     "Mean": block.var('mean'),
                     "Variance": block.var('variance')
                 }
-                attrs={
+                attrs = {
                     "epsilon": epsilon,
                     "is_test": False,
                     "data_layout": data_layout,
@@ -441,14 +441,15 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
                 exe = fluid.Executor(place)
-                out = exe.run(
-                    program,
-                    feed={
-                        name: var_dict[name]
-                        for name in
-                        ['x', 'scale', 'bias', 'mean', 'variance', 'y@GRAD', 'momentum_var']
-                    },
-                    fetch_list=self.fetch_list)
+                out = exe.run(program,
+                              feed={
+                                  name: var_dict[name]
+                                  for name in [
+                                      'x', 'scale', 'bias', 'mean', 'variance',
+                                      'y@GRAD', 'momentum_var'
+                                  ]
+                              },
+                              fetch_list=self.fetch_list)
 
             for id, name in enumerate(self.fetch_list):
                 if name == 'variance':
