@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <queue>
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_reuse_pass.h"
 
 namespace paddle {
@@ -22,23 +23,136 @@ using OpHandleBase = details::OpHandleBase;
 using ComputationOpHandle = details::ComputationOpHandle;
 using VarHandle = details::VarHandle;
 using VarHandleBase = details::VarHandleBase;
-using DummyVarHandle = details::DummyVarHandle;
 
-static bool InOutputArgumentOf(const std::string &arg_name,
-                               const OperatorBase &op) {
-  auto &outputs = op.Outputs();
-  for (auto &pair : outputs) {
-    auto &out_args = pair.second;
-    auto iter = std::find(out_args.begin(), out_args.end(), arg_name);
-    if (iter != out_args.end()) return true;
-  }
-  return false;
-}
-
+/**
+ * The vars in `IdentityInplaceVarInfo` builds a `FOREST`.
+ *
+ * This means that:
+ *  1. there is no circle. Otherwise, it must be a bug of Paddle framework.
+ *  2. input edge number of any var must be 0 (for root) or 1.
+ *  3. output edge number of any var must be 0 (for leaf) or larger than 0.
+ *
+ * We would use the characteristics of `FOREST` in the following codes,
+ * so we prove these 3 conditions here.
+ *
+ * Condition 1 and 3 is obvious. Let us prove condition 2:
+ *
+ *  In order to perform in-place reuse, `output_var` must be the 1st version
+ *  in SSA graph (it is guaranteed in `MemoryReusePass::IsOutVarReusable`
+ *  method). Therefore, if the input edge number of `output_var` is more than 1,
+ *  it means `output_var` must be outputs of at least 2 different ops (one op
+ *  with the same output is not allowed in Paddle framework). However, if
+ *  `output_var` is the output of 2 different ops, `output_var`s in these 2 ops
+ *  must have different version, which is guaranteed by SSA graph. Therefore,
+ *  `output_var` must be the unique output of unique op. Condition 2 is proved.
+ */
 using IdentityInplaceVarInfo = std::unordered_map<
     VarHandle * /*input_var*/,
     std::vector<std::pair<VarHandle * /*output_var*/,
                           ComputationOpHandle * /*identity op*/>>>;
+
+static std::unordered_map<VarHandle *, VarHandle *> BuildParent(
+    const IdentityInplaceVarInfo &info) {
+  std::unordered_map<VarHandle *, VarHandle *> parent;
+
+  for (auto &pair : info) {
+    PADDLE_ENFORCE_EQ(pair.second.empty(), false,
+                      platform::errors::InvalidArgument(
+                          "Var info list cannot be empty, this may be a bug"));
+
+    auto *in_var = pair.first;
+    parent[in_var];
+    for (auto &ovar_op : pair.second) {
+      auto *out_var = ovar_op.first;
+      parent[out_var] = in_var;
+    }
+  }
+  return parent;
+}
+
+static void ShrinkIdentityInplacedOps(
+    IdentityInplaceVarInfo *info,
+    const std::unordered_set<VarHandle *> &reused_vars) {
+  if (reused_vars.empty()) return;
+  auto parent = BuildParent(*info);
+  for (auto *var : reused_vars) {
+    bool is_branch_reused = false;
+
+    auto *cur_var = var;
+    auto *parent_var = parent.at(cur_var);
+    while (parent_var != nullptr) {
+      auto &info_list = info->at(parent_var);
+      if (info_list.size() > 1) {
+        is_branch_reused = true;
+        break;
+      }
+      cur_var = parent_var;
+      parent_var = parent.at(cur_var);
+    }
+
+    if (!is_branch_reused) continue;
+
+    VLOG(5) << "Remove reused leaf var " << var->Name() << " on scope "
+            << var->scope_idx();
+    parent_var = parent.at(var);
+    parent.erase(var);
+    auto &target_list = info->at(parent_var);
+    target_list.erase(
+        std::remove_if(
+            target_list.begin(), target_list.end(),
+            [var](const std::pair<VarHandle *, ComputationOpHandle *> &p) {
+              return p.first == var;
+            }),
+        target_list.end());
+    if (target_list.empty()) info->erase(parent_var);
+  }
+}
+
+static std::unordered_set<VarHandle *>
+GetUnReusableLeafVarsAfterIdentityInplaced(
+    const IdentityInplaceVarInfo &info,
+    const std::unordered_set<VarHandle *> &is_read_by_other_ops) {
+  auto parent = BuildParent(info);
+
+  std::unordered_set<VarHandle *> unreusable_vars;
+  for (auto &pair : parent) {
+    if (pair.second) continue;  // non-root
+
+    std::unordered_set<VarHandle *> leaves;
+    bool var_is_read_by_other_ops = false;
+    bool var_is_branched_reuse = false;
+    auto *cur_var = pair.first;
+    std::queue<VarHandle *> q;
+    q.push(cur_var);
+
+    while (!q.empty()) {
+      cur_var = q.front();
+      q.pop();
+
+      auto iter = info.find(cur_var);
+      if (iter == info.end()) {  // leaf var
+        leaves.insert(cur_var);
+      } else {
+        if (is_read_by_other_ops.count(cur_var) > 0) {
+          var_is_read_by_other_ops = true;
+        }
+
+        if (iter->second.size() > 1) {
+          var_is_branched_reuse = true;
+        }
+
+        for (auto &ovar_op : iter->second) {
+          q.push(ovar_op.first);
+        }
+      }
+    }
+
+    if (var_is_read_by_other_ops || var_is_branched_reuse) {
+      unreusable_vars.insert(leaves.begin(), leaves.end());
+    }
+  }
+  return unreusable_vars;
+}
 
 class BufferSharedIdentityInplaceOpPass : public MemoryReusePass {
  protected:
@@ -47,24 +161,65 @@ class BufferSharedIdentityInplaceOpPass : public MemoryReusePass {
   void Run(Graph *graph) const override;
 
  private:
-  IdentityInplaceVarInfo RunOnEachScope(
-      const std::unordered_map<std::string, LastLiveOpOfVarInfo> &var_infos)
-      const;
+  std::pair<IdentityInplaceVarInfo, std::unordered_set<VarHandle *>>
+  RunOnEachScope(const std::unordered_map<std::string, LastLiveOpOfVarInfo>
+                     &var_infos) const;
 
   static VarHandle *TryFindMatchedIdentityInplacedOutput(
       const VarHandle &in_var, const ComputationOpHandle &op);
 };
 
-IdentityInplaceVarInfo BufferSharedIdentityInplaceOpPass::RunOnEachScope(
+std::pair<IdentityInplaceVarInfo, std::unordered_set<VarHandle *>>
+BufferSharedIdentityInplaceOpPass::RunOnEachScope(
     const std::unordered_map<std::string, LastLiveOpOfVarInfo> &var_infos)
     const {
   IdentityInplaceVarInfo identity_inplace_info;
+  std::unordered_set<VarHandle *> is_read_by_other_ops;
+  std::unordered_set<VarHandle *> collected_out_vars;
+
+  /**
+   * The memory of some out var has been reused by non-identity ops,
+   * this vars must be forced to be leaf when identity inplaced is performed.
+   * If branched identity inplace is performed (many vars may reuse the memory
+   * of the same var), this kind of leaf nodes must be pruned (otherwise,
+   * caculation result may be wrong).
+   * If non-branched identity inplace is performed, this kind of leaf nodes
+   * should not be pruned.
+   */
+  std::unordered_set<VarHandle *> reused_out_vars;
   for (auto &pair : var_infos) {
     auto *in_var = pair.second.var();
-    const auto &ops = pair.second.ops();
+    if (!IsInVarReusable(*in_var)) continue;
+
+    // force leaf vars
+    if (reused_out_vars.count(in_var) > 0) continue;
+
+    auto in_arg = in_var->Name();
+
+    auto last_live_ops = pair.second.ops();
+    /**
+     * If all `ops` only read `in_var` and do not write `in_var`,
+     * we should scan all output nodes of `in_var`. If any output
+     * node of `in_var` is an identity op node, in-place can be
+     * performed.
+     */
+    bool failure = false;
+    for (auto *op : last_live_ops) {
+      failure = FindNodesByName(in_arg, op->Node()->inputs).empty() ||
+                !FindNodesByName(in_arg, op->Node()->outputs).empty();
+      if (failure) break;
+    }
+
+    if (failure) continue;
 
     std::unordered_set<ComputationOpHandle *> candidate_ops;
-    for (auto *op : ops) {
+    for (auto *op_node : in_var->Node()->outputs) {
+      auto *op = dynamic_cast<ComputationOpHandle *>(
+          &(op_node->Wrapper<OpHandleBase>()));
+      if (op == nullptr) {
+        candidate_ops.clear();
+        break;
+      }
       if (IsIdentityOp(op->GetOp()->Type())) {
         VLOG(5) << "Found identity op " << op->GetOp()->Type();
         candidate_ops.insert(op);
@@ -72,37 +227,46 @@ IdentityInplaceVarInfo BufferSharedIdentityInplaceOpPass::RunOnEachScope(
     }
 
     if (candidate_ops.empty()) continue;
-    if (!IsInVarReusable(*in_var)) continue;
-
-    // in_var cannot occur in outputs of any `ops` (not limited to
-    // `identity_ops`)!
-    bool failure = false;
-    auto in_arg = in_var->Name();
-    for (auto *op : ops) {
-      if (InOutputArgumentOf(in_arg, *(op->GetOp()))) {
-        VLOG(5) << "Cannot inplace because " << in_arg
-                << " occurs in outputs of some ops";
-        failure = true;
-        break;
-      }
-    }
-
-    if (failure) continue;
 
     for (auto *op : candidate_ops) {
       auto *out_var = TryFindMatchedIdentityInplacedOutput(*in_var, *op);
       if (out_var == nullptr) continue;
-      if (!IsInVarReusable(*out_var) || !IsOutVarReusable(*out_var)) {
+      if (!IsOutVarReusable(*out_var)) {
         VLOG(5) << "Cannot inplace because " << out_var->Name()
                 << " is not reusable";
         continue;
       }
 
+      if (!IsInVarReusable(*out_var)) {
+        reused_out_vars.insert(out_var);
+      }
+
+      // `identity_inplace_info` is a forest, so that `out_var` should
+      // has 1 parent `in_var` atmost.
+      PADDLE_ENFORCE_EQ(collected_out_vars.count(out_var), 0,
+                        platform::errors::InvalidArgument(
+                            "Out var %s occurs twice when building "
+                            "identity_inplace_info, this may be a bug",
+                            out_var->Name()));
       identity_inplace_info[in_var].emplace_back(out_var, op);
+      collected_out_vars.insert(out_var);
+      last_live_ops.erase(op);
+    }
+
+    // If last live ops of `in_var` is not a subset of identity in-placed
+    // ops, the leaf vars of such ops must be non-reusable. Otherwise,
+    // the calculation results may be wrong after CrossOpMemoryReusePass.
+    // Those vars must be marked as "non-reusable"!
+    if (!last_live_ops.empty()) {
+      is_read_by_other_ops.insert(in_var);
     }
   }
 
-  return identity_inplace_info;
+  ShrinkIdentityInplacedOps(&identity_inplace_info, reused_out_vars);
+  auto non_reusable_vars = GetUnReusableLeafVarsAfterIdentityInplaced(
+      identity_inplace_info, is_read_by_other_ops);
+  return std::make_pair(std::move(identity_inplace_info),
+                        std::move(non_reusable_vars));
 }
 
 VarHandle *
@@ -133,7 +297,9 @@ BufferSharedIdentityInplaceOpPass::TryFindMatchedIdentityInplacedOutput(
   if (out_nodes.size() != 1) return nullptr;
   auto *out_node = *(out_nodes.begin());
 
-  PADDLE_ENFORCE_EQ(out_node->IsWrappedBy<VarHandleBase>(), true);
+  PADDLE_ENFORCE_EQ(out_node->IsWrappedBy<VarHandleBase>(), true,
+                    platform::errors::InvalidArgument(
+                        "out node must be wrapped by VarHandleBase"));
   return dynamic_cast<VarHandle *>(&(out_node->Wrapper<VarHandleBase>()));
 }
 
@@ -141,13 +307,19 @@ void BufferSharedIdentityInplaceOpPass::Run(Graph *graph) const {
   const auto &last_live_ops =
       Get<std::vector<LastLiveOpsOfVars>>(kLastLiveOpsOfVars);
 
-  std::vector<IdentityInplaceVarInfo> result;
-  result.reserve(last_live_ops.size());
+  std::vector<IdentityInplaceVarInfo> inplace_infos;
+  inplace_infos.reserve(last_live_ops.size());
+
+  std::vector<std::unordered_set<VarHandle *>> non_reusable_leaf_vars;
+  non_reusable_leaf_vars.reserve(last_live_ops.size());
+
   for (auto &each_scope_var_infos : last_live_ops) {
-    result.emplace_back(RunOnEachScope(each_scope_var_infos));
+    auto each_scope_ret = RunOnEachScope(each_scope_var_infos);
+    inplace_infos.emplace_back(std::move(each_scope_ret.first));
+    non_reusable_leaf_vars.emplace_back(std::move(each_scope_ret.second));
   }
 
-  for (auto &inplace_info : result) {
+  for (auto &inplace_info : inplace_infos) {
     for (auto &in_to_out : inplace_info) {
       auto *in_var = in_to_out.first;
       for (auto &op_out_var_pair : in_to_out.second) {
@@ -160,6 +332,14 @@ void BufferSharedIdentityInplaceOpPass::Run(Graph *graph) const {
       }
     }
   }
+
+  for (auto &vars_each_scope : non_reusable_leaf_vars) {
+    for (auto *each_var : vars_each_scope) {
+      VLOG(1) << "Mark " << each_var->Name() << " on scope "
+              << each_var->scope_idx() << " as not reusable";
+      MarkAsNotReusableInVar(*each_var);
+    }
+  }
 }
 
 }  // namespace ir
@@ -170,4 +350,5 @@ REGISTER_PASS(buffer_shared_identity_inplace_pass,
               paddle::framework::ir::BufferSharedIdentityInplaceOpPass)
     .RequirePassAttr(paddle::framework::ir::kMemOptVarInfoMapList)
     .RequirePassAttr(paddle::framework::ir::kLastLiveOpsOfVars)
-    .RequirePassAttr(paddle::framework::ir::kUseCuda);
+    .RequirePassAttr(paddle::framework::ir::kUseCuda)
+    .RequirePassAttr(paddle::framework::ir::kSkipReuseVars);

@@ -37,6 +37,10 @@ cc_library(graph_helper SRCS graph_helper.cc DEPS graph)
 cc_library(pass SRCS pass.cc DEPS graph node graph_helper)
 cc_library(graph_traits SRCS graph_traits.cc DEPS graph)
 cc_library(graph_pattern_detector SRCS graph_pattern_detector.cc DEPS graph graph_helper graph_traits)
+if (WITH_TESTING)
+  target_link_libraries(graph gtest)
+endif()
+
 cc_library(fuse_pass_base SRCS fuse_pass_base.cc DEPS pass)
 cc_library(placement_pass_base SRCS placement_pass_base.cc DEPS pass)
 

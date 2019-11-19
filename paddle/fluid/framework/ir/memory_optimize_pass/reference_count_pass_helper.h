@@ -65,6 +65,9 @@ const char kLastLiveOpsOfVars[] = "last_live_ops_of_var";
 
 VarDesc *TryGetLatestVarDesc(const std::vector<details::VarHandle *> &vars);
 
+using SkipReuseVars = std::unordered_set<std::string>;
+const char kSkipReuseVars[] = "skip_reuse_var";
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
