@@ -31,14 +31,9 @@ from paddle.fluid.data_feeder import convert_dtype, check_type_and_dtype, check_
 from paddle.fluid import core
 
 __all__ = [
-    'fused_elemwise_activation',
-    'sequence_topk_avg_pooling',
-    'var_conv_2d',
-    'match_matrix_tensor',
-    'tree_conv',
-    'fused_embedding_seq_pool',
-    'multiclass_nms2',
-    'search_pyramid_hash',
+    'fused_elemwise_activation', 'sequence_topk_avg_pooling', 'var_conv_2d',
+    'match_matrix_tensor', 'tree_conv', 'fused_embedding_seq_pool',
+    'multiclass_nms2', 'search_pyramid_hash', 'embedding'
 ]
 
 
