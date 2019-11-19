@@ -42,14 +42,14 @@ class FCOp : public framework::OperatorWithKernel {
                           platform::errors::InvalidArgument(
                               "The shape of Bias is invalid."
                               "The height of Bias should be 1."
-                              "But reveived height of Bias is %d.",
+                              "But received height of Bias is %d.",
                               bias_dims[0]));
         PADDLE_ENFORCE_EQ(
             bias_dims[1], w_dims1,
             platform::errors::InvalidArgument(
                 "The shape of Bias is invalid."
                 "The width of Bias should be equal to width of Weight."
-                "But reveived width of Bias is %d and width of Weight is %d.",
+                "But received width of Bias is %d and width of Weight is %d.",
                 bias_dims[1], w_dims1));
       } else if (bias_dims.size() == 1) {
         PADDLE_ENFORCE_EQ(
@@ -57,7 +57,7 @@ class FCOp : public framework::OperatorWithKernel {
             platform::errors::InvalidArgument(
                 "The shape of Bias is invalid."
                 "The height of Bias should be equal to the width of weight."
-                "But reveived height of Bias is %d and width of Weight is %d.",
+                "But received height of Bias is %d and width of Weight is %d.",
                 bias_dims[0], w_dims1));
       }
     }
