@@ -90,9 +90,9 @@ class DeepCF(fluid.Layer):
         self._num_users = num_users
         self._num_items = num_items
         self._rating_matrix = self.create_parameter(
-            fluid.ParamAttr(trainable=False),
-            matrix.shape,
-            matrix.dtype,
+            attr=fluid.ParamAttr(trainable=False),
+            shape=matrix.shape,
+            dtype=matrix.dtype,
             is_bias=False,
             default_initializer=fluid.initializer.NumpyArrayInitializer(matrix))
         self._rating_matrix.stop_gradient = True

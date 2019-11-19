@@ -79,23 +79,23 @@ class Layer(core.Layer):
         return self._full_name
 
     def create_parameter(self,
-                         attr,
                          shape,
-                         dtype,
+                         attr=None,
+                         dtype='float32',
                          is_bias=False,
                          default_initializer=None):
         """Create parameters for this layer.
         
         Parameters:
-            attr(ParamAttr): Parameter attribute of weight. Please refer to :ref:`api_fluid_ParamAttr`
-            shape(list): shape of the parameter
-            dtype(str or core.VarDesc.VarType): data type of this parameter.
+            shape(list): Shape of the parameter.
+            attr(ParamAttr, optional): Parameter attribute of weight. Please refer to :ref:`api_fluid_ParamAttr`. Default: None.
+            dtype(str or core.VarDesc.VarType or str, optional): Data type of this parameter.
                 If set str, it can be "bool",  "float16", "float32", "float64",
-                "int8", "int16", "int32", "int64", "uint8" or "uint16".
-            is_bias(bool, optional): if this is a bias parameter. Default: False
+                "int8", "int16", "int32", "int64", "uint8" or "uint16". Default: "float32".
+            is_bias(bool, optional): if this is a bias parameter. Default: False.
             default_initializer(Initializer, optional): the default initializer for this parameter.
                 If set None, default initializer will be set to :ref:`api_fluid_initializer_XavierInitializer` and :ref:`api_fluid_initializer_ConstantInitializer`
-                for non-bias and bias parameter, respectively. Default: None
+                for non-bias and bias parameter, respectively. Default: None.
 
         Returns:
             :ref:`api_guide_Variable_en` : created parameter.
