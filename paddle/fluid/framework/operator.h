@@ -27,6 +27,7 @@ limitations under the License. */
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/cache_base.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
@@ -119,6 +120,7 @@ class RuntimeContext {
 
   VariableValueMap inputs;
   VariableValueMap outputs;
+  std::vector<shared_ptr<CacheBase>> caches;
 };
 
 /**
@@ -241,7 +243,7 @@ class ExecutionContext {
 
   const OperatorBase& op() const { return op_; }
 
-  // const Scope& scope() const { return scope_; }
+  const Scope& scope() const { return scope_; }
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
@@ -265,6 +267,8 @@ class ExecutionContext {
   const Variable* InputVar(const std::string& name) const;
 
   Variable* OutputVar(const std::string& name) const;
+
+  const std::vector<shared_ptr<CacheBase>> Caches() const { return ceches_; }
 
   const std::vector<const Variable*> MultiInputVar(
       const std::string& name) const {

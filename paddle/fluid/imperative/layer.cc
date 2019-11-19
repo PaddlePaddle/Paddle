@@ -92,7 +92,8 @@ static framework::VariableNameMap CreateVarNameMap(
 }
 
 static framework::RuntimeContext PrepareRuntimeContext(
-    const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
+    const NameVarBaseMap& ins, const NameVarBaseMap& outs,
+    const std::vector<std_ptr<CacheBase>> caches) {
   framework::VariableValueMap inputs, outputs;
   for (auto& in_pair : ins) {
     auto& in_ctx = inputs[in_pair.first];
@@ -109,7 +110,8 @@ static framework::RuntimeContext PrepareRuntimeContext(
       out_ctx.emplace_back(out_var->MutableVar());
     }
   }
-  return framework::RuntimeContext(std::move(inputs), std::move(outputs));
+  return framework::RuntimeContext(std::move(inputs), std::move(outputs),
+                                   caches);
 }
 
 static std::string DebugString(
@@ -267,7 +269,8 @@ void OpBase::CreateOperatorBase() {
                                         std::move(output_name_map), attrs_);
 }
 
-void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
+void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs,
+                 const std::vector<std::ptr<CacheBase>> caches) {
   auto* op_kernel = dynamic_cast<framework::OperatorWithKernel*>(op_.get());
   PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
   auto& info = op_->Info();
@@ -285,7 +288,7 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
 
   VLOG(3) << "Running Op " << Type();
   VLOG(5) << LayerDebugString(Type(), ins, outs);
-  auto runtime_ctx = PrepareRuntimeContext(ins, outs);
+  auto runtime_ctx = PrepareRuntimeContext(ins, outs, caches);
 
   VLOG(6) << "start preparing op: " << Type();
   auto prepared_op = PreparedOp::Prepare(runtime_ctx, *op_kernel, place(), ins);

@@ -80,12 +80,13 @@ static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
 
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
+                     const std::vector<std::shared_ptr<CacheBase>>& caches,
                      const platform::Place& place, bool trace_backward) {
   platform::RecordEvent event(type);
   VLOG(1) << "Trace Op: " << type;
   size_t op_id = GenerateUniqueId();
   auto op = OpBase::Create(op_id, type, ins, outs, std::move(attrs), place);
-  op->Run(ins, outs);
+  op->Run(ins, outs, caches);
 
   if (enable_program_desc_tracing_) {
     VLOG(5) << "Trace op " << type << " into ProgramDesc";
@@ -93,7 +94,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 
   if (ComputeRequiredGrad(ins, outs, trace_backward)) {
-    TraceBackward(op, ins, outs);
+    TraceBackward(op, ins, outs, caches);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;
   }
@@ -117,16 +118,17 @@ bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
   return false;
 }
 
-void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
-                           const NameVarBaseMap& ins,
-                           const NameVarBaseMap& outs) {
+void Tracer::TraceBackward(
+    const std::shared_ptr<OpBase>& fwd_op, const NameVarBaseMap& ins,
+    const NameVarBaseMap& outs,
+    const std::vector<std::shared_ptr<CacheBase>>& caches) {
   // grad_to_var is a map of framework::GradVarName(in_var_name/out_var_name) ->
   // in_var_name/out_var_name
   std::unordered_map<std::string, std::string> grad_to_var;
 
   // Get grad_op_desc using fwd_op_desc
   std::vector<std::unique_ptr<OpBase>> grad_op_bases_ =
-      CreateGradOpBases(fwd_op.get(), ins, outs);
+      CreateGradOpBases(fwd_op.get(), ins, outs, caches);
 
   size_t grad_op_num = grad_op_bases_.size();
 
