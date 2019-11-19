@@ -115,7 +115,7 @@ class TestReader1(TestReader):
         return loader
 
     def test_compression(self):
-        self.quan("./quantization/test_reader.yaml")
+        self.quan("./quantization/compress_1.yaml")
 
 
 if __name__ == '__main__':
