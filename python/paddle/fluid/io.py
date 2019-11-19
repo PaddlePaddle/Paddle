@@ -417,21 +417,29 @@ def _save_distributed_persistables(executor, dirname, main_program):
                 endpoints[index] = endpoint
 
             if is_slice:
-                block.append_op(
-                    type='recv',
-                    inputs={"X": []},
-                    outputs={"Out": slice_vars},
-                    attrs={
-                        "epmap": endpoints,
-                        "with_barrier": False,
-                        "varnames": slice_var_names,
-                        "sync_mode": True
-                    })
-                block.append_op(
-                    type='concat',
-                    inputs={'X': slice_vars},
-                    outputs={'Out': origin_var},
-                    attrs={})
+                for i in range(len(slice_vars)):
+                    slice_var = slice_vars[i]
+                    block.append_op(
+                        type='recv',
+                        inputs={"X": []},
+                        outputs={"Out": slice_var},
+                        attrs={
+                            "epmap": [endpoints[i]],
+                            "with_barrier": False,
+                            "varnames": [slice_var_names[i]],
+                            "sync_mode": True
+                        })
+                    block.append_op(
+                        type='save',
+                        inputs={'X': [slice_var]},
+                        outputs={},
+                        attrs={
+                            'file_path': os.path.join(dirname, origin_var.name,
+                                                      slice_var.name)
+                        })
+                    block.append_op(
+                        type='delete_var', inputs={'X': [slice_var]})
+
             else:
                 block.append_op(
                     type='recv',
@@ -443,12 +451,14 @@ def _save_distributed_persistables(executor, dirname, main_program):
                         "varnames": slice_var_names,
                         "sync_mode": True
                     })
-            block.append_op(
-                type='save',
-                inputs={'X': [origin_var]},
-                outputs={},
-                attrs={'file_path': os.path.join(dirname, origin_var.name)})
-            block.append_op(type='delete_var', inputs={'X': slice_vars})
+                block.append_op(
+                    type='save',
+                    inputs={'X': [origin_var]},
+                    outputs={},
+                    attrs={
+                        'file_path': os.path.join(dirname, origin_var.name)
+                    })
+
         executor.run(prog)
 
     def __save_distributed_lookup_tables(executor, dirname,
