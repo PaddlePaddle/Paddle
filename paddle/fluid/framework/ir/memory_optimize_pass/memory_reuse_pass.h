@@ -85,12 +85,15 @@ class MemoryReusePass : public Pass {
 
   bool IsOutVarReusable(const details::VarHandle &out_var) const;
 
-  std::unordered_set<Node *> FindNodesByName(
-      const std::string &name, const std::vector<Node *> &nodes) const;
+  static std::unordered_set<Node *> FindNodesByName(
+      const std::string &name, const std::vector<Node *> &nodes);
 
   size_t ScopeNum() const { return all_vars_->size(); }
 
   int64_t GetMemorySize(const details::VarHandle &var) const;
+
+  void AddReuseVar(details::ComputationOpHandle *op, details::VarHandle *in_var,
+                   details::VarHandle *out_var) const;
 
  private:
   VarDesc *GetVarDesc(const details::VarHandle &var) const;
@@ -108,9 +111,6 @@ class MemoryReusePass : public Pass {
   void CollectShareTensorBufferOpHandles() const;
 
   void CollectReusedVars() const;
-
-  void AddReuseVar(details::ComputationOpHandle *op, details::VarHandle *in_var,
-                   details::VarHandle *out_var) const;
 
   void UpdateLastLiveOpOfVar(details::ComputationOpHandle *op,
                              details::VarHandle *in_var,
@@ -137,6 +137,12 @@ class MemoryReusePass : public Pass {
 
   bool IsPinnedVar(const VarDesc &out_var_desc) const;
 };
+
+using InplaceInToOutMap = std::unordered_map<std::string, std::string>;
+
+bool IsIdentityOp(const std::string &type);
+
+const InplaceInToOutMap &InOutPairOfIdentityOp(const std::string &type);
 
 }  // namespace ir
 }  // namespace framework
