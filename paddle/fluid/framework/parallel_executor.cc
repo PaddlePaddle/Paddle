@@ -34,6 +34,8 @@ limitations under the License. */
 
 DECLARE_bool(use_ngraph);
 
+DECLARE_double(eager_delete_tensor_gb);
+
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
 #endif
@@ -282,8 +284,8 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     VLOG(10) << "Start to apply buffer_shared_inplace_pass";
     graph = inplace_pass->Apply(graph);
     VLOG(10) << "buffer_shared_inplace_pass Applied";
-    LOG(INFO) << "Inplace strategy is enabled, when "
-                 "build_strategy.enable_inplace = True";
+    LOG_FIRST_N(INFO, 1) << "Inplace strategy is enabled, when "
+                            "build_strategy.enable_inplace = True";
   }
 
   /**
@@ -365,9 +367,9 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     eager_deletion_pass->SetNotOwned(ir::kAllPlaces, &places_);
     graph = eager_deletion_pass->Apply(graph);
     VLOG(10) << "EagerDeletionPass Applied";
-    LOG(INFO) << "Garbage collection strategy is enabled, when "
-              << "FLAGS_eager_delete_tensor_gb = "
-              << (static_cast<double>(GetEagerDeletionThreshold()) / (1 << 30));
+    LOG_FIRST_N(INFO, 1) << "Garbage collection strategy is enabled, when "
+                         << "FLAGS_eager_delete_tensor_gb = "
+                         << FLAGS_eager_delete_tensor_gb;
   }
   return graph;
 }
@@ -562,21 +564,6 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
       member_->is_persistable_.emplace(node->Var()->Name(),
                                        node->Var()->Persistable());
-    }
-  }
-
-  // If the loss_var_name is given, the number of graph should be only one.
-  if (loss_var_name.size()) {
-    size_t graph_num = ir::GraphNum(*graph);
-    if (graph_num > 1) {
-      LOG(WARNING)
-          << "The number of graph should be only one, "
-             "but the current graph has "
-          << ir::GraphNum(*graph)
-          << " sub_graphs. If you want to see the nodes of the "
-             "sub_graphs, you should use 'FLAGS_print_sub_graph_dir' "
-             "to specify the output dir. NOTES: if you not do training, "
-             "please don't pass loss_var_name.";
     }
   }
 

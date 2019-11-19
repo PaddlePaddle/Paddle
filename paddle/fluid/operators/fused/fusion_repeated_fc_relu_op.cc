@@ -60,8 +60,8 @@ void FusionRepeatedFCReluOp::InferShape(
 
 framework::OpKernelType FusionRepeatedFCReluOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(framework::GetDataTypeOfVar(ctx.InputVar("X")),
-                                 ctx.GetPlace());
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
 }
 
 void FusionRepeatedFCReluOpMaker::Make() {

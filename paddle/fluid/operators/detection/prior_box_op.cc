@@ -36,12 +36,6 @@ class PriorBoxOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(image_dims.size() == 4, "The layout of image is NCHW.");
     PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
 
-    PADDLE_ENFORCE_LT(input_dims[2], image_dims[2],
-                      "The height of input must smaller than image.");
-
-    PADDLE_ENFORCE_LT(input_dims[3], image_dims[3],
-                      "The width of input must smaller than image.");
-
     auto min_sizes = ctx->Attrs().Get<std::vector<float>>("min_sizes");
     auto max_sizes = ctx->Attrs().Get<std::vector<float>>("max_sizes");
     auto variances = ctx->Attrs().Get<std::vector<float>>("variances");
@@ -75,7 +69,8 @@ class PriorBoxOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_input_type = ctx.Input<framework::Tensor>("Input")->type();
+    auto input_input_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
     framework::LibraryType library_{framework::LibraryType::kPlain};
     framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
@@ -208,8 +203,10 @@ https://arxiv.org/abs/1512.02325.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(prior_box, ops::PriorBoxOp, ops::PriorBoxOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    prior_box, ops::PriorBoxOp, ops::PriorBoxOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(prior_box, ops::PriorBoxOpKernel<float, float>,
                        ops::PriorBoxOpKernel<double, double>);

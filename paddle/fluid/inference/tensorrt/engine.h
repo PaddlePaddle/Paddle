@@ -15,10 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include <NvInfer.h>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -39,7 +41,7 @@ class TRTInt8Calibrator;
  * TensorRT Engine.
  *
  * There are two alternative ways to use it, one is  to build from a paddle
- * protobuf model, another way is to manully construct the network.
+ * protobuf model, another way is to manually construct the network.
  */
 class TensorRTEngine {
   using DescType = ::paddle::framework::proto::BlockDesc;
@@ -89,11 +91,11 @@ class TensorRTEngine {
     infer_builder_.reset(createInferBuilder(&logger_));
     infer_network_.reset(infer_builder_->createNetwork());
   }
-  // After finishing adding ops, freeze this network and creates the executation
+  // After finishing adding ops, freeze this network and creates the execution
   // environment.
   void FreezeNetwork();
 
-  // Add an input and set its name, data type and dimention.
+  // Add an input and set its name, data type and dimension.
   nvinfer1::ITensor* DeclareInput(const std::string& name,
                                   nvinfer1::DataType dtype,
                                   const nvinfer1::Dims& dim);
@@ -150,6 +152,16 @@ class TensorRTEngine {
   // in advance, which affecting the construction of TRT Op.
   std::unordered_map<std::string /*name*/, std::unique_ptr<framework::Tensor>>
       weight_map;
+
+  // When setting weight_map, a self-increasing suffix is needed for the names
+  // so as to avoid repeatedly setting weights with the same name.
+  void SetWeights(std::string w_name,
+                  std::unique_ptr<framework::Tensor> w_tensor) {
+    static int suffix_counter = 0;
+    std::string suffix = std::to_string(suffix_counter);
+    weight_map[w_name + suffix] = std::move(w_tensor);
+    suffix_counter += 1;
+  }
 
   void ClearWeights() {
     for (auto& weight_pair : weight_map) {
@@ -209,7 +221,7 @@ class TensorRTEngine {
   ((NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
     NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD) >= version)
 
-// Add an layer__ into engine__ with args ARGS.
+// Add a layer__ into engine__ with args ARGS.
 // For example:
 //
 // Reference

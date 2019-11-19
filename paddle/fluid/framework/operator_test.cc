@@ -315,3 +315,279 @@ TEST(VarNameTest, all) {
   original_var_name = paddle::framework::GradOriginalVarName(original_var_name);
   ASSERT_EQ(original_var_name, "");
 }
+
+namespace paddle {
+namespace framework {
+
+class IndicateLoDTensorDataTypeTest : public OperatorWithKernel {
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+  OpKernelType GetExpectedKernelType(
+      const ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "LoDTensor");
+    return framework::OpKernelType(data_type, ctx.device_context());
+  }
+};
+
+class IndicateLoDTensorDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddInput("LoDTensor", "Input of Tensor type Variable.");
+    AddComment("This Op is only for IndicateVarDataType inferface test.");
+  }
+};
+
+class IndicateSelectedRowsDataTypeTest : public OperatorWithKernel {
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+  OpKernelType GetExpectedKernelType(
+      const ExecutionContext& ctx) const override {
+    auto data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "SelectedRows");
+    return framework::OpKernelType(data_type, ctx.device_context());
+  }
+};
+class IndicateSelectedRowsDataTypeTestProtoMaker
+    : public OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddInput("SelectedRows", "Input of SelectedRows type Variable.");
+    AddComment("This Op is only for IndicateVarDataType inferface test.");
+  }
+};
+
+class IndicateOtherDataTypeTest : public OperatorWithKernel {
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+  OpKernelType GetExpectedKernelType(
+      const ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Other");
+    return framework::OpKernelType(data_type, ctx.device_context());
+  }
+};
+class IndicateOtherDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddInput("Other", "Input of Other type Variable");
+    AddComment("This Op is only for IndicateVarDataType inferface test.");
+  }
+};
+
+template <typename DeviceContext, typename T>
+class EmptyTestKernel : public OpKernel<T> {
+ public:
+  void Compute(const ExecutionContext& ctx) const {}
+};
+
+}  // namespace framework
+}  // namespace paddle
+
+REGISTER_OP_WITHOUT_GRADIENT(
+    indicate_lod_tensor_data_type_test,
+    paddle::framework::IndicateLoDTensorDataTypeTest,
+    paddle::framework::IndicateLoDTensorDataTypeTestProtoMaker);
+REGISTER_OP_WITHOUT_GRADIENT(
+    indicate_selected_rows_data_type_test,
+    paddle::framework::IndicateSelectedRowsDataTypeTest,
+    paddle::framework::IndicateSelectedRowsDataTypeTestProtoMaker);
+REGISTER_OP_WITHOUT_GRADIENT(
+    indicate_other_data_type_test, paddle::framework::IndicateOtherDataTypeTest,
+    paddle::framework::IndicateOtherDataTypeTestProtoMaker);
+
+REGISTER_OP_CPU_KERNEL(indicate_lod_tensor_data_type_test,
+                       paddle::framework::EmptyTestKernel<
+                           paddle::platform::CPUDeviceContext, int>);
+REGISTER_OP_CPU_KERNEL(indicate_selected_rows_data_type_test,
+                       paddle::framework::EmptyTestKernel<
+                           paddle::platform::CPUDeviceContext, int>);
+REGISTER_OP_CPU_KERNEL(indicate_other_data_type_test,
+                       paddle::framework::EmptyTestKernel<
+                           paddle::platform::CPUDeviceContext, int>);
+
+TEST(IndicateVarDataTypeTest, lodtensor) {
+  paddle::framework::InitDevices(true);
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("indicate_lod_tensor_data_type_test");
+  BuildVar("LoDTensor", {"lodtensor_1"}, op_desc.add_inputs());
+
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto* var = scope.Var("lodtensor_1");
+  var->GetMutable<paddle::framework::LoDTensor>();
+
+  bool caught = false;
+  try {
+    op->Run(scope, cpu_place);
+  } catch (paddle::platform::EnforceNotMet& err) {
+    caught = true;
+    std::string ex_msg = err.what();
+    EXPECT_TRUE(
+        ex_msg.find(
+            "The Tensor in the indicate_lod_tensor_data_type_test Op's "
+            "Input Variable LoDTensor(lodtensor_1) is not initialized") !=
+        std::string::npos);
+  }
+  ASSERT_TRUE(caught);
+}
+
+TEST(IndicateVarDataTypeTest, selectedrows) {
+  paddle::framework::InitDevices(true);
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("indicate_selected_rows_data_type_test");
+  BuildVar("SelectedRows", {"selected_rows_1"}, op_desc.add_inputs());
+
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto* var = scope.Var("selected_rows_1");
+  var->GetMutable<paddle::framework::SelectedRows>();
+
+  bool caught = false;
+  try {
+    op->Run(scope, cpu_place);
+  } catch (paddle::platform::EnforceNotMet& err) {
+    caught = true;
+    std::string ex_msg = err.what();
+    EXPECT_TRUE(
+        ex_msg.find("The Tensor in the indicate_selected_rows_data_type_test "
+                    "Op's Input Variable SelectedRows(selected_rows_1) is not "
+                    "initialized") != std::string::npos);
+  }
+  ASSERT_TRUE(caught);
+}
+
+TEST(IndicateVarDataTypeTest, other) {
+  paddle::framework::InitDevices(true);
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("indicate_other_data_type_test");
+  BuildVar("Other", {"lod_tensor_array_1"}, op_desc.add_inputs());
+
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto* var = scope.Var("lod_tensor_array_1");
+  var->GetMutable<paddle::framework::LoDTensorArray>();
+
+  bool caught = false;
+  try {
+    op->Run(scope, cpu_place);
+  } catch (paddle::platform::EnforceNotMet& err) {
+    caught = true;
+    std::string ex_msg = err.what();
+    EXPECT_TRUE(ex_msg.find("The Input Variable(Other) of "
+                            "indicate_other_data_type_test Op used to "
+                            "determine kernel data type "
+                            "is empty or not LoDTensor or SelectedRows") !=
+                std::string::npos);
+  }
+  ASSERT_TRUE(caught);
+}
+
+namespace paddle {
+namespace framework {
+
+class GetLoDLevelTest : public OperatorWithKernel {
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
+                      "Input(X) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) should not be null.");
+    PADDLE_ENFORCE_GT(ctx->GetLoDLevel("X"), 0,
+                      "The LoD level Input(X) should be larger than 0.");
+  }
+};
+
+class SetLoDLevelTest : public OperatorWithKernel {
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
+                      "Input(X) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) should not be null.");
+    ctx->SetLoDLevel("Out", 1);
+  }
+};
+
+class GetSetLoDLevelTestMaker : public OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddInput("X", "(LoDTensor) Input Variable.");
+    AddOutput("Out", "(LoDTensor) Output Variable.");
+    AddComment("This Op is only for Get/SetLoDLevel inferface test.");
+  }
+};
+
+}  // namespace framework
+}  // namespace paddle
+
+REGISTER_OP_WITHOUT_GRADIENT(get_lod_level_test,
+                             paddle::framework::GetLoDLevelTest,
+                             paddle::framework::GetSetLoDLevelTestMaker);
+REGISTER_OP_CPU_KERNEL(get_lod_level_test,
+                       paddle::framework::EmptyTestKernel<
+                           paddle::platform::CPUDeviceContext, float>);
+
+REGISTER_OP_WITHOUT_GRADIENT(set_lod_level_test,
+                             paddle::framework::SetLoDLevelTest,
+                             paddle::framework::GetSetLoDLevelTestMaker);
+REGISTER_OP_CPU_KERNEL(set_lod_level_test,
+                       paddle::framework::EmptyTestKernel<
+                           paddle::platform::CPUDeviceContext, float>);
+
+void SetGetLoDLevelTestMain(std::string op_type) {
+  paddle::framework::InitDevices(false, {});
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type(op_type);
+  BuildVar("X", {"x.0"}, op_desc.add_inputs());
+  BuildVar("Out", {"out.0"}, op_desc.add_outputs());
+
+  paddle::platform::CPUPlace place;
+  paddle::framework::Scope scope;
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto* x_var = scope.Var("x.0");
+  auto* x = x_var->GetMutable<paddle::framework::LoDTensor>();
+  x->mutable_data<float>(paddle::framework::make_ddim({64}), place);
+  auto* out_var = scope.Var("out.0");
+  out_var->GetMutable<paddle::framework::LoDTensor>();
+
+  bool caught = false;
+  std::string err_str =
+      (op_type == "get_lod_level_test") ? "GetLoDLevel" : "SetLoDLevel";
+  err_str +=
+      " is only used in compile time. The calculation of output's actual lod "
+      "is different among operators so that should be set in the runtime "
+      "kernel.";
+  try {
+    op->Run(scope, place);
+  } catch (paddle::platform::EnforceNotMet& err) {
+    caught = true;
+    std::string ex_msg = err.what();
+    EXPECT_TRUE(ex_msg.find(err_str) != std::string::npos);
+  }
+  ASSERT_TRUE(caught);
+}
+
+TEST(GetLoDLevelTest, base) { SetGetLoDLevelTestMain("get_lod_level_test"); }
+
+TEST(SetLoDLevelTest, base) { SetGetLoDLevelTestMain("set_lod_level_test"); }

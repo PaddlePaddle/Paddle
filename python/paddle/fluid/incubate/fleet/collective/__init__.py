@@ -16,6 +16,10 @@ import logging
 import paddle.fluid as fluid
 import paddle.fluid.io as io
 import paddle.fluid.transpiler.distribute_transpiler as dist_transpiler
+from paddle.fluid.executor import Executor
+from paddle.fluid.parallel_executor import ParallelExecutor
+from paddle.fluid.compiler import CompiledProgram
+from paddle.fluid.framework import Program
 
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
@@ -80,11 +84,47 @@ class Collective(Fleet):
                              target_vars=None,
                              main_program=None,
                              export_for_deployment=True):
+        """
+        Prune the given `main_program` to build a new program especially for
+        inference, and then save it and all related parameters to given
+        `dirname` by the `executor`.
+        """
+        assert isinstance(executor, Executor), \
+            "In fleet.save_inference_model() function, executor must be as" \
+            " Executor type."
+
+        if main_program is None:
+            main_program = self._origin_program
+        assert isinstance(main_program, Program), \
+            "In fleet.save_inference_model() function, main_program " \
+            "must be as Program type."
+
         io.save_inference_model(dirname, feeded_var_names, target_vars,
                                 executor, main_program, None, None,
                                 export_for_deployment)
 
     def save_persistables(self, executor, dirname, main_program=None):
+        """
+        This function filters out all variables with `persistable==True` from
+        the give `main_program` and then saves these variables to the folder
+        `dirname` or file `filename`.
+
+        The `dirname` is used to specify the folder where persistable variables
+        are going to be saved. If you would like to save variables in separate
+        files, set `filename` None; if you would like to save all variables in a
+        single file, use `filename` to specify the file name.
+        """
+        assert isinstance(executor, Executor), \
+            "In fleet.save_inference_model() function, executor must be as" \
+            " Executor type."
+
+        if main_program is None:
+            main_program = self._origin_program
+
+        assert isinstance(main_program, Program), \
+            "In fleet.save_inference_model() function, main_program " \
+            "must be as Program type."
+
         io.save_persistables(executor, dirname, main_program, None)
 
 
@@ -105,6 +145,8 @@ class DistributedStrategy(fluid.BuildStrategy):
         self.mode = "nccl2"  # or collective
         self.collective_mode = None  # local_sgd or grad_allreduce
         self.nccl_comm_num = 1
+        self.forward_recompute = False
+        self.recompute_checkpoints = []
 
         self.exec_strategy = fluid.ExecutionStrategy()
 
@@ -150,6 +192,11 @@ class CollectiveOptimizer(DistributedOptimizer):
 
     def __init__(self, optimizer, strategy=DistributedStrategy()):
         super(CollectiveOptimizer, self).__init__(optimizer, strategy)
+        if strategy is not None and strategy.forward_recompute:
+            self.forward_recompute = True
+            self.recompute_checkpoints = strategy.recompute_checkpoints
+        else:
+            self.forward_recompute = False
         self.print_config = False
 
     def backward(self,
@@ -264,7 +311,6 @@ class CollectiveOptimizer(DistributedOptimizer):
         node_num = self._node_num()
         assert node_num >= 1, "nccl2 node_num must >= 1, now:{}" % node_num
 
-        self._strategy.fuse_all_reduce_ops = True
         exec_strategy = self._strategy.exec_strategy
 
         if node_num <= 1:
@@ -346,6 +392,13 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         self._check_collective_mode(main_program, self._optimizer,
                                     self._strategy)
+
+        if self.forward_recompute:
+            assert (isinstance(self.recompute_checkpoints, list) and
+                    len(self.recompute_checkpoints) > 0)
+            self._optimizer = \
+                fluid.optimizer.RecomputeOptimizer(self._optimizer)
+            self._optimizer._set_checkpoints(self.recompute_checkpoints)
 
         optimize_ops, param_grads = self._optimizer.minimize(
             loss,

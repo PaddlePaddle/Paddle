@@ -50,6 +50,11 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto rampup_begin_step = ctx.Attr<float>("rampup_begin_step");
     auto rampup_step = ctx.Attr<float>("rampup_step");
 
+    // nranks
+    auto nranks_tensor = ctx.Input<framework::Tensor>("nranks");
+    const int nranks = static_cast<const int>(*nranks_tensor->data<float>());
+    PADDLE_ENFORCE_GT(nranks, 1, "DGC is not useful when num_trainers <= 1");
+
     // current step
     auto current_step_tensor = ctx.Input<framework::Tensor>("current_step");
     const float* current_step = current_step_tensor->data<float>();
@@ -72,7 +77,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
              << ", rampup_begin_step:" << rampup_begin_step
              << ", rampup_step:" << rampup_step
              << ",  current_step:" << *current_step << ", ratio:" << ratio
-             << ", k:" << k;
+             << ", k:" << k << ", nranks:" << nranks;
 
     auto k_out = ctx.Output<framework::Tensor>("k");
     T* k_out_data = k_out->data<T>();
@@ -81,6 +86,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto u_out = ctx.Output<framework::Tensor>("U_out");
     auto v_out = ctx.Output<framework::Tensor>("V_out");
     auto encode_grad_out = ctx.Output<framework::Tensor>("EncodeGrad");
+    auto gather_buff = ctx.Output<framework::Tensor>("GatherBuff");
 
     // FIXME(gongwb): use cublas.
     auto u_out_e = framework::EigenVector<T>::Flatten(*u_out);
@@ -88,6 +94,13 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto g_e = framework::EigenVector<T>::Flatten(*g);
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto& eigen_ctx = *dev_ctx.eigen_device();
+
+    if (static_cast<int>(*current_step) ==
+        static_cast<int>(rampup_begin_step)) {
+      // calc local momentum from global momentum
+      u_out_e.device(eigen_ctx) = (1.0 / nranks) * u_e;
+    }
+
     if (use_nesterov) {
       // u = m * (u + g)
       u_out_e.device(eigen_ctx) = m * (u_e + g_e);
@@ -111,6 +124,8 @@ class DGCOpKernel : public framework::OpKernel<T> {
     T* u_out_data = u_out->mutable_data<T>(ctx.GetPlace());
     T* encode_grad_out_data = encode_grad_out->mutable_data<T>(
         framework::DDim{2 * k}, ctx.GetPlace());
+    gather_buff->mutable_data<T>(framework::DDim{2 * k * nranks},
+                                 ctx.GetPlace());
 
     int buf_size = paddle::communication::dgc::get_buffer_size(k);
     auto tmp_ious_data = memory::Alloc(dev_ctx, buf_size);

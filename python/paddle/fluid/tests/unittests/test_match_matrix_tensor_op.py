@@ -71,7 +71,7 @@ class TestMatchMatrixTensorOp(OpTest):
         self.outputs = {'Out': (out, out_lod), 'Tmp': tmp}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_compile_vs_runtime=True)
 
     def test_check_grad(self):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
@@ -111,7 +111,7 @@ class TestMatchMatrixTensorOpCase4(TestMatchMatrixTensorOp):
     def test_api(self):
         x_lod_tensor = fluid.layers.data(name='x', shape=[10], lod_level=1)
         y_lod_tensor = fluid.layers.data(name='y', shape=[10], lod_level=1)
-        out, out_tmp = fluid.layers.match_matrix_tensor(
+        out, out_tmp = fluid.contrib.match_matrix_tensor(
             x=x_lod_tensor, y=y_lod_tensor, channel_num=3)
 
         place = fluid.CPUPlace()

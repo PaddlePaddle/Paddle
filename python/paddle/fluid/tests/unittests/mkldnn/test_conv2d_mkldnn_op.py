@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp
+from paddle.fluid.tests.unittests.test_conv2d_op import TestConv2dOp, TestConv2dOp_v2
 
 
 def conv2d_bias_naive(out, bias):
@@ -174,6 +174,27 @@ class TestWithInput1x1Filter1x1(TestConv2dMKLDNNOp):
 
     def init_group(self):
         self.groups = 3
+
+
+class TestConv2dOp_AsyPadding_MKLDNN(TestConv2dOp_v2):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+    def init_paddings(self):
+        self.pad = [0, 0, 1, 2]
+        self.padding_algorithm = "EXPLICIT"
+
+
+class TestConv2dOp_Same_MKLDNN(TestConv2dOp_AsyPadding_MKLDNN):
+    def init_paddings(self):
+        self.pad = [0, 0]
+        self.padding_algorithm = "SAME"
+
+
+class TestConv2dOp_Valid_MKLDNN(TestConv2dOp_AsyPadding_MKLDNN):
+    def init_paddings(self):
+        self.pad = [1, 1]
+        self.padding_algorithm = "VALID"
 
 
 if __name__ == '__main__':

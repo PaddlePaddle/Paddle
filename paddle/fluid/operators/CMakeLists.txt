@@ -38,7 +38,7 @@ if (ANAKIN_SUBGRAPH)
     add_subdirectory(anakin)
 endif()
 
-SET(OP_HEADER_DEPS xxhash)
+SET(OP_HEADER_DEPS xxhash executor)
 if (WITH_GPU)
     SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} cub)
 endif()
@@ -48,14 +48,17 @@ if (WITH_DISTRIBUTE)
     SET(OP_PREFETCH_DEPS ${OP_PREFETCH_DEPS} parameter_prefetch)
 endif()
 
-SET(OP_ONLY_MKL "")
-if (NOT WITH_MKL)
-    SET(OP_ONLY_MKL ${OP_ONLY_MKL} match_matrix_tensor_op)
-    SET(OP_ONLY_MKL ${OP_ONLY_MKL} var_conv_2d_op)
+SET(OP_MKL_DEPS "")
+if (NOT WITH_MKL OR NOT WITH_AVX)
+    SET(OP_MKL_DEPS ${OP_MKL_DEPS} match_matrix_tensor_op)
+    SET(OP_MKL_DEPS ${OP_MKL_DEPS} var_conv_2d_op)
+endif()
+if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
+    SET(OP_MKL_DEPS ${OP_MKL_DEPS} pyramid_hash_op)
 endif()
 
-register_operators(EXCLUDES py_func_op warpctc_op dgc_op conv_fusion_op
-	sync_batch_norm_op ${OP_ONLY_MKL} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
+register_operators(EXCLUDES py_func_op warpctc_op dgc_op
+	sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS} ${OP_PREFETCH_DEPS})
 
 if (WITH_GPU)
     # warpctc_op needs cudnn 7 above
@@ -63,11 +66,6 @@ if (WITH_GPU)
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
-    endif()
-    # conv_fusion_op needs cudnn 7 above
-    if (NOT ${CUDNN_VERSION} VERSION_LESS 7100)
-        op_library(conv_fusion_op)
-        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(conv2d_fusion);\n")
     endif()
     if (NOT WIN32)
         op_library(sync_batch_norm_op)
@@ -85,6 +83,7 @@ if (WITH_DGC)
     set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dgc)
 endif()
 
+
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lod_tensor maxouting unpooling pooling lod_rank_table context_project sequence_pooling executor)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_functor memory jit_kernel_helper concat_and_split cross_entropy softmax vol2col im2col sampler sample_prob tree2col)
@@ -94,6 +93,7 @@ if (WITH_GPU)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv prelu)
 endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} device_memory_aligment)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)
 
 # FIXME(typhoonzero): operator deps may not needed.
 # op_library(lod_tensor_to_array_op DEPS lod_rank_table_op)
@@ -107,6 +107,7 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} device_memory_aligment)
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COMMON_OP_DEPS})
 set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 
+cc_test(assign_op_test SRCS assign_op_test.cc DEPS assign_op)
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor math_function)
 cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
@@ -126,3 +127,5 @@ endif()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 add_subdirectory(benchmark)
+
+cc_test(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op)

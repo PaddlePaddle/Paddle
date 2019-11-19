@@ -70,6 +70,16 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
     auto* out = context.Output<LoDTensor>("Out");
     auto* pos = context.Output<Tensor>("pos");
 
+    PADDLE_ENFORCE_EQ(in->lod().empty(), false,
+                      "Input(X) Tensor of SequenceTopkAvgPoolingOp does not "
+                      "contain LoD information.");
+    PADDLE_ENFORCE_EQ(row->lod().empty(), false,
+                      "Input(ROW) Tensor of SequenceTopkAvgPoolingOp does not "
+                      "contain LoD information.");
+    PADDLE_ENFORCE_EQ(col->lod().empty(), false,
+                      "Input(COLUMN) Tensor of SequenceTopkAvgPoolingOp does "
+                      "not contain LoD information.");
+
     auto channel_num = context.Attr<int>("channel_num");
     auto topks = context.Attr<std::vector<int>>("topks");
     auto k_num = topks.size();

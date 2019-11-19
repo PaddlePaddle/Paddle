@@ -62,7 +62,7 @@ class TestSequencePadOp(OpTest):
             start_idx = end_idx
 
         out_data = np.array(padded_sequences)
-        length = np.array(self.x_len_lod[0]).reshape((-1, 1))
+        length = np.array(self.x_len_lod[0]).reshape((-1))
         self.outputs = {'Out': out_data, 'Length': length}
 
     def setUp(self):
@@ -72,7 +72,7 @@ class TestSequencePadOp(OpTest):
         self.compute()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_compile_vs_runtime=True)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")

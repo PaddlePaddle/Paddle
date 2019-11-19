@@ -20,7 +20,10 @@ limitations under the License. */
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
-#include <thread>  // NOLINT
+#include <thread>         // NOLINT
+#include <unordered_map>  // NOLINT
+#include <unordered_set>  // NOLINT
+#include <utility>        // NOLINT
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
@@ -151,7 +154,12 @@ class CPUWorkerBase : public DeviceWorker {
 class HogwildWorker : public CPUWorkerBase {
  public:
   HogwildWorker() {}
-  virtual ~HogwildWorker() {}
+  virtual ~HogwildWorker() {
+    for (OperatorBase* op : ops_) {
+      delete op;
+    }
+    std::vector<OperatorBase*>().swap(ops_);
+  }
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
@@ -189,8 +197,14 @@ class DownpourWorker : public HogwildWorker {
   void PushGradients();
   void CollectLabelInfo(size_t table_id);
   void AdjustInsWeight();
+  void DumpParam();
+  void CopySparseTable();
+  void CopyDenseTable();
+  void CopyDenseVars();
 
  private:
+  bool need_dump_param_;
+  std::vector<std::string> dump_param_;
   bool need_to_push_dense_;
   bool need_dump_field_;
   bool dump_slot_;
@@ -206,6 +220,8 @@ class DownpourWorker : public HogwildWorker {
   std::map<uint64_t, std::vector<std::string>> sparse_grad_names_;
   std::map<uint64_t, std::vector<std::string>> dense_value_names_;
   std::map<uint64_t, std::vector<std::string>> dense_grad_names_;
+  // actually pushed feasign of each table
+  std::map<uint64_t, std::vector<uint64_t>> sparse_push_keys_;
 
   // feasign
   std::map<uint64_t, std::vector<uint64_t>> features_;
@@ -225,6 +241,14 @@ class DownpourWorker : public HogwildWorker {
   // adjust ins weight
   AdjustInsWeightConfig adjust_ins_weight_config_;
   std::vector<float> nid_show_;
+  // check nan and inf during training
+  std::vector<std::string> check_nan_var_names_;
+  // copy table
+  CopyTableConfig copy_table_config_;
+  std::map<uint64_t, uint64_t> table_dependency_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_sparse_tables_;
+  std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
+  std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
 };
 
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)

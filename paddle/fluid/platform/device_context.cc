@@ -18,10 +18,38 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/rw_lock.h"
+#include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
 #include "glog/logging.h"
+
+namespace paddle {
+namespace memory {
+
+AllocationPtr Alloc(const platform::DeviceContext& dev_ctx, size_t size) {
+  auto place = dev_ctx.GetPlace();
+#ifdef PADDLE_WITH_CUDA
+  if (size == 0 || !platform::is_gpu_place(place)) {
+    return Alloc(place, size);
+  }
+  auto* default_dev_ctx = static_cast<platform::CUDADeviceContext*>(
+      platform::DeviceContextPool::Instance().Get(place));
+  auto& desired_dev_ctx =
+      static_cast<const platform::CUDADeviceContext&>(dev_ctx);
+  if (default_dev_ctx->stream() == desired_dev_ctx.stream()) {
+    return Alloc(place, size);
+  } else {
+    return allocation::CUDADeviceContextAllocatorPool::Instance().Alloc(
+        desired_dev_ctx, size);
+  }
+#else
+  return Alloc(place, size);
+#endif
+}
+
+}  // namespace memory
+}  // namespace paddle
 
 namespace paddle {
 namespace platform {
@@ -174,11 +202,21 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   mutable std::unordered_map<void*, memory::AllocationPtr> allocations_;
 };
 
+void CudnnWorkspaceHandle::ReallocWorkspace(size_t required_workspace_bytes) {
+  if (required_workspace_bytes <= WorkspaceSize()) {
+    return;
+  }
+  // reset allocation first before re-allocate to save memory
+  allocation_.reset();
+  allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
+}
+
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   CUDADeviceGuard guard(place_.device);
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
+  max_grid_dim_size_ = GetGpuMaxGridDimSize(place_.device);
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
@@ -276,14 +314,23 @@ CUDADeviceContext::~CUDADeviceContext() {
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
-  cudaError_t e_sync = cudaStreamSynchronize(stream_);
-  if (e_sync != 0) {
+  cudaError_t e_sync = cudaSuccess;
+#if !defined(_WIN32)
+  e_sync = cudaStreamSynchronize(stream_);
+#else
+  while (e_sync = cudaStreamQuery(stream_)) {
+    if (e_sync == cudaErrorNotReady) continue;
+    break;
+  }
+#endif
+
+  if (cudaSuccess != e_sync) {
     LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync)
                << " errno: " << e_sync;
   }
 
   cudaError_t e_get = cudaGetLastError();
-  if (e_get != 0) {
+  if (cudaSuccess != e_get) {
     LOG(FATAL) << "cudaGetLastError  " << cudaGetErrorString(e_get)
                << " errno: " << e_get;
   }
@@ -305,10 +352,14 @@ bool CUDADeviceContext::tensor_core_available() const {
   return cublas_tensor_core_handle_ != nullptr;
 }
 
+dim3 CUDADeviceContext::GetCUDAMaxGridDimSize() const {
+  return max_grid_dim_size_;
+}
+
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 CudnnWorkspaceHandle CUDADeviceContext::cudnn_workspace_handle() const {
-  return CudnnWorkspaceHandle(*this);
+  return CudnnWorkspaceHandle(*this, &cudnn_handle_mtx_);
 }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }

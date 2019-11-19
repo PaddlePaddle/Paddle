@@ -62,9 +62,7 @@ class Dataset {
   virtual void SetParseInsId(bool parse_ins_id) = 0;
   virtual void SetParseContent(bool parse_content) = 0;
   // set merge by ins id
-  virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
-                               bool erase_duplicate_feas, int min_merge_size,
-                               bool keep_unmerged_ins) = 0;
+  virtual void SetMergeByInsId(int merge_size) = 0;
   // set fea eval mode
   virtual void SetFeaEval(bool fea_eval, int record_candidate_size) = 0;
   // get file list
@@ -99,7 +97,7 @@ class Dataset {
   // local shuffle data
   virtual void LocalShuffle() = 0;
   // global shuffle data
-  virtual void GlobalShuffle() = 0;
+  virtual void GlobalShuffle(int thread_num = -1) = 0;
   // for slots shuffle
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) = 0;
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
@@ -120,6 +118,11 @@ class Dataset {
   virtual void DestroyPreLoadReaders() = 0;
   // set preload thread num
   virtual void SetPreLoadThreadNum(int thread_num) = 0;
+  // seperate train thread and dataset thread
+  virtual void DynamicAdjustChannelNum(int channel_num) = 0;
+  virtual void DynamicAdjustReadersNum(int thread_num) = 0;
+  // set fleet send sleep seconds
+  virtual void SetFleetSendSleepSeconds(int seconds) = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -144,9 +147,7 @@ class DatasetImpl : public Dataset {
   virtual void SetChannelNum(int channel_num);
   virtual void SetParseInsId(bool parse_ins_id);
   virtual void SetParseContent(bool parse_content);
-  virtual void SetMergeByInsId(const std::vector<std::string>& merge_slot_list,
-                               bool erase_duplicate_feas, int min_merge_size,
-                               bool keep_unmerged_ins);
+  virtual void SetMergeByInsId(int merge_size);
 
   virtual void SetFeaEval(bool fea_eval, int record_candidate_size);
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
@@ -169,7 +170,7 @@ class DatasetImpl : public Dataset {
   virtual void WaitPreLoadDone();
   virtual void ReleaseMemory();
   virtual void LocalShuffle();
-  virtual void GlobalShuffle();
+  virtual void GlobalShuffle(int thread_num = -1);
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace) {}
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
                              std::vector<Record>* result) {}
@@ -181,6 +182,9 @@ class DatasetImpl : public Dataset {
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
   virtual void SetPreLoadThreadNum(int thread_num);
+  virtual void DynamicAdjustChannelNum(int channel_num);
+  virtual void DynamicAdjustReadersNum(int thread_num);
+  virtual void SetFleetSendSleepSeconds(int seconds);
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -211,12 +215,11 @@ class DatasetImpl : public Dataset {
   bool merge_by_insid_;
   bool parse_ins_id_;
   bool parse_content_;
-  bool erase_duplicate_feas_;
-  bool keep_unmerged_ins_;
-  int min_merge_size_;
-  std::vector<std::string> merge_slots_list_;
+  int merge_size_;
   bool slots_shuffle_fea_eval_ = false;
   int preload_thread_num_;
+  std::mutex global_index_mutex_;
+  int64_t global_index_ = 0;
 };
 
 // use std::vector<MultiSlotType> or Record as data type

@@ -72,12 +72,13 @@ class FcOpConverter : public OpConverter {
     PADDLE_ENFORCE_NOT_NULL(Y_v);
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     // This may trigger a GPU->CPU copy, because TRT's weight can only be
-    // assigned from CPU memory, that can't be avoided.
+    // assigned from CPU memory, which can't be avoided.
     float* weight_data = nullptr;
     bool enable_int8 = boost::get<bool>(op_desc.HasAttr("enable_int8"));
     if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
-      float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
+      CHECK(op_desc.HasAttr(i_name + "_scale"));
+      float in_scale = boost::get<float>(op_desc.GetAttr(i_name + "_scale"));
       auto weight_scale =
           boost::get<std::vector<float>>(op_desc.GetAttr("weight_scale"));
       weight_data = engine_->GetWeightCPUData(op_desc.Input(w_name).front(),
@@ -131,16 +132,10 @@ class FcOpConverter : public OpConverter {
                                        *const_cast<nvinfer1::ITensor*>(X),
                                        n_output, tmp_weight.get(), bias.get());
 
-    engine_->weight_map[op_desc.Input(w_name).front()] = std::move(tmp);
+    engine_->SetWeights(op_desc.Input(w_name).front(), std::move(tmp));
     auto output_name = op_desc.Output("Out").front();
 
     RreplenishLayerAndOutput(layer, "fc", {output_name}, test_mode);
-    if (enable_int8) {
-#if IS_TRT_VERSION_GE(5000)
-      float out_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
-      engine_->SetTensorDynamicRange(layer->getOutput(0), out_scale);
-#endif
-    }
   }
 };
 
