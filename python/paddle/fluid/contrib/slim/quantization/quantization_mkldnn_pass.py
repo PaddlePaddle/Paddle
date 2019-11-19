@@ -338,10 +338,6 @@ class FakeQAT2MkldnnINT8PerfPass(object):
         graph = self._remove_fake_ops(graph)
         graph = self._dequantize_weights(graph)
         graph = self._optimize_fp32_graph(graph)
-        # graph = self._compute_weight_scales(graph)
-        # graph = self._update_conv_relu_scales(graph)
-        # graph = self._update_pooling_scales(graph)
-        # graph = self._quantize_fp32_graph(graph)
         graph = self._remove_unused_var_nodes(graph)
         return graph
 

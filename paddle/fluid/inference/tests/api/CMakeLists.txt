@@ -106,21 +106,6 @@ function(inference_qat_int8_test target model_dir data_dir test_script use_mkldn
                  --acc_diff_threshold 0.1)
 endfunction()
 
-
-
-#function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_dir qat_model_dir qat_int8_save_model_dir data_path)
-#	set(SAVE_QAT_INT8_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/qat_save_model.py")
-#	prepare_qat_int8_model(${qat_model_dir} ${qat_int8_save_model_dir} ${SAVE_QAT_INT8_MODEL_SCRIPT})
-#	inference_analysis_test_run(${TARGET_NAME}
-#	COMMAND ${test_binary}
-#        ARGS --fp32_model=${fp32_model_dir}/model
-#             --int8_model=${qat_int8_save_model_dir}/model
-#             --infer_data=${data_path}
-#             --batch_size=50
-#             --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
-#	     --iterations=2)
-#endfunction()
-
 function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_dir qat_int8_save_model_dir data_path)
     inference_analysis_test_run(${TARGET_NAME}
     COMMAND ${test_binary}
@@ -131,21 +116,7 @@ function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_label=false
 	     --iterations=2)
-#   add_dependencies(test_analyzer_qat_int8_resnet50 save_qat2_int8_resnet50_mkldnn)
 endfunction()
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 if(NOT APPLE AND WITH_MKLML)
     # RNN1
@@ -349,11 +320,8 @@ if(WITH_MKLDNN)
   # ResNet50 FP32 vs. QAT INT8
   set(QAT2_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_qat_perf/ResNet50_qat_perf")
   set(QAT_INT8_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_QAT_INT8")
-  #  download_qat_data(${QAT_RESNET50_MODEL_DIR} "ResNet50_qat_model.tar.gz" )
-  set(QAT_RESNET50_MODEL_DIR "/home/lidanqing/data/qat_models_0927/resnet50" )
 
-  #  set(SAVE_QAT_INT8_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/qat_save_model.py")
-  inference_analysis_api_qat_test_run(test_analyzer_qat_int8_resnet50 ${QAT_IMG_CLASS_TEST_APP} ${QAT2_RESNET50_MODEL_DIR}/float ${QAT_INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  inference_analysis_api_qat_test_run(test_analyzer_qat_performance_benchmark ${QAT_IMG_CLASS_TEST_APP} ${QAT2_RESNET50_MODEL_DIR}/float ${QAT_INT8_RESNET50_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
 endif()
 

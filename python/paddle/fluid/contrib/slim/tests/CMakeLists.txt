@@ -176,9 +176,9 @@ if(LINUX AND WITH_MKLDNN)
         inference_qat2_int8_test(test_qat2_int8_resnet50_mkldnn ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
 
     set(QAT_INT8_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_QAT_INT8")
-    set(QAT_FP32_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/Fused_QAT_FP32")
+    set(QAT_FP32_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_QAT_FP32")
 	set(SAVE_QAT_INT8_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/qat_save_model.py")
-        save_qat2_int8_model(save_qat2_int8_resnet50_mkldnn ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf ${QAT_FP32_RESNET50_MODEL_DIR} ${QAT_INT8_RESNET50_MODEL_DIR} ${SAVE_QAT_INT8_MODEL_SCRIPT} true)
+        save_qat2_int8_model(save_qat2_fp32_int8_model ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf ${QAT_FP32_RESNET50_MODEL_DIR} ${QAT_INT8_RESNET50_MODEL_DIR} ${SAVE_QAT_INT8_MODEL_SCRIPT} true)
 
         set(QAT2_MOBILENETV1_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf")
         if (NOT EXISTS ${QAT2_MOBILENETV1_MODEL_DIR})
