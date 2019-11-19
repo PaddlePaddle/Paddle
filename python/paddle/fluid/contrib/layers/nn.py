@@ -28,7 +28,7 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers import utils
 from paddle.fluid.framework import Variable
 from paddle.fluid.data_feeder import convert_dtype, check_type_and_dtype, check_type, check_dtype
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 __all__ = [
     'fused_elemwise_activation',
