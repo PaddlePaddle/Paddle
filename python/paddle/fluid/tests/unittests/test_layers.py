@@ -2465,6 +2465,17 @@ class TestBook(LayerTest):
             out = layers.batch_norm(data)
             return (out)
 
+    def make_batch_norm_momentum_variable(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            data = self._get_data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            momentum = self._get_data(
+                name='momentum', shape=[1], dtype='float32',
+                append_batch_size=False)
+            out = layers.batch_norm(data, momentum=momentum)
+            return (out)
+
     def make_range(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):

@@ -58,6 +58,12 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
+  if (ctx->IsRuntime() && ctx->HasInput("MomentumTensor")) {
+    auto mom = ctx->Inputs("MomentumTensor");
+    PADDLE_ENFORCE_EQ(mom.size(), 1,
+                      "Input(MomentumTensor) size must be 1");
+  }
+
   PADDLE_ENFORCE_GE(
       x_dims.size(), 2,
       "ShapeError: the dimension of input X must greater than or equal to 2."
@@ -173,6 +179,11 @@ void BatchNormOpMaker::Make() {
   AddInput("Variance",
            "The global variance (for training) "
            "or estimated Variance (for testing)");
+  AddInput("MomentumTensor",
+           "(Tensor<float32>, optional) If provided, batch_norm will "
+           "use this as momentum, this has a higher priority than "
+           "attr(momentum), the shape of this tensor MUST BE [1].")
+    .AsDispensable();
   AddOutput("Y", "result after normalization");
   AddOutput("MeanOut",
             "Share memory with Mean. "
@@ -221,7 +232,6 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const float epsilon = ctx.Attr<float>("epsilon");
-    const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
 
@@ -230,6 +240,12 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
+
+    float momentum = ctx.Attr<float>("momentum");
+    if (ctx.HasInput("MomentumTensor")) {
+      const auto* mom_tensor = ctx.Input<Tensor>("MomentumTensor");
+      momentum = mom_tensor->data<float>()[0];
+    }
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
