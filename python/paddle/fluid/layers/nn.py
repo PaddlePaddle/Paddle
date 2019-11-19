@@ -4176,16 +4176,17 @@ def batch_norm(input,
         sync_batch_norm automatically.
 
     Args:
-        input(variable): The rank of input variable can be 2, 3, 4, 5. The data type 
+        input(Variable): The rank of input variable can be 2, 3, 4, 5. The data type 
             is float16 or float32 or float64.
         act(string, Default None): Activation type, linear|relu|prelu|...
         is_test (bool, Default False): A flag indicating whether it is in
             test phrase or not.
-        momentum(float, Default 0.9): The value used for the moving_mean and
+        momentum(float|Variable, Default 0.9): The value used for the moving_mean and
             moving_var computation. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
-            Default is 0.9.
+            This should be a float number or a Variable with shape as [1] and data
+            type as float32. Default is 0.9.
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
@@ -4303,15 +4304,28 @@ def batch_norm(input,
     batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
         dtype)
 
+    inputs={
+        "X": input,
+        "Scale": scale,
+        "Bias": bias,
+        "Mean": mean,
+        "Variance": variance
+    }
+    attrs={
+        "epsilon": epsilon,
+        "is_test": is_test,
+        "data_layout": data_layout,
+        "use_mkldnn": False,
+        "fuse_with_relu": False,
+        "use_global_stats": use_global_stats
+    }
+    if isinstance(momentum, Variable):
+        inputs['MomemtumTensor'] = momentum
+    else:
+        attrs['momentum'] = momentum
     helper.append_op(
         type="batch_norm",
-        inputs={
-            "X": input,
-            "Scale": scale,
-            "Bias": bias,
-            "Mean": mean,
-            "Variance": variance
-        },
+        inputs=inputs,
         outputs={
             "Y": batch_norm_out,
             "MeanOut": mean_out,
@@ -4319,15 +4333,7 @@ def batch_norm(input,
             "SavedMean": saved_mean,
             "SavedVariance": saved_variance
         },
-        attrs={
-            "momentum": momentum,
-            "epsilon": epsilon,
-            "is_test": is_test,
-            "data_layout": data_layout,
-            "use_mkldnn": False,
-            "fuse_with_relu": False,
-            "use_global_stats": use_global_stats
-        })
+        attrs=attrs)
 
     return helper.append_activation(batch_norm_out)
 
