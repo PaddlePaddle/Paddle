@@ -154,22 +154,19 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
   int osize = output_names.size();
   *out_size = osize;
   LOG(INFO) << "output size is: " << osize;
-  *output = reinterpret_cast<PD_ZeroCopyData*>(
-      malloc(osize * sizeof(PD_ZeroCopyData)));
+  *output = new PD_ZeroCopyData[osize];
   VLOG(3) << "The output size is " << osize;
   for (int i = 0; i < *out_size; ++i) {
     auto& output_i = (*output)[i];
-    output_i.name = reinterpret_cast<char*>(
-        malloc((output_names[i].length() + 1) * sizeof(char)));
+    output_i.name = new char[output_names[i].length() + 1];
     snprintf(output_i.name, output_names[i].length() + 1, "%s",
              output_names[i].c_str());
     auto output_t = predictor->GetOutputTensor(output_names[i]);
     output_i.dtype = ConvertToPDDataType(output_t->type());
     std::vector<int> output_shape = output_t->shape();
-    output_i.shape =
-        reinterpret_cast<int*>(malloc(output_shape.size() * sizeof(int)));
-    std::copy_n(output_shape.data(), output_shape.size() * sizeof(int),
-                output_i.shape);
+    output_i.shape = new int[output_shape.size()];
+    memmove(output_i.shape, output_shape.data(),
+            output_shape.size() * sizeof(int));
     output_i.shape_size = output_shape.size();
     VisitDataType(output_i.dtype,
                   PD_ZeroCopyFunctor(&output_i, std::move(output_t.get())));
