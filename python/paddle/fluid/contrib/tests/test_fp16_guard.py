@@ -22,7 +22,6 @@ import sys
 import numpy
 import unittest
 import os
-import copy
 import numpy as np
 
 import paddle.fluid.contrib.mixed_precision as mixed_precision
