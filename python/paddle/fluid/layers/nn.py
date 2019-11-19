@@ -14041,7 +14041,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     Args:
         x(Variable): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
-        scale(float): The scale factor of the input.
+        scale(float|Variable): The scale factor of the input, it should be a float number or a Variable with shape [1] and data type as float32.
         bias(float): The bias to be put on the input.
         bias_after_scale(bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
         act(str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
@@ -14066,6 +14066,27 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
+
+        .. code-block:: python
+
+            # scale with parameter scale as Variable
+            import paddle.fluid as fluid
+            import numpy as np
+
+            inputs = fluid.layers.data(name="x", shape=[2, 3], dtype='float32')
+            scale = fluid.layers.data(name="scale", shape=[1], dtype='float32'
+                                      append_batch_size=False)
+            output = fluid.layers.scale(inputs, scale = scale, bias = 1.0)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+            scale_np = np.array([2.]).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'x':img, 'scale':scale_np}, fetch_list=[output])
+            print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
+
     """
 
     helper = LayerHelper('scale', **locals())
@@ -14075,15 +14096,18 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
 
+    inputs = {'X': x}
+    attrs = {
+        'bias': float(bias),
+        'bias_after_scale': bias_after_scale,
+    }
+    if isinstance(scale, Variable):
+        inputs['ScaleTensor'] = scale
+    else:
+        attrs['scale'] = float(scale)
+
     helper.append_op(
-        type='scale',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={
-            'scale': float(scale),
-            'bias': float(bias),
-            'bias_after_scale': bias_after_scale
-        })
+        type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return helper.append_activation(out)
 
 

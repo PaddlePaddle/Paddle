@@ -2425,6 +2425,20 @@ class TestBook(LayerTest):
             out = layers.slice(input, axes=axes, starts=starts, ends=ends)
             return out
 
+    def make_scale_variable(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = self._get_data(
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
+            scale_var = self._get_data(
+                name="scale",
+                shape=[1],
+                dtype='float32',
+                append_batch_size=False)
+
+            out = layers.scale(input, scale=scale_var)
+            return out
+
     def make_softshrink(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
