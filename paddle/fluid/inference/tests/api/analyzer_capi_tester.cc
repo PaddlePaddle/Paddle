@@ -62,7 +62,6 @@ void zero_copy_run() {
   inputs->name[2] = 't';
   inputs->name[3] = 'a';
   inputs->name[4] = '\0';
-  LOG(INFO) << inputs->name;
   inputs->shape = shape;
   inputs->shape_size = shape_size;
 

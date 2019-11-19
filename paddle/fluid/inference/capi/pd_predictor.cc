@@ -70,7 +70,6 @@ struct PD_ZeroCopyFunctor {
     output_i->data = reinterpret_cast<void*>(malloc(out_num * sizeof(OutT)));
     memmove(static_cast<OutT*>(output_i->data), out_data.data(),
             out_num * sizeof(OutT));
-    LOG(INFO) << out_data[0];
   }
 };
 
@@ -153,7 +152,6 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
   auto output_names = predictor->GetOutputNames();
   int osize = output_names.size();
   *out_size = osize;
-  LOG(INFO) << "output size is: " << osize;
   *output = new PD_ZeroCopyData[osize];
   VLOG(3) << "The output size is " << osize;
   for (int i = 0; i < *out_size; ++i) {
