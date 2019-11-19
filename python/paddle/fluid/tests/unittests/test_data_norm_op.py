@@ -24,14 +24,24 @@ from op_test import OpTest
 from paddle.fluid.framework import grad_var_name
 
 
-def _reference_testing(x, batch_size, batch_sum, batch_square_sum):
+def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):
     x_shape = x.shape
     means_arr = batch_sum / batch_size
     scales_arr = np.sqrt(batch_size / batch_square_sum)
-    for i in range(x_shape[0]):
-        x[i] -= means_arr
-        x[i] *= scales_arr
-    y = np.array(x)
+    min_precision = 1e-7
+    if slot_dim <= 0:
+        for i in range(x_shape[0]):
+            x[i] -= means_arr
+            x[i] *= scales_arr
+        y = np.array(x)
+    else:
+        y = np.zeros(x_shape).astype(np.float32)
+        for i in range(x_shape[0]):
+            for j in range(0, x_shape[1], slot_dim):
+                if x[i][j] <= -min_precision or x[i][j] >= min_precision:
+                    for k in range(0, slot_dim):
+                        y[i][j + k] = (
+                            x[i][j + k] - means_arr[j + k]) * scales_arr[j + k]
     return y
 
 
@@ -60,7 +70,7 @@ class TestDataNormOpInference(unittest.TestCase):
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
         self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
 
-    def check_with_place(self, place, data_layout, dtype, shape):
+    def check_with_place(self, place, data_layout, dtype, shape, slot_dim=-1):
         """
         do forward and check
 
@@ -69,6 +79,8 @@ class TestDataNormOpInference(unittest.TestCase):
             data_layout(str): NCHW or NWHC
             dtype(dtype): np.float32
             shape(list): input shape
+            slot_dim(int): dimension of one slot. Refer to data_norm api.
+
 
         """
         epsilon = 0.00001
@@ -81,6 +93,8 @@ class TestDataNormOpInference(unittest.TestCase):
 
         x_val = np.random.random_sample(x_shape).astype(dtype)
         x_val = x_val - 0.5
+        x_val[0][1] = 0.0
+        x_val[1][1] = 0.0
         batch_size = np.ones(scale_shape).astype(np.float32)
         batch_size *= 1e4
         batch_sum = np.zeros(scale_shape).astype(np.float32)
@@ -88,7 +102,7 @@ class TestDataNormOpInference(unittest.TestCase):
         batch_square_sum *= 1e4
 
         y_out = _reference_testing(x_val, batch_size, batch_sum,
-                                   batch_square_sum).astype(dtype)
+                                   batch_square_sum, slot_dim).astype(dtype)
 
         scope = core.Scope()
 
@@ -124,7 +138,8 @@ class TestDataNormOpInference(unittest.TestCase):
             Scales="scales",
             # attrs
             epsilon=epsilon,
-            use_mkldnn=self.use_mkldnn)
+            use_mkldnn=self.use_mkldnn,
+            slot_dim=slot_dim)
 
         data_norm_op.run(scope, place)
 
@@ -144,7 +159,12 @@ class TestDataNormOpInference(unittest.TestCase):
         places = [core.CPUPlace()]
         for place in places:
             for data_format in ["NCHW", "NHWC"]:
-                self.check_with_place(place, data_format, self.dtype, [2, 3])
+                for slot_dim in [-1, 1]:
+                    self.check_with_place(
+                        place,
+                        data_format,
+                        self.dtype, [2, 3],
+                        slot_dim=slot_dim)
 
 
 class TestDataNormOp(OpTest):
@@ -185,6 +205,63 @@ class TestDataNormOp(OpTest):
         }
         self.outputs = {"Y": y, "Means": mean, "Scales": scale}
         self.attrs = {"epsilon": epsilon, "use_mkldnn": self.use_mkldnn}
+
+    def test_check_output(self):
+        """
+        test check forward, check output
+        """
+        self.check_output()
+
+    def test_check_grad(self):
+        """
+        test check backward, check grad
+        """
+        self.check_grad(['X'], 'Y', no_grad_set=set([]))
+
+
+class TestDataNormOpWithSlotDim(OpTest):
+    """
+    test class for data norm op
+    test forward and backward
+    """
+
+    def setUp(self):
+        """
+        init data norm op test env
+        """
+        self.op_type = 'data_norm'
+        self.use_mkldnn = False
+        epsilon = 0.00001
+        slot_dim = 1
+        x_shape = [2, 3]
+        scale_shape = [3]
+        tp = np.float32
+
+        x_val = np.array([[-0.35702616, 0.0, -0.08306625],
+                          [0.41199666, 0.0, -0.10180971]]).astype(tp)
+        batch_size = np.ones(scale_shape).astype(tp)
+        batch_size *= 1e4
+        batch_sum = np.zeros(scale_shape).astype(tp)
+        batch_square_sum = np.ones(scale_shape).astype(tp)
+        batch_square_sum *= 1e4
+
+        y = np.array(x_val)
+
+        mean = np.array([[0, 0, 0], [0, 0, 0]]).astype(tp)
+        scale = np.array([[1, 1, 1], [1, 1, 1]]).astype(tp)
+
+        self.inputs = {
+            "X": x_val,
+            "BatchSize": batch_size,
+            "BatchSum": batch_sum,
+            "BatchSquareSum": batch_square_sum
+        }
+        self.outputs = {"Y": y, "Means": mean, "Scales": scale}
+        self.attrs = {
+            "epsilon": epsilon,
+            "use_mkldnn": self.use_mkldnn,
+            "slot_dim": slot_dim
+        }
 
     def test_check_output(self):
         """
