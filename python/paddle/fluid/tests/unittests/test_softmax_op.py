@@ -24,7 +24,9 @@ from paddle.fluid import compiler, Program, program_guard
 
 def stable_softmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
-    shiftx = x - np.max(x).clip(-64.)
+    # clip to shiftx, otherwise, when calc loss with
+    # log(exp(shiftx)), may get log(0)=INF
+    shiftx = (x - np.max(x)).clip(-64.)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
 
