@@ -77,54 +77,55 @@ def resnet_cifar10(input, depth=32):
     return pool
 
 
-def around_is_half(train_program, startup_prog):
+def around_is_precision(train_program, startup_prog):
     classdim = 10
     data_shape = [3, 32, 32]
     with fluid.program_guard(train_program, startup_prog):
-        images = fluid.layers.data(
-            name='pixel', shape=data_shape, dtype='float32')
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-
-        net = resnet_cifar10(images, 32)
-
         with mixed_precision.precision_guard():
+            images = fluid.layers.data(
+                name='pixel', shape=data_shape, dtype='float32')
+            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+
+            net = resnet_cifar10(images, 32)
+
             logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
             cost, predict = fluid.layers.softmax_with_cross_entropy(
                 logits, label, return_softmax=True)
             avg_cost = fluid.layers.mean(cost)
             acc = fluid.layers.accuracy(input=predict, label=label)
 
-    optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
-    mp_optimizer = fluid.contrib.mixed_precision.decorate(
-        optimizer=optimizer,
-        init_loss_scaling=8.0,
-        use_dynamic_loss_scaling=True,
-        decorate_type=mixed_precision.DecorateType.half)
+            optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
+            mp_optimizer = fluid.contrib.mixed_precision.decorate(
+                optimizer=optimizer,
+                init_loss_scaling=8.0,
+                use_dynamic_loss_scaling=True,
+                decorate_type=mixed_precision.DecorateType.user_defined)
 
-    return avg_cost, mp_optimizer
+        return avg_cost, mp_optimizer
 
 
-def around_is_precision(train_program, startup_prog):
+def around_is_half(train_program, startup_prog):
     classdim = 10
     data_shape = [3, 32, 32]
 
-    images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-
     with mixed_precision.half_precision_guard():
+        images = fluid.layers.data(
+            name='pixel', shape=data_shape, dtype='float32')
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+
         net = resnet_cifar10(images, 32)
 
-    logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
-    cost, predict = fluid.layers.softmax_with_cross_entropy(
-        logits, label, return_softmax=True)
-    avg_cost = fluid.layers.mean(cost)
+        logits = fluid.layers.fc(input=net, size=classdim, act="softmax")
+        cost, predict = fluid.layers.softmax_with_cross_entropy(
+            logits, label, return_softmax=True)
+        avg_cost = fluid.layers.mean(cost)
 
-    optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
-    mp_optimizer = fluid.contrib.mixed_precision.decorate(
-        optimizer=optimizer,
-        init_loss_scaling=8.0,
-        use_dynamic_loss_scaling=True,
-        decorate_type=mixed_precision.DecorateType.precision)
+        optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
+        mp_optimizer = fluid.contrib.mixed_precision.decorate(
+            optimizer=optimizer,
+            init_loss_scaling=8.0,
+            use_dynamic_loss_scaling=True,
+            decorate_type=mixed_precision.DecorateType.use_defined)
 
     return avg_cost, mp_optimizer
 
@@ -170,34 +171,6 @@ class TestAmpGuard(unittest.TestCase):
             scaled_loss = optimizer.get_scaled_loss()
         print("test_decorate_half:")
         program_to_code(train_program)
-
-    """
-    def test_decorate_precision(self):
-        train_program = fluid.Program()
-        startup_prog = fluid.Program()
-        train_program.random_seed = 123
-        startup_prog.random_seed = 456
-
-        with fluid.program_guard(train_program, startup_prog):
-            avg_cost, optimizer = around_is_precision(train_program,
-                                                      startup_prog)
-            optimizer.minimize(avg_cost)
-            loss_scaling = optimizer.get_loss_scaling()
-            scaled_loss = optimizer.get_scaled_loss()
-
-    def test_decorate_user_define(self):
-        train_program = fluid.Program()
-        startup_prog = fluid.Program()
-        train_program.random_seed = 123
-        startup_prog.random_seed = 456
-
-        with fluid.program_guard(train_program, startup_prog):
-            avg_cost, optimizer = aroud_is_user_defined(train_program,
-                                                        startup_prog)
-            optimizer.minimize(avg_cost)
-            loss_scaling = optimizer.get_loss_scaling()
-            scaled_loss = optimizer.get_scaled_loss()
-    """
 
 
 if __name__ == '__main__':

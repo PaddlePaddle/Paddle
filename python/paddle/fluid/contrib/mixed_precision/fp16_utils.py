@@ -30,14 +30,8 @@ class DecorateType(IntEnum):
     # It's the default method of mixed precision.
     black_white_list = 0
 
-    # All the network use half precision but the operators guarded with presion_guard.
-    half = 1
-
-    # All the network use original precision but the operators guarded with half_precision_guard.
-    precision = 2
-
     # User defines which operator will use half and which operator will use full precision.
-    user_defined = 3
+    user_defined = 1
 
 
 def append_cast_op(i, o, prog):
@@ -203,23 +197,6 @@ def _set_op_precision_guard_attr(ops, guard_type):
     return
 
 
-def _add_op_precision_attr(program, decorate_type):
-    if decorate_type == DecorateType.user_defined:
-        return
-
-    block = program.global_block()
-    ops = block.ops
-    if decorate_type == DecorateType.half:
-        _set_op_precision_guard_attr(ops, PrecisionGuardType.half)
-        return
-
-    if decorate_type == DecorateType.precision:
-        _set_op_precision_guard_attr(ops, PrecisionGuardType.precision)
-        return
-
-    assert False, "not supported decorate_type:{}".format(decorate_type)
-
-
 def _get_black_white_list(program):
     block = program.global_block()
     ops = block.ops
@@ -246,7 +223,6 @@ def _get_black_white_list(program):
 
 
 def rewrite_program_by_decorated_type(program, decorate_type):
-    _add_op_precision_attr(program, decorate_type)
     black_op_set, white_op_set = _get_black_white_list(program)
 
     block = program.global_block()
