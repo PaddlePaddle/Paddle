@@ -143,7 +143,7 @@ def create_global_var(shape,
         stop_gradient=True)
     helper.set_variable_initializer(
         var, initializer=Constant(
-            value=float(value), force_cpu=force_cpu))
+            value=value, force_cpu=force_cpu))
 
     return var
 

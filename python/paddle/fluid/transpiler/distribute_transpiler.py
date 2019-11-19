@@ -2424,7 +2424,7 @@ class DistributeTranspiler(object):
                                     self.startup_program.global_block().ops[
                                         i]._set_attr(
                                             'value',
-                                            float(0.0 - self.trainer_num))
+                                            str(float(0.0 - self.trainer_num)))
                     for var in all_trainer_counter_inputs:
                         if var.name == "%s.trainer_%d" % (counter_var.name,
                                                           self.trainer_id):
