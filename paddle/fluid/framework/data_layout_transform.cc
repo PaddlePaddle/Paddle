@@ -135,9 +135,13 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                                     platform::Place place) {
 #ifdef PADDLE_WITH_MKLDNN
   PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::format_undef,
-                    "Input tensor should have specified memory format");
+                    platform::errors::InvalidArgument(
+                        "Input tensor format is invalid. Input tensor should "
+                        "have specified memory format."));
   PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::any,
-                    "Input tensor should have specified memory format");
+                    platform::errors::InvalidArgument(
+                        "Input tensor format is invalid. Input tensor should "
+                        "have specified memory format."));
 
   // Set default as NCHW in case not specified
   out_layout =

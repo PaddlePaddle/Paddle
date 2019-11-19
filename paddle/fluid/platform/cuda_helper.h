@@ -39,7 +39,7 @@ class CublasHandleHolder {
 #endif
   }
 
-  ~CublasHandleHolder() {
+  ~CublasHandleHolder() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cublasDestroy(handle_));
   }
 

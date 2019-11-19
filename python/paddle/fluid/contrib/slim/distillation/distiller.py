@@ -269,7 +269,7 @@ class SoftLabelDistillerPass(object):
             t_fea = layers.softmax(teacher_feature_map /
                                    self.teacher_temperature)
             t_fea.stop_gradient = True
-            ce_loss = layres.reduce_mean(
+            ce_loss = layers.reduce_mean(
                 layers.cross_entropy(
                     s_fea, t_fea, soft_label=True))
             distillation_loss = ce_loss * self.distillation_loss_weight

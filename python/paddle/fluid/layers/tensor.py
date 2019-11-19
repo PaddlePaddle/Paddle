@@ -21,10 +21,9 @@ from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
 from .layer_function_generator import templatedoc
-from ..data_feeder import convert_dtype
+from ..data_feeder import check_type_and_dtype, check_type, check_dtype, convert_dtype
 import numpy
 import warnings
-from ..data_feeder import convert_dtype
 
 __all__ = [
     'create_tensor', 'create_parameter', 'create_global_var', 'cast',
@@ -192,17 +191,10 @@ def cast(x, dtype):
             #  [ 0  4]] int32
     """
     helper = LayerHelper('cast', **locals())
-    if not isinstance(x, Variable):
-        raise TypeError(
-            "The type of 'x' in cast must be Variable, but received %s" %
-            (type(x)))
-    if convert_dtype(x.dtype) not in [
-            'bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'
-    ]:
-        raise TypeError(
-            "The data type of 'x' in cast must be one of [bool, float16, float32, float64, int32, int64, uint8], but received %s."
-            % (convert_dtype(x.dtype)))
-
+    check_type_and_dtype(
+        x, 'x', Variable,
+        ['bool', 'float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+        'cast')
     out = helper.create_variable_for_type_inference(dtype=dtype)
     helper.append_op(
         type='cast',
@@ -265,25 +257,11 @@ def concat(input, axis=0, name=None):
             "The type of input in concat should be list, but received %s." %
             (type(input)))
         input = [input]
-    for x in input:
-        if not isinstance(x, Variable):
-            raise TypeError(
-                "The type of x in 'input' in concat must be Variable, but received %s."
-                % (type(x)))
-        if convert_dtype(x.dtype) in ['float16']:
-            warnings.warn(
-                "The data type of x in 'input' in concat only support float16 on GPU now."
-            )
-        if convert_dtype(x.dtype) not in [
-                'float16', 'float32', 'float64', 'int32', 'int64'
-        ]:
-            raise TypeError(
-                "The data type of x in 'input' in concat must be float16(only support on GPU), float32, float64, int32, int64, but received %s."
-                % (convert_dtype(x.dtype)))
-    if not isinstance(axis, (int, Variable)):
-        raise TypeError(
-            "The type of 'axis' in concat must be int or Variable, but "
-            "received %s." % (type(axis)))
+    for id, x in enumerate(input):
+        check_type_and_dtype(
+            x, 'input[' + str(id) + ']', Variable,
+            ['float16', 'float32', 'float64', 'int32', 'int64'], 'concat')
+    check_type(axis, 'axis', (int, Variable), 'concat')
     inputs = {'X': input}
     attrs = {}
     if isinstance(axis, Variable):
@@ -478,14 +456,11 @@ def assign(input, output=None):
           result3 = fluid.layers.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
     helper = LayerHelper('assign', **locals())
+    check_type(input, 'input', (Variable, numpy.ndarray), 'assign')
     if isinstance(input, Variable):
-        if convert_dtype(input.dtype) not in [
-                'float32', 'float64', 'int32', 'int64', 'bool'
-        ]:
-            raise TypeError(
-                "When the type of 'input' in assign is Variable, the data "
-                "type of 'input' must be float32, float64, int32, int64 or "
-                "bool, but received %s." % convert_dtype(input.dtype))
+        check_dtype(input.dtype, 'input',
+                    ['float32', 'float64', 'int32', 'int64', 'bool'], 'assign',
+                    '(When the type of input in assign is Variable.)')
         if output is None:
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
@@ -518,9 +493,6 @@ def assign(input, output=None):
                 'shape': list(input.shape),
                 value_name: values
             })
-    else:
-        raise TypeError("The type of 'input' in assign must be Variable or "
-                        "numpy.ndarray, but received %s" % type(input))
 
     return output
 
@@ -570,19 +542,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
           data4 = fluid.layers.fill_constant(shape=shape, dtype='bool', value=True) # data4=[[True,True],[True,True]]
     """
     helper = LayerHelper("fill_constant", **locals())
-    if convert_dtype(dtype) not in [
-            'bool', 'float16', 'float32', 'float64', 'int32', 'int64'
-    ]:
-        raise TypeError(
-            "The create data type in fill_constant must be one of 'bool', float16, float32,"
-            "float64, int32 or int64, but received %s." % convert_dtype(
-                (dtype)))
-
-    if not isinstance(shape, (list, tuple, Variable)):
-        raise TypeError(
-            "The type of 'shape' in fill_constant must be Variable, list or tuple, but "
-            "received %s." % (type(shape)))
-
+    check_dtype(dtype, 'create data type',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'fill_constant')
+    check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
     inputs = {}
     attrs = {
         'value': float(value),
@@ -609,12 +572,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
         for idx, dim in enumerate(list_shape):
             if isinstance(dim, Variable):
                 dim.stop_gradient = True
-                if convert_dtype(dim.dtype) not in ['int32', 'int64']:
-                    raise TypeError(
-                        "When type of 'shape' in fill_constant is list or tuple, "
-                        "the data type of the element with type Variable must be int32 or int64, "
-                        "but received the data type of shape[%d] is %s." %
-                        (idx, convert_dtype(dim.dtype)))
+                check_dtype(
+                    dim.dtype, 'shape[' + str(idx) + ']', ['int32', 'int64'],
+                    'fill_constant',
+                    '(When type of shape in fill_constant is list or tuple.)')
                 if convert_dtype(dim.dtype) == 'int64':
                     dim = cast(x=dim, dtype='int32')
                 new_shape_tensor.append(dim)
@@ -626,10 +587,8 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
 
     if isinstance(shape, Variable):
         shape.stop_gradient = True
-        if convert_dtype(shape.dtype) not in ['int32', 'int64']:
-            raise TypeError(
-                "When type of 'shape' in fill_constant is Variable, the data type of 'shape' must be int32 or int64, "
-                "but received %s." % (convert_dtype(shape.dtype)))
+        check_dtype(shape.dtype, 'shape', ['int32', 'int64'], 'fill_constant',
+                    '(When type of shape in fill_constant is Variable.)')
         if (convert_dtype(shape.dtype) == 'int64'):
             shape = cast(shape, 'int32')
         inputs["ShapeTensor"] = shape
@@ -644,11 +603,11 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
     if out is None:
         out = helper.create_variable_for_type_inference(dtype=dtype)
     else:
-        if not (convert_dtype(dtype) == convert_dtype(out.dtype)):
-            raise TypeError(
-                "The create data type in op must be same with out type"
-                "but received %s and out dtype %s." % (convert_dtype(
-                    (dtype), convert_dtype(out.dtype))))
+        check_dtype(
+            dtype, 'create data type',
+            convert_dtype(out.dtype), 'fill_constant',
+            '(The create data type in fill_constant must be the same with out data type.)'
+        )
     attrs['dtype'] = out.dtype
     helper.append_op(
         type='fill_constant',
@@ -970,13 +929,9 @@ def zeros(shape, dtype, force_cpu=False):
           import paddle.fluid as fluid
           data = fluid.layers.zeros(shape=[3, 2], dtype='float32') # [[0., 0.], [0., 0.], [0., 0.]]
     """
-    if convert_dtype(dtype) not in [
-            'bool', 'float16', 'float32', 'float64', 'int32', 'int64'
-    ]:
-        raise TypeError(
-            "The create data type in zeros must be one of bool, float16, float32,"
-            " float64, int32 or int64, but received %s." % convert_dtype(
-                (dtype)))
+    check_dtype(dtype, 'create data type',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'zeros')
     return fill_constant(value=0.0, **locals())
 
 
