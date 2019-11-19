@@ -2627,10 +2627,10 @@ _SPARSECOMMONSGDRULEPARAMETER.fields_by_name[
     'naive'].message_type = _SPARSENAIVESGDRULEPARAMETER
 _SPARSECOMMONSGDRULEPARAMETER.fields_by_name[
     'adagrad'].message_type = _SPARSEADAGRADSGDRULEPARAMETER
-_SPARSECOMMONSGDRULEPARAMETER.fields_by_name['adam'].message_type = _SPARSEADAMSGDPARAMETER
+_SPARSECOMMONSGDRULEPARAMETER.fields_by_name[
+    'adam'].message_type = _SPARSEADAMSGDPARAMETER
 _DENSESGDRULEPARAMETER.fields_by_name['adam'].message_type = _ADAMSGDPARAMETER
-_DENSESGDRULEPARAMETER.fields_by_name[
-    'naive'].message_type = _NAIVESGDPARAMETER
+_DENSESGDRULEPARAMETER.fields_by_name['naive'].message_type = _NAIVESGDPARAMETER
 _DENSESGDRULEPARAMETER.fields_by_name[
     'summary'].message_type = _SUMMARYSGDPARAMETER
 _DENSESGDRULEPARAMETER.fields_by_name[
@@ -2647,8 +2647,7 @@ DESCRIPTOR.message_types_by_name[
     'DownpourTrainerParameter'] = _DOWNPOURTRAINERPARAMETER
 DESCRIPTOR.message_types_by_name['ProgramConfig'] = _PROGRAMCONFIG
 DESCRIPTOR.message_types_by_name['DenseTableParameter'] = _DENSETABLEPARAMETER
-DESCRIPTOR.message_types_by_name[
-    'SparseTableParameter'] = _SPARSETABLEPARAMETER
+DESCRIPTOR.message_types_by_name['SparseTableParameter'] = _SPARSETABLEPARAMETER
 DESCRIPTOR.message_types_by_name[
     'DownpourServerParameter'] = _DOWNPOURSERVERPARAMETER
 DESCRIPTOR.message_types_by_name[
