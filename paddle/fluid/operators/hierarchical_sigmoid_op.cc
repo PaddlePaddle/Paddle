@@ -195,7 +195,6 @@ class HierarchicalSigmoidGradMaker : public framework::SingleGradOpMaker<T> {
     // Inputs: X, W, Label, PathTable, PathCode, PreOut, Out@GRAD
     op->SetInput("X", this->Input("X"));
     op->SetInput("W", this->Input("W"));
-    op->SetInput("Bias", this->Input("Bias"));
     op->SetInput("Label", this->Input("Label"));
     op->SetInput("PathTable", this->Input("PathTable"));
     op->SetInput("PathCode", this->Input("PathCode"));

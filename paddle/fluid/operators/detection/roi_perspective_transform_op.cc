@@ -632,8 +632,6 @@ class ROIPerspectiveTransformGradMaker
     op->SetType("roi_perspective_transform_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("ROIs", this->Input("ROIs"));
-    op->SetInput("Out2InIdx", this->Output("Out2InIdx"));
-    op->SetInput("Out2InWeights", this->Output("Out2InWeights"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());

@@ -75,8 +75,8 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
              "shape: [batch_size, 1]");
 
     // TODO(typhoonzero): support weight input
-    AddInput("StatPos", "Statistic value when label = 1");
-    AddInput("StatNeg", "Statistic value when label = 0");
+    //    AddInput("StatPos", "Statistic value when label = 1");
+    //    AddInput("StatNeg", "Statistic value when label = 0");
 
     AddOutput("AUC",
               "A scalar representing the "

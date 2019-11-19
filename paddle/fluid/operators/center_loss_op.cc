@@ -134,7 +134,6 @@ class CenterLossOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetType("center_loss_grad");
     retv->SetInput(framework::GradVarName("Loss"), this->OutputGrad("Loss"));
     retv->SetInput("SampleCenterDiff", this->Output("SampleCenterDiff"));
-    retv->SetInput("X", this->Input("X"));
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
 
     retv->SetAttrMap(this->Attrs());

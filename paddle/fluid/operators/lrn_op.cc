@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lrn_op.h"
+#include <memory>
 #include <string>
 #include <vector>
 #include "paddle/fluid/operators/math/blas.h"
@@ -320,14 +321,31 @@ class LRNOpGrad : public framework::OperatorWithKernel {
         layout_, library_);
   }
 };
+
+template <typename T>
+class LRNGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+  std::unique_ptr<T> Apply() const override {
+    auto* op = new T();
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Out", this->Output("Out"));
+    op->SetInput("MidOut", this->Output("MidOut"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(op);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    lrn, ops::LRNOp, ops::LRNOpMaker<float>,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+REGISTER_OPERATOR(lrn, ops::LRNOp, ops::LRNOpMaker<float>,
+                  ops::LRNGradOpMaker<paddle::framework::OpDesc>,
+                  ops::LRNGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(lrn_grad, ops::LRNOpGrad);
 REGISTER_OP_CPU_KERNEL(

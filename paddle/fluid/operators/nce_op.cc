@@ -301,6 +301,31 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
   }
 };
 
+template <typename T>
+class NCEGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+  std::unique_ptr<T> Apply() const override {
+    auto *op = new T();
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput("Weight", this->Input("Weight"));
+    op->SetInput("SampleLogits", this->Output("SampleLogits"));
+    op->SetInput("SampleLabels", this->Output("SampleLabels"));
+    op->SetInput("SampleWeight", this->Input("SampleWeight"));
+    op->SetInput("CustomDistProbs", this->Input("CustomDistProbs"));
+    op->SetInput("CustomDistAlias", this->Input("CustomDistAlias"));
+    op->SetInput("CustomDistAliasProbs", this->Input("CustomDistAliasProbs"));
+    op->SetInput(framework::GradVarName("Cost"), this->OutputGrad("Cost"));
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
+    op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(op);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
