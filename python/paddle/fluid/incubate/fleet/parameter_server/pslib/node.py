@@ -81,7 +81,7 @@ class DownpourServer(Server):
                     'sparse_delete_after_unseen_days', 'sparse_show_click_decay_rate', 'sparse_delete_threshold', \
                     'sparse_converter', 'sparse_deconverter', 'sparse_enable_cache', 'sparse_cache_rate', \
                     'sparse_cache_file_num', 'sparse_beta1_decay_rate', 'sparse_beta2_decay_rate', \
-                    'sparse_ada_epsilon']
+                    'sparse_ada_epsilon', 'sparse_optimizer']
 
         for key in strategy:
             if key not in support_sparse_key_list:
