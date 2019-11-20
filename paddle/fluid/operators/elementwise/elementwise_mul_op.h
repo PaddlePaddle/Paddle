@@ -26,9 +26,15 @@ void default_elementwise_mul(const framework::ExecutionContext& ctx,
                              const framework::Tensor* x,
                              const framework::Tensor* y, framework::Tensor* z) {
   int axis = ctx.Attr<int>("axis");
-  ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
-                                                        MulFunctor<T>(), z);
+  if (x->numel() >= y->numel()) {
+    ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(ctx, x, y, axis,
+                                                          MulFunctor<T>(), z);
+  } else {
+    ElementwiseComputeEx<InverseMulFunctor<T>, DeviceContext, T>(
+        ctx, x, y, axis, InverseMulFunctor<T>(), z);
+  }
 }
+
 template <typename DeviceContext, typename T, class Enable = void>
 struct SameDimsElemwiseMul {
   void operator()(const framework::ExecutionContext& ctx,

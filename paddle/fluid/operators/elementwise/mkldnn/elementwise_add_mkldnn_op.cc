@@ -108,8 +108,9 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       auto y_dims = trim_trailing_singular_dims(y_dims_untrimed);
       axis = (y_dims.size() == 0) ? x_dims.size() : axis;
 
-      int pre, n, post;
-      get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post);
+      int pre, n, post, is_run_common_broadcast;
+      get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post,
+                   &is_run_common_broadcast);
 
       if (post == 1) {
         functor.RunRowWise(n, pre);
@@ -212,6 +213,8 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       }
     } else {
       // Execute default kernel when broadcast is needed
+      x = ctx.Input<Tensor>("X");
+      y = ctx.Input<Tensor>("Y");
       ElemwiseExplicitGradCompute<paddle::platform::CPUDeviceContext, T,
                                   IdentityGrad<T>, IdentityGrad<T>>(
           ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),
