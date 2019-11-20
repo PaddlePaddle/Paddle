@@ -921,12 +921,15 @@ class DistributeTranspiler(object):
                         param_init_op.append(op)
                 init_ops.extend(param_init_op)
             delete_ops(self.startup_program.global_block(), init_ops)
+
             for var in need_delete_optimize_vars:
-                self.startup_program.global_block()._remove_var(var)
+                if self.startup_program.global_block().has_var(var):
+                    self.startup_program.global_block()._remove_var(var)
         else:
             delete_ops(self.origin_program.global_block(), self.optimize_ops)
             for var in need_delete_optimize_vars:
-                self.origin_program.global_block()._remove_var(var)
+                if self.origin_program.global_block().has_var(var):
+                    self.origin_program.global_block()._remove_var(var)
 
     def get_trainer_program(self, wait_port=True):
         """
