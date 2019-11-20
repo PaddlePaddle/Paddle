@@ -1492,27 +1492,27 @@ class AdamOptimizer(Optimizer):
                 avg_cost = fluid.layers.mean(cost)
 
                 # define beta decay variable
-                def get_decayed_betas(beta1, beta2, decay_steps, decay_rate)
+                def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate)
                     global_step = lr_scheduler._decay_step_counter()
 
                     beta1 = fluid.layers.create_global_var(
                         shape=[1],
-                        value=float(beta1),
+                        value=float(beta1_init),
                         dtype='float32',
                         # set persistable for save checkpoints and resume
                         persistable=True,
                         name="beta1")
                     beta2 = fluid.layers.create_global_var(
                         shape=[1],
-                        value=float(beta2),
+                        value=float(beta2_init),
                         dtype='float32',
                         # set persistable for save checkpoints and resume
                         persistable=True,
                         name="beta2")
 
                     div_res = global_step / decay_steps
-                    decayed_beta1 = beta1 * (decay_rate**div_res)
-                    decayed_beta2 = beta2 * (decay_rate**div_res)
+                    decayed_beta1 = beta1_init * (decay_rate**div_res)
+                    decayed_beta2 = beta2_init * (decay_rate**div_res)
                     fluid.layers.assign(decayed_beta1, beta1)
                     fluid.layers.assign(decayed_beta2, beta2)
 
