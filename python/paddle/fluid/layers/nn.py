@@ -7510,7 +7510,7 @@ def scatter_nd_add(ref, index, updates, name=None):
         raise ValueError("ref and updates must have same data type.")
 
     helper = LayerHelper('scatter_nd_add', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='ref')
     if name is None:
         output = helper.create_variable_for_type_inference(dtype)
     else:
