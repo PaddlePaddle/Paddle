@@ -27,7 +27,7 @@ import numpy
 import warnings
 import six
 from functools import reduce, partial
-from ..data_feeder import check_type_and_dtype
+from ..data_feeder import convert_dtype, check_type_and_dtype
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
