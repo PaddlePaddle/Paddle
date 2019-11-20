@@ -270,9 +270,16 @@ void BindImperative(py::module *m_ptr) {
       .def_static("_alive_vars", &imperative::VarBase::AliveVarNames)
       .def("__init__",
            [](imperative::VarBase &self, framework::proto::VarType::Type dtype,
-              const std::vector<int> &dims, const std::string &name,
+              const std::vector<int> &dims, const py::handle &name,
               framework::proto::VarType::Type type, bool persistable) {
-             new (&self) imperative::VarBase(name);
+             std::string act_name = "";
+             if (!name.ptr() || name.ptr() == Py_None) {
+               act_name = imperative::GetCurrentTracer()->GenerateUniqueName(
+                   "generated_var");
+             } else {
+               act_name = name.cast<std::string>();
+             }
+             new (&self) imperative::VarBase(act_name);
              self.SetPersistable(persistable);
              self.SetType(type);
              self.SetDataType(dtype);
