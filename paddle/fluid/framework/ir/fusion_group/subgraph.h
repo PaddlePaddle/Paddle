@@ -65,6 +65,16 @@ class SubGraph {
     }
   }
 
+  bool Has(Node* n) { return nodes_set.find(n) != nodes_set.end(); }
+
+  void Insert(Node* n) {
+    if (nodes_set.find(n) == nodes_set.end()) {
+      VLOG(5) << "Insert " << n->Name() << " to subgraph " << this;
+      nodes_set.insert(n);
+      is_sorted = false;
+    }
+  }
+
   int GetNumOperations() {
     int num_operations = 0;
     for (auto* n : nodes_set_) {

@@ -47,7 +47,7 @@ class AssignFunctor {
     out_rows.set_height(rows.height());
     auto &t = rows.value();
     auto *m = out_rows.mutable_value();
-    framework::TensorCopy(t, t.place(), dev_ctx_, m);
+    framework::TensorCopy(t, dev_ctx_.GetPlace(), dev_ctx_, m);
   }
 
   template <typename T>
@@ -60,7 +60,7 @@ class AssignFunctor {
                    framework::LoDTensor *out) const {
     if (lod_tensor.numel() == 0) return;
     auto &out_tensor = *out;
-    TensorCopy(lod_tensor, lod_tensor.place(), dev_ctx_, &out_tensor);
+    TensorCopy(lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
     out_tensor.set_lod(lod_tensor.lod());
   }
 
