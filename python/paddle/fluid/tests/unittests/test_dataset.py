@@ -356,40 +356,6 @@ class TestDataset(unittest.TestCase):
         fleet_ptr.set_client2client_config(1, 1, 1)
         fleet_ptr.get_cache_threshold(0)
 
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        scope = fluid.Scope()
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-        with fluid.program_guard(train_program, startup_program):
-            slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
-            slots_vars = []
-            for slot in slots:
-                var = fluid.layers.data(\
-                    name=slot, shape=[1], dtype="float32", lod_level=1)
-            slots_vars.append(var)
-            fake_cost = \
-                fluid.layers.elementwise_sub(slots_vars[0], slots_vars[-1])
-            fake_cost = fluid.layers.mean(fake_cost)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            fleet.init(exe)
-            adam = fluid.optimizer.Adam(learning_rate=0.000005)
-            adam = fleet.distributed_optimizer(adam)
-            adam.minimize([fake_cost], [scope])
-            exe.run(startup_program)
-            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-            dataset.set_batch_size(32)
-            dataset.set_thread(3)
-            dataset.set_filelist([
-                "test_in_memory_dataset_run_a.txt",
-                "test_in_memory_dataset_run_b.txt"
-            ])
-            dataset.set_pipe_command("cat")
-            dataset.set_use_var(slots_vars)
-            dataset.load_into_memory()
-        fleet._opt_info = None
-        fleet._fleet_ptr = None
-
         os.remove("./test_in_memory_dataset_run_a.txt")
         os.remove("./test_in_memory_dataset_run_b.txt")
 
@@ -621,6 +587,66 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         except Exception as e:
             self.assertTrue(False)
 
+class TestDataset2(unittest.TestCase):
+    """  TestCases for Dataset. """
+
+    def setUp(self):
+        self.use_data_loader = False
+        self.epoch_num = 10
+        self.drop_last = False
+
+    def test_dataset_fleet(self):
+        """
+        Testcase for InMemoryDataset from create to run.
+        """
+        with open("test_in_memory_dataset2_run_a.txt", "w") as f:
+            data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
+            data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
+            data += "1 3 2 3 5 4 7 7 7 7 1 3\n"
+            f.write(data)
+        with open("test_in_memory_dataset2_run_b.txt", "w") as f:
+            data = "1 4 2 3 3 4 5 5 5 5 1 4\n"
+            data += "1 5 2 3 4 4 6 6 6 6 1 5\n"
+            data += "1 6 2 3 5 4 7 7 7 7 1 6\n"
+            data += "1 7 2 3 6 4 8 8 8 8 1 7\n"
+            f.write(data)
+
+        train_program = fluid.Program()
+        startup_program = fluid.Program()
+        scope = fluid.Scope()
+        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
+        with fluid.program_guard(train_program, startup_program):
+            slots = ["slot1_ff", "slot2_ff", "slot3_ff", "slot4_ff"]
+            slots_vars = []
+            for slot in slots:
+                var = fluid.layers.data(\
+                    name=slot, shape=[1], dtype="float32", lod_level=1)
+            slots_vars.append(var)
+            fake_cost = \
+                fluid.layers.elementwise_sub(slots_vars[0], slots_vars[-1])
+            fake_cost = fluid.layers.mean(fake_cost)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            fleet.init(exe)
+            adam = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam = fleet.distributed_optimizer(adam)
+            adam.minimize([fake_cost], [scope])
+            exe.run(startup_program)
+            dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
+            dataset.set_batch_size(32)
+            dataset.set_thread(3)
+            dataset.set_filelist([
+                "test_in_memory_dataset2_run_a.txt",
+                "test_in_memory_dataset2_run_b.txt"
+            ])
+            dataset.set_pipe_command("cat")
+            dataset.set_use_var(slots_vars)
+            dataset.load_into_memory()
+        fleet._opt_info = None
+        fleet._fleet_ptr = None
+
+        os.remove("./test_in_memory_dataset2_run_a.txt")
+        os.remove("./test_in_memory_dataset2_run_b.txt")
 
 if __name__ == '__main__':
     unittest.main()
