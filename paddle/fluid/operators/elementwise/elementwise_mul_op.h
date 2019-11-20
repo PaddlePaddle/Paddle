@@ -176,7 +176,7 @@ class ElementwiseMulDoubleGradKernel : public framework::OpKernel<T> {
     if (ddout) {
       int axis = ctx.Attr<int>("axis");
       // when size(x) < size(y), ddout can't use memory of dx using inplace.
-      if (ddout->Holder() == ddx->Holder() && ddout->numel() > ddx->numel()) {
+      if (ddout->numel() > ddx->numel()) {
         ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
             ctx, ddx_safe, ddy_safe, *dout, *dout, axis, dx, dy, MulGradDX<T>(),
             MulGradDY<T>());
@@ -195,7 +195,6 @@ class ElementwiseMulDoubleGradKernel : public framework::OpKernel<T> {
         Tensor* ddout_tmp = dx;
 
         default_elementwise_mul<DeviceContext, T>(ctx, x, &ddy_safe, ddout_tmp);
-        int axis = ctx.Attr<int>("axis");
         // NOTE: in the following ElemwiseGradCompute, for the
         // first output tensor is nullptr, the branch to calculate first
         // output tensor will not be activated, DivGradDx function will not
