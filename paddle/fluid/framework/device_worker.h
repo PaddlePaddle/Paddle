@@ -105,7 +105,10 @@ class PullDenseWorker {
 // should incorporate different type of device
 class DeviceWorker {
  public:
-  DeviceWorker() { use_cvm_ = false; }
+  DeviceWorker() {
+    no_cvm_ = true;
+    use_cvm_ = false;
+  }
   virtual ~DeviceWorker() {}
   virtual void Initialize(const TrainerDesc& desc) = 0;
   virtual void SetDeviceIndex(int tid) = 0;
@@ -135,6 +138,7 @@ class DeviceWorker {
   int64_t batch_num_;
   FetchConfig fetch_config_;
   bool use_cvm_;
+  bool no_cvm_;
 };
 
 class CPUWorkerBase : public DeviceWorker {
