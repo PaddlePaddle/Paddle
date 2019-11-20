@@ -231,6 +231,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const float epsilon = ctx.Attr<float>("epsilon");
+    float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
 
@@ -239,12 +240,6 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
-
-    float momentum = ctx.Attr<float>("momentum");
-    if (ctx.HasInput("MomentumTensor")) {
-      const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
-      momentum = mom_tensor->data<float>()[0];
-    }
 
     const auto *x = ctx.Input<Tensor>("X");
     const auto &x_dims = x->dims();
@@ -319,6 +314,13 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
         }
         default:
           PADDLE_THROW("Unknown storage order: %s", data_layout_str);
+      }
+
+      // if MomentumTensor is set, use MomentumTensor value, momentum
+      // is only used in this training branch
+      if (ctx.HasInput("MomentumTensor")) {
+        const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
+        momentum = mom_tensor->data<float>()[0];
       }
 
       running_mean_arr =
