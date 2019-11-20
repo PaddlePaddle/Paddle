@@ -87,7 +87,8 @@ struct BuildStrategy {
   // TODO(dev-paddle): fuse_elewise_add_act_ops may cause some models have
   // cycle.
   bool fuse_elewise_add_act_ops_{false};
-  // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
+  bool enable_auto_fusion_{false};
+  // fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
   // should not be sparse types
   boost::optional<bool> fuse_all_optimizer_ops_{false};
   boost::optional<bool> fuse_all_reduce_ops_{boost::none};

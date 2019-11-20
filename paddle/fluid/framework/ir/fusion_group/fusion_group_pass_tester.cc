@@ -124,8 +124,6 @@ std::unique_ptr<Graph> BuildElementwiseTreeGraph(bool backward = false) {
 }
 
 int TestMain(std::unique_ptr<Graph> graph, std::string prefix) {
-  fusion_group::OperationMap::Init();
-
   VisualizeGraph(&graph, prefix + ".dot");
   auto pass = PassRegistry::Instance().Get("fusion_group_pass");
   pass->Set("use_gpu", new bool(true));

@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/fusion_group_pass.h"
+#include <memory>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
@@ -27,6 +29,7 @@ namespace ir {
 void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph);
   if (Get<bool>("use_gpu")) {
+    fusion_group::OperationMap::Init();
     int num_elementwise_groups = DetectFusionGroup(graph, 0);
     LOG(INFO) << "Detect " << num_elementwise_groups
               << " elementwise fusion groups.";
@@ -61,6 +64,7 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
         std::string func_name = "fused_elementwise_" + std::to_string(index++);
         subgraph.SetFuncName(func_name);
         subgraphs.push_back(subgraph);
+        LOG(INFO) << "subgraph: {\n" << DebugString(subgraph.Nodes()) << "}\n";
         begin_of_forward_subgraph.push_back(n);
       }
     }
@@ -88,7 +92,6 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
 }
 
 void FusionGroupPass::GenerateCode(fusion_group::SubGraph* subgraph) const {
-  fusion_group::OperationMap::Init();
   fusion_group::CodeGenerator code_generator;
   std::string code_str = code_generator.Generate(subgraph);
   VLOG(3) << code_str;

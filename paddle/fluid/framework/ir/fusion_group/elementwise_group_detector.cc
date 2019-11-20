@@ -108,9 +108,9 @@ void ElementwiseGroupDetector::Init(Graph* graph, bool backward) {
       elementwise_ops_.insert(n);
     }
   }
-  LOG(INFO) << "elementise ops for graph:" << graph
-            << ", backward=" << backward;
-  LOG(INFO) << "{\n" << DebugString(elementwise_ops_) << "}\n";
+  // LOG(INFO) << "elementise ops for graph:" << graph
+  //           << ", backward=" << backward;
+  // LOG(INFO) << "{\n" << DebugString(elementwise_ops_) << "}\n";
 }
 
 bool ElementwiseGroupDetector::IsElementwiseOp(Node* n) {
