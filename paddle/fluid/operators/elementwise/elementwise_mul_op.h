@@ -175,18 +175,21 @@ class ElementwiseMulDoubleGradKernel : public framework::OpKernel<T> {
     // (5) dx = dout * ddy
     if (ddout) {
       int axis = ctx.Attr<int>("axis");
+      auto& place =
+          *ctx.template device_context<DeviceContext>().eigen_device();
       // size(ddout) > size(ddx), ddout can't use memory of ddx using inplace
       if (ddout->numel() > ddx->numel()) {
         ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
             ctx, ddx_safe, ddy_safe, *dout, *dout, axis, dx, dy, MulGradDX<T>(),
             MulGradDY<T>());
+
         Tensor ddout_tmp;
         ddout_tmp.mutable_data<T>(ddout->dims(), ctx.GetPlace());
+
         default_elementwise_mul<DeviceContext, T>(ctx, y, &ddx_safe, ddout);
         default_elementwise_mul<DeviceContext, T>(ctx, &ddy_safe, x,
                                                   &ddout_tmp);
-        auto& place =
-            *ctx.template device_context<DeviceContext>().eigen_device();
+
         auto ddout_t = framework::EigenVector<T>::Flatten(*ddout);
         auto ddout_tmp_t = framework::EigenVector<T>::Flatten(ddout_tmp);
         ddout_t.device(place) = ddout_t + ddout_tmp_t;
@@ -205,8 +208,6 @@ class ElementwiseMulDoubleGradKernel : public framework::OpKernel<T> {
             MulGradDX<T>(), MulGradDY<T>());
         default_elementwise_mul<DeviceContext, T>(ctx, &ddx_safe, y, ddout);
 
-        auto& place =
-            *ctx.template device_context<DeviceContext>().eigen_device();
         auto ddout_t = framework::EigenVector<T>::Flatten(*ddout);
         auto ddout_tmp_t = framework::EigenVector<T>::Flatten(*ddout_tmp);
         ddout_t.device(place) = ddout_t + ddout_tmp_t;
