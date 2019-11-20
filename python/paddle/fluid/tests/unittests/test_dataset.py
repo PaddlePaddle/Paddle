@@ -629,10 +629,18 @@ class TestDataset2(unittest.TestCase):
         with fluid.scope_guard(scope):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
-            fleet.init(exe)
+            try:
+                fleet.init(exe)
+            except ImportError as e:
+                print("warning: no mpi4py")
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
-            adam = fleet.distributed_optimizer(adam)
-            adam.minimize([fake_cost], [scope])
+            try:
+                adam = fleet.distributed_optimizer(adam)
+                adam.minimize([fake_cost], [scope])
+            except AttributeError as e:
+                print("warning: no mpi")
+            except ImportError as e:
+                print("warning: no mpi4py")
             exe.run(startup_program)
             dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
             dataset.set_batch_size(32)
@@ -644,8 +652,8 @@ class TestDataset2(unittest.TestCase):
             dataset.set_pipe_command("cat")
             dataset.set_use_var(slots_vars)
             dataset.load_into_memory()
-        fleet._opt_info = None
-        fleet._fleet_ptr = None
+            fleet._opt_info = None
+            fleet._fleet_ptr = None
 
         os.remove("./test_in_memory_dataset2_run_a.txt")
         os.remove("./test_in_memory_dataset2_run_b.txt")
