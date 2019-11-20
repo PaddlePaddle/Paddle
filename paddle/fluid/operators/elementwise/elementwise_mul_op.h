@@ -175,7 +175,7 @@ class ElementwiseMulDoubleGradKernel : public framework::OpKernel<T> {
     // (5) dx = dout * ddy
     if (ddout) {
       int axis = ctx.Attr<int>("axis");
-      // when size(x) < size(y), ddout can't use memory of dx using inplace.
+      // size(ddout) > size(ddx), ddout can't use memory of ddx using inplace
       if (ddout->numel() > ddx->numel()) {
         ElemwiseGradCompute<DeviceContext, T, MulGradDX<T>, MulGradDY<T>>(
             ctx, ddx_safe, ddy_safe, *dout, *dout, axis, dx, dy, MulGradDX<T>(),
