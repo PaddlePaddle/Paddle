@@ -33,7 +33,8 @@ __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
     'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
     'array_read', 'array_length', 'cond', 'IfElse', 'DynamicRNN', 'StaticRNN',
-    'reorder_lod_tensor_by_rank', 'Print', 'is_empty', 'case', 'switch_case'
+    'reorder_lod_tensor_by_rank', 'Print', 'is_empty', 'case', 'switch_case',
+    'while_loop'
 ]
 
 
@@ -912,6 +913,67 @@ class While(object):
                    "is_test": self.is_test})
 
 
+def while_loop(cond, body, loop_vars, name=None):
+    """
+    This while_loop operator control. Repeat while_loop body until cond return False.
+
+    Args:
+        cond(Callable): A callable returning a boolean tensor controlling whether to continue looping.
+	body(Callable): A callable returning a tuple, namedtuple or list of tensors of the same arity(length and
+            structure) and types as `loops_vars`.
+	loop_vars(list|tuple): A list ,namedtuple or tuple of tensors that is passed to both `cond` and `body`.
+	is_test(bool, optional): A flag indicating whether execution is in test phase. Default is None.
+	name(str, optional): Normally there is no need for users to set this property. For more information, please
+            refer to :ref:`api_guide_Name`. Default is None.
+    Examples:
+        .. code-block:: python
+
+	import paddle.fluid as fluid
+        import paddle.fluid.layers as layers
+
+	i = layers.fill_constant(shape=[1], dtype='int64', value=0)
+	ten = layers.fill_constant(shape=[1], dtype="int64", value=10)
+
+	def cond(i):
+	    return layers.less_than(i, ten)
+
+	def body(i):
+	    return layers.increment(x=i, value=1, in_place=True)
+
+	out = layers.while_loop(cond, body, [i])
+
+	exe = fluid.Executor(fluid.CPUPlace())
+	exe.run(fluid.default_startup_program)
+
+	res = exe.run(fluid.default_mian_program, feed={}, fetch_list=out)
+	print(res)
+    """
+    if not callable(cond):
+        raise TypeError("cond should be callable")
+    if not callable(body):
+        raise TypeError("body should be callable")
+
+    pre_cond = cond(*loop_vars)
+    if not isinstance(pre_cond, Variable):
+        raise TypeError("Cond should return a variable")
+    if pre_cond.dtype != core.VarDesc.VarType.BOOL:
+        raise TypeError("Cond should return a boolean variable")
+    if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
+        raise TypeError(
+            "The shape of the variable returned by cond should be [],"
+            "but given shape as {0}.".format(list(pre_cond.shape)))
+
+    while_loop_block = While(pre_cond)
+    with while_loop_block.block():
+        output_vars = body(*loop_vars)
+        for i in range(len(output_vars)):
+            assign(output_vars[i], loop_vars[i])
+        now_cond = cond(*output_vars)
+        assign(now_cond, pre_cond)
+
+    return loop_vars
+
+
 def lod_rank_table(x, level=0):
     """
     LoD Rank Table Operator. Given an input variable **x** and a level number
@@ -1319,7 +1381,7 @@ def greater_than(x, y, cond=None):
 
           import paddle.fluid as fluid
           import numpy as np
-          label = fluid.layers.assign(np.array([2, 3], dtype='int32'))
+          label = fluid.layers.ssign(np.array([2, 3], dtype='int32'))
           limit = fluid.layers.assign(np.array([3, 2], dtype='int32'))
           out = fluid.layers.greater_than(x=label, y=limit) #out=[False, True]
           out1 = label > limit #out1=[False, True]
