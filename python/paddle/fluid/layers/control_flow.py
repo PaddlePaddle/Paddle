@@ -253,6 +253,16 @@ def Print(input,
                data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
                
     '''
+    if not isinstance(input, Variable):
+        raise TypeError(
+            "The type of 'input' in Print must be Variable, but received %s" %
+            (type(input)))
+    if convert_dtype(input.dtype) not in [
+            'float32', 'float64', 'int32_t', 'int64_t', 'bool'
+    ]:
+        raise TypeError(
+            "The data type of 'input' in Print must be float32 or float64 or int32_t or int64_t or bool, but received %s."
+            % (convert_dtype(input.dtype)))
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
