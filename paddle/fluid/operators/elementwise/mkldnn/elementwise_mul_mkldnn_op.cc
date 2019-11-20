@@ -72,8 +72,9 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
     auto y_dims_untrimmed = y->dims();
     auto x_int_dims = paddle::framework::vectorize<int>(x_dims);
 
-    int pre, num, post;
-    get_mid_dims(x_dims, y_dims_untrimmed, axis, &pre, &num, &post);
+    int pre, num, post, is_run_common_broadcast;
+    get_mid_dims(x_dims, y_dims_untrimmed, axis, &pre, &num, &post,
+                 &is_run_common_broadcast);
 
     if (post == 1) PADDLE_THROW("Not implemented when post is 1");
 
