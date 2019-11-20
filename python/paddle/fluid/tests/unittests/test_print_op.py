@@ -25,6 +25,7 @@ from paddle.fluid.framework import Program
 import numpy as np
 from simple_nets import simple_fc_net, init_data
 from paddle.fluid import compiler, Program, program_guard
+from op_test import OpTest
 
 
 class TestPrintOpCPU(unittest.TestCase):
