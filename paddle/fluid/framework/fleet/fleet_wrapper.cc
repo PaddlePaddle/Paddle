@@ -303,7 +303,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     std::vector<std::vector<float>>* push_values,
     std::vector<::std::future<int32_t>>* push_sparse_status,
     const int batch_size, const bool use_cvm, const bool dump_slot,
-    std::vector<uint64_t>* sparse_push_keys) {
+    std::vector<uint64_t>* sparse_push_keys, const bool no_cvm) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
   int slot_offset = 0;
@@ -313,6 +313,10 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   if (use_cvm) {
     offset = 0;
     grad_dim = emb_dim - 2;
+  }
+  if (no_cvm) {
+    offset = 0;
+    grad_dim = emb_dim;
   }
   if (dump_slot) {
     slot_offset = 1;
@@ -370,12 +374,12 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       }
       sparse_push_keys->push_back(ids[id_idx]);
       CHECK(fea_idx < (*push_values).size());
-      CHECK(fea_idx < fea_labels.size());
 
-      if (use_cvm) {
+      if (use_cvm || no_cvm) {
         memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
       } else {
+        CHECK(fea_idx < fea_labels.size());
         memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
         (*push_values)[fea_idx][show_index] = 1.0f;
