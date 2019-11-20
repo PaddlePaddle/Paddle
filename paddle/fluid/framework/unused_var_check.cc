@@ -64,7 +64,7 @@ void CheckUnusedVar(const OperatorBase &op) {
       err_msg += ", ";
     }
     err_msg += "please remove it from inputs or register NoNeedBufferVars!";
-    LOG(ERROR) << err_msg;
+    VLOG(1) << err_msg;
   }
 }
 

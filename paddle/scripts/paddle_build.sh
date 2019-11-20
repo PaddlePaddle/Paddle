@@ -436,8 +436,11 @@ EOF
         fi
 
         # TODO: jiabin need to refine this part when these tests fixed on mac
-        ctest --output-on-failure -j $2
-
+        # ctest --output-on-failure -j $2
+        # NOTE(cql): output logs of LOG(ERROR) to check unused vars.
+        export FLAGS_enable_unused_var_check=1
+        export GLOG_vmodule=unused_var_check=2
+        ctest -VV -j $2 -O log.txt
         paddle version
     fi
 }
