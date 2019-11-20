@@ -587,6 +587,7 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         except Exception as e:
             self.assertTrue(False)
 
+
 class TestDataset2(unittest.TestCase):
     """  TestCases for Dataset. """
 
@@ -648,6 +649,7 @@ class TestDataset2(unittest.TestCase):
 
         os.remove("./test_in_memory_dataset2_run_a.txt")
         os.remove("./test_in_memory_dataset2_run_b.txt")
+
 
 if __name__ == '__main__':
     unittest.main()
