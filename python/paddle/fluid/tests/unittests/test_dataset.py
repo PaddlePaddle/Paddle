@@ -625,6 +625,7 @@ class TestDataset2(unittest.TestCase):
             fake_cost = \
                 fluid.layers.elementwise_sub(slots_vars[0], slots_vars[-1])
             fake_cost = fluid.layers.mean(fake_cost)
+        with fluid.scope_guard(scope):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             fleet.init(exe)
