@@ -30,13 +30,12 @@ class TestFetchHandler(unittest.TestCase):
         table = np.random.random((3, 10)).astype("float32")
 
         class FH(fluid.executor.FetchHandler):
-            def handler(self, fetch_target_vars):
+            def handler(self, fetch_dict):
                 assert len(fetch_target_vars) == 1
 
         table_var = scope.var('emb').get_tensor()
         table_var.set(table, place)
-
-        fh = FH(['emb'], period_secs=2, return_np=True)
+        fh = FH({'emb': scope.find_var('emb')}, period_secs=2, return_np=True)
         fm = fluid.trainer_factory.FetchHandlerMonitor(scope, fh)
 
         fm.start()
