@@ -59,19 +59,9 @@ class SubGraph {
 
   void Insert(Node* n) {
     if (nodes_set_.find(n) == nodes_set_.end()) {
-      VLOG(3) << "Insert " << n->Name() << " to subgraph " << this;
+      VLOG(5) << "Insert " << n->Name() << " to subgraph " << this;
       nodes_set_.insert(n);
       is_sorted_ = false;
-    }
-  }
-
-  bool Has(Node* n) { return nodes_set.find(n) != nodes_set.end(); }
-
-  void Insert(Node* n) {
-    if (nodes_set.find(n) == nodes_set.end()) {
-      VLOG(5) << "Insert " << n->Name() << " to subgraph " << this;
-      nodes_set.insert(n);
-      is_sorted = false;
     }
   }
 
@@ -310,7 +300,7 @@ class SubGraph {
  private:
   int type_{-1};
   std::string func_name_;
-  bool save_intermediate_out_{false};
+  bool save_intermediate_out_{true};
 
   std::unordered_set<Node*> nodes_set_;
   bool is_sorted_{false};

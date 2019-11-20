@@ -14,9 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/fusion_group_pass.h"
 #include <vector>
+#include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/platform/device_code.h"
 
 namespace paddle {
 namespace framework {
@@ -24,10 +26,11 @@ namespace ir {
 
 void FusionGroupPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph);
-
-  int num_elementwise_groups = DetectFusionGroup(graph, 0);
-  LOG(INFO) << "Detect " << num_elementwise_groups
-            << " elementwise fusion groups.";
+  if (Get<bool>("use_gpu")) {
+    int num_elementwise_groups = DetectFusionGroup(graph, 0);
+    LOG(INFO) << "Detect " << num_elementwise_groups
+              << " elementwise fusion groups.";
+  }
 }
 
 int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
@@ -37,7 +40,9 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
   // Detect subgraph of forward ops.
   fusion_group::ElementwiseGroupDetector forward_detector(graph, false);
   std::unordered_set<Node*> all_nodes = graph->Nodes();
-  int index = 0;
+  // TODO(liuyiqun): supported different places
+  platform::CUDAPlace place = platform::CUDAPlace(0);
+  int index = platform::DeviceCodePool::Init({place}).size(place);
   for (Node* n : all_nodes) {
     bool is_found = false;
     for (auto& subgraph : subgraphs) {
@@ -62,12 +67,12 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
   }
   // Detect subgraph of backward ops.
   fusion_group::ElementwiseGroupDetector backward_detector(graph, true);
-  for (size_t i = 0; i < begin_of_forward_subgraph.size(); ++i) {
+  for (auto* begin : begin_of_forward_subgraph) {
     if (type == 0) {
-      fusion_group::SubGraph subgraph =
-          backward_detector(begin_of_forward_subgraph[i]);
+      fusion_group::SubGraph subgraph = backward_detector(begin);
       if (subgraph.GetNumOperations() >= 2) {
-        std::string func_name = "fused_elementwise_grad_" + std::to_string(i);
+        std::string func_name =
+            "fused_elementwise_grad_" + std::to_string(index++);
         subgraph.SetFuncName(func_name);
         subgraphs.push_back(subgraph);
       }
@@ -76,9 +81,26 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
 
   // TODO(liuyiqun): check whether there are intersection between subgraphs
   for (size_t i = 0; i < subgraphs.size(); ++i) {
+    GenerateCode(&subgraphs[i]);
     InsertFusionGroupOp(graph, &subgraphs[i]);
   }
   return subgraphs.size();
+}
+
+void FusionGroupPass::GenerateCode(fusion_group::SubGraph* subgraph) const {
+  fusion_group::OperationMap::Init();
+  fusion_group::CodeGenerator code_generator;
+  std::string code_str = code_generator.Generate(subgraph);
+  VLOG(3) << code_str;
+
+  // TODO(liuyiqun): supported different places
+  platform::CUDAPlace place = platform::CUDAPlace(0);
+  std::unique_ptr<platform::CUDADeviceCode> device_code(
+      new platform::CUDADeviceCode(place, subgraph->GetFuncName(), code_str));
+  device_code->Compile();
+
+  platform::DeviceCodePool& pool = platform::DeviceCodePool::Init({place});
+  pool.Set(std::move(device_code));
 }
 
 void FusionGroupPass::InsertFusionGroupOp(
@@ -129,4 +151,5 @@ void FusionGroupPass::InsertFusionGroupOp(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fusion_group_pass, paddle::framework::ir::FusionGroupPass);
+REGISTER_PASS(fusion_group_pass, paddle::framework::ir::FusionGroupPass)
+    .RequirePassAttr("use_gpu");

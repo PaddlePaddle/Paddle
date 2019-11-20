@@ -29,6 +29,7 @@ class FusionGroupPass : public Pass {
 
  private:
   int DetectFusionGroup(Graph* graph, int type = 0) const;
+  void GenerateCode(fusion_group::SubGraph* subgraph) const;
   void InsertFusionGroupOp(Graph* graph,
                            fusion_group::SubGraph* subgraph) const;
 

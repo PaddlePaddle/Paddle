@@ -127,10 +127,11 @@ int TestMain(std::unique_ptr<Graph> graph, std::string prefix) {
   fusion_group::OperationMap::Init();
 
   VisualizeGraph(&graph, prefix + ".dot");
-  auto fusion_group_pass = PassRegistry::Instance().Get("fusion_group_pass");
+  auto pass = PassRegistry::Instance().Get("fusion_group_pass");
+  pass->Set("use_gpu", new bool(true));
   VLOG(3) << DebugString(graph);
 
-  graph.reset(fusion_group_pass->Apply(graph.release()));
+  graph.reset(pass->Apply(graph.release()));
   VisualizeGraph(&graph, prefix + ".fusion_group.dot");
   int num_fusion_group_ops = GetNumOpNodes(graph, "fusion_group");
   VLOG(3) << DebugString(graph);
