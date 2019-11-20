@@ -46,9 +46,7 @@ inline void VisitDataType(PD_DataType type, Visitor visitor) {
 
   _DataType_(VisitDataTypeCallback);
 #undef VisitDataTypeCallback
-  LOG(ERROR)
-      << "Unsupported data type. The Predictor will treat input as float. ";
-  visitor.template apply<float>();
+  PADDLE_THROW_ERROR("Unsupported data type. ");
 }
 
 struct PD_ZeroCopyFunctor {
@@ -103,7 +101,6 @@ bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
     *out_size = osize;
     return true;
   }
-  VLOG(3) << "The predictor runs but failed. ";
   return false;
 }
 
