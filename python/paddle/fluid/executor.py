@@ -409,9 +409,9 @@ class FetchHandler(object):
     def help():
         print("""
 class FetchHandlerExample(FetchHandler):
-    def handler(self):
-        print(self.var_dict["auc"])
-        print("auc: {}, {}".format(self.var_dict["auc"], time.ctime()))
+    def handler(self, res_dict):
+        print(res_dict["auc"])
+        print("auc: {}, {}".format(res_dict["auc"], time.ctime()))
 
 auc = Variable()
 var_dict = {"auc": auc}
