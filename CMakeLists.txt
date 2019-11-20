@@ -66,7 +66,7 @@ option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FO
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
-option(ON_INFER         "Turn on inference optimization."               OFF)
+option(ON_INFER         "Turn on inference optimization and inference-lib generation" OFF)
 ################################ Internal Configurations #######################################
 option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
 option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
@@ -168,7 +168,6 @@ include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
-include(inference_lib)      # add paddle fluid inference libraries
 include(configure)          # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
@@ -184,7 +183,9 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 
 if(ON_INFER)
+    # you can trun off the paddle fluid and inference lib by set ON_INFER=OFF
     message(STATUS "On inference mode, will take place some specific optimization.")
+    include(inference_lib)
     add_definitions(-DPADDLE_ON_INFERENCE)
 else()
     #TODO(luotao), combine this warning with `make inference_lib_dist` command.

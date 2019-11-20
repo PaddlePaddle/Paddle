@@ -46,7 +46,7 @@ namespace platform {
 
 class DeviceContext {
  public:
-  virtual ~DeviceContext() {}
+  virtual ~DeviceContext() PADDLE_MAY_THROW {}
   virtual Place GetPlace() const = 0;
 
   virtual void Wait() const {}
@@ -95,6 +95,9 @@ class CUDADeviceContext : public DeviceContext {
 
   /*! \brief  Return the max physical thread count in the device context */
   int GetMaxPhysicalThreadCount() const;
+
+  /*! \brief  Return the max grid dim size in the device context */
+  dim3 GetCUDAMaxGridDimSize() const;
 
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
@@ -184,6 +187,7 @@ class CUDADeviceContext : public DeviceContext {
   int driver_version_;
   int multi_process_;
   int max_threads_per_mp_;
+  dim3 max_grid_dim_size_;
 
   // StreamCallbackManager is thread-safe
   std::unique_ptr<StreamCallbackManager> callback_manager_;
