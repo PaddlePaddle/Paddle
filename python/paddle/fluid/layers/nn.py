@@ -4185,7 +4185,7 @@ def batch_norm(input,
             moving_var computation. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
-            This should be a float number or a Variable with shape as [1] and data
+            This should be a float number or a Variable with shape [1] and data
             type as float32. Default is 0.9.
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
