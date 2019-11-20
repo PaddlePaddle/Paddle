@@ -201,6 +201,9 @@ class TestConv2dOp_Valid_MKLDNN(TestConv2dOp_AsyPadding_MKLDNN):
 # TODO(jczaja): Once mkl-dnn integration support NHWC input
 # then those tests should be changed to actual functional positive tests
 class TestConv2dOp_NHWC_MKLDNN(TestConv2dOp_v2):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
     def init_data_format(self):
         self.data_format = "NHWC"
 
