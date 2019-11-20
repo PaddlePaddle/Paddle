@@ -74,6 +74,8 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   fleet_ptr_ = FleetWrapper::GetInstance();
   fetch_config_ = desc.fetch_config();
   use_cvm_ = desc.use_cvm();
+  // for sparse value accessor, embedding only
+  no_cvm_ = desc.no_cvm();
   scale_datanorm_ = desc.scale_datanorm();
   dump_slot_ = desc.dump_slot();
   dump_fields_.resize(desc.dump_fields_size());
@@ -187,6 +189,9 @@ void DownpourWorker::DumpParam() {
 }
 
 void DownpourWorker::CollectLabelInfo(size_t table_idx) {
+  if (no_cvm_) {
+    return;
+  }
   uint64_t table_id = static_cast<uint64_t>(
       param_.program_config(0).pull_sparse_table_id(table_idx));
 
@@ -277,7 +282,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
     int nid_ins_index = 0;
 
     for (int index = 0; index < len; ++index) {
-      if (use_cvm_) {
+      if (use_cvm_ || no_cvm_) {
         if (ids[index] == 0u) {
           memcpy(ptr + table.emb_dim() * index, init_value.data(),
                  sizeof(float) * table.emb_dim());
@@ -528,7 +533,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_);
+            dump_slot_, &sparse_push_keys_[tid], no_cvm_);
         timeline.Pause();
         push_sparse_time += timeline.ElapsedSec();
         total_time += timeline.ElapsedSec();
@@ -731,7 +736,7 @@ void DownpourWorker::TrainFiles() {
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
-            dump_slot_);
+            dump_slot_, &sparse_push_keys_[tid], no_cvm_);
       }
     }
 

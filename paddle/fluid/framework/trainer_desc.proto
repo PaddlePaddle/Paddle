@@ -44,6 +44,10 @@ message TrainerDesc {
   optional int32 mpi_size = 16 [ default = -1 ];
   optional int32 dump_file_num = 17 [ default = 16 ];
   repeated string check_nan_var_names = 18;
+  optional CopyTableConfig copy_table_config = 19;
+  // adjust ins weight
+  optional AdjustInsWeightConfig adjust_ins_weight_config = 20;
+  optional bool no_cvm = 21 [ default = false ];
 
   // device worker parameters
   optional HogwildWorkerParameter hogwild_param = 101;
