@@ -60,7 +60,7 @@ inline __global__ void FillIndex(T* indices, T num_rows, T num_cols) {
 
 // Default use ascending sort
 template <typename T, typename IndType>
-bool ArgFullSortAscending(const platform::CUDADeviceContext& ctx,
+void ArgFullSortAscending(const platform::CUDADeviceContext& ctx,
                           const Tensor* input, Tensor* output, Tensor* indices,
                           const IndType num_rows, const IndType num_cols) {
   auto cu_stream = ctx.stream();
@@ -118,14 +118,14 @@ bool ArgFullSortAscending(const platform::CUDADeviceContext& ctx,
       input_indices.data<IndType>(), sorted_indices_ptr, num_cols * num_rows,
       num_rows, segment_offsets_t, segment_offsets_t + 1, 0, sizeof(T) * 8,
       cu_stream);
-  if (err != cudaSuccess) {
-    LOG(ERROR)
-        << "ArgSortOP failed as could not launch "
-           "cub::DeviceSegmentedRadixSort::SortPairsDescending to calculate "
-           "temp_storage_bytes, status: "
-        << cudaGetErrorString(err);
-    return false;
-  }
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      err,
+      "ArgSortOP failed as could not launch "
+      "cub::DeviceSegmentedRadixSort::SortPairsDescending to calculate"
+      "temp_storage_bytes, status:%s.",
+      temp_storage_bytes, cudaGetErrorString(err));
+
   Tensor temp_storage;
   temp_storage.mutable_data<uint8_t>(ctx.GetPlace(), temp_storage_bytes);
 
@@ -134,16 +134,13 @@ bool ArgFullSortAscending(const platform::CUDADeviceContext& ctx,
       input_indices.data<IndType>(), sorted_indices_ptr, num_cols * num_rows,
       num_rows, segment_offsets_t, segment_offsets_t + 1, 0, sizeof(T) * 8,
       cu_stream);
-  if (err != cudaSuccess) {
-    LOG(ERROR)
-        << "ArgSortOP failed as could not launch "
-           "cub::DeviceSegmentedRadixSort::SortPairsDescending to sort input, "
-           "temp_storage_bytes: "
-        << temp_storage_bytes << ", status: " << cudaGetErrorString(err);
-    return false;
-  }
 
-  return true;
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      err,
+      "ArgSortOP failed as could not launch "
+      "cub::DeviceSegmentedRadixSort::SortPairsDescending to sort input, "
+      "temp_storage_bytes:%d status:%s.",
+      temp_storage_bytes, cudaGetErrorString(err));
 }
 
 template <typename T>
@@ -160,7 +157,6 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
 
     int64_t numel = input->numel();
     int64_t groups = numel / in_dims[axis];
-    bool status = false;
 
     // Special case for full sort, speedup ~190x.
     if (axis == -1 || axis + 1 == in_dims.size()) {
@@ -169,15 +165,13 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
       const int64_t input_width = in_dims[in_dims.size() - 1];
       const auto& dev_ctx = ctx.cuda_device_context();
       if (input_width < INT_MAX && input_height < INT_MAX) {
-        status = ArgFullSortAscending<T, int>(dev_ctx, input, output, indices,
-                                              static_cast<int>(input_height),
-                                              static_cast<int>(input_width));
+        ArgFullSortAscending<T, int>(dev_ctx, input, output, indices,
+                                     static_cast<int>(input_height),
+                                     static_cast<int>(input_width));
       } else {
-        status = ArgFullSortAscending<T, int64_t>(
-            dev_ctx, input, output, indices, input_height, input_width);
+        ArgFullSortAscending<T, int64_t>(dev_ctx, input, output, indices,
+                                         input_height, input_width);
       }
-      PADDLE_ENFORCE_EQ(status, true,
-                        "ArgFullSortAscending should return true");
     } else {
       // if not full sort, do transpose first
       std::vector<int> trans;
@@ -211,10 +205,8 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
 
       Tensor tmp_indices;
       tmp_indices.mutable_data<int64_t>(trans_dims, ctx.GetPlace());
-      status = ArgFullSortAscending<T>(dev_ctx, &trans_inp, &tmp_out,
-                                       &tmp_indices, input_height, input_width);
-      PADDLE_ENFORCE_EQ(status, true,
-                        "ArgFullSortAscending should return true");
+      ArgFullSortAscending<T>(dev_ctx, &trans_inp, &tmp_out, &tmp_indices,
+                              input_height, input_width);
       // transpose back
       TransCompute<platform::CUDADeviceContext, T>(ndims, dev_ctx, tmp_out,
                                                    output, trans);
