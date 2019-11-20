@@ -365,7 +365,9 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
 
   const std::string& Type() const { return op_->Type(); }
 
-  void Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs);
+  void Run(
+      const NameVarBaseMap& ins, const NameVarBaseMap& outs,
+      const std::vector<std::shared_ptr<paddle::framework::CacheBase>>& caches);
 
   const framework::VariableNameMap& InputNameMap() const {
     return op_->Inputs();
@@ -398,6 +400,10 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
   NameVarBaseMap* GetMutableInsMap() { return &ins_; }
   const NameVarBaseMap& GetInsMap() { return ins_; }
   const NameVarBaseMap& GetOutsMap() { return outs_; }
+  const std::vector<std::shared_ptr<paddle::framework::CacheBase>>&
+  GetCaches() {
+    return caches_;
+  }
   const platform::Place& place() const { return place_; }
 
   // TODO(jiabin) prepare for backward hook
@@ -481,6 +487,7 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
   NameVarBaseMap outs_;
   std::string type_;
   framework::AttributeMap attrs_;
+  std::vector<std::shared_ptr<paddle::framework::CacheBase>> caches_;
 };
 
 }  // namespace imperative

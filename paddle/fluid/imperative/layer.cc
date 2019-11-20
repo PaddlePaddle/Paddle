@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <queue>
 #include <utility>
+#include "paddle/fluid/framework/cache_base.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
@@ -93,7 +94,7 @@ static framework::VariableNameMap CreateVarNameMap(
 
 static framework::RuntimeContext PrepareRuntimeContext(
     const NameVarBaseMap& ins, const NameVarBaseMap& outs,
-    const std::vector<std_ptr<CacheBase>> caches) {
+    const std::vector<std::shared_ptr<paddle::framework::CacheBase>>& caches) {
   framework::VariableValueMap inputs, outputs;
   for (auto& in_pair : ins) {
     auto& in_ctx = inputs[in_pair.first];
@@ -269,8 +270,9 @@ void OpBase::CreateOperatorBase() {
                                         std::move(output_name_map), attrs_);
 }
 
-void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs,
-                 const std::vector<std::ptr<CacheBase>> caches) {
+void OpBase::Run(
+    const NameVarBaseMap& ins, const NameVarBaseMap& outs,
+    const std::vector<std::shared_ptr<paddle::framework::CacheBase>>& caches) {
   auto* op_kernel = dynamic_cast<framework::OperatorWithKernel*>(op_.get());
   PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
   auto& info = op_->Info();

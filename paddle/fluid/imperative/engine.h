@@ -37,8 +37,11 @@ class Engine {
   virtual ~Engine() = default;
   virtual void Execute() = 0;
   virtual void Init(VarBase* var, const detail::BackwardStrategy& strategy) = 0;
-  virtual void RunOp(imperative::OpBase* op, const NameVarBaseMap& ins,
-                     const NameVarBaseMap& outs, const platform::Place& place);
+  virtual void RunOp(
+      imperative::OpBase* op, const NameVarBaseMap& ins,
+      const NameVarBaseMap& outs,
+      const std::vector<std::shared_ptr<paddle::framework::CacheBase>>& caches,
+      const platform::Place& place);
 
   virtual void RemoveOp(OpBase* op) {
     PADDLE_ENFORCE_NOT_NULL(op, "Cannot remove null op");

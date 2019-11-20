@@ -16,24 +16,24 @@ limitations under the License. */
 
 #include <string>
 #include "paddle/fluid/framework/tensor.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
+#endif
 
 namespace paddle {
 
 namespace framework {
 
-int CacheBase_count = 0;
+extern int CacheBase_count;
 
-std::string generate_unique_name_cachebase() {
-  auto name = "CacheBase_" + std::to_string(CacheBase_count++);
-  return name;
-}
+extern std::string generate_unique_name_cachebase();
 
 class CacheBase {
  public:
   CacheBase() {}
 };
 
+#ifdef PADDLE_WITH_CUDA
 class CudnnRNNCache : public CacheBase {
  public:
   CudnnRNNCache() {
@@ -266,11 +266,11 @@ class CudnnRNNCache : public CacheBase {
   int num_layers_;
   int seed_;
 };
+#endif
 
 class MkldnnCache : public CacheBase {
  public:
-  explicit MkldnnCache(std::string id)
-      : id_(generate_unique_name_cachebase()) {}
+  MkldnnCache() : id_(generate_unique_name_cachebase()) {}
 
  private:
   std::string id_;

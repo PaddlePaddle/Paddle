@@ -114,13 +114,14 @@ class RuntimeContext {
   RuntimeContext(const VariableNameMap& innames,
                  const VariableNameMap& outnames, const Scope& scope);
 
-  RuntimeContext(const VariableValueMap& invars,
-                 const VariableValueMap& outvars)
-      : inputs(invars), outputs(outvars) {}
+  RuntimeContext(
+      const VariableValueMap& invars, const VariableValueMap& outvars,
+      const std::vector<std::shared_ptr<paddle::framework::CacheBase>>& caches)
+      : inputs(invars), outputs(outvars), caches(caches) {}
 
   VariableValueMap inputs;
   VariableValueMap outputs;
-  std::vector<shared_ptr<CacheBase>> caches;
+  std::vector<std::shared_ptr<CacheBase>> caches;
 };
 
 /**
@@ -268,7 +269,9 @@ class ExecutionContext {
 
   Variable* OutputVar(const std::string& name) const;
 
-  const std::vector<shared_ptr<CacheBase>> Caches() const { return ceches_; }
+  const std::vector<std::shared_ptr<CacheBase>> Caches() const {
+    return caches_;
+  }
 
   const std::vector<const Variable*> MultiInputVar(
       const std::string& name) const {
@@ -397,6 +400,7 @@ class ExecutionContext {
   const platform::DeviceContext& device_context_;
   const RuntimeContext& ctx_;
   mutable std::vector<KernelConfig>* kernel_configs_;
+  std::vector<std::shared_ptr<CacheBase>> caches_;
 };
 
 template <>

@@ -54,15 +54,20 @@ class Tracer {
 
   ~Tracer() = default;
 
-  void TraceOp(const std::string& type, const NameVarBaseMap& ins,
-               const NameVarBaseMap& outs, framework::AttributeMap attrs,
-               const platform::Place& place, bool trace_bacward);
+  void TraceOp(
+      const std::string& type, const NameVarBaseMap& ins,
+      const NameVarBaseMap& outs, framework::AttributeMap attrs,
+      const platform::Place& place, bool trace_bacward,
+      const std::vector<std::shared_ptr<paddle::framework::CacheBase>>& caches =
+          std::vector<std::shared_ptr<paddle::framework::CacheBase>>());
 
   bool ComputeRequiredGrad(const NameVarBaseMap& ins,
                            const NameVarBaseMap& outs, bool trace_backward);
 
-  void TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
-                     const NameVarBaseMap& ins, const NameVarBaseMap& outs);
+  void TraceBackward(
+      const std::shared_ptr<OpBase>& fwd_op, const NameVarBaseMap& ins,
+      const NameVarBaseMap& outs,
+      const std::vector<std::shared_ptr<paddle::framework::CacheBase>>& caches);
 
   Engine* GetDefaultEngine() const { return engine_.get(); }
 

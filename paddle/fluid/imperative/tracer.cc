@@ -15,6 +15,7 @@
 #include <set>
 #include <unordered_set>
 #include <utility>
+#include "paddle/fluid/framework/cache_base.h"
 #include "paddle/fluid/platform/profiler.h"
 namespace paddle {
 namespace imperative {
@@ -60,7 +61,8 @@ static void ClearNoNeedBufferInputs(OpBase* op) {
 
 static std::vector<std::unique_ptr<OpBase>> CreateGradOpBases(
     const OpBase* fw_op_base, const NameVarBaseMap& in,
-    const NameVarBaseMap& out) {
+    const NameVarBaseMap& out,
+    const std::vector<std::shared_ptr<paddle::framework::CacheBase>>& caches) {
   if (fw_op_base->Info().dygraph_grad_op_maker_) {
     return fw_op_base->Info().dygraph_grad_op_maker_(fw_op_base, in, out);
   } else {
@@ -78,10 +80,11 @@ static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
   }
 }
 
-void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
-                     const NameVarBaseMap& outs, framework::AttributeMap attrs,
-                     const std::vector<std::shared_ptr<CacheBase>>& caches,
-                     const platform::Place& place, bool trace_backward) {
+void Tracer::TraceOp(
+    const std::string& type, const NameVarBaseMap& ins,
+    const NameVarBaseMap& outs, framework::AttributeMap attrs,
+    const platform::Place& place, bool trace_backward,
+    const std::vector<std::shared_ptr<paddle::framework::CacheBase>>& caches) {
   platform::RecordEvent event(type);
   VLOG(1) << "Trace Op: " << type;
   size_t op_id = GenerateUniqueId();
@@ -121,7 +124,7 @@ bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
 void Tracer::TraceBackward(
     const std::shared_ptr<OpBase>& fwd_op, const NameVarBaseMap& ins,
     const NameVarBaseMap& outs,
-    const std::vector<std::shared_ptr<CacheBase>>& caches) {
+    const std::vector<std::shared_ptr<paddle::framework::CacheBase>>& caches) {
   // grad_to_var is a map of framework::GradVarName(in_var_name/out_var_name) ->
   // in_var_name/out_var_name
   std::unordered_map<std::string, std::string> grad_to_var;

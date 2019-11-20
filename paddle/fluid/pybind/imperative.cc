@@ -147,6 +147,7 @@ GetVarBaseListFromPyHandle(const py::handle &handle) {
 }
 
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
+using PyCacheBase = std::vector<py::handle>;
 
 static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
     const PyNameVarBaseMap &map) {
@@ -332,6 +333,42 @@ void BindImperative(py::module *m_ptr) {
            &imperative::jit::ProgramDescTracer::CreateProgramDesc)
       .def("reset", &imperative::jit::ProgramDescTracer::Reset);
 
+  py::class_<paddle::framework::CacheBase,
+             std::shared_ptr<paddle::framework::CacheBase>>(m, "CacheBase",
+                                                            R"DOC()DOC")
+      .def("__init__", [](paddle::framework::CacheBase &self) {
+        new (&self) paddle::framework::CacheBase();
+      });
+
+  py::class_<paddle::framework::MkldnnCache,
+             std::shared_ptr<paddle::framework::MkldnnCache>>(m, "MkldnnCache",
+                                                              R"DOC()DOC")
+      .def("__init__", [](paddle::framework::MkldnnCache &self) {
+        new (&self) paddle::framework::MkldnnCache();
+      });
+
+#if defined(PADDLE_WITH_CUDA)
+  py::class_<paddle::framework::CudnnRNNCache,
+             std::shared_ptr<paddle::framework::CudnnRNNCache>>(m,
+                                                                "CudnnRNNCache",
+                                                                R"DOC()DOC")
+      .def("__init__",
+           [](paddle::framework::CudnnRNNCache &self) {
+             new (&self) paddle::framework::CudnnRNNCache();
+           })
+      .def("_create", [](paddle::framework::CudnnRNNCache &self,
+                         cudnnHandle_t handle, const platform::Place &place,
+                         size_t max_len, int batch_size, int input_size,
+                         int hidden_size, int num_layers, float dropout_prob,
+                         bool is_bidirec, int seed, int weight_numel) {
+        {
+          py::gil_scoped_release release;
+          self.init(handle, place, max_len, batch_size, input_size, hidden_size,
+                    num_layers, dropout_prob, is_bidirec, seed, weight_numel);
+        }
+      });
+#endif
+
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
       m, "Tracer",
       R"DOC()DOC")
@@ -367,32 +404,40 @@ void BindImperative(py::module *m_ptr) {
       .def("_get_program_desc_tracer",
            &imperative::Tracer::GetProgramDescTracer,
            py::return_value_policy::reference)
-      .def("trace",
-           [](imperative::Tracer &self, const std::string &type,
-              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
-              framework::AttributeMap attrs, const platform::CUDAPlace &place,
-              bool trace_backward) {
-             auto ins_map = ConvertToNameVarBaseMap(ins);
-             auto outs_map = ConvertToNameVarBaseMap(outs);
-             {
-               py::gil_scoped_release release;
-               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
-                            std::move(attrs), place, trace_backward);
-             }
-           })
-      .def("trace",
-           [](imperative::Tracer &self, const std::string &type,
-              const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
-              framework::AttributeMap attrs, const platform::CPUPlace &place,
-              bool trace_backward) {
-             auto ins_map = ConvertToNameVarBaseMap(ins);
-             auto outs_map = ConvertToNameVarBaseMap(outs);
-             {
-               py::gil_scoped_release release;
-               self.TraceOp(type, std::move(ins_map), std::move(outs_map),
-                            std::move(attrs), place, trace_backward);
-             }
-           });
+      .def(
+          "trace",
+          [](imperative::Tracer &self, const std::string &type,
+             const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+             framework::AttributeMap attrs, const platform::CUDAPlace &place,
+             bool trace_backward,
+             const std::vector<
+                 std::shared_ptr<paddle::framework::CacheBase>> &caches =
+                 std::vector<std::shared_ptr<paddle::framework::CacheBase>>()) {
+            auto ins_map = ConvertToNameVarBaseMap(ins);
+            auto outs_map = ConvertToNameVarBaseMap(outs);
+            {
+              py::gil_scoped_release release;
+              self.TraceOp(type, std::move(ins_map), std::move(outs_map),
+                           std::move(attrs), place, trace_backward, caches);
+            }
+          })
+      .def(
+          "trace",
+          [](imperative::Tracer &self, const std::string &type,
+             const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,
+             framework::AttributeMap attrs, const platform::CPUPlace &place,
+             bool trace_backward,
+             const std::vector<
+                 std::shared_ptr<paddle::framework::CacheBase>> &caches =
+                 std::vector<std::shared_ptr<paddle::framework::CacheBase>>()) {
+            auto ins_map = ConvertToNameVarBaseMap(ins);
+            auto outs_map = ConvertToNameVarBaseMap(outs);
+            {
+              py::gil_scoped_release release;
+              self.TraceOp(type, std::move(ins_map), std::move(outs_map),
+                           std::move(attrs), place, trace_backward, caches);
+            }
+          });
 
   // define parallel context
   py::class_<imperative::ParallelStrategy> parallel_strategy(

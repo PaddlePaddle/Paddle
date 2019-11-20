@@ -30,13 +30,15 @@
 namespace paddle {
 namespace imperative {
 
-void Engine::RunOp(paddle::imperative::OpBase* op,
-                   const paddle::imperative::NameVarBaseMap& ins,
-                   const paddle::imperative::NameVarBaseMap& outs,
-                   const paddle::platform::Place& place) {
+void Engine::RunOp(
+    paddle::imperative::OpBase* op,
+    const paddle::imperative::NameVarBaseMap& ins,
+    const paddle::imperative::NameVarBaseMap& outs,
+    const std::vector<std::shared_ptr<paddle::framework::CacheBase>>& caches,
+    const paddle::platform::Place& place) {
   platform::RecordEvent event(op->Type());
 
-  op->Run(ins, outs);
+  op->Run(ins, outs, caches);
 }
 
 void BasicEngine::Init(VarBase* var, const detail::BackwardStrategy& strategy) {
@@ -192,6 +194,7 @@ void BasicEngine::Execute() {
     // Step 1: Run Backward
     auto& bwd_ins = cur_op->GetInsMap();
     auto& bwd_outs = cur_op->GetOutsMap();
+    auto& caches = cur_op->GetCaches();
 
     NameVarBaseMap tmp_outs;
     // A var may be coresponding to several grad var in one op
@@ -212,7 +215,7 @@ void BasicEngine::Execute() {
     }
 
     VLOG(3) << "Start to execute grad op " << cur_op->Type();
-    RunOp(cur_op, bwd_ins, tmp_outs, cur_op->place());
+    RunOp(cur_op, bwd_ins, tmp_outs, caches, cur_op->place());
     // Step 2: Sum Gradient
     {
       platform::RecordEvent record_event("merge_grads");
