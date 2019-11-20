@@ -49,13 +49,18 @@ void FillconstantElementwisemulFuse::ApplyImpl(ir::Graph* graph) const {
 
     PADDLE_ENFORCE(subgraph.count(x));
     auto* elementwise_in = subgraph.at(x);
-    float constant_value =
-        boost::get<float>(fill_constant->Op()->GetAttr("value"));
+    std::string constant_value =
+        boost::get<std::string>(fill_constant->Op()->GetAttr("value"));
+
+    std::stringstream convert_stream(constant_value);
+    float value = 1.0f;
+    convert_stream >> value;
+    paddle::framework::AttributeMap fill_constant_attrs{{"value", value}};
 
     framework::OpDesc new_op_desc;
     new_op_desc.SetType("scale");
     new_op_desc.SetInput("X", {elementwise_in->Name()});
-    new_op_desc.SetAttr("scale", constant_value);
+    new_op_desc.SetAttr("scale", fill_constant_attrs["value"]);
     new_op_desc.SetAttr("bias", static_cast<float>(0.0));
     new_op_desc.SetAttr("bias_after_scale", true);
     new_op_desc.SetOutput("Out", {elementwise_mul_out->Name()});

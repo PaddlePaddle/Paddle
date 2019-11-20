@@ -50,7 +50,8 @@ def monkey_patch_variable():
     def create_tensor(block, value, dtype, shape):
         value = float(value)
         var = create_new_tmp_var(block, dtype)
-        str_value = "0.0f"
+
+        str_value = str(float(0.0))
         if convert_dtype(dtype) in 'int64':
             str_value = str(int(value))
         else:

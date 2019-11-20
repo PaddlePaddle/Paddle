@@ -1376,7 +1376,8 @@ class AdagradOptimizer(Optimizer):
         moment_acc = self._get_accumulator(self._moment_acc_str,
                                            param_and_grad[0])
         startup_block = framework.default_startup_program().global_block()
-        str_value = "0.0f"
+
+        str_value = str(float(0.0))
         if convert_dtype(moment_acc.dtype) in ['int64']:
             str_value = str(int(self.initial_accumulator_value))
         else:

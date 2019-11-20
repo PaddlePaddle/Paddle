@@ -89,7 +89,7 @@ struct ExtractAttribute<std::string> {
     try {
       attr_value = &boost::get<std::string>(attr);
     } catch (boost::bad_get& bad_get) {
-      PADDLE_THROW("Cannot get attribute %s by type int64_t, its type is %s",
+      PADDLE_THROW("Cannot get attribute %s by type string, its type is %s",
                    attr_name_, paddle::platform::demangle(attr.type().name()));
     }
     return attr_value;

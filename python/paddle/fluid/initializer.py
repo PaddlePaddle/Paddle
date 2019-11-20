@@ -177,7 +177,7 @@ class ConstantInitializer(Initializer):
             out_dtype = var.dtype
             out_var = var
 
-        str_value = "0.0f"
+        str_value = str(float(0.0))
         if convert_dtype(out_dtype) in ['int64']:
             str_value = str(int(self._value))
         else:

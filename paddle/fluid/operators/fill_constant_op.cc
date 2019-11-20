@@ -90,7 +90,7 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
              "The shape of the element in vector must be [1].")
         .AsDuplicable()
         .AsDispensable();
-    AddAttr<std::string>("value", "(float, default 0) The value to be filled")
+    AddAttr<std::string>("value", "(string, default 0) The value to be filled")
         .SetDefault("0.0");
     AddAttr<bool>("force_cpu",
                   "(bool, default false) Force fill output variable to cpu "

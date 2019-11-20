@@ -323,10 +323,17 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
         retrieve_node(name_scope + "/squared_xmuly", subgraph, fused_pattern);
     auto* last_out_var =
         retrieve_node(name_scope + "/out", subgraph, fused_pattern);
+
     auto* fill_constant_op = retrieve_node(name_scope + "/fill_constant_op",
                                            subgraph, fused_pattern);
-
     // Create New OpDesc
+    auto str_value =
+        boost::get<std::string>(fill_constant_op->Op()->GetAttr("value"));
+    std::stringstream convert_stream(str_value);
+    float value = 1.0f;
+    convert_stream >> value;
+    paddle::framework::AttributeMap fill_constant_attrs{{"value", value}};
+
     OpDesc op_desc;
     op_desc.SetType("fusion_squared_mat_sub");
     op_desc.SetInput("X", {matx->Name()});
@@ -335,7 +342,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
     op_desc.SetOutput("SquaredY", {squaredy->Name()});
     op_desc.SetOutput("SquaredXY", {squaredxy->Name()});
     op_desc.SetOutput("Out", {last_out_var->Name()});
-    op_desc.SetAttr("scalar", fill_constant_op->Op()->GetAttr("value"));
+    op_desc.SetAttr("scalar", fill_constant_attrs["value"]);
 
     auto* op = graph->CreateOpNode(&op_desc);
     IR_NODE_LINK_TO(matx, op);

@@ -1441,7 +1441,7 @@ class Variable(object):
         def fill_constant(shape, value, force_cpu=False, out=None):
 
             from .data_feeder import convert_dtype
-            str_value = "0.0f"
+            str_value = str(float(0.0))
             if convert_dtype(out.dtype) in ['int64']:
                 str_value = str(int(value))
             else:
