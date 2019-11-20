@@ -140,6 +140,7 @@ class TestAsymPadValid(TestAsymPad):
         self.paddings = [0, 0, 0, 0]
         self.padding_algorithm = "VALID"
 
+
 # Designed to Fail
 # TODO(jczaja): Once mkl-dnn integration support NHWC input
 # then those tests should be changed to actual functional positive tests
@@ -153,7 +154,7 @@ class TestAsymPadValidNHWC(TestAsymPadValid):
     # GetExpectedKernelType should throw an exception on lack of support
     # to NHWC inputs in pool mkldnn kernel
     def test_check_output(self):
-        self.assertRaises(fluid.core_avx.EnforceNotMet, self.check_output);            
+        self.assertRaises(fluid.core_avx.EnforceNotMet, self.check_output)
 
     def test_check_grad(self):
         pass

@@ -54,6 +54,7 @@ class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
 
         self.assertRaises(AttributeError, check_raise_is_test)
 
+
 # Designed to Fail
 # TODO(jczaja): Once mkl-dnn integration support NHWC input
 # then those tests should be changed to actual functional positive tests
@@ -62,11 +63,12 @@ class TestLRNMKLDNNOpNHWC(TestLRNMKLDNNOp):
         self.data_format = 'NHWC'
 
     def test_check_output(self):
-        self.assertRaises(fluid.core_avx.EnforceNotMet, self.check_output);            
+        self.assertRaises(fluid.core_avx.EnforceNotMet, self.check_output)
 
     #TODO(jczaja): Enable once GRAD op is adjusted
     def test_check_grad_normal(self):
         pass
+
 
 if __name__ == "__main__":
     unittest.main()

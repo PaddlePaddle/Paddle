@@ -720,22 +720,6 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
     library_ = framework::LibraryType::kCUDNN;
   }
 #endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
-    // TODO(jczaja): Add support for NHWC and NDHWC
-    const std::string data_format = ctx.Attr<std::string>("data_format");
-    PADDLE_ENFORCE_NE(
-        data_format, "NHWC",
-        "Conv MKLDNN Double Grad does not support NHWC data format yet");
-    PADDLE_ENFORCE_NE(
-        data_format, "NDHWC",
-        "Conv MKLDNN Double Grad does not support NDHWC data format yet");
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = framework::DataLayout::kMKLDNN;
-    customized_type_value = kConvMKLDNNFP32;
-  }
-#endif
   auto type = framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
       layout_, library_, customized_type_value);
