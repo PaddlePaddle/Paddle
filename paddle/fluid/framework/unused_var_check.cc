@@ -65,8 +65,6 @@ void CheckUnusedVar(const OperatorBase &op) {
     }
     err_msg += "please remove it from inputs or register NoNeedBufferVars!";
     LOG(ERROR) << err_msg;
-    PADDLE_ENFORCE_EQ(unsed_input_var_names.size(), 0,
-                      platform::errors::PermissionDenied("%s", err_msg));
   }
 }
 

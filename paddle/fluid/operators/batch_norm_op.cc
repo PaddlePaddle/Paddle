@@ -614,36 +614,30 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 };
 
 template <typename T>
-class BatchNormGradMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+std::unique_ptr<T> BatchNormGradMaker<T>::Apply() const {
+  auto *op = new T();
+  op->SetType(this->ForwardOpType() + "_grad");
+  op->SetInput("X", this->Input("X"));
+  op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 
- protected:
-  std::unique_ptr<T> Apply() const override {
-    auto *op = new T();
-    op->SetType(this->ForwardOpType() + "_grad");
-    op->SetInput("X", this->Input("X"));
-    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+  op->SetInput("Scale", this->Input("Scale"));
+  op->SetInput("SavedMean", this->Output("SavedMean"));
+  op->SetInput("SavedVariance", this->Output("SavedVariance"));
 
-    op->SetInput("Scale", this->Input("Scale"));
-    op->SetInput("SavedMean", this->Output("SavedMean"));
-    op->SetInput("SavedVariance", this->Output("SavedVariance"));
-
-    // used when setting use_global_stats True during training
-    if (boost::get<bool>(this->GetAttr("use_global_stats"))) {
-      op->SetInput("Mean", this->Output("MeanOut"));
-      op->SetInput("Variance", this->Output("VarianceOut"));
-    }
-
-    op->SetAttrMap(this->Attrs());
-
-    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
-    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
-
-    return std::unique_ptr<T>(op);
+  // used when setting use_global_stats True during training
+  if (boost::get<bool>(this->GetAttr("use_global_stats"))) {
+    op->SetInput("Mean", this->Output("MeanOut"));
+    op->SetInput("Variance", this->Output("VarianceOut"));
   }
-};
+
+  op->SetAttrMap(this->Attrs());
+
+  op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+  op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
+  op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+
+  return std::unique_ptr<T>(op);
+}
 
 }  // namespace operators
 }  // namespace paddle
