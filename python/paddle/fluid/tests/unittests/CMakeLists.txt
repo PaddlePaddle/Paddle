@@ -300,7 +300,7 @@ if (WITH_MKLDNN)
 endif()
 
 if (WITH_TESTING)
-    set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=scope_buffered_ssa_graph_executor=5)
+    set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=all_reduce_deps_pass=10)
 endif()
 
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist

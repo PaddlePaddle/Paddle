@@ -30,7 +30,7 @@ class FusionGroupPass : public Pass {
  private:
   int DetectFusionGroup(Graph* graph, int type = 0) const;
   void InsertFusionGroupOp(Graph* graph,
-                           const fusion_group::SubGraph& subgraph) const;
+                           fusion_group::SubGraph* subgraph) const;
 
   const std::string name_scope_{"fusion_group"};
 };

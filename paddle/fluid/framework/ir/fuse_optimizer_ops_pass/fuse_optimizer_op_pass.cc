@@ -94,8 +94,9 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
     auto fused_var_name = prefix + "_" + fuse_op_type + "_" + var_name + "_" +
                           aux_var_map[var_name][0];
     VLOG(6) << var_name << ": " << fused_var_name;
-    PADDLE_ENFORCE_EQ(fused_var_set.count(fused_var_name), 0,
-                      "The fused variable already existed.");
+    PADDLE_ENFORCE_EQ(
+        fused_var_set.count(fused_var_name), 0,
+        platform::errors::AlreadyExists("The fused variable already exists."));
     fused_var_set.insert(fused_var_name);
     fused_vars_name.emplace(var_name, fused_var_name);
   }
