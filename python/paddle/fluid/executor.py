@@ -406,7 +406,7 @@ class FetchHandler(object):
     @staticmethod
     def help():
         print("""
-class FetchHandlerExamlpe(FetchHandler):
+class FetchHandlerExample(FetchHandler):
     def handler(self, fetch_target_vars):
         b_auc = fetch_target_vars[0]
         g_auc = fetch_target_vars[1]
