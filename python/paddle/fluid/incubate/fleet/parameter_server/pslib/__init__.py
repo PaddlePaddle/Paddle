@@ -182,6 +182,8 @@ class PSLib(Fleet):
             destroyed when stop() is called.
         """
         self._role_maker._barrier_worker()
+        if self._role_maker.is_worker():
+            self._fleet_ptr.finalize_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.stop_server()
         self._role_maker._barrier_worker()
