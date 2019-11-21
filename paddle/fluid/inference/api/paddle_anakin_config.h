@@ -21,10 +21,20 @@
 
 #include "paddle_api.h"  // NOLINT
 
+#if defined(_WIN32)
+#ifdef PADDLE_ON_INFERENCE
+#define PADDLE_INFENRENCE_EXPORT __declspec(dllexport)
+#else
+#define PADDLE_INFENRENCE_EXPORT __declspec(dllimport)
+#endif  // PADDLE_ON_INFERENCE
+#else
+#define PADDLE_INFENRENCE_EXPORT __attribute__((visibility("default")))
+#endif  // _WIN32
+
 namespace paddle {
 namespace contrib {
 // Configurations for Anakin engine.
-struct AnakinConfig : public PaddlePredictor::Config {
+struct PADDLE_INFENRENCE_EXPORT AnakinConfig : public PaddlePredictor::Config {
   enum TargetType { NVGPU = 0, X86, MLU, BM };
   int device_id{0};
   std::string model_file;

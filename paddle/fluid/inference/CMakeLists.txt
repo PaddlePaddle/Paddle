@@ -4,6 +4,10 @@ endif()
 
 set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor data_feed_proto)
 
+if(WIN32 AND NOT ON_INFER)
+  add_definitions(-DPADDLE_ON_INFERENCE)
+endif()
+
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
     SRCS io.cc
