@@ -966,9 +966,13 @@ def while_loop(cond, body, loop_vars, name=None):
     while_loop_block = While(pre_cond)
     with while_loop_block.block():
         output_vars = body(*loop_vars)
-        for i in range(len(output_vars)):
-            assign(output_vars[i], loop_vars[i])
-        now_cond = cond(*output_vars)
+        if len(loop_vars) == 1:
+            assign(output_vars, loop_vars[0])
+            now_cond = cond(output_vars)
+        else:
+            for i in range(len(output_vars)):
+                assign(output_vars[i], loop_vars[i])
+            now_cond = cond(*output_vars)
         assign(now_cond, pre_cond)
 
     return loop_vars
@@ -1381,7 +1385,7 @@ def greater_than(x, y, cond=None):
 
           import paddle.fluid as fluid
           import numpy as np
-          label = fluid.layers.ssign(np.array([2, 3], dtype='int32'))
+          label = fluid.layers.assign(np.array([2, 3], dtype='int32'))
           limit = fluid.layers.assign(np.array([3, 2], dtype='int32'))
           out = fluid.layers.greater_than(x=label, y=limit) #out=[False, True]
           out1 = label > limit #out1=[False, True]

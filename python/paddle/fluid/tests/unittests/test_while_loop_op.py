@@ -30,7 +30,7 @@ class TestWhileLoop(unittest.TestCase):
             return layers.less_than(i, ten)
 
         def body(i):
-            return [layers.increment(i)]
+            return layers.increment(i)
 
         main_program = Program()
         startup_program = Program()
