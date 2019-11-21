@@ -78,6 +78,9 @@ class TestFCOp(OpTest):
             'Out': fc_refer(self.matrix, self.with_bias, self.with_relu)
         }
 
+    def padding(self):
+        self.attrs = {'padding_weights': False}
+
     def test_check_output(self):
         self.check_output()
 
@@ -122,6 +125,23 @@ class TestFCOpWithBias3(TestFCOp):
         self.with_bias = True
         self.with_relu = True
         self.matrix = MatrixGenerate(1, 64, 32, 3, 3, 1)
+
+
+class TestFCOpWithPadding(TestFCOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
+
+
+class TestFCOpWithPadding2(TestFCOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
+
+    def padding(self):
+        self.attrs = {'padding_weights': True}
 
 
 class TestFCOpError(OpTest):

@@ -32,11 +32,11 @@ class FCOp : public framework::OperatorWithKernel {
 
     auto in_dims = ctx->GetInputDim("Input");
     auto w_dims = ctx->GetInputDim("W");
-    bool weight_pass = ctx->Attrs().Get<bool>("padding_weights");
+    bool padding_weights = ctx->Attrs().Get<bool>("padding_weights");
 
     if (ctx->HasInput("Bias")) {
       auto bias_dims = ctx->GetInputDim("Bias");
-      auto w_dims1 = weight_pass ? w_dims[1] - 4 : w_dims[1];
+      auto w_dims1 = padding_weights ? w_dims[1] - 4 : w_dims[1];
       if (bias_dims.size() == 2) {
         PADDLE_ENFORCE_EQ(bias_dims[0], 1,
                           platform::errors::InvalidArgument(
@@ -81,7 +81,8 @@ class FCOp : public framework::OperatorWithKernel {
         "in_num_col_dims.");
 
     std::vector<int64_t> output_dims;
-    FCOutputSize(in_dims, w_dims, output_dims, in_num_col_dims, weight_pass);
+    FCOutputSize(in_dims, w_dims, output_dims, in_num_col_dims,
+                 padding_weights);
 
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
     ctx->ShareLoD("Input", "Out");
@@ -124,7 +125,8 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
     AddAttr<bool>("padding_weights",
-                  "(bool, default false) Only used when weight padding in pass")
+                  "(bool, default false) When weight padding is used in pass, "
+                  "'padding_weights' attribute is true.")
         .SetDefault(false);
     AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
                   "Skip calling InferShape() function in the runtime.")
