@@ -234,6 +234,8 @@ DECLARE_INPLACE_OP_INFERER(FlattenOpInplaceInToOut, {"X", "Out"});
 DECLARE_INPLACE_OP_INFERER(FlattenGradInplaceinToOut,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(FlattenGradNoNeedBufferVarsInference,
+                                      "Out");
 
 }  // namespace operators
 }  // namespace paddle
@@ -245,7 +247,8 @@ REGISTER_OPERATOR(
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
     ops::FlattenOpInplaceInToOut);
 REGISTER_OPERATOR(flatten_grad, ops::FlattenGradOp,
-                  ops::FlattenGradInplaceinToOut);
+                  ops::FlattenGradInplaceinToOut,
+                  ops::FlattenGradNoNeedBufferVarsInference);
 
 REGISTER_OPERATOR(flatten2, ops::Flatten2Op, ops::Flatten2OpMaker,
                   ops::Flatten2GradOpMaker<paddle::framework::OpDesc>,

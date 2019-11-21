@@ -894,7 +894,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (FLAGS_enable_unused_var_check) {
-    CheckUnusedVar(*this);
+    CheckUnusedVar(*this, scope);
   }
 }
 

@@ -26,8 +26,21 @@ DECLARE_bool(enable_unused_var_check);
 namespace paddle {
 namespace framework {
 
+const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
+    "batch_norm",
+    "batch_norm_grad",
+    "crop",
+    "cvm",
+    "dgc_momentum",
+    "fake_quantize_range_abs_max",
+    "fill_zeros_like",
+    "reshape2_grad_grad",
+    "reshape2_grad",
+    "gru_grad",
+    "op_with_kernel"};
+
 std::unordered_set<std::string>* GetThreadLocalUsedVarNameSet();
-void CheckUnusedVar(const OperatorBase& op);
+void CheckUnusedVar(const OperatorBase& op, const Scope& scope);
 
 }  // namespace framework
 }  // namespace paddle

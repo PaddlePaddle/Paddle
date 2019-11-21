@@ -34,7 +34,11 @@ std::unordered_set<std::string> *GetThreadLocalUsedVarNameSet() {
   return &used_var_name_set;
 }
 
-void CheckUnusedVar(const OperatorBase &op) {
+void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
+  // skip op in white list
+  if (op_has_unsed_vars_white_list.count(op.Type()) != 0) {
+    return;
+  }
   auto *used_set = GetThreadLocalUsedVarNameSet();
   std::vector<std::string> unsed_input_var_names;
   auto &inferer = op.Info().NoNeedBufferVarsInferer();
@@ -49,12 +53,15 @@ void CheckUnusedVar(const OperatorBase &op) {
       VLOG(6) << op.Type() << " " << pair.first;
       continue;
     }
-    // skip XShape, since it contains no tensor
-    if (pair.first == "XShape") {
-      continue;
-    }
-    if (pair.second.size() != 0 && used_set->count(pair.first) == 0) {
-      unsed_input_var_names.emplace_back(pair.first);
+    if (used_set->count(pair.first) == 0) {
+      for (auto &in_var_name : pair.second) {
+        auto *in_var = scope.FindVar(in_var_name);
+        auto &tensor = in_var->Get<LoDTensor>();
+        if (in_var->IsInitialized() && tensor.IsInitialized()) {
+          unsed_input_var_names.emplace_back(pair.first);
+          break;
+        }
+      }
     }
   }
   if (!unsed_input_var_names.empty()) {
