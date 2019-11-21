@@ -18,17 +18,6 @@ from test_post_training_quantization_mobilenetv1 import TestPostTrainingQuantiza
 
 
 class TestPostTrainingForResnet50(TestPostTrainingQuantization):
-    def download_model(self):
-        # resnet50 fp32 data
-        data_urls = [
-            'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
-        ]
-        data_md5s = ['4a5194524823d9b76da6e738e1367881']
-        self.model_cache_folder = self.download_data(data_urls, data_md5s,
-                                                     "resnet50_fp32")
-        self.model = "ResNet-50"
-        self.algo = "KL"
-
     def test_post_training_resnet50(self):
         model = "ResNet-50"
         algo = "KL"
