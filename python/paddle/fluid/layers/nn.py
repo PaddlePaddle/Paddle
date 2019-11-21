@@ -63,6 +63,7 @@ __all__ = [
     'reduce_all',
     'reduce_any',
     'dropout',
+    'dropout_with_seed',
     'split',
     'ctc_greedy_decoder',
     'l2_normalize',
@@ -824,6 +825,56 @@ def dropout(x,
             'is_test': is_test,
             'fix_seed': seed is not None,
             'seed': seed if seed is not None else 0,
+            'dropout_implementation': dropout_implementation,
+        })
+    return out
+
+
+def dropout_with_seed(x,
+                      dropout_prob,
+                      is_test=False,
+                      seed=None,
+                      name=None,
+                      dropout_implementation="downgrade_in_infer"):
+
+    helper = LayerHelper('dropout', **locals())
+
+    if not isinstance(x, Variable):
+        raise TypeError(
+            "The type of 'input' in dropout must be Variable, but received %s" %
+            (type(x)))
+    if convert_dtype(x.dtype) in ['float16']:
+        warnings.warn(
+            "The data type of 'input' in dropout only support float16 on GPU now."
+        )
+    if convert_dtype(x.dtype) not in ['float16', 'float32', 'float64']:
+        raise TypeError(
+            "The data type of 'input' in dropout must be float16 or float32 or float64, but received %s."
+            % (convert_dtype(x.dtype)))
+
+    seed_var = helper.create_variable_for_type_inference(dtype='int32')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    mask = helper.create_variable_for_type_inference(
+        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+
+    if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
+        seed = helper.main_program.random_seed
+
+    helper.append_op(
+        type='seed',
+        inputs={},
+        outputs={'Out': [seed_var]},
+        attrs={'seed': seed if seed is not None else 0, })
+
+    helper.append_op(
+        type='dropout_with_seed',
+        inputs={'X': [x],
+                'Seed': [seed_var]},
+        outputs={'Out': [out],
+                 'Mask': [mask]},
+        attrs={
+            'dropout_prob': dropout_prob,
+            'is_test': is_test,
             'dropout_implementation': dropout_implementation,
         })
     return out
