@@ -479,14 +479,28 @@ class TestDataset(unittest.TestCase):
 
 
 class TestDatasetWithDataLoader(TestDataset):
+    """
+    Test Dataset With Data Loader class. TestCases.
+    """
+
     def setUp(self):
+        """
+        Test Dataset With Data Loader, setUp.
+        """
         self.use_data_loader = True
         self.epoch_num = 10
         self.drop_last = False
 
 
 class TestDatasetWithFetchHandler(unittest.TestCase):
+    """
+    Test Dataset With Fetch Handler. TestCases.
+    """
+
     def net(self):
+        """
+        Test Dataset With Fetch Handler. TestCases.
+        """
         slots = ["slot1", "slot2", "slot3", "slot4"]
         slots_vars = []
         poolings = []
@@ -504,6 +518,13 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         return slots_vars, fc
 
     def get_dataset(self, inputs, files):
+        """
+        Test Dataset With Fetch Handler. TestCases.
+
+        Args:
+            inputs(list): inputs of get_dataset
+            files(list): files of  get_dataset
+        """
         dataset = fluid.DatasetFactory().create_dataset("QueueDataset")
         dataset.set_batch_size(32)
         dataset.set_thread(3)
@@ -513,6 +534,9 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
         return dataset
 
     def setUp(self):
+        """
+        Test Dataset With Fetch Handler. TestCases.
+        """
         with open("test_queue_dataset_run_a.txt", "w") as f:
             data = "1 1 2 3 3 4 5 5 5 5 1 1\n"
             data += "1 2 2 3 4 4 6 6 6 6 1 2\n"
@@ -526,10 +550,16 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             f.write(data)
 
     def tearDown(self):
+        """
+        Test Dataset With Fetch Handler. TestCases.
+        """
         os.remove("./test_queue_dataset_run_a.txt")
         os.remove("./test_queue_dataset_run_b.txt")
 
     def test_dataset_none(self):
+        """
+        Test Dataset With Fetch Handler. TestCases.
+        """
         slots_vars, out = self.net()
         files = ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"]
         dataset = self.get_dataset(slots_vars, files)
@@ -549,6 +579,9 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             self.assertTrue(False)
 
     def test_infer_from_dataset(self):
+        """
+        Test Dataset With Fetch Handler. TestCases.
+        """
         slots_vars, out = self.net()
         files = ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"]
         dataset = self.get_dataset(slots_vars, files)
@@ -564,6 +597,9 @@ class TestDatasetWithFetchHandler(unittest.TestCase):
             self.assertTrue(False)
 
     def test_fetch_handler(self):
+        """
+        Test Dataset With Fetch Handler. TestCases.
+        """
         slots_vars, out = self.net()
         files = ["test_queue_dataset_run_a.txt", "test_queue_dataset_run_b.txt"]
         dataset = self.get_dataset(slots_vars, files)
@@ -592,6 +628,7 @@ class TestDataset2(unittest.TestCase):
     """  TestCases for Dataset. """
 
     def setUp(self):
+        """  TestCases for Dataset. """
         self.use_data_loader = False
         self.epoch_num = 10
         self.drop_last = False
@@ -697,12 +734,14 @@ class TestDataset2(unittest.TestCase):
                 print("warning: no mpi4py")
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             try:
-                adam = fleet.distributed_optimizer(adam, strategy={
-                    "fs_uri": "fs_uri_xxx",
-                    "fs_user": "fs_user_xxx",
-                    "fs_passwd": "fs_passwd_xxx",
-                    "fs_hadoop_bin": "fs_hadoop_bin_xxx"
-                })
+                adam = fleet.distributed_optimizer(
+                    adam,
+                    strategy={
+                        "fs_uri": "fs_uri_xxx",
+                        "fs_user": "fs_user_xxx",
+                        "fs_passwd": "fs_passwd_xxx",
+                        "fs_hadoop_bin": "fs_hadoop_bin_xxx"
+                    })
                 adam.minimize([fake_cost], [scope])
             except AttributeError as e:
                 print("warning: no mpi")
