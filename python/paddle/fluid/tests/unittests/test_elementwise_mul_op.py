@@ -190,6 +190,7 @@ class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
             'Y': np.random.rand(1, 1, 4).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
@@ -200,6 +201,7 @@ class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
             'Y': np.random.rand(2, 1, 4, 1).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
@@ -215,6 +217,7 @@ class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
         self.outputs = {
             'Out': self.inputs['X'].reshape(1, 1, 4, 5) * self.inputs['Y']
         }
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOpError(OpTest):
