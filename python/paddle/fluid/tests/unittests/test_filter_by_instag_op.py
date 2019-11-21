@@ -71,7 +71,8 @@ class TestFilterByInstagOp(OpTest):
             'IndexMap': (mmap, mmap_lod)
         }
 
-        self.attrs = {'is_lod': True}
+        self.attrs = {'is_lod': True,
+                      'out_val_ifempty' : 0}
 
     def test_check_output(self):
         self.check_output()
@@ -118,7 +119,8 @@ class TestFilterByInstagOp2(OpTest):
             'LossWeight': (loss_weight, mmap_lod),
             'IndexMap': (mmap, mmap_lod)
         }
-        self.attrs = {'is_lod': True, }
+        self.attrs = {'is_lod': True,
+                      'out_val_ifempty' : 0}
 
     def test_check_output(self):
         self.check_output()
@@ -164,7 +166,8 @@ class TestFilterByInstagOp3(OpTest):
             'LossWeight': (loss_weight, mmap_lod),
             'IndexMap': (mmap, mmap_lod)
         }
-        self.attrs = {'is_lod': True, }
+        self.attrs = {'is_lod': True,
+                      'out_val_ifempty' : 0}
 
     def test_check_output(self):
         self.check_output()
@@ -209,7 +212,8 @@ class TestFilterByInstagOp4(OpTest):
             'LossWeight': (loss_weight, mmap_lod),
             'IndexMap': (mmap, mmap_lod)
         }
-        self.attrs = {'is_lod': False, }
+        self.attrs = {'is_lod': False,
+                      'out_val_ifempty' : 0}
 
     def test_check_output(self):
         self.check_output()
@@ -218,6 +222,51 @@ class TestFilterByInstagOp4(OpTest):
         self.check_grad(
             ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag']))
 
+"""This is Test Case 5"""
+
+
+class TestFilterByInstagOp5(OpTest):
+    def setUp(self):
+        self.op_type = 'filter_by_instag'
+        batch_size = 4
+        x1_embed_size = 4
+        fc_cnt = 2
+
+        x1 = np.array([[10, 13, 12, 1], [1, 1, 1, 1], [1, 1, 1, 1],
+                       [1, 1, 1, 1]]).astype('double')
+        x1_lod = [[1, 1, 1, 1]]
+
+        x2 = np.array([[2], [1], [2], [1]]).astype('int64')
+        x2_lod = [[1, 1, 1, 1]]
+
+        x3 = np.array([3]).astype('int64')
+
+        out = np.array([[2, 2, 2, 2]]).astype('double')
+        out_lod = [[1]]
+
+        mmap = np.array([[0, 1, 1]]).astype('int64')
+        mmap_lod = [[1]]
+
+        loss_weight = np.array([[0]]).astype('double')
+        self.inputs = {
+            'Ins': (x1, x1_lod),
+            'Ins_tag': (x2, x2_lod),
+            'Filter_tag': x3,
+        }
+        self.outputs = {
+            'Out': (out, out_lod),
+            'LossWeight': (loss_weight, mmap_lod),
+            'IndexMap': (mmap, mmap_lod)
+        }
+        self.attrs = {'is_lod': True,
+                      'out_val_ifempty' : 2}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag']))
 
 if __name__ == '__main__':
     unittest.main()
