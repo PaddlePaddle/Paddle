@@ -404,7 +404,8 @@ struct ConvBN : public PatternBase {
   ConvBN(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_bn") {}
 
-  PDNode* operator()(PDNode* conv_input, bool with_eltwise_add);
+  PDNode* operator()(PDNode* conv_input, const std::string& conv_type,
+                     bool with_eltwise_add);
 
   // declare operator node's name
   PATTERN_DECL_NODE(conv);
@@ -730,6 +731,21 @@ struct ElementwiseAdd : public PatternBase {
   PATTERN_DECL_NODE(elementwise_add_x);
   PATTERN_DECL_NODE(elementwise_add_y);
   PATTERN_DECL_NODE(elementwise_add_out);
+};
+
+// Transpose op
+// Forward pass for transpose.
+// transpose_out is a result of the operator.
+struct Transpose : public PatternBase {
+  Transpose(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "transpose2") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(transpose_in);
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(next_op);
 };
 
 // Concat op

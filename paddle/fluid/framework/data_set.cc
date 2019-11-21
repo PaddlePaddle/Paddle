@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <random>
 #include <unordered_map>
+#include <unordered_set>
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -42,15 +43,14 @@ DatasetImpl<T>::DatasetImpl() {
   channel_num_ = 1;
   file_idx_ = 0;
   cur_channel_ = 0;
-  fleet_send_batch_size_ = 80000;
-  fleet_send_sleep_seconds_ = 2;
+  fleet_send_batch_size_ = 1024;
+  fleet_send_sleep_seconds_ = 0;
   merge_by_insid_ = false;
-  erase_duplicate_feas_ = true;
-  keep_unmerged_ins_ = true;
-  min_merge_size_ = 2;
+  merge_size_ = 2;
   parse_ins_id_ = false;
   parse_content_ = false;
   preload_thread_num_ = 0;
+  global_index_ = 0;
 }
 
 // set filelist, file_idx_ will reset to zero.
@@ -117,15 +117,10 @@ void DatasetImpl<T>::SetParseContent(bool parse_content) {
 }
 
 template <typename T>
-void DatasetImpl<T>::SetMergeByInsId(
-    const std::vector<std::string>& merge_slot_list, bool erase_duplicate_feas,
-    int min_merge_size, bool keep_unmerged_ins) {
+void DatasetImpl<T>::SetMergeByInsId(int merge_size) {
   merge_by_insid_ = true;
   parse_ins_id_ = true;
-  merge_slots_list_ = merge_slot_list;
-  erase_duplicate_feas_ = erase_duplicate_feas;
-  min_merge_size_ = min_merge_size;
-  keep_unmerged_ins_ = keep_unmerged_ins;
+  merge_size_ = merge_size;
 }
 
 template <typename T>
@@ -291,7 +286,7 @@ void DatasetImpl<T>::LocalShuffle() {
 }
 
 template <typename T>
-void DatasetImpl<T>::GlobalShuffle() {
+void DatasetImpl<T>::GlobalShuffle(int thread_num) {
   VLOG(3) << "DatasetImpl<T>::GlobalShuffle() begin";
   platform::Timer timeline;
   timeline.Start();
@@ -358,13 +353,21 @@ void DatasetImpl<T>::GlobalShuffle() {
       ars.shrink_to_fit();
       data.clear();
       data.shrink_to_fit();
-      sleep(this->fleet_send_sleep_seconds_);
+      // currently we find bottleneck is server not able to handle large data
+      // in time, so we can remove this sleep and set fleet_send_batch_size to
+      // 1024, and set server thread to 24.
+      if (fleet_send_sleep_seconds_ != 0) {
+        sleep(this->fleet_send_sleep_seconds_);
+      }
     }
   };
 
-  VLOG(3) << "start global shuffle threads";
   std::vector<std::thread> global_shuffle_threads;
-  for (int i = 0; i < thread_num_; ++i) {
+  if (thread_num == -1) {
+    thread_num = thread_num_;
+  }
+  VLOG(3) << "start global shuffle threads, num = " << thread_num;
+  for (int i = 0; i < thread_num; ++i) {
     global_shuffle_threads.push_back(std::thread(global_shuffle_func));
   }
   for (std::thread& t : global_shuffle_threads) {
@@ -376,6 +379,101 @@ void DatasetImpl<T>::GlobalShuffle() {
   timeline.Pause();
   VLOG(3) << "DatasetImpl<T>::GlobalShuffle() end, cost time="
           << timeline.ElapsedSec() << " seconds";
+}
+
+template <typename T>
+void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num) {
+  if (channel_num_ == channel_num) {
+    VLOG(3) << "DatasetImpl<T>::DynamicAdjustChannelNum channel_num_="
+            << channel_num_ << ", channel_num_=channel_num, no need to adjust";
+    return;
+  }
+  VLOG(3) << "adjust channel num from " << channel_num_ << " to "
+          << channel_num;
+  channel_num_ = channel_num;
+  std::vector<paddle::framework::Channel<T>>* origin_channels = nullptr;
+  std::vector<paddle::framework::Channel<T>>* other_channels = nullptr;
+  // find out which channel (output or consume) has data
+  int cur_channel = 0;
+  uint64_t output_channels_data_size = 0;
+  uint64_t consume_channels_data_size = 0;
+  CHECK(multi_output_channel_.size() == multi_consume_channel_.size());
+  for (int i = 0; i < multi_output_channel_.size(); ++i) {
+    output_channels_data_size += multi_output_channel_[i]->Size();
+    consume_channels_data_size += multi_consume_channel_[i]->Size();
+  }
+  if (output_channels_data_size != 0) {
+    CHECK(consume_channels_data_size == 0);  // NOLINT
+    cur_channel = 0;
+  } else {
+    CHECK(output_channels_data_size == 0);  // NOLINT
+    cur_channel = 1;
+  }
+  if (cur_channel == 0) {
+    origin_channels = &multi_output_channel_;
+    other_channels = &multi_consume_channel_;
+  } else {
+    origin_channels = &multi_consume_channel_;
+    other_channels = &multi_output_channel_;
+  }
+  CHECK(origin_channels != nullptr);  // NOLINT
+  CHECK(other_channels != nullptr);   // NOLINT
+
+  paddle::framework::Channel<T> total_data_channel =
+      paddle::framework::MakeChannel<T>();
+  std::vector<paddle::framework::Channel<T>> new_channels;
+  std::vector<paddle::framework::Channel<T>> new_other_channels;
+  std::vector<T> local_vec;
+  for (int i = 0; i < origin_channels->size(); ++i) {
+    local_vec.clear();
+    (*origin_channels)[i]->Close();
+    (*origin_channels)[i]->ReadAll(local_vec);
+    total_data_channel->Write(std::move(local_vec));
+  }
+  total_data_channel->Close();
+  total_data_channel->SetBlockSize(total_data_channel->Size() / channel_num +
+                                   1);
+
+  for (int i = 0; i < channel_num; ++i) {
+    local_vec.clear();
+    total_data_channel->Read(local_vec);
+    new_other_channels.push_back(paddle::framework::MakeChannel<T>());
+    new_channels.push_back(paddle::framework::MakeChannel<T>());
+    new_channels[i]->Write(std::move(local_vec));
+  }
+
+  total_data_channel->Clear();
+  origin_channels->clear();
+  other_channels->clear();
+  *origin_channels = new_channels;
+  *other_channels = new_other_channels;
+
+  new_channels.clear();
+  new_other_channels.clear();
+  std::vector<paddle::framework::Channel<T>>().swap(new_channels);
+  std::vector<paddle::framework::Channel<T>>().swap(new_other_channels);
+  local_vec.clear();
+  std::vector<T>().swap(local_vec);
+  VLOG(3) << "adjust channel num done";
+}
+
+template <typename T>
+void DatasetImpl<T>::DynamicAdjustReadersNum(int thread_num) {
+  if (thread_num_ == thread_num) {
+    VLOG(3) << "DatasetImpl<T>::DynamicAdjustReadersNum thread_num_="
+            << thread_num_ << ", thread_num_=thread_num, no need to adjust";
+    return;
+  }
+  VLOG(3) << "adjust readers num from " << thread_num_ << " to " << thread_num;
+  thread_num_ = thread_num;
+  std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
+  CreateReaders();
+  VLOG(3) << "adjust readers num done";
+}
+
+template <typename T>
+void DatasetImpl<T>::SetFleetSendSleepSeconds(int seconds) {
+  fleet_send_sleep_seconds_ = seconds;
 }
 
 template <typename T>
@@ -457,6 +555,7 @@ void DatasetImpl<T>::CreatePreLoadReaders() {
     preload_readers_[i]->SetFileListIndex(&file_idx_);
     preload_readers_[i]->SetFileList(filelist_);
     preload_readers_[i]->SetParseInsId(parse_ins_id_);
+    preload_readers_[i]->SetParseContent(parse_content_);
     preload_readers_[i]->SetInputChannel(input_channel_.get());
     preload_readers_[i]->SetOutputChannel(nullptr);
     preload_readers_[i]->SetConsumeChannel(nullptr);
@@ -509,7 +608,16 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
   CHECK(ar.Cursor() == ar.Finish());
 
   auto fleet_ptr = FleetWrapper::GetInstance();
-  int64_t index = fleet_ptr->LocalRandomEngine()() % channel_num_;
+  // not use random because it doesn't perform well here.
+  // to make sure each channel get data equally, we just put data to
+  // channel one by one.
+  // int64_t index = fleet_ptr->LocalRandomEngine()() % channel_num_;
+  int64_t index = 0;
+  {
+    std::unique_lock<std::mutex> lk(global_index_mutex_);
+    index = global_index_++;
+  }
+  index = index % channel_num_;
   VLOG(3) << "ramdom index=" << index;
   multi_output_channel_[index]->Write(std::move(data));
 
@@ -529,22 +637,11 @@ void MultiSlotDataset::MergeByInsId() {
     return;
   }
   auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
-  std::unordered_map<int, bool> merge_slots;
   std::vector<std::string> use_slots;
-  std::vector<bool> use_slots_is_dense;
   for (size_t i = 0; i < multi_slot_desc.slots_size(); ++i) {
     const auto& slot = multi_slot_desc.slots(i);
     if (slot.is_used()) {
       use_slots.push_back(slot.name());
-      use_slots_is_dense.push_back(slot.is_dense());
-    }
-  }
-  for (size_t i = 0; i < use_slots.size(); ++i) {
-    // currently, we don't merge dense slots
-    if (std::find(merge_slots_list_.begin(), merge_slots_list_.end(),
-                  use_slots[i]) != merge_slots_list_.end() &&
-        !use_slots_is_dense[i]) {
-      merge_slots[i] = true;
     }
   }
   CHECK(multi_output_channel_.size() != 0);  // NOLINT
@@ -568,134 +665,82 @@ void MultiSlotDataset::MergeByInsId() {
     return a.ins_id_ < b.ins_id_;
   });
 
-  auto sort_cmp_uint64 = [&merge_slots](const FeatureItem& a,
-                                        const FeatureItem& b) {
-    auto& a_sign = a.sign().uint64_feasign_;
-    auto& b_sign = b.sign().uint64_feasign_;
-    return a_sign < b_sign || (a_sign == b_sign && a.slot() < b.slot());
-  };
-  auto sort_cmp_float = [&merge_slots](const FeatureItem& a,
-                                       const FeatureItem& b) {
-    auto& a_sign = a.sign().float_feasign_;
-    auto& b_sign = b.sign().float_feasign_;
-    return a_sign < b_sign || (a_sign == b_sign && a.slot() < b.slot());
-  };
-  auto unique_eq_uint64 = [&merge_slots](const FeatureItem& a,
-                                         const FeatureItem& b) {
-    if (a.slot() == b.slot() &&
-        merge_slots.find(a.slot()) == merge_slots.end()) {
-      return true;
-    }
-    auto& a_sign = a.sign().uint64_feasign_;
-    auto& b_sign = b.sign().uint64_feasign_;
-    return a_sign == b_sign && a.slot() == b.slot();
-  };
-  auto unique_eq_float = [&merge_slots](const FeatureItem& a,
-                                        const FeatureItem& b) {
-    if (a.slot() == b.slot() &&
-        merge_slots.find(a.slot()) == merge_slots.end()) {
-      return true;
-    }
-    auto& a_sign = a.sign().float_feasign_;
-    auto& b_sign = b.sign().float_feasign_;
-    return a_sign == b_sign && a.slot() == b.slot();
-  };
-
   std::vector<Record> results;
+  uint64_t drop_ins_num = 0;
+  std::unordered_set<uint16_t> all_int64;
+  std::unordered_set<uint16_t> all_float;
+  std::unordered_set<uint16_t> local_uint64;
+  std::unordered_set<uint16_t> local_float;
+
   VLOG(3) << "recs.size() " << recs.size();
   for (size_t i = 0; i < recs.size();) {
     size_t j = i + 1;
     while (j < recs.size() && recs[j].ins_id_ == recs[i].ins_id_) {
       j++;
     }
-    if (j - i < min_merge_size_) {
-      if (keep_unmerged_ins_) {
-        for (size_t k = i; k < j; ++k) {
-          results.push_back(std::move(recs[k]));
-        }
-      }
+    if (merge_size_ > 0 && j - i != merge_size_) {
+      drop_ins_num += j - i;
+      LOG(WARNING) << "drop ins " << recs[i].ins_id_ << " size=" << j - i
+                   << ", because merge_size=" << merge_size_;
       i = j;
       continue;
     }
 
-    std::vector<FeatureItem> merge_uint64_feasigns;
-    std::vector<FeatureItem> merge_float_feasigns;
-    Record rec = std::move(recs[i]);
+    all_int64.clear();
+    all_float.clear();
+    bool has_conflict_slot = false;
+    uint16_t conflict_slot = 0;
 
-    for (size_t k = i + 1; k < j; k++) {
+    Record rec;
+    rec.ins_id_ = recs[i].ins_id_;
+    rec.content_ = recs[i].content_;
+
+    for (size_t k = i; k < j; k++) {
+      local_uint64.clear();
+      local_float.clear();
       for (auto& feature : recs[k].uint64_feasigns_) {
-        if (merge_slots.find(feature.slot()) != merge_slots.end()) {
-          merge_uint64_feasigns.push_back(std::move(feature));
+        uint16_t slot = feature.slot();
+        if (all_int64.find(slot) != all_int64.end()) {
+          has_conflict_slot = true;
+          conflict_slot = slot;
+          break;
         }
+        local_uint64.insert(slot);
+        rec.uint64_feasigns_.push_back(std::move(feature));
       }
+      if (has_conflict_slot) {
+        break;
+      }
+      all_int64.insert(local_uint64.begin(), local_uint64.end());
+
       for (auto& feature : recs[k].float_feasigns_) {
-        if (merge_slots.find(feature.slot()) != merge_slots.end()) {
-          merge_float_feasigns.push_back(std::move(feature));
+        uint16_t slot = feature.slot();
+        if (all_float.find(slot) != all_float.end()) {
+          has_conflict_slot = true;
+          conflict_slot = slot;
+          break;
         }
+        local_float.insert(slot);
+        rec.float_feasigns_.push_back(std::move(feature));
       }
-      recs[k] = Record();
+      if (has_conflict_slot) {
+        break;
+      }
+      all_float.insert(local_float.begin(), local_float.end());
+    }
+
+    if (has_conflict_slot) {
+      LOG(WARNING) << "drop ins " << recs[i].ins_id_ << " size=" << j - i
+                   << ", because conflict_slot=" << use_slots[conflict_slot];
+      drop_ins_num += j - i;
+    } else {
+      results.push_back(std::move(rec));
     }
     i = j;
-
-    if (!erase_duplicate_feas_) {
-      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(),
-                                  merge_uint64_feasigns.begin(),
-                                  merge_uint64_feasigns.end());
-      rec.float_feasigns_.insert(rec.float_feasigns_.end(),
-                                 merge_float_feasigns.begin(),
-                                 merge_float_feasigns.end());
-    } else {
-      std::vector<FeatureItem> not_merge_uint64_feasigns;
-      std::vector<FeatureItem> not_merge_float_feasigns;
-
-      for (auto& feature : rec.uint64_feasigns_) {
-        if (merge_slots.find(feature.slot()) != merge_slots.end()) {
-          merge_uint64_feasigns.push_back(std::move(feature));
-        } else {
-          not_merge_uint64_feasigns.push_back(std::move(feature));
-        }
-      }
-      for (auto& feature : rec.float_feasigns_) {
-        if (merge_slots.find(feature.slot()) != merge_slots.end()) {
-          merge_float_feasigns.push_back(std::move(feature));
-        } else {
-          not_merge_float_feasigns.push_back(std::move(feature));
-        }
-      }
-      rec.uint64_feasigns_.clear();
-      rec.float_feasigns_.clear();
-
-      // erase duplicate uint64 feasigns
-      std::sort(merge_uint64_feasigns.begin(), merge_uint64_feasigns.end(),
-                sort_cmp_uint64);
-      merge_uint64_feasigns.erase(
-          std::unique(merge_uint64_feasigns.begin(),
-                      merge_uint64_feasigns.end(), unique_eq_uint64),
-          merge_uint64_feasigns.end());
-      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(),
-                                  merge_uint64_feasigns.begin(),
-                                  merge_uint64_feasigns.end());
-      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(),
-                                  not_merge_uint64_feasigns.begin(),
-                                  not_merge_uint64_feasigns.end());
-
-      // erase duplicate float feasigns
-      std::sort(merge_float_feasigns.begin(), merge_float_feasigns.end(),
-                sort_cmp_float);
-      merge_float_feasigns.erase(
-          std::unique(merge_float_feasigns.begin(), merge_float_feasigns.end(),
-                      unique_eq_float),
-          merge_float_feasigns.end());
-      rec.float_feasigns_.insert(rec.float_feasigns_.end(),
-                                 merge_float_feasigns.begin(),
-                                 merge_float_feasigns.end());
-      rec.float_feasigns_.insert(rec.float_feasigns_.end(),
-                                 not_merge_float_feasigns.begin(),
-                                 not_merge_float_feasigns.end());
-    }
-    results.push_back(rec);
   }
+  std::vector<Record>().swap(recs);
   VLOG(3) << "results size " << results.size();
+  LOG(WARNING) << "total drop ins num: " << drop_ins_num;
   results.shrink_to_fit();
 
   auto fleet_ptr = FleetWrapper::GetInstance();

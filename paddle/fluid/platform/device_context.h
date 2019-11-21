@@ -46,7 +46,7 @@ namespace platform {
 
 class DeviceContext {
  public:
-  virtual ~DeviceContext() {}
+  virtual ~DeviceContext() PADDLE_MAY_THROW {}
   virtual Place GetPlace() const = 0;
 
   virtual void Wait() const {}
@@ -95,6 +95,9 @@ class CUDADeviceContext : public DeviceContext {
 
   /*! \brief  Return the max physical thread count in the device context */
   int GetMaxPhysicalThreadCount() const;
+
+  /*! \brief  Return the max grid dim size in the device context */
+  dim3 GetCUDAMaxGridDimSize() const;
 
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
@@ -184,6 +187,7 @@ class CUDADeviceContext : public DeviceContext {
   int driver_version_;
   int multi_process_;
   int max_threads_per_mp_;
+  dim3 max_grid_dim_size_;
 
   // StreamCallbackManager is thread-safe
   std::unique_ptr<StreamCallbackManager> callback_manager_;
@@ -220,14 +224,7 @@ class CudnnWorkspaceHandle {
     ResetWorkspace();
   }
 
-  inline void ReallocWorkspace(size_t required_workspace_bytes) {
-    if (required_workspace_bytes <= WorkspaceSize()) {
-      return;
-    }
-    // reset allocation first before re-allocate to save memory
-    allocation_.reset();
-    allocation_ = memory::Alloc(device_context_, required_workspace_bytes);
-  }
+  void ReallocWorkspace(size_t required_workspace_bytes);
 
   inline void ResetWorkspace() { allocation_ = nullptr; }
 
@@ -337,6 +334,8 @@ class DeviceContextPool {
     }
     return *pool;
   }
+
+  static void SetPool(DeviceContextPool* dev_pool) { pool = dev_pool; }
 
   /*! \brief  Return handle of single device context. */
   platform::DeviceContext* Get(const platform::Place& place);

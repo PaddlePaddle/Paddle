@@ -18,11 +18,15 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
+import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 def stable_softmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
-    shiftx = x - np.max(x).clip(-64.)
+    # clip to shiftx, otherwise, when calc loss with
+    # log(exp(shiftx)), may get log(0)=INF
+    shiftx = (x - np.max(x)).clip(-64.)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
 
@@ -72,6 +76,20 @@ class TestSoftmaxOp(OpTest):
                     place, ["X"], "Out", max_relative_error=0.01)
         else:
             self.check_grad(["X"], "Out", max_relative_error=0.01)
+
+
+class TestSoftmaxOpError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            # The input type of softmax_op must be Variable.
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            self.assertRaises(TypeError, fluid.layers.softmax, x1)
+            # The input dtype of softmax_op must be float16, float32 or float64.
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
+            self.assertRaises(TypeError, fluid.layers.softmax, x2)
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype="float16")
+            fluid.layers.softmax(x3)
 
 
 class TestSoftmaxOp2(TestSoftmaxOp):

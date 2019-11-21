@@ -13,10 +13,15 @@
 # limitations under the License.
 
 # make package for paddle fluid shared and static library
+set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
+  "A path setting fluid shared and static libraries")
 
+set(FLUID_INFERENCE_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_install_dir" CACHE STRING
+  "A path setting fluid inference shared and static libraries")
+  
 if(WIN32)
     if(NOT PYTHON_EXECUTABLE)
-	FIND_PACKAGE(PythonInterp REQUIRED)
+        FIND_PACKAGE(PythonInterp REQUIRED)
     endif()
 endif()
 
@@ -50,73 +55,57 @@ function(copy TARGET)
     endforeach ()
 endfunction()
 
-# third party
-set(third_party_deps eigen3 gflags glog boost xxhash zlib)
-if(NOT PROTOBUF_FOUND OR WIN32)
-    list(APPEND third_party_deps extern_protobuf)
-endif ()
-
-if (WITH_MKLML)
-    list(APPEND third_party_deps mklml)
-elseif (NOT CBLAS_FOUND OR WIN32)
-    list(APPEND third_party_deps extern_openblas)
-endif ()
-
-if (WITH_MKLDNN)
-    list(APPEND third_party_deps mkldnn_shared_lib)
-endif ()
-
-if (WITH_NGRAPH)
-    list(APPEND third_party_deps ngraph)
-endif ()
-
-add_custom_target(third_party DEPENDS ${third_party_deps})
-
-# inference-only library
+# inference library for only inference
 set(inference_lib_deps third_party paddle_fluid paddle_fluid_shared)
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_deps})
 
 set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/eigen3")
 copy(inference_lib_dist
-    SRCS ${EIGEN_INCLUDE_DIR}/Eigen/Core ${EIGEN_INCLUDE_DIR}/Eigen/src ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
-    DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported)
+        SRCS ${EIGEN_INCLUDE_DIR}/Eigen/Core ${EIGEN_INCLUDE_DIR}/Eigen/src ${EIGEN_INCLUDE_DIR}/unsupported/Eigen
+        DSTS ${dst_dir}/Eigen ${dst_dir}/Eigen ${dst_dir}/unsupported)
 
 set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/boost")
 copy(inference_lib_dist
-    SRCS ${BOOST_INCLUDE_DIR}/boost
-    DSTS ${dst_dir})
+        SRCS ${BOOST_INCLUDE_DIR}/boost
+        DSTS ${dst_dir})
 
-if(WITH_MKLML)
+set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/dlpack")
+copy(inference_lib_dist
+        SRCS ${DLPACK_INCLUDE_DIR}/dlpack
+        DSTS ${dst_dir})
+
+
+if(${CBLAS_PROVIDER} STREQUAL MKLML)
     set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/mklml")
     if(WIN32)
         copy(inference_lib_dist
-            SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_SHARED_LIB}
-                ${MKLML_SHARED_LIB_DEPS} ${MKLML_SHARED_IOMP_LIB} ${MKLML_INC_DIR}
-            DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib
-                ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+                SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_SHARED_LIB}
+                  ${MKLML_SHARED_LIB_DEPS} ${MKLML_SHARED_IOMP_LIB} ${MKLML_INC_DIR}
+                DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib
+                  ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
     else()
         copy(inference_lib_dist
-            SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
-            DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+                SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
+                DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
     endif()
-elseif (NOT CBLAS_FOUND OR WIN32)
+elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
     set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/openblas")
-    copy(inference_lib_dist
-            SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
-            DSTS ${dst_dir} ${dst_dir})
-endif ()
+        copy(inference_lib_dist
+                SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
+                DSTS ${dst_dir} ${dst_dir})
+endif()
 
 if(WITH_MKLDNN)
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/mkldnn")
-if(WIN32)
-    copy(inference_lib_dist
-        SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_LIB}
-        DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
-else()
-    copy(inference_lib_dist
-        SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
-        DSTS ${dst_dir} ${dst_dir}/lib)
-endif()
+    set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/mkldnn")
+    if(WIN32)
+        copy(inference_lib_dist
+                SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_LIB}
+                DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
+    else()
+        copy(inference_lib_dist
+                SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
+                DSTS ${dst_dir} ${dst_dir}/lib)
+    endif()
 endif()
 
 set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/gflags")
@@ -156,20 +145,20 @@ endif ()
 if (TENSORRT_FOUND)
     set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/tensorrt")
     copy(inference_lib_dist
-        SRCS ${TENSORRT_ROOT}/include/Nv*.h ${TENSORRT_ROOT}/lib/*nvinfer*
-        DSTS ${dst_dir}/include ${dst_dir}/lib)
+            SRCS ${TENSORRT_INCLUDE_DIR}/Nv*.h ${TENSORRT_LIBRARY_DIR}/*nvinfer*
+            DSTS ${dst_dir}/include ${dst_dir}/lib)
 endif ()
 
 if (ANAKIN_FOUND)
     set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/anakin")
     copy(inference_lib_dist
-        SRCS ${ANAKIN_ROOT}/*
-        DSTS ${dst_dir})
+            SRCS ${ANAKIN_ROOT}/*
+            DSTS ${dst_dir})
 endif ()
 
 copy(inference_lib_dist
-     SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
-     DSTS ${FLUID_INFERENCE_INSTALL_DIR})
+        SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
+        DSTS ${FLUID_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
@@ -179,8 +168,8 @@ else(WIN32)
 endif(WIN32)
 
 copy(inference_lib_dist
-     SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
-     DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib)
+        SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
+        DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib)
 
 
 # fluid library for both train and inference
@@ -190,17 +179,23 @@ add_custom_target(fluid_lib_dist ALL DEPENDS ${fluid_lib_deps})
 set(dst_dir "${FLUID_INSTALL_DIR}/paddle/fluid")
 set(module "inference")
 copy(fluid_lib_dist
-  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_fluid_lib} 
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
-)
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/api/paddle_*.h ${paddle_fluid_lib}
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
+        )
 
 set(module "framework")
 set(framework_lib_deps framework_proto)
 add_dependencies(fluid_lib_dist ${framework_lib_deps})
 copy(fluid_lib_dist
-    SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/data_feed.pb.h ${src_dir}/${module}/ir/memory_optimize_pass/*.h
-    ${src_dir}/${module}/ir/*.h ${src_dir}/${module}/fleet/*.h
-    DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}/ir/memory_optimize_pass ${dst_dir}/${module}/ir ${dst_dir}/${module}/fleet)
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/trainer_desc.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/data_feed.pb.h ${src_dir}/${module}/ir/memory_optimize_pass/*.h
+        ${src_dir}/${module}/ir/*.h ${src_dir}/${module}/fleet/*.h
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}/ir/memory_optimize_pass ${dst_dir}/${module}/ir ${dst_dir}/${module}/fleet)
+
+set(module "operators")
+copy(fluid_lib_dist
+        SRCS ${src_dir}/${module}/reader/blocking_queue.h
+        DSTS ${dst_dir}/${module}/reader/
+        )
 
 set(module "memory")
 copy(fluid_lib_dist
@@ -212,14 +207,20 @@ set(module "platform")
 set(platform_lib_deps profiler_proto)
 add_dependencies(fluid_lib_dist ${platform_lib_deps})
 copy(fluid_lib_dist
-        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/profiler.pb.h
-        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details ${dst_dir}/${module}
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/profiler.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/error_codes.pb.h
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module}
         )
 
 set(module "string")
 copy(fluid_lib_dist
         SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/tinyformat/*.h
         DSTS ${dst_dir}/${module} ${dst_dir}/${module}/tinyformat
+        )
+
+set(module "imperative")
+copy(fluid_lib_dist
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/jit/*.h 
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/jit
         )
 
 set(module "pybind")

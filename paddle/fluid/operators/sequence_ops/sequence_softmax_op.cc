@@ -51,7 +51,7 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
     }
     std::string data_format = ctx.Attr<std::string>("data_format");
     return framework::OpKernelType(
-        ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
         framework::StringToDataLayout(data_format), library_);
   }
 };
@@ -146,19 +146,24 @@ class SequenceSoftmaxGradOp : public framework::OperatorWithKernel {
     }
     std::string data_format = ctx.Attr<std::string>("data_format");
     return framework::OpKernelType(
-        ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
+        OperatorWithKernel::IndicateVarDataType(ctx, "Out"), ctx.GetPlace(),
         framework::StringToDataLayout(data_format), library_);
   }
 };
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(
+    SequenceSoftmaxGradOpNoNeedBufferVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_softmax, ops::SequenceSoftmaxOp,
-                  ops::SequenceSoftmaxOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(sequence_softmax_grad, ops::SequenceSoftmaxGradOp);
+REGISTER_OPERATOR(
+    sequence_softmax, ops::SequenceSoftmaxOp, ops::SequenceSoftmaxOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+REGISTER_OPERATOR(sequence_softmax_grad, ops::SequenceSoftmaxGradOp,
+                  ops::SequenceSoftmaxGradOpNoNeedBufferVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     sequence_softmax,
     ops::SequenceSoftmaxKernel<paddle::platform::CPUDeviceContext, float>,

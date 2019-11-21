@@ -80,7 +80,7 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("Rois"));
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Rois");
     return framework::OpKernelType(data_type, platform::CPUPlace());
   }
 };
@@ -434,8 +434,10 @@ K classes. This mask targets are used to compute loss of mask branch.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(generate_mask_labels, ops::GenerateMaskLabelsOp,
-                  ops::GenerateMaskLabelsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    generate_mask_labels, ops::GenerateMaskLabelsOp,
+    ops::GenerateMaskLabelsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(generate_mask_labels,
                        ops::GenerateMaskLabelsKernel<float>);

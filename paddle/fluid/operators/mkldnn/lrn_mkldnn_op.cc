@@ -77,13 +77,8 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<mkldnn::primitive> pipeline = {*lrn_p};
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
 
-    auto output_format =
-        (mkldnn::memory::format)dst_memory->get_primitive_desc()
-            .desc()
-            .data.format;
-
     out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(output_format);
+    out->set_format(platform::GetMKLDNNFormat(*dst_memory));
   }
 };
 
@@ -129,13 +124,8 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<mkldnn::primitive> pipeline = {*lrn_bwd};
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
 
-    auto output_format =
-        (mkldnn::memory::format)diff_src_memory->get_primitive_desc()
-            .desc()
-            .data.format;
-
     x_grad->set_layout(framework::DataLayout::kMKLDNN);
-    x_grad->set_format(output_format);
+    x_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory));
   }
 };
 }  // namespace operators
