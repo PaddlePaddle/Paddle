@@ -41,7 +41,11 @@ class DGCMomentumKernel : public framework::OpKernel<T> {
     // nranks
     auto nranks_tensor = context.Input<framework::Tensor>("nranks");
     const int nranks = static_cast<const int>(*nranks_tensor->data<float>());
-    PADDLE_ENFORCE_GT(nranks, 1, "DGC is not useful when num_trainers <= 1");
+    PADDLE_ENFORCE_GT(
+        nranks, 1,
+        platform::errors::InvalidArgument(
+            "DGC is not useful when num_trainers <= 1, but now nranks=%d",
+            nranks));
 
     const framework::Tensor* g = context.Input<framework::Tensor>("Grad");
     framework::Tensor* g_out = context.Output<framework::Tensor>("Grad_out");

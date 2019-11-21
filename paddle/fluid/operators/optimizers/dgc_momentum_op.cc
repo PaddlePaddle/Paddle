@@ -28,10 +28,12 @@ class DGCMomentumOp : public MomentumOp {
     PADDLE_ENFORCE_EQ(ctx->HasInput("current_step"), true,
                       "current_step should be set.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("nranks"), true,
-                      "Input(nranks) should be set.");
+                      platform::errors::NotFound(
+                          "Input(nranks) of DGCMomentumOp is not found."));
 
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Grad_out"), true,
-                      "Output(Grad_out) should be set.");
+                      platform::errors::NotFound(
+                          "Output(Grad_out) of DGCMomentumOp is not found."));
     return MomentumOp::InferShape(ctx);
   }
 
@@ -52,7 +54,7 @@ class DGCMomentumOpMaker : public MomentumOpMaker {
  public:
   void Make() override {
     AddInput("current_step", "(Tensor) Current step.");
-    AddInput("nranks", "(Tensor) nranks.");
+    AddInput("nranks", "(Tensor) The number of trainers.");
 
     AddOutput("Grad_out", "(Tensor) Output grad gradient");
 

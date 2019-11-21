@@ -75,6 +75,10 @@ class DGCOpKernel : public framework::OpKernel<T> {
     // need to /nranks, can prevent precision loss. For coeff often equal
     // with 1e-4, if nranks=32, coeff/nranks will be 3.125e-6, the numerical
     // accuracy of coeff/nranks will be too low.
+    PADDLE_ENFORCE_EQ(regular_type >= 0 && regular_type <= 2, true,
+                      platform::errors::InvalidArgument(
+                          "DGC only support one of None|L1Decay|L2Decay "
+                          "Regularization for now."));
     if (regular_type == 0) {
       grad_out_e.device(eigen_ctx) = (1.0 * nranks) * g_e;
     } else if (regular_type == 1) {
@@ -84,9 +88,6 @@ class DGCOpKernel : public framework::OpKernel<T> {
     } else if (regular_type == 2) {
       // L2Decay. grad = grad + coeff * param
       grad_out_e.device(eigen_ctx) = (1.0 * nranks) * g_e + regular_coeff * p_e;
-    } else {
-      PADDLE_ENFORCE_EQ(regular_type >= 0 && regular_type <= 2, true,
-                        "Regularization must be one of None|L1Decay|L2Decay");
     }
 
     // current step

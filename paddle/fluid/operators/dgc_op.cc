@@ -29,8 +29,9 @@ class DGCOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("V"), "Input(V) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
                    "Input(Grad) of DGCop should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Param"),
-                   "Input(Param) of DGCop should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Param"), true,
+        platform::errors::NotFound("Input(Param) of DGCop is not found."));
     PADDLE_ENFORCE(ctx->HasInput("current_step"),
                    "Input(current_step) of DGCop should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("nranks"), true,
@@ -104,7 +105,7 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddAttr<float>("regular_coeff",
                    "(float, 0.0)"
-                   "The coeff of regularization.")
+                   "The coeff of regularization, weight decay parameter")
         .SetDefault(0.0);
 
     AddAttr<int>("regular_type",
