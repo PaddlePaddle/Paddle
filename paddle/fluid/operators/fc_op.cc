@@ -124,9 +124,10 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
-    AddAttr<bool>("padding_weights",
-                  "(bool, default false) When weight padding is used in pass, "
-                  "'padding_weights' attribute is true.")
+    AddAttr<bool>(
+        "padding_weights",
+        "(bool, default false) When padding weights in the fc fuse pass, "
+        "the 'padding_weights' attribute is set as true.")
         .SetDefault(false);
     AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
                   "Skip calling InferShape() function in the runtime.")
