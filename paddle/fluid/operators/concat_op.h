@@ -81,8 +81,12 @@ class ConcatKernel : public framework::OpKernel<T> {
       axis = GetDataFromTensor<int>(axis_tensor)[0];
       need_resize_out_dims = true;
     }
-    axis = ComputeAxis(static_cast<int64_t>(axis),
-                       static_cast<int64_t>(ins[0]->dims().size()));
+    auto rank = ins[0]->dims().size();
+    PADDLE_ENFORCE_EQ(
+        axis >= -rank && axis < rank, true,
+        "The axis is expected to be in range of [%d, %d), but got %d", -rank,
+        rank, axis);
+    axis = ComputeAxis(static_cast<int64_t>(axis), static_cast<int64_t>(rank));
 
     if (need_resize_out_dims) {
       const size_t n = ins.size();
