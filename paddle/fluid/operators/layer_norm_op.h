@@ -212,15 +212,19 @@ class LayerNormKernel : public framework::OpKernel<T> {
 #else
     PADDLE_ENFORCE_EQ(mean->numel(), left);
     PADDLE_ENFORCE_EQ(var->numel(), left);
-    PADDLE_ENFORCE_EQ(scale->numel(), right);
-    PADDLE_ENFORCE_EQ(bias->numel(), right);
+    if (scale) {
+      PADDLE_ENFORCE_EQ(scale->numel(), right);
+    }
+    if (bias) {
+      PADDLE_ENFORCE_EQ(bias->numel(), right);
+    }
 
     auto ker =
         jit::KernelFuncs<jit::LayerNormTuple<T>, platform::CPUPlace>::Cache()
             .At(right);
     ker(x.data<T>(), out.data<T>(), mean->data<T>(), var->data<T>(),
-        scale->data<T>(), bias->data<T>(), static_cast<int>(left),
-        static_cast<const float>(epsilon), right);
+        scale ? scale->data<T>() : nullptr, bias ? bias->data<T>() : nullptr,
+        static_cast<int>(left), static_cast<const float>(epsilon), right);
 #endif
   }
 };
