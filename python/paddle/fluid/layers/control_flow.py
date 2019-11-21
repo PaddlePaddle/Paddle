@@ -27,13 +27,13 @@ import numpy
 import warnings
 import six
 from functools import reduce, partial
-from ..data_feeder import convert_dtype
+from ..data_feeder import convert_dtype, check_type_and_dtype
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
     'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
     'array_read', 'array_length', 'cond', 'IfElse', 'DynamicRNN', 'StaticRNN',
-    'reorder_lod_tensor_by_rank', 'Print', 'is_empty', 'switch_case'
+    'reorder_lod_tensor_by_rank', 'Print', 'is_empty', 'case', 'switch_case'
 ]
 
 
@@ -253,6 +253,10 @@ def Print(input,
                data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
                
     '''
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float32', 'float64', 'int32_t', 'int64_t', 'bool'],
+                         'fluid.layers.Print')
+
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
@@ -1798,6 +1802,130 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     return merged_output
 
 
+def _error_message(what, arg_name, op_name, right_value, error_value):
+    error_message = "{what} of '{arg_name}' in Op({op_name}) must be " \
+        "{right_value}, but received: {error_value}.".format(
+        what=what,
+        arg_name=arg_name,
+        op_name=op_name,
+        right_value=right_value,
+        error_value=error_value)
+
+    return error_message
+
+
+def case(pred_fn_pairs, default=None, name=None):
+    '''
+    This operator works like an if-elif-elif-else chain.
+
+    Args:
+        pred_fn_pairs(list|tuple): A list or tuple of (pred, fn) pairs. ``pred`` is a boolean Tensor with shape [1], ``fn`` is a callable. All callables return the same structure of Tensors.
+        default(callable, optional): Callable that returns a structure of Tensors.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable|list(Variable): Tensors returned by the callable from the first pair whose pred is True,
+        or Tensors returned by ``default`` if no pred in ``pred_fn_pairs`` is True and ``default`` is not None,
+        or Tensors returned by the last callable in ``pred_fn_pairs``  if no pred in ``pred_fn_pairs`` is True and ``default`` is None.
+
+    Raises:
+        TypeError: If the type of ``pred_fn_pairs`` is not list or tuple.
+        TypeError: If the type of elements in ``pred_fn_pairs`` is not tuple.
+        TypeError: If the size of tuples in ``pred_fn_pairs`` is not 2.
+        TypeError: If the first element of 2-tuple in ``pred_fn_pairs`` is not Variable.
+        TypeError: If the second element of 2-tuple in ``pred_fn_pairs`` is not callable.
+        TypeError: If ``default`` is not None but it is not callable.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+
+            def fn_1():
+                return layers.fill_constant(shape=[1, 2], dtype='float32', value=1)
+
+            def fn_2():
+                return layers.fill_constant(shape=[2, 2], dtype='int32', value=2)
+
+            def fn_3():
+                return layers.fill_constant(shape=[3], dtype='int32', value=3)
+
+            main_program = fluid.default_startup_program()
+            startup_program = fluid.default_main_program()
+            with program_guard(main_program, startup_program):
+                x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
+                y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
+                z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
+
+                pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
+                pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
+                pred_3 = layers.equal(x, y)      # false: 0.3 == 0.1
+
+                # Call fn_1 because pred_1 is True
+                out_1 = layers.case(
+                    pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3)
+
+                # Argument default is None and no pred in pred_fn_pairs is True. fn_3 will be called.
+                # because fn_3 is the last callable in pred_fn_pairs.
+                out_2 = layers.case(pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)])
+
+                exe = fluid.Executor(fluid.CPUPlace())
+                res_1, res_2 = exe.run(main_program, fetch_list=[out_1, out_2])
+                print(res_1)  # [[1. 1.]]
+                print(res_2)  # [3 3 3]
+    '''
+    helper = LayerHelper('case', **locals())
+
+    def _case_check_args(pred_fn_pairs, default):
+        '''
+        Check arguments pred_fn_pairs and default. Return canonical pre_fn_pairs and default.
+        '''
+        if not isinstance(pred_fn_pairs, (list, tuple)):
+            raise TypeError(
+                _error_message("The type", "pred_fn_pairs", "case",
+                               "list or tuple", type(pred_fn_pairs)))
+
+        for pred_fn in pred_fn_pairs:
+            if not isinstance(pred_fn, tuple):
+                raise TypeError(
+                    _error_message("The elements' type", "pred_fn_pairs",
+                                   "case", "tuple", type(pred_fn)))
+            if len(pred_fn) != 2:
+                raise TypeError(
+                    _error_message("The tuple's size", "pred_fn_pairs", "case",
+                                   "2", str(len(pred_fn)) + "-tuple"))
+            pred, fn = pred_fn
+
+            if not isinstance(pred, Variable):
+                raise TypeError(
+                    _error_message("The pred's type", "pred_fn_pairs", "case",
+                                   "boolean Variable", type(pred)))
+
+            if not callable(fn):
+                raise TypeError(
+                    "The fn for {} of pred_fn_pairs in Op(case) must"
+                    " be callable.".format(pred.name))
+
+        if default is None:
+            default_index = len(pred_fn_pairs) - 1  # pick the last one
+            default = pred_fn_pairs[default_index][1]
+            pred_fn_pairs = pred_fn_pairs[:default_index]
+        elif not callable(default):
+            raise TypeError("The default in Op(case) must be callable.")
+
+        return pred_fn_pairs, default
+
+    pred_fn_pairs, default = _case_check_args(pred_fn_pairs, default)
+
+    false_fn = default
+    for pred, true_fn in reversed(pred_fn_pairs):
+        false_fn = partial(cond, pred=pred, true_fn=true_fn, false_fn=false_fn)
+
+    final_fn = false_fn
+
+    return final_fn()
+
+
 class Switch(object):
     """
 
@@ -2784,17 +2912,6 @@ class DynamicRNN(object):
         if self.status != DynamicRNN.IN_RNN:
             raise ValueError("{0} can only be invoked inside rnn block.".format(
                 method))
-
-
-def _error_message(what, arg_name, op_name, right_value, error_value):
-    error_message = "{what} of '{arg_name}' in Op({op_name}) must be " \
-            "{right_value}, but received: {error_value}.".format(
-            what=what,
-            arg_name=arg_name,
-            op_name=op_name,
-            right_value=right_value,
-            error_value=error_value)
-    return error_message
 
 
 def switch_case(branch_index, branch_fns, default=None, name=None):

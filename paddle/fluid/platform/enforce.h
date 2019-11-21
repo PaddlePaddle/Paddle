@@ -58,6 +58,10 @@ namespace platform {
 
 /** HELPER MACROS AND FUNCTIONS **/
 
+#ifndef PADDLE_MAY_THROW
+#define PADDLE_MAY_THROW noexcept(false)
+#endif
+
 // Because most enforce conditions would evaluate to true, we can use
 // __builtin_expect to instruct the C++ compiler to generate code that
 // always forces branch prediction of true.

@@ -328,10 +328,6 @@ void BindImperative(py::module *m_ptr) {
            });
 
   py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
-      .def("set_name_prefix",
-           &imperative::jit::ProgramDescTracer::SetNamePrefix)
-      .def("set_feed_vars", &imperative::jit::ProgramDescTracer::SetFeedVars)
-      .def("set_fetch_vars", &imperative::jit::ProgramDescTracer::SetFetchVars)
       .def("create_program_desc",
            &imperative::jit::ProgramDescTracer::CreateProgramDesc)
       .def("reset", &imperative::jit::ProgramDescTracer::Reset);

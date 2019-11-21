@@ -256,9 +256,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         ptq = PostTrainingQuantization(
             executor=exe,
-            scope=scope,
-            model_path=model_path,
-            data_reader=val_reader,
+            sample_generator=val_reader,
+            model_dir=model_path,
             algo=algo,
             quantizable_op_type=quantizable_op_type,
             is_full_quantize=is_full_quantize)
