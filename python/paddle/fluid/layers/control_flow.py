@@ -25,7 +25,8 @@ from .nn import logical_and, logical_not, logical_or
 import numpy
 import warnings
 import six
-from functools import reduce
+from functools import reduce, partial
+from ..data_feeder import convert_dtype, check_type_and_dtype
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -197,6 +198,10 @@ def Print(input,
                data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
                
     '''
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float32', 'float64', 'int32', 'int64', 'bool'],
+                         'fluid.layers.Print')
+
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
