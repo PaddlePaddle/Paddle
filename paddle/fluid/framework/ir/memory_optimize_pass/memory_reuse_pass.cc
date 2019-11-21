@@ -41,6 +41,10 @@ void MemoryReusePass::ApplyImpl(Graph *graph) const {
     pinned_var_set_ = &graph->Get<details::PinnedVars>(details::kPinnedVars);
   }
 
+  // kSkipReuseVars would be empty at first, and be changed during each
+  // applied MemoryReusePass. Therefore, it is empty at first, and would
+  // have same size with `all_vars_` (place number, not var number) after
+  // each MemoryReusePass is applied.
   skip_reuse_vars_ = &Get<std::vector<SkipReuseVars>>(kSkipReuseVars);
   if (skip_reuse_vars_->empty()) {
     skip_reuse_vars_->resize(all_vars_->size());
@@ -416,6 +420,11 @@ static InplaceOpMeta *BuildIdentityInplaceOpMeta() {
 
   PADDLE_REGISTER_IDENTITY_OP("reshape2", {"X", "Out"});
   PADDLE_REGISTER_IDENTITY_OP("reshape2_grad", {framework::GradVarName("Out"),
+                                                framework::GradVarName("X")});
+  PADDLE_REGISTER_IDENTITY_OP("reshape2_grad_grad", {"DDX", "DDOut"});
+
+  PADDLE_REGISTER_IDENTITY_OP("flatten2", {"X", "Out"});
+  PADDLE_REGISTER_IDENTITY_OP("flatten2_grad", {framework::GradVarName("Out"),
                                                 framework::GradVarName("X")});
 
   PADDLE_REGISTER_IDENTITY_OP("assign", {"X", "Out"});

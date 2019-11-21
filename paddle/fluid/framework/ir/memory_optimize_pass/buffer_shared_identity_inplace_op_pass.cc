@@ -25,7 +25,7 @@ using VarHandle = details::VarHandle;
 using VarHandleBase = details::VarHandleBase;
 
 /**
- * The vars in `IdentityInplaceVarInfo` builds a `FOREST`.
+ * The vars in `IdentityInplaceVarInfo` build a `FOREST`.
  *
  * This means that:
  *  1. there is no circle. Otherwise, it must be a bug of Paddle framework.
@@ -51,6 +51,16 @@ using IdentityInplaceVarInfo = std::unordered_map<
     std::vector<std::pair<VarHandle * /*output_var*/,
                           ComputationOpHandle * /*identity op*/>>>;
 
+/**
+ * This method is used to build the adjacent map of the forest inside
+ * `info`. The returned result maps a var to its parent var in the forest
+ * `info`.
+ *
+ * For convenience, the root vars of the forest are also one of the key of
+ * the output map, but their mapping value are nullptr. This method can
+ * also distinguish whether the var is inside the forest or not to avoid
+ * probable bug.
+ */
 static std::unordered_map<VarHandle *, VarHandle *> BuildParent(
     const IdentityInplaceVarInfo &info) {
   std::unordered_map<VarHandle *, VarHandle *> parent;
@@ -61,6 +71,7 @@ static std::unordered_map<VarHandle *, VarHandle *> BuildParent(
                           "Var info list cannot be empty, this may be a bug"));
 
     auto *in_var = pair.first;
+    // used to build nullptr parent for each root vars
     parent[in_var];
     for (auto &ovar_op : pair.second) {
       auto *out_var = ovar_op.first;
@@ -70,41 +81,72 @@ static std::unordered_map<VarHandle *, VarHandle *> BuildParent(
   return parent;
 }
 
+/**
+ * This method is used to prune the leaf var nodes inside
+ * `reused_vars` when branched identity inplace is performed
+ * to avoid calculation error.
+ */
 static void ShrinkIdentityInplacedOps(
     IdentityInplaceVarInfo *info,
     const std::unordered_set<VarHandle *> &reused_vars) {
-  if (reused_vars.empty()) return;
+  if (reused_vars.empty()) {
+    return;
+  }
   auto parent = BuildParent(*info);
+
+  auto get_parent = [&parent](VarHandle *var) {
+    auto iter = parent.find(var);
+    PADDLE_ENFORCE_EQ(iter != parent.end(), true,
+                      platform::errors::InvalidArgument(
+                          "Cannot get parent of variable %s, this may be a bug",
+                          var->Name()));
+    return iter->second;
+  };
+
+  auto get_mutable_info_list = [info](VarHandle *var) {
+    auto iter = info->find(var);
+    PADDLE_ENFORCE_EQ(
+        iter != info->end(), true,
+        platform::errors::InvalidArgument(
+            "Cannot get info list of variable %s, this may be a bug",
+            var->Name()));
+    return &(iter->second);
+  };
+
   for (auto *var : reused_vars) {
     bool is_branch_reused = false;
 
     auto *cur_var = var;
-    auto *parent_var = parent.at(cur_var);
+    auto *parent_var = get_parent(cur_var);
     while (parent_var != nullptr) {
-      auto &info_list = info->at(parent_var);
-      if (info_list.size() > 1) {
+      auto *info_list = get_mutable_info_list(parent_var);
+      if (info_list->size() > 1) {
         is_branch_reused = true;
         break;
       }
       cur_var = parent_var;
-      parent_var = parent.at(cur_var);
+      parent_var = get_parent(cur_var);
     }
 
-    if (!is_branch_reused) continue;
+    if (!is_branch_reused) {
+      continue;
+    }
 
     VLOG(5) << "Remove reused leaf var " << var->Name() << " on scope "
             << var->scope_idx();
-    parent_var = parent.at(var);
+    parent_var = get_parent(var);
     parent.erase(var);
-    auto &target_list = info->at(parent_var);
-    target_list.erase(
+    auto *target_list = get_mutable_info_list(parent_var);
+    target_list->erase(
         std::remove_if(
-            target_list.begin(), target_list.end(),
+            target_list->begin(), target_list->end(),
             [var](const std::pair<VarHandle *, ComputationOpHandle *> &p) {
               return p.first == var;
             }),
-        target_list.end());
-    if (target_list.empty()) info->erase(parent_var);
+        target_list->end());
+    if (target_list->empty()) {
+      info->erase(parent_var);
+    }
   }
 }
 
@@ -116,7 +158,9 @@ GetUnReusableLeafVarsAfterIdentityInplaced(
 
   std::unordered_set<VarHandle *> unreusable_vars;
   for (auto &pair : parent) {
-    if (pair.second) continue;  // non-root
+    if (pair.second) {  // non-root
+      continue;
+    }
 
     std::unordered_set<VarHandle *> leaves;
     bool var_is_read_by_other_ops = false;
@@ -273,7 +317,7 @@ VarHandle *
 BufferSharedIdentityInplaceOpPass::TryFindMatchedIdentityInplacedOutput(
     const VarHandle &in_var, const ComputationOpHandle &op) {
   auto &in_out_pairs = InOutPairOfIdentityOp(op.GetOp()->Type());
-  std::string out_slot;
+  std::unique_ptr<std::string> out_slot;
   for (auto &in_to_out : in_out_pairs) {
     auto &in_slot = in_to_out.first;
     auto &inputs = op.GetOp()->Inputs();
@@ -281,14 +325,14 @@ BufferSharedIdentityInplaceOpPass::TryFindMatchedIdentityInplacedOutput(
     if (in_iter == inputs.end()) continue;
     if (in_iter->second.size() != 1) continue;
     if (in_iter->second[0] == in_var.Name()) {
-      out_slot = in_to_out.second;
+      out_slot.reset(new std::string(in_to_out.second));
       break;
     }
   }
 
-  if (out_slot.empty()) return nullptr;
+  if (!out_slot) return nullptr;
   auto &outputs = op.GetOp()->Outputs();
-  auto out_iter = outputs.find(out_slot);
+  auto out_iter = outputs.find(*out_slot);
   if (out_iter == outputs.end()) return nullptr;
   if (out_iter->second.size() != 1) return nullptr;
 
