@@ -234,6 +234,32 @@ class PSLib(Fleet):
         """
         self._fleet_ptr.save_model(dirname)
 
+    def print_table_stat(self, table_id):
+        """
+        save presistable parameters,
+        when using fleet, it will save sparse and dense feature
+
+        Args:
+            executor(Executor): fluid executor
+            dirname(str): save path. It can be hdfs/afs path or local path
+            main_program(Program): fluid program, default None
+            kwargs: use define property, current support following
+                mode(int): 0 means save all pserver model,
+                           1 means save delta pserver model (save diff),
+                           2 means save xbox base,
+                           3 means save batch model.
+
+        Example:
+            .. code-block:: python
+
+              fleet.save_persistables(dirname="/you/path/to/model", mode = 0)
+
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.print_table_stat(table_id)
+        self._role_maker._barrier_worker()
+
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
         save presistable parameters,
