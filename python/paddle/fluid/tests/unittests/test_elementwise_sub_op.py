@@ -127,5 +127,40 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseOp):
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
 
+class TestElementwiseSubOp_commonuse_1(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 4).astype(np.float32),
+            'Y': np.random.rand(1, 1, 4).astype(np.float32)
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+
+class TestElementwiseSubOp_commonuse_2(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.inputs = {
+            'X': np.random.rand(2, 3, 1, 5).astype(np.float32),
+            'Y': np.random.rand(2, 1, 4, 1).astype(np.float32)
+        }
+        self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
+
+
+class TestElementwiseSubOp_xsize_lessthan_ysize(TestElementwiseOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.inputs = {
+            'X': np.random.rand(4, 5).astype(np.float32),
+            'Y': np.random.rand(2, 3, 4, 5).astype(np.float32)
+        }
+
+        self.attrs = {'axis': 2}
+
+        self.outputs = {
+            'Out': self.inputs['X'].reshape(1, 1, 4, 5) - self.inputs['Y']
+        }
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -42,24 +42,40 @@ class TestElementwiseAddOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_normal(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            max_relative_error=0.005,
+            check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_ingore_x(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
+            ['Y'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set("X"),
+            check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_ingore_y(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
+            ['X'],
+            'Out',
+            max_relative_error=0.005,
+            no_grad_set=set('Y'),
+            check_dygraph=(self.use_mkldnn == False))
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -78,10 +94,12 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
         self.dtype = np.float16
 
     def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+                self.check_output_with_place(
+                    place, atol=1e-3, check_dygraph=(self.use_mkldnn == False))
 
 
 class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
@@ -306,6 +324,36 @@ class TestFP16ElementwiseAddOp_channelwise_add(TestFP16ElementwiseAddOp):
 
     def init_axis(self):
         self.axis = -1
+
+
+class TestElementwiseAddOp_commonuse_add1(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+        self.y = np.random.rand(1, 1, 4).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+class TestElementwiseAddOp_commonuse_add2(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 1, 5).astype(self.dtype)
+        self.y = np.random.rand(2, 1, 4, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(4, 5).astype(self.dtype)
+        self.y = np.random.rand(2, 3, 4, 5).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = 2
 
 
 class TestElementwiseAddOpError(OpTest):
