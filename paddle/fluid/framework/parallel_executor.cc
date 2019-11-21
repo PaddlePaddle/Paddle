@@ -421,7 +421,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 #endif
 
   LOG(INFO) << string::Sprintf(
-      "The Program will be executed on the %s using ParallelExecutor, %lu "
+      "The Program will be executed on %s using ParallelExecutor, %lu "
       "cards are used, so %lu programs are executed in parallel.",
       (member_->use_cuda_ ? "CUDA" : "CPU"), places.size(), places.size());
 
