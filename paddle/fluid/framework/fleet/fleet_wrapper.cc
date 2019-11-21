@@ -91,6 +91,13 @@ void FleetWrapper::StopServer() {
 #endif
 }
 
+void FleetWrapper::FinalizeWorker() {
+#ifdef PADDLE_WITH_PSLIB
+  VLOG(3) << "Going to finalize worker";
+  pslib_ptr_->finalize_worker();
+#endif
+}
+
 uint64_t FleetWrapper::RunServer() {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Going to run server";
