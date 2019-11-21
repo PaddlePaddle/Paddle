@@ -950,6 +950,20 @@ create_test_cudnn_padding_VALID_class(TestCase4_channel_last)
 create_test_cudnn_padding_VALID_class(TestCase5_channel_last)
 
 
+class TestCase1_strides(TestCase1):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 2]
+
+    def init_shape(self):
+        self.shape = [2, 3, 4, 5]
+
+
+create_test_cudnn_class(TestCase1_strides)
+create_test_padding_SAME_class(TestCase1_strides)
+create_test_cudnn_padding_SAME_class(TestCase1_strides)
+
+
 # ----- test API
 class TestPool2dAPI(OpTest):
     def test_api(self):
