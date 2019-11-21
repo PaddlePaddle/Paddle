@@ -34,8 +34,8 @@ size_t Tensor::memory_size() const {
   return holder_ == nullptr ? 0UL : holder_->size() - offset_;
 }
 
-void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
-                           size_t requested_size) {
+void* Tensor::mutable_data(const platform::Place& place,
+                           proto::VarType::Type type, size_t requested_size) {
   type_ = type;
   PADDLE_ENFORCE_GE(numel(), 0,
                     "When calling this method, the Tensor's numel must be "
@@ -60,7 +60,8 @@ void* Tensor::mutable_data(platform::Place place, proto::VarType::Type type,
                                  offset_);
 }
 
-void* Tensor::mutable_data(platform::Place place, size_t requested_size) {
+void* Tensor::mutable_data(const platform::Place& place,
+                           size_t requested_size) {
   PADDLE_ENFORCE_NOT_NULL(
       this->holder_, "Cannot invoke mutable data if current hold nothing.");
   return mutable_data(place, type_, requested_size);

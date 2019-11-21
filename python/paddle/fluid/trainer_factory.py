@@ -52,6 +52,8 @@ class TrainerFactory(object):
                 trainer._set_fleet_desc(opt_info["fleet_desc"])
                 if opt_info.get("use_cvm") is not None:
                     trainer._set_use_cvm(opt_info["use_cvm"])
+                if opt_info.get("no_cvm") is not None:
+                    trainer._set_no_cvm(opt_info["no_cvm"])
                 if opt_info.get("scale_datanorm") is not None:
                     trainer._set_scale_datanorm(opt_info["scale_datanorm"])
                 if opt_info.get("dump_slot") is not None:
