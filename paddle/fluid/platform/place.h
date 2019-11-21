@@ -76,7 +76,24 @@ struct IsCUDAPinnedPlace : public boost::static_visitor<bool> {
   bool operator()(const CUDAPinnedPlace &cuda_pinned) const { return true; }
 };
 
-typedef boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> Place;
+class Place : public boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace> {
+ private:
+  using PlaceBase = boost::variant<CUDAPlace, CPUPlace, CUDAPinnedPlace>;
+
+ public:
+  Place() = default;
+  Place(const CPUPlace &cpu_place) : PlaceBase(cpu_place) {}     // NOLINT
+  Place(const CUDAPlace &cuda_place) : PlaceBase(cuda_place) {}  // NOLINT
+  Place(const CUDAPinnedPlace &cuda_pinned_place)                // NOLINT
+      : PlaceBase(cuda_pinned_place) {}
+
+  bool operator<(const Place &place) const {
+    return PlaceBase::operator<(static_cast<const PlaceBase &>(place));
+  }
+  bool operator==(const Place &place) const {
+    return PlaceBase::operator==(static_cast<const PlaceBase &>(place));
+  }
+};
 
 using PlaceList = std::vector<Place>;
 

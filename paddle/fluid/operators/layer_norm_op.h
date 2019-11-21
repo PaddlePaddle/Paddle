@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \
@@ -137,21 +138,6 @@ struct DivAndSqrtFunctor {
 
  private:
   T epsilon_;
-};
-
-template <typename T>
-struct MulFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a * b; }
-};
-
-template <typename T>
-struct AddFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a + b; }
-};
-
-template <typename T>
-struct SubFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a - b; }
 };
 
 template <typename T>

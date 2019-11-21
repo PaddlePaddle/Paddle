@@ -93,6 +93,7 @@ if (WITH_GPU)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv prelu)
 endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} device_memory_aligment)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)
 
 # FIXME(typhoonzero): operator deps may not needed.
 # op_library(lod_tensor_to_array_op DEPS lod_rank_table_op)
@@ -106,6 +107,7 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} device_memory_aligment)
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COMMON_OP_DEPS})
 set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 
+cc_test(assign_op_test SRCS assign_op_test.cc DEPS assign_op)
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor math_function)
 cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)

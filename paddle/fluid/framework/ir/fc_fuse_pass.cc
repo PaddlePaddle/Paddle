@@ -99,7 +99,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     auto* mul_op_desc = mul->Op();
     if (mul_op_desc->HasAttr("enable_int8")) {
       desc.SetAttr("enable_int8", mul_op_desc->GetAttr("enable_int8"));
-      desc.SetAttr("input_scale", mul_op_desc->GetAttr("input_scale"));
+      desc.SetAttr("Input_scale", mul_op_desc->GetAttr("X_scale"));
       desc.SetAttr("weight_scale", mul_op_desc->GetAttr("weight_scale"));
       if (mul_op_desc->HasAttr("out_scale"))
         desc.SetAttr("out_scale", mul_op_desc->GetAttr("out_scale"));

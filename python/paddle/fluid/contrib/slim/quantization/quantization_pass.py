@@ -26,8 +26,6 @@ __all__ = [
     'AddQuantDequantPass'
 ]
 
-_quantizable_op_list = ['conv2d', 'depthwise_conv2d', 'mul']
-
 _fake_quant_op_list = [
     'fake_quantize_abs_max', 'fake_quantize_range_abs_max',
     'fake_quantize_moving_average_abs_max', 'fake_channel_wise_quantize_abs_max'
@@ -43,6 +41,40 @@ _out_scale_op_list = [
     "dropout", "split", "prelu", "conv2d_transpose", "leaky_relu"
 ]
 
+# list op real input and output names, to avoid processing input such as AxisTensor.
+_op_real_in_out_name = {
+    "conv2d": [["Input", "Filter"], ["Output"]],
+    "depthwise_conv2d": [["Input"], ["Output"]],
+    "mul": [["X", "Y"], ["Out"]],
+    "pool2d": [["X"], ["Out"]],
+    "elementwise_add": [["X", "Y"], ["Out"]],
+    "concat": [["X"], ["Out"]],
+    "softmax": [["X"], ["Out"]],
+    "argmax": [["X"], ["Out"]],
+    "transpose": [["X"], ["Out"]],
+    "equal": [["X", "Y"], ["Out"]],
+    "gather": [["X"], ["Out"]],
+    "greater_equal": [["X", "Y"], ["Out"]],
+    "greater_than": [["X", "Y"], ["Out"]],
+    "less_equal": [["X", "Y"], ["Out"]],
+    "less_than": [["X", "Y"], ["Out"]],
+    "mean": [["X"], ["Out"]],
+    "not_equal": [["X", "Y"], ["Out"]],
+    "reshape": [["X"], ["Out"]],
+    "reshape2": [["X"], ["Out"]],
+    "bilinear_interp": [["X"], ["Out"]],
+    "nearest_interp": [["X"], ["Out"]],
+    "trilinear_interp": [["X"], ["Out"]],
+    "slice": [["Input"], ["Out"]],
+    "squeeze": [["X"], ["Out"]],
+    "elementwise_sub": [["X", "Y"], ["Out"]],
+    "relu": [["X"], ["Out"]],
+    "relu6": [["X"], ["Out"]],
+    "leaky_relu": [["X"], ["Out"]],
+    "tanh": [["X"], ["Out"]],
+    "swish": [["X"], ["Out"]],
+}
+
 
 def _init_var_node(var_node, value, scope, place):
     assert isinstance(value,
@@ -56,6 +88,8 @@ def _init_var_node(var_node, value, scope, place):
 
 
 class QuantizationTransformPass(object):
+    _supported_quantizable_op_type = ['conv2d', 'depthwise_conv2d', 'mul']
+
     def __init__(self,
                  scope=None,
                  place=None,
@@ -65,34 +99,39 @@ class QuantizationTransformPass(object):
                  weight_quantize_type='abs_max',
                  window_size=10000,
                  moving_rate=0.9,
-                 skip_pattern='skip_quant'):
+                 skip_pattern='skip_quant',
+                 quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul']):
         """
         Convert and rewrite the IrGraph according to weight and
         activation quantization type.
 
         Args:
             scope(fluid.Scope): When activation use 'range_abs_max' as the quantize
-            type, this pass will create some new parameters. The scope is used to
-            initialize these new parameters.
+                type, this pass will create some new parameters. The scope is used to
+                initialize these new parameters.
             place(fluid.CPUPlace|fluid.CUDAPlace): place is used to initialize new
-            parameters described above.
-            weight_bits (int): quantization bit number for weights,
+                parameters described above.
+            weight_bits(int): quantization bit number for weights,
                 the bias is not quantized.
-            activation_bits (int): quantization bit number for activation.
-            activation_quantize_type (str): quantization type for activation,
+            activation_bits(int): quantization bit number for activation.
+            activation_quantize_type(str): quantization type for activation,
                 now support 'abs_max', 'range_abs_max' and 'moving_average_abs_max'.
                 If use 'abs_max' mode, the quantization scale will be calculated
                 dynamically each step in both training and testing period. If use
                 'range_abs_max', a static quantization scale will be calculated
                 during training and used in inference.
-            weight_quantize_type (str): quantization type for weights,
+            weight_quantize_type(str): quantization type for weights,
                 support 'abs_max' and 'channel_wise_abs_max'. The 'range_abs_max'
                 usually is not used for weight, since weights are fixed once the
                 model is well trained.
-            window_size (int): the window size for 'range_abs_max' quantization.
+            window_size(int): the window size for 'range_abs_max' quantization.
+            moving_rate(float): the param for 'moving_average_abs_max' quantization.
             skip_pattern(str): The user-defined quantization skip pattern, which
                 will be presented in the name scope of an op. When the skip pattern is
                 detected in an op's name scope, the corresponding op will not be quantized.
+            quantizable_op_type(list[str]): List the type of ops that will be quantized. 
+                Default is ["conv2d", "depthwise_conv2d", "mul"]. The quantizable_op_type in
+                QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
 
         Examples:
         .. code-block:: python
@@ -119,7 +158,8 @@ class QuantizationTransformPass(object):
             'abs_max', 'channel_wise_abs_max', 'range_abs_max',
             'moving_average_abs_max'
         ]
-        assert activation_quantize_type != 'channel_wise_abs_max', "The activation quantization type does not support 'channel_wise_abs_max'."
+        assert activation_quantize_type != 'channel_wise_abs_max', \
+            "The activation quantization type does not support 'channel_wise_abs_max'."
         if activation_quantize_type not in quant_type:
             raise ValueError(
                 "Unknown activation_quantize_type : '%s'. It can only be "
@@ -136,7 +176,10 @@ class QuantizationTransformPass(object):
         self._window_size = window_size
         self._moving_rate = moving_rate
 
-        self._quantizable_ops = _quantizable_op_list
+        self._quantizable_ops = quantizable_op_type
+        for op in self._quantizable_ops:
+            assert op in QuantizationTransformPass._supported_quantizable_op_type, \
+                op + " is not supported for quantization."
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
         self._quantizable_grad_ops = [
             '%s_grad' % (op) for op in self._quantizable_ops
@@ -152,6 +195,8 @@ class QuantizationTransformPass(object):
 
         Args:
             graph(IrGraph): the applied graph.
+        Returns:
+            None
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
@@ -583,29 +628,35 @@ class QuantizationTransformPass(object):
 
 
 class QuantizationFreezePass(object):
-    """
-    The freeze pass is used to adjust the quantize operator order, for example:
-        1) `activation -> quant -> dequant -> conv2d` will be freezed into
-        `activation -> quant -> conv2d -> dequant`
-        2) `weight -> quant -> dequant -> conv2d` will be freezed into `weight -> conv2d`,
-        and weight will be sacled offline.
-
-    Args:
-        scope(fluid.Scope): scope is used to get the weight tensor values.
-        place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the weight tensors.
-        weight_bits (int): quantization bit number for weights.
-        activation_bits (int): quantization bit number for activation.
-        weight_quantize_type (str): quantization type for weights, support 'abs_max' and 'channel_wise_abs_max'.
-        The 'range_abs_max' usually is not used for weight, since weights are fixed once the
-        model is well trained.
-    """
+    _supported_quantizable_op_type = \
+        QuantizationTransformPass._supported_quantizable_op_type
 
     def __init__(self,
                  scope,
                  place,
                  weight_bits=8,
                  activation_bits=8,
-                 weight_quantize_type='abs_max'):
+                 weight_quantize_type='abs_max',
+                 quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul']):
+        """
+        The freeze pass is used to adjust the quantize operator order, for example:
+            1) `activation -> quant -> dequant -> conv2d` will be freezed into
+            `activation -> quant -> conv2d -> dequant`
+            2) `weight -> quant -> dequant -> conv2d` will be freezed into `weight -> conv2d`,
+            and weight will be sacled offline.
+
+        Args:
+            scope(fluid.Scope): scope is used to get the weight tensor values.
+            place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the weight tensors.
+            weight_bits(int): quantization bit number for weights.
+            activation_bits(int): quantization bit number for activation.
+            weight_quantize_type(str): quantization type for weights, support 'abs_max' and 
+                'channel_wise_abs_max'. The 'range_abs_max' usually is not used for weight, 
+                since weights are fixed once the model is well trained.
+            quantizable_op_type(list[str]): List the type of ops that will be quantized. 
+                Default is ["conv2d", "depthwise_conv2d", "mul"]. The quantizable_op_type in
+                QuantizationTransformPass and ConvertToInt8Pass must be the same as this.
+        """
         assert scope is not None, \
             'The scope cannot be set None.'
         assert place is not None, \
@@ -615,7 +666,10 @@ class QuantizationFreezePass(object):
         self._weight_bits = weight_bits
         self._activation_bits = activation_bits
         self._weight_quantize_type = weight_quantize_type
-        self._quantizable_ops = _quantizable_op_list
+        self._quantizable_ops = quantizable_op_type
+        for op in self._quantizable_ops:
+            assert op in QuantizationFreezePass._supported_quantizable_op_type, \
+                op + " is not supported for quantization."
         self._conv_ops = ['conv2d', 'depthwise_conv2d']
         self._fake_quant_op_names = _fake_quant_op_list
         self._fake_dequant_op_names = _fake_dequant_op_list
@@ -629,6 +683,8 @@ class QuantizationFreezePass(object):
 
         Args:
             graph(IrGraph): the applied graph.
+        Returns:
+            None
         """
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
         ops = graph.all_op_nodes()
@@ -882,23 +938,34 @@ class QuantizationFreezePass(object):
 
 
 class ConvertToInt8Pass(object):
-    """
-    Convert the weights into int8_t type.
+    _supported_quantizable_op_type = \
+        QuantizationTransformPass._supported_quantizable_op_type
 
-    Args:
-        scope(fluid.Scope): scope is used to get the weight tensor values.
-        place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the
-        8bits weight tensors.
-    """
+    def __init__(self,
+                 scope,
+                 place,
+                 quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul']):
+        """
+        Convert the weights into int8_t type.
 
-    def __init__(self, scope, place):
+        Args:
+            scope(fluid.Scope): scope is used to get the weight tensor values.
+            place(fluid.CPUPlace|fluid.CUDAPlace): place is used to restore the
+                8bits weight tensors.
+            quantizable_op_type(list[str]): List the type of ops that will be quantized. 
+                Default is ["conv2d", "depthwise_conv2d", "mul"]. The quantizable_op_type in
+                QuantizationTransformPass and QuantizationFreezePass must be the same as this.
+        """
         assert scope is not None, \
             'The scope cannot be set None.'
         assert place is not None, \
             'The place cannot be set None.'
         self._scope = scope
         self._place = place
-        self._quantizable_ops = _quantizable_op_list
+        self._quantizable_ops = quantizable_op_type
+        for op in self._quantizable_ops:
+            assert op in ConvertToInt8Pass._supported_quantizable_op_type, \
+                op + " is not supported for quantization."
 
     def apply(self, graph):
         """
@@ -907,6 +974,8 @@ class ConvertToInt8Pass(object):
 
         Args:
             graph(IrGraph): the applied graph.
+        Returns:
+            None
         """
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
         ops = graph.all_op_nodes()
@@ -971,11 +1040,10 @@ class ConvertToInt8Pass(object):
 
 
 class TransformForMobilePass(object):
-    """
-    This pass is used to convert the freezed graph for paddle-mobile execution.
-    """
-
     def __init__(self):
+        """
+        This pass is used to convert the freezed graph for paddle-mobile execution.
+        """
         self._fake_quant_op_names = _fake_quant_op_list
         self._fake_dequant_op_names = _fake_dequant_op_list
 
@@ -987,6 +1055,8 @@ class TransformForMobilePass(object):
 
         Args:
             graph(IrGraph): the graph will be transformed.
+        Returns:
+            None
         """
         ops = graph.all_op_nodes()
         for op_node in ops:
@@ -1161,67 +1231,114 @@ class ScaleForInferencePass(object):
 
 
 class AddQuantDequantPass(object):
+    _supported_quantizable_op_type = [
+        "pool2d", "elementwise_add", "concat", "softmax", "argmax", "transpose",
+        "equal", "gather", "greater_equal", "greater_than", "less_equal",
+        "less_than", "mean", "not_equal", "reshape", "reshape2",
+        "bilinear_interp", "nearest_interp", "trilinear_interp", "slice",
+        "squeeze", "elementwise_sub"
+    ]
+    _activation_type = ["relu", "relu6", "leaky_relu", "tanh", "swish"]
+
     def __init__(self,
                  scope=None,
                  place=None,
                  moving_rate=0.9,
                  quant_bits=8,
-                 skip_pattern='skip_quant'):
+                 skip_pattern='skip_quant',
+                 quantizable_op_type=["elementwise_add", "pool2d", "concat"],
+                 is_full_quantized=False):
         """
-        This pass is used to add quant_dequant op for some ops, such as the
-        'elementwise_add' and 'pool2d' op.
+        This pass add quant_dequant op for some ops, of which all the inputs must be 
+        not persistable.
+        The input scales can be obtained from the quant_dequant op.
+
+        Args:
+            scope(fluid.Scope): The scope is used to initialize these new parameters.
+            place(fluid.CPUPlace|fluid.CUDAPlace): place is used to initialize new
+                parameters described above.
+            moving_rate(float, optional): the param for 'quant_dequant_moving_average_abs_max' 
+                quantization. Default is 0.9.
+            quant_bits(int, optional): quantization bit number for activation. Default is 8.
+            skip_pattern(str, optional): The user-defined quantization skip pattern, which
+                will be presented in the name scope of an op. When the skip pattern is
+                detected in an op's name scope, the corresponding op will not be quantized.
+                Default is 'skip_quant'.
+            quantizable_op_type(list[str], optional): List the type of ops that will be 
+                quantized. Default is ["elementwise_add", "pool2d", "concat"]. 
+            is_full_quantized(bool, optional): If set is_full_quantized as True, apply 
+                quantization to all supported quantizable op type. If set is_full_quantized
+                as False, only apply quantization to the op type according to the input 
+                quantizable_op_type.
         """
         self._scope = scope
         self._place = place
         self._moving_rate = moving_rate
         self._quant_bits = quant_bits
         self._is_test = None
-        self._target_ops = ["elementwise_add", "pool2d"]
-        self._target_grad_ops = ['%s_grad' % (op) for op in self._target_ops]
         self._skip_pattern = skip_pattern
+
+        if is_full_quantized:
+            self._quantizable_op_type = \
+                AddQuantDequantPass._supported_quantizable_op_type
+        else:
+            self._quantizable_op_type = quantizable_op_type
+            for op_type in quantizable_op_type:
+                assert op_type in AddQuantDequantPass._supported_quantizable_op_type + \
+                    AddQuantDequantPass._activation_type, \
+                    op_type + " is not supported for quantization."
+        self._quantizable_grad_op_type = [
+            '%s_grad' % (op) for op in self._quantizable_op_type
+        ]
+
+        assert self._scope != None, "scope must not be None."
+        assert self._place != None, "place must not be None."
 
     def apply(self, graph):
         """
-        Add quant_dequant before some ops, such as the 'elementwise_add'
-        and 'pool2d' op.
+        Add quant_dequant before some ops, such as the 'elementwise_add', 
+        'pool2d' and 'concat' op.
+
         Args:
             graph(IrGraph): the target graph.
+        Returns:
+            None
         """
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
         self._is_test = graph.is_test()
         dequantized_vars_map = collections.OrderedDict()
-        ops = graph.all_op_nodes()
 
-        for op_node in ops:
-            if op_node.name() in self._target_ops:
+        # Forward stage, insert quant_dequant op
+        all_op_nodes = graph.all_op_nodes()
+        for op_node in all_op_nodes:
+            if op_node.name() in self._quantizable_op_type:
                 if isinstance(self._skip_pattern, str) and \
                            op_node.op().has_attr("op_namescope") and \
                            op_node.op().attr("op_namescope").find(self._skip_pattern) != -1:
                     continue
 
-                in_nodes_all_not_persistable = True
-                for input_name in op_node.input_arg_names():
-                    in_node = graph._find_node_by_name(op_node.inputs,
-                                                       input_name)
-                    in_nodes_all_not_persistable = (
-                        in_nodes_all_not_persistable and
-                        not in_node.persistable())
-                if not in_nodes_all_not_persistable:
+                if not self._is_input_all_not_persistable(graph, op_node):
                     continue
 
-                input_names = op_node.input_arg_names()
-                for input_name in input_names:
-                    in_node = graph._find_node_by_name(op_node.inputs,
-                                                       input_name)
-                    quant_var_node, scale_var_node = \
-                        self._inser_quant_dequant_moving_average_abs_max_op(
-                        graph, in_node, self._quant_bits)
-                    dequantized_vars_map[input_name] = quant_var_node
-                    graph.update_input_link(in_node, quant_var_node, op_node)
+                input_name_list = _op_real_in_out_name[op_node.name()][0]
+                for input_name in input_name_list:
+                    for arg_name in op_node.input(input_name):
+                        in_node = graph._find_node_by_name(op_node.inputs,
+                                                           arg_name)
+                        if arg_name in dequantized_vars_map:
+                            quant_var_node = dequantized_vars_map[arg_name]
+                        else:
+                            quant_var_node, _ = \
+                                self._inser_quant_dequant_moving_average_abs_max_op(
+                                graph, in_node, self._quant_bits)
+                            dequantized_vars_map[arg_name] = quant_var_node
+                        graph.update_input_link(in_node, quant_var_node,
+                                                op_node)
 
-        for op_node in ops:
-            if op_node.name() in self._target_grad_ops:
+        # Backward stage, update input link
+        for op_node in all_op_nodes:
+            if op_node.name() in self._quantizable_grad_op_type:
                 for input_name in op_node.input_arg_names():
                     if input_name in dequantized_vars_map:
                         in_node = graph._find_node_by_name(op_node.inputs,
@@ -1232,6 +1349,21 @@ class AddQuantDequantPass(object):
 
         graph.resolve_hazard()
         return graph
+
+    def _is_input_all_not_persistable(self, graph, op_node):
+        '''
+        Analyse the real inputs of the op node are all not persistable.
+        '''
+        is_input_all_not_persistable = True
+        op_node_name = op_node.name()
+
+        input_name_list = _op_real_in_out_name[op_node_name][0]
+        for input_name in input_name_list:
+            for arg_name in op_node.input(input_name):
+                in_node = graph._find_node_by_name(op_node.inputs, arg_name)
+                is_input_all_not_persistable = (is_input_all_not_persistable and \
+                    (not in_node.persistable()))
+        return is_input_all_not_persistable
 
     def _inser_quant_dequant_moving_average_abs_max_op(self, graph, var_node,
                                                        quant_bits):

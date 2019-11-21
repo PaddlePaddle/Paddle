@@ -191,9 +191,11 @@ bool OperatorBase::HasInputs(const std::string& name) const {
 
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
-  PADDLE_ENFORCE_LE(ins.size(), 1UL,
-                    "Operator %s's input %s should contain only one variable.",
-                    type_, name);
+  PADDLE_ENFORCE_LE(
+      ins.size(), 1UL,
+      platform::errors::AlreadyExists(
+          "Operator %s's input %s should contain only one variable.", type_,
+          name));
   return ins.empty() ? kEmptyVarName : ins[0];
 }
 
@@ -233,15 +235,17 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
 
-  std::unordered_set<std::string> no_need_buffer_vars;
+  const std::unordered_set<std::string>* no_need_buffer_vars = nullptr;
   if (info_ && info_->NoNeedBufferVarsInferer()) {
     no_need_buffer_vars =
-        Info().NoNeedBufferVarsInferer()(Inputs(), Outputs(), Attrs());
+        &(Info().NoNeedBufferVarsInferer()(Inputs(), Outputs(), Attrs()));
+    if (no_need_buffer_vars->empty()) no_need_buffer_vars = nullptr;
   }
 
   for (auto it = inputs_.begin(); it != inputs_.end();) {
     auto& input = *it;
-    bool is_no_need_buffer_var = (no_need_buffer_vars.count(input.first) > 0);
+    bool is_no_need_buffer_var =
+        (no_need_buffer_vars && no_need_buffer_vars->count(input.first) > 0);
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
       auto var_name = input.second[i];
@@ -427,9 +431,11 @@ const Variable* ExecutionContext::InputVar(const std::string& name) const {
   auto it = ctx_.inputs.find(name);
   if (it == ctx_.inputs.end()) return nullptr;
 
-  PADDLE_ENFORCE_LE(it->second.size(), 1UL,
-                    "Operator %s's input %s should contain only one variable.",
-                    op_.Type(), name);
+  PADDLE_ENFORCE_LE(
+      it->second.size(), 1UL,
+      platform::errors::AlreadyExists(
+          "Operator %s's input %s should contain only one variable.",
+          op_.Type(), name));
   return it->second.empty() ? nullptr : it->second[0];
 }
 
@@ -655,18 +661,17 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_tensor->set_layout(in_tensor.layout());
   }
 
-  void DecreaseLoDLevel(const std::string& in, const std::string& out,
-                        size_t i = 0, size_t j = 0) const override {
+  int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override {
     PADDLE_THROW(
-        "DecreaseLoDLevel is only used in compile time. The calculation of "
+        "GetLoDLevel is only used in compile time. The calculation of "
         "output's actual lod is different among operators so that should be "
         "set in the runtime kernel.");
   }
 
-  void IncreaseLoDLevel(const std::string& in, const std::string& out,
-                        size_t i = 0, size_t j = 0) const override {
+  void SetLoDLevel(const std::string& out, int32_t lod_level,
+                   size_t j = 0) const override {
     PADDLE_THROW(
-        "IncreaseLoDLevel is only used in compile time. The calculation of "
+        "SetLoDLevel is only used in compile time. The calculation of "
         "output's actual lod is different among operators so that should be "
         "set in the runtime kernel.");
   }
@@ -1027,21 +1032,18 @@ Scope* OperatorWithKernel::PrepareData(
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
 
-  std::unordered_set<std::string> no_buffer_ins;
+  const std::unordered_set<std::string>* no_buffer_ins = nullptr;
   if (info_) {
     auto& no_buffer_inferer = info_->NoNeedBufferVarsInferer();
     // Some op may not register NoNeedBufferVarsInferer
     if (no_buffer_inferer) {
-      no_buffer_ins = no_buffer_inferer(Inputs(), Outputs(), Attrs());
+      no_buffer_ins = &(no_buffer_inferer(Inputs(), Outputs(), Attrs()));
+      if (no_buffer_ins->empty()) no_buffer_ins = nullptr;
     }
   }
 
   for (auto& var_name_item : Inputs()) {
-    // NOTE(zjl): STL does not guarantee fast std::unordered_set::count when set
-    // is empty. At least STL implemented on my mac does calculate hash code
-    // of search key even though the set is empty.
-    if (!no_buffer_ins.empty() &&
-        no_buffer_ins.count(var_name_item.first) > 0) {
+    if (no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0) {
       VLOG(7) << "Skip scanning input " << var_name_item.first
               << " in Operator " << type_;
       continue;
@@ -1149,17 +1151,21 @@ void OperatorWithKernel::ParseInputDataType(
         t = &(var->Get<SelectedRows>().value());
       }
       if (t != nullptr) {
-        PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                          "The Tensor in the %s Op's Input Variable %s(%s) is "
-                          "not initialized.",
-                          Type(), name, ctx.Inputs(name).at(i));
+        PADDLE_ENFORCE_EQ(
+            t->IsInitialized(), true,
+            platform::errors::InvalidArgument(
+                "The Tensor in the %s Op's Input Variable %s(%s) is "
+                "not initialized.",
+                Type(), name, ctx.Inputs(name).at(i)));
         proto::VarType::Type tmp = t->type();
-        PADDLE_ENFORCE(tmp == *data_type || *data_type == dafault_data_type,
-                       "The DataType of %s Op's duplicable Variable %s must be "
-                       "consistent. The current variable type is (%s), but the "
-                       "previous variable type is (%s).",
-                       Type(), name, DataTypeToString(tmp),
-                       DataTypeToString(*data_type));
+        PADDLE_ENFORCE(
+            tmp == *data_type || *data_type == dafault_data_type,
+            platform::errors::InvalidArgument(
+                "The DataType of %s Op's duplicable Variable %s must be "
+                "consistent. The current variable type is (%s), but the "
+                "previous variable type is (%s).",
+                Type(), name, DataTypeToString(tmp),
+                DataTypeToString(*data_type)));
         *data_type = tmp;
       }
     }

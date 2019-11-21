@@ -99,6 +99,33 @@ int GetCUDAComputeCapability(int id) {
   return major * 10 + minor;
 }
 
+dim3 GetGpuMaxGridDimSize(int id) {
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
+  dim3 ret;
+  int size;
+  auto error_code_x = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimX, id);
+  PADDLE_ENFORCE_EQ(error_code_x, 0,
+                    "cudaDevAttrMaxGridDimX failed in "
+                    "paddle::platform::GpuMaxGridDimSize, error code : %d, %s",
+                    error_code_x, CudaErrorWebsite());
+  ret.x = size;
+
+  auto error_code_y = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimY, id);
+  PADDLE_ENFORCE_EQ(error_code_y, 0,
+                    "cudaDevAttrMaxGridDimY failed in "
+                    "paddle::platform::GpuMaxGridDimSize, error code : %d, %s",
+                    error_code_y, CudaErrorWebsite());
+  ret.y = size;
+
+  auto error_code_z = cudaDeviceGetAttribute(&size, cudaDevAttrMaxGridDimZ, id);
+  PADDLE_ENFORCE_EQ(error_code_z, 0,
+                    "cudaDevAttrMaxGridDimZ failed in "
+                    "paddle::platform::GpuMaxGridDimSize, error code : %d, %s",
+                    error_code_z, CudaErrorWebsite());
+  ret.z = size;
+  return ret;
+}
+
 int GetCUDARuntimeVersion(int id) {
   PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(), "id must less than GPU count");
   int runtime_version = 0;
@@ -301,6 +328,21 @@ void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream) {
                  "cudaMemsetAsync failed in paddle::platform::GpuMemsetAsync "
                  "error code : %d, %s",
                  error_code, CudaErrorWebsite());
+}
+
+void RaiseNonOutOfMemoryError(cudaError_t *status) {
+  if (*status == cudaErrorMemoryAllocation) {
+    *status = cudaSuccess;
+  }
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(*status);
+
+  *status = cudaGetLastError();
+  if (*status == cudaErrorMemoryAllocation) {
+    *status = cudaSuccess;
+  }
+
+  PADDLE_ENFORCE_CUDA_SUCCESS(*status);
 }
 }  // namespace platform
 }  // namespace paddle
