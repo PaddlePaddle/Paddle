@@ -195,8 +195,10 @@ class LRNOp : public framework::OperatorWithKernel {
         platform::CanMKLDNNBeUsed(ctx)) {
       // TODO(jczaja): Add support for NHWC
       const std::string data_format = ctx.Attr<std::string>("data_format");
-      PADDLE_ENFORCE_NE(data_format, "NHWC",
-                        "LRN MKLDNN does not support NHWC data format yet");
+      PADDLE_ENFORCE_NE(
+          data_format, "NHWC",
+          platform::errors::Unimplemented(
+              "LRN MKLDNN does not support NHWC data format yet"));
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
@@ -319,7 +321,8 @@ class LRNOpGrad : public framework::OperatorWithKernel {
       const std::string data_format = ctx.Attr<std::string>("data_format");
       PADDLE_ENFORCE_NE(
           data_format, "NHWC",
-          "LRN MKLDNN grad does not support NHWC data format yet");
+          platform::errors::Unimplemented(
+              "LRN MKLDNN grad does not support NHWC data format yet"));
       library_ = framework::LibraryType::kMKLDNN;
       layout_ = framework::DataLayout::kMKLDNN;
     }
