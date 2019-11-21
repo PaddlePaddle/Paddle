@@ -40,6 +40,42 @@ class LayerHelper(LayerHelperBase):
             self.kwargs['name'], layer_type=layer_type)
 
     def append_op(self, *args, **kwargs):
+        # Add log for api benchmark. may need a flag to control
+        if 'type' in kwargs:
+            print(kwargs['type'])
+        if 'inputs' in kwargs:
+            for key, values in kwargs['inputs'].items():
+                if key == "Input" or "X":
+                    input_type = ""
+                    data_type = ""
+                    if values.dtype == core.VarDesc.VarType.FP32:
+                        data_type = 'float32'
+                    if values.dtype == core.VarDesc.VarType.FP64:
+                        data_type = 'float64'
+                    if values.dtype == core.VarDesc.VarType.INT32:
+                        data_type = 'int32'
+                    if values.dtype == core.VarDesc.VarType.INT64:
+                        data_type = 'int64'
+                    if values.dtype == core.VarDesc.VarType.INT8:
+                        data_type = 'int8'
+                    if type(values.type) is core.VarDesc.VarType:
+                        input_type = "Variable"
+                    print('input\t', input_type, "|", data_type, "|shape:",
+                          list(values.shape))
+        if 'attrs' in kwargs:
+            for key, values in kwargs['attrs'].items():
+                vtype = ""
+                if type(values) is int:
+                    vtype = "int"
+                if type(values) is list:
+                    vtype = "list"
+                if type(values) is float:
+                    vtype = "float"
+                if type(values) is bool:
+                    vtype = "bool"
+                if type(values) is str:
+                    vtype = "string"
+                print(key, "\t", vtype, "|", values)
         return self.main_program.current_block().append_op(*args, **kwargs)
 
     def multiple_input(self, input_param_name='input'):
