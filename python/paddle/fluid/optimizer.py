@@ -520,9 +520,9 @@ class Optimizer(object):
         Examples:
             See examples in ``apply_gradients``.
         """
-        no_grad_set = None
+        act_no_grad_set = None
         if not framework.in_dygraph_mode():
-            no_grad_set = self._get_no_grad_set(loss, no_grad_set)
+            act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
         else:
             pass
 
@@ -553,7 +553,7 @@ class Optimizer(object):
                     loss.shape)
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
-                                               no_grad_set, callbacks)
+                                               act_no_grad_set, callbacks)
                 # Note: since we can't use all_reduce_op now,
                 #  dgc_op should be the last op of one grad.
                 self._append_dgc_ops(params_grads)
