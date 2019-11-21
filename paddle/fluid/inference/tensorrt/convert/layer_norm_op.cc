@@ -11,7 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
+#include "paddle/fluid/operators/layer_norm_op.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/layer_norm_op_plugin.h"
 
@@ -46,9 +46,6 @@ class LayerNormOpConverter : public OpConverter {
                           ? boost::get<float>(op_desc.GetAttr("epsilon"))
                           : 1e-5f;
 
-    nvinfer1::Dims input_shape = X->getDimensions();
-    int input_dims = input_shape.nbDims;
-
     PADDLE_ENFORCE_NOT_NULL(Bias_v,
                             "Input(Bias) of layer_norm should not be null.");
     PADDLE_ENFORCE_NOT_NULL(Scale_v,
@@ -82,28 +79,10 @@ class LayerNormOpConverter : public OpConverter {
     auto* bias_data = bias_tensor->mutable_data<float>(platform::CPUPlace());
     auto* scale_data = scale_tensor->mutable_data<float>(platform::CPUPlace());
 
-    int d0 = 0;
-    int d1 = 0;
-    int d2 = 0;
-    int d3 = 0;
-    if (input_dims == 3) {
-      d0 = input_shape.d[0];
-      d1 = input_shape.d[1];
-      d2 = input_shape.d[2];
-      d3 = 1;
-    }
-    nvinfer1::Dims4 reshape_dim(d0, d1, d2, d3);
-
-    auto* reshape_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Shuffle, *const_cast<nvinfer1::ITensor*>(X));
-    reshape_layer->setReshapeDimensions(reshape_dim);
-    auto* input_after_reshape = reshape_layer->getOutput(0);
-
     plugin::LayerNormPlugin* plugin = new plugin::LayerNormPlugin(
         bias_data, bias_tensor->numel(), scale_data, scale_tensor->numel(),
         begin_norm_axis, eps, mean_shape, variance_shape);
-    nvinfer1::IPluginLayer* layernorm_layer =
-        engine_->AddPlugin(&input_after_reshape, 1, plugin);
+    nvinfer1::IPluginLayer* layernorm_layer = engine_->AddPlugin(&X, 1, plugin);
 
     auto output_name = op_desc.Output("Y").front();
     engine_->SetWeights(op_desc.Input("Bias").front(), std::move(bias_tensor));

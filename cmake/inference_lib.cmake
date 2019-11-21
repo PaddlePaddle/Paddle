@@ -13,7 +13,6 @@
 # limitations under the License.
 
 # make package for paddle fluid shared and static library
-
 set(FLUID_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_install_dir" CACHE STRING
   "A path setting fluid shared and static libraries")
 
@@ -75,25 +74,26 @@ copy(inference_lib_dist
         SRCS ${DLPACK_INCLUDE_DIR}/dlpack
         DSTS ${dst_dir})
 
-if(WITH_MKLML)
+
+if(${CBLAS_PROVIDER} STREQUAL MKLML)
     set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/mklml")
     if(WIN32)
         copy(inference_lib_dist
                 SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_SHARED_LIB}
-                ${MKLML_SHARED_LIB_DEPS} ${MKLML_SHARED_IOMP_LIB} ${MKLML_INC_DIR}
+                  ${MKLML_SHARED_LIB_DEPS} ${MKLML_SHARED_IOMP_LIB} ${MKLML_INC_DIR}
                 DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib
-                ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+                  ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
     else()
         copy(inference_lib_dist
                 SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
                 DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
     endif()
-elseif (NOT CBLAS_FOUND OR WIN32)
+elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
     set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/openblas")
-    copy(inference_lib_dist
-            SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
-            DSTS ${dst_dir} ${dst_dir})
-endif ()
+        copy(inference_lib_dist
+                SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
+                DSTS ${dst_dir} ${dst_dir})
+endif()
 
 if(WITH_MKLDNN)
     set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/mkldnn")
@@ -145,7 +145,7 @@ endif ()
 if (TENSORRT_FOUND)
     set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/tensorrt")
     copy(inference_lib_dist
-            SRCS ${TENSORRT_ROOT}/include/Nv*.h ${TENSORRT_ROOT}/lib/*nvinfer*
+            SRCS ${TENSORRT_INCLUDE_DIR}/Nv*.h ${TENSORRT_LIBRARY_DIR}/*nvinfer*
             DSTS ${dst_dir}/include ${dst_dir}/lib)
 endif ()
 
@@ -191,13 +191,6 @@ copy(fluid_lib_dist
         ${src_dir}/${module}/ir/*.h ${src_dir}/${module}/fleet/*.h
         DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}/ir/memory_optimize_pass ${dst_dir}/${module}/ir ${dst_dir}/${module}/fleet)
 
-
-set(module "imperative")
-copy(fluid_lib_dist
-        SRCS ${src_dir}/${module}/type_defs.h  ${src_dir}/${module}/dygraph_grad_maker.h ${src_dir}/${module}/layer.h ${src_dir}/${module}/flags.h 
-        DSTS ${dst_dir}/${module}/ ${dst_dir}/${module}/ ${dst_dir}/${module}/ ${dst_dir}/${module}/ 
-        )
-
 set(module "operators")
 copy(fluid_lib_dist
         SRCS ${src_dir}/${module}/reader/blocking_queue.h
@@ -214,14 +207,20 @@ set(module "platform")
 set(platform_lib_deps profiler_proto)
 add_dependencies(fluid_lib_dist ${platform_lib_deps})
 copy(fluid_lib_dist
-        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/profiler.pb.h
-        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details ${dst_dir}/${module}
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/dynload/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/profiler.pb.h ${PADDLE_BINARY_DIR}/paddle/fluid/platform/error_codes.pb.h
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module}
         )
 
 set(module "string")
 copy(fluid_lib_dist
         SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/tinyformat/*.h
         DSTS ${dst_dir}/${module} ${dst_dir}/${module}/tinyformat
+        )
+
+set(module "imperative")
+copy(fluid_lib_dist
+        SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/jit/*.h 
+        DSTS ${dst_dir}/${module} ${dst_dir}/${module}/jit
         )
 
 set(module "pybind")

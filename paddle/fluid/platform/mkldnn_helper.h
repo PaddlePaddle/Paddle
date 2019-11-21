@@ -211,5 +211,27 @@ inline std::string CreateKey(ArgTypes&&... args) {
   return key;
 }
 
+inline std::vector<std::vector<int>> ToMkldnnPadding(
+    const std::vector<int>& paddings) {
+  if (paddings.size() == 6) {
+    int padding_front = paddings[0];
+    int padding_back = paddings[1];
+    int padding_top = paddings[2];
+    int padding_bottom = paddings[3];
+    int padding_left = paddings[4];
+    int padding_right = paddings[5];
+
+    return {{padding_front, padding_top, padding_left},
+            {padding_back, padding_bottom, padding_right}};
+  } else {
+    int padding_top = paddings[0];
+    int padding_bottom = paddings[1];
+    int padding_left = paddings[2];
+    int padding_right = paddings[3];
+
+    return {{padding_top, padding_left}, {padding_bottom, padding_right}};
+  }
+}
+
 }  // namespace platform
 }  // namespace paddle

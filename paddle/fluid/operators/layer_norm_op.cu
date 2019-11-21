@@ -547,7 +547,7 @@ class LayerNormGradKernel<platform::CUDADeviceContext, T>
                          batch_size, feature_size, stream);
   }
 };
-
+template class LayerNormDirectCUDAFunctor<float>;
 #undef FIXED_BLOCK_DIM_CASE_BASE
 #undef FIXED_BLOCK_DIM_CASE
 }  // namespace operators

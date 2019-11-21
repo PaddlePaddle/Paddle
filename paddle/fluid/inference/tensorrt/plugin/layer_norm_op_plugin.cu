@@ -68,7 +68,7 @@ int LayerNormPlugin::enqueue(int batch_size, const void *const *inputs,
     input_shape.push_back(input_dims.d[i]);
   }
 
-  operators::LayerNormDirectCUDAFunctor<float> layer_norm;
+  paddle::operators::LayerNormDirectCUDAFunctor<float> layer_norm;
   layer_norm(stream, input, input_shape, bias, scale, output, mean_shape_,
              variance_shape_, begin_norm_axis, eps);
 

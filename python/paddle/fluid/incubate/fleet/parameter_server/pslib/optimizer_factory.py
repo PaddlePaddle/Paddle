@@ -130,13 +130,22 @@ class DistributedAdam(DistributedOptimizerImplBase):
         find multi-sparse-table
         """
         table_names = set()
+        cnt = 0
+        tmp_list = []
+        ret_list = []
         for loss in losses:
             for op in loss.block.program.global_block().ops:
                 if op.type == "lookup_table":
                     if op.attr('is_distributed') is True:
                         table_name = op.input("W")[0]
-                        table_names.add(table_name)
-        return list(table_names)
+                        if table_name not in table_names:
+                            table_names.add(table_name)
+                            tmp_list.append([table_name, cnt])
+                            cnt += 1
+        tmp_list.sort(key=lambda k: k[1])
+        for x in tmp_list:
+            ret_list.append(x[0])
+        return ret_list
 
     def _minimize(self,
                   losses,
@@ -340,6 +349,15 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 tp = ps_param.trainer_param.add()
                 tp.CopyFrom(prog_id_to_worker[k].get_desc())
 
+        ps_param.fs_client_param.uri = \
+            strategy.get("fs_uri", "hdfs://your_hdfs_uri")
+        ps_param.fs_client_param.user = \
+            strategy.get("fs_user", "your_hdfs_user")
+        ps_param.fs_client_param.passwd = \
+            strategy.get("fs_passwd", "your_hdfs_passwd")
+        ps_param.fs_client_param.hadoop_bin = \
+            strategy.get("fs_hadoop_bin", "$HADOOP_HOME/bin/hadoop")
+
         opt_info = {}
         opt_info["program_id_to_worker"] = prog_id_to_worker
         opt_info["program_configs"] = program_configs
@@ -349,6 +367,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["fleet_desc"] = ps_param
         opt_info["worker_skipped_ops"] = worker_skipped_ops
         opt_info["use_cvm"] = strategy.get("use_cvm", False)
+        opt_info["no_cvm"] = strategy.get("no_cvm", False)
         opt_info["stat_var_names"] = strategy.get("stat_var_names", [])
         opt_info["scale_datanorm"] = strategy.get("scale_datanorm", -1)
         opt_info["check_nan_var_names"] = strategy.get("check_nan_var_names",
@@ -363,6 +382,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 0].accessor.accessor_class == "DownpourCtrAccessor":
             opt_info["dump_slot"] = True
         opt_info["adjust_ins_weight"] = strategy.get("adjust_ins_weight", {})
+        opt_info["copy_table"] = strategy.get("copy_table", {})
 
         for loss in losses:
             loss.block.program._fleet_opt = opt_info

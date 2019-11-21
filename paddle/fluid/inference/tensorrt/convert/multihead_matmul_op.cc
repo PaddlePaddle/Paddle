@@ -33,7 +33,18 @@ class MultiheadMatMulOpConverter : public OpConverter {
     auto* BiasK = engine_->GetITensor(op_desc.Input("BiasK").front());
     auto* BiasV = engine_->GetITensor(op_desc.Input("BiasV").front());
     auto* BiasQK = engine_->GetITensor(op_desc.Input("BiasQK").front());
-
+    const bool transpose_q =
+        op_desc.HasAttr("transpose_Q")
+            ? boost::get<bool>(op_desc.GetAttr("transpose_Q"))
+            : false;
+    const bool transpose_k =
+        op_desc.HasAttr("transpose_K")
+            ? boost::get<bool>(op_desc.GetAttr("transpose_K"))
+            : true;
+    const bool transpose_v =
+        op_desc.HasAttr("transpose_V")
+            ? boost::get<bool>(op_desc.GetAttr("transpose_V"))
+            : false;
     // Declare attributes
     const float alpha = boost::get<float>(op_desc.GetAttr("alpha"));
     const int head_number = boost::get<int>(op_desc.GetAttr("head_number"));
@@ -41,7 +52,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
     int seq_len = q_shape.d[1];
     int size_per_head = q_shape.d[3];
     float* p_alpha;
-    *p_alpha = alpha;
+    p_alpha[0] = alpha;
 
     TensorRTEngine::Weight scale{nvinfer1::DataType::kFLOAT,
                                  static_cast<void*>(p_alpha), 1};
@@ -69,6 +80,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(k_eltadd_layer->getOutput(0)));
 
     nvinfer1::Dims4 head_reshape_dim(0, seq_len, head_number, size_per_head);
+
     v_transpose_reshape_layer->setReshapeDimensions(head_reshape_dim);
     v_transpose_reshape_layer->setSecondTranspose({0, 2, 1, 3});
     q_transpose_reshape_layer->setReshapeDimensions(head_reshape_dim);
@@ -82,9 +94,11 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
     auto* qk_matmul_layer = TRT_ENGINE_ADD_LAYER(
         engine_, MatrixMultiply, *(k_scale_layer->getOutput(0)),
-        nvinfer1::MatrixOperation::kNONE,
+        transpose_k ? nvinfer1::MatrixOperation::kTRANSPOSE
+                    : nvinfer1::MatrixOperation::kNONE,
         *(q_transpose_reshape_layer->getOutput(0)),
-        nvinfer1::MatrixOperation::kTRANSPOSE);
+        transpose_q ? nvinfer1::MatrixOperation::kTRANSPOSE
+                    : nvinfer1::MatrixOperation::kNONE);
     auto* qk_eltadd_layer = TRT_ENGINE_ADD_LAYER(
         engine_, ElementWise, *const_cast<nvinfer1::ITensor*>(BiasQK),
         *(qk_matmul_layer->getOutput(0)), nvinfer1::ElementWiseOperation::kSUM);
@@ -92,12 +106,14 @@ class MultiheadMatMulOpConverter : public OpConverter {
         engine_, SoftMax, *(qk_eltadd_layer->getOutput(0)));
     auto* qkv_matmul_layer = TRT_ENGINE_ADD_LAYER(
         engine_, MatrixMultiply, *(softmax_layer->getOutput(0)),
-        nvinfer1::MatrixOperation::kNONE, *(softmax_layer->getOutput(0)),
-        nvinfer1::MatrixOperation::kNONE);
+        nvinfer1::MatrixOperation::kNONE,
+        *(v_transpose_reshape_layer->getOutput(0)),
+        transpose_v ? nvinfer1::MatrixOperation::kTRANSPOSE
+                    : nvinfer1::MatrixOperation::kNONE);
     auto* qkv_transpose_reshape_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Shuffle, *(qkv_matmul_layer->getOutput(0)));
 
-    nvinfer1::Dims3 qkv_reshape_dim(0, seq_len, head_number * size_per_head);
+    nvinfer1::Dims4 qkv_reshape_dim(0, seq_len, head_number * size_per_head, 1);
     qkv_transpose_reshape_layer->setFirstTranspose({0, 2, 1, 3});
     qkv_transpose_reshape_layer->setReshapeDimensions(qkv_reshape_dim);
 

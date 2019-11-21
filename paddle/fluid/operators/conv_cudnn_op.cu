@@ -39,61 +39,6 @@ using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using DataLayout = platform::DataLayout;
-template <typename T>
-using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
-using framework::AlgorithmsCache;
-
-static inline void GetNCDHW(const framework::DDim& dims,
-                            const DataLayout& layout, int* N, int* C, int* D,
-                            int* H, int* W) {
-  *N = dims[0];
-  *C = layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-  int i = layout == DataLayout::kNCHW ? 0 : 1;
-  if (dims.size() == 5) {
-    *D = dims[2 - i];
-    *H = dims[3 - i];
-    *W = dims[4 - i];
-  } else {
-    *D = 1;
-    *H = dims[2 - i];
-    *W = dims[3 - i];
-  }
-}
-
-template <typename DeviceContext, typename T, size_t D>
-static void Slice_2(const framework::ExecutionContext& context,
-                    const Tensor* input, Tensor* out,
-                    const std::vector<int>& starts,
-                    const std::vector<int>& axes) {
-  auto& place =
-      *context.template device_context<DeviceContext>().eigen_device();
-  auto in_dims = input->dims();
-  auto new_out_dims = out->dims();
-  auto offsets = Eigen::array<int, D>();
-  auto extents = Eigen::array<int, D>();
-  for (size_t i = 0; i < D; ++i) {
-    offsets[i] = 0;
-    extents[i] = new_out_dims[i];
-  }
-
-  int start;
-  for (size_t i = 0; i < axes.size(); ++i) {
-    start = starts[i];
-    if (start < 0) {
-      start = (start + in_dims[axes[i]]);
-    }
-    start = std::max(start, 0);
-    offsets[axes[i]] = start;
-  }
-  auto in_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *input);
-
-  auto out_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *out, new_out_dims);
-  out_t.device(place) = in_t.slice(offsets, extents);
-}
 
 template <typename T>
 class CUDNNConvOpKernel : public framework::OpKernel<T> {
@@ -551,11 +496,11 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
         transformed_input_grad_channel.mutable_data(ctx.GetPlace());
         if (transformed_input_channel.dims().size() == 4) {
-          Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
+          RemovePaddingSlice<paddle::platform::CUDADeviceContext, T, 4>(
               ctx, &transformed_input_grad, &transformed_input_grad_channel,
               starts, axes);
         } else {
-          Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
+          RemovePaddingSlice<paddle::platform::CUDADeviceContext, T, 5>(
               ctx, &transformed_input_grad, &transformed_input_grad_channel,
               starts, axes);
         }
@@ -994,10 +939,10 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
           axes[i] = i;
         }
         if (X->dims().size() == 4) {
-          Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
+          RemovePaddingSlice<paddle::platform::CUDADeviceContext, T, 4>(
               ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
         } else {
-          Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
+          RemovePaddingSlice<paddle::platform::CUDADeviceContext, T, 5>(
               ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
         }
       }

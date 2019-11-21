@@ -191,6 +191,36 @@ class TestDistRunnerBase(object):
         else:
             sys.stdout.buffer.write(pickle.dumps(out_losses))
 
+        if args.save_model:
+            model_save_dir = "/tmp"
+            if fleet.worker_index() == 0:
+                model_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_persistables")
+                model_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_persistables")
+                infer_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_infer")
+                infer_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_infer")
+            else:
+                model_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_persistables_2")
+                model_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_persistables_2")
+                infer_save_dir_fluid = os.path.join(model_save_dir,
+                                                    "fluid_infer_2")
+                infer_save_dir_fleet = os.path.join(model_save_dir,
+                                                    "fleet_infer_2")
+            fluid.io.save_persistables(exe, model_save_dir_fluid,
+                                       fleet._origin_program)
+            fleet.save_persistables(executor=exe, dirname=model_save_dir_fleet)
+            feeded_var_names = [var.name for var in feed_var_list]
+            fluid.io.save_inference_model(infer_save_dir_fluid,
+                                          feeded_var_names, [avg_cost], exe,
+                                          fleet._origin_program)
+            fleet.save_inference_model(exe, infer_save_dir_fleet,
+                                       feeded_var_names, [avg_cost])
+
     def run_trainer(self, args):
         self.lr = args.lr
         if args.nccl2_reduce_layer_local_run:
@@ -438,6 +468,7 @@ def runtime_main(test_class):
     parser.add_argument('--use_reduce', action='store_true')
     parser.add_argument('--dc_asgd', action='store_true')
     parser.add_argument('--hogwild', action='store_true')
+    parser.add_argument('--save_model', action='store_true')
     parser.add_argument(
         '--use_reader_alloc', action='store_true', required=False)
     parser.add_argument('--batch_size', required=False, type=int, default=2)
@@ -513,6 +544,7 @@ class TestDistBase(unittest.TestCase):
         self._use_local_sgd = False
         self._ut4grad_allreduce = False
         self._use_hallreduce = False
+        self._save_model = False
         self._setup_config()
 
         global DIST_UT_PORT
@@ -763,10 +795,12 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_reduce"
         if self._use_reader_alloc:
             tr_cmd += " --use_reader_alloc"
+        if self._save_model:
+            tr_cmd += " --save_model"
         if self.__use_cuda:
             tr_cmd += " --use_cuda"
             env.update({
-                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
+                "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id % 2),
                 "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
                 "PADDLE_TRAINER_ID": "{}".format(trainer_id),
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
@@ -779,7 +813,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_dgc"
 
         if self._mp_mode:
-            env = {"FLAGS_selected_gpus": "{}".format(trainer_id)}
+            env = {"FLAGS_selected_gpus": "{}".format(trainer_id % 2)}
 
         if self._nccl_comm_num > 1:
             tr_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
