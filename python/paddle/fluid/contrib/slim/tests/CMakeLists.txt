@@ -48,7 +48,8 @@ endfunction()
 
 if(WIN32)
     list(REMOVE_ITEM TEST_OPS test_light_nas)
-    list(REMOVE_ITEM TEST_OPS test_post_training_quantization)
+    list(REMOVE_ITEM TEST_OPS test_post_training_quantization_mobilenetv1)
+    list(REMOVE_ITEM TEST_OPS test_post_training_quantization_resnet50)
 endif()
 
 # int8 image classification python api test
