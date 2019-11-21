@@ -286,10 +286,12 @@ headers = (
     list(find_files('*', '${GLOG_INSTALL_DIR}/include')) + # glog
     list(find_files('*', '${BOOST_INCLUDE_DIR}/boost')) + # boost
     list(find_files('*', '${XXHASH_INSTALL_DIR}/include')) + # xxhash
-    list(find_files('mkldnn.h', '${MKLDNN_INSTALL_DIR}/include')) + # mkldnn
     list(find_files('*', '${PROTOBUF_INCLUDE_DIR}')) + # protobuf
     list(find_files('*', '${DLPACK_INCLUDE_DIR}')) + # dlpack 
     list(find_files('*.h', '${THREADPOOL_INCLUDE_DIR}'))) # threadpool
+
+if '${WITH_MKLDNN}' == 'ON':
+    headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
 
 
 class InstallCommand(InstallCommandBase):
