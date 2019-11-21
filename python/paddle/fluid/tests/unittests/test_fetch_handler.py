@@ -42,6 +42,25 @@ class TestFetchHandler(unittest.TestCase):
         time.sleep(10)
         fm.stop()
 
+        class DefaultFH(fluid.executor.FetchHandler):
+            def __init__(self, var_dict=None, period_secs=60, return_np=True):
+                super(DefaultFH, self).__init__()
+                pass
+
+        default_fh = DefaultFH(
+            {
+                'emb': scope.find_var('emb'),
+                'emb2': None,
+                'emb3': scope.var('emb3')
+            },
+            period_secs=1,
+            return_np=True)
+        default_fm = fluid.trainer_factory.FetchHandlerMonitor(scope,
+                                                               default_fh)
+        default_fh.start()
+        time.sleep(10)
+        default_fm.stop()
+
 
 if __name__ == "__main__":
     unittest.main()
