@@ -41,7 +41,7 @@ constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
   do {                                         \
     const auto dividend_copy = dividend;       \
     *div = dividend_copy / divisor;            \
-    *mod = dividend_copy % divisor;            \
+    *mod = dividend_copy - divisor * (*div);   \
   } while (0)
 
 namespace paddle {
