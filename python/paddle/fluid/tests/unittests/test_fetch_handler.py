@@ -17,6 +17,7 @@ from __future__ import print_function
 import time
 import unittest
 import numpy as np
+from paddle.fluid.framework import Program
 
 import paddle.fluid.core as core
 import paddle.fluid as fluid
@@ -29,35 +30,33 @@ class TestFetchHandler(unittest.TestCase):
 
         table = np.random.random((3, 10)).astype("float32")
 
+        prog = Program()
+        block = prog.current_block()
+        var_emb = block.create_var(name='emb', type=core.VarDesc.VarType.FP32)
+        var_emb3 = block.create_var(name='emb3', type=core.VarDesc.VarType.FP32)
+
         class FH(fluid.executor.FetchHandler):
             def handler(self, fetch_dict):
-                assert len(fetch_target_vars) == 1
+                assert len(fetch_dict) == 1
 
         table_var = scope.var('emb').get_tensor()
         table_var.set(table, place)
-        fh = FH({'emb': scope.find_var('emb')}, period_secs=2, return_np=True)
+        fh = FH(var_dict={'emb': var_emb}, period_secs=2, return_np=True)
         fm = fluid.trainer_factory.FetchHandlerMonitor(scope, fh)
 
         fm.start()
         time.sleep(10)
         fm.stop()
 
-        class DefaultFH(fluid.executor.FetchHandler):
-            def __init__(self, var_dict=None, period_secs=60, return_np=True):
-                super(DefaultFH, self).__init__()
-                pass
-
-        default_fh = DefaultFH(
-            {
-                'emb': scope.find_var('emb'),
-                'emb2': None,
-                'emb3': scope.var('emb3')
-            },
+        default_fh = fluid.executor.FetchHandler(
+            var_dict={'emb': var_emb,
+                      'emb2': None,
+                      'emb3': var_emb3},
             period_secs=1,
             return_np=True)
         default_fm = fluid.trainer_factory.FetchHandlerMonitor(scope,
                                                                default_fh)
-        default_fh.start()
+        default_fm.start()
         time.sleep(10)
         default_fm.stop()
 

@@ -22,6 +22,7 @@ logging.basicConfig()
 
 from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
 from .device_worker import Hogwild, DownpourSGD, Section
+from .framework import Variable
 
 __all__ = ["TrainerFactory", "FetchHandler", "FetchHandlerMonitor"]
 
@@ -116,7 +117,11 @@ class FetchHandlerMonitor(object):
         period_secs = self.fetch_instance.period_secs
         var_name_to_key = {}
         for key in self.fetch_instance.var_dict:
-            var_name_to_key[self.fetch_instance.var_dict[key].name] = key
+            if isinstance(self.fetch_instance.var_dict[key], Variable):
+                var_name_to_key[self.fetch_instance.var_dict[key].name] = key
+            else:
+                logging.warning("the value of {} is not a Variable".format(key))
+                var_name_to_key["None.var"] = key
 
         elapsed_secs = 0
         while True:
@@ -135,7 +140,11 @@ class FetchHandlerMonitor(object):
                 need_np = self.fetch_instance.return_np
                 res_dict = {}
                 for key in fetch_dict:
-                    res_dict[key] = fetch_dict[key].get_tensor()
+                    if fetch_dict[key] == None:
+                        res_dict[key] = None
+                        continue
+                    else:
+                        res_dict[key] = fetch_dict[key].get_tensor()
                     if need_np:
                         lod = res_dict[key].lod()
                         if len(lod) > 0:
