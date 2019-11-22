@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/init.h"
 
+DECLARE_bool(enable_unused_var_check);
+
 namespace paddle {
 namespace framework {
 
@@ -660,6 +662,8 @@ REGISTER_OP_CPU_KERNEL(op_without_unused_var,
 
 // test with single input
 TEST(OpWithUnusedVar, all) {
+  // enable the unused_var_check
+  FLAGS_enable_unused_var_check = true;
   paddle::framework::InitDevices(true);
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("op_with_unused_var");
@@ -678,9 +682,13 @@ TEST(OpWithUnusedVar, all) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   // should throw exception
   ASSERT_THROW(op->Run(scope, cpu_place), paddle::platform::EnforceNotMet);
+  FLAGS_enable_unused_var_check = false;
 }
 
 TEST(OpWithoutUnusedVar, all) {
+  // enable the unused_var_check
+  FLAGS_enable_unused_var_check = true;
+
   paddle::framework::InitDevices(true);
   paddle::framework::proto::OpDesc op_desc;
   op_desc.set_type("op_without_unused_var");
@@ -699,4 +707,5 @@ TEST(OpWithoutUnusedVar, all) {
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   // should not throw exception
   ASSERT_NO_THROW(op->Run(scope, cpu_place));
+  FLAGS_enable_unused_var_check = false;
 }

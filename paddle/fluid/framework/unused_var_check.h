@@ -33,6 +33,7 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "center_loss_grad",
     "crop",
     "cvm",
+    "cos_sim_grad",
     "dgc_momentum",
     "fake_quantize_range_abs_max",
     "fill_zeros_like",
@@ -41,9 +42,13 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "reshape2_grad",
     "gru_grad",
     "hierarchical_sigmoid_grad",
-    "nce_grad"};
+    "nce_grad",
+    "roi_perspective_transform_grad"};
 
 std::unordered_set<std::string>* GetThreadLocalUsedVarNameSet();
+void InitThreadLocalUsedVarNameSet();
+
+void LogVarUsageIfUnusedVarCheckEnabled(const std::string& name);
 void CheckUnusedVar(const OperatorBase& op, const Scope& scope);
 
 }  // namespace framework

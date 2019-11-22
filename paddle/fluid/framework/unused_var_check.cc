@@ -34,6 +34,11 @@ std::unordered_set<std::string> *GetThreadLocalUsedVarNameSet() {
   return &used_var_name_set;
 }
 
+void LogVarUsageIfUnusedVarCheckEnabled(const std::string &name) {
+  VLOG(6) << "Variable used:" << name;
+  GetThreadLocalUsedVarNameSet()->insert(name);
+}
+
 void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
   // skip op in white list
   if (op_has_unsed_vars_white_list.count(op.Type()) != 0) {

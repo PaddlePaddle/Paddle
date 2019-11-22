@@ -269,10 +269,8 @@ class ExecutionContext {
 
   const std::vector<const Variable*> MultiInputVar(
       const std::string& name) const {
-    if (FLAGS_enable_unused_var_check) {
-      VLOG(6) << "MultiInputVar: " << name;
-      GetThreadLocalUsedVarNameSet()->insert(name);
-    }
+    LogVarUsageIfUnusedVarCheckEnabled(name);
+
     auto it = ctx_.inputs.find(name);
     if (it == ctx_.inputs.end()) {
       return {};
@@ -303,10 +301,8 @@ class ExecutionContext {
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
-    if (FLAGS_enable_unused_var_check) {
-      VLOG(6) << "MultiInput: " << name;
-      GetThreadLocalUsedVarNameSet()->insert(name);
-    }
+    LogVarUsageIfUnusedVarCheckEnabled(name);
+
     auto it = ctx_.inputs.find(name);
     if (it == ctx_.inputs.end()) {
       return {};
@@ -358,10 +354,7 @@ class ExecutionContext {
 
   //! Get actual name vector for this input.
   const std::vector<std::string>& Inputs(const std::string& name) const {
-    if (FLAGS_enable_unused_var_check) {
-      VLOG(6) << "Inputs: " << name;
-      GetThreadLocalUsedVarNameSet()->insert(name);
-    }
+    LogVarUsageIfUnusedVarCheckEnabled(name);
     return op_.Inputs(name);
   }
 

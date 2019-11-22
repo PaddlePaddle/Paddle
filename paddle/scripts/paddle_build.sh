@@ -435,8 +435,8 @@ EOF
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
 
-        # TODO: jiabin need to refine this part when these tests fixed on mac
-        # NOTE(cql): enable unused_var_check for MAC CI
+        # NOTE(zhiqiu): Set FLAGS_enable_unused_var_check=1 here to enable unused_var_check,
+        # which checks if an operator has unused input variable(s).
         export FLAGS_enable_unused_var_check=1
         ctest --output-on-failure -j $2
         paddle version
