@@ -147,6 +147,8 @@ class FleetWrapper {
                   int index);
   // stop server
   void StopServer();
+  // finalize worker to make worker can be stop
+  void FinalizeWorker();
   // run server
   uint64_t RunServer();
   // gather server ip
