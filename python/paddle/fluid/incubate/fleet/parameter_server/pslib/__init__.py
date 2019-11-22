@@ -236,23 +236,15 @@ class PSLib(Fleet):
 
     def print_table_stat(self, table_id):
         """
-        save presistable parameters,
-        when using fleet, it will save sparse and dense feature
+        print stat info of table_id
 
         Args:
-            executor(Executor): fluid executor
-            dirname(str): save path. It can be hdfs/afs path or local path
-            main_program(Program): fluid program, default None
-            kwargs: use define property, current support following
-                mode(int): 0 means save all pserver model,
-                           1 means save delta pserver model (save diff),
-                           2 means save xbox base,
-                           3 means save batch model.
+            table_id(int): the id of table
 
         Example:
             .. code-block:: python
 
-              fleet.save_persistables(dirname="/you/path/to/model", mode = 0)
+              fleet.print_table_stat(0)
 
         """
         self._role_maker._barrier_worker()
