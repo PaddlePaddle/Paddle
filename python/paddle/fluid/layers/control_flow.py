@@ -961,11 +961,11 @@ def while_loop(cond, body, loop_vars, name=None):
     helper = LayerHelper('while_loop', **locals())
 
     if not callable(cond):
-        raise TypeError("cond should be callable")
+        raise TypeError("cond in while_loop should be callable")
     if not callable(body):
-        raise TypeError("body should be callable")
+        raise TypeError("body in while_loop should be callable")
     if not isinstance(loop_vars, (list, tuple)):
-        raise TypeError("loop_vars should be a list or tuple")
+        raise TypeError("loop_vars in while_loop should be a list or tuple")
 
     pre_cond = cond(*loop_vars)
     if not isinstance(pre_cond, Variable):
