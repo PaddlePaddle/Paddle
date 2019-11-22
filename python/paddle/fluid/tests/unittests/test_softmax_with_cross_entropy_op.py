@@ -58,7 +58,9 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
     def setUp(self):
         self.initParams()
 
-        logits = np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype)
+        logits = getattr(
+            self, "logits",
+            np.random.uniform(0.1, 1.0, self.shape).astype(self.dtype))
         softmax = np.apply_along_axis(stable_softmax, self.axis, logits)
 
         if self.soft_label:
@@ -119,7 +121,9 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
         self.op_type = "softmax_with_cross_entropy"
 
         # NOTE: numpy float16 have very low accuracy, use float32 for numpy check.
-        logits = np.random.uniform(0.1, 1.0, self.shape).astype(np.float32)
+        logits = getattr(
+            self, "logits",
+            np.random.uniform(0.1, 1.0, self.shape).astype(np.float32))
         softmax = np.apply_along_axis(stable_softmax, self.axis, logits)
 
         axis_dim = self.shape[self.axis]
@@ -403,6 +407,41 @@ class TestSoftmaxWithCrossEntropyOpIgnoreIndexNoCudnnAxis4(
         self.ignore_index = 3
         self.axis = 3
         self.dtype = np.float64
+
+
+class TestSoftmaxWithCrossEntropyOpBoundary0(TestSoftmaxWithCrossEntropyOp):
+    """
+    Test stable softmax with cross entropy operator will not product INF
+    with small logits value.
+    """
+
+    def initParams(self):
+        self.op_type = "softmax_with_cross_entropy"
+        self.numeric_stable_mode = True
+        self.soft_label = False
+        self.shape = [3, 5, 7, 11]
+        self.axis = -1
+        self.ignore_index = -1
+        self.dtype = np.float32
+        self.logits = np.full(self.shape, -500.0).astype(self.dtype)
+
+
+class TestSoftmaxWithCrossEntropyOpBoundary1(TestSoftmaxWithCrossEntropyOp):
+    """
+    Test stable softmax with cross entropy operator will not product INF
+    with small logits value.
+    """
+
+    def initParams(self):
+        self.op_type = "softmax_with_cross_entropy"
+        self.numeric_stable_mode = True
+        self.soft_label = False
+        self.shape = [3, 5, 7, 11]
+        self.axis = -1
+        self.ignore_index = -1
+        self.dtype = np.float32
+        self.logits = np.full(self.shape, 1000.0).astype(self.dtype)
+        self.logits[:, :, 0, :] = -1000.0
 
 
 if __name__ == "__main__":

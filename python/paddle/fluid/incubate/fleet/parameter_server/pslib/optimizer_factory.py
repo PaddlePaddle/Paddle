@@ -349,6 +349,23 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 tp = ps_param.trainer_param.add()
                 tp.CopyFrom(prog_id_to_worker[k].get_desc())
 
+        if strategy.get("fs_uri") is not None:
+            ps_param.fs_client_param.uri = strategy["fs_uri"]
+        elif ps_param.fs_client_param.uri == "":
+            ps_param.fs_client_param.uri = "hdfs://your_hdfs_uri"
+        if strategy.get("fs_user") is not None:
+            ps_param.fs_client_param.user = strategy["fs_user"]
+        elif ps_param.fs_client_param.user == "":
+            ps_param.fs_client_param.user = "your_hdfs_user"
+        if strategy.get("fs_passwd") is not None:
+            ps_param.fs_client_param.passwd = strategy["fs_passwd"]
+        elif ps_param.fs_client_param.passwd == "":
+            ps_param.fs_client_param.passwd = "your_hdfs_passwd"
+        if strategy.get("fs_hadoop_bin") is not None:
+            ps_param.fs_client_param.hadoop_bin = strategy["fs_hadoop_bin"]
+        elif ps_param.fs_client_param.hadoop_bin == "":
+            ps_param.fs_client_param.hadoop_bin = "$HADOOP_HOME/bin/hadoop"
+
         opt_info = {}
         opt_info["program_id_to_worker"] = prog_id_to_worker
         opt_info["program_configs"] = program_configs
@@ -358,6 +375,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["fleet_desc"] = ps_param
         opt_info["worker_skipped_ops"] = worker_skipped_ops
         opt_info["use_cvm"] = strategy.get("use_cvm", False)
+        opt_info["no_cvm"] = strategy.get("no_cvm", False)
         opt_info["stat_var_names"] = strategy.get("stat_var_names", [])
         opt_info["scale_datanorm"] = strategy.get("scale_datanorm", -1)
         opt_info["check_nan_var_names"] = strategy.get("check_nan_var_names",

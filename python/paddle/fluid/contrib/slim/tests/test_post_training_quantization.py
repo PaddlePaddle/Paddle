@@ -233,7 +233,10 @@ class TestPostTrainingQuantization(unittest.TestCase):
         acc1 = np.sum(test_info) / cnt
         return (throughput, latency, acc1)
 
-    def generate_quantized_model(self, model_path, algo="KL"):
+    def generate_quantized_model(self,
+                                 model_path,
+                                 algo="KL",
+                                 is_full_quantize=False):
         self.int8_model = os.path.join(os.getcwd(),
                                        "post_training_" + self.timestamp)
         try:
@@ -253,11 +256,11 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
         ptq = PostTrainingQuantization(
             executor=exe,
-            scope=scope,
-            model_path=model_path,
-            data_reader=val_reader,
+            sample_generator=val_reader,
+            model_dir=model_path,
             algo=algo,
-            quantizable_op_type=quantizable_op_type)
+            quantizable_op_type=quantizable_op_type,
+            is_full_quantize=is_full_quantize)
         ptq.quantize()
         ptq.save_quantized_model(self.int8_model)
 
@@ -285,7 +288,9 @@ class TestPostTrainingForMobilenetv1(TestPostTrainingQuantization):
         print("Start INT8 post training quantization for {0} on {1} images ...".
               format(self.model, self.sample_iterations * self.batch_size))
         self.generate_quantized_model(
-            self.model_cache_folder + "/model", algo=self.algo)
+            self.model_cache_folder + "/model",
+            algo=self.algo,
+            is_full_quantize=True)
 
         print("Start INT8 inference for {0} on {1} images ...".format(
             self.model, self.infer_iterations * self.batch_size))

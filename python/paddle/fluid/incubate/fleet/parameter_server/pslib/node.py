@@ -79,7 +79,9 @@ class DownpourServer(Server):
                     'sparse_weight_bounds', 'sparse_embedx_dim', 'sparse_embedx_threshold', 'sparse_nonclk_coeff', \
                     'sparse_click_coeff', 'sparse_base_threshold', 'sparse_delta_threshold', 'sparse_delta_keep_days', \
                     'sparse_delete_after_unseen_days', 'sparse_show_click_decay_rate', 'sparse_delete_threshold', \
-                    'sparse_converter', 'sparse_deconverter']
+                    'sparse_converter', 'sparse_deconverter', 'sparse_enable_cache', 'sparse_cache_rate', \
+                    'sparse_cache_file_num', 'sparse_beta1_decay_rate', 'sparse_beta2_decay_rate', \
+                    'sparse_ada_epsilon', 'sparse_optimizer']
 
         for key in strategy:
             if key not in support_sparse_key_list:
@@ -98,12 +100,22 @@ class DownpourServer(Server):
         table.table_class = table_class
 
         if table_class == 'DownpourSparseTable':
+            table.enable_sparse_table_cache = strategy.get(
+                'sparse_enable_cache', True)
+            table.sparse_table_cache_rate = strategy.get('sparse_cache_rate',
+                                                         0.00055)
+            table.sparse_table_cache_file_num = strategy.get(
+                'sparse_cache_file_num', 16)
             table.compress_in_save = strategy.get('sparse_compress_in_save',
                                                   True)
             table.shard_num = strategy.get('sparse_shard_num', 1000)
+            # DownpourFeatureValueAccessor: for ctr task, has cvm, embedding and sgd info
+            # DownpourCtrAccessor         : for ctr task, has cvm, slot, embedding and sgd info
+            # DownpourSparseValueAccessor : for general task, has embedding and sgd info
 
             support_accessor_class = [
-                'DownpourFeatureValueAccessor', 'DownpourCtrAccessor'
+                'DownpourFeatureValueAccessor', 'DownpourCtrAccessor',
+                'DownpourSparseValueAccessor'
             ]
             if strategy.get('sparse_accessor_class') is not None:
                 accessor_class = strategy.get('sparse_accessor_class')
@@ -149,6 +161,69 @@ class DownpourServer(Server):
                     'sparse_show_click_decay_rate', 0.98)
                 table.accessor.downpour_accessor_param.delete_threshold = strategy.get(
                     'sparse_delete_threshold', 0.8)
+                converter = strategy.get(
+                    'sparse_converter',
+                    "(scripts/xbox_compressor_mf.py | bin/xbox_pb_converter)")
+                deconverter = strategy.get(
+                    'sparse_deconverter',
+                    "(bin/xbox_pb_deconverter | scripts/xbox_decompressor_mf.awk)"
+                )
+
+                table1 = table.accessor.table_accessor_save_param.add()
+                table1.param = 1
+                table1.converter = converter
+                table1.deconverter = deconverter
+
+                table2 = table.accessor.table_accessor_save_param.add()
+                table2.param = 2
+                table2.converter = converter
+                table2.deconverter = deconverter
+            elif accessor_class == 'DownpourSparseValueAccessor':
+                optimizer_name = strategy.get("sparse_optimizer", "adam")
+                table.accessor.sparse_commonsgd_param.name = optimizer_name
+                table.accessor.embedx_dim = strategy.get('sparse_embedx_dim', 8)
+                table.accessor.fea_dim = int(table.accessor.embedx_dim)
+                if optimizer_name == "naive":
+                    table.accessor.sparse_commonsgd_param.naive.learning_rate = \
+                        strategy.get('sparse_learning_rate', 0.05)
+                    table.accessor.sparse_commonsgd_param.naive.initial_range = \
+                        strategy.get('sparse_initial_range', 1e-4)
+                    if strategy.get('sparse_weight_bounds') is None:
+                        table.accessor.sparse_commonsgd_param.naive.weight_bounds.extend(
+                            [-10, 10])
+                    else:
+                        table.accessor.sparse_commonsgd_param.naive.weight_bounds.extend(
+                            strategy.get('sparse_weight_bounds'))
+                elif optimizer_name == "adagrad":
+                    table.accessor.sparse_commonsgd_param.adagrad.learning_rate = \
+                        strategy.get('sparse_learning_rate', 0.05)
+                    table.accessor.sparse_commonsgd_param.adagrad.initial_range = \
+                        strategy.get('sparse_initial_range', 1e-4)
+                    table.accessor.sparse_commonsgd_param.adagrad.initial_g2sum = strategy.get(
+                        'sparse_initial_g2sum', 3)
+                    if strategy.get('sparse_weight_bounds') is None:
+                        table.accessor.sparse_commonsgd_param.adagrad.weight_bounds.extend(
+                            [-10, 10])
+                    else:
+                        table.accessor.sparse_commonsgd_param.adagrad.weight_bounds.extend(
+                            strategy.get('sparse_weight_bounds'))
+                elif optimizer_name == "adam":
+                    table.accessor.sparse_commonsgd_param.adam.learning_rate = \
+                        strategy.get('sparse_learning_rate', 0.001)
+                    table.accessor.sparse_commonsgd_param.adam.initial_range = \
+                        strategy.get('sparse_initial_range', 1e-4)
+                    table.accessor.sparse_commonsgd_param.adam.beta1_decay_rate = strategy.get(
+                        'sparse_beta1_decay_rate', 0.9)
+                    table.accessor.sparse_commonsgd_param.adam.beta2_decay_rate = strategy.get(
+                        'sparse_beta2_decay_rate', 0.999)
+                    table.accessor.sparse_commonsgd_param.adam.ada_epsilon = strategy.get(
+                        'sparse_ada_epsilon', 1e-8)
+                    if strategy.get('sparse_weight_bounds') is None:
+                        table.accessor.sparse_commonsgd_param.adam.weight_bounds.extend(
+                            [-10, 10])
+                    else:
+                        table.accessor.sparse_commonsgd_param.adam.weight_bounds.extend(
+                            strategy.get('sparse_weight_bounds'))
                 converter = strategy.get(
                     'sparse_converter',
                     "(scripts/xbox_compressor_mf.py | bin/xbox_pb_converter)")

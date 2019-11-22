@@ -91,6 +91,13 @@ void FleetWrapper::StopServer() {
 #endif
 }
 
+void FleetWrapper::FinalizeWorker() {
+#ifdef PADDLE_WITH_PSLIB
+  VLOG(3) << "Going to finalize worker";
+  pslib_ptr_->finalize_worker();
+#endif
+}
+
 uint64_t FleetWrapper::RunServer() {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Going to run server";
@@ -303,7 +310,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
     std::vector<std::vector<float>>* push_values,
     std::vector<::std::future<int32_t>>* push_sparse_status,
     const int batch_size, const bool use_cvm, const bool dump_slot,
-    std::vector<uint64_t>* sparse_push_keys) {
+    std::vector<uint64_t>* sparse_push_keys, const bool no_cvm) {
 #ifdef PADDLE_WITH_PSLIB
   int offset = 2;
   int slot_offset = 0;
@@ -313,6 +320,10 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
   if (use_cvm) {
     offset = 0;
     grad_dim = emb_dim - 2;
+  }
+  if (no_cvm) {
+    offset = 0;
+    grad_dim = emb_dim;
   }
   if (dump_slot) {
     slot_offset = 1;
@@ -370,12 +381,12 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       }
       sparse_push_keys->push_back(ids[id_idx]);
       CHECK(fea_idx < (*push_values).size());
-      CHECK(fea_idx < fea_labels.size());
 
-      if (use_cvm) {
+      if (use_cvm || no_cvm) {
         memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
       } else {
+        CHECK(fea_idx < fea_labels.size());
         memcpy((*push_values)[fea_idx].data() + offset + slot_offset, g,
                sizeof(float) * emb_dim);
         (*push_values)[fea_idx][show_index] = 1.0f;
@@ -549,12 +560,12 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 #endif
 }
 
-double FleetWrapper::GetCacheThreshold() {
+double FleetWrapper::GetCacheThreshold(int table_id) {
 #ifdef PADDLE_WITH_PSLIB
   double cache_threshold = 0.0;
   auto ret = pslib_ptr_->_worker_ptr->flush();
   ret.wait();
-  ret = pslib_ptr_->_worker_ptr->get_cache_threshold(0, cache_threshold);
+  ret = pslib_ptr_->_worker_ptr->get_cache_threshold(table_id, cache_threshold);
   ret.wait();
   if (cache_threshold < 0) {
     LOG(ERROR) << "get cache threshold failed";
@@ -588,7 +599,8 @@ void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
 int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
                                 const int mode) {
 #ifdef PADDLE_WITH_PSLIB
-  auto ret = pslib_ptr_->_worker_ptr->save_cache(0, path, std::to_string(mode));
+  auto ret =
+      pslib_ptr_->_worker_ptr->save_cache(table_id, path, std::to_string(mode));
   ret.wait();
   int32_t feasign_cnt = ret.get();
   if (feasign_cnt == -1) {
