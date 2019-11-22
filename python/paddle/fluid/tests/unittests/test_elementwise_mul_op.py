@@ -43,16 +43,29 @@ class ElementwiseMulOp(OpTest):
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['X', 'Y'], 'Out', check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_dygraph=(self.use_mkldnn == False))
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -74,6 +87,7 @@ class TestElementwiseMulOp_scalar(ElementwiseMulOp):
             'Y': np.random.rand(1).astype(np.float32)
         }
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_Vector(ElementwiseMulOp):
@@ -84,6 +98,7 @@ class TestElementwiseMulOp_Vector(ElementwiseMulOp):
             'Y': np.random.random((32, )).astype("float64")
         }
         self.outputs = {'Out': np.multiply(self.inputs['X'], self.inputs['Y'])}
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp):
@@ -108,6 +123,7 @@ class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp):
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 3, 1)
         }
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp):
@@ -121,6 +137,7 @@ class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp):
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 1, 4)
         }
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
@@ -135,6 +152,7 @@ class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
         self.outputs = {
             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 3, 4, 1)
         }
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):
@@ -145,6 +163,7 @@ class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):
             'Y': np.random.rand(2, 1, 4).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
@@ -155,6 +174,7 @@ class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
             'Y': np.random.rand(2, 3, 1, 5).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOpFp16(ElementwiseMulOp):
@@ -170,6 +190,7 @@ class TestElementwiseMulOp_commonuse_1(ElementwiseMulOp):
             'Y': np.random.rand(1, 1, 4).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
@@ -180,6 +201,7 @@ class TestElementwiseMulOp_commonuse_2(ElementwiseMulOp):
             'Y': np.random.rand(2, 1, 4, 1).astype(np.float64)
         }
         self.outputs = {'Out': self.inputs['X'] * self.inputs['Y']}
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
@@ -195,6 +217,7 @@ class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
         self.outputs = {
             'Out': self.inputs['X'].reshape(1, 1, 4, 5) * self.inputs['Y']
         }
+        self.init_kernel_type()
 
 
 class TestElementwiseMulOpError(OpTest):
