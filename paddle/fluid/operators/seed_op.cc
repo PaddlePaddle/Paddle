@@ -54,8 +54,9 @@ Seed Operator.
 
 // No grad op
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(seed, ops::SeedOp, ops::SeedOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
-
+REGISTER_OPERATOR(
+    seed, ops::SeedOp, ops::SeedOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     seed, ops::CPUSeedKernel<paddle::platform::CPUDeviceContext, int>);
