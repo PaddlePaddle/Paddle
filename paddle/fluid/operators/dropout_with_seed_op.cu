@@ -85,6 +85,7 @@ class GPUDropoutWithSeedKernel : public framework::OpKernel<T> {
       auto* mask_data = mask->mutable_data<uint8_t>(context.GetPlace());
       size_t size = framework::product(mask->dims());
       auto* x_data = x->data<T>();
+      const auto* seed_data = seed->data<int>();
       auto* y_data = y->mutable_data<T>(context.GetPlace());
       if (dropout_prob == 1.0f) {
         PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -101,7 +102,7 @@ class GPUDropoutWithSeedKernel : public framework::OpKernel<T> {
       int threads = 512;
       int grid = (x_numel + threads - 1) / threads;
       RandomGenerator<T, uint8_t><<<grid, threads, 0, stream>>>(
-          size, seed, dropout_prob, x_data, mask_data, y_data,
+          size, *seed_data, dropout_prob, x_data, mask_data, y_data,
           upscale_in_train);
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
