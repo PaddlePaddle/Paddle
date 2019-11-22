@@ -47,7 +47,7 @@ struct SegmentOffsetIter {
 };
 
 template <typename T>
-inline __global__ void FillIndex(T* indices, T num_rows, T num_cols) {
+static __global__ void FillIndex(T* indices, T num_rows, T num_cols) {
   int col_id = threadIdx.x;
   int row_id = blockIdx.x;
 
@@ -187,6 +187,7 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
       for (int i = 0; i < trans.size(); i++) {
         trans_dims[i] = in_dims[trans[i]];
       }
+
       Tensor trans_inp;
       T* trans_inp_data = trans_inp.mutable_data<T>(trans_dims, ctx.GetPlace());
       int ndims = trans.size();
@@ -198,20 +199,38 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
       const int64_t input_height = framework::product(
           framework::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
       const int64_t input_width = trans_dims[trans_dims.size() - 1];
+
       Tensor tmp_out;
       tmp_out.mutable_data<T>(trans_dims, ctx.GetPlace());
       T* out_data = output->mutable_data<T>(ctx.GetPlace());
-      int64_t* ids_data = indices->mutable_data<int64_t>(ctx.GetPlace());
 
       Tensor tmp_indices;
-      tmp_indices.mutable_data<int64_t>(trans_dims, ctx.GetPlace());
-      ArgFullSortAscending<T>(dev_ctx, &trans_inp, &tmp_out, &tmp_indices,
-                              input_height, input_width);
+      if (input_height < INT_MAX && input_width < INT_MAX) {
+        // temp indices for sorting
+        tmp_indices.mutable_data<int>(trans_dims, ctx.GetPlace());
+        indices->mutable_data<int>(ctx.GetPlace());
+
+        ArgFullSortAscending<T, int>(
+            dev_ctx, &trans_inp, &tmp_out, &tmp_indices,
+            static_cast<int>(input_height), static_cast<int>(input_width));
+
+        TransCompute<platform::CUDADeviceContext, int>(
+            ndims, dev_ctx, tmp_indices, indices, trans);
+      } else {
+        // temp indices for sorting
+        tmp_indices.mutable_data<int64_t>(trans_dims, ctx.GetPlace());
+        indices->mutable_data<int64_t>(ctx.GetPlace());
+
+        ArgFullSortAscending<T, int64_t>(dev_ctx, &trans_inp, &tmp_out,
+                                         &tmp_indices, input_height,
+                                         input_width);
+
+        TransCompute<platform::CUDADeviceContext, int64_t>(
+            ndims, dev_ctx, tmp_indices, indices, trans);
+      }
       // transpose back
       TransCompute<platform::CUDADeviceContext, T>(ndims, dev_ctx, tmp_out,
                                                    output, trans);
-      TransCompute<platform::CUDADeviceContext, int64_t>(
-          ndims, dev_ctx, tmp_indices, indices, trans);
       return;
     }
   }
