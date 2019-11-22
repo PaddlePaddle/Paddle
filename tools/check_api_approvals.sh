@@ -162,6 +162,18 @@ if [ "${INVALID_PADDLE_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
+ALL_OPTEST_BAN_DYGRAPH=`git diff -U0 upstream/$BRANCH | grep "+" | grep -zoE "check_dygraph=" || true`
+if [ "${ALL_OPTEST_BAN_DYGRAPH}" != "" ]; then
+    APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+    python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 43953930`
+    echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+    if [ "${APPROVALS}" == "FALSE" ]; then
+        failed_num=`expr $failed_num + 1`
+        echo_line="You must have one RD phlrain approval for banning dygraph single test.\n"
+        echo_list=(${echo_list[@]}$failed_num "." $echo_line)
+    fi
+fi
+
 NEW_OP_ADDED=`git diff --name-only --diff-filter=A upstream/$BRANCH |grep -oE ".+_op..*" || true`
 if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     GET_KERNEL_TYPE_FUNC_CNT=`git diff -U0 --diff-filter=A upstream/$BRANCH |grep "+" |grep -czoE "GetExpectedKernelType[(][^(){}]+[)][^{]+[{][^}]+[}]" || true`
