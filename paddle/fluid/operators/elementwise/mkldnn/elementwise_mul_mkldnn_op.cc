@@ -91,8 +91,9 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
     const bool is_y_format_correct = y->format() == MKLDNNMemoryFormat::nc;
     if (is_x_format_correct && is_y_format_correct && are_dims_divisable &&
         is_avx512_enabled) {
-      int pre, n, post;
-      get_mid_dims(x_dims, y_dims_untrimmed, axis, &pre, &n, &post);
+      int pre, n, post, is_run_common_broadcast;
+      get_mid_dims(x_dims, y_dims_untrimmed, axis, &pre, &n, &post,
+                   &is_run_common_broadcast);
 
       if (post == 1) {
         PADDLE_THROW("Not implemented when post is 1");
@@ -168,8 +169,9 @@ class ElementwiseMulMKLDNNKernel : public framework::OpKernel<T> {
       auto y_dims = trim_trailing_singular_dims(y_dims_untrimmed);
       axis = (y_dims.size() == 0) ? x_dims.size() : axis;
 
-      int pre, n, post;
-      get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post);
+      int pre, n, post, is_run_common_broadcast;
+      get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post,
+                   &is_run_common_broadcast);
 
       if (post == 1) {
         functor.RunRowWise(n, pre);

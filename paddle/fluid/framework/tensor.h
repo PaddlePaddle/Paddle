@@ -87,12 +87,12 @@ class Tensor {
    * @note    If not exist, then allocation.
    */
   template <typename T>
-  T* mutable_data(platform::Place place, size_t requested_size = 0);
+  T* mutable_data(const platform::Place& place, size_t requested_size = 0);
 
-  void* mutable_data(platform::Place place, proto::VarType::Type type,
+  void* mutable_data(const platform::Place& place, proto::VarType::Type type,
                      size_t requested_size = 0);
 
-  void* mutable_data(platform::Place place, size_t requested_size = 0);
+  void* mutable_data(const platform::Place& place, size_t requested_size = 0);
 
   /**
    * @brief     Return a pointer to mutable memory block.
@@ -104,7 +104,8 @@ class Tensor {
    * @note      If not exist, then allocation.
    */
   template <typename T>
-  T* mutable_data(DDim dims, platform::Place place, size_t requested_size = 0);
+  T* mutable_data(const DDim& dims, const platform::Place& place,
+                  size_t requested_size = 0);
 
   /*! Return the dimensions of the memory block. */
   const DDim& dims() const;
@@ -128,7 +129,7 @@ class Tensor {
    */
   Tensor Slice(int64_t begin_idx, int64_t end_idx) const;
 
-  platform::Place place() const {
+  const platform::Place& place() const {
     PADDLE_ENFORCE_NOT_NULL(
         holder_, "Tensor not initialized yet when Tensor::place() is called.");
     return holder_->place();

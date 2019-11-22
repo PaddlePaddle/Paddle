@@ -416,5 +416,15 @@ class TestUniformRandomOpSelectedRowsShapeTensorList(unittest.TestCase):
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
 
 
+class TestUniformRandomDygraphMode(unittest.TestCase):
+    def test_check_output(self):
+        with fluid.dygraph.guard():
+            x = fluid.layers.uniform_random(
+                [10], dtype="float32", min=0.0, max=1.0)
+            x_np = x.numpy()
+            for i in range(10):
+                self.assertTrue((x_np[i] > 0 and x_np[i] < 1.0))
+
+
 if __name__ == "__main__":
     unittest.main()

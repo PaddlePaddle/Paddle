@@ -73,11 +73,7 @@ def conv2d_forward_naive(input,
         pad = [0, 0, 0, 0]
     elif padding_algorithm == "SAME":
         dilation = [1, 1]
-        input_data_shape = []
-        if data_format == "NCHW":
-            input_data_shape = input.shape[2:4]
-        elif data_format == "NHWC":
-            input_data_shape = input.shape[1:3]
+        input_data_shape = input.shape[2:4]
         pad = _get_padding_with_SAME(input_data_shape, ksize, stride)
 
     pad_h_0, pad_h_1 = pad[0], pad[0]
@@ -323,34 +319,44 @@ class TestConv2dOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
-        self.check_output_with_place(place, atol=1e-5)
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output_with_place(
+            place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
-            place, {'Input', 'Filter'}, 'Output', max_relative_error=0.02)
+            place, {'Input', 'Filter'},
+            'Output',
+            max_relative_error=0.02,
+            check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
             place, ['Input'],
             'Output',
             max_relative_error=0.02,
-            no_grad_set=set(['Filter']))
+            no_grad_set=set(['Filter']),
+            check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
             place, ['Filter'],
             'Output',
             max_relative_error=0.02,
-            no_grad_set=set(['Input']))
+            no_grad_set=set(['Input']),
+            check_dygraph=(self.use_mkldnn == False))
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -743,17 +749,24 @@ class TestConv2dOp_v2(OpTest):
                                                  self.use_cuda)
 
     def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
-        self.check_output_with_place(place, atol=1e-5)
+        self.check_output_with_place(
+            place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
         self.check_grad_with_place(
-            place, {'Input', 'Filter'}, 'Output', max_relative_error=0.02)
+            place, {'Input', 'Filter'},
+            'Output',
+            max_relative_error=0.02,
+            check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_filter(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
@@ -761,9 +774,11 @@ class TestConv2dOp_v2(OpTest):
             place, ['Input'],
             'Output',
             max_relative_error=0.02,
-            no_grad_set=set(['Filter']))
+            no_grad_set=set(['Filter']),
+            check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_input(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cuda() else core.CPUPlace()
@@ -771,15 +786,16 @@ class TestConv2dOp_v2(OpTest):
             place, ['Filter'],
             'Output',
             max_relative_error=0.02,
-            no_grad_set=set(['Input']))
+            no_grad_set=set(['Input']),
+            check_dygraph=(self.use_mkldnn == False))
 
     def init_test_case(self):
         self.pad = [0, 0]
-        self.stride = [1, 1]
+        self.stride = [1, 2]
         self.input_size = [2, 3, 5, 5]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [6, f_c, 4, 3]
 
     def init_dilation(self):
         self.dilations = [1, 1]

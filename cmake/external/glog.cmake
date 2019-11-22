@@ -34,6 +34,7 @@ SET(GLOG_TAG "v0.3.5")
 ExternalProject_Add(
     extern_glog
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
     DEPENDS gflags
     GIT_REPOSITORY  ${GLOG_REPOSITORY}
     GIT_TAG         ${GLOG_TAG}

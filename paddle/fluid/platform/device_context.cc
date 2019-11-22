@@ -216,6 +216,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   compute_capability_ = GetCUDAComputeCapability(place_.device);
   multi_process_ = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp_ = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
+  max_grid_dim_size_ = GetGpuMaxGridDimSize(place_.device);
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
@@ -313,14 +314,23 @@ CUDADeviceContext::~CUDADeviceContext() {
 Place CUDADeviceContext::GetPlace() const { return place_; }
 
 void CUDADeviceContext::Wait() const {
-  cudaError_t e_sync = cudaStreamSynchronize(stream_);
-  if (e_sync != 0) {
+  cudaError_t e_sync = cudaSuccess;
+#if !defined(_WIN32)
+  e_sync = cudaStreamSynchronize(stream_);
+#else
+  while (e_sync = cudaStreamQuery(stream_)) {
+    if (e_sync == cudaErrorNotReady) continue;
+    break;
+  }
+#endif
+
+  if (cudaSuccess != e_sync) {
     LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync)
                << " errno: " << e_sync;
   }
 
   cudaError_t e_get = cudaGetLastError();
-  if (e_get != 0) {
+  if (cudaSuccess != e_get) {
     LOG(FATAL) << "cudaGetLastError  " << cudaGetErrorString(e_get)
                << " errno: " << e_get;
   }
@@ -340,6 +350,10 @@ Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {
 
 bool CUDADeviceContext::tensor_core_available() const {
   return cublas_tensor_core_handle_ != nullptr;
+}
+
+dim3 CUDADeviceContext::GetCUDAMaxGridDimSize() const {
+  return max_grid_dim_size_;
 }
 
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }

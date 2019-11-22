@@ -485,6 +485,8 @@ function generate_api_spec() {
 
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec 
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > $spec_path
+    awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
+    awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
     if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then 
         # Use sed to make python2 and python3 sepc keeps the same
         sed -i 's/arg0: str/arg0: unicode/g' $spec_path
@@ -1002,8 +1004,7 @@ function build_document_preview() {
 function example() {
     pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     paddle version
-    cp ${PADDLE_ROOT}/tools/sampcd_processor.py ${PADDLE_ROOT}/python/paddle/fluid
-    cd ${PADDLE_ROOT}/python/paddle/fluid
+    cd ${PADDLE_ROOT}/tools
     python sampcd_processor.py cpu 
     if [ "$?" != "0" ];then
       echo "Code instance execution failed"
@@ -1133,6 +1134,7 @@ function main() {
         exit 1
         ;;
       esac
+      echo "paddle_build script finished as expected"
 }
 
 main $@

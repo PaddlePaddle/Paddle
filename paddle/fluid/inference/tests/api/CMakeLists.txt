@@ -21,10 +21,14 @@ function(download_model_and_data install_dir model_name data_name)
     download_data(${install_dir} ${data_name})
 endfunction()
 
+function(download_result install_dir result_name)
+    download_data(${install_dir} ${result_name})
+endfunction()
+
 function(inference_analysis_api_test target install_dir filename)
     inference_analysis_test(${target} SRCS ${filename}
         EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
-        ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt)
+        ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt --refer_result=${install_dir}/result.txt)
 endfunction()
 
 function(inference_analysis_api_int8_test_build TARGET_NAME filename)
@@ -128,6 +132,12 @@ inference_analysis_api_test(test_analyzer_lac ${LAC_INSTALL_DIR} analyzer_lac_te
 set(PYRAMID_DNN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/pyramid_dnn")
 download_model_and_data(${PYRAMID_DNN_INSTALL_DIR} "PyramidDNN_model.tar.gz" "PyramidDNN_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_pyramid_dnn ${PYRAMID_DNN_INSTALL_DIR} analyzer_pyramid_dnn_tester.cc)
+
+#Ernie
+set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie")
+download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_model.tar.gz" "Ernie_data.txt.tar.gz" "Ernie_result.txt.tar.gz")
+download_result(${ERNIE_INSTALL_DIR} "Ernie_result.txt.tar.gz")
+inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_tester.cc)
 
 # text_classification
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
@@ -293,23 +303,23 @@ if(WITH_GPU AND TENSORRT_FOUND)
     inference_analysis_test(test_analyzer_capi_gpu SRCS analyzer_capi_gpu_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
             ARGS --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+
+    set(TRT_MODEL_QUANT_RESNET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/quant_small_model")
+    if (NOT EXISTS ${TRT_MODEL_QUANT_RESNET_DIR})
+        inference_download_and_uncompress(${INFERENCE_DEMO_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "quant_small_model.tar.gz")
+    endif()
+    inference_analysis_test(trt_quant_int8_test SRCS trt_quant_int8_test.cc
+            EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+            ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 endif()
 
-set(CAPI_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/capi_tests_models")
-if (NOT EXISTS ${CAPI_MODEL_INSTALL_DIR})
-    inference_download_and_uncompress(${CAPI_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_inference_test_models.tar.gz")
-endif()
 inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
-            ARGS --infer_model=${CAPI_MODEL_INSTALL_DIR}/trt_inference_test_models)
+            ARGS --infer_model=${RESNET50_MODEL_DIR}/model)
 
-set(CAPI_MODEL_INSTALL_PD_DIR "${INFERENCE_DEMO_INSTALL_DIR}/capi_mobilenet")
-if (NOT EXISTS ${CAPI_MODEL_INSTALL_PD_DIR})
-    inference_download_and_uncompress(${CAPI_MODEL_INSTALL_PD_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Fmobilenet.tar.gz")
-endif()
 inference_analysis_test(test_analyzer_capi_pd_tensor SRCS analyzer_capi_pd_tensor_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
-            ARGS --infer_model=${CAPI_MODEL_INSTALL_PD_DIR}/model)
+            ARGS --infer_model=${MOBILENET_INSTALL_DIR}/model)
 
 if(WITH_MKLDNN)
   inference_analysis_test(test_analyzer_capi_int SRCS analyzer_capi_int_tester.cc
