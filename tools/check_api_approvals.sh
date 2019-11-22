@@ -169,7 +169,7 @@ if [ "${ALL_OPTEST_BAN_DYGRAPH}" != "" ]; then
     echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
     if [ "${APPROVALS}" == "FALSE" ]; then
         failed_num=`expr $failed_num + 1`
-        echo_line="You must have one RD phlrain approval for banning dygraph single test.\n"
+        echo_line="Developers are not allowed to set the check_dygraph field directly, which is set to True by default. If you need to change the check_dygraph field, you must have one RD phlrain review and approve. \nThe code that do not meet the specification are as follows:\n${ALL_OPTEST_BAN_DYGRAPH}\n"
         echo_list=(${echo_list[@]}$failed_num "." $echo_line)
     fi
 fi
