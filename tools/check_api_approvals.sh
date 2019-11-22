@@ -162,14 +162,14 @@ if [ "${INVALID_PADDLE_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
-ALL_OPTEST_BAN_DYGRAPH=`git diff -U0 upstream/$BRANCH | grep "+" | grep -zoE "check_dygraph=" || true`
+ALL_OPTEST_BAN_DYGRAPH=`git diff -U0 upstream/$BRANCH | grep "+" | grep "check_dygraph=" || true`
 if [ "${ALL_OPTEST_BAN_DYGRAPH}" != "" ]; then
     APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
-    python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 43953930`
+    python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 43953930 47554610`
     echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
     if [ "${APPROVALS}" == "FALSE" ]; then
         failed_num=`expr $failed_num + 1`
-        echo_line="Developers are not allowed to set the check_dygraph field directly, which is set to True by default. If you need to change the check_dygraph field, you must have one RD phlrain review and approve. \nThe code that do not meet the specification are as follows:\n${ALL_OPTEST_BAN_DYGRAPH}\n"
+        echo_line="Developers are not allowed to set the check_dygraph field directly, which is set to True by default. If you need to change the check_dygraph field, you must have one RD (phlrain (Recommend) or lanxianghit) review and approve. \nThe code that do not meet the specification are as follows:\n${ALL_OPTEST_BAN_DYGRAPH}\n"
         echo_list=(${echo_list[@]}$failed_num "." $echo_line)
     fi
 fi
