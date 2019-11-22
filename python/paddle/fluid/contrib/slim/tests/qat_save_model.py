@@ -72,8 +72,8 @@ def save_transformed_model(saved_type, original_path, saved_path):
         with fluid.scope_guard(inference_scope):
             fluid.io.save_inference_model(saved_path, feed_target_names,
                                           fetch_targets, exe, inference_program)
-        print("Success! QAT_{0} model can be found at {1}\n".format(saved_type,
-                                                                    saved_path))
+        print("Success! Transformed QAT_{0} model can be found at {1}\n".format(
+            saved_type, saved_path))
 
 
 if __name__ == '__main__':

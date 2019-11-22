@@ -46,15 +46,10 @@ function(inference_qat2_int8_test target model_dir data_dir test_script use_mkld
 endfunction()
 
 function(save_qat2_int8_model target qat_model_dir qat_fp32_save_model_dir qat_int8_save_model_dir test_script)
-	add_custom_target(${target} ALL
-		COMMAND ${CMAKE_COMMAND} -E env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
-		FLAGS_cpu_deterministic=true PYTHONPATH=${PADDLE_BINARY_DIR}/python
-		${PYTHON_EXECUTABLE} -u ${test_script}
-                --qat_model_path ${qat_model_dir}/float
-	        --qat_fp32_model_path ${qat_fp32_save_model_dir}
-	        --qat_int8_model_path ${qat_int8_save_model_dir}
-	 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-	 add_dependencies(${target} paddle_python)
+    py_test(${target} SRCS ${test_script}
+            ARGS --qat_model_path ${qat_model_dir}
+	            --qat_fp32_model_path ${qat_fp32_save_model_dir}
+	            --qat_int8_model_path ${qat_int8_save_model_dir})
 endfunction()
 
 if(WIN32)
@@ -112,7 +107,7 @@ if(LINUX AND WITH_MKLDNN)
 	set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
 	set(QAT_MODELS_BASE_URL "${INFERENCE_URL}/int8/QAT_models")
 	set(MKLDNN_QAT_TEST_FILE "qat_int8_comparison.py")
-	set(MKLDNN_QAT_TEST_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${MKLDNN_QAT_TEST_FILE}")
+    set(MKLDNN_QAT_TEST_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${MKLDNN_QAT_TEST_FILE}")
 
 	# ImageNet small dataset
 	# May be already downloaded for INT8v2 unit tests
@@ -175,17 +170,16 @@ if(LINUX AND WITH_MKLDNN)
         endif()
         inference_qat2_int8_test(test_qat2_int8_resnet50_mkldnn ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
 
-    set(QAT_INT8_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_QAT_INT8")
-    set(QAT_FP32_RESNET50_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_QAT_FP32")
+    set(QAT2_INT8_TRANSFORMED_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_qat_transformed_int8")
+    set(QAT2_FP32_TRANSFORMED_MODEL_DIR "${QAT_DATA_DIR}/ResNet50_qat_transformed_fp32")
 	set(SAVE_QAT_INT8_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/qat_save_model.py")
-        save_qat2_int8_model(save_qat2_fp32_int8_model ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf ${QAT_FP32_RESNET50_MODEL_DIR} ${QAT_INT8_RESNET50_MODEL_DIR} ${SAVE_QAT_INT8_MODEL_SCRIPT} true)
+        save_qat2_int8_model(qat_save_fp32_int8_model ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QAT2_FP32_TRANSFORMED_MODEL_DIR} ${QAT2_INT8_TRANSFORMED_MODEL_DIR} ${SAVE_QAT_INT8_MODEL_SCRIPT} true)
 
         set(QAT2_MOBILENETV1_MODEL_DIR "${QAT_DATA_DIR}/MobileNet_qat_perf")
         if (NOT EXISTS ${QAT2_MOBILENETV1_MODEL_DIR})
                 inference_download_and_uncompress(${QAT2_MOBILENETV1_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "MobileNet_qat_perf.tar.gz" )
         endif()
         inference_qat2_int8_test(test_qat2_int8_mobilenetv1_mkldnn ${QAT2_MOBILENETV1_MODEL_DIR}/MobileNet_qat_perf ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
-
 endif()
 
 # Since the test for QAT FP32 & INT8 comparison supports only testing on Linux 
