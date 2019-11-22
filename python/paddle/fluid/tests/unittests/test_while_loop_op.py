@@ -24,7 +24,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
 
 
-class TestAPIWhileLoop(unittest.TestCase):
+class TestApiWhileLoop(unittest.TestCase):
     def test_var_tuple(self):
         def cond(i):
             return layers.less_than(i, ten)
@@ -154,35 +154,41 @@ class TestAPIWhileLoop_Error(unittest.TestCase):
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
             ten_1 = layers.fill_constant(shape=[2, 2], dtype='int64', value=10)
 
-            def dtype_error_cond():
+            # The type of `cond` in Op(while_loop) must be callable 
+            def type_error_cond():
                 out = layers.while_loop(data1, body, [data2])
 
-            self.assertRaises(TypeError, dtype_error_cond)
+            self.assertRaises(TypeError, type_error_cond)
 
-            def dtype_error_body():
+            # The type of `body` in Op(while_loop) must be callable
+            def type_error_body():
                 out = layers.while_loop(cond3, data1, [data2])
 
-            self.assertRaises(TypeError, dtype_error_body)
+            self.assertRaises(TypeError, type_error_body)
 
-            def dtype_error_loop_vars():
+            # The type of `loop_vars` in Op(while_loop) must be list or tuple
+            def type_error_loop_vars():
                 out = layers.while_loop(cond3, body, data1)
 
-            self.assertRaises(TypeError, dtype_error_loop_vars)
+            self.assertRaises(TypeError, type_error_loop_vars)
 
-            def dtype_error_cond_return_1():
+            # The type of `cond` returns in Op(while_loop) must be Variable
+            def type_error_cond_returns_not_variable():
                 out = layers.while_loop(cond1, body, [data1])
 
-            self.assertRaises(TypeError, dtype_error_cond_return_1)
+            self.assertRaises(TypeError, type_error_cond_returns_not_variable)
 
-            def dtype_error_cond_return_2():
+            # The type of `cond` returns in Op(while_loop) must be a bollean variable
+            def type_error_cond_returns_not_boolean():
                 out = layers.while_loop(cond2, body, [data1])
 
-            self.assertRaises(TypeError, dtype_error_cond_return_2)
+            self.assertRaises(TypeError, type_error_cond_returns_not_boolean)
 
-            def dtype_error_cond_return_3():
+            # The shape of `cond` returns in Op(while_loop) must be 1
+            def type_error_shape_cond_returns_pair_1():
                 out = layers.while_loop(cond4, body, [data3])
 
-            self.assertRaises(TypeError, dtype_error_cond_return_3)
+            self.assertRaises(TypeError, type_error_shape_cond_returns_pair_1)
 
 
 if __name__ == '__main__':

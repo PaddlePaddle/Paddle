@@ -915,28 +915,28 @@ class While(object):
 
 def while_loop(cond, body, loop_vars, name=None):
     """
-    while_loop control flow. Repeats while_loop `body` until `cond` return False.
+    while_loop is one of the control flow. Repeats while_loop `body` until `cond` returns False.
 
     Args:
         cond(Callable): A callable returning a boolean tensor controlling whether to continue looping.
-	body(Callable): A callable returning a tuple, namedtuple or list of tensors of the same arity(length and
+        body(Callable): A callable returning a tuple, namedtuple or list of tensors of the same arity(length and
             structure) and types as `loops_vars`.
-	loop_vars(list|tuple): A list, namedtuple or tuple of tensors that is passed to both `cond` and `body`.
-	name(str, optional): Normally there is no need for users to set this property. For more information, please
+        loop_vars(list|tuple): A list, namedtuple or tuple of tensors that is passed to both `cond` and `body`.
+        name(str, optional): Normally there is no need for users to set this property. For more information, please
             refer to :ref:`api_guide_Name`. Default is None.
 
     Raises:
         TypeError: If the type of `cond` is not callable.
-	TypeError: If the type of `body` is not callable.
-	TypeError: If the type of `loop_vars` is not list or tuple.
-	TypeError: If the type of `cond` returns is not Variable.
-	TypeError: If the type of `cond` returns is not a boolean variable.
-	TypeError: If the shape of `cond` returns is not equals 1.
+        TypeError: If the type of `body` is not callable.
+        TypeError: If the type of `loop_vars` is not list or tuple.
+        TypeError: If the type of `cond` returns is not Variable.
+        TypeError: If the type of `cond` returns is not a boolean variable.
+        TypeError: If the shape of `cond` returns is not equals 1.
 
     Examples:
         .. code-block:: python
 
-	    import paddle.fluid as fluid
+            import paddle.fluid as fluid
             import paddle.fluid.layers as layers
 
             def cond(i):
@@ -948,7 +948,7 @@ def while_loop(cond, body, loop_vars, name=None):
             main_program = fluid.default_main_program()
             startup_program = fluid.default_startup_program()
 
-	    with program_guard(main_program, startup_program):
+            with program_guard(main_program, startup_program):
                 i = layers.fill_constant(shape=[1], dtype='int64', value=0)
                 ten = layers.fill_constant(shape=[1], dtype="int64", value=10)
                 out = layers.while_loop(cond, body, [i])
