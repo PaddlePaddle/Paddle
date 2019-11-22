@@ -202,34 +202,7 @@ static bool ShrinkNoNeedBufferVarOpDependency(
   }
 }
 
-/**
- * Find the nearest downstream computation op handle. If the op is a
- * computation op, just return itself.
- */
-static details::ComputationOpHandle *FindNextComputationOpHandleOrReturnItself(
-    details::OpHandleBase *op, size_t scope_idx) {
-  std::queue<details::OpHandleBase *> q;
-  std::unordered_set<details::OpHandleBase *> visited;
-  q.push(op);
-  while (!q.empty()) {
-    auto *op = q.front();
-    q.pop();
-    auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
-    if (compute_op != nullptr && compute_op->GetScopeIdx() == scope_idx) {
-      return compute_op;
-    }
-    for (auto *out_var : op->Outputs()) {
-      for (auto *pending_op : out_var->PendingOps()) {
-        if (visited.count(pending_op)) continue;
-        visited.insert(pending_op);
-        q.push(pending_op);
-      }
-    }
-  }
-  return nullptr;
-}
-
-enum LastLiveOpSearchStatus { kSuccess, kFailure, kShouldPrecede };
+enum LastLiveOpSearchStatus { kSuccess, kFailure };
 
 static std::unordered_set<details::ComputationOpHandle *>
 ExtractComputationOpFromLastLivedVar(details::VarHandle *var, size_t scope_idx,
@@ -237,22 +210,7 @@ ExtractComputationOpFromLastLivedVar(details::VarHandle *var, size_t scope_idx,
                                      const ShrinkDepsOpFunctor &shrink_func,
                                      LastLiveOpSearchStatus *status) {
   // stage one. Get last op for variable.
-  std::unordered_set<details::OpHandleBase *> candidates;
-  {
-    if (var->PendingOps().empty() && var->GeneratedOp()) {
-      // No operator depends on this variable. So the last operator is the op
-      // who generates this variable.
-      candidates.emplace(var->GeneratedOp());
-    } else {
-      candidates = var->PendingOps();
-    }
-
-    // No pending ops or generated op is nullptr
-    if (candidates.empty()) {
-      *status = LastLiveOpSearchStatus::kFailure;
-      return {};
-    }
-  }
+  auto candidates = var->PendingOps();
 
   // stage two. Try to cast them to computation op.
   // return (*status=kFailure) when failed.
@@ -265,24 +223,27 @@ ExtractComputationOpFromLastLivedVar(details::VarHandle *var, size_t scope_idx,
   std::unordered_set<details::ComputationOpHandle *> computation_op;
   {
     for (auto *op : candidates) {
-      auto *compute_op =
-          FindNextComputationOpHandleOrReturnItself(op, scope_idx);
-      if (compute_op == nullptr) {
+      auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
+      if (compute_op && compute_op->GetScopeIdx() == scope_idx) {
+        computation_op.emplace(compute_op);
+      } else {
         *status = LastLiveOpSearchStatus::kFailure;
         return {};
       }
-      computation_op.emplace(compute_op);
+    }
+
+    auto *generated_op =
+        dynamic_cast<details::ComputationOpHandle *>(var->GeneratedOp());
+    if (generated_op && generated_op->GetScopeIdx() == scope_idx) {
+      computation_op.emplace(generated_op);
     }
   }
 
   // stage three. Try to shrink computation op if any of them does
   // not need the buffer of var_name.
-  // If all computation ops do not need the buffer of var_name,
-  // return empty computation op set, and mark the status as kShouldPrecede,
-  // which means that the last living ops of var_name should be
-  // found in the previous version of var_name.
-  if (ShrinkNoNeedBufferVarOpDependency(var_name, &computation_op)) {
-    *status = LastLiveOpSearchStatus::kShouldPrecede;
+  if (computation_op.empty() ||
+      ShrinkNoNeedBufferVarOpDependency(var_name, &computation_op)) {
+    *status = LastLiveOpSearchStatus::kFailure;
     return {};
   }
 
@@ -344,47 +305,39 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
 
       PADDLE_ENFORCE_EQ(var_desc->Name(), var_name);
 
-      for (auto iter = var_handles.rbegin(); iter != var_handles.rend();
-           ++iter) {
-        if ((*iter)->Node()->IsCtrlVar()) {
-          break;
-        }
+      PADDLE_ENFORCE_EQ(
+          var_handles.empty(), false,
+          platform::errors::InvalidArgument("Variable %s not found", var_name));
+      auto last_ver_var = var_handles.back();
 
-        VLOG(10) << "Try to find last living ops of " << var_name << " "
-                 << (iter - var_handles.rbegin()) << " time";
-        LastLiveOpSearchStatus status = LastLiveOpSearchStatus::kFailure;
-        auto result = ExtractComputationOpFromLastLivedVar(
-            *iter, i, var_name, shrink_func, &status);
-
-        // Seldomly, some vars may have no pending or preceding computation ops
-        // Just break;
-        if (status == LastLiveOpSearchStatus::kFailure) {
-          VLOG(1) << "Cannot find last live ops of variable " << var_name
-                  << " in scope " << (*iter)->scope_idx();
-          break;
-        }
-
-        if (status == LastLiveOpSearchStatus::kShouldPrecede) {
-          VLOG(10) << "Try to precede reference count computing at var "
-                   << var_name;
-          continue;
-        }
-
-        PADDLE_ENFORCE_EQ(status, LastLiveOpSearchStatus::kSuccess);
-        PADDLE_ENFORCE(!result.empty(), "Last living ops of %s cannot be empty",
-                       var_name);
-
-        VLOG(10) << "Extract " << result.size() << " ops of var " << var_name;
-        var_infos[i][var_name].reset(
-            new MemOptVarInfo(var_name, result.size()));
-        auto &last_live_ops_of_var = last_live_ops_of_vars[i][var_name];
-        last_live_ops_of_var.set_var(*iter);
-        *(last_live_ops_of_var.mutable_ops()) = std::move(result);
-        break;
+      if (last_ver_var->Node()->IsCtrlVar()) {
+        continue;
       }
 
-      // Seldomly, all preceding trying failed.
-      // Just skip this corner case
+      LastLiveOpSearchStatus status = LastLiveOpSearchStatus::kFailure;
+      auto result = ExtractComputationOpFromLastLivedVar(
+          last_ver_var, i, var_name, shrink_func, &status);
+
+      // Seldomly, some vars may have no pending or preceding computation ops
+      // Just break;
+      if (status == LastLiveOpSearchStatus::kFailure) {
+        VLOG(1) << "Cannot find last live ops of variable " << var_name
+                << " in scope " << last_ver_var->scope_idx();
+        continue;
+      }
+
+      PADDLE_ENFORCE_EQ(status, LastLiveOpSearchStatus::kSuccess,
+                        platform::errors::InvalidArgument(
+                            "status must be success or faiulre"));
+      PADDLE_ENFORCE_EQ(result.empty(), false,
+                        platform::errors::NotFound(
+                            "Last living ops of %s cannot be empty", var_name));
+
+      VLOG(10) << "Extract " << result.size() << " ops of var " << var_name;
+      var_infos[i][var_name].reset(new MemOptVarInfo(var_name, result.size()));
+      auto &last_live_ops_of_var = last_live_ops_of_vars[i][var_name];
+      last_live_ops_of_var.set_var(last_ver_var);
+      *(last_live_ops_of_var.mutable_ops()) = std::move(result);
     }
   }
 }
