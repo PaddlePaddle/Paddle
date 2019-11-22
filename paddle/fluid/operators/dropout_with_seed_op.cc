@@ -131,7 +131,7 @@ class DropoutWithSeedOpGrad : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-class DropoutWithSeedGradOpMaker : public framework::SingleGradOpMaker {
+class DropoutWithSeedGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
