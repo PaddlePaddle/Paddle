@@ -28,7 +28,7 @@ namespace operators {
 #define WARP_SIZE 32
 
 template <typename T>
-__inline__ __device__ T warpReduceSum(T val, int lane_mask) {
+__inline__ __device__ T warpReduceSum(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
 #if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
     val += __shfl_xor_sync(lane_mask, val, mask, warpSize);
@@ -40,7 +40,7 @@ __inline__ __device__ T warpReduceSum(T val, int lane_mask) {
 
 /* Calculate the sum of all elements in a block */
 template <typename T>
-__inline__ __device__ T blockReduceSum(T val, int mask) {
+__inline__ __device__ T blockReduceSum(T val, unsigned mask) {
   static __shared__ T shared[WARP_SIZE];
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
@@ -60,7 +60,7 @@ __inline__ __device__ T blockReduceSum(T val, int mask) {
 }
 
 template <typename T>
-__inline__ __device__ T warpReduceMax(T val, int lane_mask) {
+__inline__ __device__ T warpReduceMax(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
 #if __CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000
     val = max(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
@@ -72,7 +72,7 @@ __inline__ __device__ T warpReduceMax(T val, int lane_mask) {
 
 /* Calculate the maximum of all elements in a block */
 template <typename T>
-__inline__ __device__ T blockReduceMax(T val, int mask) {
+__inline__ __device__ T blockReduceMax(T val, unsigned mask) {
   static __shared__ T shared[WARP_SIZE];
   int lane = threadIdx.x & 0x1f;
   int wid = threadIdx.x >> 5;
@@ -194,7 +194,8 @@ template <typename T>
 __global__ void softmax_kernel_with_eltadd(T *qk_buf_, const T *bias_qk_,
                                            const int batch_size,
                                            const int head_num,
-                                           const int seq_len, const int mask) {
+                                           const int seq_len,
+                                           const unsigned mask) {
   int seq_id = blockIdx.x % seq_len;
   int qk_offset = blockIdx.x * seq_len;
   int bias_offset = blockIdx.x % (head_num * seq_len) * seq_len;
@@ -264,7 +265,7 @@ void MatMulWithHeadQK(const platform::CUDADeviceContext &context, int head_num,
   int grid = m;
   int block = k;
 
-  int mask = block < 32 ? (1 << block - 1) : FINAL_MASK;
+  unsigned mask = block < 32 ? (((unsigned)1 << block) - 1) : FINAL_MASK;
   softmax_kernel_with_eltadd<T><<<grid, block, 0, stream>>>(
       qk_buf_, bias_qk, batch_size, head_num, seq_len, mask);
 }
