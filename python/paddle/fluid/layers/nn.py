@@ -837,7 +837,7 @@ def dropout_with_seed(x,
                       name=None,
                       dropout_implementation="downgrade_in_infer"):
 
-    helper = LayerHelper('dropout', **locals())
+    helper = LayerHelper('dropout_with_seed', **locals())
 
     if not isinstance(x, Variable):
         raise TypeError(
