@@ -470,6 +470,8 @@ PYBIND11_MODULE(core_noavx, m) {
           lod (numpy.ndarray): The data to set.
           place (CPUPlace|CUDAPlace|CUDAPinnedPlace): The place where the 
           LoDTensor is to be set.
+          zero_copy (bool, optional): Whether to share memory with the input numpy array.
+          This parameter only works with CPUPlace. Default: False.
 
         Returns:
             None.

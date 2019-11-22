@@ -14,12 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#ifndef NPY_NO_DEPRECATED_API
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
-#endif
-
 #include <Python.h>
-#include <numpy/arrayobject.h>
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -70,13 +65,17 @@ namespace pybind {
 
 namespace details {
 
+template <typename T>
 class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
  public:
-  explicit NumpyAllocation(PyObject *arr, size_t size,
-                           paddle::platform::Place place)
-      : Allocation(PyArray_DATA(reinterpret_cast<PyArrayObject *>(arr)), size,
-                   place),
-        arr_(arr) {}
+  explicit NumpyAllocation(const py::array &arr)
+      : Allocation(const_cast<void *>(arr.data()), sizeof(T) * (arr.size()),
+                   paddle::platform::CPUPlace()),
+        arr_(arr.ptr()) {
+    PADDLE_ENFORCE_NOT_NULL(arr_);
+    PADDLE_ENFORCE_NE(arr, Py_None);
+    Py_INCREF(arr_);
+  }
   ~NumpyAllocation() override {
     py::gil_scoped_acquire gil;
     Py_XDECREF(arr_);
@@ -173,11 +172,9 @@ void SetTensorFromPyArrayT(
 
   if (paddle::platform::is_cpu_place(place)) {
     if (zero_copy) {
-      array.inc_ref();
-      auto holder = std::make_shared<details::NumpyAllocation>(
-          array.ptr(), sizeof(T) * (array.size()), place);
-      self->ResetHolder(holder);
-      self->ResetType(framework::ToDataType(std::type_index(typeid(T))));
+      auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
+      auto type = framework::ToDataType(std::type_index(typeid(T)));
+      self->ResetHolderWithType(holder, type);
     } else {
       auto dst = self->mutable_data<T>(place);
       std::memcpy(dst, array.data(), array.nbytes());
