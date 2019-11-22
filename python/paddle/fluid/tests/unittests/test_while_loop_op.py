@@ -75,7 +75,7 @@ class TestApiWhileLoop(unittest.TestCase):
         self.assertTrue(np.allclose(np.asarray(res[1]), data1))
 
 
-class TestAPIWhileLoop_Nested(unittest.TestCase):
+class TestApiWhileLoop_Nested(unittest.TestCase):
     def test_simple_net2(self):
         def cond1(i, j, init, sums):
             return layers.less_than(i, loop_len1)
@@ -128,7 +128,7 @@ class TestAPIWhileLoop_Nested(unittest.TestCase):
         self.assertTrue(np.allclose(np.asarray(ret[3]), data2))
 
 
-class TestAPIWhileLoop_Error(unittest.TestCase):
+class TestApiWhileLoop_Error(unittest.TestCase):
     def test_error(self):
         def cond1(i):
             return 1
