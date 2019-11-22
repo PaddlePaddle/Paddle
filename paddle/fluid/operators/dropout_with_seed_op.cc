@@ -152,7 +152,9 @@ class DropoutWithSeedGradOpMaker : public framework::SingleGradOpMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(dropout_with_seed, ops::DropoutWithSeedOp,
-                  ops::DropoutWithSeedOpMaker, ops::DropoutWithSeedGradOpMaker);
+                  ops::DropoutWithSeedOpMaker,
+                  ops::DropoutWithSeedGradOpMaker<paddle::framework::OpDesc>,
+                  ops::DropoutWithSeedGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(dropout_with_seed_grad, ops::DropoutWithSeedOpGrad);
 REGISTER_OP_CPU_KERNEL(
     dropout_with_seed,
