@@ -104,7 +104,7 @@ PADDLE_CAPI_EXPORT extern bool PD_PredictorRun(const PD_AnalysisConfig* config,
 
 PADDLE_CAPI_EXPORT extern bool PD_PredictorZeroCopyRun(
     const PD_AnalysisConfig* config, PD_ZeroCopyData* inputs, int in_size,
-    PD_ZeroCopyData** output, int** out_size);
+    PD_ZeroCopyData** output, int* out_size);
 
 // AnalysisConfig
 enum Precision { kFloat32 = 0, kInt8, kHalf };
