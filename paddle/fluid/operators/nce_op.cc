@@ -222,7 +222,9 @@ class NCEGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Label", this->Input("Label"));
+    op->SetInput("Bias", this->Input("Bias"));
     op->SetInput("Weight", this->Input("Weight"));
+    op->SetInput("Cost", this->Output("Cost"));
     op->SetInput("SampleLogits", this->Output("SampleLogits"));
     op->SetInput("SampleLabels", this->Output("SampleLabels"));
     op->SetInput("SampleWeight", this->Input("SampleWeight"));

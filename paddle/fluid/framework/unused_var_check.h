@@ -27,16 +27,21 @@ namespace paddle {
 namespace framework {
 
 const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
+    "auc",
     "batch_norm",
     "batch_norm_grad",
+    "center_loss_grad",
     "crop",
     "cvm",
     "dgc_momentum",
     "fake_quantize_range_abs_max",
     "fill_zeros_like",
+    "fusion_seqpool_cvm_concat",
     "reshape2_grad_grad",
     "reshape2_grad",
     "gru_grad",
+    "hierarchical_sigmoid_grad",
+    "nce",
     "op_with_kernel"};
 
 std::unordered_set<std::string>* GetThreadLocalUsedVarNameSet();
