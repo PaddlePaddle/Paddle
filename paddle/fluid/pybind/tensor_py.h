@@ -73,7 +73,7 @@ class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
                    paddle::platform::CPUPlace()),
         arr_(arr.ptr()) {
     PADDLE_ENFORCE_NOT_NULL(arr_);
-    PADDLE_ENFORCE_NE(arr, Py_None);
+    PADDLE_ENFORCE_NE(arr_, Py_None);
     Py_INCREF(arr_);
   }
   ~NumpyAllocation() override {
