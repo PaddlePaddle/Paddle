@@ -261,9 +261,18 @@ class DataNormGradOp : public framework::OperatorWithKernel {
     // check input
     PADDLE_ENFORCE(ctx->HasInput("X"));
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Y")), "");
-    PADDLE_ENFORCE(ctx->HasOutput("BatchSize"), "");
-    PADDLE_ENFORCE(ctx->HasOutput("BatchSum"), "");
-    PADDLE_ENFORCE(ctx->HasOutput("BatchSquareSum"), "");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("BatchSize"), true,
+        platform::errors::NotFound(
+            "Output(BatchSize) of DataNormGradOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("BatchSum"), true,
+        platform::errors::NotFound(
+            "Output(BatchSum) of DataNormGradOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("BatchSquareSum"), true,
+        platform::errors::NotFound(
+            "Output(BatchSquareSum) of DataNormGradOp should not be null."));
     PADDLE_ENFORCE(ctx->HasInput("Means"), "");
     PADDLE_ENFORCE(ctx->HasInput("Scales"), "");
 
