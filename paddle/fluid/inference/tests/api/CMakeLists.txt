@@ -313,13 +313,9 @@ if(WITH_GPU AND TENSORRT_FOUND)
             ARGS --infer_model=${TRT_MODEL_QUANT_RESNET_DIR})
 endif()
 
-set(CAPI_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/capi_tests_models")
-if (NOT EXISTS ${CAPI_MODEL_INSTALL_DIR})
-    inference_download_and_uncompress(${CAPI_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_inference_test_models.tar.gz")
-endif()
 inference_analysis_test(test_analyzer_capi SRCS analyzer_capi_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
-            ARGS --infer_model=${CAPI_MODEL_INSTALL_DIR}/trt_inference_test_models)
+            ARGS --infer_model=${RESNET50_MODEL_DIR}/model)
 
 inference_analysis_test(test_analyzer_capi_pd_tensor SRCS analyzer_capi_pd_tensor_tester.cc
             EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} paddle_fluid_c
