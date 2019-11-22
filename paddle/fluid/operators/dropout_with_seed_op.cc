@@ -121,24 +121,28 @@ class DropoutWithSeedOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.GetPlace());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.GetPlace());
+    // return framework::OpKernelType(
+    //    ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
+    //    ctx.GetPlace());
   }
 };
 
-class DropoutWithSeedGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class DropoutWithSeedGradOpMaker : public framework::SingleGradOpMaker {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("dropout_with_seed_grad");
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetInput("Mask", Output("Mask"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetAttrMap(Attrs());
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("Mask", this->Output("Mask"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -148,8 +152,7 @@ class DropoutWithSeedGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(dropout_with_seed, ops::DropoutWithSeedOp,
-                  ops::DropoutWithSeedOpMaker,
-                  ops::DropoutWithSeedGradOpDescMaker);
+                  ops::DropoutWithSeedOpMaker, ops::DropoutWithSeedGradOpMaker);
 REGISTER_OPERATOR(dropout_with_seed_grad, ops::DropoutWithSeedOpGrad);
 REGISTER_OP_CPU_KERNEL(
     dropout_with_seed,
