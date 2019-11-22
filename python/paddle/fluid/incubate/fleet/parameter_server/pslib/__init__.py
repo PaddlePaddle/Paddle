@@ -236,7 +236,8 @@ class PSLib(Fleet):
 
     def print_table_stat(self, table_id):
         """
-        print stat info of table_id
+        print stat info of table_id,
+        format: tableid, feasign size, mf size
 
         Args:
             table_id(int): the id of table

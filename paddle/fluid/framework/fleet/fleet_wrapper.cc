@@ -560,8 +560,6 @@ void FleetWrapper::PrintTableStat(const uint64_t table_id) {
   int32_t err_code = ret.get();
   if (err_code == -1) {
     LOG(ERROR) << "print table stat failed";
-    sleep(sleep_seconds_before_fail_exit_);
-    exit(-1);
   }
 #else
   VLOG(0) << "FleetWrapper::PrintTableStat does nothing when no pslib";
