@@ -82,10 +82,11 @@ class ConcatKernel : public framework::OpKernel<T> {
       need_resize_out_dims = true;
     }
     auto rank = ins[0]->dims().size();
-    PADDLE_ENFORCE_EQ(
-        axis >= -rank && axis < rank, true,
-        "The axis is expected to be in range of [%d, %d), but got %d", -rank,
-        rank, axis);
+    PADDLE_ENFORCE(
+        axis >= -rank && axis < rank,
+        platform::errors::InvalidArgument(
+            "The axis is expected to be in range of [%d, %d), but got %d",
+            -rank, rank, axis));
     axis = ComputeAxis(static_cast<int64_t>(axis), static_cast<int64_t>(rank));
 
     if (need_resize_out_dims) {
