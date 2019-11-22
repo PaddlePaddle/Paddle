@@ -147,6 +147,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("auto_config_layout",
                 new bool(argument->anakin_auto_config_layout()));
     }
+    disable_logs_ = argument->disable_logs();
 
     pre_pass = pass_name;
 
@@ -161,7 +162,7 @@ std::unique_ptr<Graph> IRPassManager::Apply(std::unique_ptr<Graph> graph) {
   PADDLE_ENFORCE(graph.get());
   // Apply all the passes
   for (const auto &pass : passes_) {
-    if (pass->Type() != "graph_viz_pass") {
+    if (pass->Type() != "graph_viz_pass" && !disable_logs_) {
       PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass->Type());
     }
     graph.reset(pass->Apply(graph.release()));
