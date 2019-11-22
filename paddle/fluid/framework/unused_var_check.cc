@@ -56,10 +56,12 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
     if (used_set->count(pair.first) == 0) {
       for (auto &in_var_name : pair.second) {
         auto *in_var = scope.FindVar(in_var_name);
-        auto &tensor = in_var->Get<LoDTensor>();
-        if (in_var->IsInitialized() && tensor.IsInitialized()) {
-          unsed_input_var_names.emplace_back(pair.first);
-          break;
+        if (in_var != nullptr && in_var->IsInitialized()) {
+          auto *tensor = &in_var->Get<LoDTensor>();
+          if (tensor != nullptr && tensor->IsInitialized()) {
+            unsed_input_var_names.emplace_back(pair.first);
+            break;
+          }
         }
       }
     }
@@ -70,8 +72,14 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
       err_msg += in_var_name;
       err_msg += ", ";
     }
-    err_msg += "please remove it from inputs or register NoNeedBufferVars!";
-    VLOG(1) << err_msg;
+    err_msg +=
+        "please make sure it(them) is(are) needed. If not, remove it(them) "
+        "from inputs; if yes, register NoNeedBufferVars or add the operator to "
+        "white list in unused_var_check.h.";
+    // VLOG(1) << err_msg;
+    PADDLE_ENFORCE_EQ(unsed_input_var_names.size(), 0,
+                      platform::errors::PermissionDenied(
+                          "Unused input variables check failed: %s", err_msg));
   }
 }
 

@@ -41,8 +41,7 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "reshape2_grad",
     "gru_grad",
     "hierarchical_sigmoid_grad",
-    "nce",
-    "op_with_kernel"};
+    "nce_grad"};
 
 std::unordered_set<std::string>* GetThreadLocalUsedVarNameSet();
 void CheckUnusedVar(const OperatorBase& op, const Scope& scope);
