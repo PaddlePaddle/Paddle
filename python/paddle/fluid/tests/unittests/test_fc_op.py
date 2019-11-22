@@ -72,14 +72,14 @@ class TestFCOp(OpTest):
             activation_type = "relu"
         else:
             activation_type = ""
-        self.attrs = {'use_mkldnn': False, 'activation_type': activation_type}
+        self.attrs = {
+            'use_mkldnn': False,
+            'activation_type': activation_type,
+        }
 
         self.outputs = {
             'Out': fc_refer(self.matrix, self.with_bias, self.with_relu)
         }
-
-    def padding(self):
-        self.attrs = {'padding_weights': False}
 
     def test_check_output(self):
         self.check_output()
@@ -132,16 +132,6 @@ class TestFCOpWithPadding(TestFCOp):
         self.with_bias = True
         self.with_relu = True
         self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
-
-
-class TestFCOpWithPadding2(TestFCOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = True
-        self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
-
-    def padding(self):
-        self.attrs = {'padding_weights': True}
 
 
 class TestFCOpError(OpTest):

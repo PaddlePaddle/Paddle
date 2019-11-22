@@ -68,7 +68,7 @@ TEST(FCFusePass, basic) {
 
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   auto pass = PassRegistry::Instance().Get("fc_fuse_pass");
-  pass->Set("use_gpu", new bool(false));
+  pass->Set("use_gpu", new bool(true));
   graph->Set("__param_scope__", CreateParamScope());
   int num_nodes_before = graph->Nodes().size();
   int num_mul_nodes_before = GetNumOpNodes(graph, "mul");
