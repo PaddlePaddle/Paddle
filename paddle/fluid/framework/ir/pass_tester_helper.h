@@ -428,18 +428,22 @@ static std::string DebugString(Node* node) {
       is_first = false;
     }
     os << "}.";
-  } else if (node->IsVar() && node->Var()) {
-    os << "Node(" << node->Name() << "{";
-    bool is_first = true;
-    for (auto dim : node->Var()->GetShape()) {
-      if (!is_first) {
-        os << "x";
+  } else {
+    os << "Node(" << node->Name();
+    if (node->IsVar() && node->Var()) {
+      os << "{";
+      bool is_first = true;
+      for (auto dim : node->Var()->GetShape()) {
+        if (!is_first) {
+          os << "x";
+        }
+        os << dim;
+        is_first = false;
       }
-      os << dim;
-      is_first = false;
+      os << "}";
     }
-    os << "}), inputs:{";
-    is_first = true;
+    os << "), inputs:{";
+    bool is_first = true;
     for (auto* in : node->inputs) {
       if (!is_first) {
         os << ", ";

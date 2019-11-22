@@ -60,34 +60,39 @@ static bool IsGradOp(Node* n) {
          pos == (op_type.length() - suffix.length());
 }
 
+static bool IsEqual(const std::vector<int64_t>& l,
+                    const std::vector<int64_t>& r) {
+  if (l.size() == 0U || r.size() == 0U || l.size() != r.size()) {
+    return false;
+  }
+  for (size_t i = 0; i < l.size(); ++i) {
+    if (l[i] != r[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static bool IsBinaryOp(Node* n, bool backward) {
   if (IsSpecifiedOp(GetBinaryOpTypes(), n) && (IsGradOp(n) == backward)) {
     if ((!backward && n->inputs.size() != 2U) || n->inputs.size() == 0U) {
       return false;
     }
 
+    // The shape of all inputs should be the same.
     std::vector<int64_t> shape_0;
     for (size_t i = 0; i < n->inputs.size(); ++i) {
-      auto* in_i = n->inputs[0];
+      auto* in_i = n->inputs[i];
       if (!(in_i && in_i->IsVar() && in_i->Var())) {
         return false;
       }
 
       std::vector<int64_t> shape_i = in_i->Var()->GetShape();
-      if (shape_i.size() == 0U) {
-        return false;
-      }
-
       if (i == 0U) {
         shape_0 = shape_i;
       } else {
-        if (shape_0.size() != shape_i.size()) {
+        if (!IsEqual(shape_0, shape_i)) {
           return false;
-        }
-        for (size_t j = 0; j < shape_0.size(); ++j) {
-          if (shape_0[j] != shape_i[j]) {
-            return false;
-          }
         }
       }
     }

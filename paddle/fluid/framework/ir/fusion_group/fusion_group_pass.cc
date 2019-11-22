@@ -85,8 +85,8 @@ int FusionGroupPass::DetectFusionGroup(Graph* graph, int type) const {
 
   // TODO(liuyiqun): check whether there are intersection between subgraphs
   for (size_t i = 0; i < subgraphs.size(); ++i) {
-    GenerateCode(&subgraphs[i]);
-    InsertFusionGroupOp(graph, &subgraphs[i]);
+    // GenerateCode(&subgraphs[i]);
+    // InsertFusionGroupOp(graph, &subgraphs[i]);
   }
   return subgraphs.size();
 }
