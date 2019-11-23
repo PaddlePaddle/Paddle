@@ -76,7 +76,7 @@ class Executor {
            bool create_local_scope = true, bool create_vars = true,
            const std::vector<std::string>& skip_ref_cnt_vars =
                std::vector<std::string>(),
-           bool force_disable_gc = false);
+           bool force_disable_gc = false, bool keep_kid_scopes = false);
 
   // This API is very slow.
   void Run(const ProgramDesc& program, Scope* scope,

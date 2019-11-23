@@ -93,6 +93,11 @@ const Scope* Scope::FindScope(const Variable* var) const {
   return FindScopeInternal(var);
 }
 
+const Scope* Scope::FindScope(const std::string& name) const {
+  SCOPE_VARS_READER_LOCK
+  return FindScopeInternal(name);
+}
+
 void Scope::DropKids() {
   SCOPE_KIDS_WRITER_LOCK
   for (Scope* s : kids_) delete s;
@@ -174,6 +179,13 @@ const Scope* Scope::FindScopeInternal(const Variable* var) const {
   return (parent_ == nullptr) ? nullptr : parent_->FindScope(var);
 }
 
+const Scope* Scope::FindScopeInternal(const std::string& name) const {
+  if (vars_.find(name) != vars_.end()) {
+    return this;
+  }
+  return (parent_ == nullptr) ? nullptr : parent_->FindScope(name);
+}
+
 void Scope::RenameInternal(const std::string& origin_name,
                            const std::string& new_name) const {
   auto origin_it = vars_.find(origin_name);
@@ -195,8 +207,17 @@ Variable* Scope::FindVarInternal(const std::string& name) const {
 }
 
 Variable* Scope::FindVarLocally(const std::string& name) const {
+  VLOG(4) << "Huihuang debug FindVarLocally " << name << "| name end";
+  for (auto& it : vars_) {
+    VLOG(4) << "Containing vars " << it.first;
+  }
+  VLOG(4) << "Before finding";
   auto it = vars_.find(name);
-  if (it != vars_.end()) return it->second.get();
+  VLOG(4) << "Here, what's wrong?";
+  if (it != vars_.end()) {
+    VLOG(4) << "Huihuang debug found it ";
+    return it->second.get();
+  }
   return nullptr;
 }
 

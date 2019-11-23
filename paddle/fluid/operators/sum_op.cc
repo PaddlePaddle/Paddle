@@ -127,16 +127,22 @@ class SumOp : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_NOT_NULL(x_vars[idx],
                                 "Input var[%s] should not be nullptr",
                                 x_vars_name[idx]);
+        VLOG(3) << "Huihuang debug var name " << x_vars_name[idx]
+                << ", pointer = " << x_vars[idx];
         auto tensor =
             framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
         if (tensor->numel() <= 0 || (!tensor->IsInitialized())) {
+          VLOG(3) << "Huihuang debug empty tensor " << x_vars_name[idx];
           continue;
         }
         if (dtype == -1) {
           dtype = tensor->type();
+          VLOG(3) << "Huihuang tensor " << x_vars_name[idx] << " type "
+                  << tensor->type();
         } else {
           PADDLE_ENFORCE_EQ(dtype, tensor->type());
         }
+        VLOG(3) << "Huihuang tensor " << tensor->data<float>()[0];
       }
       PADDLE_ENFORCE_NE(dtype, -1,
                         "Sum operator should have at least one tensor");

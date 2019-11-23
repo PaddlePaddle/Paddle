@@ -775,6 +775,11 @@ def _append_backward_ops_(block,
     # grad_op_descs holds created grad_op, and will be appended to target_block
     grad_op_descs = []
     program = block.program
+    print(
+        "Huihuang debug block.idx = %d, target_block.idx = %d, before adding grad op"
+        % (block.idx, target_block.idx))
+    print("Block ops = " + str([op.desc.type() for op in block.ops]))
+    # add grad_op_desc by reversed ops
     for op in reversed(ops):
         grad_sub_block_list = []
         # If the op has its own sub-block, deal with the sub-block first
@@ -825,7 +830,11 @@ def _append_backward_ops_(block,
             grad_op_descs.extend(grad_op_desc)
             grad_to_var.update(op_grad_to_var)
 
-    # add grad_op_desc by reversed ops
+    print(
+        "Huihuang debug block.idx = %d, target_block.idx = %d, after adding grad op"
+        % (block.idx, target_block.idx))
+    print("Huihuang debug types = " + str(
+        [op_desc.type() for op_desc in grad_op_descs]))
 
     # sum parameter's gradients' var given multiple var gradient
     grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
@@ -835,12 +844,22 @@ def _append_backward_ops_(block,
     grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
                                             no_grad_dict[block.idx])
 
+    print(
+        "Huihuang debug block.idx = %d, target_block.idx = %d, after removing no grad branch"
+        % (block.idx, target_block.idx))
+    print("Huihuang debug types = " + str(
+        [op_desc.type() for op_desc in grad_op_descs]))
+    print("Huihuang debug ops = " + str([op_desc.type for op_desc in ops]))
+    print("Huihuang debug input_grad_names_set = " + str(input_grad_names_set))
     # remove some backward ops
     not_need_ops = _find_not_need_ops(grad_op_descs, ops, input_grad_names_set)
 
     grad_op_descs = [
         op_desc for op_desc in grad_op_descs if op_desc not in not_need_ops
     ]
+    print("Huihuang debug block.idx = %d, target_block.idx = %d, finally add" %
+          (block.idx, target_block.idx))
+    print(str([op_desc.type() for op_desc in grad_op_descs]))
     # append op_desc in grad_op_descs to target_block
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     backward = core.op_proto_and_checker_maker.OpRole.Backward
@@ -878,7 +897,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
-            if block.desc.has_var_recursive(cpt.to_bytes(
+            if block.desc.has_var(cpt.to_bytes(
                     grad_var_name)) or grad_var_name == core.empty_var_name():
                 continue
             block.desc.var(cpt.to_bytes(grad_var_name))

@@ -119,26 +119,40 @@ void Executor::Close() {
 
 void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
                                int block_id) {
+  VLOG(3) << "Huihuang debug entering CreateVariables";
   auto& global_block = pdesc.Block(block_id);
-
+  VLOG(3) << "Huihuang debug before finding ancestor";
   const Scope* ancestor_scope = scope;
   while (ancestor_scope->parent()) {
-    ancestor_scope = ancestor_scope->parent();
+    VLOG(3) << "Huihuang debug ancestor_scope is " << ancestor_scope;
+    VLOG(3) << "Huihuang debug ancestor_scope->parent() is "
+            << ancestor_scope->parent();
+    const Scope* parent = ancestor_scope->parent();
+    if (!parent->HasKid(ancestor_scope)) {
+      VLOG(3) << "Warninig Huihuang debug found scope dropped";
+    }
+    ancestor_scope = parent;
   }
-
+  VLOG(3) << "block_id = " << block_id;
   if (ancestor_scope != scope) {
     for (auto& var : global_block.AllVars()) {
+      VLOG(3) << "Huihuang suspect for loop var = " << var;
       if (var->Name() == framework::kEmptyVarName) {
         continue;
       }
 
       if (var->Persistable()) {
+        VLOG(3) << "Huihuang suspect error here" << var->Name();
         auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var->Name());
+        VLOG(3) << "Huihuang suspect ptr = " << ptr;
         InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
                 << " global, which pointer is " << ptr;
       } else {
+        VLOG(3) << "Huihuang suspect error when creating locally "
+                << var->Name();
         auto* ptr = scope->Var(var->Name());
+        VLOG(3) << "Huihuang suspect ptr = " << ptr;
         InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
                 << " locally, which pointer is " << ptr;
@@ -152,6 +166,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
               << ptr;
     }
   }
+  VLOG(3) << "create variable end, block_id = " << block_id;
 }
 
 std::shared_ptr<TrainerBase> Executor::InitForDataset(
@@ -192,11 +207,12 @@ void Executor::RunFromDataset(std::shared_ptr<TrainerBase> trainer) {
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars,
                    const std::vector<std::string>& skip_ref_cnt_vars,
-                   bool force_disable_gc) {
+                   bool force_disable_gc, bool keep_kid_scopes) {
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
-  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
+  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars,
+                     keep_kid_scopes);
 }
 
 // Check whether the block already has feed operators and feed_holder.
@@ -418,7 +434,11 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     if (create_local_scope) {
       local_scope = &scope->NewScope();
     }
+    VLOG(3) << "Before creating variables in RunPreparedContext block_id_ = "
+            << ctx->block_id_;
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
+    VLOG(3) << "After creating variables in RunPreparedContext block_id_ = "
+            << ctx->block_id_;
   }
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
@@ -461,7 +481,8 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       // the sub scopes it created should not be dropped immediately, because
       // while_grad_op will use some variables created during while_op run, so
       // we need to keep the kids and wait for the outer executor to drop them.
-      scope->DropKids();
+
+      // scope->DropKids();
     }
   }
 }

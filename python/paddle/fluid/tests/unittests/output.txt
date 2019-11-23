@@ -1,0 +1,4054 @@
+Huihuang debug var i block.idx = 0
+Huihuang debug var i block.idx = 0
+Block guard enter block_idx = 1
+Huihuang debug: true block idx = 1
+Huihuang debug var i block.idx = 0
+Block guard enter block_idx = 2
+Huihuang debug: true block idx = 2
+Huihuang debug: true block idx = 2 after adding
+[u'elementwise_add', u'assign']
+Block guard exit block_idx = 1
+Block guard enter block_idx = 3
+Huihuang debug: false block idx = 3
+Huihuang debug: false block idx = 3 after adding
+[u'elementwise_sub', u'assign']
+Block guard exit block_idx = 1
+Huihuang debug: true block idx = 1 after adding
+[u'conditional_block', u'logical_not', u'conditional_block', u'cast', u'select_input', u'assign']
+Block guard exit block_idx = 0
+Block guard enter block_idx = 4
+Huihuang debug: false block idx = 4
+Huihuang debug var i block.idx = 0
+Block guard enter block_idx = 5
+Huihuang debug: true block idx = 5
+Huihuang debug: true block idx = 5 after adding
+[u'elementwise_mul', u'assign']
+Block guard exit block_idx = 4
+Block guard enter block_idx = 6
+Huihuang debug: false block idx = 6
+Huihuang debug: false block idx = 6 after adding
+[u'elementwise_div', u'assign']
+Block guard exit block_idx = 4
+Huihuang debug: false block idx = 4 after adding
+[u'conditional_block', u'logical_not', u'conditional_block', u'cast', u'select_input', u'assign']
+Block guard exit block_idx = 0
+Huihuang debug block.idx = 0, target_block.idx = 0, before adding grad op
+Block ops = [u'scale', u'fill_constant', u'less_than', u'fill_constant', u'greater_equal', u'conditional_block', u'logical_not', u'fill_constant', u'less_than', u'conditional_block', u'cast', u'select_input', u'mean']
+Huihuang debug block.idx = 4, target_block.idx = 7, before adding grad op
+Block ops = [u'conditional_block', u'logical_not', u'conditional_block', u'cast', u'select_input', u'assign']
+Huihuang debug block.idx = 6, target_block.idx = 8, before adding grad op
+Block ops = [u'elementwise_div', u'assign']
+Huihuang debug block.idx = 6, target_block.idx = 8, after adding grad op
+Huihuang debug types = [u'assign', u'elementwise_div_grad']
+Huihuang debug block.idx = 6, target_block.idx = 8, after removing no grad branch
+Huihuang debug types = [u'assign', u'elementwise_div_grad', u'sum']
+Huihuang debug ops = [u'elementwise_div', u'assign']
+Huihuang debug input_grad_names_set = None
+Huihuang debug block.idx = 6, target_block.idx = 8, finally add
+[u'assign', u'elementwise_div_grad', u'sum']
+Huihuang debug block.idx = 5, target_block.idx = 9, before adding grad op
+Block ops = [u'elementwise_mul', u'assign']
+Huihuang debug block.idx = 5, target_block.idx = 9, after adding grad op
+Huihuang debug types = [u'assign', u'elementwise_mul_grad']
+Huihuang debug block.idx = 5, target_block.idx = 9, after removing no grad branch
+Huihuang debug types = [u'assign', u'elementwise_mul_grad', u'sum']
+Huihuang debug ops = [u'elementwise_mul', u'assign']
+Huihuang debug input_grad_names_set = None
+Huihuang debug block.idx = 5, target_block.idx = 9, finally add
+[u'assign', u'elementwise_mul_grad', u'sum']
+Huihuang debug block.idx = 4, target_block.idx = 7, after adding grad op
+Huihuang debug types = [u'assign', u'select_output', u'cast', u'conditional_block_grad', u'conditional_block_grad']
+Huihuang debug block.idx = 4, target_block.idx = 7, after removing no grad branch
+Huihuang debug types = [u'assign', u'select_output', u'conditional_block_grad', u'conditional_block_grad', u'sum']
+Huihuang debug ops = [u'conditional_block', u'logical_not', u'conditional_block', u'cast', u'select_input', u'assign']
+Huihuang debug input_grad_names_set = None
+Huihuang debug block.idx = 4, target_block.idx = 7, finally add
+[u'assign', u'select_output', u'conditional_block_grad', u'conditional_block_grad', u'sum']
+Huihuang debug block.idx = 1, target_block.idx = 10, before adding grad op
+Block ops = [u'conditional_block', u'logical_not', u'conditional_block', u'cast', u'select_input', u'assign']
+Huihuang debug block.idx = 3, target_block.idx = 11, before adding grad op
+Block ops = [u'elementwise_sub', u'assign']
+Huihuang debug block.idx = 3, target_block.idx = 11, after adding grad op
+Huihuang debug types = [u'assign', u'elementwise_sub_grad']
+Huihuang debug block.idx = 3, target_block.idx = 11, after removing no grad branch
+Huihuang debug types = [u'assign', u'elementwise_sub_grad', u'sum']
+Huihuang debug ops = [u'elementwise_sub', u'assign']
+Huihuang debug input_grad_names_set = None
+Huihuang debug block.idx = 3, target_block.idx = 11, finally add
+[u'assign', u'elementwise_sub_grad', u'sum']
+Huihuang debug block.idx = 2, target_block.idx = 12, before adding grad op
+Block ops = [u'elementwise_add', u'assign']
+Huihuang debug block.idx = 2, target_block.idx = 12, after adding grad op
+Huihuang debug types = [u'assign', u'elementwise_add_grad']
+Huihuang debug block.idx = 2, target_block.idx = 12, after removing no grad branch
+Huihuang debug types = [u'assign', u'elementwise_add_grad', u'sum']
+Huihuang debug ops = [u'elementwise_add', u'assign']
+Huihuang debug input_grad_names_set = None
+Huihuang debug block.idx = 2, target_block.idx = 12, finally add
+[u'assign', u'elementwise_add_grad', u'sum']
+Huihuang debug block.idx = 1, target_block.idx = 10, after adding grad op
+Huihuang debug types = [u'assign', u'select_output', u'cast', u'conditional_block_grad', u'conditional_block_grad']
+Huihuang debug block.idx = 1, target_block.idx = 10, after removing no grad branch
+Huihuang debug types = [u'assign', u'select_output', u'conditional_block_grad', u'conditional_block_grad', u'sum']
+Huihuang debug ops = [u'conditional_block', u'logical_not', u'conditional_block', u'cast', u'select_input', u'assign']
+Huihuang debug input_grad_names_set = None
+Huihuang debug block.idx = 1, target_block.idx = 10, finally add
+[u'assign', u'select_output', u'conditional_block_grad', u'conditional_block_grad', u'sum']
+Huihuang debug block.idx = 0, target_block.idx = 0, after adding grad op
+Huihuang debug types = [u'mean_grad', u'select_output', u'conditional_block_grad', u'conditional_block_grad', u'scale']
+Huihuang debug block.idx = 0, target_block.idx = 0, after removing no grad branch
+Huihuang debug types = [u'mean_grad', u'select_output', u'conditional_block_grad', u'conditional_block_grad', u'sum', u'scale']
+Huihuang debug ops = [u'scale', u'less_than', u'greater_equal', u'conditional_block', u'logical_not', u'less_than', u'conditional_block', u'select_input', u'mean']
+Huihuang debug input_grad_names_set = None
+Huihuang debug block.idx = 0, target_block.idx = 0, finally add
+[u'mean_grad', u'select_output', u'conditional_block_grad', u'conditional_block_grad', u'sum', u'scale']
+blocks {
+  idx: 0
+  parent_idx: -1
+  vars {
+    name: "i@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD@RENAME@1"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "tmp_4@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "logical_not_1.tmp_0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+    persistable: false
+  }
+  vars {
+    name: "_generated_var_5"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_4"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_3"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+      }
+    }
+  }
+  vars {
+    name: "i"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+    persistable: false
+    need_check_feed: true
+  }
+  vars {
+    name: "tmp_2"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_14"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_14@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_12"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_6"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "mean_0.tmp_0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+      }
+    }
+    persistable: false
+  }
+  vars {
+    name: "_generated_var_13"
+    type {
+      type: STEP_SCOPES
+    }
+  }
+  vars {
+    name: "tmp_1"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+      }
+    }
+  }
+  vars {
+    name: "cast_2.tmp_0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: INT32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+    persistable: false
+  }
+  vars {
+    name: "tmp_5"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+      }
+    }
+  }
+  vars {
+    name: "mean_0.tmp_0@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD@RENAME@0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_6"
+    type {
+      type: STEP_SCOPES
+    }
+  }
+  vars {
+    name: "_generated_var_12@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_5@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "tmp_6@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "i"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_0"
+    }
+    type: "scale"
+    attrs {
+      name: "bias_after_scale"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "scale"
+      type: FLOAT
+      f: 2.0
+    }
+    attrs {
+      name: "bias"
+      type: FLOAT
+      f: 0.0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 157, in _scalar_elementwise_op_\n    \"bias\": bias})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 170, in _scalar_elementwise_mul_\n    return _scalar_elementwise_op_(var, value, 0.0)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 190, in __impl__\n    return scalar_method(self, other_var)\n"
+      strings: "  File \"test_cond.py\", line 266, in test_cond_inside_cond\n    a = 2.0 * i\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+  }
+  ops {
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_1"
+    }
+    type: "fill_constant"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 61, in create_tensor\n    stop_gradient=True)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 66, in create_scalar\n    return create_tensor(block, value, dtype, shape=[1])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 215, in __impl__\n    current_block(self), value=other_var, dtype=lhs_dtype)\n"
+      strings: "  File \"test_cond.py\", line 267, in test_cond_inside_cond\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "dtype"
+      type: INT
+      i: 5
+    }
+    attrs {
+      name: "value"
+      type: FLOAT
+      f: 5.0
+    }
+    attrs {
+      name: "shape"
+      type: LONGS
+      longs: 1
+    }
+    attrs {
+      name: "force_cpu"
+      type: BOOLEAN
+      b: false
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "i"
+    }
+    inputs {
+      parameter: "Y"
+      arguments: "tmp_1"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_2"
+    }
+    type: "less_than"
+    attrs {
+      name: "force_cpu"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "axis"
+      type: INT
+      i: -1
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 240, in __impl__\n    attrs={\'axis\': axis})\n"
+      strings: "  File \"test_cond.py\", line 267, in test_cond_inside_cond\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_3"
+    }
+    type: "fill_constant"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 61, in create_tensor\n    stop_gradient=True)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 66, in create_scalar\n    return create_tensor(block, value, dtype, shape=[1])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 215, in __impl__\n    current_block(self), value=other_var, dtype=lhs_dtype)\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "dtype"
+      type: INT
+      i: 5
+    }
+    attrs {
+      name: "value"
+      type: FLOAT
+      f: 3.0
+    }
+    attrs {
+      name: "shape"
+      type: LONGS
+      longs: 1
+    }
+    attrs {
+      name: "force_cpu"
+      type: BOOLEAN
+      b: false
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "i"
+    }
+    inputs {
+      parameter: "Y"
+      arguments: "tmp_3"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_4"
+    }
+    type: "greater_equal"
+    attrs {
+      name: "force_cpu"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "axis"
+      type: INT
+      i: -1
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 240, in __impl__\n    attrs={\'axis\': axis})\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Cond"
+      arguments: "tmp_2"
+    }
+    inputs {
+      parameter: "Input"
+      arguments: "tmp_4"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_5"
+    }
+    outputs {
+      parameter: "Scope"
+      arguments: "_generated_var_6"
+    }
+    type: "conditional_block"
+    attrs {
+      name: "skip_eager_deletion_vars"
+      type: STRINGS
+    }
+    attrs {
+      name: "is_scalar_condition"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "sub_block"
+      type: BLOCK
+      block_idx: 1
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1731, in complete\n    \'is_scalar_condition\': self.is_scalar_condition\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1646, in __exit__\n    self.block.complete()\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1767, in cond\n    print(str([op.desc.type() for op in helper.main_program.current_block().ops]))\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_2"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "logical_not_1.tmp_0"
+    }
+    type: "logical_not"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10861, in _logical_op\n    helper.append_op(type=op_name, inputs={\"X\": x}, outputs={\"Out\": out})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 11056, in logical_not\n    op_name=\"logical_not\", x=x, y=None, name=name, out=out, binary_op=False)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1772, in cond\n    [logical_not(pred)], is_scalar_condition=True)\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+  }
+  ops {
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_5"
+    }
+    type: "fill_constant"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 61, in create_tensor\n    stop_gradient=True)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 66, in create_scalar\n    return create_tensor(block, value, dtype, shape=[1])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 215, in __impl__\n    current_block(self), value=other_var, dtype=lhs_dtype)\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "dtype"
+      type: INT
+      i: 5
+    }
+    attrs {
+      name: "value"
+      type: FLOAT
+      f: 8.0
+    }
+    attrs {
+      name: "shape"
+      type: LONGS
+      longs: 1
+    }
+    attrs {
+      name: "force_cpu"
+      type: BOOLEAN
+      b: false
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "i"
+    }
+    inputs {
+      parameter: "Y"
+      arguments: "tmp_5"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_6"
+    }
+    type: "less_than"
+    attrs {
+      name: "force_cpu"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "axis"
+      type: INT
+      i: -1
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/math_op_patch.py\", line 240, in __impl__\n    attrs={\'axis\': axis})\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Cond"
+      arguments: "logical_not_1.tmp_0"
+    }
+    inputs {
+      parameter: "Input"
+      arguments: "tmp_6"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_12"
+    }
+    outputs {
+      parameter: "Scope"
+      arguments: "_generated_var_13"
+    }
+    type: "conditional_block"
+    attrs {
+      name: "skip_eager_deletion_vars"
+      type: STRINGS
+    }
+    attrs {
+      name: "is_scalar_condition"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "sub_block"
+      type: BLOCK
+      block_idx: 4
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1731, in complete\n    \'is_scalar_condition\': self.is_scalar_condition\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1646, in __exit__\n    self.block.complete()\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1780, in cond\n    print(str([op.desc.type() for op in helper.main_program.current_block().ops]))\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_2"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "cast_2.tmp_0"
+    }
+    type: "cast"
+    attrs {
+      name: "out_dtype"
+      type: INT
+      i: 2
+    }
+    attrs {
+      name: "in_dtype"
+      type: INT
+      i: 5
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/tensor.py\", line 212, in cast\n    \'out_dtype\': out.dtype})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1802, in cond\n    mask = cast(pred, dtype=\'int32\')\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Mask"
+      arguments: "cast_2.tmp_0"
+    }
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_12"
+      arguments: "_generated_var_5"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_14"
+    }
+    type: "select_input"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 89, in select_input\n    outputs={\'Out\': out})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1805, in <lambda>\n    merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/utils.py\", line 186, in map_structure\n    return pack_sequence_as(structure[0], [func(*x) for x in entries])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1806, in cond\n    merged_output = map_structure(merge_func, false_output, true_output)\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_14"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "mean_0.tmp_0"
+    }
+    type: "mean"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 11195, in mean\n    type=\"mean\", inputs={\"X\": x}, attrs={}, outputs={\"Out\": out})\n"
+      strings: "  File \"test_cond.py\", line 269, in test_cond_inside_cond\n    mean = layers.mean(out)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 256
+    }
+  }
+  ops {
+    outputs {
+      parameter: "Out"
+      arguments: "mean_0.tmp_0@GRAD"
+    }
+    type: "fill_constant"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 257
+    }
+    attrs {
+      name: "dtype"
+      type: INT
+      i: 5
+    }
+    attrs {
+      name: "value"
+      type: FLOAT
+      f: 1.0
+    }
+    attrs {
+      name: "shape"
+      type: LONGS
+      longs: 1
+    }
+    attrs {
+      name: "force_cpu"
+      type: INT
+      i: 0
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Out@GRAD"
+      arguments: "mean_0.tmp_0@GRAD"
+    }
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_14"
+    }
+    outputs {
+      parameter: "X@GRAD"
+      arguments: "_generated_var_14@GRAD"
+    }
+    type: "mean_grad"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Mask"
+      arguments: "cast_2.tmp_0"
+    }
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_14@GRAD"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_12@GRAD"
+      arguments: "_generated_var_5@GRAD"
+    }
+    type: "select_output"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 89, in select_input\n    outputs={\'Out\': out})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1805, in <lambda>\n    merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/utils.py\", line 186, in map_structure\n    return pack_sequence_as(structure[0], [func(*x) for x in entries])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1806, in cond\n    merged_output = map_structure(merge_func, false_output, true_output)\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Cond"
+      arguments: "logical_not_1.tmp_0"
+    }
+    inputs {
+      parameter: "Input"
+      arguments: "tmp_6"
+      arguments: "tmp_0"
+    }
+    inputs {
+      parameter: "Out"
+      arguments: "_generated_var_12"
+    }
+    inputs {
+      parameter: "Out@GRAD"
+      arguments: "_generated_var_12@GRAD"
+    }
+    inputs {
+      parameter: "Scope"
+      arguments: "_generated_var_13"
+    }
+    outputs {
+      parameter: "Input@GRAD"
+      arguments: "tmp_6@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@0"
+    }
+    type: "conditional_block_grad"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "is_scalar_condition"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "sub_block"
+      type: BLOCK
+      block_idx: 7
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Cond"
+      arguments: "tmp_2"
+    }
+    inputs {
+      parameter: "Input"
+      arguments: "tmp_4"
+      arguments: "tmp_0"
+    }
+    inputs {
+      parameter: "Out"
+      arguments: "_generated_var_5"
+    }
+    inputs {
+      parameter: "Out@GRAD"
+      arguments: "_generated_var_5@GRAD"
+    }
+    inputs {
+      parameter: "Scope"
+      arguments: "_generated_var_6"
+    }
+    outputs {
+      parameter: "Input@GRAD"
+      arguments: "tmp_4@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    type: "conditional_block_grad"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "is_scalar_condition"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "sub_block"
+      type: BLOCK
+      block_idx: 10
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_0@GRAD@RENAME@0"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_0@GRAD"
+    }
+    type: "sum"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: INT
+      i: 0
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_0@GRAD"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "i@GRAD"
+    }
+    type: "scale"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "bias_after_scale"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "bias"
+      type: FLOAT
+      f: 0.0
+    }
+    attrs {
+      name: "scale"
+      type: FLOAT
+      f: 2.0
+    }
+  }
+}
+blocks {
+  idx: 1
+  parent_idx: 0
+  vars {
+    name: "cast_0.tmp_0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: INT32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+    persistable: false
+  }
+  vars {
+    name: "_generated_var_4"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_3"
+    type {
+      type: STEP_SCOPES
+    }
+  }
+  vars {
+    name: "_generated_var_0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_1"
+    type {
+      type: STEP_SCOPES
+    }
+  }
+  vars {
+    name: "logical_not_0.tmp_0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+    persistable: false
+  }
+  vars {
+    name: "_generated_var_2"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Cond"
+      arguments: "tmp_4"
+    }
+    inputs {
+      parameter: "Input"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_0"
+    }
+    outputs {
+      parameter: "Scope"
+      arguments: "_generated_var_1"
+    }
+    type: "conditional_block"
+    attrs {
+      name: "skip_eager_deletion_vars"
+      type: STRINGS
+    }
+    attrs {
+      name: "is_scalar_condition"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "sub_block"
+      type: BLOCK
+      block_idx: 2
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1731, in complete\n    \'is_scalar_condition\': self.is_scalar_condition\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1646, in __exit__\n    self.block.complete()\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1767, in cond\n    print(str([op.desc.type() for op in helper.main_program.current_block().ops]))\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_4"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "logical_not_0.tmp_0"
+    }
+    type: "logical_not"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10861, in _logical_op\n    helper.append_op(type=op_name, inputs={\"X\": x}, outputs={\"Out\": out})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 11056, in logical_not\n    op_name=\"logical_not\", x=x, y=None, name=name, out=out, binary_op=False)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1772, in cond\n    [logical_not(pred)], is_scalar_condition=True)\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Cond"
+      arguments: "logical_not_0.tmp_0"
+    }
+    inputs {
+      parameter: "Input"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_2"
+    }
+    outputs {
+      parameter: "Scope"
+      arguments: "_generated_var_3"
+    }
+    type: "conditional_block"
+    attrs {
+      name: "skip_eager_deletion_vars"
+      type: STRINGS
+    }
+    attrs {
+      name: "is_scalar_condition"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "sub_block"
+      type: BLOCK
+      block_idx: 3
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1731, in complete\n    \'is_scalar_condition\': self.is_scalar_condition\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1646, in __exit__\n    self.block.complete()\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1780, in cond\n    print(str([op.desc.type() for op in helper.main_program.current_block().ops]))\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_4"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "cast_0.tmp_0"
+    }
+    type: "cast"
+    attrs {
+      name: "out_dtype"
+      type: INT
+      i: 2
+    }
+    attrs {
+      name: "in_dtype"
+      type: INT
+      i: 5
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/tensor.py\", line 212, in cast\n    \'out_dtype\': out.dtype})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1802, in cond\n    mask = cast(pred, dtype=\'int32\')\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Mask"
+      arguments: "cast_0.tmp_0"
+    }
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_2"
+      arguments: "_generated_var_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_4"
+    }
+    type: "select_input"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 89, in select_input\n    outputs={\'Out\': out})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1805, in <lambda>\n    merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/utils.py\", line 186, in map_structure\n    return pack_sequence_as(structure[0], [func(*x) for x in entries])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1806, in cond\n    merged_output = map_structure(merge_func, false_output, true_output)\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_4"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_5"
+    }
+    type: "assign"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/tensor.py\", line 493, in assign\n    type=\'assign\', inputs={\'X\': [input]}, outputs={\'Out\': [output]})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1744, in copy_var_to_parent_block\n    assign(var, parent_block_var)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1755, in <lambda>\n    copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/utils.py\", line 186, in map_structure\n    return pack_sequence_as(structure[0], [func(*x) for x in entries])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1765, in cond\n    origin_true_output)\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+  }
+}
+blocks {
+  idx: 2
+  parent_idx: 1
+  vars {
+    name: "elementwise_add_0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+    persistable: false
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_0"
+    }
+    inputs {
+      parameter: "Y"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "elementwise_add_0"
+    }
+    type: "elementwise_add"
+    attrs {
+      name: "y_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "axis"
+      type: INT
+      i: -1
+    }
+    attrs {
+      name: "x_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: BOOLEAN
+      b: false
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10198, in _elementwise_op\n    \'use_mkldnn\': use_mkldnn})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10340, in elementwise_add\n    return _elementwise_op(LayerHelper(\'elementwise_add\', **locals()))\n"
+      strings: "  File \"test_cond.py\", line 252, in <lambda>\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "elementwise_add_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_0"
+    }
+    type: "assign"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/tensor.py\", line 493, in assign\n    type=\'assign\', inputs={\'X\': [input]}, outputs={\'Out\': [output]})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1744, in copy_var_to_parent_block\n    assign(var, parent_block_var)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1755, in <lambda>\n    copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/utils.py\", line 186, in map_structure\n    return pack_sequence_as(structure[0], [func(*x) for x in entries])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1765, in cond\n    origin_true_output)\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+  }
+}
+blocks {
+  idx: 3
+  parent_idx: 1
+  vars {
+    name: "elementwise_sub_0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+    persistable: false
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_0"
+    }
+    inputs {
+      parameter: "Y"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "elementwise_sub_0"
+    }
+    type: "elementwise_sub"
+    attrs {
+      name: "y_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "axis"
+      type: INT
+      i: -1
+    }
+    attrs {
+      name: "x_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: BOOLEAN
+      b: false
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10198, in _elementwise_op\n    \'use_mkldnn\': use_mkldnn})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10494, in elementwise_sub\n    return _elementwise_op(LayerHelper(\'elementwise_sub\', **locals()))\n"
+      strings: "  File \"test_cond.py\", line 252, in <lambda>\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "elementwise_sub_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_2"
+    }
+    type: "assign"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/tensor.py\", line 493, in assign\n    type=\'assign\', inputs={\'X\': [input]}, outputs={\'Out\': [output]})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1744, in copy_var_to_parent_block\n    assign(var, parent_block_var)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1755, in <lambda>\n    copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/utils.py\", line 186, in map_structure\n    return pack_sequence_as(structure[0], [func(*x) for x in entries])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1778, in cond\n    origin_false_output)\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+  }
+}
+blocks {
+  idx: 4
+  parent_idx: 0
+  vars {
+    name: "cast_1.tmp_0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: INT32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+    persistable: false
+  }
+  vars {
+    name: "_generated_var_11"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_10"
+    type {
+      type: STEP_SCOPES
+    }
+  }
+  vars {
+    name: "_generated_var_7"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_8"
+    type {
+      type: STEP_SCOPES
+    }
+  }
+  vars {
+    name: "_generated_var_9"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "logical_not_2.tmp_0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+    persistable: false
+  }
+  ops {
+    inputs {
+      parameter: "Cond"
+      arguments: "tmp_6"
+    }
+    inputs {
+      parameter: "Input"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_7"
+    }
+    outputs {
+      parameter: "Scope"
+      arguments: "_generated_var_8"
+    }
+    type: "conditional_block"
+    attrs {
+      name: "skip_eager_deletion_vars"
+      type: STRINGS
+    }
+    attrs {
+      name: "is_scalar_condition"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "sub_block"
+      type: BLOCK
+      block_idx: 5
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1731, in complete\n    \'is_scalar_condition\': self.is_scalar_condition\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1646, in __exit__\n    self.block.complete()\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1767, in cond\n    print(str([op.desc.type() for op in helper.main_program.current_block().ops]))\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_6"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "logical_not_2.tmp_0"
+    }
+    type: "logical_not"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10861, in _logical_op\n    helper.append_op(type=op_name, inputs={\"X\": x}, outputs={\"Out\": out})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 11056, in logical_not\n    op_name=\"logical_not\", x=x, y=None, name=name, out=out, binary_op=False)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1772, in cond\n    [logical_not(pred)], is_scalar_condition=True)\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Cond"
+      arguments: "logical_not_2.tmp_0"
+    }
+    inputs {
+      parameter: "Input"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_9"
+    }
+    outputs {
+      parameter: "Scope"
+      arguments: "_generated_var_10"
+    }
+    type: "conditional_block"
+    attrs {
+      name: "skip_eager_deletion_vars"
+      type: STRINGS
+    }
+    attrs {
+      name: "is_scalar_condition"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "sub_block"
+      type: BLOCK
+      block_idx: 6
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1731, in complete\n    \'is_scalar_condition\': self.is_scalar_condition\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1646, in __exit__\n    self.block.complete()\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1780, in cond\n    print(str([op.desc.type() for op in helper.main_program.current_block().ops]))\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_6"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "cast_1.tmp_0"
+    }
+    type: "cast"
+    attrs {
+      name: "out_dtype"
+      type: INT
+      i: 2
+    }
+    attrs {
+      name: "in_dtype"
+      type: INT
+      i: 5
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/tensor.py\", line 212, in cast\n    \'out_dtype\': out.dtype})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1802, in cond\n    mask = cast(pred, dtype=\'int32\')\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Mask"
+      arguments: "cast_1.tmp_0"
+    }
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_9"
+      arguments: "_generated_var_7"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_11"
+    }
+    type: "select_input"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 89, in select_input\n    outputs={\'Out\': out})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1805, in <lambda>\n    merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/utils.py\", line 186, in map_structure\n    return pack_sequence_as(structure[0], [func(*x) for x in entries])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1806, in cond\n    merged_output = map_structure(merge_func, false_output, true_output)\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_11"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_12"
+    }
+    type: "assign"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/tensor.py\", line 493, in assign\n    type=\'assign\', inputs={\'X\': [input]}, outputs={\'Out\': [output]})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1744, in copy_var_to_parent_block\n    assign(var, parent_block_var)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1755, in <lambda>\n    copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/utils.py\", line 186, in map_structure\n    return pack_sequence_as(structure[0], [func(*x) for x in entries])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1778, in cond\n    origin_false_output)\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+  }
+}
+blocks {
+  idx: 5
+  parent_idx: 4
+  vars {
+    name: "elementwise_mul_0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+    persistable: false
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_0"
+    }
+    inputs {
+      parameter: "Y"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "elementwise_mul_0"
+    }
+    type: "elementwise_mul"
+    attrs {
+      name: "y_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "axis"
+      type: INT
+      i: -1
+    }
+    attrs {
+      name: "x_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: BOOLEAN
+      b: false
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10198, in _elementwise_op\n    \'use_mkldnn\': use_mkldnn})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10571, in elementwise_mul\n    return _elementwise_op(LayerHelper(\'elementwise_mul\', **locals()))\n"
+      strings: "  File \"test_cond.py\", line 259, in <lambda>\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "elementwise_mul_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_7"
+    }
+    type: "assign"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/tensor.py\", line 493, in assign\n    type=\'assign\', inputs={\'X\': [input]}, outputs={\'Out\': [output]})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1744, in copy_var_to_parent_block\n    assign(var, parent_block_var)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1755, in <lambda>\n    copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/utils.py\", line 186, in map_structure\n    return pack_sequence_as(structure[0], [func(*x) for x in entries])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1765, in cond\n    origin_true_output)\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+  }
+}
+blocks {
+  idx: 6
+  parent_idx: 4
+  vars {
+    name: "elementwise_div_0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+    persistable: false
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_0"
+    }
+    inputs {
+      parameter: "Y"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "elementwise_div_0"
+    }
+    type: "elementwise_div"
+    attrs {
+      name: "y_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "axis"
+      type: INT
+      i: -1
+    }
+    attrs {
+      name: "x_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: BOOLEAN
+      b: false
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10198, in _elementwise_op\n    \'use_mkldnn\': use_mkldnn})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10417, in elementwise_div\n    return _elementwise_op(LayerHelper(\'elementwise_div\', **locals()))\n"
+      strings: "  File \"test_cond.py\", line 259, in <lambda>\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "elementwise_div_0"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_9"
+    }
+    type: "assign"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/tensor.py\", line 493, in assign\n    type=\'assign\', inputs={\'X\': [input]}, outputs={\'Out\': [output]})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1744, in copy_var_to_parent_block\n    assign(var, parent_block_var)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1755, in <lambda>\n    copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/utils.py\", line 186, in map_structure\n    return pack_sequence_as(structure[0], [func(*x) for x in entries])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1778, in cond\n    origin_false_output)\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 0
+    }
+  }
+}
+blocks {
+  idx: 7
+  parent_idx: 0
+  vars {
+    name: "tmp_0@GRAD@RENAME@1"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_11@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_9@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD@RENAME@0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_7@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_12@GRAD"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_11@GRAD"
+    }
+    type: "assign"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Mask"
+      arguments: "cast_1.tmp_0"
+    }
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_11@GRAD"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_9@GRAD"
+      arguments: "_generated_var_7@GRAD"
+    }
+    type: "select_output"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 89, in select_input\n    outputs={\'Out\': out})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1805, in <lambda>\n    merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/utils.py\", line 186, in map_structure\n    return pack_sequence_as(structure[0], [func(*x) for x in entries])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1806, in cond\n    merged_output = map_structure(merge_func, false_output, true_output)\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Cond"
+      arguments: "logical_not_2.tmp_0"
+    }
+    inputs {
+      parameter: "Input"
+      arguments: "tmp_0"
+    }
+    inputs {
+      parameter: "Out"
+      arguments: "_generated_var_9"
+    }
+    inputs {
+      parameter: "Out@GRAD"
+      arguments: "_generated_var_9@GRAD"
+    }
+    inputs {
+      parameter: "Scope"
+      arguments: "_generated_var_10"
+    }
+    outputs {
+      parameter: "Input@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@0"
+    }
+    type: "conditional_block_grad"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "is_scalar_condition"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "sub_block"
+      type: BLOCK
+      block_idx: 8
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Cond"
+      arguments: "tmp_6"
+    }
+    inputs {
+      parameter: "Input"
+      arguments: "tmp_0"
+    }
+    inputs {
+      parameter: "Out"
+      arguments: "_generated_var_7"
+    }
+    inputs {
+      parameter: "Out@GRAD"
+      arguments: "_generated_var_7@GRAD"
+    }
+    inputs {
+      parameter: "Scope"
+      arguments: "_generated_var_8"
+    }
+    outputs {
+      parameter: "Input@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    type: "conditional_block_grad"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "is_scalar_condition"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "sub_block"
+      type: BLOCK
+      block_idx: 9
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_0@GRAD@RENAME@0"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_0@GRAD"
+    }
+    type: "sum"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: INT
+      i: 0
+    }
+  }
+  forward_block_idx: 4
+}
+blocks {
+  idx: 8
+  parent_idx: 7
+  vars {
+    name: "tmp_0@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD@RENAME@1"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD@RENAME@0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "elementwise_div_0@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_9@GRAD"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "elementwise_div_0@GRAD"
+    }
+    type: "assign"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Out"
+      arguments: "elementwise_div_0"
+    }
+    inputs {
+      parameter: "Out@GRAD"
+      arguments: "elementwise_div_0@GRAD"
+    }
+    inputs {
+      parameter: "Y"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "X@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@0"
+    }
+    outputs {
+      parameter: "Y@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    type: "elementwise_div_grad"
+    attrs {
+      name: "y_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "axis"
+      type: INT
+      i: -1
+    }
+    attrs {
+      name: "x_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: BOOLEAN
+      b: false
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10198, in _elementwise_op\n    \'use_mkldnn\': use_mkldnn})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10417, in elementwise_div\n    return _elementwise_op(LayerHelper(\'elementwise_div\', **locals()))\n"
+      strings: "  File \"test_cond.py\", line 259, in <lambda>\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_0@GRAD@RENAME@0"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_0@GRAD"
+    }
+    type: "sum"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: INT
+      i: 0
+    }
+  }
+  forward_block_idx: 6
+}
+blocks {
+  idx: 9
+  parent_idx: 7
+  vars {
+    name: "tmp_0@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD@RENAME@1"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD@RENAME@0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "elementwise_mul_0@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_7@GRAD"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "elementwise_mul_0@GRAD"
+    }
+    type: "assign"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Out@GRAD"
+      arguments: "elementwise_mul_0@GRAD"
+    }
+    inputs {
+      parameter: "X"
+      arguments: "tmp_0"
+    }
+    inputs {
+      parameter: "Y"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "X@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@0"
+    }
+    outputs {
+      parameter: "Y@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    type: "elementwise_mul_grad"
+    attrs {
+      name: "y_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "axis"
+      type: INT
+      i: -1
+    }
+    attrs {
+      name: "x_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: BOOLEAN
+      b: false
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10198, in _elementwise_op\n    \'use_mkldnn\': use_mkldnn})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10571, in elementwise_mul\n    return _elementwise_op(LayerHelper(\'elementwise_mul\', **locals()))\n"
+      strings: "  File \"test_cond.py\", line 259, in <lambda>\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 259, in greater_equal_branch\n    return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a), lambda: layers.elementwise_div(a, a))\n"
+      strings: "  File \"test_cond.py\", line 268, in <lambda>\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_0@GRAD@RENAME@0"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_0@GRAD"
+    }
+    type: "sum"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: INT
+      i: 0
+    }
+  }
+  forward_block_idx: 5
+}
+blocks {
+  idx: 10
+  parent_idx: 0
+  vars {
+    name: "tmp_0@GRAD@RENAME@1"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_2@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_4@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "_generated_var_0@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD@RENAME@0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+        }
+      }
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_5@GRAD"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_4@GRAD"
+    }
+    type: "assign"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Mask"
+      arguments: "cast_0.tmp_0"
+    }
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_4@GRAD"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "_generated_var_2@GRAD"
+      arguments: "_generated_var_0@GRAD"
+    }
+    type: "select_output"
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 89, in select_input\n    outputs={\'Out\': out})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1805, in <lambda>\n    merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/utils.py\", line 186, in map_structure\n    return pack_sequence_as(structure[0], [func(*x) for x in entries])\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1806, in cond\n    merged_output = map_structure(merge_func, false_output, true_output)\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Cond"
+      arguments: "logical_not_0.tmp_0"
+    }
+    inputs {
+      parameter: "Input"
+      arguments: "tmp_0"
+    }
+    inputs {
+      parameter: "Out"
+      arguments: "_generated_var_2"
+    }
+    inputs {
+      parameter: "Out@GRAD"
+      arguments: "_generated_var_2@GRAD"
+    }
+    inputs {
+      parameter: "Scope"
+      arguments: "_generated_var_3"
+    }
+    outputs {
+      parameter: "Input@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@0"
+    }
+    type: "conditional_block_grad"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "is_scalar_condition"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "sub_block"
+      type: BLOCK
+      block_idx: 11
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Cond"
+      arguments: "tmp_4"
+    }
+    inputs {
+      parameter: "Input"
+      arguments: "tmp_0"
+    }
+    inputs {
+      parameter: "Out"
+      arguments: "_generated_var_0"
+    }
+    inputs {
+      parameter: "Out@GRAD"
+      arguments: "_generated_var_0@GRAD"
+    }
+    inputs {
+      parameter: "Scope"
+      arguments: "_generated_var_1"
+    }
+    outputs {
+      parameter: "Input@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    type: "conditional_block_grad"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "is_scalar_condition"
+      type: BOOLEAN
+      b: true
+    }
+    attrs {
+      name: "sub_block"
+      type: BLOCK
+      block_idx: 12
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_0@GRAD@RENAME@0"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_0@GRAD"
+    }
+    type: "sum"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: INT
+      i: 0
+    }
+  }
+  forward_block_idx: 1
+}
+blocks {
+  idx: 11
+  parent_idx: 10
+  vars {
+    name: "tmp_0@GRAD@RENAME@1"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD@RENAME@0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "elementwise_sub_0@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_2@GRAD"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "elementwise_sub_0@GRAD"
+    }
+    type: "assign"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Out@GRAD"
+      arguments: "elementwise_sub_0@GRAD"
+    }
+    inputs {
+      parameter: "Y"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "X@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@0"
+    }
+    outputs {
+      parameter: "Y@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    type: "elementwise_sub_grad"
+    attrs {
+      name: "y_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "axis"
+      type: INT
+      i: -1
+    }
+    attrs {
+      name: "x_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: BOOLEAN
+      b: false
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10198, in _elementwise_op\n    \'use_mkldnn\': use_mkldnn})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10494, in elementwise_sub\n    return _elementwise_op(LayerHelper(\'elementwise_sub\', **locals()))\n"
+      strings: "  File \"test_cond.py\", line 252, in <lambda>\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1775, in cond\n    origin_false_output = false_fn()\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_0@GRAD@RENAME@0"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_0@GRAD"
+    }
+    type: "sum"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: INT
+      i: 0
+    }
+  }
+  forward_block_idx: 3
+}
+blocks {
+  idx: 12
+  parent_idx: 10
+  vars {
+    name: "tmp_0@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD@RENAME@1"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 1
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "tmp_0@GRAD@RENAME@0"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  vars {
+    name: "elementwise_add_0@GRAD"
+    type {
+      type: LOD_TENSOR
+      lod_tensor {
+        tensor {
+          data_type: FP32
+          dims: 0
+        }
+        lod_level: 0
+      }
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "_generated_var_0@GRAD"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "elementwise_add_0@GRAD"
+    }
+    type: "assign"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+  }
+  ops {
+    inputs {
+      parameter: "Out@GRAD"
+      arguments: "elementwise_add_0@GRAD"
+    }
+    inputs {
+      parameter: "Y"
+      arguments: "tmp_0"
+    }
+    outputs {
+      parameter: "X@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@0"
+    }
+    outputs {
+      parameter: "Y@GRAD"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    type: "elementwise_add_grad"
+    attrs {
+      name: "y_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "axis"
+      type: INT
+      i: -1
+    }
+    attrs {
+      name: "x_data_format"
+      type: STRING
+      s: ""
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: BOOLEAN
+      b: false
+    }
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "op_role_var"
+      type: STRINGS
+    }
+    attrs {
+      name: "op_callstack"
+      type: STRINGS
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/framework.py\", line 2479, in append_op\n    attrs=kwargs.get(\"attrs\", None))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layer_helper.py\", line 43, in append_op\n    return self.main_program.current_block().append_op(*args, **kwargs)\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10198, in _elementwise_op\n    \'use_mkldnn\': use_mkldnn})\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/nn.py\", line 10340, in elementwise_add\n    return _elementwise_op(LayerHelper(\'elementwise_add\', **locals()))\n"
+      strings: "  File \"test_cond.py\", line 252, in <lambda>\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 252, in less_than_branch\n    return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a), lambda: layers.elementwise_sub(a, a))\n"
+      strings: "  File \"test_cond.py\", line 267, in <lambda>\n    out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),\n"
+      strings: "  File \"/usr/local/lib/python2.7/dist-packages/paddle/fluid/layers/control_flow.py\", line 1762, in cond\n    origin_true_output = true_fn()\n"
+      strings: "  File \"test_cond.py\", line 268, in test_cond_inside_cond\n    lambda: greater_equal_branch(i, a))\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 329, in run\n    testMethod()\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/case.py\", line 393, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 108, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/suite.py\", line 70, in __call__\n    return self.run(*args, **kwds)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/runner.py\", line 151, in run\n    test(result)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 232, in runTests\n    self.result = testRunner.run(self.test)\n"
+      strings: "  File \"/usr/lib/python2.7/unittest/main.py\", line 95, in __init__\n    self.runTests()\n"
+      strings: "  File \"test_cond.py\", line 299, in <module>\n    unittest.main()\n"
+    }
+    attrs {
+      name: "op_namescope"
+      type: STRING
+      s: "/"
+    }
+  }
+  ops {
+    inputs {
+      parameter: "X"
+      arguments: "tmp_0@GRAD@RENAME@0"
+      arguments: "tmp_0@GRAD@RENAME@1"
+    }
+    outputs {
+      parameter: "Out"
+      arguments: "tmp_0@GRAD"
+    }
+    type: "sum"
+    attrs {
+      name: "op_role"
+      type: INT
+      i: 1
+    }
+    attrs {
+      name: "use_mkldnn"
+      type: INT
+      i: 0
+    }
+  }
+  forward_block_idx: 2
+}
+version {
+  version: 0
+}
+
+0
+0.0
+0.0
+1
+0.0
+0.0
+2
+0.0
+0.0
+3
+12.0
+2.0
+4
+16.0
+2.0
+5
+100.0
+20.0
+6
+144.0
+24.0
+7
+196.0
+28.0
+8
+1.0
+0.0
+9
+1.0
+0.0
