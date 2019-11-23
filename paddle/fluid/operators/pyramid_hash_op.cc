@@ -172,12 +172,8 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
 
       unsigned int pos3 =
           XXH32(hash_id, len * sizeof(T), j + 2 * _rand_len) % _space_len;
-      if (_rand_len == 16) {
-        memcpy(top_pos + j, const_cast<float*>(weights + pos1), 16 * sizeof(T));
-      } else {
-        memcpy(top_pos + j, const_cast<float*>(weights + pos1),
-               _rand_len * sizeof(T));
-      }
+      memcpy(top_pos + j, const_cast<float*>(weights + pos1),
+             _rand_len * sizeof(T));
       pos1 = pos2;
       pos2 = pos3;
     }
