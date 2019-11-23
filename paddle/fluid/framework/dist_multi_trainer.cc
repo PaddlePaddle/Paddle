@@ -142,6 +142,9 @@ void DistMultiTrainer::Run() {
                                      workers_[thidx].get()));
     }
   }
+  for (auto &th : threads_) {
+    th.join();
+  }
 }
 
 Scope *DistMultiTrainer::GetWorkerScope(int thread_id) {
@@ -149,9 +152,6 @@ Scope *DistMultiTrainer::GetWorkerScope(int thread_id) {
 }
 
 void DistMultiTrainer::Finalize() {
-  for (auto &th : threads_) {
-    th.join();
-  }
   for (int i = 0; i < need_merge_var_names_.size(); i++) {
     Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
