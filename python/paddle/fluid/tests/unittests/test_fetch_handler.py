@@ -41,23 +41,22 @@ class TestFetchHandler(unittest.TestCase):
 
         table_var = scope.var('emb').get_tensor()
         table_var.set(table, place)
-        fh = FH(var_dict={'emb': var_emb}, period_secs=2, return_np=True)
+        fh = FH(var_dict={'emb': var_emb}, period_secs=2)
         fm = fluid.trainer_factory.FetchHandlerMonitor(scope, fh)
 
         fm.start()
-        time.sleep(10)
+        time.sleep(3)
         fm.stop()
 
         default_fh = fluid.executor.FetchHandler(
             var_dict={'emb': var_emb,
                       'emb2': None,
                       'emb3': var_emb3},
-            period_secs=1,
-            return_np=True)
+            period_secs=1)
         default_fm = fluid.trainer_factory.FetchHandlerMonitor(scope,
                                                                default_fh)
         default_fm.start()
-        time.sleep(10)
+        time.sleep(5)
         default_fm.stop()
 
 

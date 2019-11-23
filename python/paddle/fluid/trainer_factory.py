@@ -127,7 +127,6 @@ class FetchHandlerMonitor(object):
                     if var == None:
                         logging.warning("{} value currently not available".
                                         format(var_name_to_key[key]))
-                need_np = fetch_instance.return_np
                 res_dict = {}
                 for key in fetch_dict:
                     user_name = var_name_to_key[key]
@@ -137,19 +136,18 @@ class FetchHandlerMonitor(object):
                     else:
                         res_dict[user_name] = fetch_dict[key].get_tensor()
 
-                    if need_np:
-                        lod = res_dict[user_name].lod()
-                        if len(lod) > 0:
-                            raise RuntimeError("Some of your fetched tensors \
-                                hold LoD information. \
-                                They can not be completely cast \
-                                to Python ndarray. We can \
-                                not return LoDTensor itself directly, \
-                                please choose another targets")
-                        if res_dict[user_name]._is_initialized():
-                            res_dict[user_name] = np.array(res_dict[user_name])
-                        else:
-                            res_dict[user_name] = None
+                    lod = res_dict[user_name].lod()
+                    if len(lod) > 0:
+                        raise RuntimeError("Some of your fetched tensors \
+                                            hold LoD information. \
+                                            They can not be completely cast \
+                                            to Python ndarray. We can \
+                                            not return LoDTensor itself directly, \
+                                            please choose another targets")
+                    if res_dict[user_name]._is_initialized():
+                        res_dict[user_name] = np.array(res_dict[user_name])
+                    else:
+                        res_dict[user_name] = None
                 fetch_instance.handler(res_dict)
             self.running_lock.release()
 

@@ -395,11 +395,10 @@ def _as_lodtensor(data, place):
 
 
 class FetchHandler(object):
-    def __init__(self, var_dict=None, period_secs=60, return_np=True):
+    def __init__(self, var_dict=None, period_secs=60):
         assert var_dict != None
         self.var_dict = var_dict
         self.period_secs = period_secs
-        self.return_np = return_np
 
     def handler(self, res_dict):
         for key in res_dict:
