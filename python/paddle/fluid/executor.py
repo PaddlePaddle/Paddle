@@ -403,7 +403,9 @@ class FetchHandler(object):
 
     def handler(self, res_dict):
         for key in res_dict:
-            logging.info("{}[0]: {}".format(key, res_dict[key]))
+            if res_dict[key] != None:
+                sys.stdout.write("{}[0]: {:.4f} ".format(key, res_dict[key][0]))
+        sys.stdout.write("\n")
 
     @staticmethod
     def help():
