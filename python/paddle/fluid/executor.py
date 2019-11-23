@@ -403,7 +403,7 @@ class FetchHandler(object):
 
     def handler(self, res_dict):
         for key in res_dict:
-            print("{}: {}".format(key, res_dict[key]))
+            logging.info("{}[0]: {}".format(key, res_dict[key]))
 
     @staticmethod
     def help():

@@ -96,6 +96,7 @@ class FetchHandlerMonitor(object):
         self.fetch_instance = handler
         self.fetch_thread = threading.Thread(
             target=self.handler_launch_func, args=(scope, self.fetch_instance))
+        self.running_lock = threading.Lock()
         self.running = False
 
     def handler_launch_func(self, scope, handler):
@@ -110,55 +111,60 @@ class FetchHandlerMonitor(object):
                 var_name_to_key["None.var"] = key
         elapsed_secs = 0
         while True:
-            while self.running == True:
-                if elapsed_secs < period_secs:
-                    time.sleep(1)
-                    elapsed_secs += 1
-                else:
-                    elapsed_secs = 0
-                    fetch_dict = {}
-                    for key in var_name_to_key:
-                        var = scope.find_var(key)
-                        fetch_dict[key] = var
-                        if var == None:
-                            logging.warning("{} value currently not available".
-                                            format(var_name_to_key[key]))
-                    need_np = fetch_instance.return_np
-                    res_dict = {}
-                    for key in fetch_dict:
-                        user_name = var_name_to_key[key]
-                        if fetch_dict[key] == None:
-                            res_dict[user_name] = None
-                            continue
-                        else:
-                            res_dict[user_name] = fetch_dict[key].get_tensor()
+            self.running_lock.acquire()
+            if self.running == False:
+                break
+            if elapsed_secs < period_secs:
+                # TODO(guru4elephant): needs customized condition
+                time.sleep(1)
+                elapsed_secs += 1
+            else:
+                elapsed_secs = 0
+                fetch_dict = {}
+                for key in var_name_to_key:
+                    var = scope.find_var(key)
+                    fetch_dict[key] = var
+                    if var == None:
+                        logging.warning("{} value currently not available".
+                                        format(var_name_to_key[key]))
+                need_np = fetch_instance.return_np
+                res_dict = {}
+                for key in fetch_dict:
+                    user_name = var_name_to_key[key]
+                    if fetch_dict[key] == None:
+                        res_dict[user_name] = None
+                        continue
+                    else:
+                        res_dict[user_name] = fetch_dict[key].get_tensor()
 
-                        if need_np:
-                            lod = res_dict[user_name].lod()
-                            if len(lod) > 0:
-                                raise RuntimeError(
-                                    "Some of your fetched tensors \
-                                    hold LoD information. \
-                                    They can not be completely cast \
-                                    to Python ndarray. We can \
-                                    not return LoDTensor itself directly, \
-                                    please choose another targets")
-                            if res_dict[user_name]._is_initialized():
-                                res_dict[user_name] = np.array(res_dict[
-                                    user_name])
-                            else:
-                                res_dict[user_name] = None
-                    fetch_instance.handler(res_dict)
+                    if need_np:
+                        lod = res_dict[user_name].lod()
+                        if len(lod) > 0:
+                            raise RuntimeError("Some of your fetched tensors \
+                                hold LoD information. \
+                                They can not be completely cast \
+                                to Python ndarray. We can \
+                                not return LoDTensor itself directly, \
+                                please choose another targets")
+                        if res_dict[user_name]._is_initialized():
+                            res_dict[user_name] = np.array(res_dict[user_name])
+                        else:
+                            res_dict[user_name] = None
+                fetch_instance.handler(res_dict)
+            self.running_lock.release()
 
     def start(self):
         """
         start monitor,
         it will start a monitor thread.
         """
+        self.running_lock.acquire()
         self.running = True
+        self.running_lock.release()
         self.fetch_thread.setDaemon(True)
         self.fetch_thread.start()
 
     def stop(self):
-        #self.running = False
-        pass
+        self.running_lock.acquire()
+        self.running = False
+        self.running_lock.release()
