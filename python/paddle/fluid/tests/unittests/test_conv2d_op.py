@@ -81,7 +81,6 @@ def conv2d_forward_naive(input,
     if len(pad) == 4:
         pad_h_0, pad_h_1 = pad[0], pad[1]
         pad_w_0, pad_w_1 = pad[2], pad[3]
-
     out_h = 1 + (in_h + pad_h_0 + pad_h_1 - (dilation[0] *
                                              (f_h - 1) + 1)) // stride[0]
     out_w = 1 + (in_w + pad_w_0 + pad_w_1 - (dilation[1] *
@@ -202,6 +201,50 @@ def create_test_cudnn_channel_last_class(parent):
     cls_name = "{0}_{1}".format(parent.__name__, "CudnnChannelLast")
     TestCudnnChannelLastCase.__name__ = cls_name
     globals()[cls_name] = TestCudnnChannelLastCase
+
+
+def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestCudnnChannelLastFp16(parent):
+        def init_kernel_type(self):
+            self.use_cudnn = True
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place, atol=2e-2)
+
+        def test_check_grad_no_filter(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place) and grad_check:
+                self.check_grad_with_place(
+                    place, ['Input'],
+                    'Output',
+                    max_relative_error=0.02,
+                    no_grad_set=set(['Filter']))
+
+        def test_check_grad_no_input(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place) and grad_check:
+                self.check_grad_with_place(
+                    place, ['Filter'],
+                    'Output',
+                    max_relative_error=0.02,
+                    no_grad_set=set(['Input']))
+
+        def init_data_format(self):
+            self.data_format = "NHWC"
+
+        def init_test_case_2(self):
+            N, C, H, W = self.input_size
+            self.input_size = [N, H, W, C]
+
+    cls_name = "{0}_{1}".format(parent.__name__, "CudnnChannelLastFp16")
+    TestCudnnChannelLastFp16.__name__ = cls_name
+    globals()[cls_name] = TestCudnnChannelLastFp16
 
 
 def create_test_padding_SAME_class(parent):
@@ -699,7 +742,6 @@ class TestConv2dOp_v2(OpTest):
         self.init_dilation()
         self.init_data_format()
         self.init_test_case()
-
         self.init_paddings()
         self.init_test_case_2()
 
@@ -1194,6 +1236,17 @@ create_test_cudnn_channel_last_class(TestWithPad_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithStride_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithGroup_AsyPadding)
 create_test_cudnn_channel_last_class(TestWithDilation_AsyPadding)
+
+create_test_cudnn_channel_last_fp16_class(
+    TestConv2dOp_AsyPadding, grad_check=False)
+create_test_cudnn_channel_last_fp16_class(
+    TestWithPad_AsyPadding, grad_check=False)
+create_test_cudnn_channel_last_fp16_class(
+    TestWithStride_AsyPadding, grad_check=False)
+create_test_cudnn_channel_last_fp16_class(
+    TestWithGroup_AsyPadding, grad_check=False)
+create_test_cudnn_channel_last_fp16_class(
+    TestWithDilation_AsyPadding, grad_check=False)
 
 
 # --------- test python API ---------------
