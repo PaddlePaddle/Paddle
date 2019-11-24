@@ -24,7 +24,8 @@ from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
-from utils import DyGraphProgramDescTracerTestHelper
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from paddle.fluid.dygraph.jit import TracedLayer
 
 
 class SimpleNet(fluid.Layer):
@@ -49,19 +50,26 @@ class SimpleNet(fluid.Layer):
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
                     low=-init_scale, high=init_scale)))
+        self.softmax_weight = self.create_parameter(
+            attr=fluid.ParamAttr(),
+            shape=[self.hidden_size, self.hidden_size],
+            dtype="float32",
+            default_initializer=fluid.initializer.UniformInitializer(
+                low=-self.init_scale, high=self.init_scale))
         self.softmax_bias = self.create_parameter(
             attr=fluid.ParamAttr(),
-            shape=[self.vocab_size],
+            shape=[self.hidden_size],
             dtype="float32",
             default_initializer=fluid.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale))
 
     def forward(self, input, label):
         x_emb = self.embedding(input)
+        fc = fluid.layers.matmul(x_emb, self.softmax_weight)
+        fc = fluid.layers.elementwise_add(fc, self.softmax_bias)
         projection = fluid.layers.matmul(
-            x_emb, fluid.layers.transpose(
+            fc, fluid.layers.transpose(
                 self.embedding._w, perm=[1, 0]))
-        projection = fluid.layers.elementwise_add(projection, self.softmax_bias)
         projection = fluid.layers.reshape(
             projection, shape=[-1, self.vocab_size])
         loss = fluid.layers.softmax_with_cross_entropy(
@@ -75,18 +83,27 @@ class SimpleNet(fluid.Layer):
 
 
 class TestDygraphSimpleNet(unittest.TestCase):
-    def test_simple_net_cpu_float32(self):
-        seed = 90
-        hidden_size = 10
-        vocab_size = 1000
-        num_steps = 3
-        init_scale = 0.1
-        batch_size = 4
-        batch_num = 200
-
+    def test_simple_net(self):
         for is_sparse in [True, False]:
+            self.simple_net_float(is_sparse)
+
+    def simple_net_float(self, is_sparse):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+
+        for place in places:
+            seed = 90
+            hidden_size = 10
+            vocab_size = 1000
+            num_steps = 3
+            init_scale = 0.1
+            batch_size = 4
+            batch_num = 200
+
             for is_sort_sum_gradient in [True, False]:
-                with fluid.dygraph.guard():
+                traced_layer = None
+                with fluid.dygraph.guard(place):
                     fluid.default_startup_program().random_seed = seed
                     fluid.default_main_program().random_seed = seed
 
@@ -104,6 +121,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     dy_loss = None
 
                     helper = DyGraphProgramDescTracerTestHelper(self)
+                    program = None
                     backward_strategy = fluid.dygraph.BackwardStrategy()
                     backward_strategy.sort_sum_gradient = is_sort_sum_gradient
 
@@ -139,9 +157,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         num_steps=num_steps,
                         is_sparse=is_sparse)
 
-                    exe = fluid.Executor(fluid.CPUPlace()
-                                         if not core.is_compiled_with_cuda()
-                                         else fluid.CUDAPlace(0))
+                    exe = fluid.Executor(place)
                     sgd = SGDOptimizer(learning_rate=1e-3)
                     x = fluid.layers.data(
                         name="x", shape=[-1, num_steps, 1], dtype='int64')

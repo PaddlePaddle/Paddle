@@ -136,8 +136,9 @@ void SelectedRowsAddToTensor(const framework::Variable& src,
 
 #undef PADDLE_SELECTED_ROWS_ADD_TO_TENSOR
 
-  PADDLE_THROW("Not supported data type %s for AddTo",
-               framework::DataTypeToString(data_type));
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Not supported data type %s for SelectedRowsAddToTensor",
+      framework::DataTypeToString(data_type)));
 }
 
 // Note(chenweihang): when two selected rows need to be added,
@@ -182,8 +183,9 @@ std::shared_ptr<VarBase> SelectedRowsMerge(const framework::Variable& src1,
 
 #undef PADDLE_SELECTED_ROWS_ADD
 
-  PADDLE_THROW("Not supported data type %s for AddTo",
-               framework::DataTypeToString(data_type));
+  PADDLE_THROW(platform::errors::InvalidArgument(
+      "Not supported data type %s for SelectedRowsMerge",
+      framework::DataTypeToString(data_type)));
 }
 
 void VarBaseAdd(std::shared_ptr<VarBase> var, VarBase* var_) {
@@ -195,8 +197,9 @@ void VarBaseAdd(std::shared_ptr<VarBase> var, VarBase* var_) {
     } else if (src.IsType<framework::SelectedRows>()) {
       SelectedRowsAddToTensor(src, dst);
     } else {
-      PADDLE_THROW("Unexpected branch, output variable type is %s",
-                   framework::ToTypeName(dst->Type()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unexpected branch, output variable type is %s",
+          framework::ToTypeName(dst->Type())));
     }
   } else {
     if (src.IsType<framework::LoDTensor>()) {
@@ -208,8 +211,9 @@ void VarBaseAdd(std::shared_ptr<VarBase> var, VarBase* var_) {
       std::shared_ptr<VarBase> temp = SelectedRowsMerge(src, *dst);
       *dst = std::move(*(temp->MutableVar()));
     } else {
-      PADDLE_THROW("Unexpected branch, output variable type is %s",
-                   framework::ToTypeName(dst->Type()));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Unexpected branch, output variable type is %s",
+          framework::ToTypeName(dst->Type())));
     }
   }
 }
@@ -221,7 +225,8 @@ platform::Place GetPlaceOfVarBase(const std::shared_ptr<VarBase>& var) {
   } else if (var->Var().IsType<framework::SelectedRows>()) {
     place = var->Var().Get<framework::SelectedRows>().place();
   } else {
-    PADDLE_THROW("only support LoDTensor and SelectedRows in dygraph");
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "only support LoDTensor and SelectedRows in dygraph"));
   }
   return place;
 }

@@ -75,23 +75,26 @@ class SimpleNet(fluid.Layer):
 
 
 class TestDygraphSimpleNet(unittest.TestCase):
-    def test_simple_net_cpu_float32(self):
-        #for i in range(200):
-        #print("num: ", i)
-        self.simple_net_cpu_float32(200)
-
-    def simple_net_cpu_float32(self, batch_norm):
-        seed = 90
-        hidden_size = 10
-        vocab_size = 1000
-        num_steps = 3
-        init_scale = 0.1
-        batch_size = 4
-        batch_num = batch_norm  #200
-
+    def test_simple_net(self):
         for is_sparse in [True, False]:
-            for is_sort_sum_gradient in [True]:
-                with fluid.dygraph.guard():
+            self.simple_net_float32(is_sparse)
+
+    def simple_net_float32(self, is_sparse):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+
+        for place in places:
+            seed = 90
+            hidden_size = 10
+            vocab_size = 1000
+            num_steps = 3
+            init_scale = 0.1
+            batch_size = 4
+            batch_num = 200
+
+            for is_sort_sum_gradient in [True, False]:
+                with fluid.dygraph.guard(place):
                     fluid.default_startup_program().random_seed = seed
                     fluid.default_main_program().random_seed = seed
 
@@ -113,9 +116,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     backward_strategy.sort_sum_gradient = is_sort_sum_gradient
 
                     for i in range(batch_num):
-                        x_data = np.array(
-                            [1, 2, 3, 3, 2, 3, 2, 3, 2, 2, 3, 1]).reshape(
-                                4, 3).astype('int64')
+                        x_data = np.arange(12).reshape(4, 3).astype('int64')
                         y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                         x_data = x_data.reshape((-1, num_steps, 1))
                         y_data = y_data.reshape((-1, 1))
@@ -146,9 +147,7 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         num_steps=num_steps,
                         is_sparse=is_sparse)
 
-                    exe = fluid.Executor(fluid.CPUPlace()
-                                         if not core.is_compiled_with_cuda()
-                                         else fluid.CUDAPlace(0))
+                    exe = fluid.Executor(place)
                     sgd = SGDOptimizer(learning_rate=1e-3)
                     x = fluid.layers.data(
                         name="x", shape=[-1, num_steps, 1], dtype='int64')
@@ -163,15 +162,13 @@ class TestDygraphSimpleNet(unittest.TestCase):
                     for param in simple_net.parameters():
                         static_param_name_list.append(param.name)
 
-                    out = exe.run(framework.default_startup_program(),
+                    out = exe.run(fluid.default_startup_program(),
                                   fetch_list=static_param_name_list)
                     for i in range(len(static_param_name_list)):
                         static_param_init[static_param_name_list[i]] = out[i]
                     static_loss_value = None
                     for i in range(batch_num):
-                        x_data = np.array(
-                            [1, 2, 3, 3, 2, 3, 2, 3, 2, 2, 3, 1]).reshape(
-                                4, 3).astype('int64')
+                        x_data = np.arange(12).reshape(4, 3).astype('int64')
                         y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
                         x_data = x_data.reshape((-1, num_steps, 1))
                         y_data = y_data.reshape((-1, 1))

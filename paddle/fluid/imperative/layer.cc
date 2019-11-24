@@ -193,10 +193,6 @@ void VarBase::ClearGradient() {
     if (grad_var_->var_.IsType<framework::SelectedRows>()) {
       auto* grad_t = grad_var_->var_.GetMutable<framework::SelectedRows>();
       if (grad_t->mutable_value()->IsInitialized()) {
-        // auto* dev_ctx =
-        // platform::DeviceContextPool::Instance().Get(grad_t->place());
-        // operators::math::set_constant(*dev_ctx, grad_t->mutable_value(),
-        // 0.0);
         grad_t->mutable_rows()->clear();
         grad_t->mutable_value()->clear();
       }
@@ -216,9 +212,9 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
   PADDLE_ENFORCE_EQ(
       var_.IsInitialized() && (var_.IsType<framework::LoDTensor>() ||
                                var_.IsType<framework::SelectedRows>()),
-      true,
-      "Variable must be initialized and type of LoDTensor or SelectedRows when "
-      "getting numpy tensor");
+      true, platform::errors::InvalidArgument(
+                "Variable is not initialized or Variable's type is not "
+                "LoDTensor or SelectedRows when getting numpy tensor"));
   if (var_.IsType<framework::LoDTensor>()) {
     auto& src_tensor = var_.Get<framework::LoDTensor>();
 
@@ -314,15 +310,6 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   // Initialize output var type
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
-      VLOG(3) << "===============^^^^^^^^^^^^^ " << var->Type() << " "
-              << framework::proto::VarType::LOD_TENSOR
-              << framework::proto::VarType::SELECTED_ROWS << std::endl;
-      /*if (var->MutableVar()->IsType<paddle::framework::LoDTensor>()){
-      var->SetType(framework::proto::VarType::LOD_TENSOR);}
-      else if (var->MutableVar()->IsType<paddle::framework::SelectedRows>()) {
-      var->SetType(framework::proto::VarType::SELECTED_ROWS);}
-      else {
-      PADDLE_THROW("Variable type is not in [LOD_TENSOR, SELECTED_ROWS]");}*/
       InitializeVariable(var->MutableVar(), var->Type());
     }
   }

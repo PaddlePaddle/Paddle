@@ -284,7 +284,6 @@ class GradClipByGlobalNorm(GradClipBase):
             if g is None:
                 out.append((p, g))
                 continue
-            #new_grad = g * clip_scale
             new_grad = layers.elementwise_mul(x=g, y=clip_scale)
 
             out.append((p, new_grad))

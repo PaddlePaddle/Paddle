@@ -981,182 +981,183 @@ class TransFormer(Layer):
 
 
 class TestDygraphTransformerSortGradient(unittest.TestCase):
-    def test_transformer_sort_gradient_float32(self):
+    def test_transformer_sort_gradient(self):
+        for is_sparse in [True, False]:
+            self.transformer_sort_gradient_float32(is_sparse)
+
+    def transformer_sort_gradient_float32(self, is_sparse):
         seed = 90
 
-        for is_sparse in [True, False]:
-            with guard():
-                fluid.default_startup_program().random_seed = seed
-                fluid.default_main_program().random_seed = seed
-                backward_strategy = fluid.dygraph.BackwardStrategy()
-                backward_strategy.sort_sum_gradient = True
-                transformer = TransFormer(
-                    'transformer',
-                    ModelHyperParams.src_vocab_size,
-                    ModelHyperParams.trg_vocab_size,
-                    ModelHyperParams.max_length + 1,
-                    ModelHyperParams.n_layer,
-                    ModelHyperParams.n_head,
-                    ModelHyperParams.d_key,
-                    ModelHyperParams.d_value,
-                    ModelHyperParams.d_model,
-                    ModelHyperParams.d_inner_hid,
-                    ModelHyperParams.prepostprocess_dropout,
-                    ModelHyperParams.attention_dropout,
-                    ModelHyperParams.relu_dropout,
-                    ModelHyperParams.preprocess_cmd,
-                    ModelHyperParams.postprocess_cmd,
-                    ModelHyperParams.weight_sharing,
-                    TrainTaskConfig.label_smooth_eps,
-                    use_py_reader=use_py_reader,
-                    is_test=False,
-                    is_sparse=is_sparse)
-                if sync:
-                    lr_decay = fluid.layers.learning_rate_scheduler.noam_decay(
-                        ModelHyperParams.d_model, TrainTaskConfig.warmup_steps)
-                    with fluid.default_main_program()._lr_schedule_guard():
-                        learning_rate = lr_decay * TrainTaskConfig.learning_rate
-                    optimizer = fluid.optimizer.Adam(
-                        learning_rate=learning_rate,
-                        beta1=TrainTaskConfig.beta1,
-                        beta2=TrainTaskConfig.beta2,
-                        epsilon=TrainTaskConfig.eps)
-                else:
-                    optimizer = fluid.optimizer.SGD(learning_rate=0.003)
-                dy_param_init = dict()
-                dy_param_updated = dict()
-                helper = DyGraphProgramDescTracerTestHelper(self)
-                program = None
-
-                for i in range(batch_num):
-                    enc_inputs, dec_inputs, label, weights = create_data()
-                    if i % 2 == 0:
-                        outs, traced_layer = TracedLayer.trace(
-                            transformer,
-                            [enc_inputs, dec_inputs, label, weights])
-
-                        ins_static = enc_inputs + dec_inputs + [label, weights]
-                        outs_static = traced_layer(ins_static)
-                        helper.assertEachVar(outs, outs_static)
-                        if program is not None:
-                            self.assertTrue(
-                                is_equal_program(program, traced_layer.program))
-
-                        program = traced_layer.program
-                        traced_layer.save_inference_model(
-                            './infer_imperative_transformer',
-                            feed=range(len(ins_static)),
-                            fetch=range(len(outs_static)))
-                    else:
-                        outs = transformer(enc_inputs, dec_inputs, label,
-                                           weights)
-
-                    dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = outs
-
-                    if i == 0:
-                        for param in transformer.parameters():
-                            dy_param_init[param.name] = param.numpy()
-
-                    dy_avg_cost.backward(backward_strategy)
-                    optimizer.minimize(dy_avg_cost)
-                    transformer.clear_gradients()
-
-                    if i == batch_num - 1:
-                        for param in transformer.parameters():
-                            dy_param_updated[param.name] = param.numpy()
-
-                dy_avg_cost_value = dy_avg_cost.numpy()
-                dy_sum_cost_value = dy_sum_cost.numpy()
-                dy_predict_value = dy_predict.numpy()
-                dy_token_num_value = dy_token_num.numpy()
-
-            with new_program_scope():
-                fluid.default_startup_program().random_seed = seed
-                fluid.default_main_program().random_seed = seed
-                transformer = TransFormer(
-                    'transformer',
-                    ModelHyperParams.src_vocab_size,
-                    ModelHyperParams.trg_vocab_size,
-                    ModelHyperParams.max_length + 1,
-                    ModelHyperParams.n_layer,
-                    ModelHyperParams.n_head,
-                    ModelHyperParams.d_key,
-                    ModelHyperParams.d_value,
-                    ModelHyperParams.d_model,
-                    ModelHyperParams.d_inner_hid,
-                    ModelHyperParams.prepostprocess_dropout,
-                    ModelHyperParams.attention_dropout,
-                    ModelHyperParams.relu_dropout,
-                    ModelHyperParams.preprocess_cmd,
-                    ModelHyperParams.postprocess_cmd,
-                    ModelHyperParams.weight_sharing,
-                    TrainTaskConfig.label_smooth_eps,
-                    use_py_reader=use_py_reader,
-                    is_test=False,
-                    is_sparse=is_sparse)
-                exe = fluid.Executor(fluid.CPUPlace(
-                ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+        with guard():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            backward_strategy = fluid.dygraph.BackwardStrategy()
+            backward_strategy.sort_sum_gradient = True
+            transformer = TransFormer(
+                'transformer',
+                ModelHyperParams.src_vocab_size,
+                ModelHyperParams.trg_vocab_size,
+                ModelHyperParams.max_length + 1,
+                ModelHyperParams.n_layer,
+                ModelHyperParams.n_head,
+                ModelHyperParams.d_key,
+                ModelHyperParams.d_value,
+                ModelHyperParams.d_model,
+                ModelHyperParams.d_inner_hid,
+                ModelHyperParams.prepostprocess_dropout,
+                ModelHyperParams.attention_dropout,
+                ModelHyperParams.relu_dropout,
+                ModelHyperParams.preprocess_cmd,
+                ModelHyperParams.postprocess_cmd,
+                ModelHyperParams.weight_sharing,
+                TrainTaskConfig.label_smooth_eps,
+                use_py_reader=use_py_reader,
+                is_test=False,
+                is_sparse=is_sparse)
+            if sync:
+                lr_decay = fluid.layers.learning_rate_scheduler.noam_decay(
+                    ModelHyperParams.d_model, TrainTaskConfig.warmup_steps)
+                with fluid.default_main_program()._lr_schedule_guard():
+                    learning_rate = lr_decay * TrainTaskConfig.learning_rate
+                optimizer = fluid.optimizer.Adam(
+                    learning_rate=learning_rate,
+                    beta1=TrainTaskConfig.beta1,
+                    beta2=TrainTaskConfig.beta2,
+                    epsilon=TrainTaskConfig.eps)
+            else:
                 optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+            dy_param_init = dict()
+            dy_param_updated = dict()
 
-                data_input_names = encoder_data_input_fields + decoder_data_input_fields[:
-                                                                                         -1] + label_data_input_fields
-                all_inputs = make_all_inputs(data_input_names)
-                enc_inputs_len = len(encoder_data_input_fields)
-                dec_inputs_len = len(decoder_data_input_fields[:-1])
-                enc_inputs = all_inputs[0:enc_inputs_len]
-                dec_inputs = all_inputs[enc_inputs_len:enc_inputs_len +
-                                        dec_inputs_len]
-                label = all_inputs[-2]
-                weights = all_inputs[-1]
-                static_param_updated = dict()
-                static_param_init = dict()
-                static_param_name_list = list()
-                static_sum_cost, static_avg_cost, static_predict, static_token_num = transformer(
-                    enc_inputs, dec_inputs, label, weights)
-                optimizer.minimize(static_avg_cost)
-                for param in transformer.parameters():
-                    static_param_name_list.append(param.name)
-                out = exe.run(fluid.default_startup_program(),
-                              fetch_list=static_param_name_list)
-                for i in range(len(static_param_name_list)):
-                    static_param_init[static_param_name_list[i]] = out[i]
-                static_sum_cost_value = None
-                static_avg_cost_value = None
-                static_predict_value = None
-                static_token_num_value = None
-                for i in range(batch_num):
-                    feed_dict = create_feed_dict_list(create_data(True))
-                    fetch_list = [
-                        static_sum_cost, static_avg_cost, static_predict,
-                        static_token_num
-                    ]
+            helper = DyGraphProgramDescTracerTestHelper(self)
+            program = None
 
-                    fetch_list.extend(static_param_name_list)
-                    out = exe.run(fluid.default_main_program(),
-                                  feed=feed_dict,
-                                  fetch_list=fetch_list)
-                    static_sum_cost_value = out[0]
-                    static_avg_cost_value = out[1]
-                    static_predict_value = out[2]
-                    static_token_num_value = out[3]
-                    if i == batch_num - 1:
-                        for k in range(4, len(out)):
-                            static_param_updated[static_param_name_list[
-                                k - 4]] = out[k]
+            for i in range(batch_num):
+                enc_inputs, dec_inputs, label, weights = create_data()
+                if i % 2 == 0:
+                    outs, traced_layer = TracedLayer.trace(
+                        transformer, [enc_inputs, dec_inputs, label, weights])
 
-            self.assertTrue(
-                np.array_equal(static_avg_cost_value, dy_avg_cost_value))
-            self.assertTrue(
-                np.array_equal(static_sum_cost_value, dy_sum_cost_value))
-            self.assertTrue(
-                np.array_equal(static_predict_value, dy_predict_value))
-            self.assertTrue(
-                np.array_equal(static_token_num_value, dy_token_num_value))
+                    ins_static = enc_inputs + dec_inputs + [label, weights]
+                    outs_static = traced_layer(ins_static)
+                    helper.assertEachVar(outs, outs_static)
+                    if program is not None:
+                        self.assertTrue(
+                            is_equal_program(program, traced_layer.program))
 
-            for key, value in six.iteritems(static_param_init):
-                self.assertTrue(np.array_equal(value, dy_param_init[key]))
-            for key, value in six.iteritems(static_param_updated):
-                self.assertTrue(np.array_equal(value, dy_param_updated[key]))
+                    program = traced_layer.program
+                    traced_layer.save_inference_model(
+                        './infer_imperative_transformer',
+                        feed=range(len(ins_static)),
+                        fetch=range(len(outs_static)))
+                else:
+                    outs = transformer(enc_inputs, dec_inputs, label, weights)
+
+                dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = outs
+
+                if i == 0:
+                    for param in transformer.parameters():
+                        dy_param_init[param.name] = param.numpy()
+
+                dy_avg_cost.backward(backward_strategy)
+                optimizer.minimize(dy_avg_cost)
+                transformer.clear_gradients()
+
+                if i == batch_num - 1:
+                    for param in transformer.parameters():
+                        dy_param_updated[param.name] = param.numpy()
+
+            dy_avg_cost_value = dy_avg_cost.numpy()
+            dy_sum_cost_value = dy_sum_cost.numpy()
+            dy_predict_value = dy_predict.numpy()
+            dy_token_num_value = dy_token_num.numpy()
+
+        with new_program_scope():
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            transformer = TransFormer(
+                'transformer',
+                ModelHyperParams.src_vocab_size,
+                ModelHyperParams.trg_vocab_size,
+                ModelHyperParams.max_length + 1,
+                ModelHyperParams.n_layer,
+                ModelHyperParams.n_head,
+                ModelHyperParams.d_key,
+                ModelHyperParams.d_value,
+                ModelHyperParams.d_model,
+                ModelHyperParams.d_inner_hid,
+                ModelHyperParams.prepostprocess_dropout,
+                ModelHyperParams.attention_dropout,
+                ModelHyperParams.relu_dropout,
+                ModelHyperParams.preprocess_cmd,
+                ModelHyperParams.postprocess_cmd,
+                ModelHyperParams.weight_sharing,
+                TrainTaskConfig.label_smooth_eps,
+                use_py_reader=use_py_reader,
+                is_test=False,
+                is_sparse=is_sparse)
+            exe = fluid.Executor(fluid.CPUPlace(
+            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+            optimizer = fluid.optimizer.SGD(learning_rate=0.003)
+
+            data_input_names = encoder_data_input_fields + decoder_data_input_fields[:
+                                                                                     -1] + label_data_input_fields
+            all_inputs = make_all_inputs(data_input_names)
+            enc_inputs_len = len(encoder_data_input_fields)
+            dec_inputs_len = len(decoder_data_input_fields[:-1])
+            enc_inputs = all_inputs[0:enc_inputs_len]
+            dec_inputs = all_inputs[enc_inputs_len:enc_inputs_len +
+                                    dec_inputs_len]
+            label = all_inputs[-2]
+            weights = all_inputs[-1]
+            static_param_updated = dict()
+            static_param_init = dict()
+            static_param_name_list = list()
+            static_sum_cost, static_avg_cost, static_predict, static_token_num = transformer(
+                enc_inputs, dec_inputs, label, weights)
+            optimizer.minimize(static_avg_cost)
+            for param in transformer.parameters():
+                static_param_name_list.append(param.name)
+            out = exe.run(fluid.default_startup_program(),
+                          fetch_list=static_param_name_list)
+            for i in range(len(static_param_name_list)):
+                static_param_init[static_param_name_list[i]] = out[i]
+            static_sum_cost_value = None
+            static_avg_cost_value = None
+            static_predict_value = None
+            static_token_num_value = None
+            for i in range(batch_num):
+                feed_dict = create_feed_dict_list(create_data(True))
+                fetch_list = [
+                    static_sum_cost, static_avg_cost, static_predict,
+                    static_token_num
+                ]
+
+                fetch_list.extend(static_param_name_list)
+                out = exe.run(fluid.default_main_program(),
+                              feed=feed_dict,
+                              fetch_list=fetch_list)
+                static_sum_cost_value = out[0]
+                static_avg_cost_value = out[1]
+                static_predict_value = out[2]
+                static_token_num_value = out[3]
+                if i == batch_num - 1:
+                    for k in range(4, len(out)):
+                        static_param_updated[static_param_name_list[k -
+                                                                    4]] = out[k]
+
+        self.assertTrue(
+            np.array_equal(static_avg_cost_value, dy_avg_cost_value))
+        self.assertTrue(
+            np.array_equal(static_sum_cost_value, dy_sum_cost_value))
+        self.assertTrue(np.array_equal(static_predict_value, dy_predict_value))
+        self.assertTrue(
+            np.array_equal(static_token_num_value, dy_token_num_value))
+
+        for key, value in six.iteritems(static_param_init):
+            self.assertTrue(np.array_equal(value, dy_param_init[key]))
+        for key, value in six.iteritems(static_param_updated):
+            self.assertTrue(np.array_equal(value, dy_param_updated[key]))
 
 
 if __name__ == '__main__':
