@@ -547,7 +547,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None):
                 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
     inputs = {}
-    attrs = {'force_cpu': force_cpu or force_init_on_cpu()}
+    attrs = {
+        'value': float(value),
+        'force_cpu': force_cpu or force_init_on_cpu()
+    }
 
     if convert_dtype(dtype) in ['int64', 'int32']:
         attrs['str_value'] = str(int(value))
