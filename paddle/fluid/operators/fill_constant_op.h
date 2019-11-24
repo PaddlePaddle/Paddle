@@ -114,15 +114,16 @@ class FillConstantKernel : public framework::OpKernel<T> {
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
-    if (force_cpu || ctx.GetPlace() == platform::CPUPlace()) {
+    bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
+    if (cpu_place) {
       tensor->mutable_data(platform::CPUPlace(), data_type);
       math::SetConstant<platform::CPUDeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
     }
 #ifdef PADDLE_WITH_CUDA
-    if (ctx.GetPlace() == platform::CUDAPlace()) {
-      tensor->mutable_data(platform::CUDAPlace(), data_type);
+    if (!cpu_place) {
+      tensor->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::CUDADeviceContext, T> functor;
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
               tensor, static_cast<T>(value));
