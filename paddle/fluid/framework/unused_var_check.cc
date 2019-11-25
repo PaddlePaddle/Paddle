@@ -26,6 +26,25 @@ DEFINE_bool(enable_unused_var_check, true,
             "Checking whether operator contains unused inputs, "
             "especially for grad operator. It should be in unittest.");
 
+const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
+    "auc",
+    "batch_norm",
+    "batch_norm_grad",
+    "center_loss_grad",
+    "crop",
+    "cvm",
+    "cos_sim_grad",
+    "dgc_momentum",
+    "fake_quantize_range_abs_max",
+    "fill_zeros_like",
+    "fusion_seqpool_cvm_concat",
+    "reshape2_grad_grad",
+    "reshape2_grad",
+    "gru_grad",
+    "hierarchical_sigmoid_grad",
+    "nce_grad",
+    "roi_perspective_transform_grad"};
+
 namespace paddle {
 namespace framework {
 
@@ -40,7 +59,7 @@ void LogVarUsageIfUnusedVarCheckEnabled(const std::string &name) {
 }
 
 void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
-  // skip op in white list
+  // skip op in white list and it should be fixed in the future.
   if (op_has_unsed_vars_white_list.count(op.Type()) != 0) {
     return;
   }
@@ -80,7 +99,7 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
     err_msg +=
         "please make sure it(them) is(are) needed. If not, remove it(them) "
         "from inputs; if yes, register NoNeedBufferVars or add the operator to "
-        "white list in unused_var_check.h.";
+        "white list in unused_var_check.cc.";
     // VLOG(1) << err_msg;
     PADDLE_ENFORCE_EQ(unsed_input_var_names.size(), 0,
                       platform::errors::PermissionDenied(

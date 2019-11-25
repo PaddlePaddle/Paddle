@@ -863,9 +863,6 @@ std::vector<KernelConfig>* OperatorWithKernel::GetKernelConfig(
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
-  if (FLAGS_enable_unused_var_check) {
-    GetThreadLocalUsedVarNameSet()->clear();
-  }
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
   if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
@@ -886,10 +883,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
     }
     RunImpl(scope, place, runtime_ctx_.get());
-  }
-
-  if (FLAGS_enable_unused_var_check) {
-    CheckUnusedVar(*this, scope);
   }
 }
 
@@ -922,6 +915,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
+
+  if (FLAGS_enable_unused_var_check) {
+    GetThreadLocalUsedVarNameSet()->clear();
+  }
+
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
@@ -930,6 +928,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
+  }
+  if (FLAGS_enable_unused_var_check) {
+    // skip op that uses mkldnn because it has different memory reuse strategy.
+    if (kernel_type_->library_type_ != LibraryType::kMKLDNN) {
+      CheckUnusedVar(*this, scope);
+    }
   }
 
   /*For profiling/benchmark only*/

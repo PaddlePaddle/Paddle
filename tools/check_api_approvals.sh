@@ -26,7 +26,7 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/framework.py"
            "python/paddle/fluid/backward.py"
            "paddle/fluid/operators/distributed/send_recv.proto.in"
-           "paddle/fluid/framework/unused_var_check.h")
+           "paddle/fluid/framework/unused_var_check.cc")
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
 git_files=`git diff --numstat upstream/$BRANCH| wc -l`
@@ -79,7 +79,7 @@ for API_FILE in ${API_FILES[*]}; do
          APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 22361972`
       elif [ "${API_FILE}" == "paddle/fluid/operators/distributed/send_recv.proto.in" ];then
          APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 10721757 5442383`
-      elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.h" ];then
+      elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.cc" ];then
         APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6888866 32832641 6836917`
       else
         APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 3048612 46782768 12538138 6836917 32832641`
@@ -106,9 +106,9 @@ for API_FILE in ${API_FILES[*]}; do
           failed_num=`expr $failed_num + 1`
           echo_line="You must have one RD (gongweibao or seiriosPlus) approval for the paddle/fluid/operators/distributed/send_recv.proto.in, which manages the environment variables.\n"
           echo_list=(${echo_list[@]}$failed_num "." $echo_line)
-        elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.h" ];then
+        elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.cc" ];then
           failed_num=`expr $failed_num + 1`
-          echo_line="You must have one RD (zhiqiu (Recommend) , sneaxiy or luotao1) approval for the paddle/fluid/framework/unused_var_check.h, which manages the white list of oerators that have unused input variables.\n"
+          echo_line="You must have one RD (zhiqiu (Recommend) , sneaxiy or luotao1) approval for the paddle/fluid/framework/unused_var_check.cc, which manages the white list of oerators that have unused input variables.\n"
           echo_list=(${echo_list[@]}$failed_num "." $echo_line)
         else
           failed_num=`expr $failed_num + 1`
