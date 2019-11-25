@@ -343,6 +343,19 @@ class FCPrimitiveFactory {
     return inner_product_forward::primitive_desc(fc_desc, attrs, engine_);
   }
 
+  mkldnn::memory CreateThreeDimWeightsMemory(const Tensor* input,
+                                             const Tensor* weights) {
+    auto input_dims = framework::vectorize<int>(input->dims());
+    auto weight_dims = framework::vectorize<int>(weights->dims());
+    auto dims = {weight_dims[1], input_dims[1], input_dims[2]};
+
+    auto dst_format = MatchWeightFormat(input->format());
+    auto src_desc = CreateMemDescriptor<float>(dims, MKLDNNMemoryFormat::oiw);
+    auto dst_desc = CreateMemDescriptor<float>(dims, dst_format);
+
+    return Reorder(src_desc, dst_desc, weights_->get_data_handle());
+  }
+
   // Since MKL-DNN requires the number of input dimensions to be
   // equal to the number of weight dimensions, we have to convert
   // weights to 4D memory if input is 4D. It also requires that
