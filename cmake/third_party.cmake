@@ -12,12 +12,95 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# compile third party for fluid on both windows/linux/mac
+# Creat a target named "third_party", which can compile external dependencies on all platform(windows/linux/mac)
 
-set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
-  "A path setting third party libraries download & build directories.")
+set(THIRD_PARTY_PATH  "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
+    "A path setting third party libraries download & build directories.")
+
+set(THIRD_PARTY_CACHE_PATH     "${CMAKE_SOURCE_DIR}"    CACHE STRING
+    "A path cache third party source code to avoid repeated download.")
 
 set(THIRD_PARTY_BUILD_TYPE Release)
+
+# cache funciton to avoid repeat download code of third_party.
+# This function has 4 parameters, URL/REPOSITOR/TAG/DIR:
+# 1. URL: specify download url of 3rd party
+# 2. REPOSITORY and TAG: specify git REPOSITORY and tag/branch/commitID of 3rd party
+# 3. DIR(optional): Unify the source dir in cached and uncached mode to "${TARGET}_SOURCE_DIR". 
+#
+# The function Return 2 PARENT_SCOPE variables:
+# 1. ${TARGET}_DOWNLOAD_DIR: Simply place "${TARGET}_DOWNLOAD_DIR" in ExternalProject_Add, 
+#                            and you no longer need to set any donwnload steps in ExternalProject_Add.
+# 2. ${TARGET}_SOURCE_DIR: Value of argument: SOURCE_DIR of ExternalProject_Add.
+# For example:
+#    Cache_third_party (${TARGET}
+#            REPOSITORY ${TARGET_REPOSITORY}
+#            TAG ${TARGET_TAG})
+FUNCTION(cache_third_party TARGET)
+    SET(options "")
+    SET(oneValueArgs URL REPOSITORY TAG DIR)
+    SET(multiValueArgs "")
+    cmake_parse_arguments(cache_third_party "${optionps}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    STRING(REPLACE "extern_" "" TARGET_NAME ${TARGET})
+    STRING(REGEX REPLACE "[0-9]+" "" TARGET_NAME ${TARGET_NAME})
+    STRING(TOUPPER ${TARGET_NAME} TARGET_NAME)
+    IF(cache_third_party_REPOSITORY)
+        SET(${TARGET_NAME}_DOWNLOAD_CMD
+                GIT_REPOSITORY  ${cache_third_party_REPOSITORY})
+        IF(cache_third_party_TAG)
+            LIST(APPEND   ${TARGET_NAME}_DOWNLOAD_CMD  
+                    GIT_TAG     ${cache_third_party_TAG})
+        ENDIF()
+    ELSEIF(cache_third_party_URL)
+        SET(${TARGET_NAME}_DOWNLOAD_CMD
+                URL             ${cache_third_party_URL})
+    ELSE()
+        MESSAGE(FATAL_ERROR "Download link (Git repo or URL) must be specified for cache!")
+    ENDIF()
+    IF(NOT WITH_TP_CACHE)
+        # The uniform argument "{TAGGET}_SOURCE_DIR" must exists for these targets even if not cache
+        SET(LISTS xxhash protobuf boost mklml cub dlpack eigen pybind threadpool)
+        FOREACH(tmp ${LISTS})
+            IF(${TARGET} MATCHES ${tmp} AND cache_third_party_DIR)
+                SET(${TARGET_NAME}_SOURCE_DIR "${cache_third_party_DIR}/src/${TARGET}")
+            ENDIF()
+        ENDFOREACH()
+    ELSE()
+        # Generate and verify cache dir for third_party source code
+        SET(cache_third_party_REPOSITORY ${cache_third_party_REPOSITORY} ${cache_third_party_URL})
+        IF(cache_third_party_REPOSITORY AND cache_third_party_TAG)
+            STRING(MD5 HASH_REPO ${cache_third_party_REPOSITORY})
+            STRING(MD5 HASH_GIT ${cache_third_party_TAG})
+            STRING(SUBSTRING ${HASH_REPO} 0 8 HASH_REPO)
+            STRING(SUBSTRING ${HASH_GIT} 0 8 HASH_GIT)
+            STRING(CONCAT HASH ${HASH_REPO} ${HASH_GIT})
+            SET(${TARGET_NAME}_SOURCE_DIR ${THIRD_PARTY_CACHE_PATH}/third_party/${TARGET}_${HASH})
+        ELSEIF(cache_third_party_REPOSITORY)
+            STRING(MD5 HASH_REPO ${cache_third_party_REPOSITORY})
+            STRING(SUBSTRING ${HASH_REPO} 0 16 HASH)
+            SET(${TARGET_NAME}_SOURCE_DIR ${THIRD_PARTY_CACHE_PATH}/third_party/${TARGET}_${HASH})
+        ENDIF()
+
+        IF(EXISTS ${${TARGET_NAME}_SOURCE_DIR})
+            # judge whether the cache dir is empty
+            FILE(GLOB files ${${TARGET_NAME}_SOURCE_DIR}/*)
+            LIST(LENGTH files files_len)
+            IF(files_len GREATER 0)
+                list(APPEND ${TARGET_NAME}_DOWNLOAD_CMD DOWNLOAD_COMMAND "")
+            ENDIF()
+        ENDIF()
+    ENDIF()
+
+    # Pass the variable to parent scope, the double quotation marks can't be removed
+    SET(${TARGET_NAME}_SOURCE_DIR "${${TARGET_NAME}_SOURCE_DIR}" PARENT_SCOPE)
+    SET(${TARGET_NAME}_DOWNLOAD_CMD "${${TARGET_NAME}_DOWNLOAD_CMD}" PARENT_SCOPE)
+ENDFUNCTION()
+
+MACRO(UNSET_VAR VAR_NAME)
+    UNSET(${VAR_NAME} CACHE)
+    UNSET(${VAR_NAME})
+ENDMACRO()
 
 # Correction of flags on different Platform(WIN/MAC) and Print Warning Message
 if (APPLE)
