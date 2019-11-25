@@ -18,9 +18,9 @@ import time
 import logging
 import numpy as np
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
-local_logger = logging.getLogger("trainer_factory")
-local_logger.setLevel(logging.INFO)
+FORMAT = '%(asctime)s-%(levelname)s: %(message)s'
+logging.basicConfig(level=logging.INFO, format=FORMAT)
+local_logger = logging.getLogger(__name__)
 
 from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
 from .device_worker import Hogwild, DownpourSGD, Section
