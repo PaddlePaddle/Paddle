@@ -269,8 +269,8 @@ def _infer_var_data_type_(grad_var_name, block):
     """
     grad_var = block.desc.find_var(cpt.to_bytes(grad_var_name))
     fwd_name = _strip_grad_suffix_(grad_var_name)
-    if block.desc.has_var_recursive(cpt.to_bytes(fwd_name)):
-        fwd_var = block.desc.find_var_recursive(cpt.to_bytes(fwd_name))
+    if block.desc.has_var(cpt.to_bytes(fwd_name)):
+        fwd_var = block.desc.find_var(cpt.to_bytes(fwd_name))
         grad_var.set_dtype(fwd_var.dtype())
     else:
         grad_var.set_dtype(core.VarDesc.VarType.FP32)
@@ -539,7 +539,6 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
         if len(new_vars) == len(input_set):
             special_op_nodes.add(op_node)
 
-    print("Huihuang debug special_op_nodes = " + str(special_op_nodes))
     not_need_op_descs = []
     # Start traversing all candidate sub-graph headers to check whether
     # they are connected to backward computational graphs, and if they are
@@ -805,10 +804,7 @@ def _append_backward_ops_(block,
     # grad_op_descs holds created grad_op, and will be appended to target_block
     grad_op_descs = []
     program = block.program
-    print(
-        "Huihuang debug block.idx = %d, target_block.idx = %d, before adding grad op"
-        % (block.idx, target_block.idx))
-    print("Block ops = " + str([op.desc.type() for op in ops]))
+
     # add grad_op_desc by reversed ops
     for op in reversed(ops):
         grad_sub_block_list = []
@@ -862,12 +858,6 @@ def _append_backward_ops_(block,
             grad_op_descs.extend(grad_op_desc)
             grad_to_var.update(op_grad_to_var)
 
-    print(
-        "Huihuang debug block.idx = %d, target_block.idx = %d, after adding grad op"
-        % (block.idx, target_block.idx))
-    print("Huihuang debug types = " + str(
-        [op_desc.type() for op_desc in grad_op_descs]))
-
     # sum parameter's gradients' var given multiple var gradient
     grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
 
@@ -876,22 +866,13 @@ def _append_backward_ops_(block,
     grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
                                             no_grad_dict[block.idx])
 
-    print(
-        "Huihuang debug block.idx = %d, target_block.idx = %d, after removing no grad branch"
-        % (block.idx, target_block.idx))
-    print("Huihuang debug types = " + str(
-        [op_desc.type() for op_desc in grad_op_descs]))
-    print("Huihuang debug ops = " + str([op_desc.type for op_desc in ops]))
-    print("Huihuang debug input_grad_names_set = " + str(input_grad_names_set))
     # remove some backward ops
     not_need_ops = _find_not_need_ops(grad_op_descs, ops, input_grad_names_set)
 
     grad_op_descs = [
         op_desc for op_desc in grad_op_descs if op_desc not in not_need_ops
     ]
-    print("Huihuang debug block.idx = %d, target_block.idx = %d, finally add" %
-          (block.idx, target_block.idx))
-    print(str([op_desc.type() for op_desc in grad_op_descs]))
+
     # append op_desc in grad_op_descs to target_block
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     backward = core.op_proto_and_checker_maker.OpRole.Backward

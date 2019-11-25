@@ -179,8 +179,6 @@ def monkey_patch_variable():
         def __impl__(self, other_var):
             # FIXME(zjl): elementwise_div between integers cannot be converted to scale,
             # which may lose accuracy. This is a hot fix for release 1.6.
-            print("Huihuang debug var %s block.idx = %d" %
-                  (self.name, current_block(self).idx))
             if scalar_method is not None and not (
                     op_type == 'elementwise_div' and
                     self.dtype in _supported_int_dtype_):

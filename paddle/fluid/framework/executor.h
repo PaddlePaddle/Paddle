@@ -71,6 +71,12 @@ class Executor {
    * @param
    *  ProgramDesc
    *  Scope
+   *  block_id
+   *  create_local_scope
+   *  create_vars
+   *  skip_ref_cnt_vars
+   *  force_disable_gc
+   *  keep_kid_scopes
    */
   void Run(const ProgramDesc& prog, Scope* scope, int block_id,
            bool create_local_scope = true, bool create_vars = true,

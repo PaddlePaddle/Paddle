@@ -286,13 +286,9 @@ class BlockGuard(object):
 
     def __enter__(self):
         self.main_program._create_block()
-        print("Block guard enter block_idx = %d" %
-              (self.main_program.current_block().idx))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.main_program._rollback()
-        print("Block guard exit block_idx = %d" %
-              (self.main_program.current_block().idx))
         if exc_type is not None:
             return False  # re-raise exception
         return True
@@ -1760,34 +1756,20 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             raise TypeError("The true_fn in cond must be callable")
         true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
         with true_cond_block.block():
-            print("Huihuang debug: true block idx = %d" %
-                  (helper.main_program.current_block().idx))
             origin_true_output = true_fn()
             if origin_true_output is not None:
                 true_output = map_structure(copy_to_parent_func,
                                             origin_true_output)
-            print("Huihuang debug: true block idx = %d after adding" %
-                  (helper.main_program.current_block().idx))
-            print(str([
-                op.desc.type() for op in helper.main_program.current_block().ops
-            ]))
     if false_fn is not None:
         if not callable(false_fn):
             raise TypeError("The false_fn in cond must be callable")
         false_cond_block = ConditionalBlock(
             [logical_not(pred)], is_scalar_condition=True)
         with false_cond_block.block():
-            print("Huihuang debug: false block idx = %d" %
-                  (helper.main_program.current_block().idx))
             origin_false_output = false_fn()
             if origin_false_output is not None:
                 false_output = map_structure(copy_to_parent_func,
                                              origin_false_output)
-            print("Huihuang debug: false block idx = %d after adding" %
-                  (helper.main_program.current_block().idx))
-            print(str([
-                op.desc.type() for op in helper.main_program.current_block().ops
-            ]))
 
     if true_output is None and false_output is None:
         return None
@@ -1810,8 +1792,6 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
             format(e))
 
     mask = cast(pred, dtype='int32')
-    # cast cannot back-propogate and condition shouldn't back-propogate
-    mask.stop_gradient = True
     merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)
     merged_output = map_structure(merge_func, false_output, true_output)
     return merged_output

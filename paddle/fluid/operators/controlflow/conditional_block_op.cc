@@ -61,18 +61,13 @@ class ConditionalBlockOp : public ConditionalOp {
       auto &cur_scope = *scopes->front();
       framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
-      VLOG(3) << "Huihuang debug block.idx = " << block->ID()
+      VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
       auto &skip_vars =
           Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
       exec.Run(*block->Program(), &cur_scope, block->ID(), false, true,
-               skip_vars, /* keep_kid_scopes */ true);
-      VLOG(3) << "Run scope = " << &scope;
-      auto *parent = cur_scope.parent();
-      while (parent) {
-        VLOG(3) << "scope parent = " << parent;
-        parent = parent->parent();
-      }
+               skip_vars, /* force_disable_gc */ false,
+               /* keep_kid_scopes */ true);
     }
   }
 };
@@ -118,18 +113,11 @@ class ConditionalBlockGradOp : public ConditionalOp {
         inside_grads.emplace_back(framework::GradVarName(in));
       }
 
-      VLOG(3) << "Huihuang debug Grad block.idx = " << block->ID()
+      VLOG(3) << "Conditional Grad block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
-      VLOG(3) << "Run scope = " << &scope;
-      auto *parent = cur_scope.parent();
-      while (parent) {
-        VLOG(3) << "scope parent = " << parent;
-        parent = parent->parent();
-      }
-
       exec.Run(*block->Program(), &cur_scope, block->ID(), false, true,
-               inside_grads, /* force_disable_gc */ true,
-               /* keep_kid_scopes */ true);
+               inside_grads, /* force_disable_gc */ false,
+               /* keep_kid_scopes */ false);
 
       AssignLocalGradientToGradScope(dev_place, cur_scope, scope, inside_grads,
                                      outside_grads);
@@ -145,54 +133,23 @@ class ConditionalBlockGradOp : public ConditionalOp {
     for (size_t i = 0; i < outside_grads.size(); ++i) {
       const std::string &outside_grad_name = outside_grads[i];
       const std::string &inside_grad_name = inside_grads[i];
-      VLOG(4) << "Huihuang gradient scope = " << &cur_scope;
       VLOG(4) << "inside_grad_name = " << inside_grad_name
               << ", outside_grad_name = " << outside_grad_name;
       framework::Variable *inside_var =
           cur_scope.FindLocalVar(inside_grad_name);
       if (inside_var == nullptr) {
-        VLOG(4) << "Warning no inside var";
         continue;
       }
       framework::Variable *outside_var =
           parent_scope.FindLocalVar(outside_grad_name);
       if (outside_var == nullptr) {
-        VLOG(3) << "Warning no outside var";
         continue;
       }
-      const auto &tensor = inside_var->Get<framework::LoDTensor>();
-      VLOG(4) << "in is initialized: " << tensor.IsInitialized();
-      VLOG(3) << "tensor value " << tensor.data<float>()[0];
       platform::DeviceContext *dev_ctx =
           platform::DeviceContextPool::Instance().Get(place);
       framework::VisitVarType(*inside_var,
                               AssignFunctor(outside_var, *dev_ctx));
     }
-    /*
-    for (size_t i = 0; i < p_grad_names_; ++i) {
-      auto out_grad_name = pg_names[i];
-      const auto &in_grad_name = p_grad_names[i];
-      auto *in_var = cur_scope.FindLocalVar(in_grad_name);
-      VLOG(4) << "Huihuang gradient scope = " << &cur_scope;
-      VLOG(4) << "in_grad_name = " << in_grad_name << ", out_grad_name = " <<
-    out_grad_name;
-      if (in_var == nullptr) {
-        continue;
-      }
-      VLOG(4) << "in is initialized: " <<
-    in_var->Get<framework::LoDTensor>().IsInitialized();
-
-      auto new_in_grad_name = cur_scope.Rename(in_grad_name);
-
-      bool cur_scope_same_out_grad_name = cur_scope.FindLocalVar(out_grad_name)
-    == nullptr;
-      VLOG(4) << "cur scope has same name " << cur_scope_same_out_grad_name;
-      auto assign = framework::OpRegistry::CreateOp(
-          "assign", {{"X", {new_in_grad_name}}}, {{"Out", {out_grad_name}}},
-          framework::AttributeMap{});
-      assign->Run(cur_scope, place);
-      cur_scope.Rename(new_in_grad_name, in_grad_name);
-    }*/
   }
 };
 
@@ -200,11 +157,11 @@ class ConditionalBlockGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInputs(ConditionalOp::kCondition));
-    // if (context->HasInputs(ConditionalOp::kInputs) &&
-    // context->HasOutputs(framework::GradVarName(ConditionalOp::kInputs))) {
-    //  context->SetOutputsDim(framework::GradVarName(ConditionalOp::kInputs),
-    //                         context->GetInputsDim(ConditionalOp::kInputs));
-    //}
+    if (context->HasInputs(ConditionalOp::kInputs) &&
+        context->HasOutputs(framework::GradVarName(ConditionalOp::kInputs))) {
+      context->SetOutputsDim(framework::GradVarName(ConditionalOp::kInputs),
+                             context->GetInputsDim(ConditionalOp::kInputs));
+    }
   }
 };
 

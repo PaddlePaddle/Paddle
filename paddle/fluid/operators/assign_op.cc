@@ -63,16 +63,6 @@ class AssignKernel {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
 
-    auto &inputs = ctx.Inputs("X");
-    auto &outputs = ctx.Outputs("Out");
-    VLOG(4) << "Assign input size " << inputs.size();
-    for (auto s : inputs) {
-      VLOG(4) << s;
-    }
-    VLOG(4) << "Assign output size " << outputs.size();
-    for (auto s : outputs) {
-      VLOG(4) << s;
-    }
     framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
   }
 };

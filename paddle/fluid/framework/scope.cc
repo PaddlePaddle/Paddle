@@ -207,15 +207,8 @@ Variable* Scope::FindVarInternal(const std::string& name) const {
 }
 
 Variable* Scope::FindVarLocally(const std::string& name) const {
-  VLOG(4) << "Huihuang debug FindVarLocally " << name << "| name end";
-  for (auto& it : vars_) {
-    VLOG(4) << "Containing vars " << it.first;
-  }
-  VLOG(4) << "Before finding";
   auto it = vars_.find(name);
-  VLOG(4) << "Here, what's wrong?";
   if (it != vars_.end()) {
-    VLOG(4) << "Huihuang debug found it ";
     return it->second.get();
   }
   return nullptr;

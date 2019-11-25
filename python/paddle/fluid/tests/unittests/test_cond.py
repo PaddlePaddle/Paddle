@@ -24,9 +24,8 @@ import paddle.fluid.framework as framework
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
-
 if False:
-   '''
+    '''
 class TestCondInputOutput(unittest.TestCase):
     def test_return_single_var(self):
         """
@@ -220,45 +219,33 @@ class TestCondInputOutput(unittest.TestCase):
             self.assertTrue(
                 "Incompatible return values of true_fn and false_fn in cond" in
                 str(e.exception))
-'''
+   '''
 
 class TestCondNestedControlFlow(unittest.TestCase):
     def test_cond_inside_cond(self):
         """
-       pseudocode:
-       for i in range(1, 10):
-           a = 2 * i
-           if i < 5:
-               if i >= 3:
-                   return a + a 
-               else:
-                   return a - a
-           else:
-               if i < 8:
-                   return a * a
-               else:
-                   return a / a
-       """
-
-        def test_func(i, a):
-            #print("I am here")
-            #print(main_program.current_block().idx)
-            #a = layers.Print(a)
-            return layers.elementwise_mul(a, a)
+        pseudocode:
+        for i in range(1, 10):
+            a = 2 * i
+            if i < 5:
+                if i >= 3:
+                    return a + a 
+                else:
+                    return a - a
+            else:
+                if i < 8:
+                    return a * a
+                else:
+                    return a / a
+        """
 
         def less_than_branch(i, a):
-            #return a
-            #return layers.elementwise_add(a, a)
-            #a = layers.Print(a)
-            #layers.Print(a)
+            a = layers.Print(a)
             return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a),
                                lambda: layers.elementwise_sub(a, a))
 
         def greater_equal_branch(i, a):
-            #return a
-            #return a
-            #return layers.fill_constant(shape=[3, 1], dtype='float32', value=7)
-            layers.Print(a, message="branch")
+            a = layers.Print(a)
             return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a),
                                lambda: layers.elementwise_div(a, a))
 
@@ -266,33 +253,30 @@ class TestCondNestedControlFlow(unittest.TestCase):
         startup_program = Program()
         with program_guard(main_program, startup_program):
             i = fluid.data(name="i", shape=[1], dtype='float32')
-            i.stop_gradient = False
             a = 2.0 * i
-            out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),
-                              lambda: greater_equal_branch(i, a))
-            #out = layers.Print(a)
+            b = layers.Print(a)
+            out = layers.cond(i < 5.0, lambda: less_than_branch(i, b),
+                              lambda: greater_equal_branch(i, b))
             mean = layers.mean(out)
             append_backward(mean)
 
-        #place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        #) else fluid.CPUPlace()
-        #exe = fluid.Executor(place)
-        exe = fluid.Executor(fluid.CPUPlace())
-        print(main_program)
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        print(a.grad_name)
         for feed_i in range(0, 10):
-            expected_a = 2 * feed_i
+            expected_a = 2.0 * feed_i
             if feed_i < 5:
-                expected_a = expected_a + expected_a if feed_i >= 3 else 0
+                expected_ret = expected_a + expected_a if feed_i >= 3 else 0.0
+                expected_a_grad = 2.0 if feed_i >= 3 else 0.0
             else:
-                expected_a = expected_a * expected_a if feed_i < 8 else 1
-            print(feed_i)
+                expected_ret = expected_a * expected_a if feed_i < 8 else 1.0
+                expected_a_grad = 2.0 * expected_a if feed_i < 8 else 0.0
             ret = exe.run(main_program,
                           feed={'i': np.full((1), feed_i, np.float32)},
                           fetch_list=[out.name, a.grad_name])
-            print(ret[0][0])
-            print(ret[1][0])
-            #self.assertEqual(ret[0], float(expected_a))
-            #self.assertEqual(ret[1][0], 0.0)
+            self.assertEqual(ret[0][0], expected_ret)
+            self.assertEqual(ret[1][0], expected_a_grad)
 
 
 class TestCondGradient(unittest.TestCase):
