@@ -42,8 +42,8 @@ IF(NOT WIN32)
         PREFIX              ${CBLAS_SOURCES_DIR}
         INSTALL_DIR         ${CBLAS_INSTALL_DIR}
         BUILD_IN_SOURCE     1
-        BUILD_COMMAND       ${CMAKE_MAKE_PROGRAM} ${COMMON_ARGS} ${OPTIONAL_ARGS}
-        INSTALL_COMMAND     ${CMAKE_MAKE_PROGRAM} install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR> 
+        BUILD_COMMAND       make -j$(nproc) ${COMMON_ARGS} ${OPTIONAL_ARGS}
+        INSTALL_COMMAND     make install NO_SHARED=1 NO_LAPACK=1 PREFIX=<INSTALL_DIR> 
                             && rm -r ${CBLAS_INSTALL_DIR}/lib/cmake ${CBLAS_INSTALL_DIR}/lib/pkgconfig
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
