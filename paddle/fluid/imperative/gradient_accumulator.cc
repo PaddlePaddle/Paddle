@@ -238,10 +238,10 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
   if (!var_->OverridedStopGradient()) {
     VLOG(3) << "Sum Gradient for: " << var_->Name();
     if (cur_cnt_ == 0) {
-      *dst_var = std::move(*(var->MutableVar()));
       if (var->Var().IsType<framework::SelectedRows>()) {
         var_->SetType(framework::proto::VarType::SELECTED_ROWS);
       }
+      *dst_var = std::move(*(var->MutableVar()));
     } else {
       VarBaseAdd(var, var_);
     }

@@ -243,6 +243,7 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     auto& src_selected_rows = var_.Get<framework::SelectedRows>();
     auto new_var = std::make_shared<VarBase>(
         false, "Itmp" + std::to_string(copied_counter_++));
+    new_var->SetType(framework::proto::VarType::SELECTED_ROWS);
     auto* dst_selected_rows =
         new_var->var_.GetMutable<framework::SelectedRows>();
 
