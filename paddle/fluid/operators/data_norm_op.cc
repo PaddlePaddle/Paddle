@@ -134,8 +134,7 @@ class DataNormOpMaker : public framework::OpProtoAndCheckerMaker {
         "(float, default 0.9999999) The decay rate when update the summary")
         .SetDefault(0.9999999);
     AddAttr<std::string>("data_layout", "").SetDefault("NCHW");
-    AddAttr<bool>("sync_with_nccl",
-                  "(bool, default false) only used in multi-GPU")
+    AddAttr<bool>("sync_stats", "(bool, default false) only used in multi-GPU")
         .SetDefault(false);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")

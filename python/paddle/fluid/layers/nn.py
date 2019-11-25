@@ -2705,7 +2705,7 @@ def data_norm(input,
               moving_variance_name=None,
               do_model_average_for_mean_and_var=True,
               slot_dim=-1,
-              sync_with_nccl=False,
+              sync_stats=False,
               summary_decay_rate=0.9999999):
     """
     **Data Normalization Layer**
@@ -2752,8 +2752,8 @@ def data_norm(input,
             is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate 
             the show number and judge if the show number is zero. If so, we choose to skip normalization on this
             embedding.
-        sync_with_nccl(bool, Default False): When running with multiple GPU cards, using nccl allreduce to sync the
-            summary.
+        sync_stats(bool, Default False): When running with multiple GPU cards, using allreduce to sync the
+            summary messages.
         summary_decay_rate(float, Default 0.9999999): The decay rate when updating summary.
 
     Returns:
@@ -2840,7 +2840,7 @@ def data_norm(input,
         attrs={
             "epsilon": epsilon,
             "slot_dim": slot_dim,
-            "sync_with_nccl": sync_with_nccl,
+            "sync_stats": sync_stats,
             "summary_decay_rate": summary_decay_rate
         })
 

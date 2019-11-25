@@ -37,8 +37,8 @@ inline int GET_BLOCKS(const int N) {
 }
 
 template <typename T>
-__global__ void kernel_data_norm_ff(int N, int C, const T *x, T *y,
-                                    const T *mean, const T *scale) {
+__global__ void KernelDataNormFF(int N, int C, const T *x, T *y, const T *mean,
+                                 const T *scale) {
   CUDA_KERNEL_LOOP(i, N * C) {
     int col = i % C;
     y[i] = (x[i] - mean[col]) * scale[col];
@@ -46,9 +46,8 @@ __global__ void kernel_data_norm_ff(int N, int C, const T *x, T *y,
 }
 
 template <typename T>
-__global__ void kernel_mean_scale(int C, const T *batch_size,
-                                  const T *batch_sum, const T *batch_square_sum,
-                                  T *mean, T *scale) {
+__global__ void KernelMeanScale(int C, const T *batch_size, const T *batch_sum,
+                                const T *batch_square_sum, T *mean, T *scale) {
   CUDA_KERNEL_LOOP(i, C) {
     mean[i] = batch_sum[i] / batch_size[i];
     scale[i] = sqrt(batch_size[i] / batch_square_sum[i]);
@@ -56,17 +55,17 @@ __global__ void kernel_mean_scale(int C, const T *batch_size,
 }
 
 template <typename T>
-__global__ void kernel_data_norm_bp(int N, int C, const T *y_grad,
-                                    const T *scale, T *x_grad) {
+__global__ void KernelDataNormBP(int N, int C, const T *y_grad, const T *scale,
+                                 T *x_grad) {
   CUDA_KERNEL_LOOP(i, N * C) { x_grad[i] = y_grad[i] * scale[i % C]; }
 }
 
 template <typename T>
-__global__ void kernel_data_norm_bp_stat(int N, int C, const T *x_val,
-                                         const T *means,
-                                         const float squared_sum_epsilon,
-                                         T *batch_size, T *batch_sum,
-                                         T *batch_square_sum) {
+__global__ void KernelDataNormBPStat(int N, int C, const T *x_val,
+                                     const T *means,
+                                     const float squared_sum_epsilon,
+                                     T *batch_size, T *batch_sum,
+                                     T *batch_square_sum) {
   CUDA_KERNEL_LOOP(i, C) {
     T val_sum = 0;
     T square_sum = 0;
@@ -82,11 +81,11 @@ __global__ void kernel_data_norm_bp_stat(int N, int C, const T *x_val,
 }
 
 template <typename T>
-__global__ void kernel_update_param(int C, const T *d_batch_size,
-                                    const T *d_batch_sum,
-                                    const T *d_batch_square_sum, T *batch_size,
-                                    T *batch_sum, T *batch_square_sum,
-                                    const float decay_rate) {
+__global__ void KernelUpdateParam(int C, const T *d_batch_size,
+                                  const T *d_batch_sum,
+                                  const T *d_batch_square_sum, T *batch_size,
+                                  T *batch_sum, T *batch_square_sum,
+                                  const float decay_rate) {
   CUDA_KERNEL_LOOP(i, C) {
     batch_size[i] = batch_size[i] * decay_rate + d_batch_size[i];
     batch_sum[i] = batch_sum[i] * decay_rate + d_batch_sum[i];
@@ -123,12 +122,11 @@ class DataNormKernel<platform::CUDADeviceContext, T>
     auto stream =
         ctx.template device_context<platform::CUDADeviceContext>().stream();
 
-    kernel_mean_scale<<<GET_BLOCKS(C), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+    KernelMeanScale<<<GET_BLOCKS(C), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         C, batch_size_in, batch_sum_in, batch_square_sum_in, mean_out_data,
         scale_out_data);
-    kernel_data_norm_ff<<<GET_BLOCKS(C * N), PADDLE_CUDA_NUM_THREADS, 0,
-                          stream>>>(N, C, x_data, y_data, mean_out_data,
-                                    scale_out_data);
+    KernelDataNormFF<<<GET_BLOCKS(C * N), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+        N, C, x_data, y_data, mean_out_data, scale_out_data);
   }
 };
 
@@ -143,7 +141,7 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
     const auto *means = ctx.Input<Tensor>("Means");
     const float epsilon = ctx.Attr<float>("epsilon");
     const float dr = ctx.Attr<float>("summary_decay_rate");
-    const int sync_with_nccl = ctx.Attr<bool>("sync_with_nccl");
+    const bool need_sync_stats = ctx.Attr<bool>("sync_stats");
 
     const auto &x_dims = x->dims();
     // Align with CPU version, but should we add this restriction?
@@ -168,41 +166,30 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
     auto stream =
         ctx.template device_context<platform::CUDADeviceContext>().stream();
     if (d_x != nullptr) {
-      kernel_data_norm_bp<<<GET_BLOCKS(C * N), PADDLE_CUDA_NUM_THREADS, 0,
-                            stream>>>(N, C, d_y->data<T>(), scales->data<T>(),
-                                      d_x->mutable_data<T>(ctx.GetPlace()));
+      KernelDataNormBP<<<GET_BLOCKS(C * N), PADDLE_CUDA_NUM_THREADS, 0,
+                         stream>>>(N, C, d_y->data<T>(), scales->data<T>(),
+                                   d_x->mutable_data<T>(ctx.GetPlace()));
     }
 
-    kernel_data_norm_bp_stat<<<GET_BLOCKS(C), PADDLE_CUDA_NUM_THREADS, 0,
-                               stream>>>(N, C, x->data<T>(), means->data<T>(),
-                                         epsilon, d_batch_size, d_batch_sum,
-                                         d_batch_square_sum);
+    KernelDataNormBPStat<<<GET_BLOCKS(C), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+        N, C, x->data<T>(), means->data<T>(), epsilon, d_batch_size,
+        d_batch_sum, d_batch_square_sum);
 
-    if (sync_with_nccl) {
+    if (need_sync_stats) {
       auto comm = platform::NCCLCommContext::Instance().Get(0, ctx.GetPlace());
-      cudaStream_t comm_stream = comm->stream();
-
-      cudaError_t e_sync = cudaStreamSynchronize(stream);
-      if (e_sync != 0) {
-        LOG(FATAL) << "Fail to sync nccl stream: "
-                   << cudaGetErrorString(e_sync);
-      }
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
           reinterpret_cast<const void *>(d_batch_size),
           reinterpret_cast<void *>(d_batch_size), C,
-          platform::ToNCCLDataType(x->type()), ncclSum, comm->comm(),
-          comm_stream));
+          platform::ToNCCLDataType(x->type()), ncclSum, comm->comm(), stream));
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
           reinterpret_cast<const void *>(d_batch_sum),
           reinterpret_cast<void *>(d_batch_sum), C,
-          platform::ToNCCLDataType(x->type()), ncclSum, comm->comm(),
-          comm_stream));
+          platform::ToNCCLDataType(x->type()), ncclSum, comm->comm(), stream));
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
           reinterpret_cast<const void *>(d_batch_square_sum),
           reinterpret_cast<void *>(d_batch_square_sum), C,
-          platform::ToNCCLDataType(x->type()), ncclSum, comm->comm(),
-          comm_stream));
-      e_sync = cudaStreamSynchronize(comm_stream);
+          platform::ToNCCLDataType(x->type()), ncclSum, comm->comm(), stream));
+      cudaError_t e_sync = cudaStreamSynchronize(stream);
       if (e_sync != 0) {
         LOG(FATAL) << "Fail to sync nccl stream: "
                    << cudaGetErrorString(e_sync);
@@ -214,7 +201,7 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
         ctx.Output<Tensor>("BatchSum")->mutable_data<T>(ctx.GetPlace());
     T *batch_square_sum_data =
         ctx.Output<Tensor>("BatchSquareSum")->mutable_data<T>(ctx.GetPlace());
-    kernel_update_param<<<GET_BLOCKS(C), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+    KernelUpdateParam<<<GET_BLOCKS(C), PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
         C, d_batch_size, d_batch_sum, d_batch_square_sum, batch_size_data,
         batch_sum_data, batch_square_sum_data, dr);
   }
