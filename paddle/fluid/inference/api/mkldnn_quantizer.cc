@@ -342,7 +342,7 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChScalingFactor(
         min_val);
 
   auto dims = var_tensor.dims();
-  int num_col_dims = is_transposed ? (dims.size() - 1) : dims.size();
+  constexpr int num_col_dims = 1;
   auto flattened_dims = framework::flatten_to_2d(dims, num_col_dims);
   ConstEigenMatrixArrayMap eigen_tensor_mat{
       var_tensor.data<float>(), flattened_dims[0], flattened_dims[1]};
