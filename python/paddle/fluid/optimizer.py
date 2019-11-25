@@ -966,6 +966,22 @@ class DGCMomentumOptimizer(Optimizer):
             self._clip_norm = local_grad_clip_norm / (num_trainers *
                                                       num_trainers)
 
+        self._get_dgc_regularization_param()
+
+    def _get_dgc_regularization_param(self):
+        self.regular_coeff = 0.0
+        self.regular_type = 0
+
+        if self.regularization is not None:
+            self.regular_coeff = self.regularization._regularization_coeff
+            from .regularizer import L1Decay, L2Decay
+            if isinstance(self.regularization, L1Decay):
+                self.regular_type = 1
+            elif isinstance(self.regularization, L2Decay):
+                self.regular_type = 2
+            else:
+                assert False, 'regularization must be None|L1Decay|L2Deacy'
+
     def _is_use_dgc(self, param_var, grad_var):
         var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
         if var_numel < 16384 or \
@@ -997,7 +1013,11 @@ class DGCMomentumOptimizer(Optimizer):
             type = "momentum"
         else:
             type = "dgc_momentum"
-            inputs.update({"current_step": self._global_step_var})
+            inputs.update({
+                "current_step": self._global_step_var,
+                "nranks": self._nranks_var
+            })
+            outputs.update({'Grad_out': param_and_grad[1]})
             attrs.update({"rampup_begin_step": float(self._rampup_begin_step)})
 
         # create the dgc momentum optimize op
@@ -1160,12 +1180,14 @@ class DGCMomentumOptimizer(Optimizer):
                 encoded_var, gather_var):
         block = framework.default_main_program().global_block()
         op_maker = core.op_proto_and_checker_maker
+
         dgc_op = block.append_op(
             type="dgc",
             inputs={
                 "U": u_var,
                 "V": v_var,
                 "Grad": clip_var,
+                "Param": param_var,
                 "current_step": self._global_step_var,
                 "nranks": self._nranks_var,
             },
@@ -1183,6 +1205,8 @@ class DGCMomentumOptimizer(Optimizer):
                 "use_nesterov": self._use_nesterov,
                 "rampup_begin_step": float(self._rampup_begin_step),
                 "rampup_step": float(self._rampup_step),
+                "regular_coeff": float(self.regular_coeff),
+                "regular_type": int(self.regular_type),
             },
             stop_gradient=True)
 
@@ -1190,6 +1214,37 @@ class DGCMomentumOptimizer(Optimizer):
         dgc_op._set_attr(op_maker.kOpRoleAttrName(), backward)
         dgc_op._set_attr(op_maker.kOpRoleVarAttrName(),
                          [param_var.name, grad_var.name])
+
+    def apply_gradients(self, params_grads):
+        params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
+        params_grads, table_param_and_grad, table_optimize_op = \
+            self._process_distribute_lookuptable(params_grads)
+
+        not_dgc_params_grads = []
+        dgc_params_grads = []
+        for param, grad in params_grads:
+            if not self._is_use_dgc(param, grad):
+                not_dgc_params_grads.append((param, grad))
+            else:
+                dgc_params_grads.append((param, grad))
+
+        # DGC clip and regularization in local
+        not_dgc_params_grads = append_gradient_clip_ops(not_dgc_params_grads)
+
+        # Add regularization if any
+        not_dgc_params_grads = append_regularization_ops(not_dgc_params_grads,
+                                                         self.regularization)
+
+        params_grads = not_dgc_params_grads + dgc_params_grads
+        params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
+        optimize_ops = self._create_optimization_pass(params_grads)
+        if table_optimize_op is not None:
+            optimize_ops.append(table_optimize_op)
+            params_grads.append(table_param_and_grad)
+
+        return optimize_ops
 
 
 class LarsMomentumOptimizer(Optimizer):
