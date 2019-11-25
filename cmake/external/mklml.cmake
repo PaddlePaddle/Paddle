@@ -43,23 +43,29 @@ ENDIF()
 
 SET(MKLML_PROJECT       "extern_mklml")
 MESSAGE(STATUS "MKLML_VER: ${MKLML_VER}, MKLML_URL: ${MKLML_URL}")
-SET(MKLML_SOURCE_DIR    "${THIRD_PARTY_PATH}/mklml")
-SET(MKLML_DOWNLOAD_DIR  "${MKLML_SOURCE_DIR}/src/${MKLML_PROJECT}")
+SET(MKLML_PREFIX_DIR    "${THIRD_PARTY_PATH}/mklml")
+
+cache_third_party(${MKLML_PROJECT}
+    URL           ${MKLML_URL}
+    DIR           ${MKLML_PREFIX_DIR})
 
 ExternalProject_Add(
     ${MKLML_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    PREFIX                 ${MKLML_SOURCE_DIR}
-    URL                    ${MKLML_URL}
-    DOWNLOAD_DIR          ${MKLML_DOWNLOAD_DIR}
+    "${MKLML_DOWNLOAD_CMD}"
+    PREFIX                ${MKLML_PREFIX_DIR}
+    DOWNLOAD_DIR          ${MKLML_SOURCE_DIR}
+    SOURCE_DIR            ${MKLML_SOURCE_DIR}
     DOWNLOAD_NO_PROGRESS  1
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND         ""
-    UPDATE_COMMAND ""
-    INSTALL_COMMAND
-        ${CMAKE_COMMAND} -E copy_directory ${MKLML_DOWNLOAD_DIR}/include ${MKLML_INC_DIR} &&
-        ${CMAKE_COMMAND} -E copy_directory ${MKLML_DOWNLOAD_DIR}/lib ${MKLML_LIB_DIR}
+    UPDATE_COMMAND        ""
+    INSTALL_COMMAND       ""
 )
+
+add_custom_command(TARGET ${MKLML_PROJECT} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${MKLML_SOURCE_DIR}/include ${MKLML_INC_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${MKLML_SOURCE_DIR}/lib ${MKLML_LIB_DIR})
 
 INCLUDE_DIRECTORIES(${MKLML_INC_DIR})
 

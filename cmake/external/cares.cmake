@@ -36,7 +36,7 @@ ExternalProject_Add(
     CONFIGURE_COMMAND ./buildconf && ./configure --disable-shared --prefix=${CARES_INSTALL_DIR}
     BUILD_IN_SOURCE 1
     PATCH_COMMAND ${PATCH_COMMAND_CARES}
-    BUILD_COMMAND   make -j8
+    BUILD_COMMAND   make -j $(nproc)
     INSTALL_COMMAND make install
 )
 
