@@ -473,16 +473,22 @@ REGISTER_OPERATOR(trilinear_interp_grad, ops::InterpolateOpGrad,
                   ops::InterpolateGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(bilinear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
+                       ops::InterpolateKernel<int>,
                        ops::InterpolateKernel<uint8_t>);
 REGISTER_OP_CPU_KERNEL(bilinear_interp_grad, ops::InterpolateGradKernel<float>,
-                       ops::InterpolateGradKernel<double>);
+                       ops::InterpolateGradKernel<double>)
+, ops::InterpolateGradKernel<int>;
 REGISTER_OP_CPU_KERNEL(nearest_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
-                       ops::InterpolateKernel<uint8_t>);
+                       ops::InterpolateKernel<uint8_t>)
+, ops::InterpolateKernel<int>;
 REGISTER_OP_CPU_KERNEL(nearest_interp_grad, ops::InterpolateGradKernel<float>,
-                       ops::InterpolateGradKernel<double>);
+                       ops::InterpolateGradKernel<double>)
+, ops::InterpolateGradKernel<int>;
 REGISTER_OP_CPU_KERNEL(trilinear_interp, ops::InterpolateKernel<float>,
                        ops::InterpolateKernel<double>,
+                       ops::InterpolateKernel<int>,
                        ops::InterpolateKernel<uint8_t>);
 REGISTER_OP_CPU_KERNEL(trilinear_interp_grad, ops::InterpolateGradKernel<float>,
-                       ops::InterpolateGradKernel<double>);
+                       ops::InterpolateGradKernel<double>)
+, ops::InterpolateGradKernel<int>;
