@@ -29,6 +29,7 @@
 DECLARE_double(eager_delete_tensor_gb);
 DECLARE_bool(use_mkldnn);
 DECLARE_bool(use_ngraph);
+DECLARE_bool(use_system_allocator);
 
 namespace paddle {
 namespace pybind {
@@ -162,6 +163,7 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_GLOBAL_VAR_GETTER_ONLY(FLAGS_use_mkldnn);
   REGISTER_GLOBAL_VAR_GETTER_ONLY(FLAGS_use_ngraph);
   REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_eager_delete_tensor_gb);
+  REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_use_system_allocator);
 }
 
 }  // namespace pybind
