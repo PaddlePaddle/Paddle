@@ -18,7 +18,9 @@ import time
 import logging
 import numpy as np
 
-logging.basicConfig()
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
+local_logger = logging.getLogger("trainer_factory")
+local_logger.setLevel(logging.INFO)
 
 from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer
 from .device_worker import Hogwild, DownpourSGD, Section
@@ -109,7 +111,8 @@ class FetchHandlerMonitor(object):
             if isinstance(fetch_instance.var_dict[key], Variable):
                 var_name_to_key[fetch_instance.var_dict[key].name] = key
             else:
-                logging.warning("the value of {} is not a Variable".format(key))
+                local_logger.warning("the value of {} is not a Variable".format(
+                    key))
                 var_name_to_key["None.var"] = key
         elapsed_secs = 0
         while True:
@@ -127,8 +130,8 @@ class FetchHandlerMonitor(object):
                     var = scope.find_var(key)
                     fetch_dict[key] = var
                     if var == None:
-                        logging.warning("{} value currently not available".
-                                        format(var_name_to_key[key]))
+                        local_logger.warning("{} value currently not available".
+                                             format(var_name_to_key[key]))
                 res_dict = {}
                 for key in fetch_dict:
                     user_name = var_name_to_key[key]
