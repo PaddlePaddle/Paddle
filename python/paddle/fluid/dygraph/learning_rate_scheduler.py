@@ -618,8 +618,10 @@ class LinearLrWarmup(LearningRateDecay):
                  step=1,
                  dtype='float32'):
         super(LinearLrWarmup, self).__init__(begin, step, dtype)
-        assert( isinstance( learning_rate, float) or isinstance( learning_rate, int) or \
-                isinstance( learning_rate, LearningRateDecay), "learning_rate should be [int, float or LearningRateDecay], current is {}" % type(learning_rate))
+        type_check = isinstance(learning_rate, float) or isinstance(
+            learning_rate, int) or isinstance(learning_rate, LearningRateDecay)
+        assert type_check, "learning_rate should be [int, float or LearningRateDecay], the current type is {}".format(
+            learning_rate)
         self.learning_rate = learning_rate
         self.warmup_steps = warmup_steps
         assert (end_lr > start_lr,
