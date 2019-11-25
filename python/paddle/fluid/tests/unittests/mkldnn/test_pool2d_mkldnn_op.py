@@ -151,13 +151,15 @@ class TestAsymPadValidNHWC(TestAsymPadValid):
     def init_shape(self):
         self.shape = [2, 7, 7, 3]
 
+    def test_check_output(self):
+        pass
+
+    # Grad tests both FWD and BWD ops kernels creation
     # GetExpectedKernelType should throw an exception on lack of support
     # to NHWC inputs in pool mkldnn kernel
-    def test_check_output(self):
-        self.assertRaises(fluid.core_avx.EnforceNotMet, self.check_output)
-
     def test_check_grad(self):
-        pass
+        with self.assertRaises(fluid.core_avx.EnforceNotMet):
+            super(TestAsymPadValidNHWC, self).test_check_grad()
 
 
 if __name__ == '__main__':
