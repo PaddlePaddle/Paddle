@@ -232,14 +232,16 @@ class DygraphExecutionContext : public framework::ExecutionContext {
 
   std::string InputName(const std::string& name) const {
     auto it = var_base_map_in_.find(name);
-    PADDLE_ENFORCE(it != var_base_map_in_.end(), "Can not find [%s] in Input",
-                   name);
+    PADDLE_ENFORCE_NE(it, var_base_map_in_.end(),
+                      platform::errors::PreconditionNotMet(
+                          "Can not find [%s] in Input", name));
     return it->second[0]->Name();
   }
   std::vector<std::string> InputNames(const std::string& name) const {
     auto it = var_base_map_in_.find(name);
-    PADDLE_ENFORCE(it != var_base_map_in_.end(), "Can not find [%s] in Input",
-                   name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_in_.end(),
+        platform::errors::NotFound("Can not find [%s] in Input", name));
     std::vector<std::string> vec_res;
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
@@ -250,15 +252,17 @@ class DygraphExecutionContext : public framework::ExecutionContext {
 
   std::string OuputName(const std::string& name) const {
     auto it = var_base_map_out_.find(name);
-    PADDLE_ENFORCE(it != var_base_map_out_.end(), "Can not find [%s] in Output",
-                   name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_out_.end(),
+        platform::errors::NotFound("Can not find [%s] in Output", name));
     return it->second[0]->Name();
   }
 
   std::vector<std::string> OutputNames(const std::string& name) const {
     auto it = var_base_map_out_.find(name);
-    PADDLE_ENFORCE(it != var_base_map_out_.end(), "Can not find [%s] in Output",
-                   name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_out_.end(),
+        platform::errors::NotFound("Can not find [%s] in Output", name));
     std::vector<std::string> vec_res;
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
@@ -274,7 +278,9 @@ class DygraphExecutionContext : public framework::ExecutionContext {
   const framework::Attribute& GetAttr(const std::string& name) const {
     auto it = attrs_->find(name);
 
-    PADDLE_ENFORCE(it != attrs_->end(), "can not find [%s] in attrs", name);
+    PADDLE_ENFORCE_NE(
+        it, attrs_->end(),
+        platform::errors::NotFound("can not find [%s] in attrs", name));
 
     return it->second;
   }
@@ -651,8 +657,10 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     }
     const auto& in = it->second;
     if (in.size() == 0) return false;
-    PADDLE_ENFORCE_EQ(in.size(), 1UL,
-                      "Input %s should not have more than one inputs", name);
+    PADDLE_ENFORCE_EQ(
+        in.size(), 1UL,
+        platform::errors::PreconditionNotMet(
+            "Input %s should not have more than one inputs", name));
     return in[0] != nullptr;
   }
 
@@ -666,8 +674,10 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     if (out.size() == 0) {
       return false;
     }
-    PADDLE_ENFORCE_EQ(out.size(), 1UL,
-                      "Output %s should not have more than one outputs", name);
+    PADDLE_ENFORCE_EQ(
+        out.size(), 1UL,
+        platform::errors::PreconditionNotMet(
+            "Output %s should not have more than one outputs", name));
     return out[0] != nullptr;
   }
 
@@ -705,8 +715,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     // return op_.Inputs(name);
     std::vector<std::string> vec_res;
     auto it = var_base_map_in_->find(name);
-    PADDLE_ENFORCE(it != var_base_map_in_->end(), "can not find [%s] in input",
-                   name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_in_->end(),
+        platform::errors::NotFound("can not find [%s] in input", name));
 
     vec_res.reserve(it->second.size());
     for (auto& var : it->second) {
@@ -719,8 +730,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   std::vector<std::string> Outputs(const std::string& name) const override {
     std::vector<std::string> vec_res;
     auto it = var_base_map_out_->find(name);
-    PADDLE_ENFORCE(it != var_base_map_out_->end(),
-                   "can not find [%s] in output", name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_out_->end(),
+        platform::errors::NotFound("can not find [%s] in output", name));
 
     vec_res.reserve(it->second.size());
     for (auto& var : it->second) {
@@ -734,17 +746,25 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
                 size_t j = 0) override {
     auto in_it = var_base_map_in_->find(in);
     auto out_it = var_base_map_out_->find(out);
-    PADDLE_ENFORCE(in_it != var_base_map_in_->end() && in_it->second.size() > i,
-                   "Inputs %s should have %llu argument", in, i);
-    PADDLE_ENFORCE(
-        out_it != var_base_map_out_->end() && out_it->second.size() > j,
-        "Outputs %s should have %llu argument", out, j);
+    PADDLE_ENFORCE_NE(
+        in_it, var_base_map_in_->end(),
+        platform::errors::NotFound("can not found [%s] in input", in));
+    PADDLE_ENFORCE_GT(in_it->second.size(), i,
+                      platform::errors::PreconditionNotMet(
+                          "Inputs %s should have %llu argument", in, i));
+    PADDLE_ENFORCE_NE(
+        out_it, var_base_map_out_->end(),
+        platform::errors::NotFound("can not found [%s] in input", in));
+    PADDLE_ENFORCE_GT(out_it->second.size(), j,
+                      platform::errors::PreconditionNotMet(
+                          "Outputs %s should have %llu argument", out, j));
 
     framework::Variable* in_var = in_it->second[i]->MutableVar();
     framework::Variable* out_var = out_it->second[j]->MutableVar();
 
-    PADDLE_ENFORCE(in_var->Type() == out_var->Type(),
-                   "The type of %s and %s is not the same.", in, out);
+    PADDLE_ENFORCE_EQ(in_var->Type(), out_var->Type(),
+                      platform::errors::PreconditionNotMet(
+                          "The type of %s and %s is not the same.", in, out));
 
     auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
     auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
@@ -765,21 +785,26 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   // TODO(paddle-dev): Can this be template?
   std::vector<framework::InferShapeVarPtr> GetInputVarPtrs(
       const std::string& name) override {
-    PADDLE_THROW("GetInputVarPtrs not support in dygraph runtime context");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "GetInputVarPtrs not support in dygraph runtime context"));
   }
 
   std::vector<framework::InferShapeVarPtr> GetOutputVarPtrs(
       const std::string& name) override {
-    PADDLE_THROW("GetOutputVarPtrs not support in dygraph runtime context");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "GetOutputVarPtrs not support in dygraph runtime context"));
   }
 
   DDim GetInputDim(const std::string& name) const override {
     auto it = var_base_map_in_->find(name);
-    PADDLE_ENFORCE(it != var_base_map_in_->end(), "can not find [%s] in input",
-                   name);
-    PADDLE_ENFORCE_EQ(it->second.size(), 1UL,
-                      "Input(%s) should hold one element, but now it holds %d",
-                      name, it->second.size());
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_in_->end(),
+        platform::errors::NotFound("can not find [%s] in input", name));
+    PADDLE_ENFORCE_EQ(
+        it->second.size(), 1UL,
+        platform::errors::PreconditionNotMet(
+            "Input(%s) should hold one element, but now it holds %d", name,
+            it->second.size()));
     return this->GetDim(it->second[0]->MutableVar());
   }
 
@@ -787,8 +812,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     // const std::vector<Variable*>& vars = InputVars(name);
     std::vector<DDim> vec_res;
     auto it = var_base_map_in_->find(name);
-    PADDLE_ENFORCE(it != var_base_map_in_->end(), "can not find [%s] in output",
-                   name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_in_->end(),
+        platform::errors::NotFound("can not find [%s] in output", name));
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
       vec_res.emplace_back(GetDim(it->second[i]->MutableVar()));
@@ -801,8 +827,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       const std::string& name) const override {
     std::vector<framework::proto::VarType::Type> vec_res;
     auto it = var_base_map_in_->find(name);
-    PADDLE_ENFORCE(it != var_base_map_in_->end(), "can not find [%s] in input",
-                   name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_in_->end(),
+        platform::errors::NotFound("can not find [%s] in input", name));
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
       vec_res.emplace_back(
@@ -815,8 +842,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
       const std::string& name) const override {
     std::vector<framework::proto::VarType::Type> vec_res;
     auto it = var_base_map_out_->find(name);
-    PADDLE_ENFORCE(it != var_base_map_out_->end(),
-                   "can not find [%s] in output", name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_out_->end(),
+        platform::errors::NotFound("can not find [%s] in output", name));
     vec_res.reserve(it->second.size());
     for (size_t i = 0; i < it->second.size(); ++i) {
       vec_res.emplace_back(
@@ -827,8 +855,9 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   void SetOutputDim(const std::string& name, const DDim& dim) override {
     auto it = var_base_map_out_->find(name);
-    PADDLE_ENFORCE(it != var_base_map_out_->end(),
-                   "can not find [%s] in output", name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_out_->end(),
+        platform::errors::NotFound("can not find [%s] in output", name));
 
     SetDim(it->second[0]->MutableVar(), dim);
   }
@@ -839,12 +868,14 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     // SetDims(vars, dims);
 
     auto it = var_base_map_out_->find(name);
-    PADDLE_ENFORCE(it != var_base_map_out_->end(),
-                   "can not find [%s] in output", name);
+    PADDLE_ENFORCE_NE(
+        it, var_base_map_out_->end(),
+        platform::errors::NotFound("can not find [%s] in output", name));
 
     PADDLE_ENFORCE_EQ(it->second.size(), dims.size(),
-                      "dim size [%d] is not match output var number [%d]",
-                      dims.size(), it->second.size());
+                      platform::errors::PreconditionNotMet(
+                          "dim size [%d] is not match output var number [%d]",
+                          dims.size(), it->second.size()));
 
     for (size_t i = 0; i < dims.size(); ++i) {
       SetDim(it->second[i]->MutableVar(), dims[i]);
@@ -852,12 +883,14 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
   }
 
   int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override {
-    PADDLE_THROW("GetLoDLevel function not support in dygraph mode");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "GetLoDLevel function not support in dygraph mode"));
   }
 
   void SetLoDLevel(const std::string& out, int32_t lod_level,
                    size_t j = 0) const override {
-    PADDLE_THROW("SetLoDLevel function not support in dygraph mode");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "SetLoDLevel function not support in dygraph mode"));
   }
 
  protected:
@@ -868,14 +901,15 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     } else if (var->IsType<framework::SelectedRows>()) {
       return var->Get<framework::SelectedRows>().GetCompleteDims();
     } else {
-      PADDLE_THROW(
+      PADDLE_THROW(platform::errors::PermissionDenied(
           "Only LoDTensor/SelectedRows support 'GetDim', but Variables "
-          "type_id is xx.");
+          "type_id is xx."));
     }
   }
 
   std::vector<DDim> GetRepeatedDims(const std::string& name) const override {
-    PADDLE_THROW("Only compile time support this method");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "GetRepeatedDims not support in dygraph runtime"));
   }
 
   void SetDim(framework::Variable* var, const DDim& dim) {
@@ -884,14 +918,19 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     } else if (var->IsType<framework::SelectedRows>()) {
       var->GetMutable<framework::SelectedRows>()->set_height(dim[0]);
     } else {
-      PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.");
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Variable type_id %s, expect LoDTensor/SelectedRows."));
     }
   }
 
   void SetDims(const std::vector<framework::Variable*>& vars,
                const std::vector<DDim>& dims) {
     size_t length = vars.size();
-    PADDLE_ENFORCE_EQ(length, dims.size());
+    PADDLE_ENFORCE_EQ(
+        length, dims.size(),
+        platform::errors::PreconditionNotMet(
+            "Vars number [%d] should be equal with dims number [%d]", length,
+            dims.size()));
     for (size_t i = 0; i < length; ++i) {
       if (vars[i] == nullptr) {
         continue;
@@ -902,7 +941,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
   void SetRepeatedDims(const std::string& name,
                        const std::vector<DDim>& dims) override {
-    PADDLE_THROW("Only compile time support this method");
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "SetRepeatedDims not support in dygraph runtime"));
   }
 
  private:

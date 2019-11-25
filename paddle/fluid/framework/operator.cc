@@ -626,17 +626,20 @@ class RuntimeInferShapeContext : public InferShapeContext {
     auto in_it = ctx_.inputs.find(in);
     auto out_it = ctx_.outputs.find(out);
     PADDLE_ENFORCE(in_it != ctx_.inputs.end(),
-                   "Input [%s] found error in Op [%s]", in, op_.Type());
+                   platform::errors::NotFound(
+                       "Input [%s] found error in Op [%s]", in, op_.Type()));
     PADDLE_ENFORCE(out_it != ctx_.outputs.end(),
-                   "Output [%s] found error in Op [%s]", out, op_.Type());
+                   platform::errors::NotFound(
+                       "Output [%s] found error in Op [%s]", out, op_.Type()));
 
     auto& in_var_list = in_it->second;
     auto& out_var_list = out_it->second;
 
-    PADDLE_ENFORCE(
+    PADDLE_ENFORCE_EQ(
         in_var_list.size(), out_var_list.size(),
-        "Op [%s]: Input var size should be equal with ouput var size",
-        op_.Type());
+        platform::errors::PreconditionNotMet(
+            "Op [%s]: Input var size should be equal with ouput var size",
+            op_.Type()));
 
     auto& out_var_names = op_.Outputs(out);
 
@@ -649,8 +652,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
       if (!in_var->IsType<LoDTensor>()) return;
       Variable* out_var = out_var_list[i];
       PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
-                     "The %d-th output of Output(%s) must be LoDTensor.", i,
-                     out_var_names[i]);
+                     platform::errors::PreconditionNotMet(
+                         "The %d-th output of Output(%s) must be LoDTensor.", i,
+                         out_var_names[i]));
       auto& in_tensor = in_var->Get<LoDTensor>();
       auto* out_tensor = out_var->GetMutable<LoDTensor>();
       out_tensor->set_lod(in_tensor.lod());

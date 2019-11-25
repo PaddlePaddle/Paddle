@@ -79,8 +79,9 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
     PADDLE_ENFORCE_EQ(
         in_var_names.size(), out_var_names.size(),
-        "Op [%s]:  Input var number shoule be equal with output var number",
-        op_.Type());
+        platform::errors::PreconditionNotMet(
+            "Op [%s]:  Input var number shoule be equal with output var number",
+            op_.Type()));
 
     for (size_t i = 0; i < in_var_names.size(); ++i) {
       if (out_var_names[i] == framework::kEmptyVarName) {
