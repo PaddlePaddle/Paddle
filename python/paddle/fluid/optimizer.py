@@ -529,11 +529,11 @@ class Optimizer(object):
                 if not param.trainable:
                     continue
                 if param._ivar._grad_ivar() is not None:
-                    Type = param._ivar._grad_ivar().type
+                    ivar_type = param._ivar._grad_ivar().type
                     # create gradient variable
                     grad_var = Variable(
                         block=loss.block,
-                        type=Type,
+                        type=ivar_type,
                         name=param._ivar._grad_name(),
                         stop_gradient=True,
                         ivar=param._ivar._grad_ivar())

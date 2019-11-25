@@ -22,12 +22,12 @@ import numpy as np
 
 
 class SimpleNet(fluid.Layer):
-    def __init__(self, name_scope, vocab_size, hidden_size):
+    def __init__(self, name_scope, vocab_size, hidden_size, dtype):
         super(SimpleNet, self).__init__(name_scope)
         self.emb = fluid.dygraph.Embedding(
             self.full_name(),
             size=[vocab_size, hidden_size],
-            dtype='float32',
+            dtype=dtype,
             param_attr='emb.w',
             is_sparse=True)
 
@@ -38,42 +38,43 @@ class SimpleNet(fluid.Layer):
 
 class TestSimpleNet(unittest.TestCase):
     def test_selectedrows_gradient(self):
-        with fluid.dygraph.guard():
-            backward_strategy = fluid.dygraph.BackwardStrategy()
-            backward_strategy.sort_sum_gradient = True
-            adam = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
-            grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(5.0)
+        for dtype in ["float32"]:
+            with fluid.dygraph.guard():
+                backward_strategy = fluid.dygraph.BackwardStrategy()
+                backward_strategy.sort_sum_gradient = True
+                adam = fluid.optimizer.AdamOptimizer(learning_rate=0.001)
+                grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(5.0)
 
-            input_word = np.array([[[1], [2]], [[2], [1]]]).astype('int64')
-            input = to_variable(input_word)
+                input_word = np.array([[[1], [2]], [[2], [1]]]).astype('int64')
+                input = to_variable(input_word)
 
-            simplenet = SimpleNet("SimpleNet", 20, 32)
-            input_emb, emb = simplenet(input)
+                simplenet = SimpleNet("SimpleNet", 20, 32, dtype)
+                input_emb, emb = simplenet(input)
 
-            try:
+                try:
+                    emb._w.gradient()
+                except ValueError as e:
+                    pass
+                try:
+                    input_emb.gradient()
+                except ValueError as e:
+                    pass
+
+                input_emb.backward()
+                adam.minimize(input_emb, grad_clip=grad_clip)
                 emb._w.gradient()
-            except ValueError as e:
-                pass
-            try:
-                input_emb.gradient()
-            except ValueError as e:
-                pass
 
-            input_emb.backward()
-            adam.minimize(input_emb, grad_clip=grad_clip)
-            emb._w.gradient()
+                emb.clear_gradients()
+                try:
+                    emb._w.gradient()
+                except ValueError as e:
+                    pass
 
-            emb.clear_gradients()
-            try:
-                emb._w.gradient()
-            except ValueError as e:
-                pass
-
-            input_emb.clear_gradient()
-            try:
-                input_emb.gradient()
-            except ValueError as e:
-                pass
+                input_emb.clear_gradient()
+                try:
+                    input_emb.gradient()
+                except ValueError as e:
+                    pass
 
 
 if __name__ == '__main__':

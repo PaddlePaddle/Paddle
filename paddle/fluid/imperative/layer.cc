@@ -240,22 +240,23 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
 
     return new_var;
   } else {
-    auto& src_tensor = var_.Get<framework::SelectedRows>();
+    auto& src_selected_rows = var_.Get<framework::SelectedRows>();
     auto new_var = std::make_shared<VarBase>(
         false, "Itmp" + std::to_string(copied_counter_++));
-    auto* dst_tensor = new_var->var_.GetMutable<framework::SelectedRows>();
+    auto* dst_selected_rows =
+        new_var->var_.GetMutable<framework::SelectedRows>();
 
-    framework::TensorCopy(src_tensor.value(), dst_place,
-                          dst_tensor->mutable_value());
+    framework::TensorCopy(src_selected_rows.value(), dst_place,
+                          dst_selected_rows->mutable_value());
     if (blocking) {
       platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
-      auto src_place = src_tensor.place();
+      auto src_place = src_selected_rows.place();
       if (!(src_place == dst_place)) {
         platform::DeviceContextPool::Instance().Get(src_place)->Wait();
       }
     }
     if (platform::is_gpu_place(dst_place)) {
-      VLOG(3) << "copy tensor " << Name() << " from gpu";
+      VLOG(3) << "copy selected rows " << Name() << " from gpu";
     }
     return new_var;
   }

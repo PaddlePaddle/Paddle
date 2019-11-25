@@ -35,7 +35,8 @@ class SimpleNet(fluid.Layer):
                  vocab_size,
                  num_steps=20,
                  init_scale=0.1,
-                 is_sparse=False):
+                 is_sparse=False,
+                 dtype='float32'):
         super(SimpleNet, self).__init__(name_scope)
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
@@ -44,7 +45,7 @@ class SimpleNet(fluid.Layer):
         self.embedding = Embedding(
             self.full_name(),
             size=[vocab_size, hidden_size],
-            dtype='float32',
+            dtype=dtype,
             is_sparse=is_sparse,
             param_attr=fluid.ParamAttr(
                 name='embedding_para',
@@ -53,13 +54,13 @@ class SimpleNet(fluid.Layer):
         self.softmax_weight = self.create_parameter(
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size, self.hidden_size],
-            dtype="float32",
+            dtype=dtype,
             default_initializer=fluid.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale))
         self.softmax_bias = self.create_parameter(
             attr=fluid.ParamAttr(),
             shape=[self.hidden_size],
-            dtype="float32",
+            dtype=dtype,
             default_initializer=fluid.initializer.UniformInitializer(
                 low=-self.init_scale, high=self.init_scale))
 
@@ -85,9 +86,10 @@ class SimpleNet(fluid.Layer):
 class TestDygraphSimpleNet(unittest.TestCase):
     def test_simple_net(self):
         for is_sparse in [True, False]:
-            self.simple_net_float(is_sparse)
+            for dtype in ["float32", "float64"]:
+                self.simple_net_float(is_sparse, dtype)
 
-    def simple_net_float(self, is_sparse):
+    def simple_net_float(self, is_sparse, dtype):
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -113,7 +115,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         vocab_size=vocab_size,
                         num_steps=num_steps,
                         init_scale=init_scale,
-                        is_sparse=is_sparse)
+                        is_sparse=is_sparse,
+                        dtype=dtype)
 
                     sgd = SGDOptimizer(learning_rate=1e-3)
                     dy_param_updated = dict()
@@ -155,14 +158,14 @@ class TestDygraphSimpleNet(unittest.TestCase):
                         hidden_size=hidden_size,
                         vocab_size=vocab_size,
                         num_steps=num_steps,
-                        is_sparse=is_sparse)
+                        is_sparse=is_sparse,
+                        dtype=dtype)
 
                     exe = fluid.Executor(place)
                     sgd = SGDOptimizer(learning_rate=1e-3)
                     x = fluid.layers.data(
                         name="x", shape=[-1, num_steps, 1], dtype='int64')
-                    y = fluid.layers.data(
-                        name="y", shape=[-1, 1], dtype='float32')
+                    y = fluid.layers.data(name="y", shape=[-1, 1], dtype=dtype)
 
                     static_loss = simple_net(x, y)
                     sgd.minimize(static_loss)
