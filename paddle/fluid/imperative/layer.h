@@ -182,6 +182,7 @@ class VarBase {
   framework::Variable var_;
   std::string name_;
   std::shared_ptr<VarBase> grad_var_;
+
   mutable size_t copied_counter_ = 0;
 
   // grad_op indicates which grad_op will this var be used as input
@@ -252,12 +253,14 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   }
 
   bool HasInput(const std::string& name) const override {
-    return inputs_.count(name) > 0;
+    auto it = inputs_.find(name);
+    return (it != inputs_.end() && it->second.size() > 0);
   }
 
   bool HasOutput(const std::string& name) const override {
     PADDLE_ENFORCE_NOT_NULL(outputs_);
-    return outputs_->count(name) > 0;
+    auto it = outputs_->find(name);
+    return (it != outputs_->end() && it->second.size() > 0);
   }
 
   const std::vector<std::string>& Input(
@@ -271,6 +274,7 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   const std::vector<std::string>& Output(
       const std::string& name) const override {
     auto iter = output_names_.find(name);
+
     PADDLE_ENFORCE_EQ(iter != output_names_.end(), true,
                       "Cannot find output %s", name);
     return iter->second;
@@ -279,6 +283,7 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   framework::proto::VarType::Type GetType(
       const std::string& name) const override {
     auto iter = var_set_.find(name);
+
     PADDLE_ENFORCE_EQ(iter != var_set_.end(), true,
                       "Cannot find var %s in GetType", name);
     return iter->second->Type();
@@ -296,6 +301,7 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   framework::proto::VarType::Type GetDataType(
       const std::string& name) const override {
     auto iter = var_set_.find(name);
+
     PADDLE_ENFORCE_EQ(iter != var_set_.end(), true,
                       "Cannot find var %s in GetDataType", name);
     return iter->second->DataType();
@@ -380,6 +386,10 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
     return grad_pending_ops_;
   }
 
+  void SetGradPendingOps(std::vector<OpBase*> vec_temp) {
+    grad_pending_ops_.swap(vec_temp);
+  }
+
   void InsertGradPendingOps(OpBase* op) { grad_pending_ops_.emplace_back(op); }
 
   void SortGradPendingOps() {
@@ -406,12 +416,56 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
 
  private:
   OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
-         const NameVarBaseMap& outs, framework::AttributeMap attrs,
+         const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
          const platform::Place& place);
 
   OpBase(size_t id, const framework::OpDesc& op_desc,
          const platform::Place& place);
 
+ public:
+  OpBase() {}
+
+  void SetType(const std::string& type) { type_ = type; }
+  void SetInput(const std::string& name,
+                std::vector<std::shared_ptr<VarBase>> vec_var_base) {
+    ins_[name] = std::move(vec_var_base);
+  }
+  void SetOutput(const std::string& name,
+                 std::vector<std::shared_ptr<VarBase>> vec_var_base) {
+    outs_[name] = std::move(vec_var_base);
+  }
+  void SetAttrMap(const framework::AttributeMap& attrs) { attrs_ = attrs; }
+  void SetAttr(const std::string& name, const framework::Attribute& v) {
+    attrs_[name] = v;
+  }
+  void SetBlockAttr(const std::string& name, framework::BlockDesc* block) {
+    PADDLE_THROW("SetBlockAttr is not support in dygraph OpBase");
+  }
+
+  const framework::AttributeMap& Attrs() { return attrs_; }
+
+  void CreateOperatorBase();
+
+  void SetId(size_t id) { id_ = id; }
+  void SetPlace(platform::Place place) { place_ = place; }
+
+  bool HasAttr(const std::string& name) const {
+    return attrs_.find(name) != attrs_.end();
+  }
+
+  const framework::Attribute& GetAttr(const std::string& name) const {
+    auto it = attrs_.find(name);
+    PADDLE_ENFORCE(it != attrs_.end(), "can not find attribute [%s]", name);
+
+    return it->second;
+  }
+
+  template <typename T>
+  inline const T& Attr(const std::string& name) const {
+    return boost::get<T>(GetAttr(name));
+  }
+
+ private:
   size_t id_;
 
   std::unique_ptr<framework::OperatorBase> op_;
@@ -421,11 +475,14 @@ class OpBase : public std::enable_shared_from_this<OpBase> {
 
   // Not need to be std::weak_ptr, because op is binded to a certain Tracer,
   // and would not be used by a Tracer that does not create itself.
+
   std::vector<OpBase*> grad_pending_ops_;
 
   // This part is only used for backward
   NameVarBaseMap ins_;
   NameVarBaseMap outs_;
+  std::string type_;
+  framework::AttributeMap attrs_;
 };
 
 }  // namespace imperative

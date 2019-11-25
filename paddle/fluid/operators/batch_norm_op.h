@@ -64,18 +64,6 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override;
 };
 
-class BatchNormGradMaker : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-
- protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override;
-
-  virtual std::string GradOpType() const {
-    return this->ForwardOpType() + "_grad";
-  }
-};
-
 class BatchNormOpInferVarType
     : public framework::PassInDtypeAndVarTypeToOutput {
  protected:

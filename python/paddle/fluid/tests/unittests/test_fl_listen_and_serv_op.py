@@ -57,7 +57,7 @@ def run_trainer(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     exe.run(trainer_startup_program)
     for i in range(5):
         exe.run(recv_program)
-        exe.run(main_program,
+        exe.run(fluid.default_main_program(),
                 feed={
                     "x": numpy.array([1, 2]).astype('float32').reshape(2, 1),
                     "y": numpy.array([2, 3]).astype('float32').reshape(2, 1)

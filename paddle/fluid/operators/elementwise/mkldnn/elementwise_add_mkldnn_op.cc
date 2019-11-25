@@ -43,7 +43,6 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
     auto* z = ctx.Output<Tensor>("Out");
     const T* x_data = x->data<T>();
     const T* y_data = y->data<T>();
-    T* z_data = z->mutable_data<T>(ctx.GetPlace());
 
     int axis = ctx.Attr<int>("axis");
 
@@ -92,6 +91,7 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
         _x.ShareDataWith(*x);
       }
 
+      z->mutable_data<T>(ctx.GetPlace());
       auto sum_func = [](T a, T b) -> T { return a + b; };
 
       TransformFunctor<decltype(sum_func), T,
@@ -108,8 +108,9 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       auto y_dims = trim_trailing_singular_dims(y_dims_untrimed);
       axis = (y_dims.size() == 0) ? x_dims.size() : axis;
 
-      int pre, n, post;
-      get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post);
+      int pre, n, post, is_run_common_broadcast;
+      get_mid_dims(x_dims, y_dims, axis, &pre, &n, &post,
+                   &is_run_common_broadcast);
 
       if (post == 1) {
         functor.RunRowWise(n, pre);
@@ -136,9 +137,8 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       std::vector<memory::primitive_desc> srcs_pd;
       std::vector<float> scales = {1.0f, 1.0f};
 
-      const std::string key = platform::CreateKey(
-          src_x_tz, ctx.op().Output("Out") + std::to_string(x->format()) +
-                        std::to_string(y->format()));
+      const std::string key =
+          platform::CreateKey(src_x_tz, ctx.op().Output("Out"));
 
       platform::SumMKLDNNHandler handler(dev_ctx, mkldnn_engine, key);
 
@@ -156,6 +156,9 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       auto sum_pd = handler.AcquireSumPrimitiveDescriptor(
           {src_x_memory, src_y_memory}, scales, dst_md);
 
+      T* z_data = z->mutable_data<T>(ctx.GetPlace(),
+                                     sum_pd->dst_primitive_desc().get_size());
+
       auto dst_memory = handler.AcquireDstMemoryFromPrimitive(z_data);
 
       std::vector<primitive::at> inputs({*src_x_memory, *src_y_memory});
@@ -167,9 +170,7 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
       stream(stream::kind::eager).submit(pipeline).wait();
 
       z->set_layout(DataLayout::kMKLDNN);
-      z->set_format((MKLDNNMemoryFormat)dst_memory->get_primitive_desc()
-                        .desc()
-                        .data.format);
+      z->set_format(platform::GetMKLDNNFormat(*dst_memory));
     }
   }
 };
@@ -212,6 +213,8 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       }
     } else {
       // Execute default kernel when broadcast is needed
+      x = ctx.Input<Tensor>("X");
+      y = ctx.Input<Tensor>("Y");
       ElemwiseExplicitGradCompute<paddle::platform::CPUDeviceContext, T,
                                   IdentityGrad<T>, IdentityGrad<T>>(
           ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),

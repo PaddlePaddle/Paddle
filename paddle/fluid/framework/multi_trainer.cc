@@ -62,6 +62,10 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   }
 }
 
+Scope* MultiTrainer::GetWorkerScope(int thread_id) {
+  return workers_[thread_id]->GetThreadScope();
+}
+
 void MultiTrainer::Run() {
   VLOG(3) << "Going to run";
   for (int thidx = 0; thidx < thread_num_; ++thidx) {
@@ -73,14 +77,12 @@ void MultiTrainer::Run() {
                                      workers_[thidx].get()));
     }
   }
-}
-
-void MultiTrainer::Finalize() {
   for (auto& th : threads_) {
     th.join();
   }
-  root_scope_->DropKids();
 }
+
+void MultiTrainer::Finalize() { root_scope_->DropKids(); }
 
 }  // end namespace framework
 }  // end namespace paddle

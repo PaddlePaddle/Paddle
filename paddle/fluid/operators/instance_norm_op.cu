@@ -18,7 +18,6 @@ limitations under the License. */
 #include <vector>
 #include "cub/cub.cuh"
 #include "paddle/fluid/framework/data_layout.h"
-#include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/instance_norm_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
@@ -329,7 +328,7 @@ class InstanceNormGradKernel<platform::CUDADeviceContext, T>
           epsilon, saved_mean_data, saved_var_data));
     } else {
       if (d_x) {
-        GradComputeDX<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
+        GradComputeDX<T, block><<<NxC, block, 0, dev_ctx.stream()>>>(
             d_y->data<T>(), scale->data<BatchNormParamType<T>>(),
             saved_mean_data, x->data<T>(), saved_var_data, C, H * W * D,
             d_x->data<T>());

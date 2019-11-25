@@ -16,6 +16,9 @@ from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 
+import os
+flag_name = os.path.splitext(__file__)[0]
+
 
 class TestDistW2V2x2(TestDistBase):
     def _setup_config(self):
@@ -23,7 +26,11 @@ class TestDistW2V2x2(TestDistBase):
         self._enforce_place = "CPU"
 
     def test_dist_train(self):
-        self.check_with_place("dist_word2vec.py", delta=1e-4)
+        self.check_with_place(
+            "dist_word2vec.py",
+            delta=1e-4,
+            check_error_log=True,
+            log_name=flag_name)
 
 
 class TestDistW2V2x2WithMemOpt(TestDistBase):
@@ -33,7 +40,11 @@ class TestDistW2V2x2WithMemOpt(TestDistBase):
         self._enforce_place = "CPU"
 
     def test_dist_train(self):
-        self.check_with_place("dist_word2vec.py", delta=1e-4)
+        self.check_with_place(
+            "dist_word2vec.py",
+            delta=1e-4,
+            check_error_log=True,
+            log_name=flag_name)
 
 
 class TestDistW2V2x2Async(TestDistBase):
@@ -42,7 +53,11 @@ class TestDistW2V2x2Async(TestDistBase):
         self._enforce_place = "CPU"
 
     def test_dist_train(self):
-        self.check_with_place("dist_word2vec.py", delta=100)
+        self.check_with_place(
+            "dist_word2vec.py",
+            delta=100,
+            check_error_log=True,
+            log_name=flag_name)
 
 
 if __name__ == "__main__":

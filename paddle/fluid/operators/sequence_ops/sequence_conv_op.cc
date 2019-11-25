@@ -27,7 +27,7 @@ class SequenceConvOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SequenceConvOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Filter"),
@@ -82,7 +82,7 @@ class SequenceConvGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Gradient of output(Out) should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("X"), "The input(X) should not be null.");
@@ -174,29 +174,31 @@ context_length, context_stride and context_start.
   }
 };
 
-class SequenceConvGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class SequenceConvGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("sequence_conv_grad");
-    op->SetAttrMap(Attrs());
+    op->SetAttrMap(this->Attrs());
 
-    if (boost::get<bool>(Attrs().at("paddingTrainable")) &&
-        ForwardOp().Inputs().count("PaddingData") > 0) {
-      op->SetInput("PaddingData", Input("PaddingData"));
+    if (op->HasAttr("paddingTrainable") &&
+        boost::get<bool>(op->GetAttr("paddingTrainable")) &&
+        this->HasInput("PaddingData")) {
+      op->SetInput("PaddingData", this->Input("PaddingData"));
       op->SetOutput(framework::GradVarName("PaddingData"),
-                    InputGrad("PaddingData"));
+                    this->InputGrad("PaddingData"));
     }
 
-    op->SetInput("X", Input("X"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
 
     return op;
   }
@@ -207,11 +209,13 @@ class SequenceConvGradNoNeedBufferVarsInference
  public:
   using framework::NoNeedBufferVarsInference::NoNeedBufferVarsInference;
 
-  std::unordered_set<std::string> operator()() const override {
-    if (!boost::get<bool>(Attrs().at("paddingTrainable"))) {
-      return {"PaddingData"};
+  const std::unordered_set<std::string> &operator()(
+      const framework::InferNoNeedBufferVarsContext &ctx) const final {
+    static const std::unordered_set<std::string> kPaddingData({"PaddingData"});
+    if (!boost::get<bool>(ctx.GetAttr("paddingTrainable"))) {
+      return kPaddingData;
     } else {
-      return {};
+      return Empty();
     }
   }
 };
@@ -221,7 +225,8 @@ class SequenceConvGradNoNeedBufferVarsInference
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(sequence_conv, ops::SequenceConvOp, ops::SequenceConvOpMaker,
-                  ops::SequenceConvGradOpDescMaker);
+                  ops::SequenceConvGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SequenceConvGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(sequence_conv_grad, ops::SequenceConvGradOp,
                   ops::SequenceConvGradNoNeedBufferVarsInference);

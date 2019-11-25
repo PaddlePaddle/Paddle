@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
+from paddle.fluid import compiler, Program, program_guard
 
 
 # Situation 1: expand_times is a list(without tensor)
@@ -176,6 +177,36 @@ class TestExpandOpBoolean(OpTest):
         self.check_output()
 
 
+# Situation 56: input x is Integer
+class TestExpandOpInt64_t(OpTest):
+    def setUp(self):
+        self.op_type = "expand"
+        self.inputs = {
+            'X': np.random.randint(
+                10, size=(2, 4, 5)).astype("int64")
+        }
+        self.attrs = {'expand_times': [2, 1, 4]}
+        output = np.tile(self.inputs['X'], (2, 1, 4))
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output()
+
+
+class TestExpandError(OpTest):
+    def test_errors(self):
+        with program_guard(Program(), Program()):
+            x1 = fluid.create_lod_tensor(
+                np.array([[-1]]), [[1]], fluid.CPUPlace())
+            expand_times = [2, 2]
+            self.assertRaises(TypeError, fluid.layers.expand, x1, expand_times)
+            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
+            self.assertRaises(TypeError, fluid.layers.expand, x2, expand_times)
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype="bool")
+            x3.stop_gradient = True
+            self.assertRaises(ValueError, fluid.layers.expand, x3, expand_times)
+
+
 # Test python API
 class TestExpandAPI(OpTest):
     def test_api(self):
@@ -190,6 +221,8 @@ class TestExpandAPI(OpTest):
         out_1 = fluid.layers.expand(x, expand_times=[2, 3])
         out_2 = fluid.layers.expand(x, expand_times=[positive_2, 3])
         out_3 = fluid.layers.expand(x, expand_times=expand_times)
+
+        g0 = fluid.backward.calc_gradient(out_2, x)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         res_1, res_2, res_3 = exe.run(fluid.default_main_program(),

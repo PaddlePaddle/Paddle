@@ -46,6 +46,8 @@ DEFINE_string(
 
 DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
 
+DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
+
 namespace paddle {
 namespace platform {
 namespace dynload {
@@ -277,6 +279,16 @@ void* GetMKLMLDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "mklml.dll");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
+#endif
+}
+
+void* GetOpDsoHandle(const std::string& dso_name) {
+#if defined(__APPLE__) || defined(__OSX__)
+  PADDLE_THROW("Do not support Apple.");
+#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+  PADDLE_THROW("Do not support Windows.");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_op_dir, dso_name);
 #endif
 }
 

@@ -24,7 +24,9 @@ from paddle.fluid import compiler, Program, program_guard
 
 def stable_softmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
-    shiftx = x - np.max(x).clip(-64.)
+    # clip to shiftx, otherwise, when calc loss with
+    # log(exp(shiftx)), may get log(0)=INF
+    shiftx = (x - np.max(x)).clip(-64.)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
 
@@ -60,20 +62,30 @@ class TestSoftmaxOp(OpTest):
         pass
 
     def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(
+                place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
         else:
-            self.check_output()
+            self.check_output(check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn or self.dtype == np.float16:
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
-                    place, ["X"], "Out", max_relative_error=0.01)
+                    place, ["X"],
+                    "Out",
+                    max_relative_error=0.01,
+                    check_dygraph=(self.use_mkldnn == False))
         else:
-            self.check_grad(["X"], "Out", max_relative_error=0.01)
+            self.check_grad(
+                ["X"],
+                "Out",
+                max_relative_error=0.01,
+                check_dygraph=(self.use_mkldnn == False))
 
 
 class TestSoftmaxOpError(OpTest):
@@ -83,9 +95,11 @@ class TestSoftmaxOpError(OpTest):
             x1 = fluid.create_lod_tensor(
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.softmax, x1)
-            # The input dtype of softmax_op must be float32 or float64.
+            # The input dtype of softmax_op must be float16, float32 or float64.
             x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
             self.assertRaises(TypeError, fluid.layers.softmax, x2)
+            x3 = fluid.layers.data(name='x3', shape=[4], dtype="float16")
+            fluid.layers.softmax(x3)
 
 
 class TestSoftmaxOp2(TestSoftmaxOp):
