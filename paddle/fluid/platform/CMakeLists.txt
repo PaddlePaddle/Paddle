@@ -25,11 +25,7 @@ cc_library(flags SRCS flags.cc DEPS gflags)
 cc_library(errors SRCS errors.cc DEPS error_codes_proto)
 cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
 
-if(WITH_GPU)
-  nv_library(enforce SRCS enforce.cc DEPS flags errors)
-else()
-  cc_library(enforce SRCS enforce.cc DEPS flags errors)
-endif()
+cc_library(enforce INTERFACE SRCS enforce.cc DEPS flags errors)
 cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece enforce)
 
 set(CPU_INFO_DEPS gflags glog enforce)
