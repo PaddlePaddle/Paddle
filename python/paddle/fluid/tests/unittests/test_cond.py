@@ -270,6 +270,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
             a = 2.0 * i
             out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),
                               lambda: greater_equal_branch(i, a))
+            #out = layers.Print(a)
             mean = layers.mean(out)
             append_backward(mean)
 
@@ -277,7 +278,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
         #) else fluid.CPUPlace()
         #exe = fluid.Executor(place)
         exe = fluid.Executor(fluid.CPUPlace())
-        #print(main_program)
+        print(main_program)
         for feed_i in range(0, 10):
             expected_a = 2 * feed_i
             if feed_i < 5:

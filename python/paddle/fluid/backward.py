@@ -539,6 +539,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
         if len(new_vars) == len(input_set):
             special_op_nodes.add(op_node)
 
+    print("Huihuang debug special_op_nodes = " + str(special_op_nodes))
     not_need_op_descs = []
     # Start traversing all candidate sub-graph headers to check whether
     # they are connected to backward computational graphs, and if they are
@@ -741,6 +742,35 @@ def _append_backward_ops_with_checkpoints_(
     return program_stat, checkpoints_name, vars_should_be_hold, recompute_segments
 
 
+def _get_sub_block_path(sub_block, sub_block_op_desc, no_grad_set):
+    """
+    Get output vars in subblock which will be assigned to parent block.
+    It is used to find the grad path in subblock
+    """
+    assert sub_block_op_desc.has_attr(
+        "sub_block") and sub_block.idx == sub_block_op_desc._block_attr_id(
+            "sub_block")
+    # TODO(huihuangzheng): add support for recurrent op and while op
+    if sub_block_op_desc.type == "conditional_block":
+        sub_outputs = []
+        sub_assign_to_out_ops = []
+        for var in sub_block_op_desc.output_arg_names:
+            for op_desc in sub_block.ops:
+                if op_desc.type == "assign" and var in op_desc.output_arg_names:
+                    sub_assign_to_out_ops.append(op_desc)
+                    sub_outputs.extend([
+                        sub_block.var(name) for name in op_desc.input_arg_names
+                    ])
+        sub_block_op_path = _find_op_path_(sub_block, sub_outputs, [],
+                                           no_grad_set)
+        # TODO better way than finding in list
+        for op_desc in sub_assign_to_out_ops:
+            if op_desc not in sub_block_op_path:
+                sub_block_op_path.append(op_desc)
+        return sub_block_op_path
+    return sub_block.ops
+
+
 def _append_backward_ops_(block,
                           ops,
                           target_block,
@@ -778,7 +808,7 @@ def _append_backward_ops_(block,
     print(
         "Huihuang debug block.idx = %d, target_block.idx = %d, before adding grad op"
         % (block.idx, target_block.idx))
-    print("Block ops = " + str([op.desc.type() for op in block.ops]))
+    print("Block ops = " + str([op.desc.type() for op in ops]))
     # add grad_op_desc by reversed ops
     for op in reversed(ops):
         grad_sub_block_list = []
@@ -790,7 +820,9 @@ def _append_backward_ops_(block,
             # see follwing comments for why set None here.
             pre_input_grad_names_set = copy.copy(input_grad_names_set)
             input_grad_names_set = None
-            _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
+            sub_block_path = _get_sub_block_path(sub_block, op,
+                                                 no_grad_dict[sub_block.idx])
+            _append_backward_ops_(sub_block, sub_block_path, grad_sub_block,
                                   no_grad_dict, grad_to_var, callbacks,
                                   input_grad_names_set)
             input_grad_names_set = pre_input_grad_names_set
