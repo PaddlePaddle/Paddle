@@ -16,24 +16,6 @@ from __future__ import print_function
 
 from ... import core
 from ... import layers
-from ... import framework
-
-
-def append_cast_op(i, o, prog):
-    """
-    Append a cast op in a given Program to cast input `i` to data type `o.dtype`.
-
-    Args:
-        i (Variable): The input Variable.
-        o (Variable): The output Variable.
-        prog (Program): The Program to append cast op.
-    """
-    prog.global_block().append_op(
-        type="cast",
-        inputs={"X": i},
-        outputs={"Out": o},
-        attrs={"in_dtype": i.dtype,
-               "out_dtype": o.dtype})
 
 
 def _rename_arg(op, old_name, new_name):
