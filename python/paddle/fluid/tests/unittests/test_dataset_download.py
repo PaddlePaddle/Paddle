@@ -18,6 +18,12 @@ from paddle.dataset.common import download, DATA_HOME, md5file
 
 
 class TestDataSetDownload(unittest.TestCase):
+    def setUp(self):
+        flower_path = DATA_HOME + "/flowers/imagelabels.mat"
+
+        if os.path.exists(flower_path):
+            os.remove(flower_path)
+
     def test_download_url(self):
         LABEL_URL = 'http://paddlemodels.bj.bcebos.com/flowers/imagelabels.mat'
         LABEL_MD5 = 'e0620be6f572b9609742df49c70aed4d'
