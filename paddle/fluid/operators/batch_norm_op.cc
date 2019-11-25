@@ -621,6 +621,7 @@ std::unique_ptr<T> BatchNormGradMaker<T>::Apply() const {
   op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 
   op->SetInput("Scale", this->Input("Scale"));
+  op->SetInput("Bias", this->Input("Bias"));
   op->SetInput("SavedMean", this->Output("SavedMean"));
   op->SetInput("SavedVariance", this->Output("SavedVariance"));
 

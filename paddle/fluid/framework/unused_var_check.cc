@@ -30,6 +30,7 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "auc",
     "batch_norm",
     "batch_norm_grad",
+    "sync_batch_norm_grad",
     "center_loss_grad",
     "crop",
     "cvm",
@@ -43,7 +44,20 @@ const std::unordered_set<std::string> op_has_unsed_vars_white_list = {
     "gru_grad",
     "hierarchical_sigmoid_grad",
     "nce_grad",
-    "roi_perspective_transform_grad"};
+    "roi_perspective_transform_grad",
+    "sequence_conv_grad",
+    "gru_unit_grad",
+    "affine_grid_grad",
+    "fill_any_like",
+    "precision_recall",
+    "unsqueeze_grad",
+    "kldiv_loss_grad",
+    "cvm_grad",
+    "stack_grad",
+    "warpctc_grad",
+    "sync_batch_norm",
+    "match_matrix_tensor_grad",
+    "ngraph_engine"};
 
 namespace paddle {
 namespace framework {
