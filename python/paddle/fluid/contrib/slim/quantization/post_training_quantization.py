@@ -99,7 +99,7 @@ class PostTrainingQuantization(object):
             params_filename = None
             save_model_path = path/to/save_model_path
             # prepare the sample generator according to the model, and the 
-            # sample generator must return a simple every time. The reference
+            # sample generator must return a sample every time. The reference
             # document: https://www.paddlepaddle.org.cn/documentation/docs/zh
             # /user_guides/howto/prepare_data/use_py_reader.html
             sample_generator = your_sample_generator
