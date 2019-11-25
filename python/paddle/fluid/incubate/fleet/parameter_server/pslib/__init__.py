@@ -238,6 +238,25 @@ class PSLib(Fleet):
         """
         self._fleet_ptr.save_model(dirname)
 
+    def print_table_stat(self, table_id):
+        """
+        print stat info of table_id,
+        format: tableid, feasign size, mf size
+
+        Args:
+            table_id(int): the id of table
+
+        Example:
+            .. code-block:: python
+
+              fleet.print_table_stat(0)
+
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.print_table_stat(table_id)
+        self._role_maker._barrier_worker()
+
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
         save presistable parameters,
