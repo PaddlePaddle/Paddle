@@ -53,6 +53,7 @@ static void ClearNoNeedBufferInputs(OpBase* op) {
           new_var->MutableVar()->GetMutable<framework::LoDTensor>();
       auto& old_tensor = var.Get<framework::LoDTensor>();
       new_tensor->Resize(old_tensor.dims());
+      new_tensor->set_lod(old_tensor.lod());
       each_var.reset(new_var);
     }
   }

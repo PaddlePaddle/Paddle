@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/lod_reset_op.h"
 #include <memory>
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -49,6 +50,14 @@ class LoDResetOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
   }
 };
 

@@ -199,7 +199,8 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>,
                         ops::LookupTableCUDAKernel<double>,
-                        ops::LookupTableCUDAKernel<plat::float16>);
+                        ops::LookupTableCUDAKernel<plat::float16>,
+                        ops::LookupTableCUDAKernel<int8_t>);
 REGISTER_OP_CUDA_KERNEL(lookup_table_grad,
                         ops::LookupTableGradCUDAKernel<float>,
                         ops::LookupTableGradCUDAKernel<double>,

@@ -55,6 +55,7 @@ void BindFleetWrapper(py::module* m) {
       .def("load_model", &framework::FleetWrapper::LoadModel)
       .def("clear_model", &framework::FleetWrapper::ClearModel)
       .def("stop_server", &framework::FleetWrapper::StopServer)
+      .def("finalize_worker", &framework::FleetWrapper::FinalizeWorker)
       .def("gather_servers", &framework::FleetWrapper::GatherServers)
       .def("gather_clients", &framework::FleetWrapper::GatherClients)
       .def("get_clients_info", &framework::FleetWrapper::GetClientsInfo)

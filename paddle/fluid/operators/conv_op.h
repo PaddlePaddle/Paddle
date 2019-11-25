@@ -155,6 +155,36 @@ inline void ResizeToChannelFirst(const framework::ExecutionContext& context,
 }
 
 template <typename DeviceContext, typename T>
+inline void ResizeToChannelLast(const framework::ExecutionContext& context,
+                                const Tensor* input,
+                                Tensor* transformed_input) {
+  int dim = input->dims().size() - 2;
+  if (dim == 3) {
+    // input
+    transformed_input->Resize(input->dims());
+
+    auto in_dims_vec = framework::vectorize(input->dims());
+    in_dims_vec[1] = input->dims()[2];
+    in_dims_vec[2] = input->dims()[3];
+    in_dims_vec[3] = input->dims()[4];
+    in_dims_vec[4] = input->dims()[1];
+    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->mutable_data<T>(context.GetPlace());
+
+  } else if (dim == 2) {
+    // input
+    transformed_input->Resize(input->dims());
+
+    auto in_dims_vec = framework::vectorize(input->dims());
+    in_dims_vec[1] = input->dims()[2];
+    in_dims_vec[2] = input->dims()[3];
+    in_dims_vec[3] = input->dims()[1];
+    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->mutable_data<T>(context.GetPlace());
+  }
+}
+
+template <typename DeviceContext, typename T>
 inline void TransToChannelFirst(const framework::ExecutionContext& context,
                                 const Tensor* input,
                                 Tensor* transformed_input) {
