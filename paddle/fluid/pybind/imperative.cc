@@ -54,6 +54,7 @@ class Layer : public imperative::Layer {
                       Forward, inputs);  // NOLINT
   }
 };
+
 static void InitTensorForVarBase(imperative::VarBase *self, bool persistable,
                                  bool is_default, const py::array &array,
                                  const py::object &obj = py::object()) {
