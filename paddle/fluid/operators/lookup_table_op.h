@@ -107,8 +107,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
         int64_t row_width = table_t.value().dims()[1];
         const auto *table = table_t.value().data<T>();
         auto *output = output_t->mutable_data<T>(context.GetPlace());
-
-        auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+        auto input_data_type = table_t.value().type();
         for (int64_t i = 0; i < ids_numel; ++i) {
           if (padding_idx != kNoPadding && ids[i] == padding_idx) {
             memset(output + i * row_width, 0, row_width * sizeof(T));
@@ -122,8 +121,14 @@ class LookupTableKernel : public framework::OpKernel<T> {
             PADDLE_ENFORCE_GE(
                 id_index, 0, "the input key should be exists. But received %d.",
                 id_index);
-            blas.VCOPY(row_width, table + id_index * row_width,
-                       output + i * row_width);
+            if (input_data_type == framework::proto::VarType::INT8) {
+              memcpy(output + i * row_width, table + id_index * row_width,
+                     row_width * sizeof(T));
+            } else {
+              auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+              blas.VCOPY(row_width, table + id_index * row_width,
+                         output + i * row_width);
+            }
           }
         }
       }

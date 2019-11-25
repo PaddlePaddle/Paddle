@@ -110,13 +110,11 @@ function(find_fluid_modules TARGET_NAME)
   endif()
 endfunction(find_fluid_modules)
 
-
 function(common_link TARGET_NAME)
   if (WITH_PROFILER)
     target_link_libraries(${TARGET_NAME} gperftools::profiler)
   endif()
 endfunction()
-
 
 # find all third_party modules is used for paddle static library
 # for reduce the dependency when building the inference libs.
@@ -238,7 +236,7 @@ function(merge_static_libs TARGET_NAME)
 endfunction(merge_static_libs)
 
 function(cc_library TARGET_NAME)
-  set(options STATIC static SHARED shared)
+  set(options STATIC static SHARED shared INTERFACE interface)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -247,13 +245,16 @@ function(cc_library TARGET_NAME)
       set(${TARGET_NAME}_LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "output library name for target ${TARGET_NAME}")
   endif(WIN32)
   if(cc_library_SRCS)
-    if(cc_library_SHARED OR cc_library_shared) # build *.so
-      add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
-    else()
-      add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
-      find_fluid_modules(${TARGET_NAME})
-    endif()
-
+      if(cc_library_SHARED OR cc_library_shared) # build *.so
+        add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
+      elseif(cc_library_INTERFACE OR cc_library_interface)
+        set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+        file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
+        add_library(${TARGET_NAME} STATIC ${target_SRCS})
+      else()
+        add_library(${TARGET_NAME} STATIC ${cc_library_SRCS})
+        find_fluid_modules(${TARGET_NAME})
+      endif()
     if(cc_library_DEPS)
       # Don't need link libwarpctc.so
       if("${cc_library_DEPS};" MATCHES "warpctc;")
@@ -285,7 +286,6 @@ function(cc_library TARGET_NAME)
         endif(WIN32)
       endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
-      add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
       common_link(${TARGET_NAME})
     endif()
 
@@ -322,6 +322,7 @@ function(sep_library TARGET_NAME)
   set(dummy_offset 1)
   # the dummy target would be consisted of limit size libraries
   set(dummy_limit 50)
+  list(REMOVE_DUPLICATES sep_library_DEPS)
   list(LENGTH sep_library_DEPS sep_all_len)
   foreach(v ${sep_library_DEPS})
     list(APPEND dummy_list ${v})

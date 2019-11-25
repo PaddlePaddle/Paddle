@@ -2703,7 +2703,8 @@ def data_norm(input,
               name=None,
               moving_mean_name=None,
               moving_variance_name=None,
-              do_model_average_for_mean_and_var=True):
+              do_model_average_for_mean_and_var=True,
+              slot_dim=-1):
     """
     **Data Normalization Layer**
 
@@ -2742,6 +2743,13 @@ def data_norm(input,
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
         do_model_average_for_mean_and_var(bool, Default True): Whether parameter mean and variance
             should do model average when model average is enabled.
+        slot_dim(int): The embedding dimension of one slot. Slot is a set of one specific feature. In pslib mode, we 
+            distinguish feature ids by slot and pull their embeddings from parameter server (pslib). The first
+            place of the embedding is the historical show number (occurence time of this feature id with a label 0).
+            If the input of this op is concated by slot-wise embeddings, and the show number is zero when this slot 
+            is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate 
+            the show number and judge if the show number is zero. If so, we choose to skip normalization on this
+            embedding.
 
     Returns:
         Variable: A tensor variable which is the result after applying data normalization on the input.
@@ -2819,7 +2827,8 @@ def data_norm(input,
         outputs={"Y": data_norm_out,
                  "Means": means,
                  "Scales": scales},
-        attrs={"epsilon": epsilon})
+        attrs={"epsilon": epsilon,
+               "slot_dim": slot_dim})
 
     return helper.append_activation(data_norm_out)
 
@@ -5235,16 +5244,16 @@ def one_hot(input, depth, allow_out_of_range=False):
 
     if in_dygraph_mode():
         inputs = {'X': input}
-        attrs = {'depth': depth}
+        attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
     else:
         if not isinstance(depth, Variable):
             # user attribute
             inputs = {'X': input}
-            attrs = {'depth': depth}
+            attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
         else:
             depth.stop_gradient = True
             inputs = {'X': input, 'depth_tensor': depth}
-            attrs = {}
+            attrs = {'allow_out_of_range': allow_out_of_range}
     helper.append_op(
         type="one_hot",
         inputs=inputs,
@@ -7501,7 +7510,7 @@ def scatter_nd_add(ref, index, updates, name=None):
         raise ValueError("ref and updates must have same data type.")
 
     helper = LayerHelper('scatter_nd_add', **locals())
-    dtype = helper.input_dtype()
+    dtype = helper.input_dtype(input_param_name='ref')
     if name is None:
         output = helper.create_variable_for_type_inference(dtype)
     else:

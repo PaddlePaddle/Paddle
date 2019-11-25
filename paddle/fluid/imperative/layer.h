@@ -253,12 +253,14 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   }
 
   bool HasInput(const std::string& name) const override {
-    return inputs_.count(name) > 0;
+    auto it = inputs_.find(name);
+    return (it != inputs_.end() && it->second.size() > 0);
   }
 
   bool HasOutput(const std::string& name) const override {
     PADDLE_ENFORCE_NOT_NULL(outputs_);
-    return outputs_->count(name) > 0;
+    auto it = outputs_->find(name);
+    return (it != outputs_->end() && it->second.size() > 0);
   }
 
   const std::vector<std::string>& Input(
