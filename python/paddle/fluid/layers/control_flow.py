@@ -254,7 +254,7 @@ def Print(input,
                
     '''
     check_type_and_dtype(input, 'input', Variable,
-                         ['float32', 'float64', 'int32_t', 'int64_t', 'bool'],
+                         ['float32', 'float64', 'int32', 'int64', 'bool'],
                          'fluid.layers.Print')
 
     helper = LayerHelper('print' + "_" + input.name, **locals())
