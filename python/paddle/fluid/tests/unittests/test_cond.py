@@ -24,8 +24,8 @@ import paddle.fluid.framework as framework
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
-if False:
-    '''
+
+
 class TestCondInputOutput(unittest.TestCase):
     def test_return_single_var(self):
         """
@@ -219,7 +219,7 @@ class TestCondInputOutput(unittest.TestCase):
             self.assertTrue(
                 "Incompatible return values of true_fn and false_fn in cond" in
                 str(e.exception))
-   '''
+
 
 class TestCondNestedControlFlow(unittest.TestCase):
     def test_cond_inside_cond(self):
@@ -240,12 +240,10 @@ class TestCondNestedControlFlow(unittest.TestCase):
         """
 
         def less_than_branch(i, a):
-            a = layers.Print(a)
             return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a),
                                lambda: layers.elementwise_sub(a, a))
 
         def greater_equal_branch(i, a):
-            a = layers.Print(a)
             return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a),
                                lambda: layers.elementwise_div(a, a))
 
@@ -254,16 +252,12 @@ class TestCondNestedControlFlow(unittest.TestCase):
         with program_guard(main_program, startup_program):
             i = fluid.data(name="i", shape=[1], dtype='float32')
             a = 2.0 * i
-            b = layers.Print(a)
-            out = layers.cond(i < 5.0, lambda: less_than_branch(i, b),
-                              lambda: greater_equal_branch(i, b))
+            out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),
+                              lambda: greater_equal_branch(i, a))
             mean = layers.mean(out)
             append_backward(mean)
 
-        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        print(a.grad_name)
+        exe = fluid.Executor(fluid.CPUPlace())
         for feed_i in range(0, 10):
             expected_a = 2.0 * feed_i
             if feed_i < 5:
