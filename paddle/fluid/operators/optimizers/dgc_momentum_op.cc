@@ -27,13 +27,20 @@ class DGCMomentumOp : public MomentumOp {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("current_step"), true,
                       "current_step should be set.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("nranks"), true,
+                      platform::errors::NotFound(
+                          "Input(nranks) of DGCMomentumOp is not found."));
+
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Grad_out"), true,
+                      platform::errors::NotFound(
+                          "Output(Grad_out) of DGCMomentumOp is not found."));
     return MomentumOp::InferShape(ctx);
   }
 
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    if (var_name == "current_step") {
+    if (var_name == "current_step" || var_name == "nranks") {
       VLOG(10) << "var_name:" << var_name << " need not to transform";
       return expected_kernel_type;
     }
@@ -47,6 +54,10 @@ class DGCMomentumOpMaker : public MomentumOpMaker {
  public:
   void Make() override {
     AddInput("current_step", "(Tensor) Current step.");
+    AddInput("nranks", "(Tensor) The number of trainers.");
+
+    AddOutput("Grad_out", "(Tensor) Output grad gradient");
+
     AddAttr<float>("rampup_begin_step",
                    "(float, -1.0)"
                    "The period when begin DGC.")
