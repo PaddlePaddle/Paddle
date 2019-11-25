@@ -653,7 +653,9 @@ class BatchNormGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("Bias", this->Input("Bias"));
     op->SetInput("SavedMean", this->Output("SavedMean"));
     op->SetInput("SavedVariance", this->Output("SavedVariance"));
-    op->SetInput("ReserveSpace", this->Output("ReserveSpace"));
+    if (this->HasOutput("ReserveSpace")) {
+      op->SetInput("ReserveSpace", this->Output("ReserveSpace"));
+    }
 
     // used when setting use_global_stats True during training
     if (boost::get<bool>(this->GetAttr("use_global_stats"))) {
