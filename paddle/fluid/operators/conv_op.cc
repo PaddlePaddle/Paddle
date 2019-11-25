@@ -114,7 +114,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   if (!channel_last) {
     output_shape.push_back(filter_dims[0]);
   }
-  for (size_t i = 0; i < in_data_dims.size(); ++i) {
+  for (int i = 0; i < in_data_dims.size(); ++i) {
     if ((!ctx->IsRuntime()) &&
         (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
       output_shape.push_back(-1);

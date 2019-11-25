@@ -69,7 +69,7 @@ TEST(test_tracer, test_trace_op) {
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
   const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
-  for (size_t i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
+  for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
   }
 }
@@ -108,7 +108,7 @@ TEST(test_tracer, test_trace_op_with_backward) {
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
   const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
-  for (size_t i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
+  for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
   }
 }
@@ -239,14 +239,14 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   framework::LoDTensor rlt;
   framework::TensorCopySync(vout->Var().Get<framework::LoDTensor>(), place,
                             &rlt);
-  for (size_t i = 0; i < rlt.numel(); i++) {
+  for (int i = 0; i < rlt.numel(); i++) {
     ASSERT_EQ(rlt.data<float>()[i], 4.0);
   }
 
   framework::LoDTensor out_grad;
   framework::TensorCopySync(vout->GradVar().Get<framework::LoDTensor>(), place,
                             &out_grad);
-  for (size_t i = 0; i < out_grad.numel(); ++i) {
+  for (int i = 0; i < out_grad.numel(); ++i) {
     ASSERT_EQ(out_grad.data<float>()[i], 1.0);
   }
 
@@ -254,7 +254,7 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   framework::TensorCopySync(x_in->GradVar().Get<framework::LoDTensor>(), place,
                             &x_grad);
 
-  for (size_t i = 0; i < x_grad.numel(); ++i) {
+  for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 1.0);
   }
 
@@ -262,7 +262,7 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   framework::TensorCopySync(y_in->GradVar().Get<framework::LoDTensor>(), place,
                             &y_grad);
 
-  for (size_t i = 0; i < y_grad.numel(); ++i) {
+  for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 1.0);
   }
 }
