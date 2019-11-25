@@ -895,7 +895,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
 
  protected:
   DDim GetDim(framework::Variable* var) const {
-    PADDLE_ENFORCE_NOT_NULL(var);
+    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::PreconditionNotMet(
+                                     "Input variable should not be null"));
     if (var->IsType<framework::LoDTensor>()) {
       return var->Get<framework::LoDTensor>().dims();
     } else if (var->IsType<framework::SelectedRows>()) {

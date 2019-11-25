@@ -625,12 +625,13 @@ class RuntimeInferShapeContext : public InferShapeContext {
                    const std::string& out) const override {
     auto in_it = ctx_.inputs.find(in);
     auto out_it = ctx_.outputs.find(out);
-    PADDLE_ENFORCE(in_it != ctx_.inputs.end(),
-                   platform::errors::NotFound(
-                       "Input [%s] found error in Op [%s]", in, op_.Type()));
-    PADDLE_ENFORCE(out_it != ctx_.outputs.end(),
-                   platform::errors::NotFound(
-                       "Output [%s] found error in Op [%s]", out, op_.Type()));
+    PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
+                      platform::errors::NotFound(
+                          "Input [%s] found error in Op [%s]", in, op_.Type()));
+    PADDLE_ENFORCE_NE(
+        out_it, ctx_.outputs.end(),
+        platform::errors::NotFound("Output [%s] found error in Op [%s]", out,
+                                   op_.Type()));
 
     auto& in_var_list = in_it->second;
     auto& out_var_list = out_it->second;
@@ -651,10 +652,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
       Variable* in_var = in_var_list[i];
       if (!in_var->IsType<LoDTensor>()) return;
       Variable* out_var = out_var_list[i];
-      PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
-                     platform::errors::PreconditionNotMet(
-                         "The %d-th output of Output(%s) must be LoDTensor.", i,
-                         out_var_names[i]));
+      PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(), true,
+                        platform::errors::PreconditionNotMet(
+                            "The %d-th output of Output(%s) must be LoDTensor.",
+                            i, out_var_names[i]));
       auto& in_tensor = in_var->Get<LoDTensor>();
       auto* out_tensor = out_var->GetMutable<LoDTensor>();
       out_tensor->set_lod(in_tensor.lod());
