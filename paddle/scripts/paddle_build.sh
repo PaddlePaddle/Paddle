@@ -280,7 +280,7 @@ function check_style() {
 
 function build_base() {
     if [ "$SYSTEM" == "Linux" ];then
-      parallel_number=$(expr  `nproc` - 6)
+      parallel_number=$(expr `nproc` - 4)
     else
       parallel_number=8
     fi
