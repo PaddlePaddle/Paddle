@@ -55,7 +55,7 @@ void FuseOptimizerOpPass::ApplyImpl(ir::Graph *graph) const {
   VLOG(6) << "Find " << fuse_op_type << " operators : " << opt_ops_num
           << ", and " << opt_nodes.size() << " for dense gradients.";
 
-  if (opt_nodes.size() == 0) return;
+  if (opt_nodes.size() <= 1) return;
   if (result.Has(details::kFusedOptType)) {
     auto &opt_type = result.Get<details::FusedOptType>(details::kFusedOptType);
     VLOG(6) << "Currently only support fusing one type of optimizer op, "

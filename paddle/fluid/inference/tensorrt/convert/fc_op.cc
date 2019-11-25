@@ -71,6 +71,12 @@ class FcOpConverter : public OpConverter {
     auto* Y_v = scope.FindVar(op_desc.Input(w_name).front());
     PADDLE_ENFORCE_NOT_NULL(Y_v);
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
+    const int x_num_col_dims =
+        op_desc.HasAttr("x_num_col_dims")
+            ? boost::get<int>(op_desc.GetAttr("x_num_col_dims"))
+            : (op_desc.HasAttr("in_num_col_dims")
+                   ? boost::get<int>(op_desc.GetAttr("in_num_col_dims"))
+                   : 1);
     // This may trigger a GPU->CPU copy, because TRT's weight can only be
     // assigned from CPU memory, which can't be avoided.
     float* weight_data = nullptr;
@@ -128,9 +134,65 @@ class FcOpConverter : public OpConverter {
                                 static_cast<void*>(bias_data),
                                 static_cast<size_t>(bias_num)};
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected,
-                                       *const_cast<nvinfer1::ITensor*>(X),
-                                       n_output, tmp_weight.get(), bias.get());
+    auto* reshape_itensor = X;
+    int input_dims = X->getDimensions().nbDims;
+    auto input_d = X->getDimensions.d;
+    int reshape_dim3[3] = {0};
+    int reshape_dim4[4] = {0};
+    PADDLE_ENFORCE_EQ(
+        x_num_col_dims == 1 || x_num_col_dims == 2, true,
+        platform::errors::InvalidArgument(
+            "Wrong x_num_col_dims param of op mul. Paddle-TRT FC converter "
+            "expects x_num_col_dims is either 1 or 2, but got %d",
+            x_num_col_dims));
+    PADDLE_ENFORCE_LE(x_num_col_dims, input_dims,
+                      platform::errors::InvalidArgument(
+                          "Params and input dims mismatch. Paddle-TRT FC "
+                          "converter expects x_num_col_dims <= input dims"));
+
+    if (x_num_col_dims == 1) {
+      if (input_dims == 4) {
+        PADDLE_ENFORCE_EQ(
+            input_d[3], 1,
+            platform::errors::InvalidArgument(
+                "Invalid dimensions. When x_num_col_dims equals to 1 and input "
+                "dims equals to 4, the last dim of input must be 1, but got %d",
+                input_d[3]));
+      }
+      for (int i = 0; i < 3; i++) {
+        if (i < input_dims) {
+          reshape_dim3[i] = input_d[i];
+        } else {
+          reshape_dim3[i] = 1;
+        }
+      }
+      nvinfer1::Dims3 reshape_dim(reshape_dim3[0], reshape_dim3[1],
+                                  reshape_dim3[2]);
+      auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
+      reshape_layer->setReshapeDimensions(reshape_dim);
+      reshape_itensor = reshape_layer->getOutput(0);
+    } else {
+      PADDLE_ENFORCE_NE(input_dims, 1,
+                        platform::errors::InvalidArgument(
+                            "Invalid dimensions. When x_num_col_dims equals to "
+                            "2, input_dims should not be 1"));
+      for (int i = 0; i < 4; i++) {
+        if (i < input_dims) {
+          reshape_dim4[i] = input_d[i];
+        } else {
+          reshape_dim4[i] = 1;
+        }
+      }
+      nvinfer1::Dims4 reshape_dim(reshape_dim4[0], reshape_dim4[1],
+                                  reshape_dim4[2], reshape_dim4[3]);
+      auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *X);
+      reshape_layer->setReshapeDimensions(reshape_dim);
+      reshape_itensor = reshape_layer->getOutput(0);
+    }
+
+    auto* layer =
+        TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *reshape_itensor,
+                             n_output, tmp_weight.get(), bias.get());
 
     engine_->SetWeights(op_desc.Input(w_name).front(), std::move(tmp));
     auto output_name = op_desc.Output("Out").front();

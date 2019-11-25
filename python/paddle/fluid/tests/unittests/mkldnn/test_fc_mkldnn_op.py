@@ -53,7 +53,8 @@ class TestFCMKLDNNOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
         pass

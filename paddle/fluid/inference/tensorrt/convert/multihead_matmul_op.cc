@@ -22,17 +22,64 @@ class MultiheadMatMulOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a fluid multihead_mamul op to a tensorrt network";
+    VLOG(3) << "convert a fluid multihead_mamul op to a corresponding tensorrt "
+               "network structure";
     framework::OpDesc op_desc(op, nullptr);
 
     // Declare inputs
     auto* Q = engine_->GetITensor(op_desc.Input("Q").front());
     auto* K = engine_->GetITensor(op_desc.Input("K").front());
     auto* V = engine_->GetITensor(op_desc.Input("V").front());
-    auto* BiasQ = engine_->GetITensor(op_desc.Input("BiasQ").front());
-    auto* BiasK = engine_->GetITensor(op_desc.Input("BiasK").front());
-    auto* BiasV = engine_->GetITensor(op_desc.Input("BiasV").front());
+    auto* BiasQ = scope.FindVar(op_desc.Input("BiasQ").front());
+    auto* BiasK = scope.FindVar(op_desc.Input("BiasK").front());
+    auto* BiasV = scope.FindVar(op_desc.Input("BiasV").front());
     auto* BiasQK = engine_->GetITensor(op_desc.Input("BiasQK").front());
+
+    PADDLE_ENFORCE_EQ(op_desc.Input("Q").size(), 1,
+                      "size of input Q of multihead_matmul should be 1");
+    PADDLE_ENFORCE_EQ(op_desc.Input("K").size(), 1,
+                      "size of input K of multihead_matmul should be 1");
+    PADDLE_ENFORCE_EQ(op_desc.Input("V").size(), 1,
+                      "size of input V of multihead_matmul should be 1");
+    PADDLE_ENFORCE_EQ(op_desc.Input("BiasQK").size(), 1,
+                      "size of input BiasQK of multihead_matmul should be 1");
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1,
+                      "size of output of multihead_matmul should be 1");
+    PADDLE_ENFORCE_NOT_NULL(
+        BiasQ, "param BiasQ of multihead_matmul should not be null");
+    PADDLE_ENFORCE_NOT_NULL(
+        BiasK, "param BiasK of multihead_matmul should not be null");
+    PADDLE_ENFORCE_NOT_NULL(
+        BiasV, "param BiasV of multihead_matmul should not be null");
+    PADDLE_ENFORCE_EQ(Q->getDimensions().nbDims, 4,
+                      "dims size of input Q of multihead_matmul should be 4");
+    PADDLE_ENFORCE_EQ(K->getDimensions().nbDims, 4,
+                      "dims size of input K of multihead_matmul should be 4");
+    PADDLE_ENFORCE_EQ(V->getDimensions().nbDims, 4,
+                      "dims size of input V of multihead_matmul should be 4");
+    PADDLE_ENFORCE_EQ(
+        BiasQK->getDimensions().nbDims, 3,
+        "dims size of input BiasQK of multihead_matmul should be 3");
+    PADDLE_ENFORCE_EQ(
+        Q->getDimensions().d[2], 1,
+        "the last 2 dims of input Q of multihead_matmul should be 1");
+    PADDLE_ENFORCE_EQ(
+        Q->getDimensions().d[3], 1,
+        "the last 2 dims of input Q of multihead_matmul should be 1");
+    PADDLE_ENFORCE_EQ(
+        K->getDimensions().d[2], 1,
+        "the last 2 dims of input K of multihead_matmul should be 1");
+    PADDLE_ENFORCE_EQ(
+        K->getDimensions().d[3], 1,
+        "the last 2 dims of input K of multihead_matmul should be 1");
+    PADDLE_ENFORCE_EQ(
+        V->getDimensions().d[2], 1,
+        "the last 2 dims of input V of multihead_matmul should be 1");
+    PADDLE_ENFORCE_EQ(
+        V->getDimensions().d[3], 1,
+        "the last 2 dims of input V of multihead_matmul should be 1");
+
+    // Declare attributes
     const bool transpose_q =
         op_desc.HasAttr("transpose_Q")
             ? boost::get<bool>(op_desc.GetAttr("transpose_Q"))
@@ -45,32 +92,86 @@ class MultiheadMatMulOpConverter : public OpConverter {
         op_desc.HasAttr("transpose_V")
             ? boost::get<bool>(op_desc.GetAttr("transpose_V"))
             : false;
-    // Declare attributes
-    const float alpha = boost::get<float>(op_desc.GetAttr("alpha"));
-    const int head_number = boost::get<int>(op_desc.GetAttr("head_number"));
+    const float alpha = op_desc.HasAttr("alpha")
+                            ? boost::get<float>(op_desc.GetAttr("alpha"))
+                            : 1.0f;
+    const int head_number =
+        op_desc.HasAttr("head_number")
+            ? boost::get<int>(op_desc.GetAttr("head_number"))
+            : 1;
     nvinfer1::Dims q_shape = Q->getDimensions();
-    int seq_len = q_shape.d[1];
-    int size_per_head = q_shape.d[3];
-    float* p_alpha;
-    p_alpha[0] = alpha;
+    int seq_len = q_shape.d[0];
+    int size_per_head = q_shape.d[1] / head_number;
+    framework::DDim alpha_dim = framework::make_ddim({1});
+    framework::LoDTensor alpha_tensor;
+    alpha_tensor.Resize(alpha_dim);
+    auto* alpha_tensor_data =
+        alpha_tensor.mutable_data<float>(platform::CPUPlace());
+    alpha_tensor_data[0] = alpha;
 
+    // handle weights
     TensorRTEngine::Weight scale{nvinfer1::DataType::kFLOAT,
-                                 static_cast<void*>(p_alpha), 1};
+                                 static_cast<void*>(alpha_tensor_data), 1};
     TensorRTEngine::Weight shift{nvinfer1::DataType::kFLOAT, nullptr, 0};
     TensorRTEngine::Weight power{nvinfer1::DataType::kFLOAT, nullptr, 0};
 
-    auto* v_eltadd_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, ElementWise, *const_cast<nvinfer1::ITensor*>(V),
-        *const_cast<nvinfer1::ITensor*>(BiasV),
-        nvinfer1::ElementWiseOperation::kSUM);
+    auto* BiasQ_t = BiasQ->GetMutable<framework::LoDTensor>();
+    auto* BiasK_t = BiasK->GetMutable<framework::LoDTensor>();
+    auto* BiasV_t = BiasV->GetMutable<framework::LoDTensor>();
+
+    framework::LoDTensor bias_q_tensor;
+    framework::LoDTensor bias_k_tensor;
+    framework::LoDTensor bias_v_tensor;
+
+    bias_q_tensor.Resize(BiasQ_t->dims());
+    bias_k_tensor.Resize(BiasK_t->dims());
+    bias_v_tensor.Resize(BiasV_t->dims());
+
+    platform::CPUPlace cpu_place;
+    TensorCopySync((*BiasQ_t), cpu_place, &bias_q_tensor);
+    TensorCopySync((*BiasK_t), cpu_place, &bias_k_tensor);
+    TensorCopySync((*BiasV_t), cpu_place, &bias_v_tensor);
+
+    auto* bias_q_data = bias_q_tensor.mutable_data<float>(platform::CPUPlace());
+    auto* bias_k_data = bias_k_tensor.mutable_data<float>(platform::CPUPlace());
+    auto* bias_v_data = bias_v_tensor.mutable_data<float>(platform::CPUPlace());
+
+    TensorRTEngine::Weight scale_weights_q{nvinfer1::DataType::kFLOAT, nullptr,
+                                           0};
+    TensorRTEngine::Weight shift_weights_q{
+        nvinfer1::DataType::kFLOAT, static_cast<void*>(bias_q_data),
+        bias_q_tensor.memory_size() / sizeof(float)};
+    TensorRTEngine::Weight power_weights_q{nvinfer1::DataType::kFLOAT, nullptr,
+                                           0};
+
+    TensorRTEngine::Weight scale_weights_k{nvinfer1::DataType::kFLOAT, nullptr,
+                                           0};
+    TensorRTEngine::Weight shift_weights_k{
+        nvinfer1::DataType::kFLOAT, static_cast<void*>(bias_k_data),
+        bias_k_tensor.memory_size() / sizeof(float)};
+    TensorRTEngine::Weight power_weights_k{nvinfer1::DataType::kFLOAT, nullptr,
+                                           0};
+
+    TensorRTEngine::Weight scale_weights_v{nvinfer1::DataType::kFLOAT, nullptr,
+                                           0};
+    TensorRTEngine::Weight shift_weights_v{
+        nvinfer1::DataType::kFLOAT, static_cast<void*>(bias_v_data),
+        bias_v_tensor.memory_size() / sizeof(float)};
+    TensorRTEngine::Weight power_weights_v{nvinfer1::DataType::kFLOAT, nullptr,
+                                           0};
+
     auto* q_eltadd_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, ElementWise, *const_cast<nvinfer1::ITensor*>(Q),
-        *const_cast<nvinfer1::ITensor*>(BiasQ),
-        nvinfer1::ElementWiseOperation::kSUM);
+        engine_, Scale, *const_cast<nvinfer1::ITensor*>(Q),
+        nvinfer1::ScaleMode::kCHANNEL, shift_weights_q.get(),
+        scale_weights_q.get(), power_weights_q.get());
     auto* k_eltadd_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, ElementWise, *const_cast<nvinfer1::ITensor*>(K),
-        *const_cast<nvinfer1::ITensor*>(BiasK),
-        nvinfer1::ElementWiseOperation::kSUM);
+        engine_, Scale, *const_cast<nvinfer1::ITensor*>(K),
+        nvinfer1::ScaleMode::kCHANNEL, shift_weights_k.get(),
+        scale_weights_k.get(), power_weights_k.get());
+    auto* v_eltadd_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Scale, *const_cast<nvinfer1::ITensor*>(V),
+        nvinfer1::ScaleMode::kCHANNEL, shift_weights_v.get(),
+        scale_weights_v.get(), power_weights_v.get());
 
     auto* v_transpose_reshape_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(v_eltadd_layer->getOutput(0)));
@@ -79,42 +180,47 @@ class MultiheadMatMulOpConverter : public OpConverter {
     auto* k_transpose_reshape_layer =
         TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *(k_eltadd_layer->getOutput(0)));
 
-    nvinfer1::Dims4 head_reshape_dim(0, seq_len, head_number, size_per_head);
+    nvinfer1::Dims3 head_reshape_dim(seq_len, head_number, size_per_head);
 
     v_transpose_reshape_layer->setReshapeDimensions(head_reshape_dim);
-    v_transpose_reshape_layer->setSecondTranspose({0, 2, 1, 3});
+    v_transpose_reshape_layer->setSecondTranspose({1, 0, 2});
     q_transpose_reshape_layer->setReshapeDimensions(head_reshape_dim);
-    q_transpose_reshape_layer->setSecondTranspose({0, 2, 1, 3});
+    q_transpose_reshape_layer->setSecondTranspose({1, 0, 2});
     k_transpose_reshape_layer->setReshapeDimensions(head_reshape_dim);
-    k_transpose_reshape_layer->setSecondTranspose({0, 2, 1, 3});
+    k_transpose_reshape_layer->setSecondTranspose({1, 0, 2});
 
-    auto* k_scale_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, Scale, *(k_transpose_reshape_layer->getOutput(0)),
+    auto* q_scale_layer = TRT_ENGINE_ADD_LAYER(
+        engine_, Scale, *(q_transpose_reshape_layer->getOutput(0)),
         nvinfer1::ScaleMode::kUNIFORM, shift.get(), scale.get(), power.get());
 
     auto* qk_matmul_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, MatrixMultiply, *(k_scale_layer->getOutput(0)),
-        transpose_k ? nvinfer1::MatrixOperation::kTRANSPOSE
-                    : nvinfer1::MatrixOperation::kNONE,
-        *(q_transpose_reshape_layer->getOutput(0)),
+        engine_, MatrixMultiply, *(q_scale_layer->getOutput(0)),
         transpose_q ? nvinfer1::MatrixOperation::kTRANSPOSE
+                    : nvinfer1::MatrixOperation::kNONE,
+        *(k_transpose_reshape_layer->getOutput(0)),
+        transpose_k ? nvinfer1::MatrixOperation::kTRANSPOSE
                     : nvinfer1::MatrixOperation::kNONE);
+
     auto* qk_eltadd_layer = TRT_ENGINE_ADD_LAYER(
         engine_, ElementWise, *const_cast<nvinfer1::ITensor*>(BiasQK),
         *(qk_matmul_layer->getOutput(0)), nvinfer1::ElementWiseOperation::kSUM);
+
     auto* softmax_layer = TRT_ENGINE_ADD_LAYER(
         engine_, SoftMax, *(qk_eltadd_layer->getOutput(0)));
+    softmax_layer->setAxes(4);
+
     auto* qkv_matmul_layer = TRT_ENGINE_ADD_LAYER(
         engine_, MatrixMultiply, *(softmax_layer->getOutput(0)),
         nvinfer1::MatrixOperation::kNONE,
         *(v_transpose_reshape_layer->getOutput(0)),
         transpose_v ? nvinfer1::MatrixOperation::kTRANSPOSE
                     : nvinfer1::MatrixOperation::kNONE);
+
     auto* qkv_transpose_reshape_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Shuffle, *(qkv_matmul_layer->getOutput(0)));
 
-    nvinfer1::Dims4 qkv_reshape_dim(0, seq_len, head_number * size_per_head, 1);
-    qkv_transpose_reshape_layer->setFirstTranspose({0, 2, 1, 3});
+    nvinfer1::Dims2 qkv_reshape_dim(seq_len, head_number * size_per_head);
+    qkv_transpose_reshape_layer->setFirstTranspose({1, 0, 2});
     qkv_transpose_reshape_layer->setReshapeDimensions(qkv_reshape_dim);
 
     auto output_name = op_desc.Output("Out").front();

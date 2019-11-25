@@ -36,8 +36,6 @@ class LayerNormOpConverter : public OpConverter {
     // Declare weights
     auto* Bias_v = scope.FindVar(op_desc.Input("Bias").front());
     auto* Scale_v = scope.FindVar(op_desc.Input("Scale").front());
-    auto* Mean_v = scope.FindVar(op_desc.Output("Mean").front());
-    auto* Variance_v = scope.FindVar(op_desc.Output("Variance").front());
     const int begin_norm_axis =
         op_desc.HasAttr("begin_norm_axis")
             ? boost::get<int>(op_desc.GetAttr("begin_norm_axis"))
@@ -54,13 +52,13 @@ class LayerNormOpConverter : public OpConverter {
     // get tensor
     auto* Bias_t = Bias_v->GetMutable<framework::LoDTensor>();
     auto* Scale_t = Scale_v->GetMutable<framework::LoDTensor>();
-    auto* Mean_t = Mean_v->GetMutable<framework::LoDTensor>();
-    auto* Variance_t = Variance_v->GetMutable<framework::LoDTensor>();
 
-    std::vector<int64_t> mean_shape =
-        framework::vectorize<int64_t>(Mean_t->dims());
-    std::vector<int64_t> variance_shape =
-        framework::vectorize<int64_t>(Variance_t->dims());
+    int input_num = 1;
+    for (int i = 0; i < X->getDimensions().nbDims; i++) {
+      input_num *= X->getDimensions().d[i];
+    }
+    std::vector<int64_t> mean_shape{input_num};
+    std::vector<int64_t> variance_shape{input_num};
 
     // create temp tensor for weights
     std::unique_ptr<framework::LoDTensor> bias_tensor(

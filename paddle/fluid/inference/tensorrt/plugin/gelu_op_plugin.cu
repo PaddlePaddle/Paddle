@@ -24,11 +24,7 @@ namespace tensorrt {
 namespace plugin {
 
 // constants for approximating the normal cdf
-constexpr float A = 0.5;
-
-constexpr float B = 0.7978845608028654;  // sqrt(2.0/M_PI)
-
-constexpr float C = 0.035677408136300125;  // 0.044715 * sqrt(2.0/M_PI)
+constexpr float A = 1.41421356237309504;  // sqrt(2)
 
 GeluPlugin* CreateGeluPluginDeserialize(const void* buffer, size_t length) {
   return new GeluPlugin(buffer, length);
@@ -46,13 +42,12 @@ nvinfer1::Dims GeluPlugin::getOutputDimensions(int index,
 }
 
 template <typename T, unsigned TPB>
-__global__ void geluKernel(const T a, const T b, const T c, int n,
-                           const T* input, T* output) {
+__global__ void geluKernel(const T a, int n, const T* input, T* output) {
   const int idx = blockIdx.x * TPB + threadIdx.x;
 
   if (idx < n) {
     const T in = input[idx];
-    const T cdf = a + a * tanh(in * (c * in * in + b));
+    const T cdf = 0.5 * (1.0 + erf(in * 0.5 * a));
     output[idx] = in * cdf;
   }
 }
@@ -60,10 +55,11 @@ __global__ void geluKernel(const T a, const T b, const T c, int n,
 int computeGelu(cudaStream_t stream, int n, const float* input, float* output) {
   constexpr int blockSize = 256;
   const int gridSize = (n + blockSize - 1) / blockSize;
-  geluKernel<float, blockSize><<<gridSize, blockSize, 0, stream>>>(
-      A, B, C, n, input, output);
+  geluKernel<float, blockSize><<<gridSize, blockSize, 0, stream>>>(A, n, input,
+                                                                   output);
 
-  CHECK(cudaPeekAtLastError());
+  cudaError_t error = cudaGetLastError();
+  if (error != cudaSuccess) LOG(ERROR) << cudaGetErrorString(error);
   return 0;
 }
 
