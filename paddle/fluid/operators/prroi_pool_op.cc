@@ -80,32 +80,43 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      "Input(X) of op(PRROIPool) should not be null.");
+                      platform::errors::NotFound(
+                          "Input(X) of op(PRROIPool) should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasInput("ROIs"), true,
-                      "Input(ROIs) of op(PRROIPool) should not be null.");
+                      platform::errors::NotFound(
+                          "Input(ROIs) of op(PRROIPool) should not be null."));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) of op(PRROIPool) should not be null.");
+                      platform::errors::NotFound(
+                          "Output(Out) of op(PRROIPool) should not be null."));
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
     PADDLE_ENFORCE_EQ(input_dims.size(), 4,
-                      "The format of input tensor is NCHW");
-    PADDLE_ENFORCE_EQ(rois_dims.size(), 2,
-                      "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
-                      "given as [(x1, y1, x2, y2), ...]");
-    PADDLE_ENFORCE_EQ(rois_dims[1], 4,
-                      "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
-                      "given as [(x1, y1, x2, y2), ...]");
+                      platform::errors::InvalidArgument(
+                          "The format of input tensor is NCHW"));
+    PADDLE_ENFORCE_EQ(
+        rois_dims.size(), 2,
+        platform::errors::InvalidArgument(
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "given as [(x1, y1, x2, y2), ...]"));
+    PADDLE_ENFORCE_EQ(
+        rois_dims[1], 4,
+        platform::errors::InvalidArgument(
+            "ROIs should be a 2-D LoDTensor of shape (num_rois, 4) "
+            "given as [(x1, y1, x2, y2), ...]"));
     int pooled_height = ctx->Attrs().Get<int>("pooled_height");
     int pooled_width = ctx->Attrs().Get<int>("pooled_width");
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
 
     PADDLE_ENFORCE_GT(pooled_height, 0,
-                      "The pooled output height must be greater than 0");
+                      platform::errors::InvalidArgument(
+                          "The pooled output height must be greater than 0"));
     PADDLE_ENFORCE_GT(pooled_width, 0,
-                      "The pooled output width must be greater than 0");
+                      platform::errors::InvalidArgument(
+                          "The pooled output width must be greater than 0"));
     PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
-                      "The spatial scale must greater than 0.");
+                      platform::errors::InvalidArgument(
+                          "The spatial scale must greater than 0."));
 
     auto out_dims = input_dims;
     out_dims[0] = rois_dims[0];
@@ -116,8 +127,9 @@ class PRROIPoolOp : public framework::OperatorWithKernel {
     if (ctx->HasInput("BatchRoINums")) {
       auto rois_batch_index = ctx->GetInputDim("BatchRoINums");
       PADDLE_ENFORCE_EQ(rois_batch_index[0], input_dims[0],
-                        "The length of BatchRoINums should equal to  "
-                        "first dim of inputs(X)");
+                        platform::errors::InvalidArgument(
+                            "The length of BatchRoINums should equal to  "
+                            "first dim of inputs(X)"));
     }
     ctx->SetOutputDim("Out", out_dims);
   }
