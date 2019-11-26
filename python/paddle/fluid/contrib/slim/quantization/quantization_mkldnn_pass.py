@@ -330,7 +330,7 @@ class FakeQAT2MkldnnINT8PerfPass(object):
         graph = self._remove_unused_var_nodes(graph)
         return graph
 
-    def apply_fp32_passes(self, graph):
+    def apply_fp32(self, graph):
         assert isinstance(graph,
                           IrGraph), 'graph must be the instance of IrGraph.'
 

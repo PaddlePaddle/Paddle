@@ -21,17 +21,8 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-void SetFP32Config(AnalysisConfig *cfg) {
-  cfg->SetModel(FLAGS_fp32_model);
-  cfg->DisableGpu();
-  cfg->SwitchIrOptim(false);
-  cfg->SwitchSpecifyInputNames();
-  cfg->SetCpuMathLibraryNumThreads(FLAGS_paddle_num_threads);
-  cfg->EnableMKLDNN();
-}
-
-void SetINT8Config(AnalysisConfig *cfg) {
-  cfg->SetModel(FLAGS_int8_model);
+void SetConfig(AnalysisConfig *, std::string model_path) {
+  cfg->SetModel(model_path);
   cfg->DisableGpu();
   cfg->SwitchIrOptim(false);
   cfg->SwitchSpecifyInputNames();
@@ -44,7 +35,7 @@ class TensorReader {
  public:
   TensorReader(std::ifstream &file, size_t beginning_offset,
                std::vector<int> shape, std::string name)
-      : file_(file), position(beginning_offset), shape_(shape), name_(name) {
+      : file_(file), position_(beginning_offset), shape_(shape), name_(name) {
     numel = std::accumulate(shape_.begin(), shape_.end(), size_t{1},
                             std::multiplies<size_t>());
   }
@@ -56,9 +47,9 @@ class TensorReader {
     tensor.dtype = GetPaddleDType<T>();
     tensor.data.Resize(numel * sizeof(T));
 
-    file_.seekg(position);
+    file_.seekg(position_);
     file_.read(static_cast<char *>(tensor.data.data()), numel * sizeof(T));
-    position = file_.tellg();
+    position_ = file_.tellg();
 
     if (file_.eof()) LOG(ERROR) << name_ << ": reached end of stream";
     if (file_.fail())
@@ -69,10 +60,10 @@ class TensorReader {
 
  protected:
   std::ifstream &file_;
-  size_t position;
+  size_t position_;
   std::vector<int> shape_;
   std::string name_;
-  size_t numel;
+  size_t numel_;
 };
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
@@ -119,15 +110,16 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
 
 TEST(Analyzer_qat_image_classification, quantization) {
   AnalysisConfig fp32_cfg;
-  SetFP32Config(&fp32_cfg);
+  SetConfig(&fp32_cfg, FLAGS_fp32_model);
 
   AnalysisConfig int8_cfg;
-  SetINT8Config(&int8_cfg);
+  SetConfig(&int8_cfg, FLAGS_int8_model);
 
   // read data from file and prepare batches with test data
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
 
+  // 0 is avg_cost, 1 is top1_accuracy, 2 is top5_accuracy or mAP
   CompareAnalysisAndAnalysis(&fp32_cfg, &int8_cfg, input_slots_all,
                              FLAGS_with_label, 1);
 }

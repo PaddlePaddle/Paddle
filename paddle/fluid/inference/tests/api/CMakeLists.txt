@@ -92,7 +92,7 @@ function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_
              --batch_size=50
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
              --with_label=false
-	     --iterations=2)
+             --iterations=2)
 endfunction()
 
 if(NOT APPLE AND WITH_MKLML)
@@ -130,8 +130,8 @@ download_model_and_data(${DAM_INSTALL_DIR} "DAM_model.tar.gz" "DAM_data.txt.tar.
 set(DAM_SMALL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/small_dam")
 download_model_and_data(${DAM_SMALL_INSTALL_DIR} "dam_small_model.tar.gz" "dam_small_data.txt.tar.gz")
 inference_analysis_test(test_analyzer_small_dam SRCS analyzer_dam_tester.cc
-       EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-       ARGS --infer_model=${DAM_SMALL_INSTALL_DIR}/model --infer_data=${DAM_SMALL_INSTALL_DIR}/data.txt --max_turn_num=1)
+        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+        ARGS --infer_model=${DAM_SMALL_INSTALL_DIR}/model --infer_data=${DAM_SMALL_INSTALL_DIR}/data.txt --max_turn_num=1)
 
 #save model 
 inference_analysis_api_test(test_analyzer_save_model ${DAM_SMALL_INSTALL_DIR} analyzer_save_model_tester.cc)

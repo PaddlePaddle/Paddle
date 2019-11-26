@@ -44,7 +44,8 @@ DEFINE_string(int8_model, "", "INT8 model path");
 DEFINE_string(infer_data, "", "data file");
 DEFINE_string(refer_result, "", "reference result for comparison");
 DEFINE_int32(batch_size, 1, "batch size");
-DEFINE_bool(with_label, true, "with label or not");
+DEFINE_bool(with_accuracy, true,
+            "Calculate the accuracy while label is in the input");
 DEFINE_bool(enable_fp32, true, "Enable FP32 type prediction");
 DEFINE_bool(enable_int8, true, "Enable INT8 type prediction");
 DEFINE_int32(warmup_batch_size, 100, "batch size for quantization warmup");
