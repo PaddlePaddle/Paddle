@@ -25,10 +25,53 @@ class FCFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context, const int M,
                   const int N, const int K, const T* X, const T* W, T* Y,
-                  const T* B = nullptr, bool relu = false) {
+                  const T* B = nullptr, bool relu = false,
+                  bool padding_weights = false) {
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-    blas.MatMul(M, N, K, X, W, Y);
+    framework::Tensor Y1;
+    T* Y1_data = nullptr;
+    if (N % 128 == 0 && K % 128 == 0) {
+      const int NN = N + 4;
+      const int KK = K + 4;
+      framework::Tensor X1;
+      T* X1_data = X1.Resize({M * KK}).mutable_data<T>(platform::CPUPlace());
+      Y1_data = Y1.Resize({M * (N + 4)}).mutable_data<T>(platform::CPUPlace());
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+      for (int i = 0; i < M; i++) {
+        memcpy(X1_data + i * KK, X + i * K, K * sizeof(X[0]));
+      }
+      framework::Tensor W1;
+      T* W1_data = nullptr;
+      if (!padding_weights) {
+        W1_data = W1.Resize({(K + 4) * (N + 4)})
+                      .mutable_data<T>(platform::CPUPlace());
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+        for (int i = 0; i < K; i++) {
+          memcpy(W1_data + i * NN, W + i * N, N * sizeof(W[0]));
+        }
+      }
+      blas.GEMM(false, false, M, N, K, static_cast<T>(1.0), X1_data, KK,
+                (padding_weights ? W : W1_data), NN, static_cast<T>(0.0),
+                Y1_data, NN);
+    } else {
+      blas.MatMul(M, N, K, X, W, Y);
+    }
     if (B == NULL) {
+      if (N % 128 == 0 && K % 128 == 0) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+        for (int i = 0; i < M; i++) {
+          memcpy(Y + i * N, Y1_data + i * (N + 4), N * sizeof(Y[0]));
+        }
+      }
+      PADDLE_ENFORCE_EQ(relu, false,
+                        platform::errors::PermissionDenied(
+                            "When bias is NULL, relu can not be true."));
       return;
     }
     if (relu) {
@@ -37,7 +80,8 @@ class FCFunctor<platform::CPUDeviceContext, T> {
               .At(N);
       for (int i = 0; i < M; i++) {
         T* dst = Y + i * N;
-        compute(B, dst, dst, N);
+        T* src = (N % 128 == 0 && K % 128 == 0) ? Y1_data + i * (N + 4) : dst;
+        compute(B, src, dst, N);
       }
     } else {
       auto compute =
@@ -48,7 +92,8 @@ class FCFunctor<platform::CPUDeviceContext, T> {
 #endif
       for (int i = 0; i < M; i++) {
         T* dst = Y + i * N;
-        compute(B, dst, dst, N);
+        T* src = (N % 128 == 0 && K % 128 == 0) ? Y1_data + i * (N + 4) : dst;
+        compute(B, src, dst, N);
       }
     }
   }
