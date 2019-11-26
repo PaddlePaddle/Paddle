@@ -1770,73 +1770,26 @@ class DistributeTranspiler(object):
             self.table_name
         ][0]
 
-        origin_param_var = self.origin_program.global_block().vars[
-            self.table_name]
-
-        zero_dim = int(
-            math.ceil(origin_param_var.shape[0] / float(
-                len(self.pserver_endpoints))))
-        table_shape = list(origin_param_var.shape)
-        table_shape[0] = zero_dim
-
-        param_var = pserver_program.global_block().create_var(
-            name=origin_param_var.name,
-            shape=table_shape,
-            dtype=origin_param_var.dtype,
-            type=core.VarDesc.VarType.SELECTED_ROWS,
-            persistable=True)
-
-        # parameter must be selected rows
-        param_var.desc.set_type(core.VarDesc.VarType.SELECTED_ROWS)
-        grad_var = pserver_program.global_block()._clone_variable(
-            self.origin_program.global_block().vars[grad_var_name(
-                self.table_name)])
-
-        lr_var = pserver_program.global_block()._clone_variable(
-            self.origin_program.global_block().vars[table_opt_op.input(
-                "LearningRate")[0]])
-
-        if self.sync_mode:
-            # create grad vars in pserver program
-            table_grad_var = self.table_param_grad[1]
-            pserver_side_table_grad_list = [
-                pserver_program.global_block().create_var(
-                    name="%s.trainer_%d.pserver_%d" %
-                    (table_grad_var.name, index, pserver_index),
-                    type=table_grad_var.type,
-                    shape=table_grad_var.shape,
-                    dtype=table_grad_var.dtype)
-                for index in range(self.trainer_num)
-            ]
-
-            # append sum op for pserver_side_table_grad_list
-            table_opt_block.append_op(
-                type="sum",
-                inputs={"X": pserver_side_table_grad_list},
-                outputs={"Out": [grad_var]},
-                attrs={"use_mkldnn": False})
-        else:
-            # in async_mode, for table gradient, it also need to be splited to each parameter server
-            origin_grad_name = grad_var.name
-            splited_grad_name = self.trainer_side_table_grad_list[
-                pserver_index].name
-            if not splited_grad_name.startswith(origin_grad_name):
-                raise ValueError("origin_grad_var: " + splited_grad_name +
-                                 " grad_var:" + grad_var.name)
-            grad_var = pserver_program.global_block()._rename_var(
-                origin_grad_name, splited_grad_name)
-
-        inputs = {
-            "Param": [param_var],
-            "Grad": [grad_var],
-            "LearningRate": [lr_var]
-        }
-        outputs = {"ParamOut": [param_var]}
-        # only support sgd now
         logging.warn(
-            "distribute lookup table only support sgd optimizer, change it's optimizer to sgd instead of "
-            + table_opt_op.type)
-        table_opt_block.append_op(type="sgd", inputs=inputs, outputs=outputs)
+            "distribute lookup table " + table_opt_op.type)
+	
+	attrs = {}
+        for input_name in table_opt_op.input_names:
+	    inputs[input_name] = [
+                    self.var(in_var_name)._var
+                    for in_var_name in op.input(input_name)
+                ]
+        for output_name in table_opt_op.output_names:
+            outputs[output_name] = [
+                    self.var(out_var_name)._var
+                    for out_var_name in op.output(output_name)
+                ]
+        for attr_name in op.attr_names:
+            attrs[attr_name] = op.attr(attr_name)
+	
+	attrs["lazy_mode"] = True
+
+	table_opt_block.append_op(type=table_opt_op.type, inputs=inputs, outputs=outputs, attrs=attrs)
 
         # add table parameter gradient and it's block id to grad_to_block_id
         grad_to_block_id.append(grad_var.name + ":" + str(table_opt_block.idx))
