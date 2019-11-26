@@ -2655,6 +2655,14 @@ class TestBook(LayerTest):
                 x, axes=axes, starts=starts, ends=ends, strides=strides)
             return out
 
+    def test_fill_constant_batch_size_like(self):
+        with self.static_graph():
+            like = fluid.layers.fill_constant(
+                shape=[1, 200], value=10, dtype='int64')
+            out = layers.fill_constant_batch_size_like(
+                input=like, shape=[2, 3300], value=1315454564656, dtype='int64')
+            return out
+
     def test_psroi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():

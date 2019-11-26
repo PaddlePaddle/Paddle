@@ -52,6 +52,20 @@ class TestFillConstantBatchSizeLikeWhenSecondDimIsBatchSize(OpTest):
         self.check_output()
 
 
+class TestFillConstantBatchSizeLikeInt64(OpTest):
+    def setUp(self):
+        self.op_type = "fill_constant_batch_size_like"
+        self.inputs = {'Input': np.random.random((219, 232)).astype("int64")}
+        self.attrs = {'value': 5894589485094, 'shape': [-1, 132, 7]}
+
+        out = np.random.random((219, 132, 7)).astype("int64")
+        out.fill(5894589485094)
+        self.outputs = {'Out': out}
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestFillConstantBatchSizeLikeWithLoDTensor(OpTest):
     def setUp(self):
         self.op_type = "fill_constant_batch_size_like"
