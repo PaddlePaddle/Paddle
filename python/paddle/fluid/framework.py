@@ -1270,6 +1270,35 @@ class Variable(object):
         """
         self.error_clip = error_clip
 
+    def _set_info(self, key, value):
+        """
+        Set key-value information for this variable.
+
+        Args:
+            key(str): Key for this information.
+            value(object): The value associated to the key.
+
+        Returns: 
+            None
+        """
+        if not hasattr(self, "_info"):
+            self._info = {}
+        self._info[key] = value
+
+    def _get_info(self, key):
+        """
+        Get the information of this variable corresponding to key.
+
+        Args:
+            key(str): Key for this information.
+
+        Returns: 
+            object
+        """
+        if hasattr(self, "_info") and key in self._info:
+            return self._info[key]
+        return None
+
     def _slice_indices(self, slice, length):
         """
         Reference implementation for the slice.indices method.
