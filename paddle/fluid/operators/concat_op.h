@@ -61,6 +61,11 @@ static inline framework::DDim ComputeAndCheckShape(
 }
 
 static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
+  PADDLE_ENFORCE_EQ(
+      axis >= -rank && axis < rank, true,
+      platform::errors::InvalidArgument(
+          "The axis is expected to be in range of [%d, %d), but got %d", -rank,
+          rank, axis));
   if (axis < 0) {
     axis = axis + rank;
   }
@@ -81,13 +86,8 @@ class ConcatKernel : public framework::OpKernel<T> {
       axis = GetDataFromTensor<int>(axis_tensor)[0];
       need_resize_out_dims = true;
     }
-    auto rank = ins[0]->dims().size();
-    PADDLE_ENFORCE(
-        axis >= -rank && axis < rank,
-        platform::errors::InvalidArgument(
-            "The axis is expected to be in range of [%d, %d), but got %d",
-            -rank, rank, axis));
-    axis = ComputeAxis(static_cast<int64_t>(axis), static_cast<int64_t>(rank));
+    axis = ComputeAxis(static_cast<int64_t>(axis),
+                       static_cast<int64_t>(ins[0]->dims().size()));
 
     if (need_resize_out_dims) {
       const size_t n = ins.size();
