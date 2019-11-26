@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
@@ -46,8 +47,10 @@ void CPUQuantizePass::QuantizeInput(Graph* g, Node* op, Node* input,
   auto inputs = op->Op()->InputNames();
   bool name_found =
       std::find(inputs.begin(), inputs.end(), input_name) != inputs.end();
-  PADDLE_ENFORCE_EQ(name_found, true, "%s isn't the input of the %s operator",
-                    input_name, op->Op()->Type());
+  PADDLE_ENFORCE_EQ(
+      name_found, true,
+      platform::errors::InvalidArgument("%s isn't the input of the %s operator",
+                                        input_name, op->Op()->Type()));
   unsigned max = is_unsigned ? U8_MAX : S8_MAX;
   float scale = scale_to_one * max;
 
@@ -130,8 +133,10 @@ void CPUQuantizePass::DequantizeOutput(Graph* g, Node* op, Node* output,
   auto outputs = op->Op()->OutputNames();
   bool name_found =
       std::find(outputs.begin(), outputs.end(), output_name) != outputs.end();
-  PADDLE_ENFORCE_EQ(name_found, true, "%s isn't the output of the %s operator",
-                    output_name, op->Op()->Type());
+  PADDLE_ENFORCE_EQ(name_found, true,
+                    platform::errors::InvalidArgument(
+                        "%s isn't the output of the %s operator", output_name,
+                        op->Op()->Type()));
   unsigned max = is_unsigned ? U8_MAX : S8_MAX;
   float scale = scale_to_one * max;
 

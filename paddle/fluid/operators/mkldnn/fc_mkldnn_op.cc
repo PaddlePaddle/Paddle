@@ -442,8 +442,9 @@ template <typename T_in, typename T_w>
 class FCMKLDNNOpKernel : public framework::OpKernel<T_in> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()), true,
-                      "It must use CPUPlace.");
+    PADDLE_ENFORCE_EQ(
+        platform::is_cpu_place(ctx.GetPlace()), true,
+        platform::errors::PreconditionNotMet("FC MKL-DNN must use CPUPlace."));
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
