@@ -116,7 +116,7 @@ class ElementwiseMulDoubleGradDescMaker
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseOp,
+REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseMulOp,
                   ops::ElementwiseMulOpMaker, ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMulOpGradDescMaker);
 REGISTER_OPERATOR(elementwise_mul_grad, ops::ElementwiseOpGrad,
