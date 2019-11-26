@@ -952,7 +952,7 @@ REGISTER_OP_CUDA_KERNEL(bilinear_interp_grad,
                         ops::InterpolateGradOpCUDAKernel<float>,
                         ops::InterpolateGradOpCUDAKernel<double>,
                         ops::InterpolateGradOpCUDAKernel<int>,
-                        ops::InterpolateOpCUDAKernel<uint8_t>);
+                        ops::InterpolateGradOpCUDAKernel<uint8_t>);
 REGISTER_OP_CUDA_KERNEL(nearest_interp, ops::InterpolateOpCUDAKernel<float>,
                         ops::InterpolateOpCUDAKernel<double>,
                         ops::InterpolateOpCUDAKernel<int>,
@@ -960,8 +960,8 @@ REGISTER_OP_CUDA_KERNEL(nearest_interp, ops::InterpolateOpCUDAKernel<float>,
 REGISTER_OP_CUDA_KERNEL(nearest_interp_grad,
                         ops::InterpolateGradOpCUDAKernel<float>,
                         ops::InterpolateGradOpCUDAKernel<double>;
-                        ops::InterpolateOpCUDAKernel<uint8_t>,
-                        ops::InterpolateOpCUDAKernel<int>);
+                        ops::InterpolateGradOpCUDAKernel<uint8_t>,
+                        ops::InterpolateGradOpCUDAKernel<int>);
 REGISTER_OP_CUDA_KERNEL(trilinear_interp, ops::InterpolateOpCUDAKernel<float>,
                         ops::InterpolateOpCUDAKernel<double>,
                         ops::InterpolateOpCUDAKernel<int>,
@@ -970,4 +970,4 @@ REGISTER_OP_CUDA_KERNEL(trilinear_interp_grad,
                         ops::InterpolateGradOpCUDAKernel<float>,
                         ops::InterpolateGradOpCUDAKernel<double>,
                         ops::InterpolateGradOpCUDAKernel<int>,
-                        ops::InterpolateOpCUDAKernel<uint8_t>);
+                        ops::InterpolateGradOpCUDAKernel<uint8_t>);
