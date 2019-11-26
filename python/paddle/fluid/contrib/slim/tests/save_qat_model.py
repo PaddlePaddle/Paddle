@@ -65,7 +65,7 @@ def transform_and_save__model(original_path, save_path, save_type):
 
         graph = IrGraph(core.Graph(inference_program.desc), for_test=True)
         if save_type == 'FP32':
-            graph = transform_to_mkldnn_int8_pass.apply_fp32_passes(graph)
+            graph = transform_to_mkldnn_int8_pass.apply_fp32(graph)
         elif save_type == 'INT8':
             graph = transform_to_mkldnn_int8_pass.apply(graph)
         inference_program = graph.to_program()
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     test_args, remaining_args = parse_args()
     if test_args.fp32_model_save_path:
         transform_and_save__model(test_args.qat_model_path,
-                                  test_args.qat_fp32_model_path, 'FP32')
+                                  test_args.fp32_model_save_path, 'FP32')
     if test_args.int8_model_save_path:
         transform_and_save__model(test_args.qat_model_path,
                                   test_args.int8_model_save_path, 'INT8')

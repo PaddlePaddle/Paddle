@@ -71,10 +71,13 @@ std::shared_ptr<std::vector<PaddleTensor>> GetWarmupData(
     int num_images = FLAGS_warmup_batch_size) {
   int test_data_batch_size = test_data[0][0].shape[0];
   auto iterations = test_data.size();
-  PADDLE_ENFORCE(
-      static_cast<size_t>(num_images) <= iterations * test_data_batch_size,
-      "The requested quantization warmup data size " +
-          std::to_string(num_images) + " is bigger than all test data size.");
+  auto all_test_data_size = iterations * test_data_batch_size;
+  PADDLE_ENFORCE_LE(static_cast<size_t>(num_images), all_test_data_size,
+                    platform::errors::InvalidArgument(
+                        "The requested quantization warmup data size must be "
+                        "smaller than the test data size. But received warmup "
+                        "size is %d and test data size is %d",
+                        num_images, all_test_data_size));
 
   PaddleTensor images;
   images.name = "image";

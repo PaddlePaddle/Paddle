@@ -83,15 +83,15 @@ function(inference_analysis_api_test_with_refer_result target install_dir filena
              --refer_result=${install_dir}/result.txt)
 endfunction()
 
-function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_dir qat_int8_model_dir data_path)
+function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_dir int8_model_dir data_path)
     inference_analysis_test_run(${TARGET_NAME}
     COMMAND ${test_binary}
         ARGS --fp32_model=${fp32_model_dir}
-             --int8_model=${qat_int8_model_dir}
+             --int8_model=${int8_model_dir}
              --infer_data=${data_path}
              --batch_size=50
              --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
-             --with_label=false
+             --with_accuracy_layer=false
              --iterations=2)
 endfunction()
 

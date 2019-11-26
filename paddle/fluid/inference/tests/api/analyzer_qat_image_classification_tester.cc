@@ -21,7 +21,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-void SetConfig(AnalysisConfig *, std::string model_path) {
+void SetConfig(AnalysisConfig *cfg, std::string model_path) {
   cfg->SetModel(model_path);
   cfg->DisableGpu();
   cfg->SwitchIrOptim(false);
@@ -36,8 +36,8 @@ class TensorReader {
   TensorReader(std::ifstream &file, size_t beginning_offset,
                std::vector<int> shape, std::string name)
       : file_(file), position_(beginning_offset), shape_(shape), name_(name) {
-    numel = std::accumulate(shape_.begin(), shape_.end(), size_t{1},
-                            std::multiplies<size_t>());
+    numel_ = std::accumulate(shape_.begin(), shape_.end(), size_t{1},
+                             std::multiplies<size_t>());
   }
 
   PaddleTensor NextBatch() {
@@ -45,10 +45,10 @@ class TensorReader {
     tensor.name = name_;
     tensor.shape = shape_;
     tensor.dtype = GetPaddleDType<T>();
-    tensor.data.Resize(numel * sizeof(T));
+    tensor.data.Resize(numel_ * sizeof(T));
 
     file_.seekg(position_);
-    file_.read(static_cast<char *>(tensor.data.data()), numel * sizeof(T));
+    file_.read(static_cast<char *>(tensor.data.data()), numel_ * sizeof(T));
     position_ = file_.tellg();
 
     if (file_.eof()) LOG(ERROR) << name_ << ": reached end of stream";
@@ -67,7 +67,7 @@ class TensorReader {
 };
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
-              bool with_label = FLAGS_with_label,
+              bool with_accuracy_layer = FLAGS_with_accuracy_layer,
               int32_t batch_size = FLAGS_batch_size) {
   std::ifstream file(FLAGS_infer_data, std::ios::binary);
   if (!file) {
@@ -100,7 +100,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs,
     auto images = image_reader.NextBatch();
     std::vector<PaddleTensor> tmp_vec;
     tmp_vec.push_back(std::move(images));
-    if (with_label) {
+    if (with_accuracy_layer) {
       auto labels = label_reader.NextBatch();
       tmp_vec.push_back(std::move(labels));
     }
@@ -121,7 +121,7 @@ TEST(Analyzer_qat_image_classification, quantization) {
 
   // 0 is avg_cost, 1 is top1_accuracy, 2 is top5_accuracy or mAP
   CompareAnalysisAndAnalysis(&fp32_cfg, &int8_cfg, input_slots_all,
-                             FLAGS_with_label, 1);
+                             FLAGS_with_accuracy_layer, 1);
 }
 
 }  // namespace analysis
