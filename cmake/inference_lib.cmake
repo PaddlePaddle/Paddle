@@ -55,8 +55,81 @@ function(copy TARGET)
     endforeach ()
 endfunction()
 
+function(copy_part_of_thrid_party TARGET DST) 
+    if(${CBLAS_PROVIDER} STREQUAL MKLML)
+        set(dst_dir "${DST}/third_party/install/mklml")
+        if(WIN32)
+            copy(${TARGET}
+                    SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_SHARED_LIB}
+                    ${MKLML_SHARED_LIB_DEPS} ${MKLML_SHARED_IOMP_LIB} ${MKLML_INC_DIR}
+                    DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib
+                    ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+        else()
+            copy(${TARGET}
+                    SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
+                    DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+        endif()
+    elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
+        set(dst_dir "${DST}/third_party/install/openblas")
+            copy(${TARGET}
+                    SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
+                    DSTS ${dst_dir} ${dst_dir})
+    endif()
+
+    if(WITH_MKLDNN)
+        set(dst_dir "${DST}/third_party/install/mkldnn")
+        if(WIN32)
+            copy(${TARGET}
+                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_LIB}
+                    DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
+        else()
+            copy(${TARGET}
+                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
+                    DSTS ${dst_dir} ${dst_dir}/lib)
+        endif()
+    endif()
+
+    set(dst_dir "${DST}/third_party/install/gflags")
+    copy(${TARGET}
+            SRCS ${GFLAGS_INCLUDE_DIR} ${GFLAGS_LIBRARIES}
+            DSTS ${dst_dir} ${dst_dir}/lib)
+
+    set(dst_dir "${DST}/third_party/install/glog")
+    copy(${TARGET}
+            SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}
+            DSTS ${dst_dir} ${dst_dir}/lib)
+            
+    if (NOT PROTOBUF_FOUND OR WIN32)
+        set(dst_dir "${DST}/third_party/install/protobuf")
+        copy(${TARGET}
+                SRCS ${PROTOBUF_INCLUDE_DIR} ${PROTOBUF_LIBRARY}
+                DSTS ${dst_dir} ${dst_dir}/lib)
+    endif ()
+
+    if (WITH_NGRAPH)
+        set(dst_dir "${DST}/third_party/install/ngraph")
+        copy(${TARGET}
+                SRCS ${NGRAPH_INC_DIR} ${NGRAPH_LIB_DIR}
+                DSTS ${dst_dir} ${dst_dir})
+    endif ()
+
+    if (TENSORRT_FOUND)
+        set(dst_dir "${DST}/third_party/install/tensorrt")
+        copy(${TARGET}
+                SRCS ${TENSORRT_INCLUDE_DIR}/Nv*.h ${TENSORRT_LIBRARY_DIR}/*nvinfer*
+                DSTS ${dst_dir}/include ${dst_dir}/lib)
+    endif ()
+
+    if (ANAKIN_FOUND)
+        set(dst_dir "${DST}/third_party/install/anakin")
+        copy(${TARGET}
+                SRCS ${ANAKIN_ROOT}/*
+                DSTS ${dst_dir})
+    endif ()
+endfunction()
+
 # inference library for only inference
-set(inference_lib_deps third_party paddle_fluid paddle_fluid_shared)
+set(inference_lib_deps third_party paddle_fluid paddle_fluid_shared paddle_fluid_c paddle_fluid_c_shared)
 add_custom_target(inference_lib_dist DEPENDS ${inference_lib_deps})
 
 set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/eigen3")
@@ -74,50 +147,6 @@ copy(inference_lib_dist
         SRCS ${DLPACK_INCLUDE_DIR}/dlpack
         DSTS ${dst_dir})
 
-
-if(${CBLAS_PROVIDER} STREQUAL MKLML)
-    set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/mklml")
-    if(WIN32)
-        copy(inference_lib_dist
-                SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_SHARED_LIB}
-                  ${MKLML_SHARED_LIB_DEPS} ${MKLML_SHARED_IOMP_LIB} ${MKLML_INC_DIR}
-                DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib
-                  ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
-    else()
-        copy(inference_lib_dist
-                SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
-                DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
-    endif()
-elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
-    set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/openblas")
-        copy(inference_lib_dist
-                SRCS ${CBLAS_INSTALL_DIR}/lib ${CBLAS_INSTALL_DIR}/include
-                DSTS ${dst_dir} ${dst_dir})
-endif()
-
-if(WITH_MKLDNN)
-    set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/mkldnn")
-    if(WIN32)
-        copy(inference_lib_dist
-                SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_LIB}
-                DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
-    else()
-        copy(inference_lib_dist
-                SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
-                DSTS ${dst_dir} ${dst_dir}/lib)
-    endif()
-endif()
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/gflags")
-copy(inference_lib_dist
-        SRCS ${GFLAGS_INCLUDE_DIR} ${GFLAGS_LIBRARIES}
-        DSTS ${dst_dir} ${dst_dir}/lib)
-
-set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/glog")
-copy(inference_lib_dist
-        SRCS ${GLOG_INCLUDE_DIR} ${GLOG_LIBRARIES}
-        DSTS ${dst_dir} ${dst_dir}/lib)
-
 set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/xxhash")
 copy(inference_lib_dist
         SRCS ${XXHASH_INCLUDE_DIR} ${XXHASH_LIBRARIES}
@@ -128,37 +157,11 @@ copy(inference_lib_dist
         SRCS ${ZLIB_INCLUDE_DIR} ${ZLIB_LIBRARIES}
         DSTS ${dst_dir} ${dst_dir}/lib)
 
-if (NOT PROTOBUF_FOUND OR WIN32)
-    set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/protobuf")
-    copy(inference_lib_dist
-            SRCS ${PROTOBUF_INCLUDE_DIR} ${PROTOBUF_LIBRARY}
-            DSTS ${dst_dir} ${dst_dir}/lib)
-endif ()
-
-if (WITH_NGRAPH)
-    set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/ngraph")
-    copy(inference_lib_dist
-            SRCS ${NGRAPH_INC_DIR} ${NGRAPH_LIB_DIR}
-            DSTS ${dst_dir} ${dst_dir})
-endif ()
-
-if (TENSORRT_FOUND)
-    set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/tensorrt")
-    copy(inference_lib_dist
-            SRCS ${TENSORRT_INCLUDE_DIR}/Nv*.h ${TENSORRT_LIBRARY_DIR}/*nvinfer*
-            DSTS ${dst_dir}/include ${dst_dir}/lib)
-endif ()
-
-if (ANAKIN_FOUND)
-    set(dst_dir "${FLUID_INFERENCE_INSTALL_DIR}/third_party/install/anakin")
-    copy(inference_lib_dist
-            SRCS ${ANAKIN_ROOT}/*
-            DSTS ${dst_dir})
-endif ()
-
 copy(inference_lib_dist
         SRCS ${CMAKE_CURRENT_BINARY_DIR}/CMakeCache.txt
         DSTS ${FLUID_INFERENCE_INSTALL_DIR})
+
+copy_part_of_thrid_party(inference_lib_dist ${FLUID_INFERENCE_INSTALL_DIR})
 
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 if(WIN32)
@@ -171,6 +174,30 @@ copy(inference_lib_dist
         SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
         DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib)
 
+
+# CAPI inference library for only inference
+set(FLUID_INFERENCE_C_INSTALL_DIR "${CMAKE_BINARY_DIR}/fluid_inference_c_install_dir" CACHE STRING
+"A path setting CAPI fluid inference shared")
+copy_part_of_thrid_party(inference_lib_dist ${FLUID_INFERENCE_C_INSTALL_DIR})
+
+set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
+if(WIN32)
+    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.dll
+        ${PADDLE_BINARY_DIR}/paddle/fluid/inference/capi/${CMAKE_BUILD_TYPE}/paddle_fluid_c.lib)
+else(WIN32)
+    set(paddle_fluid_c_lib ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*)
+endif(WIN32)
+
+if(WIN32)
+    copy(inference_lib_dist
+            SRCS  ${src_dir}/inference/capi/c_api.h ${paddle_fluid_c_lib}
+            DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib
+                  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
+else()
+    copy(inference_lib_dist
+        SRCS  ${src_dir}/inference/capi/c_api.h ${paddle_fluid_c_lib}
+        DSTS  ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_C_INSTALL_DIR}/paddle/lib)
+endif()
 
 # fluid library for both train and inference
 set(fluid_lib_deps inference_lib_dist)
@@ -254,3 +281,4 @@ function(version version_file)
 endfunction()
 version(${FLUID_INSTALL_DIR}/version.txt)
 version(${FLUID_INFERENCE_INSTALL_DIR}/version.txt)
+version(${FLUID_INFERENCE_C_INSTALL_DIR}/version.txt)
