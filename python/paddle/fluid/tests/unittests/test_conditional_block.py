@@ -44,11 +44,8 @@ class ConditionalBlockTest(unittest.TestCase):
         print(outs)
         loss = layers.mean(out)
         append_backward(loss=loss)
-        outs = exe.run(
-            feed={'X': x},
-            fetch_list=[
-                default_main_program().block(0).var(data.name + "@GRAD")
-            ])[0]
+        print(default_main_program())
+        outs = exe.run(feed={'X': x}, fetch_list=["fc_0.b_0@GRAD"])[0]
         print(outs)
 
 

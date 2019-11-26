@@ -269,8 +269,8 @@ def _infer_var_data_type_(grad_var_name, block):
     """
     grad_var = block.desc.find_var(cpt.to_bytes(grad_var_name))
     fwd_name = _strip_grad_suffix_(grad_var_name)
-    if block.desc.has_var(cpt.to_bytes(fwd_name)):
-        fwd_var = block.desc.find_var(cpt.to_bytes(fwd_name))
+    if block.desc.has_var_recursive(cpt.to_bytes(fwd_name)):
+        fwd_var = block.desc.find_var_recursive(cpt.to_bytes(fwd_name))
         grad_var.set_dtype(fwd_var.dtype())
     else:
         grad_var.set_dtype(core.VarDesc.VarType.FP32)
@@ -321,7 +321,7 @@ def _append_grad_suffix_(name):
     return cpt.to_text(name) + core.grad_var_suffix()
 
 
-def _addup_repetitive_outputs_(op_descs):
+def _addup_repetitive_outputs_(op_descs, block_idx):
     """
     In backward part, an variable may be the output of more than one ops.
     And one op may yield its multiple outputs to the same variable.
@@ -358,7 +358,7 @@ def _addup_repetitive_outputs_(op_descs):
                     renamed_var_start_idx[var_name] = idx
                 else:
                     if len(renamed_vars[var_name]) == 1:
-                        new_name = var_name + "@RENAME@" + \
+                        new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
                             str(var_rename_count[var_name])
                         var_rename_count[var_name] += 1
                         # rename original var_name
@@ -384,7 +384,7 @@ def _addup_repetitive_outputs_(op_descs):
                             for x in arg_names[:arg_idx]
                         ] + arg_names[arg_idx:]
 
-                    new_name = var_name + "@RENAME@" + \
+                    new_name = var_name + "@RENAME@block" + str(block_idx) + "@" + \
                         str(var_rename_count[var_name])
                     var_rename_count[var_name] += 1
                     arg_names[arg_idx] = new_name
@@ -733,7 +733,7 @@ def _append_backward_ops_with_checkpoints_(
             grad_to_var.update(op_grad_to_var)
 
     # 3.d. add sum op for repetitive_outputs
-    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
+    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs, block.idx)
     # 4) remove no grad branch as it is in _remove_no_grad_branch_
     grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
                                             no_grad_dict[block.idx])
@@ -859,7 +859,7 @@ def _append_backward_ops_(block,
             grad_to_var.update(op_grad_to_var)
 
     # sum parameter's gradients' var given multiple var gradient
-    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
+    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs, block.idx)
 
     # if all outputs of the grad op are in no_grad_set, then just remove and fill zero
     # if all inputs of the grad op are in no_grad_set, just remove this op
@@ -910,7 +910,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
-            if block.desc.has_var(cpt.to_bytes(
+            if block.desc.has_var_recursive(cpt.to_bytes(
                     grad_var_name)) or grad_var_name == core.empty_var_name():
                 continue
             block.desc.var(cpt.to_bytes(grad_var_name))
