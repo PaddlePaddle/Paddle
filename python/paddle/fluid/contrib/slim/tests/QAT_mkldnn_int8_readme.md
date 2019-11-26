@@ -1,6 +1,6 @@
-# SLIM Quantization-aware training (QAT) on INT8 MKL-DNN quantization
+# SLIM Quantization-aware training (QAT) on INT8 MKL-DNN
 
-This document describes how to use [Paddle Slim](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/paddle_slim/paddle_slim.md) to convert a quantization-aware trained model to INT8 MKL-DNN quantization. In **Release 1.5**, we have released the QAT MKL-DNN 1.0 which enabled the INT8 MKL-DNN kernel for QAT trained model within 0.05% accuracy diff on GoogleNet, MobileNet-V1, MobileNet-V2, ResNet-101, ResNet-50, VGG16 and VGG19. In **Release 1.6**, QAT2.0 MKL-DNN , we did the performance optimization based on fake QAT models: ResNet50, ResNet101, Mobilenet-v1, Mobilenet-v2, VGG16 and VGG19 with the minor accuracy drop. Compared with Release 1.5, the QAT2.0 MKL-DNN got better performance gain on inference compared with fake QAT models but got a little bit bigger accuracy diff. We provide the accuracy benchmark both for QAT1.0 MKL-DNN and QAT2.0 MKL-DNN, and performance benchmark on QAT2.0 MKL-DNN.  
+This document describes how to use [Paddle Slim](https://github.com/PaddlePaddle/FluidDoc/blob/develop/doc/fluid/advanced_usage/paddle_slim/paddle_slim.md) to convert a quantization-aware trained model to INT8 MKL-DNN quantized model. In **Release 1.5**, we have released the QAT1.0 MKL-DNN which enabled the INT8 MKL-DNN kernel for QAT trained model within 0.05% accuracy diff on GoogleNet, MobileNet-V1, MobileNet-V2, ResNet-101, ResNet-50, VGG16 and VGG19. In **Release 1.6**, QAT2.0 MKL-DNN, we did the performance optimization based on fake QAT models: ResNet50, ResNet101, Mobilenet-v1, Mobilenet-v2, VGG16 and VGG19 with the minor accuracy drop. Compared with Release 1.5, the QAT2.0 MKL-DNN got better performance gain on inference compared with fake QAT models but got a little bit bigger accuracy diff. We provide the accuracy benchmark both for QAT1.0 MKL-DNN and QAT2.0 MKL-DNN, and performance benchmark on QAT2.0 MKL-DNN.  
 MKL-DNN INT8 quantization performance gain can only be obtained with AVX512 series CPU servers.
 
 ## 0. Prerequisite
@@ -19,12 +19,12 @@ You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quanti
     graph = IrGraph(core.Graph(fluid.Program().desc), for_test=False)
     place = fluid.CPUPlace()
     # Convert the IrGraph to MKL-DNN supported INT8 IrGraph by using
-    # QAT MKL-DNN 1.0
+    # QAT1.0 MKL-DNN
     # FakeQAT2MkldnnINT8KernelPass
     mkldnn_pass = FakeQAT2MkldnnINT8KernelPass(fluid.global_scope(), place)
     # Apply FakeQAT2MkldnnINT8KernelPass to IrGraph
     mkldnn_pass.apply(graph)
-    # QAT MKL-DNN 2.0
+    # QAT2.0 MKL-DNN
     # FakeQAT2MkldnnINT8PerfPass
     mkldnn_pass = FakeQAT2MkldnnINT8PerfPass(fluid.global_scope(), place, fluid.core, False)
     # Apply FakeQAT2MkldnnINT8PerfPass to IrGraph
@@ -34,17 +34,17 @@ You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quanti
 
 ## 2. Accuracy benchmark
 
->**I. QAT1.0 MKL_DNN Accuracy on Intel(R) Xeon(R) Gold 6271**
+>**I. QAT1.0 MKL-DNN Accuracy on Intel(R) Xeon(R) Gold 6271**
 
-| Model        | Fake QAT Top1 Accuracy | Fake QAT Top5 Accuracy |MKL-DNN INT8 Top1 Accuracy |  Top1 Diff   | MKL-DNN INT8 Top5 Accuracy | Top5 Diff  |
+| Model        | Fake QAT Top1 Accuracy | Fake QAT Top5 Accuracy |INT8 QAT Top1 Accuracy |  Top1 Diff   | INT8 QAT Top5 Accuracy | Top5 Diff  |
 | :----------: | :--------------------: | :--------------------: |:-----------------------:  | :----------: | :------------------------: | :--------: |
 | GoogleNet    |         70.40%         |          89.46%        |           70.39%          |    -0.01%    |           89.46%           |   0.00%    |
 | MobileNet-V1 |         70.84%         |          89.58%        |           70.85%          |    +0.01%    |           89.61%           |  +0.03%    |
 | MobileNet-V2 |         72.07%         |          90.71%        |           72.06%          |    -0.01%    |           90.69%           |  -0.02%    |
 | ResNet-101   |         77.52%         |          93.68%        |           77.52%          |     0.00%    |           93.67%           |  -0.01%    |
 | ResNet-50    |         76.66%         |          93.08%        |           76.62%          |    -0.04%    |           93.10%           |  +0.02%    |
-| VGG16        |                        |                        |                           |              |                            |            |
-| VGG19        |                        |                        |                           |              |                            |            |
+| VGG16        |         72.72%         |          91.11%        |           72.69%          |    -0.03%    |           91.09%           |  -0.02%    |
+| VGG19        |         73.37%         |          91.39%        |           73.37%          |     0.00%    |           91.41%           |  +0.02%    |
 
 Notes:
 
@@ -52,29 +52,29 @@ Notes:
 
 >**II. QAT2.0 MKL-DNN Accuracy on Intel(R) Xeon(R) Gold 6271**
 
-| Model        | Fake QAT Top1 Accuracy | Fake QAT Top5 Accuracy |MKL-DNN INT8 Top1 Accuracy |  Top1 Diff  | MKL-DNN INT8 Top5 Accuracy | Top5 Diff |
+| Model        | Fake QAT Top1 Accuracy | Fake QAT Top5 Accuracy |INT8 QAT Top1 Accuracy |  Top1 Diff  | INT8 QAT Top5 Accuracy | Top5 Diff |
 | :----------: | :--------------------: | :--------------------: |:-----------------------:  | :----------:| :------------------------: | :--------:|
-| MobileNet-V1 |         70.70%         |          89.48%        |           70.78%          |       |           89.39%           |      |
-| MobileNet-V2 |         72.09%         |          90.69%        |           72.17%          |       |           90.63%           |      |
-| ResNet101    |         77.83%         |          93.58%        |           77.59%          |        |           93.54%           |      |
-| ResNet50     |         76.64%         |          93.01%        |           76.53%          |        |           92.98%           |       |
-| VGG16        |         71.75%         |          89.95%        |           71.75%          |        |           89.73%           |      |
-| VGG19        |         72.29%         |          90.19%        |           72.09%          |        |           90.13%           |      |
+| MobileNet-V1 |         70.70%         |          89.48%        |           70.78%          |   +0.08%    |           89.39%           |  -0.09%    |
+| MobileNet-V2 |         72.09%         |          90.69%        |           72.17%          |   +0.08%    |           90.63%           |  -0.06%    |
+| ResNet101    |         77.83%         |          93.58%        |           77.59%          |   -0.24%    |           93.54%           |  -0.04%    |
+| ResNet50     |         76.64%         |          93.01%        |           76.53%          |   -0.11%    |           92.98%           |  -0.03%    |
+| VGG16        |         71.75%         |          89.95%        |           71.75%          |   0.00%     |           89.73%           |  -0.22%    |
+| VGG19        |         72.29%         |          90.19%        |           72.09%          |   -0.20%    |           90.13%           |  -0.06%    |
 
 >**III. QAT2.0 MKL-DNN C-API Performance on Intel(R) Xeon(R) Gold 6271**
 
-| Model        | FP32 Optimized Throughput(images/s)| INT8 QAT Throughput(images/s) | Ratio(INT8/FP32)|
+| Model        | FP32 Optimized Throughput (images/s)| INT8 QAT Throughput(images/s) | Ratio(INT8/FP32)|
 | :-----------:| :-----------------------------------:  | :----------------------------: | :------------:  |
-| MobileNet-V1 |       77.11                            |       228.49                   |                 |
-| MobileNet-V2 |       92.95                            |       203.15                   |                 |
-| ResNet101    |       7.23                             |       26.37                    |                 |
-| ResNet50     |       13.25                            |       48.12                    |                 |
-| VGG16        |                                        |       10.24                    |                 |
-| VGG19        |                                        |       8.70                         |                 |
+| MobileNet-V1 |       77.11                            |       228.49                   |       2.96      |
+| MobileNet-V2 |       92.95                            |       203.15                   |       2.19      |
+| ResNet101    |       7.23                             |       26.37                    |       3.65      |
+| ResNet50     |       13.25                            |       48.12                    |       3.63      |
+| VGG16        |       3.52                             |       10.24                    |       2.91      |
+| VGG19        |       2.82                             |       8.70                     |       3.09      |
 
 Notes:
 
-* FP32 Optimized Throughput is from [int8_mkldnn_quantization.md](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/api/int8_mkldnn_quantization.md).
+* FP32 Optimized Throughput (images/s) is from [int8_mkldnn_quantization.md](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/tests/api/int8_mkldnn_quantization.md).
 
 ## 3. How to reproduce the results
 Three steps to reproduce the above-mentioned accuracy results, and we take ResNet50 benchmark as an example:
@@ -85,7 +85,7 @@ python paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
 ```
 The converted data binary file is saved by default in `~/.cache/paddle/dataset/int8/download/int8_full_val.bin`
  * ### Prepare model
-You can run the following commands to download ResNet50 model. The exemplary code snippet provided below downloads a ResNet50 QAT model. The reason for having two different versions of the same model originates from having a two different QAT training strategies: One for an non-optimized and second for an optimized graph transform which correspond to QAT1.0 and QAT2.0 respectively.
+You can run the following commands to download ResNet50 model. The exemplary code snippet provided below downloads a ResNet50 QAT model. The reason for having two different versions of the same model originates from having two different QAT training strategies: One for an non-optimized and second for an optimized graph transform which correspond to QAT1.0 and QAT2.0 respectively.
 
 ```bash
 mkdir -p /PATH/TO/DOWNLOAD/MODEL/
@@ -111,23 +111,27 @@ You can run `qat_int8_comparison.py` with the following arguments to reproduce t
 >*QAT1.0*
 
 ```bash
+cd /PATH/TO/PADDLE
 OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat_int8_comparison.py --qat_model=/PATH/TO/DOWNLOAD/MODEL/${MODEL_NAME}/model --infer_data=~/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.001
 ```
 >*QAT2.0*
 
 - Accuracy benchamrk
 ```bash
+cd /PATH/TO/PADDLE
 OMP_NUM_THREADS=28 FLAGS_use_mkldnn=true python python/paddle/fluid/contrib/slim/tests/qat_int8_comparison.py --qat_model=/PATH/TO/DOWNLOAD/MODEL/${MODEL_NAME} --infer_data=~/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=50 --batch_num=1000 --acc_diff_threshold=0.01 --qat2
 ```
 
 * Performance benchmark
 
 ```bash
-# 1. Save QAT_INT8 model
-python /PATH/TO/PADDLE/python/paddle/fluid/contrib/slim/tests/qat_save_model.py --qat_model_path /PATH/TO/DOWNLOAD/MODEL/${QAT2_MODEL_NAME} --qat_int8_model_path /PATH/TO/${QAT2_MODEL_NAME}_qat_int8
+# 1. Save QAT2.0 INT8 model
+cd /PATH/TO/PADDLE
+python python/paddle/fluid/contrib/slim/tests/qat_save_model.py --qat_model_path /PATH/TO/DOWNLOAD/MODEL/${QAT2_MODEL_NAME} --qat_int8_model_path /PATH/TO/${QAT2_MODEL_NAME}_qat_int8
 
-# 2. Run the performance benchmark C-API 
-/PATH/TO/PADDLE/paddle/fluid/inference/tests/api/test_analyzer_qat_image_classification ARGS --enable_fp32=false --with_accuracy_layer=false --int8_model=/PATH/TO/${QAT2_MODEL_NAME}_qat_int8 --infer_data=~/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
+# 2. Run the QAT2.0 C-API for performance benchmark
+cd /PATH/TO/PADDLE
+OMP_NUM_THREADS=1 paddle/fluid/inference/tests/api/test_analyzer_qat_image_classification ARGS --enable_fp32=false --with_accuracy_layer=false --int8_model=/PATH/TO/${QAT2_MODEL_NAME}_qat_int8 --infer_data=~/.cache/paddle/dataset/int8/download/int8_full_val.bin --batch_size=1 --paddle_num_threads=1
 ```
 
-> Notes: Due to a high amount of images contained in `int8_full_val.bin` dataset (50 000), the accuracy benchmark which includes comparison of unoptimized and optimized QAT model may last long (even several hours). To accelerate the process, it is recommended to set `OMP_NUM_THREADS` to the max number of physical cores available on the server.
+> Notes: Due to a large amount of images contained in `int8_full_val.bin` dataset (50 000), the accuracy benchmark which includes comparison of unoptimized and optimized QAT model may last long (even several hours). To accelerate the process, it is recommended to set `OMP_NUM_THREADS` to the max number of physical cores available on the server.

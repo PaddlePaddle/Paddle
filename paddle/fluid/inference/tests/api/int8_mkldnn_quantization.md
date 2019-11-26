@@ -54,13 +54,13 @@ We provide the results of accuracy and performance measured on Intel(R) Xeon(R) 
 
 | Model        | FP32 Throughput(images/s)  | INT8 Throughput(images/s) | Ratio(INT8/FP32)|
 | :-----------:| :------------:             | :------------:            | :------------:  |
-| GoogleNet    |                       |                       |              |
-| MobileNet-V1 |    77.11                   |   222.55                  |              |
-| MobileNet-V2 |    92.95                   |   200.72                  |              |
-| ResNet-101   |    7.23                    |                       |              |
-| ResNet-50    |    13.25                   |    49.54                  |              |
-| VGG16        |                         |                       |              |
-| VGG19        |                         |                        |              |
+| GoogleNet    |    32.82                   |    68.67                  |     2.09        |
+| MobileNet-V1 |    77.11                   |    222.55                 |     2.89        |
+| MobileNet-V2 |    92.95                   |    200.72                 |     2.16        |
+| ResNet-101   |    7.23                    |    26.99                  |     3.73        |
+| ResNet-50    |    13.25                   |    49.54                  |     3.74        |
+| VGG16        |    3.52                    |    10.34                  |     2.93        |
+| VGG19        |    2.82                    |    8.81                   |     3.12        |
 
 
 * ## Prepare dataset
