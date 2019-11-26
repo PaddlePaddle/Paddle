@@ -230,5 +230,6 @@ def __bootstrap__():
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
 # Consider paddle.init(args) or paddle.main(args)
+
 monkey_patch_variable()
 __bootstrap__()
