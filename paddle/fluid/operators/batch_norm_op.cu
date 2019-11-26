@@ -208,10 +208,9 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
           // Create tensor for each batchnorm op, it will be used in the
           // backward. Thus this tensor shouldn't be temp.
           auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
-          PADDLE_ENFORCE_NOT_NULL(reserve_space,
-                                  "BatchNorm op should have "
-                                  "reserve space for triggering "
-                                  "semi-persistent NHWC kernel.");
+          PADDLE_ENFORCE_NOT_NULL(
+              reserve_space,
+              platform::errors::NotFound("%s is not found.", reserve_space));
 
           // --------------- cudnn batchnorm workspace ---------------
           CUDNN_ENFORCE(

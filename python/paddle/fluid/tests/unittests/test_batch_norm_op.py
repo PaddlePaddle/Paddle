@@ -314,6 +314,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
         self.epsilon = 0.00001
         self.init_kernel_type()
         self.init_test_case()
+        self.has_reserve_space = False
 
     def init_test_case(self):
         self.use_global_stats = False
@@ -413,16 +414,22 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     inputs['MomentumTensor'] = block.var('momentum_var')
                 else:
                     attrs['momentum'] = momentum
+
+                outputs = {
+                    "Y": block.var('y'),
+                    "MeanOut": block.var('mean'),  # share memory
+                    "VarianceOut": block.var('variance'),  # share memory
+                    "SavedMean": block.var('saved_mean'),
+                    "SavedVariance": block.var('saved_variance')
+                }
+                if self.has_reserve_space:
+                    block.creat_var(name=name, dtype='float16')
+                    outputs["ReserveSpace"] = block.var('reserve_space')
+
                 bn_op = block.append_op(
                     type="batch_norm",
                     inputs=inputs,
-                    outputs={
-                        "Y": block.var('y'),
-                        "MeanOut": block.var('mean'),  # share memory
-                        "VarianceOut": block.var('variance'),  # share memory
-                        "SavedMean": block.var('saved_mean'),
-                        "SavedVariance": block.var('saved_variance')
-                    },
+                    outputs=outputs,
                     attrs=attrs)
                 block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
 
@@ -479,15 +486,20 @@ class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
-class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
+class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
     def init_test_case(self):
-        self.use_momentum_variable = True
         self.use_global_stats = False
         self.no_grad_set = set()
         self.fetch_list = [
             'y', 'mean', 'variance', 'saved_mean', 'saved_variance', 'x@GRAD',
             'scale@GRAD', 'bias@GRAD'
         ]
+        self.has_reserve_space = True
+
+
+class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
+    def init_test_case(self):
+        self.use_momentum_variable = True
 
 
 class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
