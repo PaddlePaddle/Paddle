@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 #include "paddle/fluid/operators/assign_op.h"
-#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -108,10 +107,12 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
       auto *scope_var = scope.FindVar(Input(ConditionalOp::kScope));
       PADDLE_ENFORCE_NE(scope_var, nullptr,
-                        "Scope must be set in conditional block op");
+                        platform::errors::InvalidArgument(
+                            "Scope must be set in conditional block op"));
       auto &scopes = scope_var->Get<std::vector<framework::Scope *>>();
       PADDLE_ENFORCE_GT(scopes.size(), 0,
-                        "Scope must be set in conditional block op");
+                        platform::errors::InvalidArgument(
+                            "Scope must be set in conditional block op"));
       framework::Scope &cur_scope = *scopes[0];
 
       framework::Executor exec(dev_place);
@@ -125,9 +126,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
       AssignLocalGradientToParentScope(dev_place, cur_scope, scope,
                                        inside_grads, outside_grads);
-      return;
     }
-    // AssignZeroToParentScope(dev_place, scope, inputs, outside_grads);
   }
 
  private:
@@ -141,7 +140,8 @@ class ConditionalBlockGradOp : public ConditionalOp {
       const std::string &inside_grad_name = inside_grads[i];
       VLOG(4) << "inside_grad_name = " << inside_grad_name
               << ", outside_grad_name = " << outside_grad_name;
-      framework::Variable *inside_var = cur_scope.FindVar(inside_grad_name);
+      framework::Variable *inside_var =
+          cur_scope.FindLocalVar(inside_grad_name);
       if (inside_var == nullptr) {
         continue;
       }
@@ -154,67 +154,7 @@ class ConditionalBlockGradOp : public ConditionalOp {
           platform::DeviceContextPool::Instance().Get(place);
       framework::VisitVarType(*inside_var,
                               AssignFunctor(outside_var, *dev_ctx));
-      /*
-      std::string new_inside_grad_name = cur_scope.Rename(inside_grad_name);
-      auto assign = framework::OpRegistry::CreateOp(
-          "assign", {{"X", {new_inside_grad_name}}}, {{"Out",
-      {outside_grad_name}}},
-          framework::AttributeMap{});
-      assign->Run(cur_scope, place);
-      cur_scope.Rename(new_inside_grad_name, inside_grad_name);
-      */
     }
-  }
-
-  void AssignZeroToParentScope(
-      const platform::Place &place, const framework::Scope &scope,
-      const std::vector<std::string> &inputs,
-      const std::vector<std::string> &outside_grads) const {
-    for (size_t i = 0; i < outside_grads.size(); ++i) {
-      const std::string &outside_grad_name = outside_grads[i];
-      const std::string &input_name = inputs[i];
-      VLOG(4) << "input_name = " << input_name
-              << ", outside_grad_name = " << outside_grad_name;
-      framework::Variable *input_var = scope.FindVar(input_name);
-      if (input_var == nullptr) {
-        continue;
-      }
-      framework::Variable *outside_var = scope.FindVar(outside_grad_name);
-      if (outside_var == nullptr) {
-        continue;
-      }
-      PADDLE_ENFORCE_EQ(
-          input_var->IsType<framework::LoDTensor>(), true,
-          "Input var of conditional_block_op supports LoDTensor only now");
-      PADDLE_ENFORCE_EQ(
-          outside_var->IsType<framework::LoDTensor>(), true,
-          "Outside var of conditional_block_op supports LoDTensor only now");
-      AssignZeroToOutsideVariable(
-          place, scope, input_var->Get<framework::LoDTensor>(),
-          outside_var->GetMutable<framework::LoDTensor>());
-      /*
-      } else {
-        // TODO(huihuangzheng): add support for LoDTensorArray and SelectedRows
-        PADDLE_THROW("Conditional block op doesn't support non-LoDTensor output
-      now");
-      }*/
-    }
-  }
-
-  void AssignZeroToOutsideVariable(const platform::Place &place,
-                                   const framework::Scope &cur_scope,
-                                   const framework::LoDTensor &input_tensor,
-                                   framework::LoDTensor *outside_tensor) const {
-    if (!input_tensor.IsInitialized() || input_tensor.numel() == 0) {
-      return;
-    }
-    VLOG(4) << "Assigning zero to " << outside_tensor;
-    outside_tensor->Resize(input_tensor.dims());
-    outside_tensor->mutable_data(place, input_tensor.type());
-    const platform::DeviceContext *dev_ctx =
-        platform::DeviceContextPool::Instance().Get(place);
-    math::set_constant(*dev_ctx, outside_tensor, 0.0f);
-    outside_tensor->set_lod(input_tensor.lod());
   }
 };
 

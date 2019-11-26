@@ -273,10 +273,5 @@ class TestCondNestedControlFlow(unittest.TestCase):
             self.assertEqual(ret[1][0], expected_a_grad)
 
 
-class TestCondGradient(unittest.TestCase):
-    def test(self):
-        pass
-
-
 if __name__ == '__main__':
     unittest.main()

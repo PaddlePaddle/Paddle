@@ -123,8 +123,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
   auto& global_block = pdesc.Block(block_id);
   const Scope* ancestor_scope = scope;
   while (ancestor_scope->parent()) {
-    const Scope* parent = ancestor_scope->parent();
-    ancestor_scope = parent;
+    ancestor_scope = ancestor_scope->parent();
   }
   if (ancestor_scope != scope) {
     for (auto& var : global_block.AllVars()) {

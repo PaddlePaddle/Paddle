@@ -153,11 +153,12 @@ class PrintOp : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(out_var, "The output should not be found in scope",
                             Output("Out"));
     auto &in_tensor = in_var->Get<framework::LoDTensor>();
+    framework::LoDTensor *out_tensor =
+        out_var->GetMutable<framework::LoDTensor>();
 
     PrintValue(place, Inputs("In").front(), in_tensor);
-    platform::DeviceContext *dev_ctx =
-        platform::DeviceContextPool::Instance().Get(place);
-    framework::VisitVarType(*in_var, AssignFunctor(out_var, *dev_ctx));
+    framework::TensorCopy(in_tensor, place, out_tensor);
+    out_tensor->set_lod(in_tensor.lod());
   }
 
   void PrintValue(const platform::Place &place,
