@@ -38,7 +38,7 @@ class SimpleNet(fluid.Layer):
 
 
 class TestSimpleNet(unittest.TestCase):
-    def test_selectedrows_gradient(self):
+    def test_selectedrows_gradient1(self):
         for dtype in ["float32", "float64"]:
             for sort_sum_gradient in [True, False]:
                 with fluid.dygraph.guard():
@@ -78,6 +78,45 @@ class TestSimpleNet(unittest.TestCase):
                         input_emb.gradient()
                     except ValueError as e:
                         pass
+
+    def test_selectedrows_gradient2(self):
+        for sort_sum_gradient in [True, False]:
+            with fluid.dygraph.guard():
+                backward_strategy = fluid.dygraph.BackwardStrategy()
+                backward_strategy.sort_sum_gradient = sort_sum_gradient
+                adam = SGDOptimizer(learning_rate=0.001)
+                grad_clip = fluid.dygraph_grad_clip.GradClipByGlobalNorm(5.0)
+
+                input_word = np.array([[[1], [2]], [[2], [1]]]).astype('int64')
+                input = to_variable(input_word)
+
+                simplenet = SimpleNet("SimpleNet", 20, 32, "float32")
+                input_emb, emb = simplenet(input)
+
+                try:
+                    emb._w.gradient()
+                except ValueError as e:
+                    pass
+                try:
+                    input_emb.gradient()
+                except ValueError as e:
+                    pass
+
+                input_emb.backward(backward_strategy)
+                adam.minimize(input_emb, grad_clip=grad_clip)
+                emb._w.gradient()
+
+                emb.clear_gradients()
+                try:
+                    emb._w.gradient()
+                except ValueError as e:
+                    pass
+
+                input_emb.clear_gradient()
+                try:
+                    input_emb.gradient()
+                except ValueError as e:
+                    pass
 
 
 if __name__ == '__main__':
