@@ -124,6 +124,13 @@ class TestFCOpWithBias3(TestFCOp):
         self.matrix = MatrixGenerate(1, 64, 32, 3, 3, 1)
 
 
+class TestFCOpWithPadding(TestFCOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
+
+
 class TestFCOpError(OpTest):
     def test_errors(self):
         with program_guard(Program(), Program()):
