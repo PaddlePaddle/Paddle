@@ -30,6 +30,12 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
                    "Input Ids of FusedEmbeddingSeqPoolOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output of FusedEmbeddingSeqPoolOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("CSR_Vals_Temp_Out"),
+                   "Output of FusedEmbeddingSeqPoolOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("CSR_Columns_Temp_Out"),
+                   "Output of FusedEmbeddingSeqPoolOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("CSR_Row_Idx_Temp_Out"),
+                   "Output of FusedEmbeddingSeqPoolOp should not be null.");
 
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
@@ -52,6 +58,13 @@ class FusedEmbeddingSeqPoolOp : public framework::OperatorWithKernel {
     // in compile time, the shape from Ids -> output
     // should be [-1, 1] -> [-1, embedding_size]
     ctx->SetOutputDim("Out", framework::make_ddim({-1, last_dim}));
+#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
+    !defined(__OSX__)
+    int len = last_dim / table_dims[1];
+    ctx->SetOutputDim("CSR_Vals_Temp_Out", framework::make_ddim({-1, len}));
+    ctx->SetOutputDim("CSR_Columns_Temp_Out", framework::make_ddim({-1, len}));
+    ctx->SetOutputDim("CSR_Row_Idx_Temp_Out", framework::make_ddim({-1, len}));
+#endif
   }
 
  protected:
@@ -73,6 +86,17 @@ class FusedEmbeddingSeqPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "contains the ids to be looked up in W. "
              "The last dimension size must be 1.");
     AddOutput("Out", "The lookup results, which have the same type as W.");
+#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
+    !defined(__OSX__)
+    AddOutput("CSR_Vals_Temp_Out", "Out(Tensor, Tensor<float>) Output variable")
+        .AsIntermediate();
+    AddOutput("CSR_Columns_Temp_Out",
+              "Out(Tensor, Tensor<int>) Output variable")
+        .AsIntermediate();
+    AddOutput("CSR_Row_Idx_Temp_Out",
+              "Out(Tensor, Tensor<int>) Output variable")
+        .AsIntermediate();
+#endif
     AddAttr<std::string>("combiner",
                          "(string, default sum) "
                          "A string specifying the reduction op. Currently sum "
@@ -163,6 +187,12 @@ class FusedEmbeddingSeqPoolGradOpMaker
     op->SetType("fused_embedding_seq_pool_grad");
     op->SetInput("Ids", this->Input("Ids"));
     op->SetInput("W", this->Input("W"));
+#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32) && !defined(__APPLE__) && \
+    !defined(__OSX__)
+    op->SetInput("CSR_Vals_Temp_Out", this->Output("CSR_Vals_Temp_Out"));
+    op->SetInput("CSR_Columns_Temp_Out", this->Output("CSR_Columns_Temp_Out"));
+    op->SetInput("CSR_Row_Idx_Temp_Out", this->Output("CSR_Row_Idx_Temp_Out"));
+#endif
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
     op->SetAttrMap(this->Attrs());

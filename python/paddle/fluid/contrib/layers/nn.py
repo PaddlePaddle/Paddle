@@ -485,11 +485,19 @@ def fused_embedding_seq_pool(input,
     out = helper.create_variable_for_type_inference(dtype)
     padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
         size[0] + padding_idx)
+    csr_vals_temp_out = helper.create_variable_for_type_inference(dtype)
+    csr_columns_temp_out = helper.create_variable_for_type_inference(dtype)
+    csr_row_idx_temp_out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='fused_embedding_seq_pool',
         inputs={'Ids': input,
                 'W': w},
-        outputs={'Out': out},
+        outputs={
+            'Out': out,
+            'CSR_Vals_Temp_Out': csr_vals_temp_out,
+            'CSR_Columns_Temp_Out': csr_columns_temp_out,
+            'CSR_Row_Idx_Temp_Out': csr_row_idx_temp_out
+        },
         attrs={
             'is_sparse': is_sparse,
             'combiner': combiner,
