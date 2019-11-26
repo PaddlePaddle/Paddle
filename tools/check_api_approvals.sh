@@ -42,7 +42,8 @@ function check_approval(){
 
 function add_failed(){
     failed_num=`expr $failed_num + 1`
-    echo_list=(${echo_list[@]}$1 "." $2)
+    add_line=`echo $@|awk '{for (i=2;i<=NF;i++)print $i}'`
+    echo_list=(${echo_list[@]}$1 "." $add_line)
 } 
 
 
