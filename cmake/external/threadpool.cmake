@@ -14,17 +14,26 @@
 
 INCLUDE(ExternalProject)
 
-SET(THREADPOOL_SOURCE_DIR ${THIRD_PARTY_PATH}/threadpool)
-SET(THREADPOOL_INCLUDE_DIR ${THREADPOOL_SOURCE_DIR}/src/extern_threadpool)
+SET(THREADPOOL_PREFIX_DIR ${THIRD_PARTY_PATH}/threadpool)
+set(THREADPOOL_REPOSITORY https://github.com/progschj/ThreadPool.git)
+set(THREADPOOL_TAG        9a42ec1329f259a5f4881a291db1dcb8f2ad9040)
+
 INCLUDE_DIRECTORIES(${THREADPOOL_INCLUDE_DIR})
+
+cache_third_party(extern_threadpool
+    REPOSITORY   ${THREADPOOL_REPOSITORY}
+    TAG          ${THREADPOOL_TAG}
+    DIR          ${THREADPOOL_PREFIX_DIR})
+
+include_directories(${THREADPOOL_SOURCE_DIR})
 
 ExternalProject_Add(
     extern_threadpool
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
-    GIT_REPOSITORY  "https://github.com/progschj/ThreadPool.git"
-    GIT_TAG         9a42ec1329f259a5f4881a291db1dcb8f2ad9040
-    PREFIX          ${THREADPOOL_SOURCE_DIR}
+    "${THREADPOOL_DOWNLOAD_CMD}"
+    PREFIX          ${THREADPOOL_PREFIX_DIR}
+    SOURCE_DIR      ${THREADPOOL_SOURCE_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
     BUILD_COMMAND     ""

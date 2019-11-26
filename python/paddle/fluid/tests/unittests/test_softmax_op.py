@@ -62,20 +62,30 @@ class TestSoftmaxOp(OpTest):
         pass
 
     def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(
+                place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
         else:
-            self.check_output()
+            self.check_output(check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn or self.dtype == np.float16:
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
-                    place, ["X"], "Out", max_relative_error=0.01)
+                    place, ["X"],
+                    "Out",
+                    max_relative_error=0.01,
+                    check_dygraph=(self.use_mkldnn == False))
         else:
-            self.check_grad(["X"], "Out", max_relative_error=0.01)
+            self.check_grad(
+                ["X"],
+                "Out",
+                max_relative_error=0.01,
+                check_dygraph=(self.use_mkldnn == False))
 
 
 class TestSoftmaxOpError(OpTest):

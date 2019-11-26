@@ -185,6 +185,9 @@ void Executor::RunFromDataset(std::shared_ptr<TrainerBase> trainer) {
   // training and finalize training
   VLOG(3) << "Trainer starts to run";
   trainer->Run();
+}
+
+void Executor::ReleaseTrainer(std::shared_ptr<TrainerBase> trainer) {
   VLOG(3) << "Trainer going to finalize";
   trainer->Finalize();
 }

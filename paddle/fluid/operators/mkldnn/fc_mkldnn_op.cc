@@ -207,8 +207,13 @@ class FCPrimitiveFactory {
   void RecomputeOutputDims(const ExecutionContext& ctx, const LoDTensor* input,
                            const Tensor* w, LoDTensor* output) {
     int in_num_col_dims = ctx.Attr<int>("in_num_col_dims");
+    bool padding_weights = ctx.Attr<bool>("padding_weights");
+    PADDLE_ENFORCE_EQ(padding_weights, false,
+                      platform::errors::PermissionDenied(
+                          "Weight padding in fc can not be used in MKLDNN."));
     std::vector<int64_t> output_dims;
-    FCOutputSize(input->dims(), w->dims(), output_dims, in_num_col_dims);
+    FCOutputSize(input->dims(), w->dims(), output_dims, in_num_col_dims,
+                 padding_weights);
     output->Resize(framework::make_ddim(output_dims));
     output->set_lod(input->lod());
   }
