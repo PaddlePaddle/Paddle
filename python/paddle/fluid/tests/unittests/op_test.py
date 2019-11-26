@@ -1036,7 +1036,7 @@ class OpTest(unittest.TestCase):
                    no_grad_set=None,
                    numeric_grad_delta=0.005,
                    in_place=False,
-                   max_relative_error=0.005,
+                   max_relative_error=1e-6,
                    user_defined_grads=None,
                    check_dygraph=True):
         places = self._get_places()
@@ -1053,7 +1053,7 @@ class OpTest(unittest.TestCase):
                               no_grad_set=None,
                               numeric_grad_delta=0.005,
                               in_place=False,
-                              max_relative_error=0.005,
+                              max_relative_error=1e-6,
                               user_defined_grads=None,
                               check_dygraph=True):
         self.scope = core.Scope()
