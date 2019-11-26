@@ -333,7 +333,13 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
                         platform::errors::NotFound(
                             "Last living ops of %s cannot be empty", var_name));
 
-      VLOG(10) << "Extract " << result.size() << " ops of var " << var_name;
+      std::string last_live_ops_log_str;
+      for (auto &each_ret : result) {
+        last_live_ops_log_str += (" " + each_ret->GetOp()->Type());
+      }
+      VLOG(10) << "Extract " << result.size() << " ops of var " << var_name
+               << " : " << last_live_ops_log_str;
+
       var_infos[i][var_name].reset(new MemOptVarInfo(var_name, result.size()));
       auto &last_live_ops_of_var = last_live_ops_of_vars[i][var_name];
       last_live_ops_of_var.set_var(last_ver_var);
