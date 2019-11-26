@@ -285,6 +285,8 @@ class TestDataNormOpWithSyncStats(OpTest):
     """
 
     def test_sync_stats(self):
+        if not core.is_compiled_with_cuda():
+            return
         x = fluid.layers.data(name='x', shape=[1], dtype='int64', lod_level=0)
         emb = layers.embedding(
             input=x,
