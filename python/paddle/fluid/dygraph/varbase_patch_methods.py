@@ -201,7 +201,7 @@ def monkey_patch_varbase():
                 return 'name %s, shape: %s, not inited' % (self.name,
                                                            self.shape)
 
-    for method_name, method in (("set_value", set_value),
+    for method_name, method in (("set_value", set_value), ("block", block),
                                 ("backward", backward), ("gradient", gradient),
                                 ("__str__", __str__), ("to_string", to_string),
                                 ("__getitem__", Variable.__getitem__)):
