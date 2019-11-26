@@ -72,8 +72,13 @@ class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
       : Allocation(const_cast<void *>(arr.data()), sizeof(T) * (arr.size()),
                    paddle::platform::CPUPlace()),
         arr_(arr.ptr()) {
-    PADDLE_ENFORCE_NOT_NULL(arr_);
-    PADDLE_ENFORCE_NE(arr_, Py_None);
+    PADDLE_ENFORCE_NOT_NULL(arr_, platform::errors::InvalidArgument(
+                                      "The underlying PyObject pointer of "
+                                      "numpy array cannot be nullptr"));
+    PADDLE_ENFORCE_NE(
+        arr_, Py_None,
+        platform::errors::PreconditionNotMet(
+            "The underlying PyObject pointer of numpy array cannot be None"));
     Py_INCREF(arr_);
   }
   ~NumpyAllocation() override {
