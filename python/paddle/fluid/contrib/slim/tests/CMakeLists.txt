@@ -104,10 +104,10 @@ list(REMOVE_ITEM TEST_OPS test_mkldnn_int8_quantization_strategy)
 # QAT FP32 & INT8 comparison python api tests
 if(LINUX AND WITH_MKLDNN)
 	set(DATASET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
-	set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
-	set(QAT_MODELS_BASE_URL "${INFERENCE_URL}/int8/QAT_models")
-	set(MKLDNN_QAT_TEST_FILE "qat_int8_comparison.py")
-    set(MKLDNN_QAT_TEST_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${MKLDNN_QAT_TEST_FILE}")
+      set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
+      set(QAT_MODELS_BASE_URL "${INFERENCE_URL}/int8/QAT_models")
+      set(MKLDNN_QAT_TEST_FILE "qat_int8_comparison.py")
+      set(MKLDNN_QAT_TEST_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${MKLDNN_QAT_TEST_FILE}")
 
 	# ImageNet small dataset
 	# May be already downloaded for INT8v2 unit tests
@@ -176,10 +176,12 @@ if(LINUX AND WITH_MKLDNN)
         endif()
         inference_qat2_int8_test(test_qat2_int8_mobilenetv1_mkldnn ${QAT2_MOBILENETV1_MODEL_DIR}/MobileNet_qat_perf ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
 
-    set(QAT2_INT8_SAVE_PATH "${QAT_DATA_DIR}/ResNet50_qat2_int8")
-    set(QAT2_FP32_SAVE_PATH "${QAT_DATA_DIR}/ResNet50_qat2_fp32")
-    set(SAVE_QAT2_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/save_qat_model.py")
-    save_qat_model_test(save_qat2_model_resnet50 ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QAT2_FP32_SAVE_PATH} ${QAT2_INT8_SAVE_PATH} ${SAVE_QAT2_MODEL_SCRIPT} true)
+        # Save qat2 fp32 model or qat2 int8 model
+        
+        set(QAT2_INT8_SAVE_PATH "${QAT_DATA_DIR}/ResNet50_qat2_int8")
+        set(QAT2_FP32_SAVE_PATH "${QAT_DATA_DIR}/ResNet50_qat2_fp32")
+        set(SAVE_QAT2_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/save_qat_model.py")
+        save_qat_model_test(save_qat2_model_resnet50 ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QAT2_FP32_SAVE_PATH} ${QAT2_INT8_SAVE_PATH} ${SAVE_QAT2_MODEL_SCRIPT} true)
 
 endif()
 

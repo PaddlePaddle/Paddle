@@ -244,8 +244,8 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
   // Set fake_image_data
   PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0,
                     platform::errors::InvalidArgument(
-                        "In SetFakeImageInput, expect test_all_data = false, "
-                        "while now test_all_data=",
+                        "In SetFakeImageInput, expected test_all_data = false, "
+                        "but now test_all_data=",
                         FLAGS_test_all_data));
   std::vector<std::vector<int64_t>> feed_target_shapes = GetFeedTargetShapes(
       dirname, is_combined, model_filename, params_filename);
@@ -259,12 +259,13 @@ void SetFakeImageInput(std::vector<std::vector<PaddleTensor>> *inputs,
   }
   LOG(INFO) << os.str();
   if (feed_names) {
-    PADDLE_ENFORCE_EQ(feed_names->size(), feed_target_shapes.size(),
-                      platform::errors::InvalidArgument(
-                          "The size of feeds_names and size of "
-                          "feed_target_shapes must be equal, while feeds_names "
-                          "size is %d and feed_target_shapes size is %d",
-                          feed_names->size(), feed_target_shapes.size()));
+    PADDLE_ENFORCE_EQ(
+        feed_names->size(), feed_target_shapes.size(),
+        platform::errors::InvalidArgument(
+            "The size of feeds_names and size of "
+            "feed_target_shapes must be equal, but now feeds_names "
+            "size is %d and feed_target_shapes size is %d",
+            feed_names->size(), feed_target_shapes.size()));
   }
   std::vector<PaddleTensor> input_slots(feed_target_shapes.size());
   for (size_t i = 0; i < feed_target_shapes.size(); ++i) {
@@ -532,19 +533,21 @@ float CompareAccuracyOne(
   for (size_t i = 0; i < output_slots.size(); ++i) {
     switch (compared_idx) {
       case 1:
-        PADDLE_ENFORCE_GE(output_slots[i].size(), 2UL,
-                          platform::errors::InvalidArgument(
-                              "To achieve top 1 accuracy, output_slots size "
-                              "must be bigger than or equal to 2, now it is %d",
-                              output_slots[i].size()));
+        PADDLE_ENFORCE_GE(
+            output_slots[i].size(), 2UL,
+            platform::errors::InvalidArgument(
+                "To achieve top 1 accuracy, output_slots size "
+                "must be bigger than or equal to 2, but now the size is %d",
+                output_slots[i].size()));
         break;
       case 2:
-        PADDLE_ENFORCE_GE(output_slots[i].size(), 3UL,
-                          platform::errors::InvalidArgument(
-                              "To achieve top 5 accuracy or mean Average "
-                              "Precision (mAP), output_slots size must be "
-                              "bigger than or equal to 3, now it is %d",
-                              output_slots[i].size()));
+        PADDLE_ENFORCE_GE(
+            output_slots[i].size(), 3UL,
+            platform::errors::InvalidArgument(
+                "To achieve top 5 accuracy or mean Average "
+                "Precision (mAP), output_slots size must be "
+                "bigger than or equal to 3, but now the size is %d",
+                output_slots[i].size()));
         break;
       default:
         throw std::invalid_argument(
