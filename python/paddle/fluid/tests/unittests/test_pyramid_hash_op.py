@@ -43,6 +43,7 @@ class TestPyramidHashOpApi(unittest.TestCase):
                 name="Filter",
                 learning_rate=0, ),
             param_attr_bl=None,
+            distribute_update_vars=["PyramidHash_emb_0"],
             name=None, )
 
         place = fluid.CPUPlace()
