@@ -146,6 +146,12 @@ framework::OpKernelType PoolOp::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
+    // TODO(jczaja): Add support for NHWC
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_NE(
+        data_format, "NHWC",
+        platform::errors::Unimplemented(
+            "Pool MKLDNN grad does not support NHWC data format yet"));
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
@@ -177,6 +183,12 @@ framework::OpKernelType PoolOpGrad::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
+    // TODO(jczaja): Add support for NHWC
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_NE(
+        data_format, "NHWC",
+        platform::errors::Unimplemented(
+            "Pool MKLDNN grad does not support NHWC data format yet"));
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
