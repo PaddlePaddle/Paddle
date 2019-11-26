@@ -257,7 +257,9 @@ class TestCondNestedControlFlow(unittest.TestCase):
             mean = layers.mean(out)
             append_backward(mean)
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
         for feed_i in range(0, 10):
             expected_a = 2.0 * feed_i
             if feed_i < 5:
