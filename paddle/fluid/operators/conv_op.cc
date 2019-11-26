@@ -155,6 +155,15 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
+    // TODO(jczaja): Add support for NHWC
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_NE(data_format, "NHWC",
+                      platform::errors::Unimplemented(
+                          "Conv MKLDNN does not support NHWC data format yet"));
+    PADDLE_ENFORCE_NE(
+        data_format, "NDHWC",
+        platform::errors::Unimplemented(
+            "Conv MKLDNN does not support NDHWC data format yet"));
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
     customized_type_value =
@@ -190,27 +199,6 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
   }
 #endif
   return type;
-}
-
-framework::OpKernelType ConvOp::GetKernelTypeForVar(
-    const std::string& var_name, const Tensor& tensor,
-    const framework::OpKernelType& expected_kernel_type) const {
-#ifdef PADDLE_WITH_MKLDNN
-  // Only input require reshaping, weights and
-  // bias are having shape in NCHW order
-  if ((var_name == "Input") &&
-      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
-      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
-    auto attrs = Attrs();
-    auto ar = paddle::framework::AttrReader(attrs);
-    const std::string data_format = ar.Get<std::string>("data_format");
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(),
-                                   framework::StringToDataLayout(data_format));
-  }
-#endif
-  return framework::OpKernelType(expected_kernel_type.data_type_,
-                                 tensor.place(), tensor.layout());
 }
 
 void Conv2DOpMaker::Make() {
