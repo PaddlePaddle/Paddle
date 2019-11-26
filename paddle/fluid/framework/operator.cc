@@ -33,6 +33,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
@@ -1102,12 +1106,6 @@ Scope* OperatorWithKernel::PrepareData(
   }
 
   for (auto& var_name_item : Inputs()) {
-    if (no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0) {
-      VLOG(7) << "Skip scanning input " << var_name_item.first
-              << " in Operator " << type_;
-      continue;
-    }
-
     std::vector<Variable*>& input_vars = ctx->inputs[var_name_item.first];
 
     for (size_t i = 0; i < var_name_item.second.size(); ++i) {
@@ -1180,12 +1178,32 @@ Scope* OperatorWithKernel::PrepareData(
         pre_scope_ = nullptr;
       }
 
-      auto* trans_var = new_scope->Var(var_name);
-      input_vars[i] = trans_var;
-
-      Tensor out;
-      TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
-      SetTensorToVariable(*var, out, trans_var);
+      if (no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0) {
+        // If there is Var without Buffer needed and
+        // TODO(jczaja): check kernel_type_for_var
+        if ((tensor_in->layout() != DataLayout::kMKLDNN) ||
+            (var->IsType<LoDTensor>() == false) ||
+            (expected_kernel_key.data_layout_ == DataLayout::kMKLDNN) ||
+            (paddle::platform::get_cur_paddle_data_layout() !=
+             DataLayout::kNHWC)) {
+          VLOG(7) << "Skip scanning input " << var_name_item.first
+                  << " in Operator " << type_;
+          continue;
+        }
+        auto* trans_var = new_scope->Var(var_name);
+        input_vars[i] = trans_var;
+        auto out = trans_var->GetMutable<LoDTensor>();
+        out->Resize(tensor_in->dims());
+        platform::MatchShapeToLayout(out, tensor_in->layout(),
+                                     DataLayout::kNHWC);
+      } else {
+        auto* trans_var = new_scope->Var(var_name);
+        input_vars[i] = trans_var;
+        Tensor out;
+        TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in,
+                      &out);
+        SetTensorToVariable(*var, out, trans_var);
+      }
     }
   }
 
