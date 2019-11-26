@@ -959,7 +959,7 @@ REGISTER_OP_CUDA_KERNEL(nearest_interp, ops::InterpolateOpCUDAKernel<float>,
                         ops::InterpolateOpCUDAKernel<uint8_t>);
 REGISTER_OP_CUDA_KERNEL(nearest_interp_grad,
                         ops::InterpolateGradOpCUDAKernel<float>,
-                        ops::InterpolateGradOpCUDAKernel<double>;
+                        ops::InterpolateGradOpCUDAKernel<double>,
                         ops::InterpolateGradOpCUDAKernel<uint8_t>,
                         ops::InterpolateGradOpCUDAKernel<int>);
 REGISTER_OP_CUDA_KERNEL(trilinear_interp, ops::InterpolateOpCUDAKernel<float>,
