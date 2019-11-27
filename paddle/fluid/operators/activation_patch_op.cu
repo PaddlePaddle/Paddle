@@ -49,15 +49,15 @@ template <>
 __global__ void KeRelu<half>(const half* x, const int num, half* y) {
   int start = threadIdx.x + blockDim.x * blockIdx.x;
   int stride = blockDim.x * gridDim.x;
-  int64_t n2 = size / 2;
+  int n2 = num / 2;
 
   const half2* x2 = reinterpret_cast<const half2*>(x);
-  half2* z2 = reinterpret_cast<half2*>(z);
-  for (int64_t i = start; i < n2; i += stride) {
-    z2[i] = half2_relu(x2[i]);
+  half2* y2 = reinterpret_cast<half2*>(y);
+  for (int i = start; i < n2; i += stride) {
+    y2[i] = half2_relu(x2[i]);
   }
-  if (start == 0 && (size % 2)) {
-    z[size - 1] = max(x[size - 1], 0.0);
+  if (start == 0 && (num % 2)) {
+    y[num - 1] = max(x[num - 1], 0.0);
   }
 }
 
@@ -68,7 +68,7 @@ struct ReluFunctor<platform::CUDADeviceContext, platform::float16> {
     int num = in_t->numel();
     int block = 512;
     int grid = (num + block - 1) / block;
-    KeRelu<platform::float16><<<grid, block, 0, dev_ctx.stream()>>>(x, num, y);
+    KeRelu<half><<<grid, block, 0, dev_ctx.stream()>>>(x, num, y);
   }
 };
 
@@ -90,16 +90,16 @@ struct ReluFunctor<platform::CUDADeviceContext, platform::float16> {
                 const int num, platform::float16* dx) {
     int start = threadIdx.x + blockDim.x * blockIdx.x;
     int stride = blockDim.x * gridDim.x;
-    int64_t n2 = size / 2;
+    int n2 = num / 2;
 
     const half2* y2 = reinterpret_cast<const half2*>(y);
     const half2* dy2 = reinterpret_cast<const half2*>(dy);
     half2* dx2 = reinterpret_cast<half2*>(dx);
-    for (int64_t i = start; i < n2; i += stride) {
+    for (int i = start; i < n2; i += stride) {
       dx2[i] = half2_relu_grad(y2[i], dy2[i]);
     }
-    if (start == 0 && (size % 2)) {
-      dx[size - 1] = dy[size - 1] * (y[size - 1] > 0 ? 1. : 0.);
+    if (start == 0 && (num % 2)) {
+      dx[num - 1] = dy[num - 1] * (y[num - 1] > 0 ? 1. : 0.);
     }
   }
 };
