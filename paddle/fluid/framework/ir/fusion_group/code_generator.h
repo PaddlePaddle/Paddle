@@ -14,9 +14,12 @@ limitations under the License. */
 
 #pragma once
 
+#include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/ir/fusion_group/code_generator_helper.h"
+#include "paddle/fluid/framework/ir/fusion_group/subgraph.h"
 
 namespace paddle {
 namespace framework {
@@ -27,18 +30,31 @@ class CodeGenerator {
  public:
   CodeGenerator();
 
-  std::string GenerateCode(std::string func_name,
-                           std::vector<OperationExpression> expressions);
+  std::string Generate(std::string func_name,
+                       std::vector<OperationExpression> expressions);
 
-  // TODO(wangchao): add a more general interface
-  // std::string Generate(const std::string name, const SubGraph& subgraph);
+  std::string Generate(SubGraph* subgraph);
+
+  std::vector<OperationExpression> ConvertToExpressions(SubGraph* subgraph);
 
  private:
+  std::set<int> DistilInputIds(
+      const std::vector<OperationExpression>& expressions);
+  std::set<int> DistilOutputIds(
+      const std::vector<OperationExpression>& expressions);
+
   // we get the parameter list code for the expression information
-  std::string EmitParameters(std::vector<OperationExpression> expressions,
+  std::string EmitParameters(const std::set<int>& input_ids,
+                             const std::set<int>& output_ids,
                              std::string dtype);
 
-  std::string EmitComputeBody(std::vector<OperationExpression> expressions);
+  std::string EmitComputeBody(
+      const std::vector<OperationExpression>& expressions,
+      const std::set<int>& input_ids, const std::set<int>& output_ids,
+      std::string dtype);
+
+  // Encode all var nodes in the subgraph with an unique number.
+  std::unordered_map<std::string, int> EncodeVarNodes(SubGraph* subgraph);
 
  private:
   std::vector<CodeTemplate> code_templates_;

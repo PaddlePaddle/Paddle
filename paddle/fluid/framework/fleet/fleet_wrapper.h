@@ -124,7 +124,7 @@ class FleetWrapper {
       std::vector<std::vector<float>>* push_values,
       std::vector<::std::future<int32_t>>* push_sparse_status,
       const int batch_size, const bool use_cvm, const bool dump_slot,
-      std::vector<uint64_t>* sparse_push_keys);
+      std::vector<uint64_t>* sparse_push_keys, const bool no_cvm);
 
   // Push sparse variables to server in Async mode
   // Param<In>: scope, table_id, fea_keys, sparse_grad_names
@@ -147,6 +147,8 @@ class FleetWrapper {
                   int index);
   // stop server
   void StopServer();
+  // finalize worker to make worker can be stop
+  void FinalizeWorker();
   // run server
   uint64_t RunServer();
   // gather server ip
@@ -165,6 +167,8 @@ class FleetWrapper {
                            std::string model_path, std::string model_proto_file,
                            std::vector<std::string> table_var_list,
                            bool load_combine);
+
+  void PrintTableStat(const uint64_t table_id);
   // mode = 0, load all feature
   // mode = 1, laod delta feature, which means load diff
   void LoadModel(const std::string& path, const int mode);

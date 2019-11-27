@@ -427,7 +427,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           }
         } else {
           if (d_x) {
-            BNBackwardData<T, block, framework::DataLayout::kNCHW><<<
+            BNBackwardData<T, block, framework::DataLayout::kNHWC><<<
                 grid2, block, 0, dev_ctx.stream()>>>(
                 d_y->data<T>(), scale->data<BatchNormParamType<T>>(),
                 saved_mean_data, x->data<T>(), saved_var_data, C, N, H * W * D,

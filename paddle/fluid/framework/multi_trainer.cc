@@ -77,14 +77,12 @@ void MultiTrainer::Run() {
                                      workers_[thidx].get()));
     }
   }
-}
-
-void MultiTrainer::Finalize() {
   for (auto& th : threads_) {
     th.join();
   }
-  root_scope_->DropKids();
 }
+
+void MultiTrainer::Finalize() { root_scope_->DropKids(); }
 
 }  // end namespace framework
 }  // end namespace paddle

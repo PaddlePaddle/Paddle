@@ -97,13 +97,15 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
       filter_dims[0], filter_dims, groups);
 
   framework::DDim in_data_dims;
+  framework::DDim filter_data_dims;
   if (channel_last) {
     in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
   } else {
     in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
   }
-  framework::DDim filter_data_dims =
-      framework::slice_ddim(filter_dims, 2, filter_dims.size());
+
+  filter_data_dims = framework::slice_ddim(filter_dims, 2, filter_dims.size());
+
   std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                            in_data_dims, strides, ksize);
@@ -117,9 +119,9 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
         (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
       output_shape.push_back(-1);
     } else {
-      output_shape.push_back(ConvOutputSize(in_data_dims[i], filter_dims[i + 2],
-                                            dilations[i], paddings[2 * i],
-                                            paddings[2 * i + 1], strides[i]));
+      output_shape.push_back(
+          ConvOutputSize(in_data_dims[i], filter_data_dims[i], dilations[i],
+                         paddings[2 * i], paddings[2 * i + 1], strides[i]));
     }
   }
   if (channel_last) {
@@ -149,6 +151,15 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
+    // TODO(jczaja): Add support for NHWC
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_NE(data_format, "NHWC",
+                      platform::errors::Unimplemented(
+                          "Conv MKLDNN does not support NHWC data format yet"));
+    PADDLE_ENFORCE_NE(
+        data_format, "NDHWC",
+        platform::errors::Unimplemented(
+            "Conv MKLDNN does not support NDHWC data format yet"));
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
     customized_type_value =
@@ -335,7 +346,7 @@ parameters is checked in the infer-shape.
 Input(Input) and Output(Output) are in NCHW or NHWC format. Where N is batch
 size, C is the number of channels, H is the height of the feature, and W is
 the width of the feature.
-Filters(Input) is MCHW format. Where M is the number of output image channels, C is
+Filters(Input) is MCHW format format. Where M is the number of output image channels, C is
 the number of input image channels, H is the height of the filter, and W
 is the width of the filter.
 Parameters(strides, paddings, dilations) are two elements. These two elements represent
@@ -522,6 +533,16 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
+    // TODO(jczaja): Add support for NHWC
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_NE(
+        data_format, "NHWC",
+        platform::errors::Unimplemented(
+            "Conv MKLDNN grad does not support NHWC data format yet"));
+    PADDLE_ENFORCE_NE(
+        data_format, "NDHWC",
+        platform::errors::Unimplemented(
+            "Conv MKLDNN Grad does not support NDHWC data format yet"));
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
     customized_type_value = kConvMKLDNNFP32;
@@ -703,14 +724,6 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
-  }
-#endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = framework::DataLayout::kMKLDNN;
-    customized_type_value = kConvMKLDNNFP32;
   }
 #endif
   auto type = framework::OpKernelType(
