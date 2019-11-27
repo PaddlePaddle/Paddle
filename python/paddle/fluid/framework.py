@@ -4756,7 +4756,7 @@ def _dygraph_guard(tracer):
 
     yield
 
-    core._switch_tracer(None)
+    core._switch_tracer(tmp_trace)
     _dygraph_tracer_ = tmp_trace
 
 
