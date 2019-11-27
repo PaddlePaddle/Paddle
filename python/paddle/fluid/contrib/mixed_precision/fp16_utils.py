@@ -16,24 +16,6 @@ from __future__ import print_function
 
 from ... import core
 from ... import layers
-from ... import framework
-
-
-def append_cast_op(i, o, prog):
-    """
-    Append a cast op in a given Program to cast input `i` to data type `o.dtype`.
-
-    Args:
-        i (Variable): The input Variable.
-        o (Variable): The output Variable.
-        prog (Program): The Program to append cast op.
-    """
-    prog.global_block().append_op(
-        type="cast",
-        inputs={"X": i},
-        outputs={"Out": o},
-        attrs={"in_dtype": i.dtype,
-               "out_dtype": o.dtype})
 
 
 def _rename_arg(op, old_name, new_name):
@@ -75,7 +57,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
         op (Operator): The operator to insert cast op.
         idx (int): The index of current operator.
         src_dtype (VarType): The input variable dtype of cast op.
-        desr_dtype (VarType): The output variable dtype of cast op.
+        dest_dtype (VarType): The output variable dtype of cast op.
 
     Returns:
         num_cast_op (int): The number of cast ops that have been inserted.
@@ -261,7 +243,7 @@ def rewrite_program(main_prog, amp_lists):
 def update_role_var_grad(main_prog, params_grads):
     """
     Update op_role_var attr for some ops to make sure the gradients
-    transfered across gpus is FP16.
+    transferred across GPUs is FP16.
     1. Check whether the op that outputs gradient is cast or not.
     2. If op is cast and gradient is FP32, remove the op_role_var
        and find the prev op which outputs FP16 gradient
@@ -293,7 +275,8 @@ def update_role_var_grad(main_prog, params_grads):
                 attr_val.extend(op_for_fp16_grad.attr(op_role_var_attr_name))
             op_for_fp16_grad._set_attr(op_role_var_attr_name, attr_val)
 
-            # maximize the allreduce overlap
+            # Maximize the all_reduce overlap, and perform the cast
+            # operation after gradients transfer.
             op._set_attr('op_role', OPTIMIZE)
 
 
@@ -303,7 +286,7 @@ def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
     """
     Update loss scaling according to overall gradients. If all gradients is 
     finite after incr_every_n_steps, loss scaling will increase by incr_ratio. 
-    Otherwisw, loss scaling will decrease by decr_ratio after 
+    Otherwise, loss scaling will decrease by decr_ratio after
     decr_every_n_nan_or_inf steps and each step some gradients are infinite.
 
     Args:

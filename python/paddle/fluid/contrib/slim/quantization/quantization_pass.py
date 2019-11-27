@@ -99,7 +99,7 @@ class QuantizationTransformPass(object):
                  weight_quantize_type='abs_max',
                  window_size=10000,
                  moving_rate=0.9,
-                 skip_pattern='skip_quant',
+                 skip_pattern=['skip_quant'],
                  quantizable_op_type=['conv2d', 'depthwise_conv2d', 'mul']):
         """
         Convert and rewrite the IrGraph according to weight and
@@ -126,9 +126,9 @@ class QuantizationTransformPass(object):
                 model is well trained.
             window_size(int): the window size for 'range_abs_max' quantization.
             moving_rate(float): the param for 'moving_average_abs_max' quantization.
-            skip_pattern(str): The user-defined quantization skip pattern, which
+            skip_pattern(str or str list): The user-defined quantization skip pattern, which
                 will be presented in the name scope of an op. When the skip pattern is
-                detected in an op's name scope, the corresponding op will not be quantized.
+                detected in an op's name scope, the corresponding op will not be quantized. 
             quantizable_op_type(list[str]): List the type of ops that will be quantized. 
                 Default is ["conv2d", "depthwise_conv2d", "mul"]. The quantizable_op_type in
                 QuantizationFreezePass and ConvertToInt8Pass must be the same as this.
@@ -206,9 +206,13 @@ class QuantizationTransformPass(object):
         persistable_vars = [p.name() for p in graph.all_persistable_nodes()]
 
         def _quant_preprocess(op_node):
-            user_skipped = isinstance(self._skip_pattern, str) and \
-                           op_node.op().has_attr("op_namescope") and \
-                           op_node.op().attr("op_namescope").find(self._skip_pattern) != -1
+            user_skipped = False
+            if isinstance(self._skip_pattern, list):
+                user_skipped = op_node.op().has_attr("op_namescope") and \
+                               any(pattern in op_node.op().attr("op_namescope") for pattern in self._skip_pattern)
+            elif isinstance(self._skip_pattern, str):
+                user_skipped = op_node.op().has_attr("op_namescope") and \
+                               op_node.op().attr("op_namescope").find(self._skip_pattern) != -1
 
             if user_skipped:
                 op_node.op()._set_attr("skip_quant", True)
@@ -1245,7 +1249,7 @@ class AddQuantDequantPass(object):
                  place=None,
                  moving_rate=0.9,
                  quant_bits=8,
-                 skip_pattern='skip_quant',
+                 skip_pattern=["skip_quant"],
                  quantizable_op_type=["elementwise_add", "pool2d", "concat"],
                  is_full_quantized=False):
         """
@@ -1313,9 +1317,15 @@ class AddQuantDequantPass(object):
         all_op_nodes = graph.all_op_nodes()
         for op_node in all_op_nodes:
             if op_node.name() in self._quantizable_op_type:
-                if isinstance(self._skip_pattern, str) and \
-                           op_node.op().has_attr("op_namescope") and \
-                           op_node.op().attr("op_namescope").find(self._skip_pattern) != -1:
+                user_skipped = False
+                if isinstance(self._skip_pattern, list):
+                    user_skipped = op_node.op().has_attr("op_namescope") and \
+                                   any(pattern in op_node.op().attr("op_namescope") for pattern in self._skip_pattern)
+                elif isinstance(self._skip_pattern, str):
+                    user_skipped = op_node.op().has_attr("op_namescope") and \
+                                   op_node.op().attr("op_namescope").find(self._skip_pattern) != -1
+
+                if user_skipped:
                     continue
 
                 if not self._is_input_all_not_persistable(graph, op_node):

@@ -81,7 +81,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
   }
 
   py::object GetOrReturnDefaultValue(const std::string &name,
-                                     const py::object &default_value) {
+                                     const py::object &default_value) const {
     if (HasGetterMethod(name)) {
       return GetterMethod(name)();
     } else {
@@ -89,7 +89,7 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     }
   }
 
-  py::object Get(const std::string &name) { return GetterMethod(name)(); }
+  py::object Get(const std::string &name) const { return GetterMethod(name)(); }
 
   const Setter &SetterMethod(const std::string &name) const {
     PADDLE_ENFORCE_EQ(
