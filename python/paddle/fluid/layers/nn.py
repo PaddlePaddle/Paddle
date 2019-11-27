@@ -2438,11 +2438,11 @@ def batch_norm(input,
         is_test (bool, Default False): A flag indicating whether it is in
             test phrase or not.
         momentum(float|Variable, Default 0.9): The value used for the moving_mean and
-            moving_var computation. The updated formula is:
+            moving_var computation. This should be a float number or a Variable with
+            shape [1] and data type as float32. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
-            This should be a float number or a Variable with shape [1] and data
-            type as float32. Default is 0.9.
+            Default is 0.9.
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
