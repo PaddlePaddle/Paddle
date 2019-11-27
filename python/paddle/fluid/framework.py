@@ -4781,9 +4781,11 @@ def _dygraph_guard(tracer):
     global _dygraph_tracer_
     tmp_trace = _dygraph_tracer_
     _dygraph_tracer_ = tracer
+    core._switch_tracer(tracer)
 
     yield
 
+    core._switch_tracer(tmp_trace)
     _dygraph_tracer_ = tmp_trace
 
 
