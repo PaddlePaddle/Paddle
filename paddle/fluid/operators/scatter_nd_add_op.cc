@@ -86,12 +86,10 @@ class ScatterNdAddGradOp : public framework::OperatorWithKernel {
     if (ctx->HasOutput(framework::GradVarName("Updates"))) {
       ctx->SetOutputDim(framework::GradVarName("Updates"),
                         ctx->GetInputDim("Updates"));
-      ctx->ShareLoD("Updates", /*-->*/ framework::GradVarName("Updates"));
     }
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"),
                         ctx->GetInputDim(framework::GradVarName("Out")));
-      ctx->ShareLoD("Out", /*-->*/ framework::GradVarName("X"));
     }
   }
 
