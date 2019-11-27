@@ -15,31 +15,30 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-namespace paddle {
-namespace operators {
-
 #define REGISTER_ACTIVATION_CUDA_KERNEL(act_type, op_name, functor,            \
                                         grad_functor)                          \
   REGISTER_OP_CUDA_KERNEL(                                                     \
-      act_type, ops::ActivationPatchKernel<                                    \
-                    plat::CUDADeviceContext,                                   \
-                    ops::functor<plat::CUDADeviceContext, float>>,             \
-      ops::ActivationPatchKernel<                                              \
-          plat::CUDADeviceContext,                                             \
-          ops::functor<plat::CUDADeviceContext, double>>,                      \
-      ops::ActivationPatchKernel<                                              \
+      act_type,                                                                \
+      ops::ReluCUDAKernel<plat::CUDADeviceContext,                             \
+                          ops::functor<plat::CUDADeviceContext, float>>,       \
+      ops::ReluCUDAKernel<plat::CUDADeviceContext,                             \
+                          ops::functor<plat::CUDADeviceContext, double>>,      \
+      ops::ReluCUDAKernel<                                                     \
           plat::CUDADeviceContext,                                             \
           ops::functor<plat::CUDADeviceContext, plat::float16>>);              \
   REGISTER_OP_CUDA_KERNEL(                                                     \
-      act_type##_grad, ops::ActivationGradKernel<                              \
+      act_type##_grad, ops::ReluGradCUDAKernel<                                \
                            plat::CUDADeviceContext,                            \
                            ops::grad_functor<plat::CUDADeviceContext, float>>, \
-      ops::ActivationPatchGradKernel<                                          \
+      ops::ReluGradCUDAKernel<                                                 \
           plat::CUDADeviceContext,                                             \
           ops::grad_functor<plat::CUDADeviceContext, double>>,                 \
-      ops::ActivationPatchGradKernel<                                          \
+      ops::ReluGradCUDAKernel<                                                 \
           plat::CUDADeviceContext,                                             \
           ops::grad_functor<plat::CUDADeviceContext, plat::float16>>);
+
+namespace paddle {
+namespace operators {
 
 template <typename T>
 __global__ void KeRelu(const T* x, int num, T* y) {
@@ -63,7 +62,7 @@ template <typename T>
 __global__ void KeReluGrad(const T* y, const T* dy, int num, T* dx) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = gid; i < num; i += blockDim.x * gridDim.x) {
-    dx[i] = dy[i] * (y[i] > 0 ? 1. : 0.);
+    dx[i] = dy[i] * (y[i] > static_cast<T>(0) ? 1. : 0.);
   }
 }
 
@@ -99,7 +98,7 @@ __global__ void KeRelufp16(const platform::float16* x, int num,
     y2[i] = half2_relu(x2[i]);
   }
   if (start == 0 && (num % 2)) {
-    y[num - 1] = max(static_cast<half>(x[num - 1]), 0.0);
+    y[num - 1] = max(static_cast<float>(x[num - 1]), 0.0);
   }
 }
 
@@ -141,7 +140,9 @@ __global__ void KeReluGradfp16(const platform::float16* y,
   }
 
   if (start == 0 && (num % 2)) {
-    dx[num - 1] = dy[num - 1] * (y[num - 1] > 0.0 ? 1. : 0.);
+    dx[num - 1] = dy[num - 1] * (y[num - 1] > static_cast<plat::float16>(0)
+                                     ? static_cast<plat::float16>(1.)
+                                     : static_cast<plat::float16>(0.));
   }
 }
 
@@ -158,6 +159,7 @@ struct ReluGradFunctor<platform::CUDADeviceContext, platform::float16> {
 
 #endif
 
-REGISTER_ACTIVATION_CUDA_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
 }  // namespace operators
 }  // namespace paddle
+
+REGISTER_ACTIVATION_CUDA_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
