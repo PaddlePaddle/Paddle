@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import numpy as np
 import paddle.fluid.core as core
@@ -314,7 +315,6 @@ class TestBatchNormOpTraining(unittest.TestCase):
         self.epsilon = 0.00001
         self.init_kernel_type()
         self.init_test_case()
-        self.has_reserve_space = False
 
     def init_test_case(self):
         self.use_global_stats = False
@@ -422,10 +422,18 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     "SavedMean": block.var('saved_mean'),
                     "SavedVariance": block.var('saved_variance')
                 }
-                if self.has_reserve_space:
-                    block.creat_var(name=name, dtype='float16')
+                has_reserve_space = False
+                if data_format == 'NHWC' and os.environ.get(
+                        'FLAGS_cudnn_batchnorm_spatial_persistent'):
+                    has_reserve_space = True
+                if has_reserve_space:
+                    block.create_var(name="reserve_space", dtype='float16')
                     outputs["ReserveSpace"] = block.var('reserve_space')
+<<<<<<< HEAD
 
+=======
+                    del os.environ['FLAGS_cudnn_batchnorm_spatial_persistent']
+>>>>>>> fix bugs of reverse_space var creation in unittest and add env var.
                 bn_op = block.append_op(
                     type="batch_norm",
                     inputs=inputs,
@@ -494,7 +502,7 @@ class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
             'y', 'mean', 'variance', 'saved_mean', 'saved_variance', 'x@GRAD',
             'scale@GRAD', 'bias@GRAD'
         ]
-        self.has_reserve_space = True
+        os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = "1"
 
 
 class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
