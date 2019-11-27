@@ -902,7 +902,8 @@ class Variable(object):
         Get the Gradient of Current Variable
 
         Returns:
-            ndarray: Numpy value of the gradient of current Variable
+            ndarray: Numpy value of the gradient of current Variable (Variable's type is LoDTensor)
+            tuple of ndarray: first element of tuple is numpy value of the gradient of current Variable, second element of tuple is numpy value of the rows of current Variable (Variable's type is SelectedRows)
 
         Examples:
             .. code-block:: python
@@ -931,7 +932,8 @@ class Variable(object):
                              "stop_gradient=False, to make sure it has gradient " % self.name)
         new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
         if self._ivar._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
-            return np.array(new_ivar.value().get_selected_rows().get_tensor())
+            return (np.array(new_ivar.value().get_selected_rows().get_tensor()),
+                    np.array(new_ivar.value().get_selected_rows().rows()))
         else:
             return np.array(new_ivar.value().get_tensor())
 

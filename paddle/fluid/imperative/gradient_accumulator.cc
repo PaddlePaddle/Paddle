@@ -299,14 +299,14 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
 
 #ifdef PADDLE_WITH_CUDA
       if (paddle::platform::is_gpu_place(place)) {
-        bool is_initialized = false;
+        bool dst_varbase_is_initialized = false;
         // accumulate selected rows firstly
         for (size_t i = 0; i < tmp_grad_vars_.size(); ++i) {
           if (tmp_grad_vars_[i]
                   .first->Var()
                   .IsType<framework::SelectedRows>()) {
-            if (!is_initialized) {
-              is_initialized = true;
+            if (!dst_varbase_is_initialized) {
+              dst_varbase_is_initialized = true;
               var_->SetType(framework::proto::VarType::SELECTED_ROWS);
               *dst_var = std::move(*(tmp_grad_vars_[i].first->MutableVar()));
             } else {
@@ -316,8 +316,8 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
         }
         // accumulate lod tensor
         for (size_t i = 0; i < tmp_grad_vars_.size(); ++i) {
-          if (!is_initialized) {
-            is_initialized = true;
+          if (!dst_varbase_is_initialized) {
+            dst_varbase_is_initialized = true;
             *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
           }
           if (tmp_grad_vars_[i].first->Var().IsType<framework::LoDTensor>()) {

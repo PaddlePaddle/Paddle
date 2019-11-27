@@ -256,6 +256,8 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
         platform::DeviceContextPool::Instance().Get(src_place)->Wait();
       }
     }
+    dst_selected_rows->set_height(src_selected_rows.height());
+    dst_selected_rows->set_rows(src_selected_rows.rows());
     if (platform::is_gpu_place(dst_place)) {
       VLOG(3) << "copy selected rows " << Name() << " from gpu";
     }
