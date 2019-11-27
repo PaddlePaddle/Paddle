@@ -248,9 +248,9 @@ class GradClipByGlobalNorm(GradClipBase):
     """
 
     @imperative_base.no_grad
-    def __init__(self, max_global_norm):
+    def __init__(self, max_global_norm, dtype='float32'):
         self.max_global_norm = layers.fill_constant(
-            shape=[1], dtype='float32', value=max_global_norm)
+            shape=[1], dtype=dtype, value=max_global_norm)
 
     def __str__(self):
         return "ClipByGlobalNorm, max_global_norm=%f" % (self.max_global_norm)
