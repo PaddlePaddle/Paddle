@@ -98,7 +98,7 @@ class TestOneGPU(TestUniqueWithCountsOp):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3)
+            self.check_output_with_place(place, atol=1e-5)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -129,7 +129,7 @@ class TestRandomGPU(TestUniqueWithCountsOp):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3)
+            self.check_output_with_place(place, atol=1e-5)
 
 
 if __name__ == "__main__":
