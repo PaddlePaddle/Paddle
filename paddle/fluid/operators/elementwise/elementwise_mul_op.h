@@ -13,13 +13,58 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {
+
+class ElementwiseMulOp : public ElementwiseOp {
+ public:
+  using Tensor = framework::Tensor;
+  using ElementwiseOp::ElementwiseOp;
+
+#ifdef PADDLE_WITH_MKLDNN
+  static bool AreDimsAndFormatCorrect(const framework::ExecutionContext& ctx,
+                                      int simd_width,
+                                      mkldnn::memory::format x_format) {
+    using Tensor = framework::Tensor;
+    using paddle::framework::vectorize;
+    using mkldnn::memory;
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto x_dims = vectorize(x->dims());
+    const bool are_dims_divisable = !(x_dims[1] % simd_width);
+    const bool is_x_format_correct = x->format() == x_format;
+    const bool is_y_format_correct = vectorize(y->dims()).size() == 2;
+    return are_dims_divisable && is_x_format_correct && is_y_format_correct;
+  }
+#endif
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    using mkldnn::memory;
+    if (platform::CanMKLDNNBeUsed(ctx)) {
+      bool can_use_avx512_kernel =
+          platform::MayIUse(platform::avx512f) &&
+          AreDimsAndFormatCorrect(ctx, 16, memory::format::nChw16c);
+      if (can_use_avx512_kernel) {
+        return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                       framework::DataLayout::kMKLDNN,
+                                       framework::LibraryType::kMKLDNN);
+      }
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+};
 
 template <typename DeviceContext, typename T>
 void default_elementwise_mul(const framework::ExecutionContext& ctx,

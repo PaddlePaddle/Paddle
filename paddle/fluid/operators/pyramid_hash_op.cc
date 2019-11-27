@@ -161,14 +161,21 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
   void hash_embedding_ff(const T* hash_id, int len, T* top_pos,
                          const T* weights, int _num_emb, int _rand_len,
                          int _space_len) const {
+    unsigned int pos1 = XXH32(hash_id, len * sizeof(T), 0) % _space_len;
+    unsigned int pos2 = XXH32(hash_id, len * sizeof(T), _rand_len) % _space_len;
+
     for (unsigned int j = 0; j != _num_emb; j += _rand_len) {
-      unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
-      if (_rand_len == 16) {
-        memcpy(top_pos + j, const_cast<float*>(weights + pos), 16 * sizeof(T));
-      } else {
-        memcpy(top_pos + j, const_cast<float*>(weights + pos),
-               _rand_len * sizeof(T));
+      if (j + _rand_len < _num_emb) {
+        __builtin_prefetch(weights + pos2);
+        __builtin_prefetch(top_pos + j + _rand_len);
       }
+
+      unsigned int pos3 =
+          XXH32(hash_id, len * sizeof(T), j + 2 * _rand_len) % _space_len;
+      memcpy(top_pos + j, const_cast<float*>(weights + pos1),
+             _rand_len * sizeof(T));
+      pos1 = pos2;
+      pos2 = pos3;
     }
   }
 

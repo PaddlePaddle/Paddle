@@ -91,6 +91,13 @@ void FleetWrapper::StopServer() {
 #endif
 }
 
+void FleetWrapper::FinalizeWorker() {
+#ifdef PADDLE_WITH_PSLIB
+  VLOG(3) << "Going to finalize worker";
+  pslib_ptr_->finalize_worker();
+#endif
+}
+
 uint64_t FleetWrapper::RunServer() {
 #ifdef PADDLE_WITH_PSLIB
   VLOG(3) << "Going to run server";
@@ -550,6 +557,19 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
   }
 #else
   VLOG(0) << "FleetWrapper::SaveModel does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::PrintTableStat(const uint64_t table_id) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->print_table_stat(table_id);
+  ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "print table stat failed";
+  }
+#else
+  VLOG(0) << "FleetWrapper::PrintTableStat does nothing when no pslib";
 #endif
 }
 

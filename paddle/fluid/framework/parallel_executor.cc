@@ -421,10 +421,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 #endif
 
   LOG(INFO) << string::Sprintf(
-      "The number of %s, which is used in ParallelExecutor, is %lu. And "
-      "the Program will be copied %lu copies",
-      (member_->use_cuda_ ? "CUDAPlace" : "CPUPlace"), places.size(),
-      places.size());
+      "The Program will be executed on %s using ParallelExecutor, %lu "
+      "cards are used, so %lu programs are executed in parallel.",
+      (member_->use_cuda_ ? "CUDA" : "CPU"), places.size(), places.size());
 
   // Step 1. Bcast the bcast_vars to devs.
   // Create local scopes

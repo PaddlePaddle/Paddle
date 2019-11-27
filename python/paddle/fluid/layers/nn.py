@@ -5244,16 +5244,16 @@ def one_hot(input, depth, allow_out_of_range=False):
 
     if in_dygraph_mode():
         inputs = {'X': input}
-        attrs = {'depth': depth}
+        attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
     else:
         if not isinstance(depth, Variable):
             # user attribute
             inputs = {'X': input}
-            attrs = {'depth': depth}
+            attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
         else:
             depth.stop_gradient = True
             inputs = {'X': input, 'depth_tensor': depth}
-            attrs = {}
+            attrs = {'allow_out_of_range': allow_out_of_range}
     helper.append_op(
         type="one_hot",
         inputs=inputs,
@@ -13261,10 +13261,6 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())
-    if index_num % nshards != 0:
-        raise ValueError(
-            'The index_num(%d) cannot be evenly divided by nshards(%d)' %
-            (index_num, nshards))
     if shard_id < 0 or shard_id >= nshards:
         raise ValueError('The shard_id(%d) should be in [0, %d)' %
                          (shard_id, nshards))
