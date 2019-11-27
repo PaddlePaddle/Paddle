@@ -36,7 +36,7 @@ if(WITH_MKLDNN)
   if(WIN32)
     set(MKLDNN_LIB ${PADDLE_LIB}/third_party/install/mkldnn/lib/mkldnn.lib)
   else(WIN32)
-    set(MKLDNN_LIB ${PADDLE_LIB}/third_party/install/mkldnn/lib/libmkldnn.so.1)
+    set(MKLDNN_LIB ${PADDLE_LIB}/third_party/install/mkldnn/lib/libmkldnn.so.0)
   endif(WIN32)
 endif(WITH_MKLDNN)
 

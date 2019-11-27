@@ -203,21 +203,12 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
 
-    auto src_tz = paddle::framework::vectorize<int64_t>(input->dims());
-    auto weights_tz = paddle::framework::vectorize<int64_t>(filter->dims());
+    auto src_tz = paddle::framework::vectorize(input->dims());
+    auto weights_tz = paddle::framework::vectorize(filter->dims());
     int g = std::max(groups, 1);
-<<<<<<< 87c42e086337d15e76ee20ce852a531d2fb75d68
 
     GetWeightsTz(weights_tz, g, is_conv3d);
-=======
-    GetWeightsTz(weights_tz, g, is_conv3d);
 
-<<<<<<< df4af97a56450dd445bdaf7a364822e73eca925b
-=======
->>>>>>> Rebase changes
->>>>>>> Rebase changes
-=======
->>>>>>> Cosmetics
     auto dst_tz = paddle::framework::vectorize(output->dims());
 
     // Get unique name for storing MKLDNN primitives
@@ -270,7 +261,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
                                  : mkldnn::prop_kind::forward_training;
     if (bias) {
-      bias_tz = paddle::framework::vectorize<int64_t>(bias->dims());
+      bias_tz = paddle::framework::vectorize(bias->dims());
       auto bias_md = platform::MKLDNNMemDesc(
           bias_tz, platform::MKLDNNGetDataType<T>(), MKLDNNMemoryFormat::x);
       conv_pd = handler.AcquireConvolutionPrimitiveDescriptor(
@@ -313,7 +304,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         auto output_data =
             output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
         auto residual_data_tz =
-            paddle::framework::vectorize<int64_t>(residual_param->dims());
+            paddle::framework::vectorize(residual_param->dims());
         auto residual_data_type =
             paddle::framework::ToMKLDNNDataType(residual_param->type());
 
@@ -502,11 +493,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                                data_dims, strides, ksize);
 
       int groups = ctx.Attr<int>("groups");
-      auto weights_tz = paddle::framework::vectorize<int>(filter->dims());
+      auto weights_tz = paddle::framework::vectorize(filter->dims());
       int g = std::max(groups, 1);
 
       GetWeightsTz(weights_tz, g, is_conv3d);
-      auto dst_tz = paddle::framework::vectorize<int>(output->dims());
+      auto dst_tz = paddle::framework::vectorize(output->dims());
 
       PADDLE_ENFORCE_EQ(
           is_conv3d
@@ -904,7 +895,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
       // TODO(grygielski) why no bias_diff?
       conv_bwd_weights_p->execute(
           astream, {{MKLDNN_ARG_SRC, *src_memory_p},
-                    {MKLDNN_ARG_DIFF_DST, *diff_dst_memory_4filter_p}, 
+                    {MKLDNN_ARG_DIFF_DST, *diff_dst_memory_4filter_p},
                     {MKLDNN_ARG_DIFF_WEIGHTS, *diff_weights_memory_p}});
       astream.wait();
 
