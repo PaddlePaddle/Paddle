@@ -858,6 +858,7 @@ def _append_backward_ops_(block,
 def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     """
     Create new variables required by backward pass.
+
     Args:
         block(Block): the block where new variables will be created
         start_op_idx(int): Only variables required by ops in block.ops[start_op_idx : ] will be created
@@ -1473,28 +1474,7 @@ def _find_no_grad_vars(block, op_path, targets, no_grad_set):
     Find the vars which is not used in the program, and
     those var belong to no_grad_var.
     """
-
     output_names = set([out.name for out in targets])
-    # todo (done):for prarent block
-    #  :not sure if or not needed
-    # if outputs not in block but in sub-block of block
-    targets_block = targets[0].block
-    change_output_names = True if block.idx != targets_block.idx else False
-    final_link_names = set()
-    if change_output_names:
-        op_numbers = len(targets_block.ops)
-        new_output_names = set(targets_block.ops[op_numbers - 1]
-                               .desc.output_arg_names())
-        for i, op in reversed(list(enumerate(targets_block.ops))):
-            if _some_in_set_(op.desc.output_arg_names(), new_output_names):
-                for name in op.desc.input_arg_names():
-                    new_output_names.add(name)
-                    if block.desc.find_var(name.encode("ascii")):
-                        final_link_names.add(name)
-            else:
-                pass
-
-    output_names = output_names | final_link_names
     no_grad_var = []
     for i, op in reversed(list(enumerate(op_path))):
         # If the op has sub_block, it is too complicated to find the correct no_grad_var.
@@ -1534,7 +1514,6 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
                 pass
 
     output_names = output_names | final_link_names
-    # end liym
 
     relevant_op_flags = [True] * len(block.ops)
 
@@ -1556,13 +1535,10 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
         else:
             relevant_op_flags[i] = False
 
-    # todo: if parent block exits, need to add grad ops of parent op
-
     op_path = [
         block.ops[i] for i in range(len(block.ops)) if relevant_op_flags[i]
     ]
 
-    # to do(no now): I don't understand why update no_grad_set. stop_gradient var has been add before
     if inputs:
         for op in op_path:
             for name in op.desc.input_arg_names():
@@ -1623,7 +1599,6 @@ def _find_block_op_path_(block, outputs, inputs, no_grad_set):
         block.ops[i] for i in range(len(block.ops)) if relevant_op_flags[i]
     ]
 
-    # to do(no now): I don't understand why update no_grad_set. stop_gradient var has been add before
     if inputs:
         for op in op_path:
             for name in op.desc.input_arg_names():
