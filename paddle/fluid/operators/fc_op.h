@@ -21,6 +21,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+enum { kFCMKLDNNFP32 = 1, kFCMKLDNNINT8 = 2 };
 
 using Tensor = framework::Tensor;
 
