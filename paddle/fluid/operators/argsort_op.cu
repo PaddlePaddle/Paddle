@@ -182,14 +182,8 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
           framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t input_width = in_dims[in_dims.size() - 1];
       const auto& dev_ctx = ctx.cuda_device_context();
-      if (input_width < INT_MAX && input_height < INT_MAX) {
-        ArgFullSort<T, int>(dev_ctx, input, output, indices,
-                            static_cast<int>(input_height),
-                            static_cast<int>(input_width), descending);
-      } else {
-        ArgFullSort<T, int64_t>(dev_ctx, input, output, indices, input_height,
-                                input_width, descending);
-      }
+      ArgFullSort<T, int64_t>(dev_ctx, input, output, indices, input_height,
+                              input_width, descending);
     } else {
       // if not full sort, do transpose first
       std::vector<int> trans;
@@ -223,28 +217,15 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
       T* out_data = output->mutable_data<T>(ctx.GetPlace());
 
       Tensor tmp_indices;
-      if (input_height < INT_MAX && input_width < INT_MAX) {
-        // temp indices for sorting
-        tmp_indices.mutable_data<int>(trans_dims, ctx.GetPlace());
-        indices->mutable_data<int>(ctx.GetPlace());
+      // temp indices for sorting
+      tmp_indices.mutable_data<int64_t>(trans_dims, ctx.GetPlace());
+      indices->mutable_data<int64_t>(ctx.GetPlace());
 
-        ArgFullSort<T, int>(dev_ctx, &trans_inp, &tmp_out, &tmp_indices,
-                            static_cast<int>(input_height),
-                            static_cast<int>(input_width), descending);
+      ArgFullSort<T, int64_t>(dev_ctx, &trans_inp, &tmp_out, &tmp_indices,
+                              input_height, input_width, descending);
 
-        TransCompute<platform::CUDADeviceContext, int>(
-            ndims, dev_ctx, tmp_indices, indices, trans);
-      } else {
-        // temp indices for sorting
-        tmp_indices.mutable_data<int64_t>(trans_dims, ctx.GetPlace());
-        indices->mutable_data<int64_t>(ctx.GetPlace());
-
-        ArgFullSort<T, int64_t>(dev_ctx, &trans_inp, &tmp_out, &tmp_indices,
-                                input_height, input_width, descending);
-
-        TransCompute<platform::CUDADeviceContext, int64_t>(
-            ndims, dev_ctx, tmp_indices, indices, trans);
-      }
+      TransCompute<platform::CUDADeviceContext, int64_t>(
+          ndims, dev_ctx, tmp_indices, indices, trans);
       // transpose back
       TransCompute<platform::CUDADeviceContext, T>(ndims, dev_ctx, tmp_out,
                                                    output, trans);

@@ -89,16 +89,9 @@ class ArgsortKernel : public framework::OpKernel<T> {
           framework::slice_ddim(in_dims, 0, in_dims.size() - 1));
       const int64_t input_width = in_dims[in_dims.size() - 1];
 
-      if (input_width < INT_MAX && input_height < INT_MAX) {
-        int* ids_data = indices->mutable_data<int>(ctx.GetPlace());
-        FullSort<T, int>(static_cast<int>(input_height),
-                         static_cast<int>(input_width), in_dims.size(), input,
-                         out_data, ids_data, descending);
-      } else {
-        int64_t* ids_data = indices->mutable_data<int64_t>(ctx.GetPlace());
-        FullSort<T, int64_t>(input_height, input_width, in_dims.size(), input,
-                             out_data, ids_data, descending);
-      }
+      int64_t* ids_data = indices->mutable_data<int64_t>(ctx.GetPlace());
+      FullSort<T, int64_t>(input_height, input_width, in_dims.size(), input,
+                           out_data, ids_data, descending);
     } else {
       // If not full sort do transpose
       std::vector<int> trans;
@@ -133,27 +126,15 @@ class ArgsortKernel : public framework::OpKernel<T> {
 
       Tensor tmp_indices;
 
-      if (input_width < INT_MAX && input_height < INT_MAX) {
-        auto* t_ind = tmp_indices.mutable_data<int>(trans_dims, ctx.GetPlace());
+      auto* t_ind =
+          tmp_indices.mutable_data<int64_t>(trans_dims, ctx.GetPlace());
 
-        FullSort<T, int>(static_cast<int>(input_height),
-                         static_cast<int>(input_width), in_dims.size(),
-                         &trans_inp, t_out, t_ind, descending);
+      FullSort<T, int64_t>(input_height, input_width, in_dims.size(),
+                           &trans_inp, t_out, t_ind, descending);
 
-        indices->mutable_data<int>(ctx.GetPlace());
-        TransCompute<platform::CPUDeviceContext, int>(
-            ndims, dev_ctx, tmp_indices, indices, trans);
-      } else {
-        auto* t_ind =
-            tmp_indices.mutable_data<int64_t>(trans_dims, ctx.GetPlace());
-
-        FullSort<T, int64_t>(input_height, input_width, in_dims.size(),
-                             &trans_inp, t_out, t_ind, descending);
-
-        indices->mutable_data<int64_t>(ctx.GetPlace());
-        TransCompute<platform::CPUDeviceContext, int64_t>(
-            ndims, dev_ctx, tmp_indices, indices, trans);
-      }
+      indices->mutable_data<int64_t>(ctx.GetPlace());
+      TransCompute<platform::CPUDeviceContext, int64_t>(
+          ndims, dev_ctx, tmp_indices, indices, trans);
       // transpose back
       TransCompute<platform::CPUDeviceContext, T>(ndims, dev_ctx, tmp_out,
                                                   output, trans);
