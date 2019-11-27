@@ -14,26 +14,18 @@
 
 include(ExternalProject)
 
-set(PYBIND_PREFIX_DIR    ${THIRD_PARTY_PATH}/pybind)
-SET(PYBIND_REPOSITORY     https://github.com/pybind/pybind11.git)
-SET(PYBIND_TAG            v2.2.4)
+set(PYBIND_SOURCE_DIR ${THIRD_PARTY_PATH}/pybind)
 
-cache_third_party(extern_pybind
-    REPOSITORY    ${PYBIND_REPOSITORY}
-    TAG           ${PYBIND_TAG}
-    DIR           ${PYBIND_PREFIX_DIR})
-
-set(PYBIND_INCLUDE_DIR ${PYBIND_SOURCE_DIR}/include)
-include_directories(${PYBIND_INCLUDE_DIR})
+include_directories(${PYBIND_SOURCE_DIR}/src/extern_pybind/include)
 
 ExternalProject_Add(
         extern_pybind
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
-        "${PYBIND_DOWNLOAD_CMD}"
-        PREFIX            ${PYBIND_PREFIX_DIR}
-        SOURCE_DIR        ${PYBIND_SOURCE_DIR}
-        UPDATE_COMMAND    ""
+        GIT_REPOSITORY  "https://github.com/pybind/pybind11.git"
+        GIT_TAG         "v2.2.4"
+        PREFIX          ${PYBIND_SOURCE_DIR}
+        UPDATE_COMMAND  ""
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
         INSTALL_COMMAND   ""

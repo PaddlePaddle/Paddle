@@ -14,11 +14,8 @@
 
 INCLUDE(ExternalProject)
 
-SET(WARPCTC_PREFIX_DIR ${THIRD_PARTY_PATH}/warpctc)
+SET(WARPCTC_SOURCES_DIR ${THIRD_PARTY_PATH}/warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
-
-# TODO: Use the official github address instead of private branch
-set(WARPCTC_REPOSITORY https://github.com/wopeizl/warp-ctc.git)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -32,16 +29,15 @@ ELSE()
     SET(USE_OMP ON)
 ENDIF()
 
-cache_third_party(extern_warpctc
-    REPOSITORY   ${WARPCTC_REPOSITORY})
+# TODO: Use the official github address instead of private branch
+SET(WARPCTC_REPOSITORY "https://github.com/wopeizl/warp-ctc.git")
 
 ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
-    "${WARPCTC_DOWNLOAD_CMD}"
-    PREFIX          ${WARPCTC_PREFIX_DIR}
-    SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
+    GIT_REPOSITORY ${WARPCTC_REPOSITORY}
+    PREFIX          ${WARPCTC_SOURCES_DIR}
     UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
