@@ -205,6 +205,7 @@ class DataParallel(layers.Layer):
                        'axis': 0})
             for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
                 self._reshape_inplace(x=g_var, shape=g_shape)
+                assert g_var.shape == g_shape
 
     @no_grad
     def apply_collective_grads(self):
