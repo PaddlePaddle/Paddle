@@ -926,6 +926,7 @@ FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_CPU_KERNEL);
 
 /* ==========================    relu register  ============================= */
+/*
 REGISTER_OPERATOR(
     relu, ops::ActivationOp, ops::ReluOpMaker, ops::ActivationOpInferVarType,
     ops::ActivationGradOpMaker<ops::ReluGradFunctor<float>::FwdDeps(),
@@ -937,12 +938,13 @@ REGISTER_OPERATOR(relu_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInference,
                   ops::ReluDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::ReluDoubleGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_ACTIVATION_CPU_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
+*/
 REGISTER_OPERATOR(
     relu_grad_grad,
     ops::ActivationOpDoubleGrad2<ops::ReluGradFunctor<float>::FwdDeps()>,
     ops::ActivationDoubleGradOpInplaceInference);
-
-REGISTER_ACTIVATION_CPU_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
 
 REGISTER_OP_CPU_KERNEL(
     relu_grad_grad,
