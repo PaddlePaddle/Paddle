@@ -18,6 +18,7 @@ import unittest
 
 import paddle.fluid.framework as framework
 import paddle.fluid.optimizer as optimizer
+import paddle.fluid.regularizer as regularizer
 import paddle.compat as cpt
 from paddle.fluid.backward import append_backward
 from paddle.fluid.transpiler.details import program_to_code
@@ -31,7 +32,10 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
         def get_velocity_str(self):
             return self._u_velocity_acc_str
 
-    def check_dgc_momentum_optimizer(self, dims=[5, 10, 8], name="momentum"):
+    def check_dgc_momentum_optimizer(self,
+                                     dims=[5, 10, 8],
+                                     name="momentum",
+                                     regularization=None):
         init_program = framework.Program()
         program = framework.Program()
         block = program.global_block()
@@ -58,8 +62,12 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
         learning_rate = 0.01
+
         dgc_momentum_optimizer = self.MockDGCMomentum(
-            learning_rate=learning_rate, momentum=0.2, rampup_begin_step=0)
+            learning_rate=learning_rate,
+            momentum=0.2,
+            rampup_begin_step=0,
+            regularization=regularization)
         mean_out = block.create_var(
             dtype="float32", shape=[1], lod_level=0, name="mean.out")
         block.append_op(
@@ -96,12 +104,15 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             program_to_code(program, fout=f)
 
     def test_momentum_without_dgc(self):
-        self.check_dgc_momentum_optimizer()
+        self.check_dgc_momentum_optimizer(
+            regularization=regularizer.L1Decay(1e-4))
 
     def test_momentum_with_dgc(self):
         # 16 * 1024 = 16384, use dgc momentum
         self.check_dgc_momentum_optimizer(
-            dims=[16, 1024, 8], name="dgc_momentum")
+            dims=[16, 1024, 8],
+            name="dgc_momentum",
+            regularization=regularizer.L2Decay(1e-4))
 
 
 if __name__ == '__main__':
