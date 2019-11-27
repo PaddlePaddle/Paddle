@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <Python.h>
 #include <algorithm>
 #include <memory>
@@ -63,6 +64,31 @@ namespace paddle {
 namespace pybind {
 
 namespace details {
+
+template <typename T>
+class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
+ public:
+  explicit NumpyAllocation(const py::array &arr)
+      : Allocation(const_cast<void *>(arr.data()), sizeof(T) * (arr.size()),
+                   paddle::platform::CPUPlace()),
+        arr_(arr.ptr()) {
+    PADDLE_ENFORCE_NOT_NULL(arr_, platform::errors::InvalidArgument(
+                                      "The underlying PyObject pointer of "
+                                      "numpy array cannot be nullptr"));
+    PADDLE_ENFORCE_NE(
+        arr_, Py_None,
+        platform::errors::PreconditionNotMet(
+            "The underlying PyObject pointer of numpy array cannot be None"));
+    Py_INCREF(arr_);
+  }
+  ~NumpyAllocation() override {
+    py::gil_scoped_acquire gil;
+    Py_DECREF(arr_);
+  }
+
+ private:
+  PyObject *arr_;
+};
 
 template <typename T>
 struct ValidDTypeToPyArrayChecker {
@@ -141,19 +167,26 @@ template <typename T, typename P>
 void SetTensorFromPyArrayT(
     framework::Tensor *self,
     const py::array_t<T, py::array::c_style | py::array::forcecast> &array,
-    const P &place) {
+    const P &place, bool zero_copy) {
   std::vector<int64_t> dims;
   dims.reserve(array.ndim());
   for (decltype(array.ndim()) i = 0; i < array.ndim(); ++i) {
     dims.push_back(static_cast<int>(array.shape()[i]));
   }
   self->Resize(framework::make_ddim(dims));
-  auto dst = self->mutable_data<T>(place);
 
   if (paddle::platform::is_cpu_place(place)) {
-    std::memcpy(dst, array.data(), array.nbytes());
+    if (zero_copy) {
+      auto holder = std::make_shared<details::NumpyAllocation<T>>(array);
+      auto type = framework::ToDataType(std::type_index(typeid(T)));
+      self->ResetHolderWithType(holder, type);
+    } else {
+      auto dst = self->mutable_data<T>(place);
+      std::memcpy(dst, array.data(), array.nbytes());
+    }
   } else {
 #ifdef PADDLE_WITH_CUDA
+    auto dst = self->mutable_data<T>(place);
     if (paddle::platform::is_cuda_pinned_place(place)) {
       std::memcpy(dst, array.data(), array.nbytes());
     } else if (paddle::platform::is_gpu_place(place)) {
@@ -173,27 +206,29 @@ void SetTensorFromPyArrayT(
 
 template <typename P>
 void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
-                          const P &place) {
+                          const P &place, bool zero_copy) {
   auto array = obj.cast<py::array>();
   if (py::isinstance<py::array_t<float>>(array)) {
-    SetTensorFromPyArrayT<float, P>(self, array, place);
+    SetTensorFromPyArrayT<float, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<int>>(array)) {
-    SetTensorFromPyArrayT<int, P>(self, array, place);
+    SetTensorFromPyArrayT<int, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<int64_t>>(array)) {
-    SetTensorFromPyArrayT<int64_t, P>(self, array, place);
+    SetTensorFromPyArrayT<int64_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<double>>(array)) {
-    SetTensorFromPyArrayT<double, P>(self, array, place);
+    SetTensorFromPyArrayT<double, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<int8_t>>(array)) {
-    SetTensorFromPyArrayT<int8_t, P>(self, array, place);
+    SetTensorFromPyArrayT<int8_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<uint8_t>>(array)) {
-    SetTensorFromPyArrayT<uint8_t, P>(self, array, place);
+    SetTensorFromPyArrayT<uint8_t, P>(self, array, place, zero_copy);
   } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
-    SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place);
+    SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
+                                                        zero_copy);
   } else if (py::isinstance<py::array_t<uint16_t>>(array)) {
     // TODO(cql): temporary keeping uint16, should be depracated later
-    SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place);
+    SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
+                                                        zero_copy);
   } else if (py::isinstance<py::array_t<bool>>(array)) {
-    SetTensorFromPyArrayT<bool, P>(self, array, place);
+    SetTensorFromPyArrayT<bool, P>(self, array, place, zero_copy);
   } else {
     PADDLE_THROW(
         "Incompatible data or style type: tensor.set() supports bool, float16, "
