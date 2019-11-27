@@ -62,7 +62,7 @@ endfunction()
 function(select_nvcc_arch_flags out_variable)
   # List of arch names
   set(archs_names "Kepler" "Maxwell" "Pascal" "Volta" "Turing" "All" "Manual")
-  set(archs_name_default "All")
+  set(archs_name_default "Auto")
   list(APPEND archs_names "Auto")
 
   # set CUDA_ARCH_NAME strings (so it will be seen as dropbox in CMake-Gui)
@@ -73,7 +73,7 @@ function(select_nvcc_arch_flags out_variable)
   # verify CUDA_ARCH_NAME value
   if(NOT ";${archs_names};" MATCHES ";${CUDA_ARCH_NAME};")
     string(REPLACE ";" ", " archs_names "${archs_names}")
-    message(FATAL_ERROR "Only ${archs_names} architeture names are supported.")
+    message(FATAL_ERROR "Only ${archs_names} architectures names are supported.")
   endif()
 
   if(${CUDA_ARCH_NAME} STREQUAL "Manual")
@@ -98,6 +98,12 @@ function(select_nvcc_arch_flags out_variable)
   elseif(${CUDA_ARCH_NAME} STREQUAL "All")
     set(cuda_arch_bin ${paddle_known_gpu_archs})
   elseif(${CUDA_ARCH_NAME} STREQUAL "Auto")
+    message(STATUS "WARNING: This is just a warning for publishing release.
+      You are building GPU version without supporting different architectures.
+      So the wheel package may fail on other GPU architectures.
+      You can add -DCUDA_ARCH_NAME=All in cmake command
+      to get a full wheel package to resolve this warning.
+      While, this version will still work on local GPU architecture.")
     detect_installed_gpus(cuda_arch_bin)
   else()  # (${CUDA_ARCH_NAME} STREQUAL "Manual")
     set(cuda_arch_bin ${CUDA_ARCH_BIN})
