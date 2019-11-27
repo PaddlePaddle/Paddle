@@ -191,6 +191,7 @@ struct ReluFunctor2<platform::CUDADeviceContext, platform::float16> {
                   platform::float16* y) const {
     int block = 512;
     int grid = (num + block - 1) / block;
+    VLOG(10) << "ReluFunctor2 proc" << num;
     KeRelufp16<<<grid, block, 0, dev_ctx.stream()>>>(x, num, y);
   }
 };
@@ -234,6 +235,7 @@ struct ReluGradFunctor2<platform::CUDADeviceContext, platform::float16> {
                   const platform::float16* y, const platform::float16* dy,
                   int num, platform::float16* dx) const {
     int block = 512;
+    VLOG(10) << "ReluGradFunctor2 proc" << num;
     int grid = (num + block - 1) / block;
     KeReluGradfp16<<<grid, block, 0, dev_ctx.stream()>>>(y, dy, num, dx);
   }

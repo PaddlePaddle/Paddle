@@ -1679,7 +1679,7 @@ class ReluCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in_t = ctx.Input<framework::Tensor>("X");
-    auto* out_t = ctx.Output<framework::Tensor>("Y");
+    auto* out_t = ctx.Output<framework::Tensor>("Out");
     auto x = in_t->data<T>();
     auto y = out_t->mutable_data<T>(ctx.GetPlace());
 
@@ -1700,8 +1700,8 @@ template <typename DeviceContext, typename T, typename Functor>
 class ReluGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dy_t = ctx.Input<framework::Tensor>(framework::GradVarName("Y"));
-    auto* y_t = ctx.Input<framework::Tensor>("Y");
+    auto* dy_t = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* y_t = ctx.Input<framework::Tensor>("Out");
     auto* dx_t = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     auto dy = dy_t->data<T>();
