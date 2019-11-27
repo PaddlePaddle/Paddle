@@ -1080,7 +1080,7 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
-	enable_unused_var_check()
+        enable_unused_var_check
         parallel_test
         ;;
       cicheck_brpc)

@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/platform/enforce.h"
 
-DEFINE_bool(enable_unused_var_check, true,
+DEFINE_bool(enable_unused_var_check, false,
             "Checking whether operator contains unused inputs, "
             "especially for grad operator. It should be in unittest.");
 
