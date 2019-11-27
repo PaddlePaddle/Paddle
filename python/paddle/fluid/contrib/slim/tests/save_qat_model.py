@@ -47,7 +47,7 @@ def parse_args():
     return test_args, sys.argv[:1] + args
 
 
-def transform_and_save__model(original_path, save_path, save_type):
+def transform_and_save_model(original_path, save_path, save_type):
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
     inference_scope = fluid.executor.global_scope()
@@ -80,8 +80,8 @@ if __name__ == '__main__':
     global test_args
     test_args, remaining_args = parse_args()
     if test_args.fp32_model_save_path:
-        transform_and_save__model(test_args.qat_model_path,
-                                  test_args.fp32_model_save_path, 'FP32')
+        transform_and_save_model(test_args.qat_model_path,
+                                 test_args.fp32_model_save_path, 'FP32')
     if test_args.int8_model_save_path:
-        transform_and_save__model(test_args.qat_model_path,
-                                  test_args.int8_model_save_path, 'INT8')
+        transform_and_save_model(test_args.qat_model_path,
+                                 test_args.int8_model_save_path, 'INT8')

@@ -104,10 +104,10 @@ list(REMOVE_ITEM TEST_OPS test_mkldnn_int8_quantization_strategy)
 # QAT FP32 & INT8 comparison python api tests
 if(LINUX AND WITH_MKLDNN)
 	set(DATASET_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
-      set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
-      set(QAT_MODELS_BASE_URL "${INFERENCE_URL}/int8/QAT_models")
-      set(MKLDNN_QAT_TEST_FILE "qat_int8_comparison.py")
-      set(MKLDNN_QAT_TEST_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${MKLDNN_QAT_TEST_FILE}")
+	set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")
+	set(QAT_MODELS_BASE_URL "${INFERENCE_URL}/int8/QAT_models")
+	set(MKLDNN_QAT_TEST_FILE "qat_int8_comparison.py")
+	set(MKLDNN_QAT_TEST_FILE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${MKLDNN_QAT_TEST_FILE}")
 
 	# ImageNet small dataset
 	# May be already downloaded for INT8v2 unit tests
