@@ -69,9 +69,11 @@ class OpRegistry {
  public:
   /**
    * @brief Return an OperatorBase constructed by using type, inputs, outputs,
-   * attrs.
+   *        attrs.
    *        In dygraph mode, inputs, output, attrs wil be set to empty map to
    *        to improve the execution efficiency of dygraph.
+   *        Dygraph mode will using:
+   *        framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
    *
    * @param[str] type          The operator type.
    * @param[map] inputs        Inptus map of the operator.
@@ -85,7 +87,7 @@ class OpRegistry {
    *            1. check attribute item is valid
    *            2. add attribute item which have default value
    *            if not included in attrs
-   *            In dygraph model, attrs is an empty unordered_map,
+   *            In dygraph mode, attrs is an empty unordered_map,
    *            attr_check is set to false, Otherwise it will be failed
    *            when Check function called.
    */
