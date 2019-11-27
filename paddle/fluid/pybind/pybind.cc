@@ -453,17 +453,20 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_clear", &Tensor::clear)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
-           py::arg("array"), py::arg("place"))
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPlace>,
-           py::arg("array"), py::arg("place"))
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
-           py::arg("array"), py::arg("place"), R"DOC(
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
+           R"DOC(
         Set the data of LoDTensor on place with given numpy array.
         
         Args:
           lod (numpy.ndarray): The data to set.
           place (CPUPlace|CUDAPlace|CUDAPinnedPlace): The place where the 
           LoDTensor is to be set.
+          zero_copy (bool, optional): Whether to share memory with the input numpy array.
+          This parameter only works with CPUPlace. Default: False.
 
         Returns:
             None.

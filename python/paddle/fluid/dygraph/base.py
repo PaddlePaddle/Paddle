@@ -139,7 +139,6 @@ def guard(place=None):
     startup = framework.Program()
     tracer = Tracer()
     VarBase = core.VarBase
-    core._switch_tracer(tracer)
 
     if place is None:
         if core.is_compiled_with_cuda():
@@ -174,7 +173,7 @@ def _print_debug_msg(limit=5, is_test=False):
 
 
 @framework.dygraph_only
-def to_variable(value, name=None):
+def to_variable(value, block=None, name=None, zero_copy=None):
     """
     The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 
@@ -182,6 +181,7 @@ def to_variable(value, name=None):
         value(ndarray): The numpy\.ndarray object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
         block(fluid.Block, optional): Which block this variable will be in. Default: None.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        zero_copy(bool, optional): Whether to share memory with the input numpy array. This parameter only works with CPUPlace and will be set to True when it is None. Default: None.
 
     Returns:
         Variable: ``Tensor`` created from the specified numpy\.ndarray object, data type and shape is the same as ``value`` .
@@ -193,20 +193,32 @@ def to_variable(value, name=None):
         import numpy as np
         import paddle.fluid as fluid
 
-        with fluid.dygraph.guard():
+        with fluid.dygraph.guard(fluid.CPUPlace()):
             x = np.ones([2, 2], np.float32)
+            y = fluid.dygraph.to_variable(x, zero_copy=False)
+            x[0][0] = -1
+            y[0][0].numpy()  # array([1.], dtype=float32)
             y = fluid.dygraph.to_variable(x)
+            x[0][0] = 0
+            y[0][0].numpy()  # array([0.], dtype=float32)
 
     """
     if isinstance(value, np.ndarray):
         assert framework.in_dygraph_mode(
         ), "to_variable could only be called in dygraph mode"
+        if isinstance(framework._current_expected_place(),
+                      framework.core.CPUPlace):
+            if zero_copy is None:
+                zero_copy = True
+        else:
+            assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
+            zero_copy = False
         py_var = core.VarBase(
             value=value,
             name=name,
             persistable=False,
-            place=framework._current_expected_place())
-
+            place=framework._current_expected_place(),
+            zero_copy=zero_copy)
         return py_var
     elif isinstance(value, (core.VarBase, framework.Variable)):
         return value
