@@ -22,6 +22,15 @@ namespace framework {
 std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const std::string& type, const VariableNameMap& inputs,
     const VariableNameMap& outputs, AttributeMap attrs, bool attr_check) {
+  // attr_check is used to avoid call info.Checker()->Check( &attrs ) in dygraph
+  // mode
+  // dafault value is true, will set to false in dygraph mode
+  // info.Checker()->Check( &attrs ) have two purpose
+  // 1. check attribute item is valid
+  // 2. add attribute item which have default value if not included in attrs
+  // In dygraph model, attrs is an empty unordered_map, attr_check is set to
+  // false
+  // Otherwise it will be failed when Check function called.
   auto& info = OpInfoMap::Instance().Get(type);
   if (attr_check && info.Checker() != nullptr) {
     info.Checker()->Check(&attrs);
