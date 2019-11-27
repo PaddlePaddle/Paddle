@@ -131,7 +131,7 @@ __global__ void KeRelu(const T* x, int num, T* y) {
 }
 
 template <typename T>
-struct ReluFunctor<platform::CUDADeviceContext, T> {
+struct ReluFunctor2<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& dev_ctx, const T* x,
                   int num, T* y) const {
     int block = 512;
@@ -149,7 +149,7 @@ __global__ void KeReluGrad(const T* y, const T* dy, int num, T* dx) {
 }
 
 template <typename T>
-struct ReluGradFunctor<platform::CUDADeviceContext, T> {
+struct ReluGradFunctor2<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& dev_ctx, const T* y,
                   const T* dy, int num, T* dx) const {
     int block = 512;
@@ -185,7 +185,7 @@ __global__ void KeRelufp16(const platform::float16* x, int num,
 }
 
 template <>
-struct ReluFunctor<platform::CUDADeviceContext, platform::float16> {
+struct ReluFunctor2<platform::CUDADeviceContext, platform::float16> {
   void operator()(const platform::CUDADeviceContext& dev_ctx,
                   const platform::float16* x, int num,
                   platform::float16* y) const {
@@ -229,7 +229,7 @@ __global__ void KeReluGradfp16(const platform::float16* y,
 }
 
 template <>
-struct ReluGradFunctor<platform::CUDADeviceContext, platform::float16> {
+struct ReluGradFunctor2<platform::CUDADeviceContext, platform::float16> {
   void operator()(const platform::CUDADeviceContext& dev_ctx,
                   const platform::float16* y, const platform::float16* dy,
                   int num, platform::float16* dx) const {
@@ -244,4 +244,4 @@ struct ReluGradFunctor<platform::CUDADeviceContext, platform::float16> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_ACTIVATION_CUDA_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
+REGISTER_RELU_CUDA_KERNEL(relu, Relu, ReluFunctor2, ReluGradFunctor2);

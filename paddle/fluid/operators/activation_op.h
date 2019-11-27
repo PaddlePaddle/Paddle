@@ -1669,7 +1669,7 @@ class PowGradKernel
 };
 
 template <typename DeviceContext, typename T>
-struct ReluFunctor {
+struct ReluFunctor2 {
   void operator()(const DeviceContext& dev_ctx, const T* x, int num,
                   T* out) const {}
 };
@@ -1691,7 +1691,7 @@ class ReluCUDAKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-struct ReluGradFunctor {
+struct ReluGradFunctor2 {
   void operator()(const DeviceContext& dev_ctx, const T* y, const T* dy,
                   int num, T* dx) const {}
 };
