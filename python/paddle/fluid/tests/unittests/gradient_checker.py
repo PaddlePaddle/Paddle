@@ -225,8 +225,8 @@ def grad_check(x,
                place=None,
                program=None,
                eps=1e-6,
-               atol=1e-5,
-               rtol=1e-3,
+               atol=0,
+               rtol=1e-6,
                raise_exception=True):
     """
     Check numerical and analytical gradients for dy/dx.
@@ -309,7 +309,7 @@ def grad_check(x,
             _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
 
     for i, (x_idx,
-            y_idx) in enumerate(product(*[range(len(x)), range(len(y))])):
+            y_idx) in enumerate(product(* [range(len(x)), range(len(y))])):
         a = analytical[y_idx][x_idx]
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):
@@ -328,8 +328,8 @@ def double_grad_check(x,
                       place=None,
                       program=None,
                       eps=1e-6,
-                      atol=1e-5,
-                      rtol=1e-3,
+                      atol=0,
+                      rtol=1e-6,
                       raise_exception=True):
     """
     Check gradients of gradients. This function will append backward to the
