@@ -132,18 +132,29 @@ class ArgsortKernel : public framework::OpKernel<T> {
       output->mutable_data<T>(ctx.GetPlace());
 
       Tensor tmp_indices;
-      auto* t_ind =
-          tmp_indices.mutable_data<int64_t>(trans_dims, ctx.GetPlace());
 
-      FullSort<T>(input_height, input_width, in_dims.size(), &trans_inp, t_out,
-                  t_ind, descending);
+      if (input_width < INT_MAX && input_height < INT_MAX) {
+        auto* t_ind = tmp_indices.mutable_data<int>(trans_dims, ctx.GetPlace());
 
-      indices->mutable_data<int64_t>(ctx.GetPlace());
+        FullSort<T, int>(static_cast<int>(input_height),
+                         static_cast<int>(input_width), in_dims.size(),
+                         &trans_inp, t_out, t_ind, descending);
+
+        indices->mutable_data<int>(ctx.GetPlace());
+        TransCompute<platform::CPUDeviceContext, int>(
+            ndims, dev_ctx, tmp_indices, indices, trans);
+      } else {
+        auto* t_ind =
+            tmp_indices.mutable_data<int64_t>(trans_dims, ctx.GetPlace());
+
+        FullSort<T, int64_t>(input_height, input_width, in_dims.size(),
+                             &trans_inp, t_out, t_ind, descending);
+
+        indices->mutable_data<int64_t>(ctx.GetPlace());
+        TransCompute<platform::CPUDeviceContext, int64_t>(
+            ndims, dev_ctx, tmp_indices, indices, trans);
+      }
       // transpose back
-
-      TransCompute<platform::CPUDeviceContext, int64_t>(
-          ndims, dev_ctx, tmp_indices, indices, trans);
-
       TransCompute<platform::CPUDeviceContext, T>(ndims, dev_ctx, tmp_out,
                                                   output, trans);
     }
