@@ -36,7 +36,6 @@ inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
     case DataLayout::kNHWC:
       return MKLDNNMemoryFormat::nhwc;
     case DataLayout::kNCHW:
-    case DataLayout::kAnyLayout:
       return MKLDNNMemoryFormat::nchw;
     default:
       PADDLE_THROW("Fail to convert layout %s to MKLDNN format",
