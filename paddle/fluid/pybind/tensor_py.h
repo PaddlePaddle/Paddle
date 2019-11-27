@@ -83,7 +83,7 @@ class PYBIND11_HIDDEN NumpyAllocation : public memory::Allocation {
   }
   ~NumpyAllocation() override {
     py::gil_scoped_acquire gil;
-    Py_XDECREF(arr_);
+    Py_DECREF(arr_);
   }
 
  private:
