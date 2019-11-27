@@ -435,9 +435,6 @@ EOF
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
 
-        # NOTE(zhiqiu): Set FLAGS_enable_unused_var_check=1 here to enable unused_var_check,
-        # which checks if an operator has unused input variable(s).
-        export FLAGS_enable_unused_var_check=1
         ctest --output-on-failure -j $2
         paddle version
     fi
@@ -704,6 +701,13 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     parallel_test_base
+}
+
+function enable_unused_var_check() {
+    # NOTE(zhiqiu): Set FLAGS_enable_unused_var_check=1 here to enable unused_var_check,
+    # which checks if an operator has unused input variable(s).
+    # Currently, use it in coverage CI job.
+    export FLAGS_enable_unused_var_check=1
 }
 
 function gen_doc_lib() {
@@ -1076,6 +1080,7 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
+	enable_unused_var_check()
         parallel_test
         ;;
       cicheck_brpc)

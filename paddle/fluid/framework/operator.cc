@@ -931,7 +931,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
   if (FLAGS_enable_unused_var_check) {
     // skip op that uses mkldnn because it has different memory reuse strategy.
-    if (kernel_type_->library_type_ != LibraryType::kMKLDNN) {
+    // use attr here because some GradMakers (like ActivationGradOpMaker) add
+    // input when use_mkldnn=true;
+    if (!(HasAttr("use_mkldnn") && Attr<bool>("use_mkldnn"))) {
       CheckUnusedVar(*this, scope);
     }
   }
