@@ -220,12 +220,12 @@ ExtractComputationOpFromLastLivedVar(details::VarHandle *var, size_t scope_idx,
   //    some op handle may operate on many DeviceContext, however, our garbage
   //    collector can only wait one DeviceContext for now. So currently, we wait
   //    the nearest compute op.
-  std::unordered_set<details::ComputationOpHandle *> computation_op;
+  std::unordered_set<details::ComputationOpHandle *> computation_ops;
   {
     for (auto *op : candidates) {
       auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(op);
       if (compute_op && compute_op->GetScopeIdx() == scope_idx) {
-        computation_op.emplace(compute_op);
+        computation_ops.emplace(compute_op);
       } else {
         *status = LastLiveOpSearchStatus::kFailure;
         return {};
@@ -235,25 +235,26 @@ ExtractComputationOpFromLastLivedVar(details::VarHandle *var, size_t scope_idx,
     auto *generated_op =
         dynamic_cast<details::ComputationOpHandle *>(var->GeneratedOp());
     if (generated_op && generated_op->GetScopeIdx() == scope_idx) {
-      computation_op.emplace(generated_op);
+      computation_ops.emplace(generated_op);
     }
   }
 
   // stage three. Try to shrink computation op if any of them does
   // not need the buffer of var_name.
-  if (computation_op.empty() ||
-      ShrinkNoNeedBufferVarOpDependency(var_name, &computation_op)) {
+  if (computation_ops.empty() ||
+      ShrinkNoNeedBufferVarOpDependency(var_name, &computation_ops)) {
     *status = LastLiveOpSearchStatus::kFailure;
     return {};
   }
 
-  PADDLE_ENFORCE(!computation_op.empty(),
-                 "Computation ops should not be empty");
+  PADDLE_ENFORCE_EQ(
+      computation_ops.empty(), false,
+      platform::errors::InvalidArgument("Computation ops should not be empty"));
 
   // stage four. Try to shrink computation op if they depend on each other.
   // Get the smallest set of the most ops.
   *status = LastLiveOpSearchStatus::kSuccess;
-  return shrink_func(computation_op);
+  return shrink_func(computation_ops);
 }
 
 void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
@@ -326,9 +327,9 @@ void ReferenceCountPass::ApplyImpl(ir::Graph *graph) const {
         continue;
       }
 
-      PADDLE_ENFORCE_EQ(status, LastLiveOpSearchStatus::kSuccess,
-                        platform::errors::InvalidArgument(
-                            "status must be success or faiulre"));
+      PADDLE_ENFORCE_EQ(
+          status, LastLiveOpSearchStatus::kSuccess,
+          platform::errors::InvalidArgument("status must be success"));
       PADDLE_ENFORCE_EQ(result.empty(), false,
                         platform::errors::NotFound(
                             "Last living ops of %s cannot be empty", var_name));
