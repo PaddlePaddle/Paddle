@@ -19,6 +19,11 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include <cmath>
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
@@ -29,7 +34,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-__global__ void KeRelu(const T* x, const int num, T* y) {
+__global__ void KeRelu(const T* x, int num, T* y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = gid; i < num; i += blockDim.x * gridDim.x) {
     y[i] = max(x[i], static_cast<T>(0.));
@@ -62,8 +67,8 @@ class ReluCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
-__global__ void KeReluGrad(const T* y, const T* dy, const int num, T* dx) {
+template <typename T>
+__global__ void KeReluGrad(const T* y, const T* dy, int num, T* dx) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = gid; i < num; i += blockDim.x * gridDim.x) {
     dx[i] = dy[i] * (y[i] > 0 ? 1. : 0.);

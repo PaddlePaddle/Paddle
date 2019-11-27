@@ -19,6 +19,23 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+/*
+template<typename DeviceContext, typename T>
+struct ScaleFunctor(){
+    void operator(const Tensor* in, Tensor* out, bool bias_after_scale, float bias){
+        auto eigen_out = framework::EigenVector<T>::Flatten(*out);
+        auto eigen_in = framework::EigenVector<T>::Flatten(*in);
+        auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
+        if (bias_after_scale) {
+          eigen_out.device(dev) = scale * eigen_in + bias;
+        } else {
+          eigen_out.device(dev) = scale * (eigen_in + bias);
+        }
+    }
+}
+*/
+
 template <typename DeviceContext, typename T>
 class ScaleKernel : public framework::OpKernel<T> {
  public:
