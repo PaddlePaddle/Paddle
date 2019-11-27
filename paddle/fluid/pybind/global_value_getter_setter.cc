@@ -151,9 +151,12 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
   GlobalVarGetterSetterRegistry::MutableInstance()->RegisterGetter( \
       #var, []() -> py::object { return py::cast(var); })
 
-#define REGISTER_GLOBAL_VAR_SETTER_ONLY(var)                        \
-  GlobalVarGetterSetterRegistry::MutableInstance()->RegisterSetter( \
-      #var, [](const py::object &obj) { var = py::cast<decltype(var)>(obj); })
+#define REGISTER_GLOBAL_VAR_SETTER_ONLY(var)                          \
+  GlobalVarGetterSetterRegistry::MutableInstance()->RegisterSetter(   \
+      #var, [](const py::object &obj) {                               \
+        using ValueType = std::remove_reference<decltype(var)>::type; \
+        var = py::cast<ValueType>(obj);                               \
+      })
 
 #define REGISTER_GLOBAL_VAR_GETTER_SETTER(var) \
   REGISTER_GLOBAL_VAR_GETTER_ONLY(var);        \

@@ -42,7 +42,7 @@ DEFINE_int64(
     "to allocate memory. No retry if this value is not greater than 0");
 
 DEFINE_bool(use_system_allocator, false,
-            "Whether to use system allocator to allocate CPU and CPU memory. "
+            "Whether to use system allocator to allocate CPU and GPU memory. "
             "Only used for unittests.");
 
 namespace paddle {
@@ -184,7 +184,7 @@ class AllocatorFacadePrivate {
     }
   }
 
-  void CheckAllocThreadSafe() {
+  void CheckAllocThreadSafe() const {
     CheckAllocThreadSafe(allocators_);
     CheckAllocThreadSafe(zero_size_allocators_);
     CheckAllocThreadSafe(system_allocators_);
