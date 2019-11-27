@@ -43,15 +43,15 @@ template <typename DeviceContext, typename T, typename Functor>
 class ReluCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in_t = ctx.Input<Tensor>("X");
-    auto* out_t = ctx.Output<Tensor>("Y");
+    auto* in_t = ctx.Input<framework::Tensor>("X");
+    auto* out_t = ctx.Output<framework::Tensor>("Y");
     auto x = in_t->data<T>();
     auto y = out_t->mutable_data<T>(ctx.GetPlace());
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
-    Functor<DeviceContext, T> func;
-    func(dev_ctx, x, num, y);
+    Functor func;
+    func(dev_ctx, x, in_t->numel(), y);
   }
 };
 
@@ -65,9 +65,9 @@ template <typename DeviceContext, typename T, typename Functor>
 class ReluGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* dy_t = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto* y_t = ctx.Input<Tensor>("Y");
-    auto* dx_t = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dy_t = ctx.Input<framework::Tensor>(framework::GradVarName("Y"));
+    auto* y_t = ctx.Input<framework::Tensor>("Y");
+    auto* dx_t = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     auto dy = dy_t->data<T>();
     auto y = y_t->data<T>();
@@ -76,7 +76,7 @@ class ReluGradCUDAKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     Functor func;
-    func(dev_ctx, y, dy, y->numel(), dx)
+    func(dev_ctx, y, dy, y_t->numel(), dx);
   }
 };
 }  // namespace operators

@@ -19,22 +19,22 @@ namespace plat = paddle::platform;
                                         grad_functor)                          \
   REGISTER_OP_CUDA_KERNEL(                                                     \
       act_type,                                                                \
-      ops::ReluCUDAKernel<plat::CUDADeviceContext,                             \
+      ops::ReluCUDAKernel<plat::CUDADeviceContext, float,                      \
                           ops::functor<plat::CUDADeviceContext, float>>,       \
-      ops::ReluCUDAKernel<plat::CUDADeviceContext,                             \
+      ops::ReluCUDAKernel<plat::CUDADeviceContext, double,                     \
                           ops::functor<plat::CUDADeviceContext, double>>,      \
       ops::ReluCUDAKernel<                                                     \
-          plat::CUDADeviceContext,                                             \
+          plat::CUDADeviceContext, plat::float16,                              \
           ops::functor<plat::CUDADeviceContext, plat::float16>>);              \
   REGISTER_OP_CUDA_KERNEL(                                                     \
       act_type##_grad, ops::ReluGradCUDAKernel<                                \
-                           plat::CUDADeviceContext,                            \
+                           plat::CUDADeviceContext, float,                     \
                            ops::grad_functor<plat::CUDADeviceContext, float>>, \
       ops::ReluGradCUDAKernel<                                                 \
-          plat::CUDADeviceContext,                                             \
+          plat::CUDADeviceContext, double,                                     \
           ops::grad_functor<plat::CUDADeviceContext, double>>,                 \
       ops::ReluGradCUDAKernel<                                                 \
-          plat::CUDADeviceContext,                                             \
+          plat::CUDADeviceContext, plat::float16,                              \
           ops::grad_functor<plat::CUDADeviceContext, plat::float16>>);
 
 namespace paddle {
@@ -44,7 +44,7 @@ template <typename T>
 __global__ void KeRelu(const T* x, int num, T* y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
   for (int i = gid; i < num; i += blockDim.x * gridDim.x) {
-    y[i] = max(x[i], static_cast<T>(0.));
+    y[i] = max(x[i], static_cast<T>(0));
   }
 }
 
@@ -68,7 +68,7 @@ __global__ void KeReluGrad(const T* y, const T* dy, int num, T* dx) {
 
 template <typename T>
 struct ReluGradFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::DeviceContext& dev_ctx, const T* y,
+  void operator()(const platform::CUDADeviceContext& dev_ctx, const T* y,
                   const T* dy, int num, T* dx) const {
     int block = 512;
     int grid = (num + block - 1) / block;
