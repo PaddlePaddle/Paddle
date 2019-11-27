@@ -1496,25 +1496,6 @@ def _find_op_path_(block, outputs, inputs, no_grad_set):
     input_names = set([inp.name for inp in inputs])
     output_names = set([out.name for out in outputs])
 
-    # if outputs not in block but in sub-block of block
-    loss_block = outputs[0].block
-    change_output_names = True if block.idx != loss_block.idx else False
-    final_link_names = set()
-    if change_output_names:
-        op_numbers = len(loss_block.ops)
-        new_output_names = set(loss_block.ops[op_numbers - 1]
-                               .desc.output_arg_names())
-        for i, op in reversed(list(enumerate(loss_block.ops))):
-            if _some_in_set_(op.desc.output_arg_names(), new_output_names):
-                for name in op.desc.input_arg_names():
-                    new_output_names.add(name)
-                    if block.desc.find_var(name.encode("ascii")):
-                        final_link_names.add(name)
-            else:
-                pass
-
-    output_names = output_names | final_link_names
-
     relevant_op_flags = [True] * len(block.ops)
 
     # All the inputs of the block are used if inputs is empty,
