@@ -33,22 +33,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-__global__ void KeRelu(const T* x, int num, T* y) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int i = gid; i < num; i += blockDim.x * gridDim.x) {
-    y[i] = max(x[i], static_cast<T>(0.));
-  }
-}
-
 template <typename DeviceContext, typename T>
 struct ReluFunctor {
   void operator()(const DeviceContext& dev_ctx, const T* x, int num,
-                  T* out) const {
-    int block = 512;
-    int grid = (num + block - 1) / block;
-    KeRelu<T><<<grid, block, 0, dev_ctx.stream()>>>(x, num, y);
-  }
+                  T* out) const {}
 };
 
 template <typename DeviceContext, typename T, typename Functor>
@@ -67,22 +55,10 @@ class ReluCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
-__global__ void KeReluGrad(const T* y, const T* dy, int num, T* dx) {
-  int gid = blockIdx.x * blockDim.x + threadIdx.x;
-  for (int i = gid; i < num; i += blockDim.x * gridDim.x) {
-    dx[i] = dy[i] * (y[i] > 0 ? 1. : 0.);
-  }
-}
-
 template <typename DeviceContext, typename T>
 struct ReluGradFunctor {
   void operator()(const DeviceContext& dev_ctx, const T* y, const T* dy,
-                  int num, T* dx) const {
-    int block = 512;
-    int grid = (num + block - 1) / block;
-    KeReluGrad<T><<<grid, block, 0, dev_ctx.stream()>>>(y, dy, num, dx);
-  }
+                  int num, T* dx) const {}
 };
 
 template <typename DeviceContext, typename T, typename Functor>

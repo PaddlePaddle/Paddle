@@ -18,22 +18,29 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
-#define REGISTER_ACTIVATION_CUDA_KERNEL(act_type, op_name, functor,         \
-                                        grad_functor)                       \
-  REGISTER_OP_CUDA_KERNEL(                                                  \
-  act_type, ops::ActivationPatchKernel<plat::CUDADeviceContext,         \
-                                       ops::functor<plat::CUDADeviceContext, float>>,            \
-  ops::ActivationPatchKernel<plat::CUDADeviceContext,                   \
-                             ops::functor<plat::CUDADeviceContext, double>>,                     \
-  ops::ActivationPatchKernel<plat::CUDADeviceContext,                   \
-                             ops::functor<plat::CUDADeviceContext, plat::float16>>);             \
-REGISTER_OP_CUDA_KERNEL(                                                  \
-  act_type##_grad, ops::ActivationGradKernel<plat::CUDADeviceContext,   \
-                                             ops::grad_functor<plat::CUDADeviceContext, float>>, \
-  ops::ActivationPatchGradKernel<plat::CUDADeviceContext,               \
-                                 ops::grad_functor<plat::CUDADeviceContext, double>>,            \
-  ops::ActivationPatchGradKernel<plat::CUDADeviceContext,               \
-                                 ops::grad_functor<plat::CUDADeviceContext, plat::float16>>);
+#define REGISTER_ACTIVATION_CUDA_KERNEL(act_type, op_name, functor,            \
+                                        grad_functor)                          \
+  REGISTER_OP_CUDA_KERNEL(                                                     \
+      act_type, ops::ActivationPatchKernel<                                    \
+                    plat::CUDADeviceContext,                                   \
+                    ops::functor<plat::CUDADeviceContext, float>>,             \
+      ops::ActivationPatchKernel<                                              \
+          plat::CUDADeviceContext,                                             \
+          ops::functor<plat::CUDADeviceContext, double>>,                      \
+      ops::ActivationPatchKernel<                                              \
+          plat::CUDADeviceContext,                                             \
+          ops::functor<plat::CUDADeviceContext, plat::float16>>);              \
+  REGISTER_OP_CUDA_KERNEL(                                                     \
+      act_type##_grad, ops::ActivationGradKernel<                              \
+                           plat::CUDADeviceContext,                            \
+                           ops::grad_functor<plat::CUDADeviceContext, float>>, \
+      ops::ActivationPatchGradKernel<                                          \
+          plat::CUDADeviceContext,                                             \
+          ops::grad_functor<plat::CUDADeviceContext, double>>,                 \
+      ops::ActivationPatchGradKernel<                                          \
+          plat::CUDADeviceContext,                                             \
+          ops::grad_functor<plat::CUDADeviceContext, plat::float16>>);
+
 template <typename T>
 __global__ void KeRelu(const T* x, int num, T* y) {
   int gid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -42,10 +49,10 @@ __global__ void KeRelu(const T* x, int num, T* y) {
   }
 }
 
-template <typename DeviceContext, typename T>
-struct ReluFunctor {
-  void operator()(const DeviceContext& dev_ctx, const T* x, int num,
-                  T* out) const {
+template <typename T>
+struct ReluFunctor<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& dev_ctx, const T* x, int num,
+                  T* y) const {
     int block = 512;
     int grid = (num + block - 1) / block;
     KeRelu<T><<<grid, block, 0, dev_ctx.stream()>>>(x, num, y);
@@ -60,9 +67,9 @@ __global__ void KeReluGrad(const T* y, const T* dy, int num, T* dx) {
   }
 }
 
-template <typename DeviceContext, typename T>
-struct ReluGradFunctor {
-  void operator()(const DeviceContext& dev_ctx, const T* y, const T* dy,
+template <typename T>
+struct ReluGradFunctor <platform::CUDADeviceContext, T>{
+  void operator()(const platform::DeviceContext& dev_ctx, const T* y, const T* dy,
                   int num, T* dx) const {
     int block = 512;
     int grid = (num + block - 1) / block;
@@ -70,42 +77,44 @@ struct ReluGradFunctor {
   }
 };
 
-
 #ifdef PADDLE_CUDA_FP16
 
 inline DEVICE half2 half2_relu(const half2& a) {
-    float a1 = __low2float(a);
-    float a2 = __high2float(a);
-    float r1 = max(a1, 0.0);
-    float r2 = max(a2, 0.0);
-    return __floats2half2_rn(r1, r2);
+  float a1 = __low2float(a);
+  float a2 = __high2float(a);
+  float r1 = max(a1, 0.0);
+  float r2 = max(a2, 0.0);
+  return __floats2half2_rn(r1, r2);
 }
 
-__global__ void KeRelufp16(const platform::float16* x, int num, platform::float16* y) {
-    int start = threadIdx.x + blockDim.x * blockIdx.x;
-    int stride = blockDim.x * gridDim.x;
-    int n2 = num / 2;
+__global__ void KeRelufp16(const platform::float16* x, int num,
+                           platform::float16* y) {
+  int start = threadIdx.x + blockDim.x * blockIdx.x;
+  int stride = blockDim.x * gridDim.x;
+  int n2 = num / 2;
 
-    const half2* x2 = reinterpret_cast<const half2*>(x);
-    half2* y2 = reinterpret_cast<half2*>(y);
-    for (int i = start; i < n2; i += stride) {
-        y2[i] = half2_relu(x2[i]);
-    }
-    if (start == 0 && (num % 2)) {
-        y[num - 1] = max(static_cast<half>(x[num - 1]), 0.0);
-    }
+  const half2* x2 = reinterpret_cast<const half2*>(x);
+  half2* y2 = reinterpret_cast<half2*>(y);
+  for (int i = start; i < n2; i += stride) {
+    y2[i] = half2_relu(x2[i]);
+  }
+  if (start == 0 && (num % 2)) {
+    y[num - 1] = max(static_cast<half>(x[num - 1]), 0.0);
+  }
 }
 
 template <>
 struct ReluFunctor<platform::CUDADeviceContext, platform::float16> {
-void operator()(const platform::CUDADeviceContext& dev_ctx, const platform::float16* x, int num,
-              platform::float16* y) const {
+  void operator()(const platform::CUDADeviceContext& dev_ctx,
+                  const platform::float16* x, int num,
+                  platform::float16* y) const {
     int block = 512;
     int grid = (num + block - 1) / block;
     KeRelufp16<<<grid, block, 0, dev_ctx.stream()>>>(x, num, y);
-}
+  }
+};
 
-inline DEVICE half2 half2_relu_grad(const half2& y, const half2& dy) {
+  inline DEVICE half2 half2_relu_grad(const half2& y, const half2& dy) {
     float y1 = __low2float(y);
     float dy1 = __low2float(dy);
     float r1 = dy1 * (y1 > 0 ? 1. : 0.);
@@ -115,10 +124,11 @@ inline DEVICE half2 half2_relu_grad(const half2& y, const half2& dy) {
     float r2 = dy2 * (y2 > 0 ? 1. : 0.);
 
     return __floats2half2_rn(r1, r2);
-}
+  }
 
-__global__ void KeReluGradfp16(const platform::float16* y, 
-        const platform::float16* dy, int num, platform::float16* dx) {
+  __global__ void KeReluGradfp16(const platform::float16* y,
+                                 const platform::float16* dy, int num,
+                                 platform::float16* dx) {
     int start = threadIdx.x + blockDim.x * blockIdx.x;
     int stride = blockDim.x * gridDim.x;
     int n2 = num / 2;
@@ -129,26 +139,25 @@ __global__ void KeReluGradfp16(const platform::float16* y,
     for (int i = start; i < n2; i += stride) {
       dx2[i] = half2_relu_grad(y2[i], dy2[i]);
     }
-        
-    if (start == 0 && (num % 2)) {
-          dx[num - 1] = dy[num - 1] * (y[num - 1] > 0 ? 1. : 0.);
-    }
-}
 
-template <>
-struct ReluGradFunctor<platform::CUDADeviceContext, platform::float16> {
-  void operator()(const platform::CUDADeviceContext& dev_ctx, const platform::float16* y, const platform::float16* dy,
-                  int num, platform::float16* dx) const {
-    int block = 512;
-    int grid = (num + block - 1) / block;
-    KeReluGradfp16<<<grid, block, 0, dev_ctx.stream()>>>(y, dy, num, dx);
+    if (start == 0 && (num % 2)) {
+      dx[num - 1] = dy[num - 1] * (y[num - 1] > 0.0 ? 1. : 0.);
+    }
   }
-}
+
+  template <>
+  struct ReluGradFunctor<platform::CUDADeviceContext, platform::float16> {
+    void operator()(const platform::CUDADeviceContext& dev_ctx,
+                    const platform::float16* y, const platform::float16* dy,
+                    int num, platform::float16* dx) const {
+      int block = 512;
+      int grid = (num + block - 1) / block;
+      KeReluGradfp16<<<grid, block, 0, dev_ctx.stream()>>>(y, dy, num, dx);
+    }
+  };
 
 #endif
 
-/* ===========================    relu register  ============================ */
-REGISTER_ACTIVATION_CUDA_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
-
+  REGISTER_ACTIVATION_CUDA_KERNEL(relu, Relu, ReluFunctor, ReluGradFunctor);
 }  // namespace operators
 }  // namespace paddle

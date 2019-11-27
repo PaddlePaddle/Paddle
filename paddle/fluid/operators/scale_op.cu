@@ -18,7 +18,8 @@ namespace plat = paddle::platform;
 
 /*
 template <>
-__global__ void KeScale<half>(const half* in, const int num, half* out, bool bias_after_scale, float bias) {
+__global__ void KeScale<half>(const half* in, const int num, half* out, bool
+bias_after_scale, float bias) {
   int start = threadIdx.x + blockDim.x * blockIdx.x;
   int stride = blockDim.x * gridDim.x;
   int n2 = num / 2;
@@ -35,13 +36,14 @@ __global__ void KeScale<half>(const half* in, const int num, half* out, bool bia
 
 template<>
 struct ScaleFunctor<typename CUDADeviceContext, typename platform::float16>(){
-    void operator(const Tensor* in, Tensor* out, 
+    void operator(const Tensor* in, Tensor* out,
             bool bias_after_scale, float bias){
     }
 }
 template<typename T>
 struct ScaleFunctor<CUDADeviceContext>(){
-    void operator(const Tensor* in, Tensor* out, bool bias_after_scale, float bias){
+    void operator(const Tensor* in, Tensor* out, bool bias_after_scale, float
+bias){
     }
 }
 */
