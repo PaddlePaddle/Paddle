@@ -83,8 +83,8 @@ class OpRegistry {
    *            Attr_check is used to control the check of attribute map.
    *            The check of attribute map have two purpose:
    *            1. check attribute item is valid
-   *            2. add attribute item which have default value if not included
-   * in attrs
+   *            2. add attribute item which have default value
+   *            if not included in attrs
    *            In dygraph model, attrs is an empty unordered_map,
    *            attr_check is set to false, Otherwise it will be failed
    *            when Check function called.
