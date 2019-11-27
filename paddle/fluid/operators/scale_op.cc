@@ -36,11 +36,10 @@ class ScaleOp : public framework::OperatorWithKernel {
                    "Output(Out) of ScaleOp should not be null.");
 
     if (ctx->IsRuntime() && ctx->HasInput("ScaleTensor")) {
-      auto scale_dims = ctx->GetInputDim("ScaleTensor");
-      PADDLE_ENFORCE_EQ(scale_dims.size(), 1,
-                        "Input(ScaleTensor) dimensions must be 1");
-      PADDLE_ENFORCE_EQ(scale_dims[0], 1,
-                        "Input(ScaleTensor) shape must be [1]");
+      auto scale = ctx->Inputs("ScaleTensor");
+      PADDLE_ENFORCE_EQ(scale.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(ScaleTensor) size must be 1"));
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
