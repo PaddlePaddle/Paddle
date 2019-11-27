@@ -20,20 +20,27 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
-                    "Input(Param) of AdamOp should not be null.");
-  PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"), true,
-                    "Input(Grad) of AdamOp should not be null.");
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("Param"), true,
+      platform::errors::NotFound("Input(Param) of AdamOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("Grad"), true,
+      platform::errors::NotFound("Input(Grad) of AdamOp should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasInput("Moment1"), true,
-                    "Input(Moment1) of AdamOp should not be null.");
+                    platform::errors::NotFound(
+                        "Input(Moment1) of AdamOp should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasInput("Moment2"), true,
-                    "Input(Moment2) of AdamOp should not be null.");
+                    platform::errors::NotFound(
+                        "Input(Moment2) of AdamOp should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"), true,
-                    "Input(LearningRate) of AdamOp should not be null.");
+                    platform::errors::NotFound(
+                        "Input(LearningRate) of AdamOp should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasInput("Beta1Pow"), true,
-                    "Input(Beta1Pow) of AdamOp should not be null.");
+                    platform::errors::NotFound(
+                        "Input(Beta1Pow) of AdamOp should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasInput("Beta2Pow"), true,
-                    "Input(Beta2Pow) of AdamOp should not be null.");
+                    platform::errors::NotFound(
+                        "Input(Beta2Pow) of AdamOp should not be null."));
 
   if (ctx->IsRuntime() && ctx->HasInput("Beta1Tensor")) {
     auto beta1 = ctx->Inputs("Beta1Tensor");
@@ -49,11 +56,14 @@ void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
   }
 
   PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
-                    "Output(ParamOut) of AdamOp should not be null.");
+                    platform::errors::NotFound(
+                        "Output(ParamOut) of AdamOp should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment1Out"), true,
-                    "Output(Moment1Out) of AdamOp should not be null.");
+                    platform::errors::NotFound(
+                        "Output(Moment1Out) of AdamOp should not be null."));
   PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment2Out"), true,
-                    "Output(Moment2Out) of AdamOp should not be null.");
+                    platform::errors::NotFound(
+                        "Output(Moment2Out) of AdamOp should not be null."));
 
   auto lr_dims = ctx->GetInputDim("LearningRate");
   PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
