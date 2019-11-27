@@ -41,12 +41,6 @@ enum ActBwdOpFwdDeps {
   kNoDeps = 0x00,  // Do not need any forward input/output
   kDepX = 0x01,    // Only need forward input X
   kDepOut = 0x02,  // Only need forward output Out
-
-  // Never add kDepXOut, because Out can be always calculated
-  // by forward input X in backward part.
-  // FIXME(zjl): but in MKLDNN abs, X and Out are all needed...
-  // Developers should not rely on this enum value!
-  kDepXOut = 0x03
 };
 
 /* The following operator can be used to process SelectedRows, because the
@@ -769,7 +763,7 @@ struct AbsGradFunctor : public BaseActivationFunctor<T> {
     dx.device(d) = dout * x.sign();
   }
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepXOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
 // reciprocal(x) = 1 / x
