@@ -60,6 +60,8 @@ def get_numeric_gradient(place,
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
+    if tensor_size > 100:
+        get_numeric_gradient.check_shape_time += 1
     tensor_to_check_dtype = tensor_to_check._dtype()
     if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
         tensor_to_check_dtype = np.float32
@@ -142,6 +144,9 @@ class OpTest(unittest.TestCase):
         cls.call_once = False
         cls.dtype = "float32"
         cls.outputs = {}
+        cls.check_shape_times = 0
+        cls.op_type = None
+        get_numeric_gradient.check_shape_time = 0
 
         np.random.seed(123)
         random.seed(124)
@@ -151,6 +156,11 @@ class OpTest(unittest.TestCase):
         """Restore random seeds"""
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
+
+        if get_numeric_gradient.check_shape_time == 0:
+            raise AssertionError(
+                "At least one input's shape should be large than 100 for " +
+                OpTest.op_type + " Op.")
 
     def try_call_once(self, data_type):
         if not self.call_once:
@@ -202,6 +212,7 @@ class OpTest(unittest.TestCase):
         return feed_map
 
     def _append_ops(self, block):
+        OpTest.op_type = self.op_type
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -340,6 +351,7 @@ class OpTest(unittest.TestCase):
             return var_dict
 
     def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
+        OpTest.op_type = self.op_type
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
