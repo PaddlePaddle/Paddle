@@ -60,7 +60,8 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
 
   if (ctx->IsRuntime() && ctx->HasInput("MomentumTensor")) {
     auto mom = ctx->Inputs("MomentumTensor");
-    PADDLE_ENFORCE_EQ(mom.size(), 1, "Input(MomentumTensor) size must be 1");
+    PADDLE_ENFORCE_EQ(mom.size(), 1, 
+        platform::errors::InvalidArgument("Input(MomentumTensor) size must be 1"));
   }
 
   PADDLE_ENFORCE_GE(
