@@ -267,11 +267,7 @@ def _infer_var_data_type_(grad_var_name, block):
     """
     Infer the data type of given grad variable
     """
-    # todo(done): find_var -> find_var_recursive
-    # grad_var = block.desc.find_var(cpt.to_bytes(grad_var_name))
     grad_var = block.desc.find_var_recursive(cpt.to_bytes(grad_var_name))
-    # print("-"*50, grad_var)
-
     fwd_name = _strip_grad_suffix_(grad_var_name)
     if block.desc.has_var_recursive(cpt.to_bytes(fwd_name)):
         fwd_var = block.desc.find_var_recursive(cpt.to_bytes(fwd_name))
@@ -862,7 +858,6 @@ def _append_backward_ops_(block,
 def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     """
     Create new variables required by backward pass.
-
     Args:
         block(Block): the block where new variables will be created
         start_op_idx(int): Only variables required by ops in block.ops[start_op_idx : ] will be created
@@ -874,7 +869,6 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             key(str): forward variable name
             val(tuple): a tuple of (str, Block), str is the corresponding grad name, Block is the block containing grad variable
     """
-    root_block = block.program.blocks[0]
     for op_idx in range(start_op_idx, block.desc.op_size()):
         op_desc = block.desc.op(op_idx)
         if op_desc.has_attr("sub_block"):
@@ -885,40 +879,12 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         for grad_var_name in op_desc.output_arg_names():
             if block.desc.has_var_recursive(cpt.to_bytes(
                     grad_var_name)) or grad_var_name == core.empty_var_name():
-                print("liym27: no need to creat var {} in block {}".format(
-                    grad_var_name, block.idx))
                 continue
-            # block.desc.var(cpt.to_bytes(grad_var_name))
-            # todo(): if forward var is in parent block, grad var created in parent block
-            fwd_name = _strip_grad_suffix_(grad_var_name)
-            if root_block.desc.has_var(cpt.to_bytes(fwd_name)):
-                if root_block.desc.has_var(cpt.to_bytes(grad_var_name)):
-                    print("-" * 20,
-                          "no need to creat var {} in block {}".format(
-                              grad_var_name, root_block.idx))
-                else:
-                    print("+" * 20, "need to create var {} in block {}".format(
-                        grad_var_name, root_block.idx))
-                    root_block.desc.var(cpt.to_bytes(
-                        grad_var_name))  # todo(done): change to root_block
-            else:
-                if block.desc.has_var(cpt.to_bytes(grad_var_name)):
-                    print("-" * 20,
-                          "no need to creat var {} in block {}".format(
-                              grad_var_name, block.idx))
-                else:
-                    print("+" * 20, "need to create var {} in block {}".format(
-                        grad_var_name, block.idx))
-                    block.desc.var(cpt.to_bytes(
-                        grad_var_name))  # todo(done): change to root_block
-
+            block.desc.var(cpt.to_bytes(grad_var_name))
             new_vars.add(grad_var_name)
             if grad_var_name not in grad_to_var:
                 continue
-            # grad_info_map[grad_to_var[grad_var_name]] = (grad_var_name, block)
-            grad_info_map[grad_to_var[grad_var_name]] = (
-                grad_var_name, root_block)  # todo(done)change to
-
+            grad_info_map[grad_to_var[grad_var_name]] = (grad_var_name, block)
         # infer_shape and infer_type
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
