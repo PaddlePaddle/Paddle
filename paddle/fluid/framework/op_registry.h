@@ -67,6 +67,30 @@ struct OperatorRegistrar : public Registrar {
 
 class OpRegistry {
  public:
+  /**
+   * @brief Return an OperatorBase constructed by using type, inputs, outputs,
+   * attrs.
+   *        In dygraph mode, inputs, output, attrs wil be set to empty map to
+   *        to improve the execution efficiency of dygraph.
+   *
+   * @param[str] type          The operator type.
+   * @param[map] inputs        Inptus map of the operator.
+   * @param[map] outputs       Outputs map of the operator.
+   * @param[unordered_map]     Attributes map of thee operator.
+   * @param[bool] attr_check   Whether do the attribute check before
+   * OperatorBase construction.
+   *                           Default is true.
+   *                           Attr_check is used to control the check of
+   * attribute map.
+   *                           The check of attribute map have two purpose:
+   *                           1. check attribute item is valid
+   *                           2. add attribute item which have default value if
+   * not included in attrs
+   *                           In dygraph model, attrs is an empty
+   * unordered_map,
+   *                           attr_check is set to false, Otherwise it will be
+   * failed when Check function called.
+   */
   static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VariableNameMap& inputs,
                                                 const VariableNameMap& outputs,

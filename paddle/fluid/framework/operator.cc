@@ -321,8 +321,10 @@ OperatorBase::OperatorBase(const std::string& type,
       attrs_(attrs),
       // NOTE(zjl): why op_info may be nullptr?
       info_(OpInfoMap::Instance().GetNullable(type)) {
-  // In dygraph mode, inputs, outputs and attrs will be set to empty map
-  // to improve the execution efficiency of dygraph
+  // In dygraph mode, all the OperatorBase will be constructed by function:
+  // framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
+  // Inputs, outputs and attrs will be set to empty map
+  // to improve the execution efficiency of dygraph.
   if (inputs_.size() > 0 || outputs_.size() > 0) {
     GenerateTemporaryNames();
     CheckAllInputOutputSet();
