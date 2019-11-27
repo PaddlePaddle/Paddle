@@ -25,6 +25,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/framework/version.h"
+#include "paddle/fluid/operators/distributed/distributed.h"
+#include "paddle/fluid/operators/distributed/parameter_recv.h"
+#include "paddle/fluid/operators/distributed/rpc_common.h"
+#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -79,6 +84,14 @@ This operator will serialize and write LoDTensor variable to file on disk.
         "and it real name on parameter server is 'moment_1'. ")
         .SetDefault({});
 
+    AddAttr<std::vector<std::string>>(
+        "remote_varnames",
+        "(string vector, default {}) "
+        "sometimes we need to put received var in another name "
+        "for example: we need var named 'moment_1@127.0.0.1:1001', "
+        "and it real name on parameter server is 'moment_1'. ")
+        .SetDefault({});
+
     AddAttr<std::vector<std::string>>("slice_shapes",
                                       "(vector<int>) "
                                       "the length of each output along the "
@@ -103,17 +116,19 @@ class RecvSaveOpShapeInference : public framework::InferShapeBase {
 template <typename DeviceContext, typename T>
 class RecvSaveOpKernel : public framework::OpKernel<T> {
  private:
-  void SerializeVersionToStream(std::ostream &os) {
+  void SerializeVersionToStream(std::ostream &os) const {
     {  // the 1st field, uint32_t version for LoDTensor
-      os.write(reinterpret_cast<const char *>(&kCurTensorVersion),
-               sizeof(kCurTensorVersion));
+      os.write(reinterpret_cast<const char *>(&framework::kCurTensorVersion),
+               sizeof(framework::kCurTensorVersion));
     }
     // the 2st field, LoD information
     // in this scene, skip LoD information.
+    uint64_t size = 0;
+    os.write(reinterpret_cast<const char *>(&size), sizeof(size));
   }
-  void SerializeTensorHeaderToStream(std::ostream &os,
-                                     const proto::VarType::Type &type,
-                                     const DDim &dims) {
+  void SerializeTensorHeaderToStream(
+      std::ostream &os, const framework::proto::VarType::Type &type,
+      const framework::DDim &dims) const {
     {  // the 1st field, uint32_t version
       constexpr uint32_t version = 0;
       os.write(reinterpret_cast<const char *>(&version), sizeof(version));
@@ -121,7 +136,7 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     {  // the 2nd field, tensor description
       // int32_t  size
       // void*    protobuf message
-      proto::VarType::TensorDesc desc;
+      framework::proto::VarType::TensorDesc desc;
       desc.set_data_type(type);
       auto tensor_dims = framework::vectorize(dims);
       auto *pb_dims = desc.mutable_dims();
@@ -133,7 +148,8 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
       os.write(out.data(), size);
     }
   }
-  void SerializeTensorAppendToStream(std::ostream &os, const Tensor &tensor) {
+  void SerializeTensorAppendToStream(std::ostream &os,
+                                     const Tensor &tensor) const {
     uint64_t size = tensor.numel() * framework::SizeOfType(tensor.type());
     auto *data_ptr = tensor.data<void>();
     PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
@@ -157,8 +173,7 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     MkDirRecursively(DirName(filename).c_str());
 
     auto origin_shape = ctx.Attr<std::vector<int64_t>>("shape");
-    auto slice_shapes =
-        ctx.Attr<std::vector<std::vector<int64_t>>>("slice_shapes");
+    auto slice_shapes = ctx.Attr<std::vector<std::string>>("slice_shapes");
     auto slice_varnames = ctx.Attr<std::vector<std::string>>("slice_varnames");
     auto remote_varnames =
         ctx.Attr<std::vector<std::string>>("remote_varnames");
@@ -167,12 +182,8 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(slice_shapes.size(), slice_varnames.size());
     PADDLE_ENFORCE_EQ(slice_shapes.size(), endpoints.size());
 
-    auto data_type = static_cast<framework::proto::VarType::Type>(
-        boost::get<int>(ctx->GetAttr("dtype")));
-
-    // get device context from pool
-    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(place);
+    auto data_type =
+        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
 
     // it to save an output stream.
     std::ofstream fout(filename, std::ios::binary);
@@ -185,7 +196,10 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
 
     framework::Scope &local_scope = ctx.scope().NewScope();
 
-    auto trainer_id = Attr<int>("trainer_id");
+    auto trainer_id = ctx.Attr<int>("trainer_id");
+
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &device_ctx = *pool.Get(place);
 
     distributed::RPCClient *rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
@@ -193,25 +207,36 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     for (int i = 0; i < slice_varnames.size(); i++) {
       auto &varname = slice_varnames[i];
       auto *var = local_scope.Var(varname);
-      auto *tensor = var->GetMutable<LoDTensor>();
-      tensor->Resize(make_ddim(slice_shapes[i]));
+      auto *tensor = var->GetMutable<framework::LoDTensor>();
+
+      auto slice_string =
+          string::split_string<std::string>(slice_shapes[i], ",");
+      std::vector<int64_t> slice_shape;
+
+      for (auto &dim : slice_string) {
+        slice_shape.push_back(static_cast<int64_t>(std::stoull(dim)));
+      }
+
+      tensor->Resize(framework::make_ddim(slice_shape));
 
       distributed::VarHandlePtr ret;
-      VLOG(4) << "recv " << outs[i] << " from " << epmap[i] << " with "
-              << varname << " and with AsyncGetVarNoBarrier";
 
-      ret = rpc_client->AsyncGetVarNoBarrier(endpoints[i], ctx, local_scope,
-                                             varname, remote_varnames[i]);
+      ret = rpc_client->AsyncGetVarNoBarrier(
+          endpoints[i], device_ctx, local_scope, varname, remote_varnames[i]);
 
       PADDLE_ENFORCE_NE(ret->Wait(), 0U, "internal error in RPCClient");
 
-      auto &tensor = var->Get<framework::LoDTensor>();
+      auto &c_tensor = var->Get<framework::LoDTensor>();
 
-      SerializeTensorAppendToStream(fout, tensor);
+      std::stringstream ss;
+      ss << c_tensor;
+      VLOG(1) << "tensor " << varname << " :\n" << ss.str();
+
+      SerializeTensorAppendToStream(fout, c_tensor);
       local_scope.EraseVars({varname});
     }
     fout.close();
-    context.scope().DeleteScope(&local_scope);
+    ctx.scope().DeleteScope(&local_scope);
   }
 };
 
@@ -220,11 +245,11 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(save, ops::RecvSaveOp, ops::RecvSaveOpProtoMaker,
+REGISTER_OPERATOR(recv_save, ops::RecvSaveOp, ops::RecvSaveOpProtoMaker,
                   ops::RecvSaveOpShapeInference);
 
 REGISTER_OP_CPU_KERNEL(
-    save, ops::RecvSaveOpKernel<paddle::platform::CPUDeviceContext, float>,
+    recv_save, ops::RecvSaveOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::RecvSaveOpKernel<paddle::platform::CPUDeviceContext, double>,
     ops::RecvSaveOpKernel<paddle::platform::CPUDeviceContext, int>,
     ops::RecvSaveOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
