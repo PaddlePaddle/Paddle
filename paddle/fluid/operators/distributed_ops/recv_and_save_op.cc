@@ -126,6 +126,7 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     uint64_t size = 0;
     os.write(reinterpret_cast<const char *>(&size), sizeof(size));
   }
+
   void SerializeTensorHeaderToStream(
       std::ostream &os, const framework::proto::VarType::Type &type,
       const framework::DDim &dims) const {
@@ -148,8 +149,9 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
       os.write(out.data(), size);
     }
   }
+
   void SerializeTensorAppendToStream(std::ostream &os,
-                                     const Tensor &tensor) const {
+                                     const framework::Tensor &tensor) const {
     uint64_t size = tensor.numel() * framework::SizeOfType(tensor.type());
     auto *data_ptr = tensor.data<void>();
     PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
@@ -227,10 +229,6 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_NE(ret->Wait(), 0U, "internal error in RPCClient");
 
       auto &c_tensor = var->Get<framework::LoDTensor>();
-
-      std::stringstream ss;
-      ss << c_tensor;
-      VLOG(1) << "tensor " << varname << " :\n" << ss.str();
 
       SerializeTensorAppendToStream(fout, c_tensor);
       local_scope.EraseVars({varname});
