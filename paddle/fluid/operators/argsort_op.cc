@@ -73,6 +73,12 @@ Output(Indices) gives the sorted order along the given axis Attr(axis).
                  "When axis < 0, the actual axis will be the |axis|'th "
                  "counting backwards. Default -1, the last dimension.")
         .SetDefault(-1);
+    AddAttr<bool>(
+        "descending",
+        "(bool, default false) The axis along which to sort the tensor. "
+        "When axis < 0, the actual axis will be the |axis|'th "
+        "counting backwards. Default -1, the last dimension.")
+        .SetDefault(false);
   }
 };
 

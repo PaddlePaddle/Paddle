@@ -51,7 +51,7 @@ __inline__ __device__ T blockReduceSum(T val) {
 
   __syncthreads();
 
-  val = (threadIdx.x < (blockDim.x >> 5)) ? shared[lane] : (T)(0.0f);
+  val = (threadIdx.x < (blockDim.x >> 5)) ? shared[lane] : static_cast<T>(0.0f);
   val = warpReduceSum<T>(val);
 
   return val;

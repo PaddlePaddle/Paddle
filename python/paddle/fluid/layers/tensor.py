@@ -802,7 +802,7 @@ def argmax(x, axis=0):
     return out
 
 
-def argsort(input, axis=-1, name=None):
+def argsort(input, axis=-1, descending=False, name=None):
     """
     This OP sorts the input along the given axis, and returns sorted output
     data Varibale and its corresponding index Variable with the same shape as
@@ -879,7 +879,8 @@ def argsort(input, axis=-1, name=None):
         inputs={'X': input},
         outputs={'Out': out,
                  'Indices': ids},
-        attrs={'axis': axis})
+        attrs={'axis': axis,
+               'descending': descending})
     return out, ids
 
 
