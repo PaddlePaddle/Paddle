@@ -48,11 +48,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   int groups = ctx->Attrs().Get<int>("groups");
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
   const std::string data_format = ctx->Attrs().Get<std::string>("data_format");
-
-  // MKL-DNN Kernels are using NCHW order of dims description
-  // so we ignore data_format consideration for MKL-DNN kernel
-  const bool channel_last = (this->IsMKLDNNType() == false) &&
-                            (data_format == "NHWC" || data_format == "NDHWC");
+  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
   PADDLE_ENFORCE_EQ(
       in_dims.size() == 4 || in_dims.size() == 5, true,
