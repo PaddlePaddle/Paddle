@@ -29,6 +29,7 @@ if(NOT WITH_GPU OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_allreduce)
     LIST(REMOVE_ITEM TEST_OPS test_broadcast)
     LIST(REMOVE_ITEM TEST_OPS test_reducescatter)
+    LIST(REMOVE_ITEM TEST_OPS test_reducescatter_api)
 endif()
 
 if(WIN32)
