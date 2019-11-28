@@ -595,8 +595,7 @@ class HDFSClient(object):
         if not self.is_exist(dest_dir):
             self.makedirs(dest_dir)
         put_command = ["-put", local_dir, dest_dir]
-        returncode, output, errors = self.__run_hdfs_cmd(put_command,
-                                                         retry_times)
+        returncode, output, errors = self.__run_hdfs_cmd(put_command)
         if returncode != 0:
             _logger.error("Put local dir: {} to HDFS dir: {} failed".format(
                 local_dir, dest_dir))
