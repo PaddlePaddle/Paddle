@@ -203,7 +203,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     // Get unique name for storing MKLDNN primitives
     const std::string key = platform::CreateKey(
-        src_tz, ctx.op().Input("Input") + ctx.op().Input("Filter"));
+        src_tz, ctx.InputName("Input") + ctx.InputName("Filter"));
 
     std::vector<primitive> pipeline;
 
@@ -377,7 +377,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         paddle::framework::ToMKLDNNDataType(input->type());
 
     std::string key = platform::CreateKey(
-        src_tz, src_dt, ctx.op().Input("Input") + ctx.op().Input("Filter"));
+        src_tz, src_dt, ctx.InputName("Input") + ctx.InputName("Filter"));
 
     const std::string key_conv_pd = key + "@conv_pd";
 
@@ -755,7 +755,7 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // as well as attributes of primitive to be created
     // This name will be used as key when saving info into device context
     const std::string key = platform::CreateKey(
-        src_tz, ctx.op().Input("Input") + ctx.op().Input("Filter"));
+        src_tz, ctx.InputName("Input") + ctx.InputName("Filter"));
 
     const std::string key_conv_pd = key + "@conv_pd";
     std::vector<primitive> pipeline;

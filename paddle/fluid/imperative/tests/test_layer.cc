@@ -148,6 +148,67 @@ TEST(test_layer, test_varbase_basic) {
 }
 // TODO(jiabin): Add more ut here for layer
 
+TEST(test_layer, test_dygraph_execution_context) {
+  std::shared_ptr<imperative::VarBase> vin(
+      new imperative::VarBase(false, "vin"));
+  std::shared_ptr<imperative::VarBase> vout(
+      new imperative::VarBase(false, "vout"));
+  framework::OpDesc desc;
+  platform::CPUPlace place;
+  var_pair x_pair = var_pair("X", vb_vector(1, vin));
+  var_pair y_pair = var_pair("Y", vb_vector(1, vin));
+  var_pair out_pair = var_pair("Out", vb_vector(1, vout));
+  imperative::NameVarBaseMap ins = {x_pair, y_pair};
+  imperative::NameVarBaseMap outs = {out_pair};
+
+  framework::AttributeMap concat_att_map;
+  concat_att_map["axis"] = 1;
+
+  auto op = framework::OpRegistry::CreateOp("mul", {}, {}, {}, false);
+  paddle::platform::CPUPlace cpu_place;
+
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(cpu_place);
+  paddle::framework::RuntimeContext ctx({}, {});
+  framework::Scope scope;
+
+  DygraphExecutionContext dy_exe_context(*(op.get()), scope, *dev_ctx, ctx,
+                                         nullptr, ins, outs, &concat_att_map);
+
+  ASSERT_EQ(dy_exe_context.InputSize("X"), 1u);
+  ASSERT_EQ(dy_exe_context.InputName("X"), "vin");
+  ASSERT_EQ(dy_exe_context.HasAttr("axis"), true);
+  auto attr_map = dy_exe_context.Attrs();
+  ASSERT_EQ(boost::get<int>(attr_map["axis"]), 1);
+  ASSERT_EQ(dy_exe_context.OutputSize("Out"), 1u);
+  ASSERT_EQ(dy_exe_context.HasOutput("Out"), true);
+}
+
+TEST(test_layer, test_dygraph_infershape_context) {
+  std::shared_ptr<imperative::VarBase> vin(
+      new imperative::VarBase(false, "vin"));
+  std::shared_ptr<imperative::VarBase> vout(
+      new imperative::VarBase(false, "vout"));
+  framework::OpDesc desc;
+  platform::CPUPlace place;
+  var_pair x_pair = var_pair("X", vb_vector(1, vin));
+  var_pair y_pair = var_pair("Y", vb_vector(1, vin));
+  var_pair out_pair = var_pair("Out", vb_vector(1, vout));
+  imperative::NameVarBaseMap ins = {x_pair, y_pair};
+  imperative::NameVarBaseMap outs = {out_pair};
+
+  framework::AttributeMap concat_att_map;
+  concat_att_map["axis"] = 1;
+
+  DygraphInferShapeContext infer_shape_ctx(&ins, &outs, &concat_att_map);
+
+  bool have_x = infer_shape_ctx.HasOutputs("Out");
+  ASSERT_EQ(have_x, true);
+  bool have_z = infer_shape_ctx.HasOutputs("Z");
+  ASSERT_EQ(have_z, false);
+}
+
 }  // namespace imperative
 }  // namespace paddle
 
