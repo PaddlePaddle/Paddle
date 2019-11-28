@@ -61,7 +61,7 @@ std::string LayerDebugString(const std::string& op_type,
                              const NameVarBaseMap& ins,
                              const NameVarBaseMap& outs);
 
-TEST(test_layer, test_debug_string_test_debug_Test) {
+TEST(test_layer, test_debug_string) {
   platform::CPUPlace place;
   std::shared_ptr<imperative::VarBase> vin(
       new imperative::VarBase(false, "vin"));
