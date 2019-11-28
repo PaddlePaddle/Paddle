@@ -2704,7 +2704,9 @@ def data_norm(input,
               moving_mean_name=None,
               moving_variance_name=None,
               do_model_average_for_mean_and_var=True,
-              slot_dim=-1):
+              slot_dim=-1,
+              sync_stats=False,
+              summary_decay_rate=0.9999999):
     """
     **Data Normalization Layer**
 
@@ -2750,6 +2752,9 @@ def data_norm(input,
             is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate 
             the show number and judge if the show number is zero. If so, we choose to skip normalization on this
             embedding.
+        sync_stats(bool, Default False): When running with multiple GPU cards, using allreduce to sync the
+            summary messages.
+        summary_decay_rate(float, Default 0.9999999): The decay rate when updating summary.
 
     Returns:
         Variable: A tensor variable which is the result after applying data normalization on the input.
@@ -2824,11 +2829,20 @@ def data_norm(input,
             "BatchSum": batch_sum,
             "BatchSquareSum": batch_square_sum
         },
-        outputs={"Y": data_norm_out,
-                 "Means": means,
-                 "Scales": scales},
-        attrs={"epsilon": epsilon,
-               "slot_dim": slot_dim})
+        outputs={
+            "Y": data_norm_out,
+            "Means": means,
+            "Scales": scales,
+            "BatchSize": batch_size,
+            "BatchSum": batch_sum,
+            "BatchSquareSum": batch_square_sum
+        },
+        attrs={
+            "epsilon": epsilon,
+            "slot_dim": slot_dim,
+            "sync_stats": sync_stats,
+            "summary_decay_rate": summary_decay_rate
+        })
 
     return helper.append_activation(data_norm_out)
 
@@ -13261,10 +13275,6 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())
-    if index_num % nshards != 0:
-        raise ValueError(
-            'The index_num(%d) cannot be evenly divided by nshards(%d)' %
-            (index_num, nshards))
     if shard_id < 0 or shard_id >= nshards:
         raise ValueError('The shard_id(%d) should be in [0, %d)' %
                          (shard_id, nshards))
