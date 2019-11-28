@@ -210,7 +210,8 @@ void SerializeToStream(std::ostream& os, const LoDTensor& tensor,
 void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
                            const platform::DeviceContext& dev_ctx);
 void DeserializeFromStream(std::istream& is, LoDTensor* tensor,
-                           const platform::DeviceContext& dev_ctx, size_t seek,
+                           const platform::DeviceContext& dev_ctx,
+                           const size_t& seek,
                            const std::vector<int64_t>& shape);
 
 /*

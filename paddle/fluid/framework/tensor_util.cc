@@ -451,8 +451,8 @@ struct DeserializedDataFunctor {
 };
 
 void TensorFromStream(std::istream& is, Tensor* tensor,
-                      const platform::DeviceContext& dev_ctx, size_t seek,
-                      const std::vector<int64_t>& shape) {
+                      const platform::DeviceContext& dev_ctx,
+                      const size_t& seek, const std::vector<int64_t>& shape) {
   uint32_t version;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
   PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
