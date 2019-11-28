@@ -112,15 +112,15 @@ TEST(test_layer, test_clear_backward_info) {
   op->InsertGradPendingOps(preceding_op.get());
   *(op->GetMutableInsMap()) = ins;
   *(op->GetMutableOutsMap()) = outs;
-  ASSERT_GT(op->GetInsMap().size(), 0);
-  ASSERT_GT(op->GetOutsMap().size(), 0);
-  ASSERT_GT(op->GradPendingOps().size(), 0);
+  ASSERT_GT(op->GetInsMap().size(), 0UL);
+  ASSERT_GT(op->GetOutsMap().size(), 0UL);
+  ASSERT_GT(op->GradPendingOps().size(), 0UL);
 
   op->ClearBackwardTrace();
 
-  ASSERT_EQ(op->GetInsMap().size(), 0);
-  ASSERT_EQ(op->GetOutsMap().size(), 0);
-  ASSERT_EQ(op->GradPendingOps().size(), 0);
+  ASSERT_EQ(op->GetInsMap().size(), 0UL);
+  ASSERT_EQ(op->GetOutsMap().size(), 0UL);
+  ASSERT_EQ(op->GradPendingOps().size(), 0UL);
 }
 
 TEST(test_layer, test_varbase_basic) {
