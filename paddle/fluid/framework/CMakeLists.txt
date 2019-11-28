@@ -56,6 +56,8 @@ else()
   cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor dlpack_tensor)
 endif()
 
+cc_test(copy_same_tensor_test SRCS copy_same_tensor_test.cc DEPS tensor)
+
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
 if(WITH_GPU)

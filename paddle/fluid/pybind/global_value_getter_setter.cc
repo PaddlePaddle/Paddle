@@ -29,6 +29,7 @@
 DECLARE_double(eager_delete_tensor_gb);
 DECLARE_bool(use_mkldnn);
 DECLARE_bool(use_ngraph);
+DECLARE_bool(use_system_allocator);
 
 namespace paddle {
 namespace pybind {
@@ -150,9 +151,12 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
   GlobalVarGetterSetterRegistry::MutableInstance()->RegisterGetter( \
       #var, []() -> py::object { return py::cast(var); })
 
-#define REGISTER_GLOBAL_VAR_SETTER_ONLY(var)                        \
-  GlobalVarGetterSetterRegistry::MutableInstance()->RegisterSetter( \
-      #var, [](const py::object &obj) { var = py::cast<decltype(var)>(obj); })
+#define REGISTER_GLOBAL_VAR_SETTER_ONLY(var)                          \
+  GlobalVarGetterSetterRegistry::MutableInstance()->RegisterSetter(   \
+      #var, [](const py::object &obj) {                               \
+        using ValueType = std::remove_reference<decltype(var)>::type; \
+        var = py::cast<ValueType>(obj);                               \
+      })
 
 #define REGISTER_GLOBAL_VAR_GETTER_SETTER(var) \
   REGISTER_GLOBAL_VAR_GETTER_ONLY(var);        \
@@ -162,6 +166,7 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_GLOBAL_VAR_GETTER_ONLY(FLAGS_use_mkldnn);
   REGISTER_GLOBAL_VAR_GETTER_ONLY(FLAGS_use_ngraph);
   REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_eager_delete_tensor_gb);
+  REGISTER_GLOBAL_VAR_GETTER_SETTER(FLAGS_use_system_allocator);
 }
 
 }  // namespace pybind
