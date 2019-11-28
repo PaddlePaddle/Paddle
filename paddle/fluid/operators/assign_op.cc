@@ -22,8 +22,8 @@ namespace operators {
 class AssignFunctor {
  public:
   AssignFunctor(framework::Variable *out,
-                const platform::DeviceContext &dev_ctx)
-      : out_(out), dev_ctx_(dev_ctx) {}
+                const platform::DeviceContext &dev_ctx, const bool force_cpu)
+      : out_(out), dev_ctx_(dev_ctx), force_cpu_(force_cpu) {}
 
   void operator()(const framework::LoDTensor &lod_tensor) const {
     auto &out_tensor = *out_->GetMutable<framework::LoDTensor>();
@@ -58,12 +58,17 @@ class AssignFunctor {
                    framework::LoDTensor *out) const {
     if (lod_tensor.numel() == 0) return;
     auto &out_tensor = *out;
-    TensorCopy(lod_tensor, lod_tensor.place(), dev_ctx_, &out_tensor);
+    if (force_cpu_) {
+      TensorCopy(lod_tensor, platform::CPUPlace(), &out_tensor);
+    } else {
+      TensorCopy(lod_tensor, lod_tensor.place(), dev_ctx_, &out_tensor);
+    }
     out_tensor.set_lod(lod_tensor.lod());
   }
 
   framework::Variable *out_;
   const platform::DeviceContext &dev_ctx_;
+  const bool force_cpu_;
 };
 
 class AssignOp : public framework::OperatorWithKernel {
@@ -107,8 +112,8 @@ class AssignKernel {
         "The Output(Out) should not be null if the Input(X) is set.");
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
-
-    framework::VisitVarType(*x, AssignFunctor(out, dev_ctx));
+    auto force_cpu = ctx.Attr<bool>("force_cpu");
+    framework::VisitVarType(*x, AssignFunctor(out, dev_ctx, force_cpu));
   }
 };
 
@@ -122,6 +127,11 @@ class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(LoDTensor, SelectedRows or LoDTensorArray) The type of output "
               "is the same as input X.");
+    AddAttr<bool>(
+        "force_cpu",
+        "(bool, default false) Force the data of output variable on cpu "
+        "memory. Otherwise, the data would be on the running device.")
+        .SetDefault(false);
     AddComment(R"DOC(Assign Operator
 
 Out = X,  when type in [LoDTensor/SelectedRows/LoDTensorArray]

@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/array_operator.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/operators/math/math_function.h"
+
 namespace paddle {
 namespace operators {
 
@@ -139,6 +141,21 @@ class ReadFromArrayOp : public ArrayOp {
       out_tensor->set_lod(x_array[offset].lod());
     } else {
       VLOG(10) << "offset " << offset << " >= " << x_array.size();
+      // set grad of the writed tensor to 0 when used as write_to_array_grad
+      auto *fw_var = scope.FindVar(Input("X_W"));
+      if (fw_var == nullptr) return;
+      auto &fw_var_tensor = fw_var->Get<framework::LoDTensor>();
+
+      framework::AttributeMap attrs;
+      attrs["dtype"] = fw_var_tensor.type();
+      attrs["shape"] = framework::vectorize<int>(fw_var_tensor.dims());
+      attrs["value"] = 0.0f;
+
+      auto zero_op = framework::OpRegistry::CreateOp(
+          "fill_constant", {}, {{"Out", {Output("Out")}}}, attrs);
+      zero_op->Run(scope, place);
+      auto *out_tensor = out->GetMutable<framework::LoDTensor>();
+      out_tensor->set_lod(fw_var_tensor.lod());
     }
   }
 };
@@ -150,6 +167,10 @@ class ReadFromArrayProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("I",
              "(Tensor) the subscript index in tensor array. The number of "
              "element should be 1");
+    AddInput("X_W",
+             "(Tensor) the writed tensor when used as the grad op of "
+             "write_to_array. We use this to fill zero gradient.")
+        .AsDispensable();
     AddOutput("Out", "(LoDTensor) the tensor will be read from.");
     AddComment(R"DOC(
 ReadFromArray Operator.
@@ -198,6 +219,7 @@ class WriteToArrayGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetType("read_from_array");
     grad_op->SetInput("I", Input("I"));
     grad_op->SetInput("X", OutputGrad("Out"));
+    grad_op->SetInput("X_W", Input("X"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttrMap(Attrs());
     return std::unique_ptr<framework::OpDesc>(grad_op);

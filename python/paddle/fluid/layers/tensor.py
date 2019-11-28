@@ -444,7 +444,7 @@ def sums(input, out=None):
     return out
 
 
-def assign(input, output=None):
+def assign(input, output=None, force_cpu=False):
     """
     The OP copies the :attr:`input` to the :attr:`output`.
 
@@ -481,7 +481,10 @@ def assign(input, output=None):
             output = helper.create_variable_for_type_inference(
                 dtype=input.dtype)
         helper.append_op(
-            type='assign', inputs={'X': [input]}, outputs={'Out': [output]})
+            type='assign',
+            inputs={'X': [input]},
+            outputs={'Out': [output]},
+            attrs={'force_cpu': force_cpu})
     elif isinstance(input, numpy.ndarray):
         dtype = convert_np_dtype_to_dtype_(input.dtype)
         if dtype == VarDesc.VarType.FP32:
@@ -767,6 +770,7 @@ def argmin(x, axis=0):
         inputs={'X': x},
         outputs={'Out': [out]},
         attrs={'axis': axis})
+    out.stop_gradient = True
     return out
 
 
@@ -826,6 +830,7 @@ def argmax(x, axis=0):
         inputs={'X': x},
         outputs={'Out': [out]},
         attrs={'axis': axis})
+    out.stop_gradient = True
     return out
 
 
