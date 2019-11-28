@@ -48,9 +48,14 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
                          R"(Variable will be loaded from "file_path")")
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
-    AddComment(
-        "Load operator will load a LoDTensor / SelectedRows variable from disk "
-        "file.");
+    AddAttr<int64_t>("seek", "(int64_t) Starting for load tensor from seek pos")
+        .SetDefault(0);
+    AddAttr<std::vector<int64_t>>("shape",
+                                  "(vector<int64_t>) The shape of the output")
+        AddComment(
+            "Load operator will load a LoDTensor / SelectedRows variable from "
+            "disk "
+            "file.");
   }
 };
 
