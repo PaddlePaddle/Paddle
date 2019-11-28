@@ -638,7 +638,7 @@ void MultiSlotDataset::MergeByInsId() {
   }
   auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
   std::vector<std::string> use_slots;
-  for (size_t i = 0; i < multi_slot_desc.slots_size(); ++i) {
+  for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
     const auto& slot = multi_slot_desc.slots(i);
     if (slot.is_used()) {
       use_slots.push_back(slot.name());
@@ -828,7 +828,7 @@ void MultiSlotDataset::SlotsShuffle(
   timeline.Start();
   auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
   std::set<uint16_t> index_slots;
-  for (size_t i = 0; i < multi_slot_desc.slots_size(); ++i) {
+  for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
     std::string cur_slot = multi_slot_desc.slots(i).name();
     if (slots_to_replace.find(cur_slot) != slots_to_replace.end()) {
       index_slots.insert(i);

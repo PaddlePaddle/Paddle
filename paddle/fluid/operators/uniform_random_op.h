@@ -44,7 +44,7 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
                      &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int32_t>();
     }
-    for (size_t i = 0; i < new_data_tensor->numel(); ++i) {
+    for (int i = 0; i < new_data_tensor->numel(); ++i) {
       vec_new_data.push_back(static_cast<int64_t>(*(new_data + i)));
     }
     return vec_new_data;
