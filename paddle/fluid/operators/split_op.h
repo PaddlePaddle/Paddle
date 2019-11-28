@@ -94,7 +94,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
             framework::make_ddim(sections), in_dims, axis);
       }
     }
-    for (size_t i = 0; i < outs_number; ++i) {
+    for (int i = 0; i < outs_number; ++i) {
       outs_dims[i][axis] = sections[i];
     }
   }
