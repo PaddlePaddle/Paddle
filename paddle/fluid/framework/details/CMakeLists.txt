@@ -25,7 +25,7 @@ if(WITH_GPU)
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
             dynload_cuda variable_visitor)
     nv_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
-            dynload_cuda variable_visitor place)
+            dynload_cuda variable_visitor place device_memory_aligment)
 
     if(WITH_DGC)
         nv_library(sparse_all_reduce_op_handle SRCS sparse_all_reduce_op_handle.cc DEPS op_handle_base scope 
@@ -46,7 +46,7 @@ else()
     cc_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
              variable_visitor)
     cc_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
-            variable_visitor place)
+            variable_visitor place device_memory_aligment)
     if(WITH_DISTRIBUTE)
         cc_library(reduce_op_handle SRCS reduce_op_handle.cc DEPS op_handle_base variable_visitor scope
             ddim selected_rows_functor sendrecvop_rpc)
@@ -103,4 +103,14 @@ cc_library(build_strategy SRCS build_strategy.cc DEPS
         lock_free_optimize_pass
         coalesce_grad_tensor_pass fuse_all_reduce_op_pass backward_optimizer_op_deps_pass
         fuse_adam_op_pass fuse_sgd_op_pass fuse_momentum_op_pass
+        sync_batch_norm_pass runtime_context_cache_pass
+        pass_builder
         ${NGRAPH_BS_DEPS})
+
+if (WITH_MKLDNN)
+  target_link_libraries(build_strategy mkldnn_placement_pass)
+endif()
+
+if (WITH_NGRAPH)
+  target_link_libraries(build_strategy ngraph_subgraph_pass)
+endif()
