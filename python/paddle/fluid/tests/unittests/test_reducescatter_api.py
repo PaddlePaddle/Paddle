@@ -27,10 +27,8 @@ class TestReduceScatterAPI(TestDistBase):
         self.check_with_place("collective_reducescatter.py", col_type)
 
     def test_reducescatter(self, col_type="reduce_scatter"):
-        self.check_with_place(
-            "collective_reducescatter_with_error.py",
-            col_type,
-            ignore_error=True)
+        self.check_with_place("collective_reducescatter_with_error.py",
+                              col_type)
 
 
 if __name__ == '__main__':
