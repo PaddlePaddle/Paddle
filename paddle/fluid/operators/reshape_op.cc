@@ -245,6 +245,13 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
         "It has the lowest priority compare with Input(Shape) and "
         " Input(ShapeTensor).")
         .SetDefault({});
+    /* int8 parameters */
+    AddAttr<bool>("use_quantizer",
+                  "(bool, default false) "
+                  "Set to true for operators that should be quantized and use "
+                  "int8 kernel. "
+                  "Only used on CPU.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Reshape Operator.
 
@@ -553,9 +560,12 @@ REGISTER_OPERATOR(reshape_grad, ops::ReshapeGradOp,
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape, float, ops::ReshapeKernel, double,
                                ops::ReshapeKernel, int, ops::ReshapeKernel,
-                               int64_t, ops::ReshapeKernel);
+                               int8_t, ops::ReshapeKernel, uint8_t,
+                               ops::ReshapeKernel, int64_t, ops::ReshapeKernel);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape_grad, float, ops::ReshapeGradKernel,
                                double, ops::ReshapeGradKernel, int,
+                               ops::ReshapeGradKernel, int8_t,
+                               ops::ReshapeGradKernel, uint8_t,
                                ops::ReshapeGradKernel, int64_t,
                                ops::ReshapeGradKernel);
 REGISTER_OPERATOR(reshape2, ops::Reshape2Op, ops::Reshape2OpMaker,
@@ -570,15 +580,20 @@ REGISTER_OPERATOR(reshape2_grad_grad, ops::Reshape2DoubleGradOp,
                   ops::ReshapeDoubleGradInplaceInToOut);
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
-                               ops::ReshapeKernel, int, ops::ReshapeKernel,
-                               int64_t, ops::ReshapeKernel);
+                               ops::ReshapeKernel, int8_t, ops::ReshapeKernel,
+                               uint8_t, ops::ReshapeKernel, int,
+                               ops::ReshapeKernel, int64_t, ops::ReshapeKernel);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
                                double, ops::ReshapeGradKernel, int,
+                               ops::ReshapeGradKernel, int8_t,
+                               ops::ReshapeGradKernel, uint8_t,
                                ops::ReshapeGradKernel, int64_t,
                                ops::ReshapeGradKernel);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2_grad_grad, float,
                                ops::ReshapeDoubleGradKernel, double,
                                ops::ReshapeDoubleGradKernel, int,
+                               ops::ReshapeDoubleGradKernel, int8_t,
+                               ops::ReshapeDoubleGradKernel, uint8_t,
                                ops::ReshapeDoubleGradKernel, int64_t,
                                ops::ReshapeDoubleGradKernel);
 

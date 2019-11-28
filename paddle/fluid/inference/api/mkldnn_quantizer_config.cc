@@ -42,6 +42,12 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["fc"]["W"] = ScaleAlgo::MAX_CH_T;
   rules_["fc"]["Bias"] = ScaleAlgo::NONE;
   rules_["fc"]["Out"] = ScaleAlgo::KL;
+
+  rules_["reshape2"]["X"] = ScaleAlgo::KL;
+  rules_["reshape2"]["Shape"] = ScaleAlgo::NONE;
+  rules_["reshape2"]["ShapeTensor"] = ScaleAlgo::NONE;
+  rules_["reshape2"]["XShape"] = ScaleAlgo::NONE;
+  rules_["reshape2"]["Out"] = ScaleAlgo::NONE;
 }
 
 ScaleAlgo MkldnnQuantizerConfig::scale_algo(

@@ -50,7 +50,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetAttr("Scale_in", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
     op->SetAttr("Scale_weights", std::vector<float>{1.0f});
-  } else if (type == "pool2d" || type == "transpose2") {
+  } else if (type == "pool2d" || type == "transpose2" || type == "reshape2") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
     op->SetAttr("use_quantizer", use_quantizer);
@@ -370,6 +370,90 @@ TEST(CpuQuantizePass, transpose) {
                     quant_count, dequant_count, added_nodes_count, 2.0f * 127);
 }
 }  // namespace
+
+namespace {
+static const std::initializer_list<std::string> variable_names_reshape = {
+    "a", "w1", "b", "c", "d", "e", "f"};
+
+// a->Transpose->b
+// b->Reshape->c
+// c->Transpose->d
+// d->Reshape->e
+// e->Dropout->f
+ProgramDesc BuildProgramDescReshape() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_transpose) {
+    auto* var = prog.MutableBlock(0)->Var(v);
+    if (v.find("w") == 0) {
+      var->SetPersistable(true);
+    }
+  }
+
+  SetOp(&prog, "conv2d", "Conv1", {"a", "w1"}, {"b"}, true, true);
+  SetOp(&prog, "reshape2", "Reshape1", {"b"}, {"c"}, true, true);
+  SetOp(&prog, "transpose2", "Transpose2", {"c"}, {"d"}, true, true);
+  SetOp(&prog, "reshape2", "Reshape2", {"d"}, {"e"}, true, true);
+  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, true);
+
+  return prog;
+}
+
+void MainTestReshape(const ProgramDesc& prog, int transpose_count,
+                     int reshape_count, int conv_count, int quant_count,
+                     int dequant_count, int added_nodes_count, float scale) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+  int original_nodes_num, current_nodes_num;
+  PreparePass(&graph, prog, variable_names_reshape, &original_nodes_num,
+              &current_nodes_num);
+
+  int quantize_nodes_count = 0;
+  int dequantize_nodes_count = 0;
+  int transpose_nodes_count = 0;
+  int reshape_nodes_count = 0;
+  int conv_nodes_count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp()) {
+      auto* op = node->Op();
+      if (op->Type() == "transpose2") {
+        transpose_nodes_count++;
+      } else if (op->Type() == "reshape2") {
+        reshape_nodes_count++;
+      } else if (op->Type() == "conv2d") {
+        conv_nodes_count++;
+      } else if (op->Type() == "quantize") {
+        quantize_nodes_count++;
+      } else if (op->Type() == "dequantize") {
+        dequantize_nodes_count++;
+      }
+    }
+  }
+  EXPECT_EQ(transpose_nodes_count, transpose_count);
+  EXPECT_EQ(reshape_nodes_count, reshape_count);
+  EXPECT_EQ(conv_nodes_count, conv_count);
+  EXPECT_EQ(quantize_nodes_count, quant_count);
+  EXPECT_EQ(dequantize_nodes_count, dequant_count);
+  EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
+}
+
+TEST(CpuQuantizePass, reshape) {
+  // a1->Quant->a2->Conv2d->b1->Dequant->b2
+  // b2->Quant->b3->Reshape1->c1->Dequant->c2
+  // c2->Quant->c3->Transpose2->d1->Dequant->d2
+  // d2->Reshape2->e
+  // e->Dropout->f
+  int reshape_count = 2;
+  int transpose_count = 1;
+  int conv_count = 1;
+  int quant_count = 3;
+  int dequant_count = 3;
+  // 3 Quant + 3 IN + 3 DeQuant + 3 OUT
+  int added_nodes_count = 12;
+  MainTestReshape(BuildProgramDescReshape(), transpose_count, reshape_count,
+                  conv_count, quant_count, dequant_count, added_nodes_count,
+                  2.0f * 127);
+}
+}  // namespace
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

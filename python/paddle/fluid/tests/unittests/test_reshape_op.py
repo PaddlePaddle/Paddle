@@ -40,7 +40,6 @@ class TestReshapeOp(OpTest):
         self.infered_shape = (5, 10)
 
     def test_check_output(self):
-
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
@@ -183,6 +182,51 @@ class TestReshapeOpDimInfer2_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
         self.new_shape = (2, 0, 3, -1)
         self.infered_shape = (2, 2, 3, -1)
         self.shape = (2, 0, 3, -1)
+
+
+class TestReshapeInt8Op(OpTest):
+    def setUp(self):
+        self.init_data()
+        self.dtype = np.int8
+        self.op_type = "reshape2"
+        input = (
+            np.random.randint(0, 127, self.ori_shape) - 127).astype(self.dtype)
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
+        self.attrs = {'shape': self.new_shape}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype(np.float32)
+        }
+
+    def init_data(self):
+        self.ori_shape = (2, 2, 6)
+        self.new_shape = (2, 0, 3, -1)
+        self.infered_shape = (2, 2, 3, -1)
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['XShape'])
+
+
+class TestReshapeUint8Op(OpTest):
+    def setUp(self):
+        self.init_data()
+        self.dtype = np.uint8
+        self.op_type = "reshape2"
+        input = np.random.randint(0, 127, self.ori_shape).astype(self.dtype)
+        self.inputs = {'X': input}
+        self.attrs = {'shape': self.new_shape}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype(np.float32)
+        }
+
+    def init_data(self):
+        self.ori_shape = (2, 2, 6)
+        self.new_shape = (2, 0, 3, -1)
+        self.infered_shape = (2, 2, 3, -1)
+
+    def test_check_output(self):
+        self.check_output(no_check_set=['XShape'])
 
 
 # Test python API
