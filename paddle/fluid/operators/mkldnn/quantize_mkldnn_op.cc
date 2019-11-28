@@ -49,7 +49,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
 
     bool is_negative = ctx.Attr<bool>("is_negative_input");
     std::string key = platform::CreateKey(src_tz, scale_data, is_negative,
-                                          ctx.op().Output("Output"));
+                                          ctx.OutputName("Output"));
     const std::string key_prim = key + "@reorder_p";
     const std::string key_src_mem = key + "@src_mem";
     const std::string key_dst_mem = key + "@dst_mem";
