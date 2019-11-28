@@ -27,30 +27,6 @@ from paddle.fluid.op import Operator
 from paddle.fluid.framework import Program, program_guard
 from dist_test_utils import *
 
-# 
-# load_prog = fluid.Program()
-# load_block = load_prog.global_block()
-#
-# origin = load_block.create_var(
-#     name="{}.load".format("var"),
-#     type=fluid.core.VarDesc.VarType.LOD_TENSOR,
-#     shape=[10,8],
-#     dtype="float32",
-#     persistable=True)
-#
-# load_block.append_op(
-#     type='load',
-#     inputs={},
-#     outputs={'Out': [origin]},
-#     attrs={'file_path': "xxxxx.fc.files"})
-#
-# exe = fluid.Executor(place=fluid.CPUPlace())
-# exe.run(load_prog)
-#
-# origin_var = fluid.global_scope().find_var("var.load")
-#
-# print(np.array(origin_var.get_tensor()))
-
 
 def run_pserver(pserver_id):
     remove_ps_flag(os.getpid())
@@ -114,7 +90,7 @@ class TestListenAndServOp(unittest.TestCase):
             port = int(f.read().strip())
         return port
 
-    def _run_nce_op_two_pserver(self, place, port0, port1):
+    def _run_nce_op_two_pserver(self, place, port0, port1, model_file):
         scope = fluid.core.Scope()
         program = Program()
         with fluid.scope_guard(scope):
@@ -130,11 +106,76 @@ class TestListenAndServOp(unittest.TestCase):
                     slice_varnames=["table", "table"],
                     remote_varnames=['table', 'table'],
                     endpoints=emaps,
-                    file_path="./xxxxx.fc.files")
+                    file_path=model_file)
 
                 remote_recv_op.run(scope, place)
 
-    def test_nce_op_remote(self):
+    def _load_slice_var(self, model_file):
+        load_prog = fluid.Program()
+        load_block = load_prog.global_block()
+
+        origin = load_block.create_var(
+            name="var.origin",
+            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            shape=[10, 8],
+            dtype="float32",
+            persistable=True)
+
+        slice0 = load_block.create_var(
+            name="var.slice0",
+            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            shape=[3, 8],
+            dtype="float32",
+            persistable=True)
+
+        slice1 = load_block.create_var(
+            name="var.slice1",
+            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            shape=[5, 8],
+            dtype="float32",
+            persistable=True)
+
+        load_block.append_op(
+            type='load',
+            inputs={},
+            outputs={'Out': [origin]},
+            attrs={'file_path': model_file})
+
+        load_block.append_op(
+            type='load',
+            inputs={},
+            outputs={'Out': [slice0]},
+            attrs={
+                'file_path': model_file,
+                'seek': 2 * 8,
+                'shape': slice0.shape
+            })
+
+        load_block.append_op(
+            type='load',
+            inputs={},
+            outputs={'Out': [slice1]},
+            attrs={
+                'file_path': model_file,
+                'seek': 5 * 8,
+                'shape': slice1.shape
+            })
+
+        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe.run(load_prog)
+
+        origin_var = fluid.global_scope().find_var("var.origin")
+        slice0_var = fluid.global_scope().find_var("var.slice0")
+        slice1_var = fluid.global_scope().find_var("var.slice1")
+
+        origin = np.array(origin_var.get_tensor())
+        slice0 = np.array(slice0_var.get_tensor())
+        slice1 = np.array(slice1_var.get_tensor())
+
+        np.testing.assert_equal(origin[2:5], slice0)
+        np.testing.assert_equal(origin[5:10], slice1)
+
+    def test_recv_save_op_remote(self):
         # run pserver on CPU in sync mode
         p0 = self._start_pserver(0, run_pserver)
         self._wait_ps_ready(p0.pid)
@@ -146,14 +187,20 @@ class TestListenAndServOp(unittest.TestCase):
 
         places = [core.CPUPlace()]
 
+        param_path = "./model_for_test_recv_save_op"
+
         for place in places:
-            self._run_nce_op_two_pserver(place, port0, port1)
+            self._run_nce_op_two_pserver(place, port0, port1, param_path)
 
         # raise SIGTERM to pserver
         os.kill(p0.pid, signal.SIGINT)
         p0.join()
         os.kill(p1.pid, signal.SIGINT)
         p1.join()
+
+        self._load_slice_var(param_path)
+
+        os.remove(param_path)
 
 
 if __name__ == '__main__':
