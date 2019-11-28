@@ -393,7 +393,23 @@ ProgramDesc BuildProgramDescReshape() {
   SetOp(&prog, "reshape2", "Reshape1", {"b"}, {"c"}, true, true);
   SetOp(&prog, "transpose2", "Transpose2", {"c"}, {"d"}, true, true);
   SetOp(&prog, "reshape2", "Reshape2", {"d"}, {"e"}, true, true);
-  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, true);
+  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, false);
+
+  return prog;
+}
+
+// a->Transpose->b
+// b->Reshape->c
+// c->Dropout->d
+ProgramDesc BuildProgramDescReshapeBetweenNonQuantizedOp() {
+  ProgramDesc prog;
+  for (auto& v : variable_names_transpose) {
+    prog.MutableBlock(0)->Var(v);
+  }
+
+  SetOp(&prog, "transpose2", "Transpose2", {"a"}, {"b"}, true, false);
+  SetOp(&prog, "reshape2", "Reshape2", {"b"}, {"c"}, true, true);
+  SetOp(&prog, "dropout", "Dropout", {"c"}, {"d"}, true, false);
 
   return prog;
 }
@@ -439,18 +455,34 @@ TEST(CpuQuantizePass, reshape) {
   // a1->Quant->a2->Conv2d->b1->Dequant->b2
   // b2->Quant->b3->Reshape1->c1->Dequant->c2
   // c2->Quant->c3->Transpose2->d1->Dequant->d2
-  // d2->Reshape2->e
-  // e->Dropout->f
+  // d2->Quant->d3->Reshape2->e1->Dequant->e2
+  // e2->Dropout->f
   int reshape_count = 2;
   int transpose_count = 1;
   int conv_count = 1;
-  int quant_count = 3;
-  int dequant_count = 3;
-  // 3 Quant + 3 IN + 3 DeQuant + 3 OUT
-  int added_nodes_count = 12;
+  int quant_count = 4;
+  int dequant_count = 4;
+  // 4 Quant + 4 IN + 4 DeQuant + 4 OUT
+  int added_nodes_count = 16;
   MainTestReshape(BuildProgramDescReshape(), transpose_count, reshape_count,
                   conv_count, quant_count, dequant_count, added_nodes_count,
                   2.0f * 127);
+}
+
+TEST(CpuQuantizePass, reshapeBetweenNonQuantizedOp) {
+  // a->Transpos2->b
+  // b->Reshape2->c
+  // c->Dropout->d
+  int reshape_count = 1;
+  int transpose_count = 1;
+  int conv_count = 0;
+  int quant_count = 0;
+  int dequant_count = 0;
+  // 0 Quant + 0 IN + 0 DeQuant + 0 OUT
+  int added_nodes_count = 0;
+  MainTestReshape(BuildProgramDescReshapeBetweenNonQuantizedOp(),
+                  transpose_count, reshape_count, conv_count, quant_count,
+                  dequant_count, added_nodes_count, 2.0f * 127);
 }
 }  // namespace
 
