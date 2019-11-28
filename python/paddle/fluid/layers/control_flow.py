@@ -915,7 +915,7 @@ class While(object):
 
 def while_loop(cond, body, loop_vars, name=None):
     """
-    while_loop is one of the control flow. Repeats while_loop `body` until `cond` returns False.
+    while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
 
     Args:
         cond(Callable): A callable returning a boolean tensor controlling whether to continue looping.
@@ -948,14 +948,13 @@ def while_loop(cond, body, loop_vars, name=None):
             main_program = fluid.default_main_program()
             startup_program = fluid.default_startup_program()
 
-            with program_guard(main_program, startup_program):
+            with fluid.program_guard(main_program, startup_program):
                 i = layers.fill_constant(shape=[1], dtype='int64', value=0)
                 ten = layers.fill_constant(shape=[1], dtype="int64", value=10)
                 out = layers.while_loop(cond, body, [i])
+                
                 exe = fluid.Executor(fluid.CPUPlace())
-                exe.run(fluid.default_startup_program)
-
-                res = exe.run(fluid.default_mian_program, feed={}, fetch_list=out)
+                res = exe.run(main_program, feed={}, fetch_list=out)
                 print(res) #[array([10])]
     """
     helper = LayerHelper('while_loop', **locals())

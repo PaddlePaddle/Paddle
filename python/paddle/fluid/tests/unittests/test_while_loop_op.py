@@ -47,50 +47,51 @@ class TestApiWhileLoop(unittest.TestCase):
             np.allclose(np.asarray(res[0]), np.full((1), 10, np.int64)))
 
     def test_var_list(self):
-        def cond(i, a):
+        def cond(i, mem):
             return layers.less_than(i, ten)
 
-        def body(i, a):
-            a = layers.elementwise_add(x=a, y=one)
+        def body(i, mem):
+            mem = layers.elementwise_add(x=mem, y=one)
             i = layers.increment(i)
-            return [i, a]
+            return [i, mem]
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
             i = layers.zeros(shape=[1], dtype='int64')
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
-            a = layers.data(name="a", shape=[10], dtype='float32')
+            mem = layers.data(name="mem", shape=[10], dtype='float32')
             one = layers.fill_constant(shape=[10], dtype='float32', value=1)
-            out = layers.while_loop(cond, body, [i, a])
+            out = layers.while_loop(cond, body, [i, mem])
 
-            data1 = np.random.rand(10).astype('float32')
-            data2 = np.ones(10).astype('float32')
+            data = np.random.rand(10).astype('float32')
+            data_one = np.ones(10).astype('float32')
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        res = exe.run(main_program, feed={'a': data1}, fetch_list=out)
+        res = exe.run(main_program, feed={'mem': data}, fetch_list=out)
         for i in range(10):
-            data1 = np.add(data1, data2)
-        self.assertTrue(np.allclose(np.asarray(res[1]), data1))
+            data = np.add(data, data_one)
+        self.assertTrue(np.allclose(np.asarray(res[1]), data))
 
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
-    def test_simple_net2(self):
-        def cond1(i, j, init, sums):
+    def test_nested_net(self):
+        def external_cond(i, j, init, sums):
             return layers.less_than(i, loop_len1)
 
-        def body1(i, j, init, sums):
-            def cond2(j, init, sums):
+        def external_body(i, j, init, sums):
+            def internal_cond(j, init, sums):
                 return layers.less_than(j, loop_len2)
 
-            def body2(j, init, sums):
+            def internal_body(j, init, sums):
                 init = layers.elementwise_add(x=init, y=ones)
                 sums = layers.elementwise_add(x=init, y=sums)
                 j = layers.increment(j)
                 return [j, init, sums]
 
-            result = layers.while_loop(cond2, body2, [j, init, sums])
+            result = layers.while_loop(internal_cond, internal_body,
+                                       [j, init, sums])
             j = result[0]
             init = result[1]
             sums = result[2]
@@ -109,38 +110,39 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
             loop_len2 = layers.fill_constant(shape=[1], dtype='int64', value=3)
             ones = layers.fill_constant(shape=[3, 3], dtype='float32', value=1)
 
-            res = layers.while_loop(cond1, body1, [i, j, init, sums])
+            res = layers.while_loop(external_cond, external_body,
+                                    [i, j, init, sums])
 
-            data1 = np.random.rand(3, 3).astype('float32')
-            data2 = np.zeros([3, 3]).astype('float32')
+            data = np.random.rand(3, 3).astype('float32')
+            data_sums = np.zeros([3, 3]).astype('float32')
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         ret = exe.run(main_program,
-                      feed={'init': data1,
-                            'sums': data2},
+                      feed={'init': data,
+                            'sums': data_sums},
                       fetch_list=res)
         for i in range(3):
-            data1 = np.add(data1, 1)
-            data2 = np.add(data1, data2)
+            data = np.add(data, 1)
+            data_sums = np.add(data, data_sums)
         for j in range(2):
-            data2 = np.add(data1, data2)
-        self.assertTrue(np.allclose(np.asarray(ret[3]), data2))
+            data_sums = np.add(data, data_sums)
+        self.assertTrue(np.allclose(np.asarray(ret[3]), data_sums))
 
 
 class TestApiWhileLoop_Error(unittest.TestCase):
     def test_error(self):
-        def cond1(i):
+        def cond_returns_constant(i):
             return 1
 
-        def cond2(i):
+        def cond_returns_not_bool_tensor(i):
             return layers.increment(i)
 
-        def cond3(i):
+        def cond_returns_bool_tensor(i):
             return layers.less_than(i, ten)
 
-        def cond4(i):
-            return layers.less_than(i, ten_1)
+        def cond_returns_2d_tensor(i):
+            return layers.less_than(i, ten_2d)
 
         def body(i):
             return layers.increment(i)
@@ -148,47 +150,49 @@ class TestApiWhileLoop_Error(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            data1 = layers.fill_constant(shape=[1], dtype='int64', value=1)
-            data2 = layers.fill_constant(shape=[1], dtype='int64', value=1)
-            data3 = layers.fill_constant(shape=[2, 2], dtype='int64', value=1)
+            data = layers.fill_constant(shape=[1], dtype='int64', value=1)
+            data_1d = layers.fill_constant(shape=[1], dtype='int64', value=1)
+            data_2d = layers.fill_constant(shape=[2, 2], dtype='int64', value=1)
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
-            ten_1 = layers.fill_constant(shape=[2, 2], dtype='int64', value=10)
+            ten_2d = layers.fill_constant(shape=[2, 2], dtype='int64', value=10)
 
             # The type of `cond` in Op(while_loop) must be callable 
             def type_error_cond():
-                out = layers.while_loop(data1, body, [data2])
+                out = layers.while_loop(data, body, [data_1d])
 
             self.assertRaises(TypeError, type_error_cond)
 
             # The type of `body` in Op(while_loop) must be callable
             def type_error_body():
-                out = layers.while_loop(cond3, data1, [data2])
+                out = layers.while_loop(cond_returns_bool_tensor, data,
+                                        [data_1d])
 
             self.assertRaises(TypeError, type_error_body)
 
             # The type of `loop_vars` in Op(while_loop) must be list or tuple
             def type_error_loop_vars():
-                out = layers.while_loop(cond3, body, data1)
+                out = layers.while_loop(cond_returns_bool_tensor, body, data_1d)
 
             self.assertRaises(TypeError, type_error_loop_vars)
 
             # The type of `cond` returns in Op(while_loop) must be Variable
             def type_error_cond_returns_not_variable():
-                out = layers.while_loop(cond1, body, [data1])
+                out = layers.while_loop(cond_returns_constant, body, [data_1d])
 
             self.assertRaises(TypeError, type_error_cond_returns_not_variable)
 
             # The type of `cond` returns in Op(while_loop) must be a bollean variable
             def type_error_cond_returns_not_boolean():
-                out = layers.while_loop(cond2, body, [data1])
+                out = layers.while_loop(cond_returns_not_bool_tensor, body,
+                                        [data_1d])
 
             self.assertRaises(TypeError, type_error_cond_returns_not_boolean)
 
             # The shape of `cond` returns in Op(while_loop) must be 1
-            def type_error_shape_cond_returns_pair_1():
-                out = layers.while_loop(cond4, body, [data3])
+            def type_error_shape_cond_returns_2d():
+                out = layers.while_loop(cond_returns_2d_tensor, body, [data_2d])
 
-            self.assertRaises(TypeError, type_error_shape_cond_returns_pair_1)
+            self.assertRaises(TypeError, type_error_shape_cond_returns_2d)
 
 
 if __name__ == '__main__':
