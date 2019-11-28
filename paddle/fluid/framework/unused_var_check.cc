@@ -68,8 +68,10 @@ std::unordered_set<std::string> *GetThreadLocalUsedVarNameSet() {
 }
 
 void LogVarUsageIfUnusedVarCheckEnabled(const std::string &name) {
-  VLOG(6) << "Variable used:" << name;
-  GetThreadLocalUsedVarNameSet()->insert(name);
+  if (FLAGS_enable_unused_var_check) {
+    VLOG(6) << "Variable used:" << name;
+    GetThreadLocalUsedVarNameSet()->insert(name);
+  }
 }
 
 void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
@@ -111,10 +113,10 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
       err_msg += ", ";
     }
     err_msg +=
-        "please make sure it(them) is(are) needed. If not, remove it(them) "
-        "from inputs; if yes, register NoNeedBufferVars or add the operator to "
+        "please make sure it(they) is(are) needed. If not, remove it(them) "
+        "from inputs of the operator; if yes, register NoNeedBufferVars or add "
+        "the operator to "
         "white list in unused_var_check.cc.";
-    // VLOG(1) << err_msg;
     PADDLE_ENFORCE_EQ(unsed_input_var_names.size(), 0,
                       platform::errors::PermissionDenied(
                           "Unused input variables check failed: %s", err_msg));

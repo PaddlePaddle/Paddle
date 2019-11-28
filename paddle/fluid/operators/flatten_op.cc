@@ -137,6 +137,22 @@ class FlattenGradOp : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class FlattenGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
+    grad_op->SetType("flatten_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
+  }
+};
+
 // FIXME(zcd): flatten2 adds an intermediate output(XShape) based on flatten,
 // the XShape is used to carry the shape and lod of X which will be used in
 // flatten_grad, in this way, the framework can reuse the memory of X
@@ -235,17 +251,16 @@ DECLARE_INPLACE_OP_INFERER(FlattenGradInplaceinToOut,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(FlattenGradNoNeedBufferVarsInference,
-                                      "Out");
+                                      "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    flatten, ops::FlattenOp, ops::FlattenOpMaker,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
-    ops::FlattenOpInplaceInToOut);
+REGISTER_OPERATOR(flatten, ops::FlattenOp, ops::FlattenOpMaker,
+                  ops::FlattenGradOpMaker<paddle::framework::OpDesc>,
+                  ops::FlattenGradOpMaker<paddle::imperative::OpBase>,
+                  ops::FlattenOpInplaceInToOut);
 REGISTER_OPERATOR(flatten_grad, ops::FlattenGradOp,
                   ops::FlattenGradInplaceinToOut,
                   ops::FlattenGradNoNeedBufferVarsInference);

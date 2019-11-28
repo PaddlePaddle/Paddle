@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 
 DECLARE_bool(enable_unused_var_check);
-DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {

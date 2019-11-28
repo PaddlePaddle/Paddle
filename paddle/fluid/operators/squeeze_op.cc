@@ -214,6 +214,22 @@ class Squeeze2Op : public framework::OperatorWithKernel {
   }
 };
 
+template <typename T>
+class SqueezeGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+  std::unique_ptr<T> Apply() const override {
+    auto *grad_op = new T();
+    grad_op->SetType("squeeze_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    grad_op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(grad_op);
+  }
+};
+
 class Squeeze2GradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -275,15 +291,14 @@ DECLARE_INPLACE_OP_INFERER(SequeezeGradInplaceInferer,
                            {framework::GradVarName("Out"),
                             framework::GradVarName("X")});
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SqueezeGradNoNeedBufferVarsInference,
-                                      "Out");
+                                      "X");
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    squeeze, ops::SqueezeOp, ops::SqueezeOpMaker,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+REGISTER_OPERATOR(squeeze, ops::SqueezeOp, ops::SqueezeOpMaker,
+                  ops::SqueezeGradOpMaker<paddle::framework::OpDesc>,
+                  ops::SqueezeGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(squeeze_grad, ops::SqueezeGradOp,
                   ops::SqueezeGradNoNeedBufferVarsInference);
 
