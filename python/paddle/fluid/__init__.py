@@ -13,56 +13,6 @@
 # limitations under the License.
 
 from __future__ import print_function
-from .dygraph.checkpoint import save_dygraph, load_dygraph
-from .io import save, load, load_program_state, set_program_state
-from .dygraph.layers import *
-from .dygraph.nn import *
-from . import install_check
-from paddle.fluid.layers.math_op_patch import monkey_patch_variable
-from .compiler import *
-from . import compiler
-from .parallel_executor import *
-from . import parallel_executor
-from . import unique_name
-from . import profiler
-from . import dygraph_grad_clip
-from . import clip
-from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
-from .transpiler import DistributeTranspiler, \
-    memory_optimize, release_memory, DistributeTranspilerConfig
-from .incubate import data_generator
-from .incubate import fleet
-from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
-from .data_feeder import DataFeeder
-from .param_attr import ParamAttr, WeightNormParamAttr
-from . import distribute_lookup_table
-from .input import embedding, one_hot
-from . import incubate
-from . import transpiler
-from . import metrics
-from . import average
-from . import regularizer
-from .backward import gradients
-from . import backward
-from . import optimizer
-from . import nets
-from . import contrib
-from . import dygraph
-from . import layers
-from . import initializer
-from . import evaluator
-from . import io
-from . import inferencer
-from . import trainer_desc
-from .data import *
-from .dataset import *
-from . import dataset
-from .data_feed_desc import *
-from . import data_feed_desc
-from .executor import *
-from . import executor
-from .framework import *
-from . import framework
 import os
 import sys
 
@@ -82,7 +32,62 @@ if os.path.exists(legacy_core):
         raise e
 
 # import all class inside framework into fluid module
+from . import framework
+from .framework import *
 # import all class inside executor into fluid module
+from . import executor
+from .executor import *
+
+from . import data_feed_desc
+from .data_feed_desc import *
+
+from . import dataset
+from .dataset import *
+
+from .data import *
+
+from . import trainer_desc
+from . import inferencer
+
+from . import io
+from . import evaluator
+from . import initializer
+from . import layers
+from . import dygraph
+from . import contrib
+from . import nets
+from . import optimizer
+from . import backward
+from .backward import gradients
+from . import regularizer
+from . import average
+from . import metrics
+from . import transpiler
+from . import incubate
+from .input import embedding, one_hot
+from . import distribute_lookup_table
+from .param_attr import ParamAttr, WeightNormParamAttr
+from .data_feeder import DataFeeder
+from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope, _Scope
+from .incubate import fleet
+from .incubate import data_generator
+from .transpiler import DistributeTranspiler, \
+    memory_optimize, release_memory, DistributeTranspilerConfig
+from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
+from . import clip
+from . import dygraph_grad_clip
+from . import profiler
+from . import unique_name
+from . import parallel_executor
+from .parallel_executor import *
+from . import compiler
+from .compiler import *
+from paddle.fluid.layers.math_op_patch import monkey_patch_variable
+from . import install_check
+from .dygraph.nn import *
+from .dygraph.layers import *
+from .io import save, load, load_program_state, set_program_state
+from .dygraph.checkpoint import save_dygraph, load_dygraph
 
 Tensor = LoDTensor
 
@@ -163,8 +168,8 @@ def __bootstrap__():
         'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
         'enable_parallel_graph', 'fuse_parameter_groups_size',
         'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
-        'tracer_profile_fname', 'dygraph_debug', 'enable_unused_var_check',
-        "use_system_allocator"
+        'tracer_profile_fname', 'dygraph_debug', 'use_system_allocator',
+        'enable_unused_var_check'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -179,7 +184,7 @@ def __bootstrap__():
         read_env_flags.append('use_ngraph')
 
     if core.is_compiled_with_dist():
-        # env for rpc
+        #env for rpc
         read_env_flags.append('rpc_deadline')
         read_env_flags.append('rpc_retry_times')
         read_env_flags.append('rpc_server_profile_path')
@@ -205,7 +210,7 @@ def __bootstrap__():
         read_env_flags.append('communicator_is_sgd_optimizer')
         if core.is_compiled_with_brpc():
             read_env_flags.append('max_body_size')
-            # set brpc max body size
+            #set brpc max body size
             os.environ['FLAGS_max_body_size'] = "2147483647"
 
     if core.is_compiled_with_cuda():
