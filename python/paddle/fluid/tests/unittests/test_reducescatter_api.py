@@ -26,6 +26,12 @@ class TestReduceScatterAPI(TestDistBase):
     def test_reducescatter(self, col_type="reduce_scatter"):
         self.check_with_place("collective_reducescatter.py", col_type)
 
+    def test_reducescatter(self, col_type="reduce_scatter"):
+        self.check_with_place(
+            "collective_reducescatter_with_error.py",
+            col_type,
+            ignore_error=True)
+
 
 if __name__ == '__main__':
     unittest.main()
