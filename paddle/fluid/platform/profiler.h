@@ -180,7 +180,8 @@ bool ShouldSendProfileState();
 // Mark current process as PS by assigning a lister id.
 void SetProfileListener();
 int64_t ListenerId();
-
+uint32_t GetProfilerLevel();
+void SetProfilerLevel(uint32_t profiler_level);
 #ifdef PADDLE_WITH_CUDA
 void DummyKernelAndEvent();
 #endif

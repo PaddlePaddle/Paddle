@@ -43,6 +43,8 @@ std::mutex profiler_mu;
 
 // The profiler state, the initial value is ProfilerState::kDisabled
 static ProfilerState g_state = ProfilerState::kDisabled;
+// the profile level we need to do
+static uint32_t g_profiler_level = 0;
 // The thread local event list only can be accessed by the specific thread
 // The thread index of each thread
 static thread_local int32_t g_thread_id;
@@ -650,6 +652,15 @@ void SetProfileListener() {
   profiler_lister_id = dist6(rng);
 }
 int64_t ListenerId() { return profiler_lister_id; }
+
+uint32_t GetProfilerLevel() { return g_profiler_level; }
+
+void SetProfilerLevel(uint32_t profiler_level) {
+  std::lock_guard<std::mutex> l(profiler_mu);
+  if (profiler_level == g_profiler_level) return;
+
+  g_profiler_level = profiler_level;
+}
 
 }  // namespace platform
 }  // namespace paddle

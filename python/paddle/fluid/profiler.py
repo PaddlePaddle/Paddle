@@ -126,7 +126,7 @@ def reset_profiler():
     core.reset_profiler()
 
 
-def start_profiler(state):
+def start_profiler(state, profile_level=0):
     """
     Enable the profiler. Uers can use `fluid.profiler.start_profiler` and
     `fluid.profiler.stop_profiler` to profile, which is equal to the usage 
@@ -165,6 +165,7 @@ def start_profiler(state):
         prof_state = core.ProfilerState.kCPU
     else:
         prof_state = core.ProfilerState.kAll
+    core.set_profiler_level(profile_level)
     core.enable_profiler(prof_state)
 
 
@@ -225,7 +226,10 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
 
 
 @signature_safe_contextmanager
-def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
+def profiler(state,
+             sorted_key=None,
+             profile_path='/tmp/profile',
+             profile_level=0):
     """
     The profiler interface. Different from `fluid.profiler.cuda_profiler`, 
     this profiler can be used to profile both CPU and GPU program.
@@ -311,6 +315,6 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
             thread0::conv2d             8           7.93456     0.291385    5.63342     0.99182     0.795243
             thread0::elementwise_add    8           1.96555     0.191884    0.518004    0.245693    0.196998
     """
-    start_profiler(state)
+    start_profiler(state, profile_level)
     yield
     stop_profiler(sorted_key, profile_path)

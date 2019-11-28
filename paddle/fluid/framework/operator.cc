@@ -173,7 +173,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     // issue
     // in concurrency scenerio. Here use an `if` to fix this issue.
     // Please not remove the `if`, ask @Superjomn if there are any concern.
-    if (platform::IsProfileEnabled()) {
+    if (platform::IsProfileEnabled() && platform::GetProfilerLevel() == 0) {
       platform::RecordEvent record_event(Type());
       RunImpl(scope, place);
     } else {
@@ -921,9 +921,15 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
-  (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
-                                   kernel_configs));
 
+  if (platform::IsProfileEnabled() && platform::GetProfilerLevel() == 1) {
+    platform::RecordEvent record_event(Type() + "_compute");
+    (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
+                                     kernel_configs));
+  } else {
+    (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
+                                     kernel_configs));
+  }
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
