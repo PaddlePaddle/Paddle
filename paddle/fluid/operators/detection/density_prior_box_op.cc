@@ -30,11 +30,21 @@ class DensityPriorBoxOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(input_dims.size() == 4, "The layout of input is NCHW.");
 
     if (ctx->IsRuntime()) {
-      PADDLE_ENFORCE_LT(input_dims[2], image_dims[2],
-                        "The height of input must smaller than image.");
+      PADDLE_ENFORCE_LT(
+          input_dims[2], image_dims[2],
+          platform::errors::InvalidArgument(
+              "The input tensor Input's height"
+              "of DensityPriorBoxOp should be smaller than input tensor Image's"
+              "hight. But received Input's height = %d, Image's height = %d",
+              input_dims[2], image_dims[2]));
 
-      PADDLE_ENFORCE_LT(input_dims[3], image_dims[3],
-                        "The width of input must smaller than image.");
+      PADDLE_ENFORCE_LT(
+          input_dims[3], image_dims[3],
+          platform::errors::InvalidArgument(
+              "The input tensor Input's width"
+              "of DensityPriorBoxOp should be smaller than input tensor Image's"
+              "width. But received Input's width = %d, Image's width = %d",
+              input_dims[3], image_dims[3]));
     }
     auto variances = ctx->Attrs().Get<std::vector<float>>("variances");
 
