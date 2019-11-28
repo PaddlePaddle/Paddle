@@ -902,8 +902,7 @@ class Variable(object):
         Get the Gradient of Current Variable
 
         Returns:
-            ndarray: Numpy value of the gradient of current Variable (Variable's type is LoDTensor)
-            tuple of ndarray: first element of tuple is numpy value of the gradient of current Variable, second element of tuple is numpy value of the rows of current Variable (Variable's type is SelectedRows)
+            ndarray or tuple of ndarray: if Variable's type is LoDTensor, return numpy value of the gradient of current Variable, if Variable's type is SelectedRows, return tuple of ndarray, first element of tuple is numpy value of the gradient of current Variable, second element of tuple is numpy value of the rows of current Variable.
 
         Examples:
             .. code-block:: python
