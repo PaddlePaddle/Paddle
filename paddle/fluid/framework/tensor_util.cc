@@ -25,6 +25,12 @@ namespace framework {
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst) {
+  if (&src == dst) {
+    auto src_copy = src;
+    TensorCopy(src_copy, dst_place, ctx, dst);
+    return;
+  }
+
   VLOG(3) << "TensorCopy " << src.dims() << " from " << src.place() << " to "
           << dst_place;
   src.check_memory_size();
@@ -33,7 +39,6 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   dst->set_layout(src.layout());
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
-
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
 
   if (src_ptr == dst_ptr && src_place == dst_place) {
@@ -115,6 +120,12 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 
 void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
                     Tensor* dst) {
+  if (&src == dst) {
+    auto src_copy = src;
+    TensorCopySync(src_copy, dst_place, dst);
+    return;
+  }
+
   VLOG(3) << "TensorCopySync " << src.dims() << " from " << src.place()
           << " to " << dst_place;
   src.check_memory_size();
