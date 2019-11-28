@@ -1,6 +1,6 @@
-# INT8 MKL-DNN quantization
+# INT8 MKL-DNN post-training quantization
 
-This document describes how to use Paddle inference Engine to convert the FP32 models to INT8 models. We provide the instructions on enabling INT8 MKL-DNN quantization in Paddle inference and show the accuracy and performance results of the quantized models, including 7 image classification models: GoogleNet, MobileNet-V1, MobileNet-V2, ResNet-101, ResNet-50, VGG16, VGG19, and 1 object detection model Mobilenet-SSD.
+This document describes how to use Paddle inference Engine to convert the FP32 models to INT8 models using INT8 MKL-DNN post-training quantization. We provide the instructions on enabling INT8 MKL-DNN quantization in Paddle inference and show the accuracy and performance results of the quantized models, including 7 image classification models: GoogleNet, MobileNet-V1, MobileNet-V2, ResNet-101, ResNet-50, VGG16, VGG19, and 1 object detection model Mobilenet-SSD.
 
 ## 0. Install PaddlePaddle
 
@@ -40,28 +40,27 @@ We provide the results of accuracy and performance measured on Intel(R) Xeon(R) 
 
 >**I. Top-1 Accuracy on Intel(R) Xeon(R) Gold 6271**
 
-| Model        | FP32 Accuracy   | INT8 Accuracy   | Accuracy Diff(FP32-INT8)   |
-| :----------: | :-------------: | :------------:  | :--------------:           |
-| GoogleNet    |  70.50%         |  70.08%         |   0.42%                    |
-| MobileNet-V1 |  70.78%         |  70.41%         |   0.37%                    |
-| MobileNet-V2 |  71.90%         |  71.34%         |   0.56%                    |
-| ResNet-101   |  77.50%         |  77.43%         |   0.07%                    |
-| ResNet-50    |  76.63%         |  76.57%         |   0.06%                    |
-| VGG16        |  72.08%         |  72.05%         |   0.03%                    |
-| VGG19        |  72.57%         |  72.57%         |   0.00%                    |
+|    Model     | FP32 Accuracy | INT8 Accuracy | Accuracy Diff(INT8-FP32) |
+|:------------:|:-------------:|:-------------:|:------------------------:|
+|  GoogleNet   |    70.50%     |    70.08%     |          -0.42%          |
+| MobileNet-V1 |    70.78%     |    70.41%     |          -0.37%          |
+| MobileNet-V2 |    71.90%     |    71.34%     |          -0.56%          |
+|  ResNet-101  |    77.50%     |    77.43%     |          -0.07%          |
+|  ResNet-50   |    76.63%     |    76.57%     |          -0.06%          |
+|    VGG16     |    72.08%     |    72.05%     |          -0.03%          |
+|    VGG19     |    72.57%     |    72.57%     |          0.00%           |
 
 >**II. Throughput on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core)**
 
-| Model        | FP32 Throughput(images/s)  | INT8 Throughput(images/s) | Ratio(INT8/FP32)|
-| :-----------:| :------------:             | :------------:            | :------------:  |
-| GoogleNet    |    32.82                   |    68.67                  |     2.09        |
-| MobileNet-V1 |    77.11                   |    222.55                 |     2.89        |
-| MobileNet-V2 |    92.95                   |    200.72                 |     2.16        |
-| ResNet-101   |    7.23                    |    26.99                  |     3.73        |
-| ResNet-50    |    13.25                   |    49.54                  |     3.74        |
-| VGG16        |    3.52                    |    10.34                  |     2.93        |
-| VGG19        |    2.82                    |    8.81                   |     3.12        |
-
+|    Model     | FP32 Throughput(images/s) | INT8 Throughput(images/s) | Ratio(INT8/FP32) |
+|:------------:|:-------------------------:|:-------------------------:|:----------------:|
+|  GoogleNet   |           32.82           |           68.67           |       2.09       |
+| MobileNet-V1 |           75.11           |          224.55           |       2.99       |
+| MobileNet-V2 |           92.95           |          200.72           |       2.16       |
+|  ResNet-101  |           7.23            |           26.89           |       3.72       |
+|  ResNet-50   |           13.25           |           49.54           |       3.74       |
+|    VGG16     |           3.52            |           10.34           |       2.94       |
+|    VGG19     |           2.82            |           8.85            |       3.14       |
 
 * ## Prepare dataset
 
@@ -72,7 +71,7 @@ cd /PATH/TO/PADDLE/build
 python ../paddle/fluid/inference/tests/api/full_ILSVRC2012_val_preprocess.py
 ```
 
-Then the ILSVRC2012 Validation dataset will be preprocessed and saved by default in `~/.cache/paddle/dataset/int8/download/int8_full_val.bin`
+Then the ILSVRC2012 Validation dataset will be preprocessed and saved by default in `$HOME/.cache/paddle/dataset/int8/download/int8_full_val.bin`
 
 * ## Commands to reproduce image classification benchmark
 
@@ -95,17 +94,17 @@ MODEL_NAME=googlenet, mobilenetv1, mobilenetv2, resnet101, resnet50, vgg16, vgg1
 
 ## 3. Accuracy and Performance benchmark for Object Detection models
 
->**I. mAP on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core):**
+>**I. mAP on Intel(R) Xeon(R) Gold 6271 (batch size 100 on single core):**
 
-| Model        | FP32 Accuracy   | INT8 Accuracy   | Accuracy Diff(FP32-INT8)   |
-| :----------: | :-------------: | :------------:  | :--------------:           |
-| Mobilenet-SSD| 73.80%         |  73.17%         |   0.63%                    |
+|     Model     | FP32 Accuracy | INT8 Accuracy | Accuracy Diff(INT8-FP32) |
+|:-------------:|:-------------:|:-------------:|:------------------------:|
+| Mobilenet-SSD |    73.80%     |    73.17%     |          -0.63           |
 
->**II. Throughput on Intel(R) Xeon(R) Gold 6271 (batch size 1 on single core)**
+>**II. Throughput on Intel(R) Xeon(R) Gold 6271 (batch size 100 on single core)**
 
-| Model        | FP32 Throughput(images/s)  | INT8 Throughput(images/s) | Ratio(INT8/FP32)|
-| :-----------:| :------------:             | :------------:            | :------------:  |
-| Mobilenet-SSD    |    37.8180       | 115.0604 |3.04 |
+|     Model     | FP32 Throughput(images/s) | INT8 Throughput(images/s) | Ratio(INT8/FP32) |
+|:-------------:|:-------------------------:|:-------------------------:|:----------------:|
+| Mobilenet-ssd |           39.19           |          117.69           |       3.00       |
 
 * ## Prepare dataset
 
@@ -113,16 +112,16 @@ MODEL_NAME=googlenet, mobilenetv1, mobilenetv2, resnet101, resnet50, vgg16, vgg1
   
 ```bash
 cd /PATH/TO/PADDLE/build
-python ./paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --choice=VOC_test_2007 \\
+python ../paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --choice=VOC_test_2007 
 ```
 
-Then the Pascal VOC2007 test set will be preprocessed and saved by default in `~/.cache/paddle/dataset/pascalvoc/pascalvoc_full.bin`
+Then the Pascal VOC2007 test set will be preprocessed and saved by default in `$HOME/.cache/paddle/dataset/pascalvoc/pascalvoc_full.bin`
 
 * Run the following commands to prepare your own dataset.
 
 ```bash
 cd /PATH/TO/PADDLE/build
-python ./paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --choice=local \\
+python ../paddle/fluid/inference/tests/api/full_pascalvoc_test_preprocess.py --choice=local \\
                                          --data_dir=./third_party/inference_demo/int8v2/pascalvoc_small \\
                                          --img_annotation_list=test_100.txt \\
                                          --label_file=label_list \\
