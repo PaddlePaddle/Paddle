@@ -30,6 +30,8 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 
+NO_GRAD_SET_NULL = []
+
 
 def randomize_probability(batch_size, class_num, dtype='float32'):
     prob = np.random.uniform(
@@ -422,6 +424,10 @@ class OpTest(unittest.TestCase):
 
         if no_grad_set is None:
             no_grad_set = set()
+        else:
+            if self.op_type not in NO_GRAD_SET_NULL:
+                with open("grag_set_val.txt", "a+") as f:
+                    f.write('op_type: {}\n'.format(self.op_type))
 
         if not type(output_names) is list:
             output_names = [output_names]
