@@ -94,7 +94,7 @@ class ElementwiseMulKernel : public framework::OpKernel<T> {
     auto x_var = ctx.InputVar("X");
     PADDLE_ENFORCE(x_var != nullptr,
                    "Cannot get input Variable X, variable name = %s",
-                   ctx.op().Input("X"));
+                   ctx.InputName("X"));
     auto* y = ctx.Input<framework::LoDTensor>("Y");
 
     framework::Tensor x, *z;

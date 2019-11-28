@@ -35,7 +35,7 @@ class TestFillOp1(OpTest):
         self.outputs = {'Out': val.astype('float64')}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestFillOp2(OpTest):
@@ -52,7 +52,7 @@ class TestFillOp2(OpTest):
         self.outputs = {'Out': val.astype('float64')}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestFillOp3(OpTest):
