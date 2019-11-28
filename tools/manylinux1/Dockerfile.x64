@@ -31,6 +31,19 @@ RUN wget --no-check-certificate -qO- https://storage.googleapis.com/golang/go1.8
 ENV GOROOT=/usr/local/go GOPATH=/root/gopath
 ENV PATH=${GOROOT}/bin:${GOPATH}/bin:${PATH}
 
+# gcc8.2
+RUN wget -q http://mirror.linux-ia64.org/gnu/gcc/releases/gcc-8.2.0/gcc-8.2.0.tar.xz && \
+  tar -xvf gcc-8.2.0.tar.xz && \
+  cd gcc-8.2.0 && \
+  unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
+  ./contrib/download_prerequisites && \
+  cd .. && mkdir temp_gcc82 && cd temp_gcc82 && \
+  ../gcc-8.2.0/configure --prefix=/usr/local/gcc-8.2 --enable-threads=posix --disable-checking --disable-multilib && \
+  make -j8 && make install
+
+ENV PATH=/usr/local/gcc-8.2/bin:$PATH
+RUN rm -rf /temp_gcc82 && rm -rf /gcc-8.2.0.tar.xz && rm -rf /gcc-8.2.0 
+
 # protobuf 3.6.1
 RUN cd /opt && wget -q --no-check-certificate https://github.com/google/protobuf/releases/download/v3.6.1/protobuf-cpp-3.6.1.tar.gz && \
     tar xzf protobuf-cpp-3.6.1.tar.gz && \
