@@ -45,6 +45,12 @@ function(inference_qat2_int8_test target model_dir data_dir test_script use_mkld
                  --qat2)
 endfunction()
 
+function(save_qat_model_test target qat_model_dir fp32_model_save_path int8_model_save_path test_script)
+    py_test(${target} SRCS ${test_script}
+            ARGS --qat_model_path ${qat_model_dir}
+	            --fp32_model_save_path ${fp32_model_save_path}
+	            --int8_model_save_path ${int8_model_save_path})
+endfunction()
 
 if(WIN32)
     list(REMOVE_ITEM TEST_OPS test_light_nas)
@@ -170,6 +176,13 @@ if(LINUX AND WITH_MKLDNN)
                 inference_download_and_uncompress(${QAT2_MOBILENETV1_MODEL_DIR} "${QAT_MODELS_BASE_URL}" "MobileNet_qat_perf.tar.gz" )
         endif()
         inference_qat2_int8_test(test_qat2_int8_mobilenetv1_mkldnn ${QAT2_MOBILENETV1_MODEL_DIR}/MobileNet_qat_perf ${DATASET_DIR} ${MKLDNN_QAT_TEST_FILE_PATH} true)
+
+        # Save qat2 fp32 model or qat2 int8 model
+        
+        set(QAT2_INT8_SAVE_PATH "${QAT_DATA_DIR}/ResNet50_qat2_int8")
+        set(QAT2_FP32_SAVE_PATH "${QAT_DATA_DIR}/ResNet50_qat2_fp32")
+        set(SAVE_QAT2_MODEL_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/save_qat_model.py")
+        save_qat_model_test(save_qat2_model_resnet50 ${QAT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QAT2_FP32_SAVE_PATH} ${QAT2_INT8_SAVE_PATH} ${SAVE_QAT2_MODEL_SCRIPT} true)
 
 endif()
 
