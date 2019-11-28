@@ -38,6 +38,43 @@ using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
 using DDim = framework::DDim;
 
+<<<<<<< HEAD
+=======
+typedef std::vector<std::pair<std::string, std::string>> EP_SPLIT_TABLE_PAIRS;
+
+inline EP_SPLIT_TABLE_PAIRS GetMultiFieldRpcContext(
+    const RpcContext &rpc_ctx, const framework::Scope &scope, int multi_parts) {
+  EP_SPLIT_TABLE_PAIRS table_pairs;
+
+  auto *send_var = scope.FindVar(rpc_ctx.var_name);
+  if (send_var->IsType<framework::SelectedRows>()) {
+    PADDLE_ENFORCE_GT(multi_parts, 0, "multi_parts must >=1");
+
+    if (multi_parts == 1) {
+      for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+        table_pairs.push_back(
+            std::make_pair(rpc_ctx.epmap[i], rpc_ctx.splited_var_names[i]));
+      }
+    } else {
+      for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+        for (int x = 0; x < multi_parts; x++) {
+          auto table =
+              string::Sprintf("%s@%d@PIECE", rpc_ctx.splited_var_names[i], x);
+          table_pairs.push_back(std::make_pair(rpc_ctx.epmap[i], table));
+        }
+      }
+    }
+
+  } else if (send_var->IsType<framework::LoDTensor>()) {
+    PADDLE_THROW("GetMultiFieldRpcContext can not support LoDTensor current!");
+  } else {
+    PADDLE_THROW("GetMultiFieldRpcContext unsupported var type!");
+  }
+
+  return table_pairs;
+}  // namespace distributed
+
+>>>>>>> c0656dcb1a... remove -Wno-error=sign-compare, make warning as error (#21358)
 template <typename T>
 void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
                                   const framework::Scope &scope, bool sync, int multi_parts) {
