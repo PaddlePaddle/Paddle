@@ -21,8 +21,6 @@ limitations under the License. */
 #include <unordered_set>
 #include "paddle/fluid/framework/operator.h"
 
-DECLARE_bool(enable_unused_var_check);
-
 namespace paddle {
 namespace framework {
 
