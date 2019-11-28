@@ -64,17 +64,19 @@ inline int ConvOutputSize(int input_size, int filter_size, int dilation,
 
   return output_size;
 }
-inline void UpdatePaddingAndDilation(std::vector<int>* paddings,
-                                     std::vector<int>* dilation,
+
+template <typename T = int>
+inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
+                                     std::vector<T>* dilation,
                                      const std::string padding_algorithm,
                                      const framework::DDim data_dims,
-                                     const std::vector<int>& strides,
-                                     const std::vector<int>& ksize) {
+                                     const std::vector<T>& strides,
+                                     const std::vector<T>& ksize) {
   // set padding size == data_dims.size() * 2
-  auto data_shape = framework::vectorize<int>(data_dims);
+  auto data_shape = framework::vectorize<T>(data_dims);
   if (static_cast<int>(paddings->size()) == data_dims.size()) {
     for (int i = 0; i < data_dims.size(); ++i) {
-      int copy_pad = *(paddings->begin() + 2 * i);
+      T copy_pad = *(paddings->begin() + 2 * i);
       paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
     }
   } else {
@@ -86,11 +88,11 @@ inline void UpdatePaddingAndDilation(std::vector<int>* paddings,
   // when padding_algorithm is "VALID" or "SAME"
   if (padding_algorithm == "SAME") {
     for (int i = 0; i < data_dims.size(); ++i) {
-      int out_size = (data_dims[i] + strides[i] - 1) / strides[i];
-      int pad_sum =
+      T out_size = (data_dims[i] + strides[i] - 1) / strides[i];
+      T pad_sum =
           std::max((out_size - 1) * strides[i] + ksize[i] - data_shape[i], 0);
-      int pad_0 = pad_sum / 2;
-      int pad_1 = pad_sum - pad_0;
+      T pad_0 = pad_sum / 2;
+      T pad_1 = pad_sum - pad_0;
       *(paddings->begin() + i * 2) = pad_0;
       *(paddings->begin() + i * 2 + 1) = pad_1;
 
