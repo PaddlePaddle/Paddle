@@ -108,6 +108,17 @@ class TestImperativeParallelGradFuse(unittest.TestCase):
                 opt.minimize(avg_loss)
                 mnist.clear_gradients()
 
+    def test_reshape_inplace(self):
+        with fluid.dygraph.guard():
+            mnist = MNIST("mnist")
+            mnist = DataParallelGradFuseTest(mnist)
+
+            ori_shape = (2, 25)
+            new_shape = (5, 10)
+            x = np.random.random(ori_shape).astype("float32")
+            mnist._reshape_inplace(x, new_shape)
+            self.assertEqual(x.shape, new_shape)
+
 
 if __name__ == '__main__':
     unittest.main()
