@@ -114,9 +114,12 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
     }
     err_msg +=
         "please make sure it(they) is(are) needed. If not, remove it(them) "
-        "from inputs of the operator; if yes, register NoNeedBufferVars or add "
+        "from inputs of the operator; if yes, register "
+        "NoNeedBufferVarsInference or add "
         "the operator to "
-        "white list in unused_var_check.cc.";
+        "white list in unused_var_check.cc. See more details at "
+        "[https://github.com/PaddlePaddle/Paddle/wiki/"
+        "OP-Should-Not-Have-Unused-Input]";
     PADDLE_ENFORCE_EQ(unsed_input_var_names.size(), 0,
                       platform::errors::PermissionDenied(
                           "Unused input variables check failed: %s", err_msg));
