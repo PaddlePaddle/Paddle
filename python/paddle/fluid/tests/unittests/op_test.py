@@ -35,9 +35,10 @@ from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
 
 
-def _set_use_system_allocator(value):
+def _set_use_system_allocator(value=None):
     USE_SYSTEM_ALLOCATOR_FLAG = "FLAGS_use_system_allocator"
     old_value = core.globals()[USE_SYSTEM_ALLOCATOR_FLAG]
+    value = old_value if value is None else value
     core.globals()[USE_SYSTEM_ALLOCATOR_FLAG] = value
     return old_value
 
