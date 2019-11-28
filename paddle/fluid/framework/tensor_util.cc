@@ -36,6 +36,12 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
 
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
 
+  if (src_ptr == dst_ptr && src_place == dst_place) {
+    VLOG(3) << "Skip copy the same data async from " << src_place << " to "
+            << dst_place;
+    return;
+  }
+
   auto size = src.numel() * SizeOfType(src.type());
 
   if (dst_ptr == src_ptr && src_place == dst_place) {
@@ -123,6 +129,13 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
   auto dst_ptr = dst->mutable_data(dst_place, src.type());
+
+  if (src_ptr == dst_ptr && src_place == dst_place) {
+    VLOG(3) << "Skip copy the same data from " << src_place << " to "
+            << dst_place;
+    return;
+  }
+
   auto size = src.numel() * SizeOfType(src.type());
 
   if (src_ptr == dst_ptr && src_place == dst_place) {

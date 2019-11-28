@@ -72,8 +72,8 @@ inline void UpdatePaddingAndDilation(std::vector<int>* paddings,
                                      const std::vector<int>& ksize) {
   // set padding size == data_dims.size() * 2
   auto data_shape = framework::vectorize<int>(data_dims);
-  if (paddings->size() == data_dims.size()) {
-    for (size_t i = 0; i < data_dims.size(); ++i) {
+  if (static_cast<int>(paddings->size()) == data_dims.size()) {
+    for (int i = 0; i < data_dims.size(); ++i) {
       int copy_pad = *(paddings->begin() + 2 * i);
       paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
     }
@@ -85,7 +85,7 @@ inline void UpdatePaddingAndDilation(std::vector<int>* paddings,
 
   // when padding_algorithm is "VALID" or "SAME"
   if (padding_algorithm == "SAME") {
-    for (size_t i = 0; i < data_dims.size(); ++i) {
+    for (int i = 0; i < data_dims.size(); ++i) {
       int out_size = (data_dims[i] + strides[i] - 1) / strides[i];
       int pad_sum =
           std::max((out_size - 1) * strides[i] + ksize[i] - data_shape[i], 0);
@@ -149,6 +149,36 @@ inline void ResizeToChannelFirst(const framework::ExecutionContext& context,
     in_dims_vec[1] = input->dims()[3];
     in_dims_vec[2] = input->dims()[1];
     in_dims_vec[3] = input->dims()[2];
+    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->mutable_data<T>(context.GetPlace());
+  }
+}
+
+template <typename DeviceContext, typename T>
+inline void ResizeToChannelLast(const framework::ExecutionContext& context,
+                                const Tensor* input,
+                                Tensor* transformed_input) {
+  int dim = input->dims().size() - 2;
+  if (dim == 3) {
+    // input
+    transformed_input->Resize(input->dims());
+
+    auto in_dims_vec = framework::vectorize(input->dims());
+    in_dims_vec[1] = input->dims()[2];
+    in_dims_vec[2] = input->dims()[3];
+    in_dims_vec[3] = input->dims()[4];
+    in_dims_vec[4] = input->dims()[1];
+    transformed_input->Resize(framework::make_ddim(in_dims_vec));
+    transformed_input->mutable_data<T>(context.GetPlace());
+
+  } else if (dim == 2) {
+    // input
+    transformed_input->Resize(input->dims());
+
+    auto in_dims_vec = framework::vectorize(input->dims());
+    in_dims_vec[1] = input->dims()[2];
+    in_dims_vec[2] = input->dims()[3];
+    in_dims_vec[3] = input->dims()[1];
     transformed_input->Resize(framework::make_ddim(in_dims_vec));
     transformed_input->mutable_data<T>(context.GetPlace());
   }

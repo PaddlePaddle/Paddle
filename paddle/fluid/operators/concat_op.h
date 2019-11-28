@@ -26,7 +26,7 @@ namespace paddle {
 namespace operators {
 static inline framework::DDim ComputeAndCheckShape(
     const bool is_runtime, const std::vector<framework::DDim>& inputs_dims,
-    const int axis) {
+    const size_t axis) {
   const size_t n = inputs_dims.size();
   auto out_dims = inputs_dims[0];
   size_t in_zero_dims_size = out_dims.size();
@@ -61,6 +61,11 @@ static inline framework::DDim ComputeAndCheckShape(
 }
 
 static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
+  PADDLE_ENFORCE_EQ(
+      axis >= -rank && axis < rank, true,
+      platform::errors::InvalidArgument(
+          "The axis is expected to be in range of [%d, %d), but got %d", -rank,
+          rank, axis));
   if (axis < 0) {
     axis = axis + rank;
   }

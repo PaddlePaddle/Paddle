@@ -147,6 +147,7 @@ endfunction()
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
+list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
@@ -279,6 +280,7 @@ py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1
 py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES test_parallel_executor_seresnext_base_cpu)
 py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES test_parallel_executor_seresnext_with_reduce_cpu)
 py_test_modules(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
+py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 
 if(NOT WIN32)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
@@ -309,4 +311,5 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_parallel_executor_crf test_sync_batch_norm_op
         test_parallel_executor_feed_persistable_var
         test_parallel_executor_crf_auto_growth test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-        test_buffer_shared_memory_reuse_pass test_buffer_shared_identity_inplace_pass PROPERTIES LABELS "RUN_TYPE=DIST")
+        test_data_norm_op test_buffer_shared_memory_reuse_pass test_buffer_shared_identity_inplace_pass 
+        PROPERTIES LABELS "RUN_TYPE=DIST")
