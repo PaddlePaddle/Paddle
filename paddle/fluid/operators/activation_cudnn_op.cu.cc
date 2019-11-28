@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -79,12 +80,31 @@ struct CudnnActivationGradFunctor {
 template <typename T>
 struct CudnnReluFunctor : public CudnnActivationFunctor<T> {
   explicit CudnnReluFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_RELU) {}
+      : CudnnActivationFunctor<T>(ctx, static_cast<T>(0.0),
+                                  CUDNN_ACTIVATION_RELU) {}
 };
 template <typename T>
 struct CudnnReluGradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnReluGradFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationGradFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_RELU) {}
+      : CudnnActivationGradFunctor<T>(ctx, static_cast<T>(0.0),
+                                      CUDNN_ACTIVATION_RELU) {}
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
+};
+
+template <>
+struct CudnnReluFunctor<platform::float16>
+    : public CudnnActivationFunctor<platform::float16> {
+  explicit CudnnReluFunctor(const CUDADeviceContext& ctx)
+      : CudnnActivationFunctor<platform::float16>(
+            ctx, static_cast<platform::float16>(0.0), CUDNN_ACTIVATION_RELU) {}
+};
+template <>
+struct CudnnReluGradFunctor<platform::float16>
+    : public CudnnActivationGradFunctor<platform::float16> {
+  explicit CudnnReluGradFunctor(const CUDADeviceContext& ctx)
+      : CudnnActivationGradFunctor<platform::float16>(
+            ctx, static_cast<platform::float16>(0.0), CUDNN_ACTIVATION_RELU) {}
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
@@ -92,13 +112,14 @@ struct CudnnReluGradFunctor : public CudnnActivationGradFunctor<T> {
 template <typename T>
 struct CudnnRelu6Functor : public CudnnActivationFunctor<T> {
   explicit CudnnRelu6Functor(const CUDADeviceContext& ctx)
-      : CudnnActivationFunctor<T>(ctx, 6.0, CUDNN_ACTIVATION_CLIPPED_RELU) {}
+      : CudnnActivationFunctor<T>(ctx, static_cast<T>(6.0),
+                                  CUDNN_ACTIVATION_CLIPPED_RELU) {}
 };
 template <typename T>
 struct CudnnRelu6GradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnRelu6GradFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationGradFunctor<T>(ctx, 6.0, CUDNN_ACTIVATION_CLIPPED_RELU) {
-  }
+      : CudnnActivationGradFunctor<T>(ctx, static_cast<T>(6.0),
+                                      CUDNN_ACTIVATION_CLIPPED_RELU) {}
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
@@ -106,12 +127,14 @@ struct CudnnRelu6GradFunctor : public CudnnActivationGradFunctor<T> {
 template <typename T>
 struct CudnnSigmoidFunctor : public CudnnActivationFunctor<T> {
   explicit CudnnSigmoidFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_SIGMOID) {}
+      : CudnnActivationFunctor<T>(ctx, static_cast<T>(0.0),
+                                  CUDNN_ACTIVATION_SIGMOID) {}
 };
 template <typename T>
 struct CudnnSigmoidGradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnSigmoidGradFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationGradFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_SIGMOID) {}
+      : CudnnActivationGradFunctor<T>(ctx, static_cast<T>(0.0),
+                                      CUDNN_ACTIVATION_SIGMOID) {}
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
@@ -119,12 +142,14 @@ struct CudnnSigmoidGradFunctor : public CudnnActivationGradFunctor<T> {
 template <typename T>
 struct CudnnTanhFunctor : public CudnnActivationFunctor<T> {
   explicit CudnnTanhFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_TANH) {}
+      : CudnnActivationFunctor<T>(ctx, static_cast<T>(0.0),
+                                  CUDNN_ACTIVATION_TANH) {}
 };
 template <typename T>
 struct CudnnTanhGradFunctor : public CudnnActivationGradFunctor<T> {
   explicit CudnnTanhGradFunctor(const CUDADeviceContext& ctx)
-      : CudnnActivationGradFunctor<T>(ctx, 0.0, CUDNN_ACTIVATION_TANH) {}
+      : CudnnActivationGradFunctor<T>(ctx, static_cast<T>(0.0),
+                                      CUDNN_ACTIVATION_TANH) {}
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
 };
@@ -172,7 +197,6 @@ namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
 #define FOR_EACH_CUDNN_OP_FUNCTOR(__macro)                  \
-  __macro(relu, CudnnReluFunctor, CudnnReluGradFunctor);    \
   __macro(relu6, CudnnRelu6Functor, CudnnRelu6GradFunctor); \
   __macro(sigmoid, CudnnTanhFunctor, CudnnTanhGradFunctor); \
   __macro(tanh, CudnnTanhFunctor, CudnnTanhGradFunctor)
@@ -187,3 +211,17 @@ namespace ops = paddle::operators;
       ops::CudnnActivationGradKernel<ops::grad_functor<double>>);
 
 FOR_EACH_CUDNN_OP_FUNCTOR(REGISTER_ACTIVATION_CUDNN_KERNEL);
+
+#define REGISTER_ACTIVATION_FP16_CUDNN_KERNEL(act_type, functor, grad_functor) \
+  REGISTER_OP_KERNEL(act_type, CUDNN, plat::CUDAPlace,                         \
+                     ops::CudnnActivationKernel<ops::functor<float>>,          \
+                     ops::CudnnActivationKernel<ops::functor<double>>,         \
+                     ops::CudnnActivationKernel<ops::functor<plat::float16>>); \
+  REGISTER_OP_KERNEL(                                                          \
+      act_type##_grad, CUDNN, plat::CUDAPlace,                                 \
+      ops::CudnnActivationKernel<ops::functor<float>>,                         \
+      ops::CudnnActivationKernel<ops::functor<double>>,                        \
+      ops::CudnnActivationGradKernel<ops::grad_functor<plat::float16>>);
+
+REGISTER_ACTIVATION_FP16_CUDNN_KERNEL(relu, CudnnReluFunctor,
+                                      CudnnReluGradFunctor);

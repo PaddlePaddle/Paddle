@@ -52,7 +52,7 @@ static constexpr bool CanInplaceAct() {
       AddAttr<bool>("use_cudnn",                                             \
                     "(bool, default false) Only used in cudnn kernel, need " \
                     "install cudnn")                                         \
-          .SetDefault(false);                                                \
+          .SetDefault(true);                                                 \
       AddAttr<bool>(                                                         \
           "is_test",                                                         \
           "(bool, default false) Set to true for inference only, false "     \
@@ -100,12 +100,12 @@ framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
 // TODO(liuwei1031) figure out the reason behind
 // https://github.com/PaddlePaddle/Paddle/issues/16096
 // and re-enable this in the future
-// #ifdef PADDLE_WITH_CUDA
-//   auto it1 = oper.Attrs().find("use_cudnn");
-//   if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
-//     library = framework::LibraryType::kCUDNN;
-//   }
-// #endif
+#ifdef PADDLE_WITH_CUDA
+  auto it1 = oper.Attrs().find("use_cudnn");
+  if (it1 != oper.Attrs().end() && platform::CanCUDNNBeUsed(ctx)) {
+    library = framework::LibraryType::kCUDNN;
+  }
+#endif
 #ifdef PADDLE_WITH_MKLDNN
   auto it = oper.Attrs().find("use_mkldnn");
   if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
