@@ -429,11 +429,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                 if has_reserve_space:
                     block.create_var(name="reserve_space", dtype='float16')
                     outputs["ReserveSpace"] = block.var('reserve_space')
-<<<<<<< HEAD
-
-=======
                     del os.environ['FLAGS_cudnn_batchnorm_spatial_persistent']
->>>>>>> fix bugs of reverse_space var creation in unittest and add env var.
                 bn_op = block.append_op(
                     type="batch_norm",
                     inputs=inputs,
