@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <mkldnn/include/mkldnn_debug.h>
 #include <mkldnn/include/mkldnn_types.h>
 #include <memory>
 #include "paddle/fluid/framework/tensor.h"
@@ -53,25 +54,96 @@ class FCPrimitiveFactory {
       this->Execute();
       return;
     }
-    auto src_desc = CreateMemDescriptor<T_in>(input, input->format());
+    auto input_dims = framework::vectorize(input->dims());
+    // input_dims[0] *= input_dims[1];
+    // input_dims[1] = 1;
+    // 128 x 1 x 768
+    auto src_desc = CreateMemDescriptor<T_in>(input_dims, input->format());
+    input_dims = framework::vectorize(input->dims());
     input_ = CreateMemory<T_in>(src_desc, input);
 
     // Since MKL-DNN doesn't support 4D column-major data formats in
     // inner_product
     // primitive, transpose the weights to be in row-major format
     weights_ = TransposeWeights(weights);
-    if (src_desc.data.ndims == 4) {
-      weights_ = CreateFourDimWeightsMemory(input, weights);
+
+    auto w_dims = framework::vectorize(weights->dims());
+
+    auto dst_dims = framework::vectorize(input->dims());
+
+    memory::desc weights_desc = src_desc;      // haczek
+    memory::desc usr_weights_desc = src_desc;  // haczek
+    if (src_desc.data.ndims == 3) {
+      // 768 x 1 x 768
+      std::vector<int64_t> dims = {w_dims[1], 1, w_dims[0]};
+      weights_desc = CreateMemDescriptor<T_w>(dims, MKLDNNMemoryFormat::any);
+      usr_weights_desc =
+          CreateMemDescriptor<float>(dims, MKLDNNMemoryFormat::oiw);
+
+      input_dims[0] *= input_dims[1];
+      input_dims[1] = 1;
+      // 128 x 1 x 768
+      src_desc = CreateMemDescriptor<T_in>(input_dims, input->format());
+      input_dims = framework::vectorize(input->dims());
+      dst_dims = {input_dims[0] * input_dims[1], w_dims[1]};
+    } else if (src_desc.data.ndims == 4) {
+      auto dims = {w_dims[1], input_dims[1], input_dims[2], input_dims[3]};
+      weights_desc = CreateMemDescriptor<T_w>(dims, MKLDNNMemoryFormat::any);
+      usr_weights_desc =
+          CreateMemDescriptor<float>(dims, MKLDNNMemoryFormat::oihw);
     }
+    // auto bias_dims = {input_dims[1] * w_dims[1]};
+    // 768
+    auto bias_desc = CreateMemDescriptor<float>(bias, MKLDNNMemoryFormat::x);
+
+    // 128 x 768
+    auto dst_desc =
+        CreateMemDescriptor<T_out>(dst_dims, MKLDNNMemoryFormat::any);
+
+    const auto attrs = CreatePostOps(ctx);
+    // Create inner_product descriptor. At this point the format of output
+    // is determined.
+
+    mkldnn::inner_product_forward::primitive_desc fc_prim_desc =
+        CreateFcPrimDesc(src_desc, weights_desc, bias_desc, dst_desc, attrs);
+
+    // Enforce weights_ to have the same dimensionality as input
+    weights_ = Reorder(usr_weights_desc, usr_weights_desc,
+                       weights_->get_data_handle());
+
+    // Quantize weights and reorder to format chosen by FC primitive descriptor.
+    QuantizeWeights(ctx, fc_prim_desc.weights_desc());
+
+    // float* bias_data = (float*)to_void_cast(bias->data<float>());
+    // size_t numel = bias->numel();
+    // std::vector<float> enlarged_bias(input_dims[1] * w_dims[1]);
+    // for(int i = 0; i < input_dims[1]; i++) {
+    //   std::copy(bias_data, bias_data + numel, enlarged_bias.data() + numel *
+    //   i);
+    // }
+
+    bias_ = CreateMemory<float>(bias_desc, bias);
+    // If int8 is desired, quantize bias into 32-bit signed int
+    QuantizeBias(fc_prim_desc, ctx);
+
+    // Based on format determined by inner_product, create output in desired
+    // memory format
+    output_ = CreateDstMemory(fc_prim_desc, ctx, output);
+
+    // Return MKL-DNN primitive ready to be fed into pipeline and executed
+    fc_ = inner_product_forward(fc_prim_desc);
+
+    // if (src_desc.data.ndims == 3) {
+    //   weights_ = CreateThreeDimWeightsMemory(input, weights);
+    // } else if (src_desc.data.ndims == 4) {
+    //   weights_ = CreateFourDimWeightsMemory(input, weights);
+    // }
     // If int8 data type is desired, weights are quantized to signed int8
-    QuantizeWeights(ctx);
 
     // Choose MKLDNNMemoryFormat::any so that MKL-DNN can determine itself what
     // is the best format for output during the creation of inner product
     // primitive descriptor
-    auto dst_desc = CreateMemDescriptor<T_out>(output, MKLDNNMemoryFormat::any);
 
-    fc_ = CreateFcPrimitive(*input_, *weights_, dst_desc, bias, output, ctx);
     this->Execute();
   }
 
@@ -99,8 +171,14 @@ class FCPrimitiveFactory {
     // variable, update its format to what has been determined in first
     // call to CreateFcPrimitive method.
     if (out->format() == MKLDNNMemoryFormat::undef) {
-      auto output_format = platform::GetMKLDNNFormat(*output_);
-      out->set_format((MKLDNNMemoryFormat)output_format);
+      MKLDNNMemoryFormat format;
+      if (std::is_same<T_w, int8_t>::value)
+        format = MKLDNNMemoryFormat::nhwc;
+      else
+        format = MKLDNNMemoryFormat::nchw;
+
+      out->set_format(platform::MKLDNNFormatForSize(
+          framework::vectorize<int>(out->dims()).size(), format));
     }
   }
 
@@ -247,6 +325,11 @@ class FCPrimitiveFactory {
     return is_multi_channel_quantizied ? 1 << slice_dimension : 0;
   }
 
+  void QuantizeWeights(const ExecutionContext& ctx, memory::desc dst) {
+    weights_ =
+        Reorder(*weights_, dst, ctx.Attr<std::vector<float>>("Scale_weights"));
+  }
+
   void QuantizeWeights(const ExecutionContext& ctx) {
     auto quantized_desc = weights_->get_desc();
     quantized_desc.data.data_type =
@@ -351,6 +434,7 @@ class FCPrimitiveFactory {
 
     auto dst_format = MatchWeightFormat(input->format());
     auto src_desc = CreateMemDescriptor<float>(dims, MKLDNNMemoryFormat::oiw);
+    dst_format.data.format = mkldnn_owi;
     auto dst_desc = CreateMemDescriptor<float>(dims, dst_format);
 
     return Reorder(src_desc, dst_desc, weights_->get_data_handle());
@@ -392,7 +476,15 @@ class FCPrimitiveFactory {
     T_out* output_data =
         output->mutable_data<T_out>(ctx.GetPlace(), buffer_size);
     memory dst_mem(dst_desc, engine_, to_void_cast<T_out>(output_data));
-    output->set_format(platform::GetMKLDNNFormat(dst_mem));
+
+    MKLDNNMemoryFormat format;
+    if (std::is_same<T_w, int8_t>::value)
+      format = MKLDNNMemoryFormat::nhwc;
+    else
+      format = MKLDNNMemoryFormat::nchw;
+
+    output->set_format(platform::MKLDNNFormatForSize(
+        framework::vectorize<int>(output->dims()).size(), format));
     return dst_mem;
   }
 
