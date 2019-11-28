@@ -864,21 +864,6 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
             offset = param.offset
 
             if is_slice:
-                origin = load_block.create_var(
-                    name="{}.load".format(origin_var.name),
-                    type=origin_var.type,
-                    shape=origin_var.shape,
-                    dtype=origin_var.dtype,
-                    persistable=True)
-
-                load_block.append_op(
-                    type='load',
-                    inputs={},
-                    outputs={'Out': [origin]},
-                    attrs={
-                        'file_path': os.path.join(dirname, origin_var.name)
-                    })
-
                 slice = load_block.create_var(
                     name=slice_var.name,
                     type=slice_var.type,
@@ -886,22 +871,15 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                     dtype=slice_var.dtype,
                     persistable=True)
 
-                dim1_flatten = 1
-                if len(slice.shape) >= 2:
-                    dim1_flatten = reduce(lambda x, y: x * y, slice.shape[1:])
-
-                start = int(offset / dim1_flatten)
-                end = int(offset / dim1_flatten + slice.shape[0])
-
                 load_block.append_op(
-                    type="slice",
-                    inputs={'Input': origin},
-                    outputs={'Out': slice},
-                    attrs={'axes': [0],
-                           'starts': [start],
-                           'ends': [end]})
-
-                need_delete_vars.append(origin)
+                    type='load',
+                    inputs={},
+                    outputs={'Out': [slice]},
+                    attrs={
+                        'file_path': os.path.join(dirname, origin_var.name),
+                        'seek': offset,
+                        'shape': slice.shape
+                    })
             else:
                 origin = load_block.create_var(
                     name="{}".format(origin_var.name),
