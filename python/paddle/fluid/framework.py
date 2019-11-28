@@ -583,6 +583,202 @@ class ParameterMetaClass(VariableMetaClass):
             return issubclass(t, Parameter)
 
 
+def _getitem_impl_(var, item):
+    """
+    Slice the variable.
+
+    Args:
+        item(int/slice/tuple) : the index.
+
+    Returns:
+        Sliced variable
+    """
+
+    if not isinstance(item, tuple):
+        item = [item]
+
+    decrease_axis = []
+    slice_axis = []
+    slice_start = []
+    slice_end = []
+    slice_step = []
+    use_strided_slice = False
+    reverse_axis = []
+
+    def fill_constant(shape, value, force_cpu=False, out=None):
+        var.block.append_op(
+            type='fill_constant',
+            inputs={},
+            outputs={'Out': [out]},
+            attrs={
+                'shape': shape,
+                'dtype': out.dtype,
+                'value': float(value),
+                'force_cpu': force_cpu
+            },
+            stop_gradient=True)
+        out.stop_gradient = True
+        return out
+
+    for dim, slice_item in enumerate(item):
+        if isinstance(slice_item, slice):
+            start = slice_item.start
+            end = slice_item.stop
+            step = slice_item.step
+
+            if start is None and end is None and step is None:
+                continue
+
+            if step is None:
+                step = 1
+
+            if start is None and end is None:
+                assert (step == -1)
+                reverse_axis.append(dim)
+                continue
+
+            if start is None:
+                start = 0
+
+            if end is None:
+                end = 10000000
+
+            if step != 1:
+                use_strided_slice = True
+
+            slice_axis.append(dim)
+            slice_start.append(start)
+            slice_end.append(end)
+            slice_step.append(step)
+        else:
+            decrease_axis.append(dim)
+            slice_axis.append(dim)
+            slice_start.append(slice_item)
+            slice_step.append(1)
+            if isinstance(slice_item, Variable):
+                temp_1 = var.block.create_var(dtype='int32')
+                fill_constant([1], 1, force_cpu=True, out=temp_1)
+                temp_end = var.block.create_var(dtype='int32')
+                var.block.append_op(
+                    type='elementwise_add',
+                    inputs={'X': slice_item,
+                            'Y': temp_1},
+                    outputs={'Out': temp_end},
+                    attrs={'axis': -1})
+                slice_end.append(temp_end)
+            else:
+                slice_end.append(slice_item + 1
+                                 if slice_item != -1 else 10000000)
+
+    def contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def get_new_list_tensor(old_list):
+        new_list_tensor = []
+        for dim in old_list:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_list_tensor.append(dim)
+            else:
+                assert (isinstance(dim, int))
+                temp_out = var.block.create_var(dtype='int32')
+                fill_constant([1], dim, force_cpu=True, out=temp_out)
+                new_list_tensor.append(temp_out)
+        return new_list_tensor
+
+    inputs = {'Input': [var]}
+    attrs = {
+        'axes': slice_axis,
+        'starts': [],
+        'ends': [],
+        'decrease_axis': decrease_axis
+    }
+    if (use_strided_slice == True):
+        attrs['strides'] = []
+    infer_flags = list(1 for i in range(len(slice_axis)))
+    # starts
+    if not contain_var(slice_start):
+        attrs['starts'] = slice_start
+    else:
+        inputs['StartsTensorList'] = get_new_list_tensor(slice_start)
+        for i, dim in enumerate(slice_start):
+            if isinstance(dim, Variable):
+                attrs['starts'].append(-1)
+                infer_flags[i] = -1
+            else:
+                attrs['starts'].append(dim)
+    # ends
+    if not contain_var(slice_end):
+        attrs['ends'] = slice_end
+    else:
+        inputs['EndsTensorList'] = get_new_list_tensor(slice_end)
+        for i, dim in enumerate(slice_end):
+            if isinstance(dim, Variable):
+                attrs['ends'].append(-1)
+                infer_flags[i] = -1
+            else:
+                attrs['ends'].append(dim)
+    # strides
+    if use_strided_slice == True:
+        if not contain_var(slice_step):
+            attrs['strides'] = slice_step
+        else:
+            inputs['StridesTensorList'] = get_new_list_tensor(slice_step)
+            for i, dim in enumerate(slice_step):
+                if isinstance(dim, Variable):
+                    attrs['strides'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['strides'].append(dim)
+    # infer_flags
+    attrs['infer_flags'] = infer_flags
+
+    out = var
+    if use_strided_slice == False and len(slice_axis) > 0:
+        # append slice_op here
+        slice_out_var = var.block.create_var(
+            name=unique_name.generate_with_ignorable_key(var.name + "_slice"),
+            dtype=var.dtype)
+
+        var.block.append_op(
+            type="slice",
+            inputs=inputs,
+            outputs={'Out': [slice_out_var]},
+            attrs=attrs)
+
+        out = slice_out_var
+    elif use_strided_slice == True and len(slice_axis) > 0:
+        strided_slice_out_var = var.block.create_var(
+            name=unique_name.generate_with_ignorable_key(var.name +
+                                                         "_strided_slice"),
+            dtype=var.dtype)
+        var.block.append_op(
+            type="strided_slice",
+            inputs=inputs,
+            outputs={'Out': [strided_slice_out_var]},
+            attrs=attrs)
+
+        out = strided_slice_out_var
+
+    if len(reverse_axis) > 0:
+        reverse_out_var = var.block.create_var(
+            name=unique_name.generate_with_ignorable_key(var.name +
+                                                         "_slice_reverse"),
+            dtype=var.dtype)
+        var.block.append_op(
+            type="reverse",
+            inputs={'X': out},
+            outputs={'Out': [reverse_out_var]},
+            attrs={'axis': reverse_axis})
+
+        out = reverse_out_var
+
+    return out
+
+
 @six.add_metaclass(VariableMetaClass)
 class Variable(object):
     """
@@ -1398,200 +1594,7 @@ class Variable(object):
             raise IndexError("Valid index accept int or slice or tuple")
 
     def __getitem__(self, item):
-        """
-        Slice the variable.
-
-        Args:
-            item(int/slice/tuple) : the index.
-
-        Returns:
-            Sliced variable
-        """
-
-        if not isinstance(item, tuple):
-            item = [item]
-
-        decrease_axis = []
-        slice_axis = []
-        slice_start = []
-        slice_end = []
-        slice_step = []
-        use_strided_slice = False
-        reverse_axis = []
-
-        def fill_constant(shape, value, force_cpu=False, out=None):
-            self.block.append_op(
-                type='fill_constant',
-                inputs={},
-                outputs={'Out': [out]},
-                attrs={
-                    'shape': shape,
-                    'dtype': out.dtype,
-                    'value': float(value),
-                    'force_cpu': force_cpu
-                },
-                stop_gradient=True)
-            out.stop_gradient = True
-            return out
-
-        for dim, slice_item in enumerate(item):
-            if isinstance(slice_item, slice):
-                start = slice_item.start
-                end = slice_item.stop
-                step = slice_item.step
-
-                if start is None and end is None and step is None:
-                    continue
-
-                if step is None:
-                    step = 1
-
-                if start is None and end is None:
-                    assert (step == -1)
-                    reverse_axis.append(dim)
-                    continue
-
-                if start is None:
-                    start = 0
-
-                if end is None:
-                    end = 10000000
-
-                if step != 1:
-                    use_strided_slice = True
-
-                slice_axis.append(dim)
-                slice_start.append(start)
-                slice_end.append(end)
-                slice_step.append(step)
-            else:
-                decrease_axis.append(dim)
-                slice_axis.append(dim)
-                slice_start.append(slice_item)
-                slice_step.append(1)
-                if isinstance(slice_item, Variable):
-                    temp_1 = self.block.create_var(dtype='int32')
-                    fill_constant([1], 1, force_cpu=True, out=temp_1)
-                    temp_end = self.block.create_var(dtype='int32')
-                    self.block.append_op(
-                        type='elementwise_add',
-                        inputs={'X': slice_item,
-                                'Y': temp_1},
-                        outputs={'Out': temp_end},
-                        attrs={'axis': -1})
-                    slice_end.append(temp_end)
-                else:
-                    slice_end.append(slice_item + 1
-                                     if slice_item != -1 else 10000000)
-
-        def contain_var(one_list):
-            for ele in one_list:
-                if isinstance(ele, Variable):
-                    return True
-            return False
-
-        def get_new_list_tensor(old_list):
-            new_list_tensor = []
-            for dim in old_list:
-                if isinstance(dim, Variable):
-                    dim.stop_gradient = True
-                    new_list_tensor.append(dim)
-                else:
-                    assert (isinstance(dim, int))
-                    temp_out = self.block.create_var(dtype='int32')
-                    fill_constant([1], dim, force_cpu=True, out=temp_out)
-                    new_list_tensor.append(temp_out)
-            return new_list_tensor
-
-        inputs = {'Input': [self]}
-        attrs = {
-            'axes': slice_axis,
-            'starts': [],
-            'ends': [],
-            'decrease_axis': decrease_axis
-        }
-        if (use_strided_slice == True):
-            attrs['strides'] = []
-        infer_flags = list(1 for i in range(len(slice_axis)))
-        # starts
-        if not contain_var(slice_start):
-            attrs['starts'] = slice_start
-        else:
-            inputs['StartsTensorList'] = get_new_list_tensor(slice_start)
-            for i, dim in enumerate(slice_start):
-                if isinstance(dim, Variable):
-                    attrs['starts'].append(-1)
-                    infer_flags[i] = -1
-                else:
-                    attrs['starts'].append(dim)
-        # ends
-        if not contain_var(slice_end):
-            attrs['ends'] = slice_end
-        else:
-            inputs['EndsTensorList'] = get_new_list_tensor(slice_end)
-            for i, dim in enumerate(slice_end):
-                if isinstance(dim, Variable):
-                    attrs['ends'].append(-1)
-                    infer_flags[i] = -1
-                else:
-                    attrs['ends'].append(dim)
-        # strides
-        if use_strided_slice == True:
-            if not contain_var(slice_step):
-                attrs['strides'] = slice_step
-            else:
-                inputs['StridesTensorList'] = get_new_list_tensor(slice_step)
-                for i, dim in enumerate(slice_step):
-                    if isinstance(dim, Variable):
-                        attrs['strides'].append(-1)
-                        infer_flags[i] = -1
-                    else:
-                        attrs['strides'].append(dim)
-        # infer_flags
-        attrs['infer_flags'] = infer_flags
-
-        out = self
-        if use_strided_slice == False and len(slice_axis) > 0:
-            # append slice_op here
-            slice_out_var = self.block.create_var(
-                name=unique_name.generate_with_ignorable_key(self.name +
-                                                             "_slice"),
-                dtype=self.dtype)
-
-            self.block.append_op(
-                type="slice",
-                inputs=inputs,
-                outputs={'Out': [slice_out_var]},
-                attrs=attrs)
-
-            out = slice_out_var
-        elif use_strided_slice == True and len(slice_axis) > 0:
-            strided_slice_out_var = self.block.create_var(
-                name=unique_name.generate_with_ignorable_key(self.name +
-                                                             "_strided_slice"),
-                dtype=self.dtype)
-            self.block.append_op(
-                type="strided_slice",
-                inputs=inputs,
-                outputs={'Out': [strided_slice_out_var]},
-                attrs=attrs)
-
-            out = strided_slice_out_var
-
-        if len(reverse_axis) > 0:
-            reverse_out_var = self.block.create_var(
-                name=unique_name.generate_with_ignorable_key(self.name +
-                                                             "_slice_reverse"),
-                dtype=self.dtype)
-            self.block.append_op(
-                type="reverse",
-                inputs={'X': out},
-                outputs={'Out': [reverse_out_var]},
-                attrs={'axis': reverse_axis})
-
-            out = reverse_out_var
-
-        return out
+        return _getitem_impl_(self, item)
 
 
 def get_all_op_protos():

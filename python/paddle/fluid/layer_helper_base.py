@@ -75,7 +75,8 @@ class LayerHelperBase(object):
                 value=value,
                 name=name,
                 persistable=False,
-                place=_current_expected_place())
+                place=_current_expected_place(),
+                zero_copy=False)
             return py_var
         elif isinstance(value, (core.VarBase, Variable)):
             return value

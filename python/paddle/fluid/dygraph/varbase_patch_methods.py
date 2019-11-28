@@ -15,7 +15,7 @@
 from .. import framework
 from .. import core
 from . import BackwardStrategy
-from ..framework import Variable
+from ..framework import Variable, _getitem_impl_
 from .. import unique_name
 import numpy as np
 
@@ -61,10 +61,12 @@ def monkey_patch_varbase():
         self_tensor_np = self.numpy()
 
         assert self_tensor_np.shape == value_np.shape, \
-            "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format( self.name, self_tensor_np.shape, value_np.shape)
+            "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
+                self.name, self_tensor_np.shape, value_np.shape)
 
         assert self_tensor_np.dtype == value_np.dtype, \
-            "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format( self.name, self_tensor_np.dtype, value_np.dtype)
+            "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
+                self.name, self_tensor_np.dtype, value_np.dtype)
 
         self.value().get_tensor().set(value_np,
                                       framework._current_expected_place())
@@ -148,9 +150,11 @@ def monkey_patch_varbase():
 
         """
         if self._grad_ivar() is None:
-            raise ValueError("%s has no grad, Please set Variable.stop_gradient=False, or " \
-                             "check if this is the first and only variable need grad, if so, please set its pre-Variable's " \
-                             "stop_gradient=False, to make sure it has gradient " % self.name)
+            raise ValueError(
+                "%s has no grad, Please set Variable.stop_gradient=False, or "
+                "check if this is the first and only variable need grad, if so, please set its pre-Variable's "
+                "stop_gradient=False, to make sure it has gradient " %
+                self.name)
         if not self._grad_ivar().value().get_tensor()._is_initialized():
             raise ValueError(
                 "%s's Grad is Empty, Please check if it has no data in" %
@@ -201,8 +205,11 @@ def monkey_patch_varbase():
                 return 'name %s, shape: %s, not inited' % (self.name,
                                                            self.shape)
 
+    def __getitem__(self, item):
+        return _getitem_impl_(self, item)
+
     for method_name, method in (("set_value", set_value), ("block", block),
                                 ("backward", backward), ("gradient", gradient),
                                 ("__str__", __str__), ("to_string", to_string),
-                                ("__getitem__", Variable.__getitem__)):
+                                ("__getitem__", __getitem__)):
         setattr(core.VarBase, method_name, method)
