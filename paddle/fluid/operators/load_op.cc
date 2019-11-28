@@ -49,7 +49,7 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         .AddCustomChecker(
             [](const std::string &path) { return !path.empty(); });
     AddAttr<int64_t>("seek", "(int64_t) Starting for load tensor from seek pos")
-        .SetDefault(0);
+        .SetDefault(-1);
     AddAttr<std::vector<int64_t>>("shape",
                                   "(vector<int64_t>) The shape of the output")
         .SetDefault({});
