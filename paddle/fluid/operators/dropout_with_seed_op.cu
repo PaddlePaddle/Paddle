@@ -92,7 +92,6 @@ class GPUDropoutWithSeedKernel : public framework::OpKernel<T> {
     if (!context.Attr<bool>("is_test")) {
       VLOG(3) << "is not test";
       int64_t x_numel = x->numel();
-      auto stream = context.cuda_device_context().stream();
 
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<uint8_t>(context.GetPlace());
@@ -101,13 +100,16 @@ class GPUDropoutWithSeedKernel : public framework::OpKernel<T> {
       auto* x_data = x->data<T>();
       VLOG(3) << "x data";
       VLOG(3) << "try to print x";
-      VLOG(3) << "X data: " << *x;
+      // VLOG(3) << "X data: " << *x;
       VLOG(3) << "Seed data";
       const auto* seed_data = seed->data<int>();
       auto* y_data = y->mutable_data<T>(context.GetPlace());
       VLOG(3) << "try to print seed";
-      VLOG(3) << "Seed data: " << *seed;
+      // VLOG(3) << "Seed data: " << *seed;
       VLOG(3) << "y data";
+
+      // int* seed_data_dev = get_new_data_from_tensor(seed);
+      auto stream = context.cuda_device_context().stream();
       if (dropout_prob == 1.0f) {
         PADDLE_ENFORCE_CUDA_SUCCESS(
             cudaMemsetAsync(y_data, 0, x_numel * sizeof(T), stream));
