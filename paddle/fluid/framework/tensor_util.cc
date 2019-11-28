@@ -451,6 +451,52 @@ struct DeserializedDataFunctor {
 };
 
 void TensorFromStream(std::istream& is, Tensor* tensor,
+                      const platform::DeviceContext& dev_ctx, size_t seek,
+                      const std::vector<int64_t>& shape) {
+  uint32_t version;
+  is.read(reinterpret_cast<char*>(&version), sizeof(version));
+  PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+  proto::VarType::TensorDesc desc;
+  {  // int32_t size
+    // proto buffer
+    int32_t size;
+    is.read(reinterpret_cast<char*>(&size), sizeof(size));
+    std::unique_ptr<char[]> buf(new char[size]);
+    is.read(reinterpret_cast<char*>(buf.get()), size);
+    PADDLE_ENFORCE(desc.ParseFromArray(buf.get(), size),
+                   "Cannot parse tensor desc");
+  }
+  {  // read tensor
+    tensor->Resize(framework::make_ddim(shape));
+    size_t seekg = seek * framework::SizeOfType(desc.data_type());
+    is.seekg(seekg, is.cur);
+
+    void* buf;
+    auto ctx = platform::CPUDeviceContext();
+    size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
+    if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+#ifdef PADDLE_WITH_CUDA
+      Tensor cpu_tensor;
+      cpu_tensor.Resize(framework::make_ddim(dims));
+      framework::VisitDataType(
+          desc.data_type(),
+          DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
+      is.read(static_cast<char*>(buf), size);
+      auto dst_place = dev_ctx.GetPlace();
+      framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
+#else
+      PADDLE_THROW("Unexpected branch");
+#endif
+    } else {
+      framework::VisitDataType(
+          desc.data_type(),
+          DeserializedDataFunctor(&buf, tensor, ctx.GetPlace()));
+      is.read(static_cast<char*>(buf), size);
+    }
+  }
+}
+
+void TensorFromStream(std::istream& is, Tensor* tensor,
                       const platform::DeviceContext& dev_ctx) {
   uint32_t version;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));

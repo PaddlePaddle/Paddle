@@ -224,7 +224,7 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
       distributed::VarHandlePtr ret;
 
       ret = rpc_client->AsyncGetVarNoBarrier(
-          endpoints[i], device_ctx, local_scope, varname, remote_varnames[i]);
+          endpoints[i], device_ctx, local_scope, remote_varnames[i], varname);
 
       PADDLE_ENFORCE_NE(ret->Wait(), 0U, "internal error in RPCClient");
 

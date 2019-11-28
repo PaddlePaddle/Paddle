@@ -27,6 +27,30 @@ from paddle.fluid.op import Operator
 from paddle.fluid.framework import Program, program_guard
 from dist_test_utils import *
 
+# 
+# load_prog = fluid.Program()
+# load_block = load_prog.global_block()
+#
+# origin = load_block.create_var(
+#     name="{}.load".format("var"),
+#     type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+#     shape=[10,8],
+#     dtype="float32",
+#     persistable=True)
+#
+# load_block.append_op(
+#     type='load',
+#     inputs={},
+#     outputs={'Out': [origin]},
+#     attrs={'file_path': "xxxxx.fc.files"})
+#
+# exe = fluid.Executor(place=fluid.CPUPlace())
+# exe.run(load_prog)
+#
+# origin_var = fluid.global_scope().find_var("var.load")
+#
+# print(np.array(origin_var.get_tensor()))
+
 
 def run_pserver(pserver_id):
     remove_ps_flag(os.getpid())

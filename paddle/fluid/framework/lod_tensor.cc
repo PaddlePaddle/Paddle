@@ -244,6 +244,36 @@ void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
 }
 
 void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
+                           const platform::DeviceContext &dev_ctx, size_t seek,
+                           const std::vector<int64_t> &shape) {
+  {
+    // the 1st field, unit32_t version for LoDTensor
+    uint32_t version;
+    is.read(reinterpret_cast<char *>(&version), sizeof(version));
+    PADDLE_ENFORCE(framework::IsTensorVersionSupported(version),
+                   "tensor version %u is not supported.", version);
+    PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+  }
+  {
+    // the 2st field, LoD information
+    uint64_t lod_level;
+    is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
+    auto &lod = *tensor->mutable_lod();
+    lod.resize(lod_level);
+    for (uint64_t i = 0; i < lod_level; ++i) {
+      uint64_t size;
+      is.read(reinterpret_cast<char *>(&size), sizeof(size));
+      std::vector<size_t> tmp(size / sizeof(size_t));
+      is.read(reinterpret_cast<char *>(tmp.data()),
+              static_cast<std::streamsize>(size));
+      lod[i] = tmp;
+    }
+  }
+  // the 3st filed, Tensor
+  TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx, seek, shape);
+}
+
+void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
                            const platform::DeviceContext &dev_ctx) {
   {
     // the 1st field, unit32_t version for LoDTensor
