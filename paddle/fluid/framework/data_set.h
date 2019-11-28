@@ -112,6 +112,8 @@ class Dataset {
   virtual int64_t GetShuffleDataSize() = 0;
   // merge by ins id
   virtual void MergeByInsId() = 0;
+  virtual void GenerateLocalTablesUnlock(int table_id, int feadim, int read_thread_num, int consume_thread_num, int shard_num, int send_freq) = 0;
+  virtual void ClearLocalTables() = 0;
   // create preload readers
   virtual void CreatePreLoadReaders() = 0;
   // destroy preload readers after prelaod done
@@ -179,6 +181,8 @@ class DatasetImpl : public Dataset {
   virtual int64_t GetMemoryDataSize();
   virtual int64_t GetShuffleDataSize();
   virtual void MergeByInsId() {}
+  virtual void GenerateLocalTablesUnlock(int table_id, int feadim, int read_thread_num, int consume_thread_num, int shard_num, int send_freq) {}
+  virtual void ClearLocalTables() {};
   virtual void CreatePreLoadReaders();
   virtual void DestroyPreLoadReaders();
   virtual void SetPreLoadThreadNum(int thread_num);
@@ -195,6 +199,7 @@ class DatasetImpl : public Dataset {
   int channel_num_;
   std::vector<paddle::framework::Channel<T>> multi_output_channel_;
   std::vector<paddle::framework::Channel<T>> multi_consume_channel_;
+  std::vector<std::unordered_set<uint64_t>> local_tables_;
   // when read ins, we put ins from one channel to the other,
   // and when finish reading, we set cur_channel = 1 - cur_channel,
   // so if cur_channel=0, all data are in output_channel, else consume_channel
@@ -202,6 +207,7 @@ class DatasetImpl : public Dataset {
   std::vector<T> slots_shuffle_original_data_;
   RecordCandidateList slots_shuffle_rclist_;
   int thread_num_;
+  int pull_sparse_to_local_thread_num_;
   paddle::framework::DataFeedDesc data_feed_desc_;
   int trainer_num_;
   std::vector<std::string> filelist_;
@@ -227,6 +233,14 @@ class MultiSlotDataset : public DatasetImpl<Record> {
  public:
   MultiSlotDataset() {}
   virtual void MergeByInsId();
+  virtual void GenerateLocalTablesUnlock(int table_id, int feadim, int read_thread_num, int consume_thread_num, int shard_num, int send_freq);
+  virtual void ClearLocalTables() {
+    for (auto& t : local_tables_) {
+      t.clear();
+      std::unordered_set<uint64_t>().swap(t);
+    }
+    std::vector<std::unordered_set<uint64_t>>().swap(local_tables_);
+  }
   virtual void SlotsShuffle(const std::set<std::string>& slots_to_replace);
   virtual void GetRandomData(const std::set<uint16_t>& slots_to_replace,
                              std::vector<Record>* result);

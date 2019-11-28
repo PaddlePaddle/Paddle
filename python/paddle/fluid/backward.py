@@ -573,6 +573,107 @@ def serialize_op_decs(op_desc):
     return proto.__str__()
 
 
+def _insert_backward_ops_(block,
+                          ops,
+                          target_block,
+                          no_grad_dict,
+                          grad_to_var,
+                          callbacks=None,
+                          input_grad_names_set=None):
+    if callbacks is not None:
+        assert (isinstance(callbacks, list))
+        for cb in callbacks:
+            if not hasattr(cb, '__call__'):
+                raise ValueError("'callback' must be a callable object.")
+    insert_index = -1
+    for op in target_block.ops():
+        insert_index += 1
+        if ops[-1] == op:
+            break
+
+    # grad_op_descs holds created grad_op, and will be appended to target_block
+    grad_op_descs = []
+    program = block.program
+    for op in reversed(ops):
+        grad_sub_block_list = []
+        # If the op has its own sub-block, deal with the sub-block first
+        if op.has_attr("sub_block"):
+            sub_block = program.block(op._block_attr_id("sub_block"))
+            grad_sub_block = program._create_block()
+            grad_sub_block._set_forward_block_idx(sub_block.idx)
+            # see follwing comments for why set None here.
+            pre_input_grad_names_set = copy.copy(input_grad_names_set)
+            input_grad_names_set = None
+            _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
+                                  no_grad_dict, grad_to_var, callbacks,
+                                  input_grad_names_set)
+            input_grad_names_set = pre_input_grad_names_set
+
+            program._rollback()
+            grad_sub_block_list.append(grad_sub_block.desc)
+
+        # Getting op's corresponding grad_op
+        grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+            op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+
+        # If input_grad_names_set is not None, extend grad_op_descs only when
+        # any input grad in outputs of previous grad ops.
+        # But this strategy is not suited for while op for some control flow,
+        # for example, for while op, the grads maybe generated in next loop.
+        if input_grad_names_set is not None:
+            is_append_grad = False
+            for op_desc in grad_op_desc:
+                input_grad_names = [
+                    name for name in op_desc.input_arg_names()
+                    if name.find(core.grad_var_suffix()) != -1
+                ]
+                # some code of gradient ops, like increment, are not very
+                # standard, there is no @GRAD in these ops' inputs.
+                if len(input_grad_names) == 0:
+                    is_append_grad = True
+                    break
+
+                if _some_in_set_(input_grad_names, input_grad_names_set):
+                    grad_op_descs.append(op_desc)
+                    is_append_grad = True
+                    for name in op_desc.output_arg_names():
+                        input_grad_names_set.add(name)
+            if is_append_grad:
+                grad_to_var.update(op_grad_to_var)
+        else:
+            grad_op_descs.extend(grad_op_desc)
+            grad_to_var.update(op_grad_to_var)
+
+    # add grad_op_desc by reversed ops
+
+    # sum parameter's gradients' var given multiple var gradient
+    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
+
+    # if all outputs of the grad op are in no_grad_set, then just remove and fill zero
+    # if all inputs of the grad op are in no_grad_set, just remove this op
+    grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
+                                            no_grad_dict[block.idx])
+
+    # remove some backward ops
+    not_need_ops = _find_not_need_ops(grad_op_descs, ops, input_grad_names_set)
+
+    grad_op_descs = [
+        op_desc for op_desc in grad_op_descs if op_desc not in not_need_ops
+    ]
+    # append op_desc in grad_op_descs to target_block
+    op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+    backward = core.op_proto_and_checker_maker.OpRole.Backward
+    for op_desc in grad_op_descs:
+        new_op_desc = target_block.desc._insert_op(insert_index)
+        insert_index += 1
+        new_op_desc.copy_from(op_desc)
+        new_op_desc._set_attr(op_role_attr_name, backward)
+        grad_to_var["__current_op_desc__"] = new_op_desc
+        if callbacks is not None:
+            assert (isinstance(callbacks, list))
+            for cb in callbacks:
+                cb(block=target_block, context=grad_to_var)
+
 def _append_backward_ops_with_checkpoints_(
         block, ops, target_block, no_grad_dict, grad_to_var, checkpoints):
     """
@@ -934,7 +1035,8 @@ def append_backward(loss,
                     parameter_list=None,
                     no_grad_set=None,
                     callbacks=None,
-                    checkpoints=None):
+                    checkpoints=None,
+                    is_insert=False):
     """
     This function appends backward part to main_program.
 
@@ -1068,14 +1170,24 @@ def append_backward(loss,
                             grad_to_var,
                             checkpoints)
     else:
-        _append_backward_ops_(
-            root_block,
-            op_path,
-            root_block,
-            no_grad_dict,
-            grad_to_var,
-            callbacks,
-            input_grad_names_set=input_grad_names_set)
+        if not is_insert:
+            _append_backward_ops_(
+                root_block,
+                op_path,
+                root_block,
+                no_grad_dict,
+                grad_to_var,
+                callbacks,
+                input_grad_names_set=input_grad_names_set)
+        else:
+            _insert_backward_ops_(
+                root_block,
+                op_path,
+                root_block,
+                no_grad_dict,
+                grad_to_var,
+                callbacks,
+                input_grad_names_set=input_grad_names_set)
 
     # Because calc_gradient may be called multiple times,
     # we need rename the internal gradient variables so that they have

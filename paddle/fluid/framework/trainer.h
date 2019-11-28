@@ -95,6 +95,7 @@ class DistMultiTrainer : public MultiTrainer {
   virtual void InitDumpEnv();
   virtual Scope* GetWorkerScope(int thread_id);
   virtual void DumpWork(int tid);
+  virtual void PullSparseTableToLocal(int table_id, int feadim);
 
  protected:
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;

@@ -556,6 +556,8 @@ void DownpourWorker::TrainFilesWithProfiler() {
   double total_time = 0.0;
   double read_time = 0.0;
   double pull_sparse_time = 0.0;
+  double pull_sparse_local_time = 0.0;
+  double pull_sparse_async_time = 0.0;
   double adjust_ins_weight_time = 0.0;
   double collect_label_time = 0.0;
   double fill_sparse_time = 0.0;
@@ -565,6 +567,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
   int cur_batch;
   int batch_cnt = 0;
   uint64_t total_inst = 0;
+  std::future<int32_t> pull_async_status;
+  uint64_t async_tid = 0;
+  int async_index = -1;
   timeline.Start();
   while ((cur_batch = device_reader_->Next()) > 0) {
     timeline.Pause();
@@ -586,6 +591,10 @@ void DownpourWorker::TrainFilesWithProfiler() {
         CopyDenseTable();
         CopyDenseVars();
       }
+      if (table.is_async()) {
+        async_tid = tid;
+        async_index = i;
+      }
     }
     timeline.Pause();
     copy_table_time += timeline.ElapsedSec();
@@ -604,12 +613,43 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
       }
       timeline.Start();
-      fleet_ptr_->PullSparseVarsSync(
-          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-          &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
-      timeline.Pause();
-      pull_sparse_time += timeline.ElapsedSec();
-      total_time += timeline.ElapsedSec();
+      // fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
+      //                               sparse_key_names_[tid], &features_[tid],
+      //                               &feature_values_[tid], table.fea_dim());
+      
+      if (table.is_local()) {
+        timeline.Start();
+        // FillSparseFromLocal(*thread_scope_, tid, sparse_key_names_[tid], fleet_ptr_->GetLocalTable());
+        fleet_ptr_->PullSparseVarsFromLocal(*thread_scope_, tid,
+                                       sparse_key_names_[tid], &features_[tid],
+                                       &feature_values_[tid], table.fea_dim());
+        // std::cout << "local sparse table with fea dim: " << table.fea_dim() << std::endl;
+        // CollectLabelInfo(i);
+        general_tid = tid;       
+        timeline.Pause();
+        pull_sparse_local_time += timeline.ElapsedSec();
+        total_time += timeline.ElapsedSec();
+        //continue;
+        // std::cout << "local sparse table with fea dim: " << table.fea_dim() << std::endl;
+      } else if (table.is_async()) {
+        // std::cout << "Async pull with tid: " << tid << std::endl;
+        timeline.Start();
+        pull_async_status = fleet_ptr_->PullSparseVarsAsync(*thread_scope_, tid,
+                                            sparse_key_names_[tid], &features_[tid],
+                                            &feature_values_[tid], table.fea_dim());
+        timeline.Pause();
+        pull_sparse_async_time += timeline.ElapsedSec();
+        total_time += timeline.ElapsedSec();
+        continue; 
+      } else {
+        timeline.Start();
+        fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
+                                            sparse_key_names_[tid], &features_[tid],
+                                            &feature_values_[tid], table.fea_dim());
+        timeline.Pause();
+        pull_sparse_time += timeline.ElapsedSec();
+        total_time += timeline.ElapsedSec();
+      }
       timeline.Start();
       CollectLabelInfo(i);
       timeline.Pause();
@@ -643,6 +683,43 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
       }
       if (!need_skip) {
+        if (op->Name() == table.async_wait_op_name()) {
+          // std::cout << "Wait Async Pull with tid: " << async_tid << std::endl;
+          timeline.Start();
+          pull_async_status.wait();
+          auto status = pull_async_status.get();
+          timeline.Pause();
+          pull_sparse_async_time += timeline.ElapsedSec();
+          total_time += timeline.ElapsedSec();  
+          if (status != 0) {
+            LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+            sleep(1);
+            exit(-1);
+          } else {
+            // std::cout << "Done Async Pull with tid: " << async_tid << std::endl;
+            timeline.Start();
+            // CollectLabelInfo(async_index);
+            timeline.Pause();
+            collect_label_time += timeline.ElapsedSec();
+            total_time += timeline.ElapsedSec();
+            timeline.Start();
+            FillSparseValue(async_index);
+            timeline.Pause();
+            fill_sparse_time += timeline.ElapsedSec();
+            total_time += timeline.ElapsedSec();
+            timeline.Start();
+            auto nid_iter = std::find(sparse_value_names_[async_tid].begin(),
+                                sparse_value_names_[async_tid].end(),
+                                adjust_ins_weight_config_.nid_slot());
+            if (nid_iter != sparse_value_names_[async_tid].end()) {
+              AdjustInsWeight();
+            }
+            timeline.Pause();
+            adjust_ins_weight_time += timeline.ElapsedSec();
+            total_time += timeline.ElapsedSec(); 
+          }
+
+        }
         timeline.Start();
         VLOG(3) << "Going to run op " << op_name[run_op_idx];
         op->Run(*thread_scope_, place_);
@@ -778,6 +855,10 @@ void DownpourWorker::TrainFilesWithProfiler() {
         fprintf(stderr, "train total time: %fs\n", total_time / batch_cnt);
         fprintf(stderr, "pull sparse time: %fs\n",
                 pull_sparse_time / batch_cnt);
+        fprintf(stderr, "pull sparse local time: %fs\n",
+                pull_sparse_local_time / batch_cnt);
+        fprintf(stderr, "pull sparse async time: %fs\n",
+                pull_sparse_async_time / batch_cnt);
         fprintf(stderr, "fill sparse time: %fs\n",
                 fill_sparse_time / batch_cnt);
         fprintf(stderr, "push sparse time: %fs\n",
@@ -793,6 +874,10 @@ void DownpourWorker::TrainFilesWithProfiler() {
         fprintf(stderr, "op run percent: %f\n", op_sum_time / total_time * 100);
         fprintf(stderr, "pull sparse time percent: %f\n",
                 pull_sparse_time / total_time * 100);
+        fprintf(stderr, "pull sparse local time percent: %f\n",
+                pull_sparse_local_time / total_time * 100);
+        fprintf(stderr, "pull sparse async time percent: %f\n",
+                pull_sparse_async_time / total_time * 100);
         fprintf(stderr, "adjust ins weight time percent: %f\n",
                 adjust_ins_weight_time / total_time * 100);
         fprintf(stderr, "copy table time percent: %f\n",
@@ -823,6 +908,9 @@ void DownpourWorker::TrainFiles() {
   device_reader_->Start();
   int batch_cnt = 0;
   int cur_batch;
+  std::future<int32_t> pull_async_status;
+  uint64_t async_tid = 0;
+  int async_index = -1;
   while ((cur_batch = device_reader_->Next()) > 0) {
     if (copy_table_config_.need_copy()) {
       if (copy_table_config_.sparse_copy_by_feasign()) {
@@ -837,6 +925,10 @@ void DownpourWorker::TrainFiles() {
         CopyDenseTable();
         CopyDenseVars();
       }
+      if (table.is_async()) {
+        async_tid = tid;
+        async_index = i;
+      }
     }
     // pull sparse here
     for (int i = 0; i < param_.program_config(0).pull_sparse_table_id_size();
@@ -850,9 +942,25 @@ void DownpourWorker::TrainFiles() {
           break;
         }
       }
-      fleet_ptr_->PullSparseVarsSync(
-          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-          &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
+      if (table.is_local()) {
+        // fleet_ptr_->PullSparseVarsFromLocal(*thread_scope_, tid,
+        //                               sparse_key_names_[tid], &features_[tid],
+        //                               &feature_values_[tid], table.fea_dim());
+        FillSparseFromLocal(*thread_scope_, tid, sparse_key_names_[tid], fleet_ptr_->GetLocalTable());
+        // std::cout << "local sparse table with fea dim: " << table.fea_dim() << std::endl;
+        CollectLabelInfo(i);
+        general_tid = tid;
+        continue;
+      } else if (table.is_async()) {
+        pull_async_status = fleet_ptr_->PullSparseVarsAsync(*thread_scope_, tid,
+                                            sparse_key_names_[tid], &features_[tid],
+                                            &feature_values_[tid], table.fea_dim());
+        continue;
+      } else {
+        fleet_ptr_->PullSparseVarsSync(*thread_scope_, tid,
+                                            sparse_key_names_[tid], &features_[tid],
+                                            &feature_values_[tid], table.fea_dim()); 
+      }
       CollectLabelInfo(i);
       FillSparseValue(i);
       auto nid_iter = std::find(sparse_value_names_[tid].begin(),
@@ -874,6 +982,27 @@ void DownpourWorker::TrainFiles() {
         }
       }
       if (!need_skip) {
+        if (op->Name() == table.async_wait_op_name()) {
+          // std::cout << "Wait Async Pull with tid: " << async_tid << std::endl;
+          pull_async_status.wait();
+          auto status = pull_async_status.get();
+          if (status != 0) {
+            LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
+            sleep(1);
+            exit(-1);
+          } else {
+            // std::cout << "Done Async Pull with tid: " << async_tid << std::endl;  
+            // CollectLabelInfo(async_index);
+            FillSparseValue(async_index);
+            auto nid_iter = std::find(sparse_value_names_[async_tid].begin(),
+                                      sparse_value_names_[async_tid].end(),
+                                      adjust_ins_weight_config_.nid_slot());
+            if (nid_iter != sparse_value_names_[async_tid].end()) {
+              AdjustInsWeight();
+             }          
+          }
+
+        }
         op->Run(*thread_scope_, place_);
       }
     }
