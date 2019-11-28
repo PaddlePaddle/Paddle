@@ -23,9 +23,8 @@ class TestReduceScatterOp(TestDistBase):
     def _setup_config(self):
         pass
 
-    def test_reducescatter(self):
-        self.check_with_place("collective_reducescatter_op.py",
-                              "reduce_scatter")
+    def test_reducescatter(self, col_type="reduce_scatter"):
+        self.check_with_place("collective_reducescatter.py", col_type)
 
 
 if __name__ == '__main__':
