@@ -52,10 +52,11 @@ class LoadOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddAttr<std::vector<int64_t>>("shape",
                                   "(vector<int64_t>) The shape of the output")
-        AddComment(
-            "Load operator will load a LoDTensor / SelectedRows variable from "
-            "disk "
-            "file.");
+        .SetDefault({});
+    AddComment(
+        "Load operator will load a LoDTensor / SelectedRows variable from "
+        "disk "
+        "file.");
   }
 };
 
