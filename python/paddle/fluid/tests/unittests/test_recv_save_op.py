@@ -101,11 +101,6 @@ class TestListenAndServOp(unittest.TestCase):
                 remote_recv_op = Operator(
                     "recv_save",
                     trainer_id=0,
-
-                    #shape=[5, 8],
-                    #slice_shapes=["5,8"],
-                    #slice_varnames=["table"],
-                    #remote_varnames=['table'],
                     shape=[10, 8],
                     slice_shapes=["5,8", "5,8"],
                     slice_varnames=["table", "table"],
