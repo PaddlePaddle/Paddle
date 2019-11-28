@@ -151,7 +151,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     ConcatPrimitiveFactory<T> prim_creator;
     std::string key = platform::CreateKey(
         paddle::framework::vectorize<int>(multi_input[0]->dims()),
-        ctx.op().Output("Out"), dt, platform::ThreadIDasStr());
+        ctx.OutputName("Out"), dt, platform::ThreadIDasStr());
     const std::string key_prim = key + "@concat_p";
     const std::string key_concat_pd = key + "@concat_pd";
     const std::string key_srcs = key + "@concat_srcs";
