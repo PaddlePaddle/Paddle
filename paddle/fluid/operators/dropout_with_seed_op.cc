@@ -43,15 +43,15 @@ class DropoutWithSeedOp : public framework::OperatorWithKernel {
                                    ctx.device_context());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    if (var_name == "Seed") {
-      return expected_kernel_type;
-    }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
-  }
+  // framework::OpKernelType GetKernelTypeForVar(
+  //    const std::string& var_name, const Tensor& tensor,
+  //    const framework::OpKernelType& expected_kernel_type) const override {
+  //  if (var_name == "Seed") {
+  //    return expected_kernel_type;
+  //  }
+  //  return framework::OpKernelType(expected_kernel_type.data_type_,
+  //                                 tensor.place(), tensor.layout());
+  //}
 };
 
 class DropoutWithSeedOpMaker : public framework::OpProtoAndCheckerMaker {
