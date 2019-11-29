@@ -31,7 +31,7 @@ class ElementwisePowKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<Tensor>("X");
     PADDLE_ENFORCE(x != nullptr,
                    "Cannot get input Variable X, variable name = %s",
-                   ctx.op().Input("X"));
+                   ctx.InputName("X"));
     auto* y = ctx.Input<Tensor>("Y");
     auto* z = ctx.Output<Tensor>("Out");
     z->mutable_data<T>(ctx.GetPlace());

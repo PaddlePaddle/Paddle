@@ -404,7 +404,7 @@ GetPrimitiveFactory(const MKLDNNDeviceContext& dev_ctx,
                     const mkldnn::engine& mkldnn_engine) {
   const std::string key = platform::CreateKey(
       platform::ThreadIDasStr(), input->format(),
-      framework::vectorize<int>(weights->dims()), ctx.op().Output("Out"));
+      framework::vectorize<int>(weights->dims()), ctx.OutputName("Out"));
 
   auto prim_creator =
       std::static_pointer_cast<FCPrimitiveFactory<T_in, T_w, T_out>>(

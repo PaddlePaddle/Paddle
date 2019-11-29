@@ -30,13 +30,16 @@ const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
 
 class PreparedOp {
  public:
-  static PreparedOp Prepare(const framework::RuntimeContext& ctx,
+  static PreparedOp Prepare(const NameVarBaseMap& ins,
+                            const NameVarBaseMap& outs,
                             const framework::OperatorWithKernel& op,
-                            platform::Place place, const NameVarBaseMap& ins);
+                            platform::Place place,
+                            const framework::AttributeMap* attrs);
 
   inline platform::DeviceContext* GetDeviceContext() const { return dev_ctx_; }
 
-  void Run();
+  void Run(const NameVarBaseMap* in, const NameVarBaseMap* out,
+           const framework::AttributeMap* attrs);
 
   static void PrepareData(const platform::Place& place,
                           const NameVarBaseMap& ins,

@@ -55,16 +55,11 @@ class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
         self.assertRaises(AttributeError, check_raise_is_test)
 
 
-# TODO(jczaja): Once mkl-dnn integration support NHWC input
-# then those tests should be changed to actual functional positive tests
 class TestLRNMKLDNNOpNHWC(TestLRNMKLDNNOp):
     def init_test_case(self):
         self.data_format = 'NHWC'
 
-    def test_check_output(self):
-        pass
-
-    # Grad tests both FWD and BWD ops kernels creation
+    #TODO(jczaja): Add grad support
     def test_check_grad_normal(self):
         with self.assertRaises(fluid.core_avx.EnforceNotMet):
             self.check_grad(['X'], 'Out', max_relative_error=0.01)
