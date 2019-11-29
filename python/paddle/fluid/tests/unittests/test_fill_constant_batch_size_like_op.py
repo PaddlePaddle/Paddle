@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import paddle.fluid as fluid
 from op_test import OpTest
 
 
@@ -86,6 +87,21 @@ class TestFillConstantBatchSizeLikeWithLoDTensor(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+# Test python API
+class TestFillConstantBatchSizeLikeAPI(OpTest):
+    def test_api(self):
+        like = fluid.layers.fill_constant(
+            shape=[1, 200], value=10, dtype='int64')
+        out = fluid.layers.fill_constant_batch_size_like(
+            input=like, shape=[2, 300], value=1315454564656, dtype='int64')
+        exe = fluid.Executor(place=fluid.CPUPlace())
+        res, = exe.run(fluid.default_main_program(), fetch_list=[out])
+
+        assert np.array_equal(
+            res[0], np.full(
+                [300], 1315454564656, dtype="int64"))
 
 
 if __name__ == "__main__":
