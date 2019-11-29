@@ -16,7 +16,9 @@ limitations under the License. */
 
 #if !defined(_WIN32)
 #include <pthread.h>
-#endif  // !_WIN32
+#else
+#include <mutex>  // NOLINT
+#endif            // !_WIN32
 
 #include "paddle/fluid/platform/enforce.h"
 
@@ -29,32 +31,69 @@ struct RWLock {
 
   ~RWLock() { pthread_rwlock_destroy(&lock_); }
 
-  void RDLock() {
+  inline void RDLock() {
     PADDLE_ENFORCE_EQ(pthread_rwlock_rdlock(&lock_), 0,
                       "acquire read lock failed");
   }
 
-  void WRLock() {
+  inline void WRLock() {
     PADDLE_ENFORCE_EQ(pthread_rwlock_wrlock(&lock_), 0,
                       "acquire write lock failed");
   }
 
-  void UNLock() {
+  inline void UNLock() {
     PADDLE_ENFORCE_EQ(pthread_rwlock_unlock(&lock_), 0, "unlock failed");
   }
 
  private:
   pthread_rwlock_t lock_;
 };
+// TODO(paddle-dev): Support RWLock for WIN32 for correctness.
 #else
 // https://stackoverflow.com/questions/7125250/making-pthread-rwlock-wrlock-recursive
 // In windows, rw_lock seems like a hack. Use empty object and do nothing.
 struct RWLock {
-  void RDLock() {}
-  void WRLock() {}
-  void UNLock() {}
+  // FIXME(minqiyang): use mutex here to do fake lock
+  inline void RDLock() { mutex_.lock(); }
+
+  inline void WRLock() { mutex_.lock(); }
+
+  inline void UNLock() { mutex_.unlock(); }
+
+ private:
+  std::mutex mutex_;
 };
 #endif
+
+class AutoWRLock {
+ public:
+  explicit AutoWRLock(RWLock* rw_lock) : lock_(rw_lock) { Lock(); }
+
+  ~AutoWRLock() { UnLock(); }
+
+ private:
+  inline void Lock() { lock_->WRLock(); }
+
+  inline void UnLock() { lock_->UNLock(); }
+
+ private:
+  RWLock* lock_;
+};
+
+class AutoRDLock {
+ public:
+  explicit AutoRDLock(RWLock* rw_lock) : lock_(rw_lock) { Lock(); }
+
+  ~AutoRDLock() { UnLock(); }
+
+ private:
+  inline void Lock() { lock_->RDLock(); }
+
+  inline void UnLock() { lock_->UNLock(); }
+
+ private:
+  RWLock* lock_;
+};
 
 }  // namespace framework
 }  // namespace paddle

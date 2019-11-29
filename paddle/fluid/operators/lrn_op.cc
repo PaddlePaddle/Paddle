@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/lrn_op.h"
 #include <string>
+#include <vector>
+#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -22,41 +25,80 @@ namespace paddle {
 namespace operators {
 
 using framework::Tensor;
+using DataLayout = framework::DataLayout;
 
 template <typename T>
 struct LRNFunctor<platform::CPUDeviceContext, T> {
   void operator()(const framework::ExecutionContext& ctx,
                   const framework::Tensor& input, framework::Tensor* out,
                   framework::Tensor* mid, int N, int C, int H, int W, int n,
-                  T k, T alpha, T beta) {
-    auto x_v = framework::EigenVector<T>::Flatten(input);
-
-    const int start = -(n - 1) / 2;
-    const int end = start + n;
-
-    auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
-    e_mid = e_mid.constant(k);
-
-    auto e_x = framework::EigenTensor<T, 4>::From(input);
-    for (int m = 0; m < N; m++) {
-      for (int i = 0; i < C; i++) {
-        for (int c = start; c < end; c++) {
-          int ch = i + c;
-          if (ch >= 0 && ch < C) {
-            auto s = e_mid.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
-                                 Eigen::array<int, 4>({{1, 1, H, W}}));
-
-            auto r = e_x.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
-                               Eigen::array<int, 4>({{1, 1, H, W}}));
-
-            s += alpha * r.square();
-          }
-        }
-      }
+                  T k, T alpha, T beta, const DataLayout data_layout) {
+    auto place = ctx.GetPlace();
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    math::Transpose<platform::CPUDeviceContext, T, 4> transpose;
+    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    Tensor in_transpose, mid_transpose, out_transpose;
+    // if channel_last, transpose to channel_first
+    if (data_layout == DataLayout::kNHWC) {
+      auto in_dims = input.dims();
+      std::vector<int64_t> shape(
+          {in_dims[0], in_dims[3], in_dims[1], in_dims[2]});
+      in_transpose.mutable_data<T>(framework::make_ddim(shape), place);
+      mid_transpose.mutable_data<T>(framework::make_ddim(shape), place);
+      out_transpose.mutable_data<T>(framework::make_ddim(shape), place);
+      std::vector<int> axis = {0, 3, 1, 2};
+      transpose(dev_ctx, input, &in_transpose, axis);
+    } else {
+      in_transpose = input;
+      mid_transpose = *mid;
+      out_transpose = *out;
+      mid_transpose.mutable_data<T>(mid->dims(), place);
+      out_transpose.mutable_data<T>(out->dims(), place);
     }
 
-    auto out_e = framework::EigenVector<T>::Flatten(*out);
-    out_e = x_v * e_mid.reshape(Eigen::DSizes<int, 1>(e_mid.size())).pow(-beta);
+    const T* idata = in_transpose.data<T>();
+    T* odata = out_transpose.data<T>();
+    T* mdata = mid_transpose.data<T>();
+
+    Tensor squared;
+    T* sdata = squared.mutable_data<T>({1, C + n - 1, H, W}, place);
+    std::memset(sdata, 0, sizeof(T) * squared.numel());
+    for (int i = 0; i < mid->numel(); ++i) {
+      mdata[i] = k;
+    }
+    int img_size = H * W;
+    int fea_size = C * img_size;
+    int pre_pad = (n - 1) / 2;
+    // compute batches one by one
+    for (int i = 0; i < N; ++i) {
+      blas.VSQUARE(fea_size, idata + i * fea_size, sdata + pre_pad * img_size);
+      // init the first channel of mid
+      for (int c = 0; c < n; ++c) {
+        blas.AXPY(img_size, alpha, sdata + c * img_size, mdata + i * fea_size);
+      }
+      for (int c = 1; c < C; ++c) {
+        // copy previous scale
+        int mid_offset = i * fea_size + c * img_size;
+        std::memcpy(mdata + mid_offset, mdata + mid_offset - img_size,
+                    img_size * sizeof(T));
+        // add last
+        blas.AXPY(img_size, alpha, sdata + (c + n - 1) * img_size,
+                  mdata + mid_offset);
+        // sub rest
+        blas.AXPY(img_size, -alpha, sdata + (c - 1) * img_size,
+                  mdata + mid_offset);
+      }
+    }
+    // compute the final output
+    blas.VPOW(mid->numel(), mdata, -beta, odata);
+    blas.VMUL(mid->numel(), odata, idata, odata);
+
+    // if channel_last, transpose the output(NCHW) to channel_last
+    if (data_layout == DataLayout::kNHWC) {
+      std::vector<int> axis = {0, 2, 3, 1};
+      transpose(dev_ctx, mid_transpose, mid, axis);
+      transpose(dev_ctx, out_transpose, out, axis);
+    }
   }
 };
 template struct LRNFunctor<platform::CPUDeviceContext, float>;
@@ -68,7 +110,7 @@ struct LRNGradFunctor<platform::CPUDeviceContext, T> {
                   const framework::Tensor& x, const framework::Tensor& out,
                   const framework::Tensor& mid, framework::Tensor* x_g,
                   const framework::Tensor& out_g, int N, int C, int H, int W,
-                  int n, T alpha, T beta) {
+                  int n, T alpha, T beta, const DataLayout data_layout) {
     T ratio = -2 * alpha * beta;
     auto x_g_e = framework::EigenVector<T>::Flatten(*x_g);
     x_g_e = x_g_e.constant(0.0);
@@ -83,17 +125,17 @@ struct LRNGradFunctor<platform::CPUDeviceContext, T> {
     const int end = start + n;
     for (int m = 0; m < N; m++) {
       for (int i = 0; i < C; i++) {
-        auto i_x = e_x.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
-                             Eigen::array<int, 4>({{1, 1, H, W}}));
+        auto offsets = Eigen::array<int, 4>({{m, i, 0, 0}});
+        auto extents = Eigen::array<int, 4>({{1, 1, H, W}});
+        if (data_layout == DataLayout::kNHWC) {
+          offsets = Eigen::array<int, 4>({{m, 0, 0, i}});
+          extents = Eigen::array<int, 4>({{1, H, W, 1}});
+        }
 
-        auto i_x_g = e_x_g.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
-                                 Eigen::array<int, 4>({{1, 1, H, W}}));
-
-        auto i_out_g = e_out_g.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
-                                     Eigen::array<int, 4>({{1, 1, H, W}}));
-
-        auto i_mid = e_mid.slice(Eigen::array<int, 4>({{m, i, 0, 0}}),
-                                 Eigen::array<int, 4>({{1, 1, H, W}}));
+        auto i_x = e_x.slice(offsets, extents);
+        auto i_x_g = e_x_g.slice(offsets, extents);
+        auto i_out_g = e_out_g.slice(offsets, extents);
+        auto i_mid = e_mid.slice(offsets, extents);
 
         i_x_g = i_mid.pow(-beta) * i_out_g;
         for (int c = start; c < end; c++) {
@@ -102,14 +144,14 @@ struct LRNGradFunctor<platform::CPUDeviceContext, T> {
             continue;
           }
 
-          auto c_out = e_out.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
-                                   Eigen::array<int, 4>({{1, 1, H, W}}));
-
-          auto c_mid = e_mid.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
-                                   Eigen::array<int, 4>({{1, 1, H, W}}));
-
-          auto c_out_g = e_out_g.slice(Eigen::array<int, 4>({{m, ch, 0, 0}}),
-                                       Eigen::array<int, 4>({{1, 1, H, W}}));
+          if (data_layout != DataLayout::kNHWC) {
+            offsets = Eigen::array<int, 4>({{m, ch, 0, 0}});
+          } else {
+            offsets = Eigen::array<int, 4>({{m, 0, 0, ch}});
+          }
+          auto c_out = e_out.slice(offsets, extents);
+          auto c_mid = e_mid.slice(offsets, extents);
+          auto c_out_g = e_out_g.slice(offsets, extents);
 
           i_x_g += ratio * c_out_g * c_out * i_x / c_mid;
         }
@@ -119,27 +161,6 @@ struct LRNGradFunctor<platform::CPUDeviceContext, T> {
 };
 template struct LRNGradFunctor<platform::CPUDeviceContext, float>;
 template struct LRNGradFunctor<platform::CPUDeviceContext, double>;
-
-namespace {
-framework::OpKernelType GetExpectedLRNKernel(
-    const framework::ExecutionContext& ctx) {
-  framework::LibraryType library_{framework::LibraryType::kPlain};
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
-#ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = framework::DataLayout::kMKLDNN;
-  }
-#endif
-
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-      layout_, library_);
-}
-}  // namespace
 
 class LRNOp : public framework::OperatorWithKernel {
  public:
@@ -156,6 +177,9 @@ class LRNOp : public framework::OperatorWithKernel {
     auto x_dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE_EQ(x_dim.size(), 4, "Input(X)'rank of LRNOp should be 4.");
 
+    int n = ctx->Attrs().Get<int>("n");
+    PADDLE_ENFORCE(n > 0 && n % 2 == 1, "n should be positive odd value");
+
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
     ctx->SetOutputDim("MidOut", x_dim);
@@ -163,7 +187,41 @@ class LRNOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return GetExpectedLRNKernel(ctx);
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    }
+#endif
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout_, library_);
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+#ifdef PADDLE_WITH_MKLDNN
+    if ((expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+        (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+      auto attrs = Attrs();
+      auto ar = paddle::framework::AttrReader(attrs);
+      const std::string data_format = ar.Get<std::string>("data_format");
+      auto dl = framework::StringToDataLayout(data_format);
+      // Some models may have intentionally set "AnyLayout" for pool
+      // op. Treat this as NCHW (default data_format value)
+      if (dl != framework::DataLayout::kAnyLayout) {
+        return framework::OpKernelType(expected_kernel_type.data_type_,
+                                       tensor.place(), dl);
+      }
+    }
+#endif
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -216,8 +274,8 @@ class LRNOpMaker : public framework::OpProtoAndCheckerMaker {
         "the input will be transformed automatically. ")
         .SetDefault("AnyLayout");
     AddAttr<bool>("is_test",
-                  "Turns on memory optimization that optimizes away "
-                  "unnecessary memory allocations. Used by MKLDNN.")
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
 
     AddComment(R"DOC(
@@ -230,15 +288,15 @@ The original formula is:
 
 $$
 Output(i, x, y) = Input(i, x, y) / \left(
-k + \alpha \sum\limits^{\min(C, c + n/2)}_{j = \max(0, c - n/2)}
+k + \alpha \sum\limits^{\min(C-1, i + n/2)}_{j = \max(0, i - n/2)}
 (Input(j, x, y))^2
 \right)^{\beta}
 $$
 
 Function implementation:
 
-Inputs and outpus are in NCHW format, while input.shape.ndims() equals 4.
-And dimensions 0 ~ 3 represent batch size, feature maps, rows,
+Inputs and outpus are in NCHW or NHWC format, while input.shape.ndims() equals 4.
+If NCHW, the dimensions 0 ~ 3 represent batch size, feature maps, rows,
 and columns, respectively.
 
 Input and Output in the formula above is for each map(i) of one image, and
@@ -269,15 +327,36 @@ class LRNOpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return GetExpectedLRNKernel(ctx);
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+    if (library_ == framework::LibraryType::kPlain &&
+        platform::CanMKLDNNBeUsed(ctx)) {
+      // TODO(jczaja): Add support for NHWC
+      const std::string data_format = ctx.Attr<std::string>("data_format");
+      PADDLE_ENFORCE_NE(
+          data_format, "NHWC",
+          platform::errors::Unimplemented(
+              "LRN MKLDNN grad does not support NHWC data format yet"));
+      library_ = framework::LibraryType::kMKLDNN;
+      layout_ = framework::DataLayout::kMKLDNN;
+    }
+#endif
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
+        layout_, library_);
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lrn, ops::LRNOp, ops::LRNOpMaker<float>,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    lrn, ops::LRNOp, ops::LRNOpMaker<float>,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+
 REGISTER_OPERATOR(lrn_grad, ops::LRNOpGrad);
 REGISTER_OP_CPU_KERNEL(
     lrn, ops::LRNKernel<paddle::platform::CPUDeviceContext, float>);

@@ -14,6 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/place.h"
 
+DEFINE_bool(benchmark, false,
+            "Doing memory benchmark. It will make deleting scope synchronized, "
+            "and add some memory usage logs."
+            "Default cuda is asynchronous device, set to True will"
+            "force op run in synchronous mode.");
+
 namespace paddle {
 namespace platform {
 
@@ -33,15 +39,6 @@ class PlacePrinter : public boost::static_visitor<> {
 };
 
 }  // namespace detail
-
-static Place the_default_place;
-
-void set_place(const Place &place) { the_default_place = place; }
-const Place &get_place() { return the_default_place; }
-
-const CUDAPlace default_gpu() { return CUDAPlace(0); }
-const CPUPlace default_cpu() { return CPUPlace(); }
-const CUDAPinnedPlace default_cuda_pinned() { return CUDAPinnedPlace(); }
 
 bool is_gpu_place(const Place &p) {
   return boost::apply_visitor(IsCUDAPlace(), p);

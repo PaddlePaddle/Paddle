@@ -59,12 +59,15 @@ class VarDesc {
  public:
   explicit VarDesc(const std::string &name) {
     desc_.set_name(name);
+    // TODO(paddle-dev): Why default to lodtensor.
     desc_.mutable_type()->set_type(proto::VarType::LOD_TENSOR);
   }
 
   explicit VarDesc(const proto::VarDesc &desc) : desc_(desc) {}
 
   proto::VarDesc *Proto() { return &desc_; }
+
+  const proto::VarDesc *Proto() const { return &desc_; }
 
   std::string Name() const { return desc_.name(); }
 
@@ -87,8 +90,6 @@ class VarDesc {
   void SetDataTypes(
       const std::vector<proto::VarType::Type> &multiple_data_type);
 
-  void SetCapacity(int64_t capacity);
-
   proto::VarType::Type GetDataType() const;
 
   std::vector<proto::VarType::Type> GetDataTypes() const;
@@ -109,15 +110,21 @@ class VarDesc {
 
   void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }
 
+  bool NeedCheckFeed() const { return desc_.need_check_feed(); }
+
+  void SetNeedCheckFeed(bool need_check_feed) {
+    desc_.set_need_check_feed(need_check_feed);
+  }
+
  private:
-  const proto::VarType::ChannelDesc &channel_desc() const;
   const proto::VarType::TensorDesc &tensor_desc() const;
   std::vector<proto::VarType::TensorDesc> tensor_descs() const;
-  proto::VarType::ChannelDesc *mutable_channel_desc();
   proto::VarType::TensorDesc *mutable_tensor_desc();
   std::vector<proto::VarType::TensorDesc *> mutable_tensor_descs();
 
   proto::VarDesc desc_;
 };
+
+bool operator==(const VarDesc &left, const VarDesc &right);
 }  // namespace framework
 }  // namespace paddle

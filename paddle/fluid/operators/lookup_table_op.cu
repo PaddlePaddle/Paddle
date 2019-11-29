@@ -15,8 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/lookup_table_op.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -31,8 +31,16 @@ __global__ void LookupTable(T *output, const T *table, const int64_t *ids,
 
   while (idy < K) {
     int64_t id = ids[idy];
-    PADDLE_ASSERT(id >= 0);
-    PADDLE_ASSERT(id < N);
+    PADDLE_ENFORCE(
+        id >= 0,
+        "Variable value (input) of OP(fluid.layers.embedding) "
+        "expected >= 0 and < %ld, but got %ld. Please check input value.",
+        N, id);
+    PADDLE_ENFORCE(
+        id < N,
+        "Variable value (input) of OP(fluid.layers.embedding) "
+        "expected >= 0 and < %ld, but got %ld. Please check input value.",
+        N, id);
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
@@ -57,9 +65,17 @@ __global__ void LookupTableGrad(T *table, const T *output, const int64_t *ids,
   int idy = blockIdx.x + threadIdx.y * GridDimX;
 
   while (idy < K) {
-    int id = ids[idy];
-    PADDLE_ASSERT(id >= 0);
-    PADDLE_ASSERT(id < N);
+    int64_t id = ids[idy];
+    PADDLE_ENFORCE(
+        id >= 0,
+        "Variable value (input) of OP(fluid.layers.embedding) "
+        "expected >= 0 and < %ld, but got %ld. Please check input value.",
+        N, id);
+    PADDLE_ENFORCE(
+        id < N,
+        "Variable value (input) of OP(fluid.layers.embedding) "
+        "expected >= 0 and < %ld, but got %ld. Please check input value.",
+        N, id);
     const T *out = output + idy * D;
     T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
@@ -77,6 +93,9 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
     auto *ids_t = context.Input<LoDTensor>("Ids");
     auto *output_t = context.Output<LoDTensor>("Out");
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
+
+    auto id_name = context.InputNames("Ids").front();
+    auto out_name = context.OutputNames("Out").front();
 
     size_t N = table_t->dims()[0];
     size_t D = table_t->dims()[1];
@@ -109,6 +128,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
     auto &dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
     bool is_sparse = context.Attr<bool>("is_sparse");
+
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
@@ -127,10 +147,8 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto gpu_place = boost::get<platform::CUDAPlace>(context.GetPlace());
 
       // TODO(yuyang18): Strange code here.
-      memory::Copy(platform::CPUPlace(),
-                   new_rows.CUDAMutableData(context.GetPlace()), gpu_place,
-                   ids_data, ids_num * sizeof(int64_t), stream);
-
+      memory::Copy(gpu_place, new_rows.CUDAMutableData(context.GetPlace()),
+                   gpu_place, ids_data, ids_num * sizeof(int64_t), stream);
       d_table->set_rows(new_rows);
 
       auto *d_table_value = d_table->mutable_value();
@@ -140,9 +158,14 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto *d_table_data = d_table_value->data<T>();
       auto *d_output_data = d_output->data<T>();
       auto d_output_dims = d_output->dims();
-      PADDLE_ENFORCE_EQ(
-          d_table_value->dims(),
-          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1));
+      auto d_output_dims_2d =
+          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
+      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
+                        "ShapeError: The shape of lookup_table@Grad and "
+                        "output@Grad should be same. "
+                        "But received lookup_table@Grad's shape = [%s], "
+                        "output@Grad's shape = [%s].",
+                        d_table_value->dims(), d_output_dims_2d);
       memory::Copy(gpu_place, d_table_data, gpu_place, d_output_data,
                    d_output->numel() * sizeof(T), stream);
 
@@ -173,8 +196,12 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(lookup_table, ops::LookupTableCUDAKernel<float>,
-                        ops::LookupTableCUDAKernel<double>);
+                        ops::LookupTableCUDAKernel<double>,
+                        ops::LookupTableCUDAKernel<plat::float16>,
+                        ops::LookupTableCUDAKernel<int8_t>);
 REGISTER_OP_CUDA_KERNEL(lookup_table_grad,
                         ops::LookupTableGradCUDAKernel<float>,
-                        ops::LookupTableGradCUDAKernel<double>);
+                        ops::LookupTableGradCUDAKernel<double>,
+                        ops::LookupTableGradCUDAKernel<plat::float16>);

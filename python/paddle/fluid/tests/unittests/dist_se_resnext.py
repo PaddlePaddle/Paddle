@@ -134,7 +134,7 @@ class SE_ResNeXt():
             size=class_dim,
             act='softmax',
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.2)))
+                initializer=fluid.initializer.Constant(value=0.05)))
         return out
 
     def shortcut(self, input, ch_out, stride):
@@ -184,7 +184,7 @@ class SE_ResNeXt():
             act=None,
             # avoid pserver CPU init differs from GPU
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.2)),
+                initializer=fluid.initializer.Constant(value=0.05)),
             bias_attr=False)
         return fluid.layers.batch_norm(input=conv, act=act)
 
@@ -192,19 +192,25 @@ class SE_ResNeXt():
         pool = fluid.layers.pool2d(
             input=input, pool_size=0, pool_type='avg', global_pooling=True)
         stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
-        squeeze = fluid.layers.fc(input=pool,
-                                  size=num_channels // reduction_ratio,
-                                  act='relu')
+        squeeze = fluid.layers.fc(
+            input=pool,
+            size=num_channels // reduction_ratio,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.05)),
+            act='relu')
         stdv = 1.0 / math.sqrt(squeeze.shape[1] * 1.0)
-        excitation = fluid.layers.fc(input=squeeze,
-                                     size=num_channels,
-                                     act='sigmoid')
+        excitation = fluid.layers.fc(
+            input=squeeze,
+            size=num_channels,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.05)),
+            act='sigmoid')
         scale = fluid.layers.elementwise_mul(x=input, y=excitation, axis=0)
         return scale
 
 
 class DistSeResneXt2x2(TestDistRunnerBase):
-    def get_model(self, batch_size=2):
+    def get_model(self, batch_size=2, use_dgc=False):
         # Input data
         image = fluid.layers.data(
             name="data", shape=[3, 224, 224], dtype='float32')
@@ -229,19 +235,26 @@ class DistSeResneXt2x2(TestDistRunnerBase):
 
         bd = [step * e for e in epochs]
         base_lr = 0.1
-        lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
 
-        optimizer = fluid.optimizer.Momentum(
-            learning_rate=fluid.layers.piecewise_decay(
-                boundaries=bd, values=lr),
-            momentum=0.9,
-            regularization=fluid.regularizer.L2Decay(1e-4))
+        if not use_dgc:
+            optimizer = fluid.optimizer.Momentum(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr),
+                momentum=0.9,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+        else:
+            optimizer = fluid.optimizer.DGCMomentumOptimizer(
+                learning_rate=fluid.layers.piecewise_decay(
+                    boundaries=bd, values=lr),
+                momentum=0.9,
+                rampup_begin_step=0,
+                regularization=fluid.regularizer.L2Decay(1e-4))
         optimizer.minimize(avg_cost)
 
         # Reader
         train_reader = paddle.batch(
-            paddle.dataset.flowers.train(), batch_size=batch_size)
+            paddle.dataset.flowers.test(use_xmap=False), batch_size=batch_size)
         test_reader = paddle.batch(
             paddle.dataset.flowers.test(use_xmap=False), batch_size=batch_size)
 

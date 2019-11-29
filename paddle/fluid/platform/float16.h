@@ -59,7 +59,7 @@ limitations under the License. */
 #if !defined(_WIN32)
 #define PADDLE_ALIGN(x) __attribute__((aligned(x)))
 #else
-#define PADDLE_ALIGN(x) /*do nothing*/
+#define PADDLE_ALIGN(x) __declspec(align(x))
 #endif
 
 namespace paddle {
@@ -71,9 +71,6 @@ struct float16;
 }  // namespace platform
 }  // namespace paddle
 
-// NOTE():
-// Do not move the eigen.h header, otherwise the eigen_vector<bool> will failed.
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/hostdevice.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
@@ -1037,6 +1034,11 @@ HOSTDEVICE inline bool(isfinite)(const float16& a) {
 template <>
 HOSTDEVICE inline float16 exp(const float16& a) {
   return float16(::expf(static_cast<float>(a)));
+}
+
+template <>
+HOSTDEVICE inline float16 erf(const float16& a) {
+  return float16(::erff(static_cast<float>(a)));
 }
 
 template <>

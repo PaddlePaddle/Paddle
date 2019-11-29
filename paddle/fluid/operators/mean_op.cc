@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/mean_op.h"
+#include <memory>
+#include <string>
+#include <unordered_map>
 
 namespace paddle {
 namespace operators {
@@ -34,11 +37,19 @@ class MeanOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) The input of mean op");
-    AddOutput("Out", "(Tensor) The output of mean op").Reuse("X");
+    AddOutput("Out", "(Tensor) The output of mean op");
     AddComment(R"DOC(
 Mean Operator calculates the mean of all elements in X.
 
 )DOC");
+  }
+};
+
+class MeanOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string> GetInputOutputWithSameType()
+      const override {
+    return std::unordered_map<std::string, std::string>{{"X", /*->*/ "Out"}};
   }
 };
 
@@ -50,29 +61,42 @@ class MeanGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     ctx->ShareLoD("X", framework::GradVarName("X"));
   }
-};
 
-class MeanGradMaker : public framework::SingleGradOpDescMaker {
- public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-
- protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* grad_op = new framework::OpDesc();
-    grad_op->SetType("mean_grad");
-    grad_op->SetInput("X", Input("X"));
-    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    return std::unique_ptr<framework::OpDesc>(grad_op);
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
+
+template <typename T>
+class MeanGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    auto* grad_op = new T();
+    grad_op->SetType("mean_grad");
+    grad_op->SetInput("X", this->Input("X"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    return std::unique_ptr<T>(grad_op);
+  }
+};
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(MeanGradNoNeedBufferVarsInference, "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanGradMaker);
-REGISTER_OPERATOR(mean_grad, ops::MeanGradOp);
+REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanOpInferVarType,
+                  ops::MeanGradMaker<paddle::framework::OpDesc>,
+                  ops::MeanGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(mean_grad, ops::MeanGradOp,
+                  ops::MeanGradNoNeedBufferVarsInference);
 REGISTER_OP_CPU_KERNEL(
     mean, ops::MeanKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MeanKernel<paddle::platform::CPUDeviceContext, double>);

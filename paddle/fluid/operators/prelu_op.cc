@@ -26,10 +26,13 @@ class PReluOp : public framework::OperatorWithKernel {
     std::string mode = ctx->Attrs().Get<std::string>("mode");
 
     auto x_dim = ctx->GetInputDim("X");
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Alpha"), "Input(Alpha) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of PreluOp should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("Alpha"),
+                   "Input(Alpha) of PreluOp should not be null");
 
-    PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of PreluOp should not be null");
     if (mode == "all") {
       PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == 1,
                      "For mode 'all', size of weight Alpha must be one.");
@@ -39,14 +42,25 @@ class PReluOp : public framework::OperatorWithKernel {
                      "equal to the number of channels, should be %d",
                      x_dim[1]);
     } else if (mode == "element") {
-      PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == product(x_dim),
-                     "For element-wise mode, size of weight Alpha must be "
-                     "equal to the number of input, should be %d",
-                     product(x_dim));
+      auto alpha_dim = ctx->GetInputDim("Alpha");
+      auto alpha_rank = alpha_dim.size();
+      auto x_rank = x_dim.size();
+      size_t x_product = 1;
+      size_t alpha_product = 1;
+      PADDLE_ENFORCE_EQ(alpha_rank, x_rank,
+                        "For element-wise mode, rank of weight Alpha must be ",
+                        "equal to the rank of input.");
+      for (int64_t i = x_rank - 1; i > 0; i--) {
+        x_product *= x_dim[i];
+        alpha_product *= alpha_dim[i];
+      }
+      PADDLE_ENFORCE_EQ(x_product, alpha_product,
+                        "For element-wise mode, size of weight Alpha must be "
+                        "equal to the number of input.");
     } else {
       PADDLE_THROW("Unkown mode %s", mode);
     }
-    ctx->SetOutputDim("Out", x_dim);
+    ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
@@ -54,8 +68,8 @@ class PReluOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
-        platform::CPUPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -77,10 +91,10 @@ x,         \qquad  \text{if} \ x >= 0
 $$
 The input `X` can carry the LoD (Level of Details) information,
 or not. And the output shares the LoD information with input `X`.
-There are modes: 
+There are modes:
   all: all elements share same weight
   channel: elements in a channel share same weight
-  element: each element has a weight 
+  element: each element has a weight
 )DOC");
     AddAttr<std::string>("mode", "The mode for inputs to share weights.")
         .SetDefault("all");
@@ -111,8 +125,8 @@ class PReluGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
-        platform::CPUPlace());
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -121,8 +135,10 @@ class PReluGradOp : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(prelu, ops::PReluOp, ops::PReluOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(
+    prelu, ops::PReluOp, ops::PReluOpMaker,
+    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
+    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
 REGISTER_OPERATOR(prelu_grad, ops::PReluGradOp);
 REGISTER_OP_CPU_KERNEL(
     prelu, ops::PReluKernel<paddle::platform::CPUDeviceContext, float>);

@@ -22,6 +22,14 @@ import numpy
 import functools
 
 
+def convert_to_offset(lod):
+    offset = [[0] for i in lod]
+    for i, level in enumerate(lod):
+        for seq_len in level:
+            offset[i].append(offset[i][-1] + seq_len)
+    return offset
+
+
 class TestReorderLoDTensor(unittest.TestCase):
     num_seq = 5
     # [name, shape, lod_level] pair indicating data info of source and target
@@ -91,13 +99,6 @@ class TestReorderLoDTensor(unittest.TestCase):
             self.inputs[desc[0]] = tensor
 
     def reorder(self):
-        def convert_to_offset(lod):
-            offset_lod = [[0] for i in lod]
-            for i, level in enumerate(lod):
-                for seq_len in level:
-                    offset_lod[i].append(offset_lod[i][-1] + seq_len)
-            return offset_lod
-
         level = 0
         # compute the rank_table according to ref_lod
         ref_lod = self.data[self.data_desc[1][0]][1][level]

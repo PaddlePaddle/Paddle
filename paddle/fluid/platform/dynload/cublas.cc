@@ -32,6 +32,9 @@ CUBLAS_BLAS_ROUTINE_EACH_R2(DEFINE_WRAP);
 CUBLAS_BLAS_ROUTINE_EACH_R3(DEFINE_WRAP);
 #endif
 
+#ifdef CUBLAS_BLAS_ROUTINE_EACH_R4
+CUBLAS_BLAS_ROUTINE_EACH_R4(DEFINE_WRAP);
+#endif
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

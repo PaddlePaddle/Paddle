@@ -16,11 +16,15 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -35,23 +39,67 @@ namespace details {
 // The outside vector is the device vector. Each element of this vector is a
 // map from variable name to variables. The variables, who have the same name,
 // will have a differsent version. The offset in the
-// `std::vector<std::unique_ptr<VarHandle>>` is the version of varaibles.
-typedef std::vector<
-    std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>
+// `std::vector<VarHandle*>` is the version of varaibles.
+typedef std::vector<std::unordered_map<std::string, std::vector<VarHandle *>>>
     GraphVars;
-const char kGraphVars[] = "vars";
+constexpr char kGraphVars[] = "vars";
+
+constexpr char kNRanks[] = "nranks";
+
+constexpr char kPlaces[] = "places";
+constexpr char kLocalScopes[] = "local_scopes";
+constexpr char kNCCLCtxs[] = "nccl_ctxs";
+constexpr char kUseHierarchicalAllReduce[] = "use_hierarchical_allreduce";
 
 // aux variables to represent dependency. Useful to resolve data hazard.
-typedef std::unordered_set<std::unique_ptr<VarHandleBase>> GraphDepVars;
-const char kGraphDepVars[] = "dep_vars";
+typedef std::unordered_set<VarHandleBase *> GraphDepVars;
+constexpr char kGraphDepVars[] = "dep_vars";
 
-// all operators. NOTE that even we use a vector here, the operators is
-// unordered.
-typedef std::vector<std::unique_ptr<OpHandleBase>> GraphOps;
-const char kGraphOps[] = "ops";
+typedef std::unordered_set<std::string> FusedVars;
+constexpr char kFusedVars[] = "fused_vars";
+constexpr char kFusedVarNamePrefix[] = "@FUSEDVAR@";
 
-typedef std::unordered_map<std::string, int> ShardedVarDevice;
-const char kShardedVarDevice[] = "sharded_var_device";
+typedef std::string FusedOptType;
+constexpr char kFusedOptType[] = "fused_opt_type";
+
+typedef std::vector<std::string> FusedGrads;
+constexpr char kFusedGrads[] = "fused_gradients";
+
+typedef std::vector<std::pair<std::string, std::string>> ParamsAndGrads;
+constexpr char kParamsAndDenseGrads[] = "params_and_dense_grads";
+constexpr char kParamsAndSparseGrads[] = "params_and_sparse_grads";
+
+typedef std::vector<ProgramDesc> ProgramDescs;
+constexpr char kProgramDescs[] = "program_descs";
+
+typedef std::unordered_set<std::string> PinnedVars;
+constexpr char kPinnedVars[] = "pinned_vars";
+
+typedef std::vector<std::vector<std::pair<std::string, std::string>>>
+    GroupParamsAndGrads;
+constexpr char kGroupParamsAndDenseGrads[] = "group_params_dense_grads";
+
+inline bool IsOpRole(const OpDesc &op, OpRole role) {
+  const auto &attrs = op.GetAttrMap();
+  auto iter = attrs.find(OpProtoAndCheckerMaker::OpRoleAttrName());
+  if (iter == attrs.end()) return false;
+  return static_cast<bool>(boost::get<int>(iter->second) &
+                           static_cast<int>(role));
+}
+
+inline std::vector<std::string> GetOpRoleVarsOrEmpty(const OpDesc &op) {
+  const auto &attrs = op.GetAttrMap();
+  auto iter = attrs.find(OpProtoAndCheckerMaker::OpRoleVarAttrName());
+  if (iter == attrs.end()) return {};
+  auto &ret = boost::get<std::vector<std::string>>(iter->second);
+  PADDLE_ENFORCE_EQ(
+      ret.size() % 2, 0,
+      platform::errors::InvalidArgument(
+          "The size of attribute %s must be an even number, but got %d",
+          OpProtoAndCheckerMaker::OpRoleVarAttrName(), ret.size()));
+  return boost::get<std::vector<std::string>>(iter->second);
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

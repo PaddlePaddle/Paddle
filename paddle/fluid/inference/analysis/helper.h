@@ -17,15 +17,31 @@ limitations under the License. */
 #include <sys/stat.h>
 #include <cstdio>
 #include <fstream>
+#include <memory>
+#include <set>
 #include <string>
 #include <typeindex>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/port.h"
+
+#ifdef _WIN32
+#include <direct.h>
+#include <io.h>
+#define GCC_ATTRIBUTE(attr__)
+#define MKDIR(path) _mkdir(path)
+#else
+#include <unistd.h>
+#define GCC_ATTRIBUTE(attr__) __attribute__((attr__));
+#define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
+#endif
+#define __SHOULD_USE_RESULT__ GCC_ATTRIBUTE(warn_unused_result)
 
 namespace paddle {
 namespace inference {
@@ -101,20 +117,20 @@ class OrderedRegistry {
  public:
   T *Register(const std::string &name, T *x) {
     PADDLE_ENFORCE(!dic_.count(name), "duplicate key [%s]", name);
-    dic_[name] = data_.size();
-    data_.emplace_back(std::unique_ptr<T>(x));
-    return data_.back().get();
+    dic_[name] = elements_.size();
+    elements_.emplace_back(std::unique_ptr<T>(x));
+    return elements_.back().get();
   }
 
   T *Lookup(const std::string &name) {
     auto it = dic_.find(name);
     if (it == dic_.end()) return nullptr;
-    return data_[it->second].get();
+    return elements_[it->second].get();
   }
 
  protected:
   std::unordered_map<std::string, int> dic_;
-  std::vector<std::unique_ptr<T>> data_;
+  std::vector<std::unique_ptr<T>> elements_;
 };
 
 template <typename T>
@@ -122,20 +138,6 @@ T &GetFromScope(const framework::Scope &scope, const std::string &name) {
   framework::Variable *var = scope.FindVar(name);
   PADDLE_ENFORCE(var != nullptr);
   return *var->GetMutable<T>();
-}
-
-static void ExecShellCommand(const std::string &cmd, std::string *message) {
-  char buffer[128];
-  std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
-  if (!pipe) {
-    LOG(ERROR) << "error running command: " << cmd;
-    return;
-  }
-  while (!feof(pipe.get())) {
-    if (fgets(buffer, 128, pipe.get()) != nullptr) {
-      *message += buffer;
-    }
-  }
 }
 
 static framework::proto::ProgramDesc LoadProgramDesc(
@@ -167,6 +169,83 @@ static bool PathExists(const std::string &path) {
     }
   }
   return false;
+}
+
+static std::string GetDirRoot(const std::string &path) {
+  char sep = '/';
+
+#ifdef _WIN32
+  sep = '\\';
+#endif
+
+  size_t i = path.rfind(sep, path.length());
+  if (i != std::string::npos) {
+    return (path.substr(0, i));
+  }
+  return path;
+}
+
+static std::string GetOrCreateModelOptCacheDir(const std::string &model_root) {
+  std::string opt_cache_dir = model_root + "/_opt_cache/";
+  if (!PathExists(opt_cache_dir)) {
+    PADDLE_ENFORCE(MKDIR(opt_cache_dir.c_str()) != -1,
+                   "Can not create optimize cache directory: %s, Make sure you "
+                   "have permission to write",
+                   opt_cache_dir);
+  }
+  return opt_cache_dir;
+}
+
+static std::string GetTrtCalibPath(const std::string &model_root,
+                                   const std::string &engine_key) {
+  return model_root + "/trt_calib_" + engine_key;
+}
+
+// If there is no calib table data file in model_opt_cache_dir, return "".
+static std::string GetTrtCalibTableData(const std::string &model_opt_cache_dir,
+                                        const std::string &engine_key,
+                                        bool enable_int8) {
+  std::string trt_calib_table_path =
+      GetTrtCalibPath(model_opt_cache_dir, engine_key);
+  if (enable_int8 && FileExists(trt_calib_table_path)) {
+    VLOG(3) << "Calibration table file: " << trt_calib_table_path
+            << "is found here";
+    std::ifstream infile(trt_calib_table_path, std::ios::in);
+    std::stringstream buffer;
+    buffer << infile.rdbuf();
+    std::string calibration_data(buffer.str());
+    return calibration_data;
+  }
+  return "";
+}
+
+static std::string GetTrtEngineSerializedPath(const std::string &model_root,
+                                              const std::string &engine_key) {
+  return model_root + "/trt_serialized_" + engine_key;
+}
+
+static std::string GetTrtEngineSerializedData(
+    const std::string &model_opt_cache_dir, const std::string &engine_key) {
+  std::string trt_serialized_path =
+      GetTrtEngineSerializedPath(model_opt_cache_dir, engine_key);
+  if (FileExists(trt_serialized_path)) {
+    VLOG(3) << "Trt serialized file: " << trt_serialized_path
+            << "is found here";
+    std::ifstream infile(trt_serialized_path, std::ios::in);
+    std::stringstream buffer;
+    buffer << infile.rdbuf();
+    std::string trt_engine_serialized_data(buffer.str());
+    return trt_engine_serialized_data;
+  }
+  return "";
+}
+
+static void SaveTrtEngineSerializedDataToFile(
+    const std::string &trt_serialized_path,
+    const std::string &engine_serialized_data) {
+  std::ofstream outfile(trt_serialized_path);
+  outfile << engine_serialized_data;
+  outfile.close();
 }
 
 }  // namespace analysis

@@ -14,9 +14,10 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/arg_min_max_op_base.h"
 
-REGISTER_OPERATOR(arg_min, paddle::operators::ArgMinMaxOp,
-                  paddle::operators::ArgMinOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    arg_min, paddle::operators::ArgMinMaxOp, paddle::operators::ArgMinOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
     arg_min,
@@ -28,6 +29,5 @@ REGISTER_OP_CPU_KERNEL(
                                     int32_t>,
     paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
                                     int16_t>,
-    paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext, size_t>,
     paddle::operators::ArgMinKernel<paddle::platform::CPUDeviceContext,
                                     uint8_t>);

@@ -26,15 +26,15 @@ TEST(DataType, float16) {
 
   Tensor tensor;
   CPUPlace cpu;
-  tensor.mutable_data(cpu, f::ToTypeIndex(dtype));
+  tensor.mutable_data(cpu, dtype);
 
   // test fp16 tensor
-  EXPECT_EQ(tensor.type(), std::type_index(typeid(float16)));
+  EXPECT_EQ(tensor.type(), f::ToDataType(typeid(float16)));
 
   // test fp16 size
-  EXPECT_EQ(f::SizeOfType(f::ToTypeIndex(dtype)), 2u);
+  EXPECT_EQ(f::SizeOfType(dtype), 2u);
 
   // test debug info
-  std::string type = "float16";
+  std::string type = "::paddle::platform::float16";
   EXPECT_STREQ(f::DataTypeToString(dtype).c_str(), type.c_str());
 }

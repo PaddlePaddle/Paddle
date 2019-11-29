@@ -26,14 +26,14 @@ main_program = default_startup_program()
 
 class TestOperator(unittest.TestCase):
     def test_error_type(self):
-        block = main_program.create_block()
+        block = main_program._create_block()
         try:
             block.append_op()
             self.assertFail()
         except ValueError as v_err:
             self.assertEqual(
                 cpt.get_exception_message(v_err),
-                "`type` to initilized an Operator can not be None.")
+                "`type` to initialized an Operator can not be None.")
         try:
             block.append_op(type="no_such_op")
             self.assertFail()
@@ -67,7 +67,11 @@ class TestOperator(unittest.TestCase):
         self.assertEqual(mul_op.output("Out"), ["mul.out"])
         self.assertEqual(
             set(mul_op.attr_names),
-            set(["x_num_col_dims", "y_num_col_dims", "op_role", "op_role_var"]))
+            set([
+                "x_num_col_dims", "y_num_col_dims", "op_role", "op_role_var",
+                "use_mkldnn", "scale_x", "scale_y", "scale_out",
+                "force_fp32_output", "op_namescope", "op_callstack"
+            ]))
         self.assertEqual(mul_op.has_attr("x_num_col_dims"), True)
         self.assertEqual(mul_op.attr_type("x_num_col_dims"), core.AttrType.INT)
         self.assertEqual(mul_op.attr("x_num_col_dims"), 1)

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -57,13 +58,23 @@ void TensorToVector(const Tensor& src, const platform::DeviceContext& ctx,
 template <typename T>
 void TesnorToVector(const Tensor& src, std::vector<T>* dst);
 
+// copy the result bool to cpu
 bool TensorContainsNAN(const framework::Tensor& tensor);
 bool TensorContainsInf(const framework::Tensor& tensor);
+bool TensorIsfinite(const framework::Tensor& tensor);
+
+// store the result bool in gpu tensor, async operation. Faster than above ones.
+void TensorContainsNAN(const framework::Tensor& tensor, framework::Tensor* out);
+void TensorContainsInf(const framework::Tensor& tensor, framework::Tensor* out);
+void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out);
 
 void TensorToStream(std::ostream& os, const Tensor& tensor,
                     const platform::DeviceContext& dev_ctx);
 void TensorFromStream(std::istream& is, Tensor* tensor,
                       const platform::DeviceContext& dev_ctx);
+
+// convert dlpack's DLTensor to tensor
+void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst);
 
 //
 // The implementation of template functions.
@@ -138,11 +149,12 @@ void TensorToVector(const Tensor& src, std::vector<T>* dst) {
   dst->resize(src.numel());
   auto dst_ptr = static_cast<void*>(dst->data());
 
-  PADDLE_ENFORCE(platform::is_cpu_place(src.place()));
+  PADDLE_ENFORCE_EQ(platform::is_cpu_place(src.place()), true);
 
   memory::Copy(dst_place, dst_ptr, boost::get<platform::CPUPlace>(src.place()),
                src_ptr, size);
 }
 
+std::ostream& operator<<(std::ostream& os, const Tensor& t);
 }  // namespace framework
 }  // namespace paddle

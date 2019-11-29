@@ -109,15 +109,20 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
     return t
 
 
+from paddle.fluid.transpiler.details import op_to_code
+
+
 def operator_equal(a, b):
+    if op_to_code(a) != op_to_code(b):
+        raise ValueError("In operator_equal not equal\n")
+
     for k, v in six.iteritems(a.__dict__):
         if isinstance(v, fluid.framework.Program) or \
                 isinstance(v, fluid.framework.Block):
             continue
 
         elif isinstance(v, core.OpDesc):
-            if v.serialize_to_string() != b.__dict__[k].serialize_to_string():
-                raise ValueError("In operator_equal not equal:{0}\n".format(k))
+            continue
 
         elif isinstance(v, collections.OrderedDict):
             v0 = sorted(list(six.iteritems(v)), key=lambda x: x[0])

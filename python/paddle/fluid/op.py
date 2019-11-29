@@ -108,6 +108,8 @@ class OpDescCreationMethod(object):
                     new_attr.i = user_defined_attr
                 elif attr.type == framework_pb2.FLOAT:
                     new_attr.f = user_defined_attr
+                elif attr.type == framework_pb2.LONG:
+                    new_attr.l = user_defined_attr
                 elif attr.type == framework_pb2.STRING:
                     new_attr.s = user_defined_attr
                 elif attr.type == framework_pb2.BOOLEAN:
@@ -120,6 +122,8 @@ class OpDescCreationMethod(object):
                     new_attr.strings.extend(user_defined_attr)
                 elif attr.type == framework_pb2.BOOLEANS:
                     new_attr.bools.extend(user_defined_attr)
+                elif attr.type == framework_pb2.LONGS:
+                    new_attr.longs.extend(user_defined_attr)
                 elif attr.type == framework_pb2.INT_PAIRS:
                     for p in user_defined_attr:
                         pair = new_attr.int_pairs.add()

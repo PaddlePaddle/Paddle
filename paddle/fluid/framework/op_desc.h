@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/type_defs.h"
@@ -37,11 +38,7 @@ class OpDesc {
 
   explicit OpDesc(BlockDesc *block) : block_(block) {}
 
-  OpDesc(const OpDesc &other, BlockDesc *block) {
-    *this = other;
-    block_ = block;
-    need_update_ = true;
-  }
+  OpDesc(const OpDesc &other, BlockDesc *block);
 
   void CopyFrom(const OpDesc &op_desc);
 
@@ -69,17 +66,29 @@ class OpDesc {
     return attrs_.find(name) != attrs_.end();
   }
 
+  bool HasProtoAttr(const std::string &name) const;
+
   proto::AttrType GetAttrType(const std::string &name) const;
 
   std::vector<std::string> AttrNames() const;
 
   void SetAttr(const std::string &name, const Attribute &v);
+  void RemoveAttr(const std::string &name);
 
   void SetBlockAttr(const std::string &name, BlockDesc *block);
 
   void SetBlocksAttr(const std::string &name, std::vector<BlockDesc *> blocks);
 
   Attribute GetAttr(const std::string &name) const;
+
+  template <typename T>
+  T GetAttrIfExists(const std::string &name) const {
+    T result{};
+    if (HasAttr(name)) {
+      result = boost::get<T>(GetAttr(name));
+    }
+    return result;
+  }
 
   const proto::OpProto::Attr &GetProtoAttr(const std::string &name) const;
 
@@ -104,16 +113,6 @@ class OpDesc {
   std::vector<std::string> InputNames() const { return MapKeys(inputs_); }
   std::vector<std::string> OutputNames() const { return MapKeys(outputs_); }
 
-  void SetInputMap(const VariableNameMap &input) {
-    this->inputs_ = input;
-    this->need_update_ = true;
-  }
-
-  void SetOutputMap(const VariableNameMap &output) {
-    this->outputs_ = output;
-    this->need_update_ = true;
-  }
-
   const VariableNameMap &Inputs() const { return inputs_; }
 
   const VariableNameMap &Outputs() const { return outputs_; }
@@ -135,9 +134,7 @@ class OpDesc {
 
   BlockDesc *Block() { return this->block_; }
 
-  const BlockDesc &BlockRef() const { return *this->block_; }
-
-  void SetBlock(BlockDesc *block) { this->block_ = block; }
+  const BlockDesc *Block() const { return this->block_; }
 
  private:
   template <typename MapType>

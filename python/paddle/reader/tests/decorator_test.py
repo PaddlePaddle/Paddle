@@ -14,6 +14,7 @@
 
 import time
 import unittest
+import functools
 
 import paddle.reader
 
@@ -61,10 +62,10 @@ class TestBuffered(unittest.TestCase):
         for idx, i in enumerate(b()):
             elapsed_time = time.time() - last_time
             if i == 0:
-                time.sleep(0.3)
+                time.sleep(1)
             else:
                 # read time should be short, meaning already buffered.
-                self.assertLess(elapsed_time, 0.05)
+                self.assertLess(elapsed_time, 0.08)
             last_time = time.time()
 
 
@@ -146,32 +147,32 @@ class TestXmap(unittest.TestCase):
                             self.assertEqual(e, mapper(idx))
 
 
-class TestPipeReader(unittest.TestCase):
-    def test_pipe_reader(self):
-        def example_reader(myfiles):
-            for f in myfiles:
-                pr = paddle.reader.PipeReader("cat %s" % f, bufsize=128)
-                for l in pr.get_line():
-                    yield l
+class TestMultiProcessReader(unittest.TestCase):
+    def setup(self):
+        self.samples = []
+        for i in range(1000):
+            self.samples.append([[i], [i + 1, i + 2], i + 3])
 
-        import tempfile
+        def reader(index):
+            for i in range(len(self.samples)):
+                if i % 3 == index:
+                    yield self.samples[i]
 
-        records = [str(i) for i in range(5)]
-        temp = tempfile.NamedTemporaryFile()
-        try:
-            with open(temp.name, 'w') as f:
-                for r in records:
-                    f.write('%s\n' % r)
+        self.reader0 = functools.partial(reader, 0)
+        self.reader1 = functools.partial(reader, 1)
+        self.reader2 = functools.partial(reader, 2)
 
-            result = []
-            for r in example_reader([temp.name]):
-                result.append(r)
+    def reader_test(self, use_pipe):
+        self.setup()
+        results = []
+        for data in paddle.reader.multiprocess_reader(
+            [self.reader0, self.reader1, self.reader2], 100, use_pipe)():
+            results.append(data)
+        self.assertEqual(sorted(self.samples), sorted(results))
 
-            for idx, e in enumerate(records):
-                self.assertEqual(e, result[idx])
-        finally:
-            # delete the temporary file
-            temp.close()
+    def test_distributed_batch_reader(self):
+        self.reader_test(use_pipe=False)
+        self.reader_test(use_pipe=True)
 
 
 if __name__ == '__main__':

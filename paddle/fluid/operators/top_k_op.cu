@@ -12,10 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "cub/cub.cuh"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/top_k_op.h"
-#include "paddle/fluid/platform/assert.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/float16.h"
+
+// set cub base traits in order to handle float16
+namespace cub {
+template <>
+struct NumericTraits<paddle::platform::float16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t,
+                 paddle::platform::float16> {};
+}  // namespace cub
 
 namespace paddle {
 namespace operators {
@@ -150,7 +159,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
         if (k < MaxLength - (*beam)) {
           topk[k] = topk[k + *beam];
         } else {
-          topk[k].set(-INFINITY, -1);
+          topk[k].set(-static_cast<T>(INFINITY), -1);
         }
       }
       if (!(*is_empty)) {
@@ -160,7 +169,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
     }
 
     *max = topk[MaxLength - 1];
-    if ((*max).v == -1) *is_empty = true;
+    if ((*max).v == -static_cast<T>(1)) *is_empty = true;
     *beam = 0;
   }
 }
@@ -181,7 +190,7 @@ __device__ __forceinline__ void ThreadGetTopK(Pair<T> topk[], int* beam,
         if (k < MaxLength - *beam) {
           topk[k] = topk[k + *beam];
         } else {
-          topk[k].set(-INFINITY, -1);
+          topk[k].set(-static_cast<T>(INFINITY), -1);
         }
       }
       if (!(*is_empty)) {
@@ -256,35 +265,218 @@ __device__ __forceinline__ void BlockReduce(Pair<T>* sh_topk, int* maxid,
  * 3. go to the second setp, until one thread's topk value is null;
  * 4. go to the first setp, until get the topk value.
  */
+
 template <typename T, int MaxLength, int BlockSize>
 __global__ void KeMatrixTopK(T* output, int output_stride, int64_t* indices,
-                             const T* src, int lds, int dim, int k) {
+                             const T* src, int lds, int dim, int k,
+                             int grid_dim, int num) {
   __shared__ Pair<T> sh_topk[BlockSize];
-  __shared__ int maxid[BlockSize / 2];
   const int tid = threadIdx.x;
   const int warp = threadIdx.x / 32;
-  output += blockIdx.x * output_stride;
-  indices += blockIdx.x * k;
 
-  Pair<T> topk[MaxLength];
-  int beam = MaxLength;
-  Pair<T> max;
-  bool is_empty = false;
-  bool firststep = true;
+  const int bid = blockIdx.x;
+  for (int i = bid; i < num; i += grid_dim) {
+    int top_num = k;
+    __shared__ int maxid[BlockSize / 2];
+    T* out = output + i * output_stride;
+    int64_t* inds = indices + i * k;
+    Pair<T> topk[MaxLength];
+    int beam = MaxLength;
+    Pair<T> max;
+    bool is_empty = false;
+    bool firststep = true;
 
-  for (int k = 0; k < MaxLength; k++) {
-    topk[k].set(-INFINITY, -1);
-  }
-  while (k) {
-    ThreadGetTopK<T, MaxLength, BlockSize>(topk, &beam, k,
-                                           src + blockIdx.x * lds, &firststep,
-                                           &is_empty, &max, dim, tid);
+    for (int j = 0; j < MaxLength; j++) {
+      topk[j].set(-static_cast<T>(INFINITY), -1);
+    }
+    while (top_num) {
+      ThreadGetTopK<T, MaxLength, BlockSize>(
+          topk, &beam, k, src + i * lds, &firststep, &is_empty, &max, dim, tid);
 
-    sh_topk[tid] = topk[0];
-    BlockReduce<T, MaxLength, BlockSize>(sh_topk, maxid, topk, &output,
-                                         &indices, &beam, &k, tid, warp);
+      sh_topk[tid] = topk[0];
+      BlockReduce<T, MaxLength, BlockSize>(sh_topk, maxid, topk, &out, &inds,
+                                           &beam, &top_num, tid, warp);
+    }
   }
 }
+
+inline static int GetDesiredBlockDim(int dim) {
+  if (dim > 128) {
+    return 256;
+  } else if (dim > 64) {
+    return 128;
+  } else if (dim > 32) {
+    return 64;
+  } else {
+    return 32;
+  }
+}
+
+// Iter for move to next row
+struct SegmentOffsetIter {
+  EIGEN_DEVICE_FUNC
+  explicit SegmentOffsetIter(int num_cols) : num_cols_(num_cols) {}
+
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE int operator()(int idx) const {
+    return idx * num_cols_;
+  }
+
+  int num_cols_;
+};
+
+// Iter using into a column
+struct ColumnIndexIter {
+  explicit ColumnIndexIter(int num_cols) : num_cols_(num_cols) {}
+
+  EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE int operator()(
+      const Eigen::array<int, 1>& ix) const {
+    return ix[0] % num_cols_;
+  }
+
+  int num_cols_;
+};
+
+__global__ void InitIndex(int64_t* indices, int64_t num_rows,
+                          int64_t num_cols) {
+  int col_id = threadIdx.x;
+  int row_id = blockIdx.x;
+
+  for (int64_t j = row_id; j < num_rows; j += gridDim.x) {
+    for (int64_t i = col_id; i < num_cols; i += blockDim.x) {
+      indices[j * num_cols + i] = i;
+    }
+  }
+}
+
+template <typename T>
+bool SortTopk(const platform::CUDADeviceContext& ctx,
+              const framework::Tensor* input_tensor, const int64_t num_cols,
+              const int64_t num_rows, const int k,
+              framework::Tensor* out_tensor,
+              framework::Tensor* indices_tensor) {
+  auto cu_stream = ctx.stream();
+
+  Tensor input_indices;
+  const std::vector<int64_t> dims = {num_rows, num_cols};
+  auto dim = framework::make_ddim(dims);
+  input_indices.Resize(dim);
+  // input_indices.Resize(num_rows*num_cols);
+  input_indices.mutable_data<int64_t>(ctx.GetPlace());
+  size_t temp_storage_bytes = -1;
+
+  auto ComputeBlockSize = [](int col) {
+    if (col > 512)
+      return 1024;
+    else if (col > 256 && col <= 512)
+      return 512;
+    else if (col > 128 && col <= 256)
+      return 256;
+    else if (col > 64 && col <= 128)
+      return 128;
+    else
+      return 64;
+  };
+
+  int block_size = ComputeBlockSize(num_cols);
+
+  unsigned int maxGridDimX = ctx.GetCUDAMaxGridDimSize().x;
+  // actually, int num_rows < max_grid_size
+  unsigned int grid_size = num_rows < maxGridDimX
+                               ? static_cast<unsigned int>(num_rows)
+                               : maxGridDimX;
+  // Init a index array
+  InitIndex<<<grid_size, block_size, 0, cu_stream>>>(
+      input_indices.data<int64_t>(), num_rows, num_cols);
+
+  // create iter for counting input
+  cub::CountingInputIterator<int64_t> counting_iter(0);
+  // segment_offset is used for move to next row
+  cub::TransformInputIterator<int64_t, SegmentOffsetIter,
+                              cub::CountingInputIterator<int64_t>>
+      segment_offsets_t(counting_iter, SegmentOffsetIter(num_cols));
+
+  T* sorted_values_ptr;
+  int64_t* sorted_indices_ptr;
+
+  Tensor temp_values;
+  Tensor temp_indices;
+
+  const T* input = input_tensor->data<T>();
+  T* values = out_tensor->data<T>();
+  int64_t* indices = indices_tensor->mutable_data<int64_t>(ctx.GetPlace());
+
+  if (k == num_cols) {
+    // Doing a full sort.
+    sorted_values_ptr = values;
+    sorted_indices_ptr = indices;
+  } else {
+    temp_values.Resize(dim);
+    temp_indices.Resize(dim);
+    sorted_values_ptr = temp_values.mutable_data<T>(ctx.GetPlace());
+    sorted_indices_ptr = temp_indices.mutable_data<int64_t>(ctx.GetPlace());
+  }
+
+  // Get temp storage buffer size, maybe can allocate a fixed buffer to save
+  // time.
+  auto err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
+      nullptr, temp_storage_bytes, input, sorted_values_ptr,
+      input_indices.data<int64_t>(), sorted_indices_ptr, num_cols * num_rows,
+      num_rows, segment_offsets_t, segment_offsets_t + 1, 0, sizeof(T) * 8,
+      cu_stream);
+  if (err != cudaSuccess) {
+    LOG(ERROR)
+        << "TopKOP failed as could not launch "
+           "cub::DeviceSegmentedRadixSort::SortPairsDescending to calculate "
+           "temp_storage_bytes, status: "
+        << cudaGetErrorString(err);
+    return false;
+  }
+  Tensor temp_storage;
+  temp_storage.mutable_data<uint8_t>(ctx.GetPlace(), temp_storage_bytes);
+
+  err = cub::DeviceSegmentedRadixSort::SortPairsDescending(
+      temp_storage.data<uint8_t>(), temp_storage_bytes, input,
+      sorted_values_ptr, input_indices.data<int64_t>(), sorted_indices_ptr,
+      num_cols * num_rows, num_rows, segment_offsets_t, segment_offsets_t + 1,
+      0, sizeof(T) * 8, cu_stream);
+  if (err != cudaSuccess) {
+    LOG(ERROR)
+        << "TopKOP failed as could not launch "
+           "cub::DeviceSegmentedRadixSort::SortPairsDescending to sort input, "
+           "temp_storage_bytes: "
+        << temp_storage_bytes << ", status: " << cudaGetErrorString(err);
+    return false;
+  }
+  auto& dev = *ctx.eigen_device();
+  if (k < num_cols) {
+    // copy sliced data to output.
+    const Eigen::DSizes<Eigen::DenseIndex, 2> slice_indices{0, 0};
+    const Eigen::DSizes<Eigen::DenseIndex, 2> slice_sizes{num_rows, k};
+    auto e_indices = EigenMatrix<int64_t>::From(*indices_tensor, dim);
+    auto e_tmp_indices = EigenMatrix<int64_t>::From(temp_indices);
+
+    std::vector<int> odims = {static_cast<int>(num_rows), static_cast<int>(k)};
+    auto dim = framework::make_ddim(odims);
+    auto e_values = EigenMatrix<T>::From(*out_tensor, dim);
+    auto e_tmp_values = EigenMatrix<T>::From(temp_values);
+
+    e_indices.device(dev) = e_tmp_indices.slice(slice_indices, slice_sizes);
+    e_values.device(dev) = e_tmp_values.slice(slice_indices, slice_sizes);
+  }
+  return true;
+}
+
+#define FIXED_BLOCK_DIM_BASE(dim, ...) \
+  case (dim): {                        \
+    constexpr auto kBlockDim = (dim);  \
+    __VA_ARGS__;                       \
+  } break
+
+#define FIXED_BLOCK_DIM(...)                \
+  FIXED_BLOCK_DIM_BASE(256, ##__VA_ARGS__); \
+  FIXED_BLOCK_DIM_BASE(128, ##__VA_ARGS__); \
+  FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);  \
+  FIXED_BLOCK_DIM_BASE(32, ##__VA_ARGS__)
 
 template <typename T>
 class TopkOpCUDAKernel : public framework::OpKernel<T> {
@@ -295,35 +487,66 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
     auto* indices = ctx.Output<Tensor>("Indices");
-    size_t k = static_cast<int>(ctx.Attr<int>("k"));
+    int k = static_cast<int>(ctx.Attr<int>("k"));
+
+    auto* k_t = ctx.Input<Tensor>("K");
+    if (k_t) {
+      Tensor k_host;
+      framework::TensorCopySync(*k_t, platform::CPUPlace(), &k_host);
+      k = k_host.data<int>()[0];
+      framework::DDim output_dims = output->dims();
+      output_dims[output_dims.size() - 1] = k;
+      output->Resize(output_dims);
+      indices->Resize(output_dims);
+    }
 
     const T* input_data = input->data<T>();
-
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     // FIXME(typhoonzero): data is always converted to type T?
-    int64_t* indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());
 
-    size_t input_height = input->dims()[0];
-    size_t input_width = input->dims()[1];
+    framework::DDim inputdims = input->dims();
+    const int64_t input_height = framework::product(
+        framework::slice_ddim(inputdims, 0, inputdims.size() - 1));
+    const int64_t input_width = inputdims[inputdims.size() - 1];
+    const auto& dev_ctx = ctx.cuda_device_context();
+
+    if ((input_width <= 1024 || k >= 128 || k == input_width)) {
+      if (SortTopk<T>(dev_ctx, input, input_width, input_height, k, output,
+                      indices)) {
+        // Successed, return.
+        return;
+      } else {
+        LOG(INFO) << "TopKOP: Some errors happened when use cub sorting, use "
+                     "default topk kernel.";
+      }
+    }
+    int64_t* indices_data = indices->mutable_data<int64_t>(ctx.GetPlace());
     if (k > input_width) k = input_width;
 
     // NOTE: pass lds and dim same to input width.
     // NOTE: old matrix implementation of stride is different to eigen.
     // TODO(typhoonzero): refine this kernel.
-    dim3 threads(256, 1);
-    dim3 grid(input_height, 1);
-
-    KeMatrixTopK<T, 5, 256><<<
-        grid, threads, 0, reinterpret_cast<const platform::CUDADeviceContext&>(
-                              ctx.device_context())
-                              .stream()>>>(
-        output_data, output->dims()[1], indices_data, input_data, input_width,
-        input_width, static_cast<int>(k));
+    const int kMaxHeight = 2048;
+    int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
+    switch (GetDesiredBlockDim(input_width)) {
+      FIXED_BLOCK_DIM(
+          KeMatrixTopK<T, 5,
+                       kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
+              output_data, k, indices_data, input_data, input_width,
+              input_width, static_cast<int>(k), gridx, input_height));
+      default:
+        PADDLE_THROW("Error");
+    }
   }
 };
+
+#undef FIXED_BLOCK_DIM_BASE
+#undef FIXED_BLOCK_DIM
 
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(top_k, paddle::operators::TopkOpCUDAKernel<float>,
-                        paddle::operators::TopkOpCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    top_k, paddle::operators::TopkOpCUDAKernel<float>,
+    paddle::operators::TopkOpCUDAKernel<double>,
+    paddle::operators::TopkOpCUDAKernel<paddle::platform::float16>);

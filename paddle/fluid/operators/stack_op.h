@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <memory>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -50,7 +51,7 @@ class StackOp : public framework::OperatorWithKernel {
         "Attr(axis) must be inside [-(rank+1), rank+1), where rank = %d", rank);
     if (axis < 0) axis += (rank + 1);
 
-    auto vec = framework::vectorize2int(input_dims[0]);
+    auto vec = framework::vectorize<int>(input_dims[0]);
     vec.insert(vec.begin() + axis, input_dims.size());
     ctx->SetOutputDim("Y", framework::make_ddim(vec));
   }
@@ -147,20 +148,32 @@ class StackKernel : public framework::OpKernel<T> {
     auto &dim = x[0]->dims();
     for (auto i = 0; i < axis; ++i) pre *= dim[i];
     for (auto i = axis; i < dim.size(); ++i) post *= dim[i];
-    int total_num = pre * n * post;
 
-    auto &dev_ctx = ctx.template device_context<DeviceContext>();
 #ifdef __NVCC__
+    int total_num = pre * n * post;
+    auto &dev_ctx = ctx.template device_context<DeviceContext>();
+
     thrust::device_vector<const T *> device_x_vec(x_datas);
     auto x_data_arr = device_x_vec.data().get();
-#else
-    auto x_data_arr = x_datas.data();
-#endif
+
     StackFunctorForRange(dev_ctx, x_data_arr, y_data, total_num, n, post);
-#ifdef __NVCC__
+
     // Wait() must be called because device_x_vec may be destructed before
     // kernel ends
     dev_ctx.Wait();
+#else
+    auto x_data_arr = x_datas.data();
+
+    size_t x_offset = 0;
+    size_t y_offset = 0;
+    for (int i = 0; i < pre; i++) {
+      for (int j = 0; j < n; j++) {
+        std::memcpy(y_data + y_offset, x_data_arr[j] + x_offset,
+                    post * sizeof(T));
+        y_offset += post;
+      }
+      x_offset += post;
+    }
 #endif
   }
 };
@@ -184,7 +197,7 @@ class StackOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->Outputs(framework::GradVarName("X")).size(),
                       static_cast<size_t>(dy_dim[axis]),
                       "Number of Outputs(X@Grad) is wrong");
-    auto vec = framework::vectorize2int(dy_dim);
+    auto vec = framework::vectorize<int>(dy_dim);
     vec.erase(vec.begin() + axis);
     ctx->SetOutputsDim(
         framework::GradVarName("X"),
@@ -192,17 +205,18 @@ class StackOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class StackGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class StackGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("stack_grad");
-    op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
-    op->SetAttrMap(Attrs());
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };

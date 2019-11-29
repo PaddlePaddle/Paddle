@@ -62,6 +62,32 @@ struct NodesDFSIterator
   std::unordered_set<Node *> visited_;
 };
 
+// Topological sorting iterator on nodes.
+struct NodesTSIterator
+    : public std::iterator<std::forward_iterator_tag, Node *> {
+  NodesTSIterator() = default;
+  NodesTSIterator(const std::vector<Node *> &source);
+  NodesTSIterator(NodesTSIterator &&other)
+      : sorted_(std::move(other.sorted_)), cursor_(other.cursor_) {
+    other.cursor_ = 0;
+  }
+  NodesTSIterator(const NodesTSIterator &other);
+
+  Node &operator*();
+  NodesTSIterator &operator++();
+  // TODO(Superjomn) current implementation just compare the first
+  // element, need to compare the graph and all the elements in the queue and
+  // set.
+  NodesTSIterator &operator=(const NodesTSIterator &other);
+  bool operator==(const NodesTSIterator &other);
+  bool operator!=(const NodesTSIterator &other) { return !(*this == other); }
+  Node *operator->();
+
+ private:
+  std::vector<Node *> sorted_;
+  size_t cursor_{0};
+};
+
 /*
  * GraphTraits contains some graph traversal algorithms.
  *
@@ -74,6 +100,14 @@ struct GraphTraits {
     NodesDFSIterator x(start_points);
     return iterator_range<NodesDFSIterator>(NodesDFSIterator(start_points),
                                             NodesDFSIterator());
+  }
+
+  static iterator_range<NodesTSIterator> TS(const Graph &g) {
+    auto start_points = ExtractStartPoints(g);
+    PADDLE_ENFORCE(!start_points.empty());
+    NodesTSIterator x(start_points);
+    return iterator_range<NodesTSIterator>(NodesTSIterator(start_points),
+                                           NodesTSIterator());
   }
 
  private:

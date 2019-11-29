@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lod_reset_op.h"
+#include <memory>
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -29,9 +31,15 @@ class LoDResetOp : public framework::OperatorWithKernel {
 
     if (!ctx->HasInput("Y")) {
       auto level0 = ctx->Attrs().Get<std::vector<int>>("target_lod");
-      PADDLE_ENFORCE_GT(level0.size(), 1,
+      PADDLE_ENFORCE_GT(level0.size(), 0,
                         "If Input(Y) not provided, the target lod should be "
                         "specified by attribute `target_lod`.");
+    } else if (ctx->IsRuntime()) {
+      ctx->ShareLoD("Y", "Out");
+    }
+    auto append = ctx->Attrs().Get<bool>("append");
+    if (append) {
+      ctx->ShareLoD("X", /*->*/ "Out");
     }
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
   }
@@ -40,8 +48,37 @@ class LoDResetOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
+  }
+};
+
+class LoDResetOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    auto x_var_name = ctx->Input("X").front();
+    auto out_var_name = ctx->Output("Out").front();
+    bool append = boost::get<bool>(ctx->GetAttr("append"));
+    if (ctx->HasInput("Y")) {
+      auto y_var_name = ctx->Input("Y").front();
+      auto y_lod_level = std::max(ctx->GetLoDLevel(y_var_name), 1);
+      ctx->SetLoDLevel(out_var_name, y_lod_level);
+    } else if (append) {
+      auto x_lod_level = std::max(ctx->GetLoDLevel(x_var_name), 1);
+      ctx->SetLoDLevel(out_var_name, x_lod_level);
+    } else {
+      ctx->SetLoDLevel(out_var_name, 1);
+    }
+    ctx->SetDataType(out_var_name, ctx->GetDataType(x_var_name));
+    ctx->SetType(out_var_name, paddle::framework::proto::VarType::LOD_TENSOR);
   }
 };
 
@@ -64,6 +101,7 @@ class LoDResetOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("target_lod",
                               "The target level 0 LoD from Attr().")
         .SetDefault(std::vector<int>{});
+    AddAttr<bool>("append", "Append data to lod vector.").SetDefault(false);
     AddComment(R"DOC(LoDReset operator
 
 Set LoD of `X` to a new one specified by `Y` or attribute `target_lod`. When `Y`
@@ -144,19 +182,49 @@ class LoDResetGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
+
+template <typename T>
+class LoDResetGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType("lod_reset_grad");
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetInput("X", this->Input("X"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetAttrMap(this->Attrs());
+    return op;
+  }
+};
+
+DECLARE_INPLACE_OP_INFERER(LoDResetInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(LoDResetGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
+
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(LoDResetGradNoNeedBufferVarInference,
+                                      "X");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(lod_reset, ops::LoDResetOp, ops::LoDResetOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
-REGISTER_OPERATOR(lod_reset_grad, ops::LoDResetGradOp);
+                  ops::LoDResetGradMaker<paddle::framework::OpDesc>,
+                  ops::LoDResetGradMaker<paddle::imperative::OpBase>,
+                  ops::LoDResetOpVarTypeInference, ops::LoDResetInplaceInferer);
+REGISTER_OPERATOR(lod_reset_grad, ops::LoDResetGradOp,
+                  ops::LoDResetGradNoNeedBufferVarInference,
+                  ops::LoDResetGradInplaceInferer);
+
 REGISTER_OP_CPU_KERNEL(
     lod_reset, ops::LoDResetKernel<paddle::platform::CPUPlace, float>,
     ops::LoDResetKernel<paddle::platform::CPUPlace, double>,

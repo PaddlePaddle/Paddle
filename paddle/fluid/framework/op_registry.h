@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <algorithm>
 #include <atomic>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -23,7 +24,8 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 
-#include "glog/logging.h"  // For VLOG()
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#include "glog/logging.h"               // For VLOG()
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -35,6 +37,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+
 class Registrar {
  public:
   // In our design, various kinds of classes, e.g., operators and kernels,
@@ -51,8 +54,9 @@ class Registrar {
 template <typename... ARGS>
 struct OperatorRegistrar : public Registrar {
   explicit OperatorRegistrar(const char* op_type) {
-    PADDLE_ENFORCE(!OpInfoMap::Instance().Has(op_type),
-                   "'%s' is registered more than once.", op_type);
+    if (OpInfoMap::Instance().Has(op_type)) {
+      PADDLE_THROW("'%s' is registered more than once.", op_type);
+    }
     static_assert(sizeof...(ARGS) != 0,
                   "OperatorRegistrar should be invoked at least by OpClass");
     OpInfo info;
@@ -63,10 +67,34 @@ struct OperatorRegistrar : public Registrar {
 
 class OpRegistry {
  public:
+  /**
+   * @brief Return an OperatorBase constructed by type, inputs, outputs, attrs.
+   *        In dygraph mode, inputs, output, attrs will be set to empty map to
+   *        improve the execution efficiency of dygraph.
+   *        Dygraph mode will use:
+   *        framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
+   *
+   * @param[str] type               The operator type.
+   * @param[map] inputs             Inputs map of the operator.
+   * @param[map] outputs            Outputs map of the operator.
+   * @param[unordered_map] attrs    Attributes map of the operator.
+   * @param[bool] attr_check
+   *            Whether do the attribute check before OperatorBase construction.
+   *            Default is true.
+   *            Attr_check is used to control the check of attribute map.
+   *            The check of attribute map have two purposes:
+   *            1. check whether the attribute item is valid or not.
+   *            2. add attribute item which has default value
+   *            if it is not in attrs.
+   *            In dygraph mode, attrs is an empty unordered_map,
+   *            attr_check is set to false, otherwise it will be failed
+   *            when check function called.
+   */
   static std::unique_ptr<OperatorBase> CreateOp(const std::string& type,
                                                 const VariableNameMap& inputs,
                                                 const VariableNameMap& outputs,
-                                                AttributeMap attrs);
+                                                AttributeMap attrs,
+                                                bool attr_check = true);
 
   static std::unique_ptr<OperatorBase> CreateOp(const proto::OpDesc& op_desc);
 
@@ -78,7 +106,7 @@ struct OpKernelRegistrarFunctor;
 
 template <typename PlaceType, typename T, typename Func>
 inline void RegisterKernelClass(const char* op_type, const char* library_type,
-                                Func func) {
+                                int customized_type_value, Func func) {
   std::string library(library_type);
   std::string data_layout = "ANYLAYOUT";
   if (library == "MKLDNN") {
@@ -86,7 +114,7 @@ inline void RegisterKernelClass(const char* op_type, const char* library_type,
   }
   OpKernelType key(ToDataType(std::type_index(typeid(T))), PlaceType(),
                    StringToDataLayout(data_layout),
-                   StringToLibraryType(library_type));
+                   StringToLibraryType(library_type), customized_type_value);
   OperatorWithKernel::AllOpKernels()[op_type][key] = func;
 }
 
@@ -95,22 +123,26 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
   using KERNEL_TYPE =
       typename std::tuple_element<I, std::tuple<KernelTypes...>>::type;
 
-  void operator()(const char* op_type, const char* library_type) const {
+  void operator()(const char* op_type, const char* library_type,
+                  int customized_type_value) const {
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
     RegisterKernelClass<PlaceType, T>(
-        op_type, library_type, [](const framework::ExecutionContext& ctx) {
+        op_type, library_type, customized_type_value,
+
+        [](const framework::ExecutionContext& ctx) {
           KERNEL_TYPE().Compute(ctx);
         });
     constexpr auto size = std::tuple_size<std::tuple<KernelTypes...>>::value;
     OpKernelRegistrarFunctor<PlaceType, I + 1 == size, I + 1, KernelTypes...>
         func;
-    func(op_type, library_type);
+    func(op_type, library_type, customized_type_value);
   }
 };
 
 template <typename PlaceType, size_t I, typename... KernelType>
 struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
-  void operator()(const char* op_type, const char* library_type) const {}
+  void operator()(const char* op_type, const char* library_type,
+                  int customized_type_value) const {}
 };
 
 // User can register many kernel in one place. The data type could be
@@ -118,9 +150,10 @@ struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
 template <typename PlaceType, typename... KernelType>
 class OpKernelRegistrar : public Registrar {
  public:
-  explicit OpKernelRegistrar(const char* op_type, const char* library_type) {
+  explicit OpKernelRegistrar(const char* op_type, const char* library_type,
+                             int customized_type_value) {
     OpKernelRegistrarFunctor<PlaceType, false, 0, KernelType...> func;
-    func(op_type, library_type);
+    func(op_type, library_type, customized_type_value);
   }
 };
 
@@ -130,17 +163,19 @@ struct OpKernelRegistrarFunctorEx;
 template <typename PlaceType, typename... DataTypeAndKernelType>
 class OpKernelRegistrarEx : public Registrar {
  public:
-  explicit OpKernelRegistrarEx(const char* op_type, const char* library_type) {
+  explicit OpKernelRegistrarEx(const char* op_type, const char* library_type,
+                               int customized_type_value) {
     OpKernelRegistrarFunctorEx<PlaceType, false, 0, DataTypeAndKernelType...>
         func;
-    func(op_type, library_type);
+    func(op_type, library_type, customized_type_value);
   }
 };
 
 template <typename PlaceType, size_t I, typename... DataTypeAndKernelType>
 struct OpKernelRegistrarFunctorEx<PlaceType, true, I,
                                   DataTypeAndKernelType...> {
-  void operator()(const char* op_type, const char* library_type) const {}
+  void operator()(const char* op_type, const char* library_type,
+                  int customized_type_value) const {}
 };
 
 template <typename PlaceType, size_t I, typename... DataTypeAndKernelType>
@@ -153,18 +188,21 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
       typename std::tuple_element<I,
                                   std::tuple<DataTypeAndKernelType...>>::type;
 
-  void operator()(const char* op_type, const char* library_type) const {
-    RegisterKernelClass<PlaceType, T>(op_type, library_type, Functor());
+  void operator()(const char* op_type, const char* library_type,
+                  int customized_type_value) const {
+    RegisterKernelClass<PlaceType, T>(op_type, library_type,
+                                      customized_type_value, Functor());
 
     constexpr auto size =
         std::tuple_size<std::tuple<DataTypeAndKernelType...>>::value;
     OpKernelRegistrarFunctorEx<PlaceType, I + 2 >= size, I + 2,
                                DataTypeAndKernelType...>
         func;
-    func(op_type, library_type);
+    func(op_type, library_type, customized_type_value);
   }
 };
 
+// clang-format off
 /**
  * check if MACRO is used in GLOBAL NAMESPACE.
  */
@@ -194,22 +232,35 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
   }
 
 #define REGISTER_OP_WITHOUT_GRADIENT(op_type, op_class, op_maker_class) \
-  REGISTER_OPERATOR(op_type, op_class, op_maker_class)
+  REGISTER_OPERATOR(op_type, op_class, op_maker_class, \
+        paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,   \
+        paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
 /**
  * Macro to register OperatorKernel.
  */
-#define REGISTER_OP_KERNEL(op_type, library_type, place_class, ...)        \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
-      __reg_op_kernel_##op_type##_##library_type##__,                      \
-      "REGISTER_OP_KERNEL must be called in global namespace");            \
-  static ::paddle::framework::OpKernelRegistrar<place_class, __VA_ARGS__>  \
-      __op_kernel_registrar_##op_type##_##library_type##__(#op_type,       \
-                                                           #library_type); \
-  int TouchOpKernelRegistrar_##op_type##_##library_type() {                \
-    __op_kernel_registrar_##op_type##_##library_type##__.Touch();          \
-    return 0;                                                              \
+#define REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(op_type, library_type,             \
+                                            place_class, customized_name,      \
+                                            customized_type_value, ...)        \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                              \
+      __reg_op_kernel_##op_type##_##library_type##_##customized_name##__,      \
+                                 "REGISTER_OP_KERNEL must be called in "       \
+                                 "global namespace");                          \
+  static ::paddle::framework::OpKernelRegistrar<place_class,                   \
+                                                __VA_ARGS__>                   \
+      __op_kernel_registrar_##op_type##_##library_type##_##customized_name##__(\
+          #op_type, #library_type, customized_type_value);                     \
+  int TouchOpKernelRegistrar_##op_type##_##library_type##_##customized_name() {\
+    __op_kernel_registrar_##op_type##_##library_type##_##customized_name##__   \
+        .Touch();                                                              \
+    return 0;                                                                  \
   }
+
+#define REGISTER_OP_KERNEL(op_type, library_type, place_class, ...)   \
+  REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(                                \
+      op_type, library_type, place_class, DEFAULT_TYPE,               \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
 
 #define REGISTER_OP_CUDA_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CUDA, ::paddle::platform::CUDAPlace, __VA_ARGS__)
@@ -217,46 +268,61 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #define REGISTER_OP_CPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
 
-#define REGISTER_OP_KERNEL_EX(op_type, library_type, place_class, ...)      \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
-      __reg_op_kernel_##op_type##_##library_type##__,                       \
-      "REGISTER_OP_KERNEL_EX must be called in global namespace");          \
-  static ::paddle::framework::OpKernelRegistrarEx<place_class, __VA_ARGS__> \
-      __op_kernel_registrar_##op_type##_##library_type##__(#op_type,        \
-                                                           #library_type);  \
-  int TouchOpKernelRegistrar_##op_type##_##library_type() {                 \
-    __op_kernel_registrar_##op_type##_##library_type##__.Touch();           \
-    return 0;                                                               \
+#define REGISTER_OP_KERNEL_EX(op_type, library_type, place_class,  \
+                              customized_name,                     \
+                              customized_type_value,               \
+                              ...)                                 \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                  \
+      __reg_op_kernel_##op_type##_##library_type##_##customized_name##__, \
+                                 "REGISTER_OP_KERNEL_EX must be called in "  \
+                                 "global namespace");  \
+  static ::paddle::framework::OpKernelRegistrarEx<place_class,  \
+                                                  __VA_ARGS__>  \
+      __op_kernel_registrar_##op_type##_##library_type##_##customized_name##__(\
+          #op_type, #library_type, customized_type_value);  \
+  int TouchOpKernelRegistrar_##op_type##_##library_type##_##customized_name() {\
+    __op_kernel_registrar_##op_type##_##library_type##_##customized_name##__   \
+        .Touch();                                                              \
+    return 0;                                                                  \
   }
 
 #define REGISTER_OP_CUDA_KERNEL_FUNCTOR(op_type, ...)                 \
-  REGISTER_OP_KERNEL_EX(op_type, CUDA, ::paddle::platform::CUDAPlace, \
-                        __VA_ARGS__)
+  REGISTER_OP_KERNEL_EX(                                              \
+      op_type, CUDA, ::paddle::platform::CUDAPlace, DEFAULT_TYPE,     \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
 
-#define REGISTER_OP_CPU_KERNEL_FUNCTOR(op_type, ...) \
-  REGISTER_OP_KERNEL_EX(op_type, CPU, ::paddle::platform::CPUPlace, __VA_ARGS__)
+#define REGISTER_OP_CPU_KERNEL_FUNCTOR(op_type, ...)                  \
+  REGISTER_OP_KERNEL_EX(                                              \
+      op_type, CPU, ::paddle::platform::CPUPlace, DEFAULT_TYPE,       \
+      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
+      __VA_ARGS__)
 
 /**
  * Macro to mark what Operator and Kernel
  * we will use and tell the compiler to
  * link them into target.
  */
-#define USE_OP_ITSELF(op_type)                                    \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                 \
-      __use_op_itself_##op_type,                                  \
-      "USE_OP_ITSELF must be called in global namespace");        \
-  extern int TouchOpRegistrar_##op_type();                        \
-  static int use_op_itself_##op_type##_ __attribute__((unused)) = \
-      TouchOpRegistrar_##op_type()
+#define USE_OP_ITSELF(op_type)                             \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                          \
+      __use_op_itself_##op_type,                           \
+      "USE_OP_ITSELF must be called in global namespace"); \
+  extern int TouchOpRegistrar_##op_type();                 \
+  UNUSED static int use_op_itself_##op_type##_ = TouchOpRegistrar_##op_type()
 
-#define USE_OP_DEVICE_KERNEL(op_type, LIBRARY_TYPE)               \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                 \
-      __use_op_kernel_##op_type##_##LIBRARY_TYPE##__,             \
-      "USE_OP_DEVICE_KERNEL must be in global namespace");        \
-  extern int TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE(); \
-  static int use_op_kernel_##op_type##_##LIBRARY_TYPE##_          \
-      __attribute__((unused)) =                                   \
-          TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE()
+#define USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(op_type,                     \
+                                              LIBRARY_TYPE,                \
+                                              customized_name)             \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
+      __use_op_kernel_##op_type##_##LIBRARY_TYPE##_##customized_name##__,  \
+      "USE_OP_DEVICE_KERNEL must be in global namespace");                 \
+  extern int                                                               \
+      TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE##_##customized_name(); \
+  UNUSED static int use_op_kernel_##op_type##_##LIBRARY_TYPE##_##customized_name##_ = /* NOLINT */ \
+      TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE##_##customized_name()
+
+#define USE_OP_DEVICE_KERNEL(op_type, LIBRARY_TYPE) \
+  USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(op_type, LIBRARY_TYPE, DEFAULT_TYPE)
 
 // TODO(fengjiayi): The following macros
 // seems ugly, do we have better method?
@@ -282,6 +348,7 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
 #define USE_OP(op_type)   \
   USE_OP_ITSELF(op_type); \
   USE_OP_KERNEL(op_type)
+// clang-format on
 
 }  // namespace framework
 }  // namespace paddle

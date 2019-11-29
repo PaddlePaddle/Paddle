@@ -58,7 +58,7 @@ void PadGradFunction(const framework::ExecutionContext& context,
   auto src_tensor = EigenTensor<T, D>::From(src);
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
-  d_out_tensor.device(place) = src_tensor.pad(paddings, 0);
+  d_out_tensor.device(place) = src_tensor.pad(paddings, static_cast<T>(0));
 }
 
 template <typename DeviceContext, typename T>
@@ -119,6 +119,19 @@ void PaddingGradFunctor(int rank, const framework::ExecutionContext& context,
   }
 }
 
+inline bool IsSymmetricPadding(const std::vector<int>& pads,
+                               const int data_dim) {
+  bool is_sys_pad = true;
+  if (static_cast<int>(pads.size()) == data_dim * 2) {
+    for (int i = 0; i < data_dim; ++i) {
+      if (pads[2 * i] != pads[2 * i + 1]) {
+        is_sys_pad = false;
+        return is_sys_pad;
+      }
+    }
+  }
+  return is_sys_pad;
+}
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

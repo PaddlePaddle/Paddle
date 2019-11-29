@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/float16.h"
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <bitset>
@@ -18,6 +19,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/platform/enforce.h"
 
 #define ARITHMETIC_KERNEL(op_type, sign)                                 \
   __global__ void op_type(const half* in1, const half* in2, half* out) { \
@@ -259,8 +261,8 @@ TEST(float16, typeid) {
   int b(0);
 
   // compile time assert
-  PADDLE_ASSERT(functor(a) == true);
-  PADDLE_ASSERT(functor2(b) == false);
+  PADDLE_ENFORCE_EQ(functor(a), true);
+  PADDLE_ENFORCE_EQ(functor2(b), false);
 }
 
 // GPU test
@@ -270,11 +272,13 @@ TEST(float16, isinf) {
   float16 b = float16(INFINITY);
   // underflow to 0
   float16 native_a(5e-40f);
-  // overflow to inf
-  float16 native_b(5e40f);
   EXPECT_EQ(std::isinf(a), true);
   EXPECT_EQ(std::isinf(b), true);
+#ifndef _WIN32
+  // overflow to inf
+  float16 native_b(5e40f);
   EXPECT_EQ(std::isinf(native_b), true);
+#endif
   EXPECT_EQ(native_a, float16(0));
 }
 

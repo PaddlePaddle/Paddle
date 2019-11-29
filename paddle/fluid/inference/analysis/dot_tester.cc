@@ -16,7 +16,6 @@
 
 #include <gtest/gtest.h>
 #include <memory>
-#include "paddle/fluid/inference/analysis/data_flow_graph.h"
 
 namespace paddle {
 namespace inference {

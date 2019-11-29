@@ -60,7 +60,16 @@ HOSTDEVICE inline void StridedMemcpy(const T* x, const size_t* x_dims, T* out,
   size_t offset_i = offsets[i];
 
   if (i == rank - 1) {
-    PADDLE_ASSERT(x_stride == 1 && out_stride == 1);
+    PADDLE_ENFORCE(x_stride == 1,
+                   "When i:%d == rank:%d - 1, x_stride of random_crop_op "
+                   "expected to be 1, but got %ld. Please check input "
+                   "value.",
+                   i, rank, x_stride);
+    PADDLE_ENFORCE(out_stride == 1,
+                   "When i:%d == rank:%d - 1, out_stride of random_crop_op "
+                   "expected to be 1, but got %ld. Please check input "
+                   "value.",
+                   i, rank, out_stride);
     x += offset_i;
     for (size_t j = 0; j < out_dim_i; ++j) {
       *out++ = *x++;
@@ -121,7 +130,7 @@ struct RandomCropFunctor {
   HOSTDEVICE void operator()(size_t ins_idx) {
     typename Random<DeviceContext>::Engine engine(seed_);
     engine.discard(ins_idx * (rank_ - num_batchsize_dims_));
-    size_t offsets[9];
+    size_t offsets[9] = {};
     for (int i = num_batchsize_dims_; i < rank_; ++i) {
       typename Random<DeviceContext>::template UniformIntDist<size_t> dist(
           0, x_dims_[i] - out_dims_[i]);

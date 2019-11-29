@@ -17,68 +17,65 @@ if(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
 endif(APPLE)
 
-
-set(inference_deps paddle_inference_api paddle_fluid_api analysis pass ir_pass_manager
-  graph_viz_pass fc_fuse_pass
-    infer_clean_graph_pass
-  )
-
-if(WITH_GPU AND TENSORRT_FOUND)
-    set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine)
-endif()
-
-function(inference_api_test TARGET_NAME)
-    if (WITH_TESTING)
-        set(options "")
-        set(oneValueArgs SRC)
-        set(multiValueArgs ARGS)
-        cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-        set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
-        cc_test(${TARGET_NAME}
-                SRCS ${inference_test_SRC}
-                DEPS "${inference_deps}"
-                ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
-        if(inference_test_ARGS)
-            set_tests_properties(${TARGET_NAME}
-                    PROPERTIES DEPENDS "${inference_test_ARGS}")
-        endif()
-    endif(WITH_TESTING)
-endfunction(inference_api_test)
-
-cc_library(paddle_inference_api SRCS api.cc api_impl.cc DEPS lod_tensor)
-
-cc_test(test_paddle_inference_api
-        SRCS api_tester.cc
-        DEPS paddle_inference_api)
-
-inference_api_test(test_api_impl SRC api_impl_tester.cc
-                    ARGS test_word2vec test_image_classification)
+set(inference_deps ${analysis_deps}
+  paddle_inference_api paddle_fluid_api
+  analysis pass naive_executor
+  ${GLOB_PASS_LIB})
 
 if(WITH_GPU AND TENSORRT_FOUND)
-cc_library(paddle_inference_tensorrt_subgraph_engine
-        SRCS api_tensorrt_subgraph_engine.cc
-        DEPS paddle_inference_api analysis tensorrt_engine paddle_inference_api paddle_fluid_api tensorrt_converter)
-
-inference_api_test(test_api_tensorrt_subgraph_engine SRC api_tensorrt_subgraph_engine_tester.cc ARGS test_word2vec)
+    set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
 endif()
 
-if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
-    # compile the libinference_anakin_api.a and anakin.so.
-    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml)
-    cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
-    function(anakin_target target_name)
-      target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-    endfunction()
-    anakin_target(inference_anakin_api)
-    anakin_target(inference_anakin_api_shared)
-    if (WITH_TESTING)
-        cc_test(api_anakin_engine_tester SRCS api_anakin_engine_tester.cc 
-                ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.anakin.bin
-                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
-        cc_test(api_anakin_engine_rnn_tester SRCS api_anakin_engine_rnn_tester.cc 
-                ARGS --model=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin 
-                     --datapath=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn_data.txt
-                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
-    endif(WITH_TESTING)
+if (ANAKIN_SUBGRAPH)
+    set(inference_deps ${inference_deps} anakin_op_converter anakin_engine)
+endif()
+
+if(WITH_NGRAPH)
+    set(inference_deps ${inference_deps} ngraph)
+endif()
+
+add_subdirectory(details)
+
+if(WITH_MKLDNN)
+  set(mkldnn_quantizer_src mkldnn_quantizer.cc)
+  set(mkldnn_quantizer_cfg mkldnn_quantizer_config)
+  cc_library(${mkldnn_quantizer_cfg} SRCS mkldnn_quantizer_config.cc DEPS lod_tensor paddle_pass_builder)
+endif()
+
+cc_library(analysis_config SRCS analysis_config.cc DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder)
+if(WITH_NGRAPH)
+  cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc DEPS ngraph)
+else(WITH_NGRAPH)
+  cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
+endif(WITH_NGRAPH)
+cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS paddle_inference_api zero_copy_tensor
+  reset_tensor_array analysis_config paddle_pass_builder ir_pass_manager op_compatible_info ${inference_deps})
+cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS
+           lod_tensor scope paddle_pass_builder reset_tensor_array analysis_config
+           paddle_pass_builder zero_copy_tensor
+           reset_tensor_array)
+
+cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api)
+
+if(WITH_TESTING)
+  inference_base_test(test_api_impl SRCS api_impl_tester.cc DEPS ${inference_deps}
+                      ARGS --word2vec_dirname=${WORD2VEC_MODEL_DIR} --book_dirname=${PYTHON_TESTS_DIR}/book)
+  set_tests_properties(test_api_impl PROPERTIES DEPENDS test_image_classification)
+  set_tests_properties(test_api_impl PROPERTIES LABELS "RUN_TYPE=DIST")
+endif()
+cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor benchmark ${inference_deps}
+        ARGS --dirname=${WORD2VEC_MODEL_DIR})
+
+if(ANAKIN_FOUND)
+  # Do not turn warnings into errors.
+  set_source_files_properties(api.cc api_anakin_engine.cc PROPERTIES COMPILE_FLAGS "-Wno-error")
+  cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS boost xxhash framework_proto eigen3)
+  target_link_libraries(inference_anakin_api anakin anakin_saber_common)
+  cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS boost xxhash framework_proto eigen3)
+  target_link_libraries(inference_anakin_api_shared anakin anakin_saber_common)
+  function(anakin_target target_name)
+    target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+  endfunction()
+  anakin_target(inference_anakin_api)
+  anakin_target(inference_anakin_api_shared)
 endif()

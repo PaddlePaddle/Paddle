@@ -14,14 +14,63 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/concat.h"
+#include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
+#include "paddle/fluid/operators/utils.h"
 
 namespace paddle {
 namespace operators {
+static inline framework::DDim ComputeAndCheckShape(
+    const bool is_runtime, const std::vector<framework::DDim>& inputs_dims,
+    const size_t axis) {
+  const size_t n = inputs_dims.size();
+  auto out_dims = inputs_dims[0];
+  size_t in_zero_dims_size = out_dims.size();
+  for (size_t i = 1; i < n; i++) {
+    for (size_t j = 0; j < in_zero_dims_size; j++) {
+      if (j == axis) {
+        if (is_runtime) {
+          out_dims[axis] += inputs_dims[i][j];
+        } else {
+          if (inputs_dims[i][j] == -1) {
+            out_dims[axis] = -1;
+          } else {
+            out_dims[axis] += inputs_dims[i][j];
+          }
+        }
+      } else {
+        bool check_shape =
+            is_runtime || (out_dims[j] > 0 && inputs_dims[i][j] > 0);
+        if (check_shape) {
+          // check all shape in run time
+          PADDLE_ENFORCE_EQ(
+              inputs_dims[0][j], inputs_dims[i][j],
+              "ShapeError: Dimension %d in inputs' shapes must be equal. "
+              "But recevied input[0]'s shape = "
+              "[%s], input[%d]'s shape = [%s].",
+              j, inputs_dims[0], i, inputs_dims[i]);
+        }
+      }
+    }
+  }
+  return out_dims;
+}
+
+static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
+  PADDLE_ENFORCE_EQ(
+      axis >= -rank && axis < rank, true,
+      platform::errors::InvalidArgument(
+          "The axis is expected to be in range of [%d, %d), but got %d", -rank,
+          rank, axis));
+  if (axis < 0) {
+    axis = axis + rank;
+  }
+  return axis > 0 ? axis : 0;
+}
 
 template <typename DeviceContext, typename T>
 class ConcatKernel : public framework::OpKernel<T> {
@@ -29,7 +78,27 @@ class ConcatKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     framework::Tensor* out = ctx.Output<framework::Tensor>("Out");
-    int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
+    auto axis = ctx.Attr<int>("axis");
+    bool need_resize_out_dims = false;
+    if (ctx.HasInput("AxisTensor")) {
+      auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
+      axis = GetDataFromTensor<int>(axis_tensor)[0];
+      need_resize_out_dims = true;
+    }
+    axis = ComputeAxis(static_cast<int64_t>(axis),
+                       static_cast<int64_t>(ins[0]->dims().size()));
+
+    if (need_resize_out_dims) {
+      const size_t n = ins.size();
+      std::vector<framework::DDim> ins_dims(n);
+      for (size_t i = 0; i < n; i++) {
+        ins_dims[i] = ins[i]->dims();
+      }
+
+      framework::DDim out_dims = ComputeAndCheckShape(true, ins_dims, axis);
+      out->Resize(out_dims);
+    }
     auto place = ctx.GetPlace();
     out->mutable_data<T>(place);
 
@@ -37,6 +106,9 @@ class ConcatKernel : public framework::OpKernel<T> {
     if (axis == 0 && ins.size() < 10) {
       size_t output_offset = 0;
       for (auto* in : ins) {
+        if (!in || in->numel() == 0UL) {
+          continue;
+        }
         auto in_stride = framework::stride_numel(in->dims());
         auto out_stride = framework::stride_numel(out->dims());
         StridedNumelCopyWithAxis<T>(ctx.device_context(), axis,
@@ -45,9 +117,13 @@ class ConcatKernel : public framework::OpKernel<T> {
         output_offset += in_stride[axis];
       }
     } else {
-      std::vector<framework::Tensor> inputs(ins.size());
+      std::vector<framework::Tensor> inputs;
       for (size_t j = 0; j < ins.size(); ++j) {
-        inputs[j] = *ins[j];
+        if (ins[j] && ins[j]->numel() > 0) {
+          inputs.push_back(*ins[j]);
+        } else {
+          continue;
+        }
       }
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       paddle::operators::math::ConcatFunctor<DeviceContext, T> concat_functor;
@@ -63,7 +139,7 @@ class ConcatGradKernel : public framework::OpKernel<T> {
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto ins = ctx.MultiInput<framework::LoDTensor>("X");
-    auto out_var_names = ctx.Outputs(framework::GradVarName("X"));
+    auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
     auto outs =
         ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
 
@@ -76,41 +152,37 @@ class ConcatGradKernel : public framework::OpKernel<T> {
         }
       }
     }
+    PADDLE_ENFORCE_EQ(ins[0] != nullptr, true, "The input should not be null.");
 
-    int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
-
+    auto axis = ctx.Attr<int>("axis");
+    if (ctx.HasInput("AxisTensor")) {
+      auto* axis_tensor = ctx.Input<framework::Tensor>("AxisTensor");
+      axis = GetDataFromTensor<int>(axis_tensor)[0];
+    }
+    axis = ComputeAxis(static_cast<int64_t>(axis),
+                       static_cast<int64_t>(ins[0]->dims().size()));
     // get output tensor that the name is not kEmptyVarName
     std::vector<framework::Tensor*> outputs;
     for (size_t j = 0; j < outs.size(); ++j) {
-      if (out_var_names[j] != framework::kEmptyVarName) {
+      if (out_var_names[j] != framework::kEmptyVarName &&
+          outs[j]->numel() != 0UL) {
         outs[j]->mutable_data<T>(ctx.GetPlace());
         outputs.push_back(outs[j]);
       } else {
         outputs.push_back(nullptr);
       }
     }
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
 
     // Sometimes direct copies will be faster, this maybe need deeply analysis.
     if (axis == 0 && outs.size() < 10) {
-      size_t input_offset = 0;
-      const auto in_stride = framework::stride_numel(out_grad->dims());
-
-      for (size_t i = 0; i < outs.size(); ++i) {
-        auto out_stride = framework::stride_numel(ins[i]->dims());
-        auto* out = outputs[i];
-        if (out != nullptr) {
-          StridedNumelCopyWithAxis<T>(
-              ctx.device_context(), axis, out->data<T>(), out_stride,
-              out_grad->data<T>() + input_offset, in_stride, out_stride[axis]);
-        }
-        input_offset += out_stride[axis];
-      }
+      std::vector<const framework::Tensor*> ref_shape;
+      ref_shape.insert(ref_shape.begin(), ins.begin(), ins.end());
+      StridedMemcpyWithAxis0<T>(dev_ctx, *out_grad, ref_shape, &outputs);
     } else {
-      auto& dev_ctx = ctx.template device_context<DeviceContext>();
-      paddle::operators::math::ConcatGradFunctor<DeviceContext, T>
-          concat_grad_functor;
-      concat_grad_functor(dev_ctx, *out_grad, ins, static_cast<int>(axis),
-                          &outputs);
+      math::SplitFunctor<DeviceContext, T> split_functor;
+      split_functor(dev_ctx, *out_grad, ctx.MultiInput<framework::Tensor>("X"),
+                    static_cast<int>(axis), &outputs);
     }
   }
 };

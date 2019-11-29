@@ -25,6 +25,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class OperatorBase;
+
 using InferShapeVarPtr = boost::variant<VarDesc *, Variable *>;
 
 class InferShapeContext {
@@ -33,55 +35,54 @@ class InferShapeContext {
   virtual bool HasInput(const std::string &name) const = 0;
   virtual bool HasOutput(const std::string &name) const = 0;
 
-  std::vector<proto::VarType::Type> GetInputsVarType(
-      const std::string &name) const;
-  std::vector<proto::VarType::Type> GetOutputsVarType(
-      const std::string &name) const;
+  virtual std::vector<proto::VarType::Type> GetInputsVarType(
+      const std::string &name) const = 0;
+  virtual std::vector<proto::VarType::Type> GetOutputsVarType(
+      const std::string &name) const = 0;
 
   virtual bool HasInputs(const std::string &name) const = 0;
   virtual bool HasOutputs(const std::string &name) const = 0;
 
-  DDim GetInputDim(const std::string &name) const;
-  std::vector<DDim> GetInputsDim(const std::string &name) const;
-  std::vector<DDim> GetReaderDims(const std::string &name) const;
-  DDim GetInputsElementDim(const std::string &name, int idx) const;
+  virtual DDim GetInputDim(const std::string &name) const = 0;
+  virtual std::vector<DDim> GetInputsDim(const std::string &name) const = 0;
+  virtual std::vector<DDim> GetReaderDims(const std::string &name) const;
 
-  void SetOutputDim(const std::string &name, const DDim &dim);
-  void SetOutputsDim(const std::string &name, const std::vector<DDim> &dims);
-  void SetReaderDims(const std::string &name, const std::vector<DDim> &dims);
+  virtual void SetOutputDim(const std::string &name, const DDim &dim) = 0;
+  virtual void SetOutputsDim(const std::string &name,
+                             const std::vector<DDim> &dims) = 0;
+  virtual void SetReaderDims(const std::string &name,
+                             const std::vector<DDim> &dims);
 
   virtual AttrReader Attrs() const = 0;
-  virtual const std::vector<std::string> &Inputs(
-      const std::string &name) const = 0;
-  virtual const std::vector<std::string> &Outputs(
-      const std::string &name) const = 0;
+  virtual std::vector<std::string> Inputs(const std::string &name) const = 0;
+  virtual std::vector<std::string> Outputs(const std::string &name) const = 0;
+
+  virtual void ShareDim(const std::string &in, const std::string &out,
+                        size_t i = 0, size_t j = 0) = 0;
 
   virtual void ShareLoD(const std::string &in, const std::string &out,
                         size_t i = 0, size_t j = 0) const = 0;
+  // share the lod information of all the tensor from in to out.
+  // out_vars[i].lod = in_vars[i].lod
+  virtual void ShareAllLoD(const std::string &in,
+                           const std::string &out) const = 0;
+
+  virtual int32_t GetLoDLevel(const std::string &in, size_t i = 0) const = 0;
+
+  virtual void SetLoDLevel(const std::string &out, int32_t lod_level,
+                           size_t j = 0) const = 0;
 
   virtual bool IsRuntime() const = 0;
 
-  std::vector<InferShapeVarPtr> GetInputVarPtrs(const std::string &name);
-  std::vector<InferShapeVarPtr> GetOutputVarPtrs(const std::string &name);
-  virtual InferShapeVarPtr GetVarPtr(const std::string &name) = 0;
-
-  // Note: In while op, we need this to be public
-  void SetDims(const std::vector<std::string> &names,
-               const std::vector<DDim> &dims);
+  virtual std::vector<InferShapeVarPtr> GetInputVarPtrs(
+      const std::string &name) = 0;
+  virtual std::vector<InferShapeVarPtr> GetOutputVarPtrs(
+      const std::string &name) = 0;
 
  protected:
-  virtual DDim GetDim(const std::string &name) const = 0;
-  virtual void SetDim(const std::string &name, const DDim &dim) = 0;
   virtual std::vector<DDim> GetRepeatedDims(const std::string &name) const = 0;
   virtual void SetRepeatedDims(const std::string &name,
                                const std::vector<DDim> &dims) = 0;
-
-  std::vector<DDim> GetDims(const std::vector<std::string> &names) const;
-
-  std::vector<proto::VarType::Type> GetVarTypes(
-      const std::vector<std::string> &names) const;
-
-  virtual proto::VarType::Type GetVarType(const std::string &name) const = 0;
 };
 
 }  // namespace framework

@@ -31,8 +31,23 @@ while ("${PADDLE_VERSION}" STREQUAL "")
           set(tmp_version "${GIT_TAG_NAME}~1")
         endif()
       else()
-        # otherwise, we always set PADDLE_VERSION to 0.0.0 to represent latest
-        set(PADDLE_VERSION "0.0.0")
+        execute_process(
+          COMMAND ${GIT_EXECUTABLE} describe --exact-match --tags ${tmp_version}
+          WORKING_DIRECTORY ${PADDLE_SOURCE_DIR}
+          OUTPUT_VARIABLE GIT_EXACT_TAG_NAME
+          RESULT_VARIABLE GIT_EXACT_TAG_RESULT
+          ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
+        if (NOT ${GIT_EXACT_TAG_NAME})
+          # Check if current branch is tag branch
+          if (${GIT_EXACT_TAG_NAME} MATCHES "v${TAG_VERSION_REGEX}")
+            string(REPLACE "v" "" PADDLE_VERSION ${GIT_EXACT_TAG_NAME})
+          else()
+            set(PADDLE_VERSION "0.0.0")
+          endif()
+        else()
+          # otherwise, we always set PADDLE_VERSION to 0.0.0 to represent latest
+          set(PADDLE_VERSION "0.0.0")
+        endif()
       endif()
     else()
       set(PADDLE_VERSION "0.0.0")
@@ -44,5 +59,14 @@ while ("${PADDLE_VERSION}" STREQUAL "")
   endif()
 endwhile()
 
+string(REPLACE "-" "." PADDLE_VER_LIST ${PADDLE_VERSION})
+string(REPLACE "." ";" PADDLE_VER_LIST ${PADDLE_VER_LIST})
+list(GET PADDLE_VER_LIST 0 PADDLE_MAJOR_VER)
+list(GET PADDLE_VER_LIST 1 PADDLE_MINOR_VER)
+list(GET PADDLE_VER_LIST 2 PADDLE_PATCH_VER)
+math(EXPR PADDLE_VERSION_INTEGER "${PADDLE_MAJOR_VER} * 1000000
+    + ${PADDLE_MINOR_VER} * 1000 + ${PADDLE_PATCH_VER}")
+
 add_definitions(-DPADDLE_VERSION=${PADDLE_VERSION})
+add_definitions(-DPADDLE_VERSION_INTEGER=${PADDLE_VERSION_INTEGER})
 message(STATUS "Paddle version is ${PADDLE_VERSION}")

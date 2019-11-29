@@ -14,12 +14,17 @@ limitations under the License. */
 #pragma once
 
 #include <mkldnn.h>
+#include <algorithm>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
-
 namespace paddle {
+#ifdef PADDLE_WITH_MKLDNN
+using MKLDNNMemoryFormat = mkldnn::memory::format;
+#endif
 namespace platform {
 
 using MKLDNNStream = mkldnn::stream;
@@ -68,7 +73,7 @@ tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e, const Primitive& p,
 
 inline mkldnn::memory::desc MKLDNNMemDesc(const std::vector<int>& dims,
                                           mkldnn::memory::data_type data_type,
-                                          mkldnn::memory::format format) {
+                                          MKLDNNMemoryFormat format) {
   mkldnn::memory::dims tz = dims;
   return mkldnn::memory::desc({tz}, data_type, format);
 }
@@ -80,12 +85,24 @@ inline bool CanMKLDNNBeUsed(const framework::ExecutionContext& ctx) {
 
 template <typename Type>
 mkldnn::memory::data_type MKLDNNGetDataType() {
-  return mkldnn::memory::data_undef;
+  return mkldnn::memory::data_type::data_undef;
 }
 
 template <>
 inline mkldnn::memory::data_type MKLDNNGetDataType<float>() {
-  return mkldnn::memory::f32;
+  return mkldnn::memory::data_type::f32;
+}
+template <>
+inline mkldnn::memory::data_type MKLDNNGetDataType<int32_t>() {
+  return mkldnn::memory::data_type::s32;
+}
+template <>
+inline mkldnn::memory::data_type MKLDNNGetDataType<int8_t>() {
+  return mkldnn::memory::data_type::s8;
+}
+template <>
+inline mkldnn::memory::data_type MKLDNNGetDataType<uint8_t>() {
+  return mkldnn::memory::data_type::u8;
 }
 
 inline void Reorder(const mkldnn::memory& src, const mkldnn::memory& dst) {
@@ -95,176 +112,124 @@ inline void Reorder(const mkldnn::memory& src, const mkldnn::memory& dst) {
   mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
 }
 
-inline mkldnn::memory::format GetMKLDNNFormat(const mkldnn::memory memory) {
-  return static_cast<mkldnn::memory::format>(
+inline MKLDNNMemoryFormat GetMKLDNNFormat(const mkldnn::memory memory) {
+  return static_cast<MKLDNNMemoryFormat>(
       memory.get_primitive_desc().desc().data.format);
 }
 
-inline mkldnn::memory::format GetMKLDNNFormat(
+inline MKLDNNMemoryFormat GetMKLDNNFormat(
     const mkldnn::sum::primitive_desc& memory) {
-  return static_cast<mkldnn::memory::format>(
+  return static_cast<MKLDNNMemoryFormat>(
       memory.dst_primitive_desc().desc().data.format);
 }
 
-class MKLDNNHandler {
- public:
-  MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
-                const std::string& base_key)
-      : dev_ctx_(dev_ctx),
-        engine_(engine),
-        key_(base_key),
-        is_reusing_(false) {}
-
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_src_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireWeightsMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_weights_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireBiasMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_bias_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDstMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_dst_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDiffDstMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_diff_dst_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireDiffSrcMemory(
-      const mkldnn::memory::desc& md, void* ptr) {
-    return this->AcquireMemory(md, ptr, "@user_diff_src_mem_p");
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireMemoryFromPrimitive(
-      mkldnn::memory::primitive_desc mdp, void* ptr,
-      const std::string& suffix) {
-    auto local_key = key_ + suffix;
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
-                   "Fail to find mem primitive in device context");
-    if (mem_p == nullptr) {
-      mem_p = std::make_shared<mkldnn::memory>(mdp, ptr);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
-      // Mark that reusing happenned. All primitives from operator instance
-      // should be reused or none of them. So we check consistency
-      is_reusing_ = true;
-    }
-    return mem_p;
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireMemory(const mkldnn::memory::desc& md,
-                                                void* ptr,
-                                                const std::string& suffix) {
-    /*Generate key*/
-    auto local_key = key_ + suffix;
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    PADDLE_ENFORCE((mem_p != nullptr) || (is_reusing_ == false),
-                   "Fail to find mem primitive in device context");
-    if (mem_p == nullptr) {
-      mem_p = std::make_shared<mkldnn::memory>(
-          mkldnn::memory::primitive_desc{md, engine_}, ptr);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
-      // Mark that reusing happenned. All primitives from operator instance
-      // should be reused or none of them. So we check consistency
-      is_reusing_ = true;
-    }
-    return mem_p;
-  }
-
-  std::shared_ptr<mkldnn::memory> AcquireMemory(
-      mkldnn::memory::primitive_desc& mpd,       // NOLINT
-      mkldnn::memory::primitive_desc& user_mpd,  // NOLINT
-      const std::shared_ptr<mkldnn::memory> user_memory_p,
-      const std::string& suffix,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
-    // create reorder primitive if the input format is not the preferred one
-    auto local_key = key_ + suffix;
-    auto key_reorder_p = key_ + suffix + "reorder_p";
-
-    auto target_memory_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    PADDLE_ENFORCE((target_memory_p != nullptr) || (is_reusing_ == false),
-                   "Fail to find mem primitive in device context");
-    if (target_memory_p == nullptr) {
-      target_memory_p = user_memory_p;
-      std::shared_ptr<mkldnn::primitive> reorder_p;
-      if (mpd != user_mpd) {
-        target_memory_p = std::make_shared<mkldnn::memory>(mpd);
-
-        auto reorder_p =
-            std::make_shared<mkldnn::reorder>(*user_memory_p, *target_memory_p);
-        dev_ctx_.SetBlob(key_reorder_p, reorder_p);
-        pipeline.push_back(*reorder_p);
-      }
-      dev_ctx_.SetBlob(local_key, target_memory_p);
-    } else {
-      // Make reorder if needed
-      auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
-          dev_ctx_.GetBlob(key_reorder_p));
-      if (reorder_p != nullptr) {
-        pipeline.push_back(*reorder_p);
-      }
-      is_reusing_ = true;
-    }
-    return target_memory_p;
-  }
-
-  static std::string GetHash(mkldnn::memory::dims& operand_dims,  // NOLINT
-                             const std::string& suffix) {
-    return dims2str(operand_dims) + suffix;
-  }
-
- protected:
-  static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
-    std::string dstr = "";
-    for (size_t i = 0; i < operand_dims.size(); ++i) {
-      dstr += std::to_string(operand_dims[i]) + "-";
-    }
-    return dstr;
-  }
-
- protected:
-  const MKLDNNDeviceContext& dev_ctx_;
-  mkldnn::engine engine_;
-  std::string key_;
-  bool is_reusing_;
-};
-
-inline mkldnn::memory::format MKLDNNFormatForSize(
-    size_t dims_size, mkldnn::memory::format data_format) {
+inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
+                                              MKLDNNMemoryFormat data_format) {
   if (dims_size == 1) {
-    return mkldnn::memory::format::x;
+    return MKLDNNMemoryFormat::x;
   } else if (dims_size == 2) {
-    return mkldnn::memory::format::nc;
+    return MKLDNNMemoryFormat::nc;
+  } else if (dims_size == 3) {
+    if (data_format == MKLDNNMemoryFormat::nchw) {
+      return MKLDNNMemoryFormat::ncw;
+    } else if (data_format == MKLDNNMemoryFormat::nhwc) {
+      return MKLDNNMemoryFormat::nwc;
+    }
+  } else if (dims_size == 4) {
+    if (data_format == MKLDNNMemoryFormat::goihw) {
+      return MKLDNNMemoryFormat::oihw;
+    }
+  } else if (dims_size == 5) {
+    if (data_format == MKLDNNMemoryFormat::goidhw) {
+      return MKLDNNMemoryFormat::oidhw;
+    }
+    if (data_format == MKLDNNMemoryFormat::nchw) {
+      return MKLDNNMemoryFormat::ncdhw;
+    } else if (data_format == MKLDNNMemoryFormat::nhwc) {
+      return MKLDNNMemoryFormat::ndhwc;
+    }
   }
   return data_format;
 }
 
-inline mkldnn::memory::format data_format_to_memory_format(
+inline MKLDNNMemoryFormat data_format_to_memory_format(
     const std::string& data_format) {
   switch (framework::StringToDataLayout(data_format)) {
     case framework::DataLayout::kNHWC:
-      return mkldnn::memory::format::nhwc;
+      return MKLDNNMemoryFormat::nhwc;
     case framework::DataLayout::kNCHW:
-      return mkldnn::memory::format::nchw;
+      return MKLDNNMemoryFormat::nchw;
     default:
-      return mkldnn::memory::format::any;
+      return MKLDNNMemoryFormat::any;
+  }
+}
+
+inline MKLDNNMemoryFormat StringToMKLDNNFormat(std::string* format) {
+  std::transform(format->begin(), format->end(), format->begin(), ::tolower);
+
+  if (!format->compare("nchw")) {
+    return MKLDNNMemoryFormat::nchw;
+  } else if (!format->compare("nchw16c")) {
+    return MKLDNNMemoryFormat::nChw16c;
+  } else if (!format->compare("nchw8c")) {
+    return MKLDNNMemoryFormat::nChw8c;
+  } else if (!format->compare("nhwc")) {
+    return MKLDNNMemoryFormat::nhwc;
+  } else {
+    return MKLDNNMemoryFormat::any;
+  }
+}
+
+inline std::string ThreadIDasStr(void) {
+  return std::to_string(
+      std::hash<std::thread::id>()(std::this_thread::get_id()));
+}
+
+template <typename T>
+inline void AppendKey(std::string* key, const T& num) {
+  key->append(std::to_string(num));
+}
+
+inline void AppendKey(std::string* key, const std::string& str) {
+  key->append(str);
+}
+
+inline void AppendKey(std::string* key, const char* str) { key->append(str); }
+
+inline void AppendKey(std::string* key, const std::vector<int>& dims) {
+  for (size_t i = 0; i < dims.size(); i++) {
+    AppendKey(key, std::to_string(dims[i]));
+  }
+}
+
+template <typename... ArgTypes>
+inline std::string CreateKey(ArgTypes&&... args) {
+  std::string key;
+  key.reserve(64);
+  using expand_type = int[];
+  expand_type{0, (AppendKey(&key, std::forward<ArgTypes>(args)), 0)...};
+  return key;
+}
+
+inline std::vector<std::vector<int>> ToMkldnnPadding(
+    const std::vector<int>& paddings) {
+  if (paddings.size() == 6) {
+    int padding_front = paddings[0];
+    int padding_back = paddings[1];
+    int padding_top = paddings[2];
+    int padding_bottom = paddings[3];
+    int padding_left = paddings[4];
+    int padding_right = paddings[5];
+
+    return {{padding_front, padding_top, padding_left},
+            {padding_back, padding_bottom, padding_right}};
+  } else {
+    int padding_top = paddings[0];
+    int padding_bottom = paddings[1];
+    int padding_left = paddings[2];
+    int padding_right = paddings[3];
+
+    return {{padding_top, padding_left}, {padding_bottom, padding_right}};
   }
 }
 

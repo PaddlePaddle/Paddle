@@ -15,9 +15,12 @@
 #pragma once
 
 #include <time.h>
+#include <condition_variable>  // NOLINT
 
 #include <functional>
+#include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -28,6 +31,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace operators {
@@ -35,36 +39,115 @@ namespace distributed {
 
 constexpr char kRequestSend[] = "RequestSend";
 constexpr char kRequestGet[] = "RequestGet";
+constexpr char kRequestGetMonomerVariable[] = "RequestGetMonomerVariable";
+constexpr char kRequestGetMonomerBarrier[] = "RequestGetMonomerBarrier";
 constexpr char kRequestPrefetch[] = "RequestPrefetch";
 constexpr char kRequestCheckpoint[] = "RequestCheckpoint";
 constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
+constexpr char kRequestGetNoBarrier[] = "GetVariableNoBarrier";
+constexpr char kRequestNotify[] = "RequestNotify";
+
+constexpr char kSendRPC[] = "SendRPC";
+constexpr char kGetRPC[] = "GetRPC";
+constexpr char kGetNoBarrierRPC[] = "GetNoBarrierRPC";
+constexpr char kGetMonomerRPC[] = "GetMonomerRPC";
+constexpr char kPrefetchRPC[] = "PrefetchRPC";
+constexpr char kBatchBarrierRPC[] = "BatchBarrierRPC";
+constexpr char kFetchBarrierRPC[] = "FetchBarrierRPC";
+constexpr char kSendMonomerFetchBarrierRPC[] = "SendMonomerFetchBarrierRPC";
+constexpr char kSendCompleteRPC[] = "SendCompleteRPC";
+constexpr char kCheckPointNotifyRPC[] = "CheckPointNotifyRPC";
 
 #define LISTEN_TERMINATE_MESSAGE "TERMINATE@RECV"
 #define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
 #define FETCH_BARRIER_MESSAGE "FETCH_BARRIER@RECV"
 #define COMPLETE_MESSAGE "COMPLETE@RECV"
+#define WITHOUT_BARRIER_MESSAGE "@WITHOUT_BARRIER@RECV"
+#define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 
 #define CHECKPOINT_SAVE_MESSAGE "SAVE@CHECKPOINTNOTIFY"
 #define CHECKPOINT_LOAD_MESSAGE "LOAD@CHECKPOINTNOTIFY"
 
 class RPCServer;
 
-struct VarHandle {
-  // RPC endpoint.
-  std::string ep;
-  const platform::DeviceContext* ctx;
-  const framework::Scope* scope;
-  // Variable name.
-  std::string name;
-  // RPC method name.
-  std::string method;
+class VarHandle {
+ public:
+  VarHandle(const std::string ep, const std::string& method,
+            const std::string& name,
+            const platform::DeviceContext* p_ctx = nullptr,
+            const framework::Scope* p_scope = nullptr)
+      : status_(kDefaultState) {
+    ep_ = ep;
+    ctx_ = p_ctx;
+    scope_ = p_scope;
+    name_ = name;
+    method_ = method;
+  }
+
+  virtual ~VarHandle() {}
+
+ public:
+  bool should_retry = false;
+
+  bool Wait() {
+    int ret = kDefaultState;
+    {
+      std::unique_lock<std::mutex> lk(sync_mutex_);
+      wait_cond_.wait(lk, [this] { return status_ != kDefaultState; });
+      ret = status_;
+    }
+    VLOG(7) << "VarHandle wait:" << ret;
+    return ret != kErrorState;
+  }
+
+  void Finish(bool ok) {
+    {
+      std::unique_lock<std::mutex> lk(sync_mutex_);
+      status_ = ok ? kFinishState : kErrorState;
+    }
+    VLOG(7) << "VarHandle finish:" << ok;
+    wait_cond_.notify_all();
+  }
 
   std::string String() const {
     std::ostringstream s;
-    s << method << " name:[" << name << "], ep:[" << ep << "]";
+    s << method_ << " name:[" << name_ << "], ep:[" << ep_ << "], status:["
+      << status_ << "]";
     return s.str();
   }
+
+  std::string ep() const { return ep_; }
+  const platform::DeviceContext* ctx() const { return ctx_; }
+  const framework::Scope* scope() const { return scope_; }
+  std::string name() const { return name_; }
+  std::string method() const { return method_; }
+
+ protected:
+  // RPC endpoint.
+  std::string ep_;
+  const platform::DeviceContext* ctx_;
+  const framework::Scope* scope_;
+  // Variable name.
+  std::string name_;
+  // RPC method name.
+  std::string method_;
+
+ protected:
+  std::mutex sync_mutex_;
+  std::condition_variable wait_cond_;
+
+  enum VarHandleStatus {
+    kDefaultState = -1,
+    kErrorState = 0,
+    kFinishState = 1,
+  };
+  VarHandleStatus status_;
+
+ private:
+  DISABLE_COPY_AND_ASSIGN(VarHandle);
 };
+
+typedef std::shared_ptr<VarHandle> VarHandlePtr;
 
 class RequestHandler {
  public:
@@ -103,6 +186,15 @@ class RequestHandler {
     grad_to_prepared_ctx_ = g;
   }
 
+  void SetSparseGradToParam(std::unordered_map<std::string, std::string>* g) {
+    sparse_grad_to_param_ = g;
+  }
+
+  void SetLrDecayPreparedCtx(
+      std::shared_ptr<framework::ExecutorPrepareContext> g) {
+    lr_decay_prepared_ctx_ = g;
+  }
+
   void SetRPCServer(RPCServer* rpc_server) { rpc_server_ = rpc_server; }
 
   // Get attributes.
@@ -128,7 +220,9 @@ class RequestHandler {
   //    }
   virtual bool Handle(const std::string& varname, framework::Scope* scope,
                       framework::Variable* var, framework::Variable** outvar,
-                      const std::string& out_var_name = "") = 0;
+                      const int trainer_id,
+                      const std::string& out_var_name = "",
+                      const std::string& table_name = "") = 0;
 
  protected:
   const bool sync_mode_;
@@ -149,7 +243,10 @@ class RequestHandler {
   std::unordered_map<std::string,
                      std::shared_ptr<framework::ExecutorPrepareContext>>*
       grad_to_prepared_ctx_;
+  std::unordered_map<std::string, std::string>* sparse_grad_to_param_;
 
+  // used for lr decay
+  std::shared_ptr<framework::ExecutorPrepareContext> lr_decay_prepared_ctx_;
   RPCServer* rpc_server_;
 };
 

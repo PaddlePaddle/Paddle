@@ -17,6 +17,8 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -27,19 +29,34 @@ namespace tensorrt {
 class TensorRTEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    // ASSERT_EQ(0, cudaStreamCreate(&stream_));
-    engine_ = new TensorRTEngine(10, 1 << 10, &stream_);
+    ctx_ = new platform::CUDADeviceContext(platform::CUDAPlace(0));
+
+    engine_ = new TensorRTEngine(10, 1 << 10);
     engine_->InitNetwork();
   }
 
   void TearDown() override {
-    delete engine_;
-    cudaStreamDestroy(stream_);
+    if (engine_) {
+      delete engine_;
+      engine_ = nullptr;
+    }
+  }
+
+  void PrepareInputOutput(const std::vector<float> &input,
+                          std::vector<int> output_shape) {
+    TensorFromVector(input, *ctx_, &input_);
+    output_.Resize(framework::make_ddim(output_shape));
+  }
+
+  void GetOutput(std::vector<float> *output) {
+    TensorToVector(output_, *ctx_, output);
   }
 
  protected:
-  TensorRTEngine* engine_;
-  cudaStream_t stream_;
+  framework::Tensor input_;
+  framework::Tensor output_;
+  TensorRTEngine *engine_;
+  platform::CUDADeviceContext *ctx_;
 };
 
 TEST_F(TensorRTEngineTest, add_layer) {
@@ -48,12 +65,14 @@ TEST_F(TensorRTEngineTest, add_layer) {
   float raw_weight[size] = {2.};  // Weight in CPU memory.
   float raw_bias[size] = {3.};
 
+  std::vector<void *> buffers(2);  // TRT binded inputs
+
   LOG(INFO) << "create weights";
   TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, size);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, size);
-  auto* x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
+  auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
                                   nvinfer1::DimsCHW{1, 1, 1});
-  auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *x, size,
+  auto *fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *x, size,
                                         weight.get(), bias.get());
   PADDLE_ENFORCE(fc_layer != nullptr);
 
@@ -63,18 +82,24 @@ TEST_F(TensorRTEngineTest, add_layer) {
   ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
 
   // fill in real data
-  float x_v = 1234;
-  engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
-                           1 * sizeof(float));
+  std::vector<float> x_v = {1234};
+  std::vector<float> y_cpu;
+  PrepareInputOutput(x_v, {1});
+
+  auto *x_v_gpu_data = input_.mutable_data<float>(ctx_->GetPlace());
+  auto *y_gpu_data = output_.mutable_data<float>(ctx_->GetPlace());
+
+  buffers[0] = reinterpret_cast<void *>(x_v_gpu_data);
+  buffers[1] = reinterpret_cast<void *>(y_gpu_data);
+
   LOG(INFO) << "to execute";
-  engine_->Execute(1);
+  engine_->Execute(1, &buffers, ctx_->stream());
 
   LOG(INFO) << "to get output";
-  float y_cpu;
-  engine_->GetOutputInCPU("y", &y_cpu, 1 * sizeof(float));
+  GetOutput(&y_cpu);
 
   LOG(INFO) << "to checkout output";
-  ASSERT_EQ(y_cpu, x_v * 2 + 3);
+  ASSERT_EQ(y_cpu[0], x_v[0] * 2 + 3);
 }
 
 TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
@@ -83,12 +108,13 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
   // instead of row-major, which is [[1.0, 1.1], [3.3, 4.4]]
   float raw_weight[4] = {1.0, 1.1, 3.3, 4.4};
   float raw_bias[2] = {1.3, 2.4};
+  std::vector<void *> buffers(2);  // TRT binded inputs
 
   TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 4);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 2);
-  auto* x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
+  auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
                                   nvinfer1::DimsCHW{1, 2, 1});
-  auto* fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *x, 2,
+  auto *fc_layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected, *x, 2,
                                         weight.get(), bias.get());
   PADDLE_ENFORCE(fc_layer != nullptr);
 
@@ -96,19 +122,27 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
   engine_->FreezeNetwork();
   ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
 
-  float x_v[2] = {1.0, 2.0};
-  engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
-                           2 * sizeof(float));
-  engine_->Execute(1);
+  // fill in real data
+  std::vector<float> x_v = {1.0, 2.0};
+  std::vector<float> y_cpu;
+  PrepareInputOutput(x_v, {2});
+
+  auto *x_v_gpu_data = input_.mutable_data<float>(ctx_->GetPlace());
+  auto *y_gpu_data = output_.mutable_data<float>(ctx_->GetPlace());
+
+  buffers[0] = reinterpret_cast<void *>(x_v_gpu_data);
+  buffers[1] = reinterpret_cast<void *>(y_gpu_data);
+
+  engine_->Execute(1, &buffers, ctx_->stream());
 
   LOG(INFO) << "to get output";
-  float y_cpu[2] = {-1., -1.};
+  GetOutput(&y_cpu);
 
   auto dims = engine_->GetITensor("y")->getDimensions();
   ASSERT_EQ(dims.nbDims, 3);
   ASSERT_EQ(dims.d[0], 2);
   ASSERT_EQ(dims.d[1], 1);
-  engine_->GetOutputInCPU("y", &y_cpu[0], 2 * sizeof(float));
+
   ASSERT_EQ(y_cpu[0], 4.5);
   ASSERT_EQ(y_cpu[1], 14.5);
 }
@@ -117,12 +151,13 @@ TEST_F(TensorRTEngineTest, test_conv2d) {
   // Weight in CPU memory.
   float raw_weight[9] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
   float raw_bias[1] = {0};
+  std::vector<void *> buffers(2);  // TRT binded inputs
 
   TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 9);
   TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 1);
-  auto* x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
+  auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
                                   nvinfer1::Dims3{1, 3, 3});
-  auto* conv_layer =
+  auto *conv_layer =
       TRT_ENGINE_ADD_LAYER(engine_, Convolution, *x, 1, nvinfer1::DimsHW{3, 3},
                            weight.get(), bias.get());
   PADDLE_ENFORCE(conv_layer != nullptr);
@@ -133,28 +168,36 @@ TEST_F(TensorRTEngineTest, test_conv2d) {
   engine_->FreezeNetwork();
   ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
 
-  float x_v[18] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
-                   1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-  engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
-                           18 * sizeof(float));
-  engine_->Execute(2);
+  // fill in real data
+  std::vector<float> x_v = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+  std::vector<float> y_cpu;
+  PrepareInputOutput(x_v, {18});
+
+  auto *x_v_gpu_data = input_.mutable_data<float>(ctx_->GetPlace());
+  auto *y_gpu_data = output_.mutable_data<float>(ctx_->GetPlace());
+
+  buffers[0] = reinterpret_cast<void *>(x_v_gpu_data);
+  buffers[1] = reinterpret_cast<void *>(y_gpu_data);
+
+  engine_->Execute(2, &buffers, ctx_->stream());
 
   LOG(INFO) << "to get output";
-  float* y_cpu = new float[18];
-  engine_->GetOutputInCPU("y", &y_cpu[0], 18 * sizeof(float));
+  GetOutput(&y_cpu);
+
   ASSERT_EQ(y_cpu[0], 4.0);
   ASSERT_EQ(y_cpu[1], 6.0);
 }
 
 TEST_F(TensorRTEngineTest, test_pool2d) {
   // Weight in CPU memory.
-  auto* x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
+  auto *x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
                                   nvinfer1::Dims3{1, 2, 2});
 
+  std::vector<void *> buffers(2);  // TRT binded inputs
   nvinfer1::PoolingType pool_t = nvinfer1::PoolingType::kAVERAGE;
-  auto* pool_layer =
-      TRT_ENGINE_ADD_LAYER(engine_, Pooling, *const_cast<nvinfer1::ITensor*>(x),
-                           pool_t, nvinfer1::DimsHW{2, 2});
+  auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *x, pool_t,
+                                          nvinfer1::DimsHW{2, 2});
 
   PADDLE_ENFORCE(pool_layer != nullptr);
   pool_layer->setStride(nvinfer1::DimsHW{1, 1});
@@ -164,14 +207,21 @@ TEST_F(TensorRTEngineTest, test_pool2d) {
   engine_->FreezeNetwork();
   ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
 
-  float x_v[8] = {1.0, 2.0, 5.0, 0.0, 2.0, 3.0, 5.0, 10.0};
-  engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
-                           8 * sizeof(float));
-  engine_->Execute(2);
+  // fill in real data
+  std::vector<float> x_v = {1.0, 2.0, 5.0, 0.0, 2.0, 3.0, 5.0, 10.0};
+  std::vector<float> y_cpu;
+  PrepareInputOutput(x_v, {2});
+
+  auto *x_v_gpu_data = input_.mutable_data<float>(ctx_->GetPlace());
+  auto *y_gpu_data = output_.mutable_data<float>(ctx_->GetPlace());
+
+  buffers[0] = reinterpret_cast<void *>(x_v_gpu_data);
+  buffers[1] = reinterpret_cast<void *>(y_gpu_data);
+
+  engine_->Execute(2, &buffers, ctx_->stream());
 
   LOG(INFO) << "to get output";
-  float* y_cpu = new float[2];
-  engine_->GetOutputInCPU("y", &y_cpu[0], 2 * sizeof(float));
+  GetOutput(&y_cpu);
 
   ASSERT_EQ(y_cpu[0], 2.0);
   ASSERT_EQ(y_cpu[1], 5.0);

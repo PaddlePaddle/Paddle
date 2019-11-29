@@ -13,35 +13,54 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#include "paddle/fluid/framework/eigen.h"
+#include <algorithm>
+#include <limits>
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
+
+using Tensor = framework::Tensor;
 
 // Out = max(X, 0) - X * Labels + log(1 + exp(-abs(X)))
 template <typename DeviceContext, typename T>
 class SigmoidCrossEntropyWithLogitsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const framework::Tensor *X = context.Input<framework::Tensor>("X");
-    const framework::Tensor *Labels = context.Input<framework::Tensor>("Label");
-    framework::Tensor *Out = context.Output<framework::Tensor>("Out");
-    Out->mutable_data<T>(context.GetPlace());
-
-    auto x = framework::EigenVector<T>::Flatten(*X);
-    auto labels = framework::EigenVector<T>::Flatten(*Labels);
-    auto out = framework::EigenVector<T>::Flatten(*Out);
-    auto &place = *context.device_context<DeviceContext>().eigen_device();
-
-    // term1 = max(x, 0)
-    auto term1 = x.cwiseMax(static_cast<T>(0));
-    // term2 = x * labels
-    auto term2 = x * labels;
-    // term3 = log(1 + exp(-abs(x)))
-    auto term3 = (static_cast<T>(1) + (-(x.abs())).exp()).log();
-
-    out.device(place) = term1 - term2 + term3;
+    const Tensor *X = context.Input<Tensor>("X");
+    const Tensor *Labels = context.Input<Tensor>("Label");
+    Tensor *Out = context.Output<Tensor>("Out");
+    int ignore_index = context.Attr<int>("ignore_index");
+    auto out_data = Out->mutable_data<T>(context.GetPlace());
+    int limit = Out->numel();
+    auto x_data = X->data<T>();
+    auto label_data = Labels->data<T>();
+    for (int idx = 0; idx < limit; ++idx) {
+      T x = x_data[idx];
+      T label = label_data[idx];
+      if (static_cast<int>(label) == ignore_index) {
+        out_data[idx] = static_cast<T>(0.);
+      } else {
+        T term1 = (x > 0) ? x : 0;
+        T term2 = x * label;
+        T term3 = std::log(static_cast<T>(1) + std::exp(-std::abs(x)));
+        out_data[idx] = term1 - term2 + term3;
+      }
+    }
+    bool normalize = context.Attr<bool>("normalize");
+    if (normalize) {
+      int norm = 0;
+      T eps = static_cast<T>(1e-6);
+      for (int idx = 0; idx < limit; ++idx) {
+        T diff = label_data[idx] - static_cast<T>(ignore_index);
+        if ((diff < -eps) || (diff > eps)) {
+          norm += 1;
+        }
+      }
+      eps = static_cast<T>(1e-5);
+      norm = norm > eps ? norm : eps;
+      std::for_each(out_data, out_data + limit, [norm](T &v) { v = v / norm; });
+    }
   }
 };
 
@@ -50,23 +69,43 @@ template <typename DeviceContext, typename T>
 class SigmoidCrossEntropyWithLogitsGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const framework::Tensor *X = context.Input<framework::Tensor>("X");
-    const framework::Tensor *Labels = context.Input<framework::Tensor>("Label");
-    const framework::Tensor *dOut =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    framework::Tensor *dX =
-        context.Output<framework::Tensor>(framework::GradVarName("X"));
-    dX->mutable_data<T>(context.GetPlace());
+    const Tensor *X = context.Input<Tensor>("X");
+    const Tensor *Labels = context.Input<Tensor>("Label");
+    const Tensor *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
+    Tensor *dX = context.Output<Tensor>(framework::GradVarName("X"));
+    auto dx_data = dX->mutable_data<T>(context.GetPlace());
 
-    auto x = framework::EigenVector<T>::Flatten(*X);
-    auto labels = framework::EigenVector<T>::Flatten(*Labels);
-    auto dout = framework::EigenVector<T>::Flatten(*dOut);
-    auto dx = framework::EigenVector<T>::Flatten(*dX);
-    auto &place =
-        *context.template device_context<DeviceContext>().eigen_device();
-
-    auto sigmoid_x = static_cast<T>(1) / (static_cast<T>(1) + (-x).exp());
-    dx.device(place) = dout * (sigmoid_x - labels);
+    int ignore_index = context.Attr<int>("ignore_index");
+    int limit = dX->numel();
+    auto x_data = X->data<T>();
+    auto label_data = Labels->data<T>();
+    auto dout_data = dOut->data<T>();
+    for (int idx = 0; idx < limit; ++idx) {
+      T x = x_data[idx];
+      T label = label_data[idx];
+      T dout = dout_data[idx];
+      if (static_cast<int>(label) == ignore_index) {
+        dx_data[idx] = static_cast<T>(0.);
+      } else {
+        T simoid_x = static_cast<T>(1) / (static_cast<T>(1) + std::exp(-x));
+        T diff = simoid_x - label;
+        dx_data[idx] = dout * diff;
+      }
+    }
+    bool normalize = context.Attr<bool>("normalize");
+    if (normalize) {
+      int norm = 0;
+      T eps = static_cast<T>(1e-6);
+      for (int idx = 0; idx < limit; ++idx) {
+        T diff = label_data[idx] - static_cast<T>(ignore_index);
+        if ((diff < -eps) || (diff > eps)) {
+          norm += 1;
+        }
+      }
+      eps = static_cast<T>(1e-5);
+      norm = norm > eps ? norm : eps;
+      std::for_each(dx_data, dx_data + limit, [norm](T &v) { v = v / norm; });
+    }
   }
 };
 

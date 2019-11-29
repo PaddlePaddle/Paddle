@@ -127,8 +127,11 @@ def lstm(
 
 
 class TestLstmOp(OpTest):
-    def set_argument(self):
+    def set_lod(self):
         self.lod = [[2, 3, 2]]
+
+    def set_argument(self):
+        self.set_lod()
         self.D = 16
 
         self.act_gate = 'sigmoid'
@@ -142,7 +145,6 @@ class TestLstmOp(OpTest):
     def setUp(self):
         self.set_argument()
         self.op_type = 'lstm'
-
         T = sum(self.lod[0])
         N = len(self.lod[0])
 
@@ -186,7 +188,7 @@ class TestLstmOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-8)
+        self.check_output(atol=1e-8, check_dygraph=False)
 
     def test_check_grad(self):
         # TODO(qingqing) remove folowing lines after the check_grad is refined.
@@ -195,7 +197,24 @@ class TestLstmOp(OpTest):
         self.outputs['BatchCellPreAct'] = np.zeros(
             (N, self.D)).astype('float64')
         self.check_grad(
-            ['Input', 'Weight', 'Bias'], ['Hidden'], max_relative_error=5e-4)
+            ['Input', 'Weight', 'Bias'], ['Hidden'],
+            max_relative_error=5e-4,
+            check_dygraph=False)
+
+
+class TestLstmOpCase1(TestLstmOp):
+    def set_lod(self):
+        self.lod = [[0, 3, 2]]
+
+
+class TestLstmOpCase2(TestLstmOp):
+    def set_lod(self):
+        self.lod = [[0, 3, 0]]
+
+
+class TestLstmOpCase3(TestLstmOp):
+    def set_lod(self):
+        self.lod = [[2, 0, 4]]
 
 
 # class TestLstmOpHasInitial(TestLstmOp):

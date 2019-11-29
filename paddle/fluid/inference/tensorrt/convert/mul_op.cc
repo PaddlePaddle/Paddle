@@ -25,7 +25,7 @@ class MulOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    VLOG(4) << "convert a fluid mul op to tensorrt mul layer without bias";
+    VLOG(3) << "convert a fluid mul op to tensorrt mul layer without bias";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs

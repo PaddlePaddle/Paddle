@@ -41,9 +41,9 @@ class PolygonBoxTransformCPUKernel : public framework::OpKernel<T> {
         for (int id_w = 0; id_w < width; ++id_w) {
           id = id_n * height * width + width * id_h + id_w;
           if (id_n % 2 == 0) {
-            out_data[id] = id_w - in_data[id];
+            out_data[id] = id_w * 4 - in_data[id];
           } else {
-            out_data[id] = id_h - in_data[id];
+            out_data[id] = id_h * 4 - in_data[id];
           }
         }
       }
@@ -98,9 +98,11 @@ the geometry output contains 2*n channels.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(polygon_box_transform, ops::PolygonBoxTransformOp,
-                  ops::PolygonBoxTransformOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    polygon_box_transform, ops::PolygonBoxTransformOp,
+    ops::PolygonBoxTransformOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     polygon_box_transform,
     ops::PolygonBoxTransformCPUKernel<paddle::platform::CPUPlace, float>,

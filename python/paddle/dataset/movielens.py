@@ -24,6 +24,7 @@ set and test set into paddle reader creators.
 
 from __future__ import print_function
 
+import numpy as np
 import zipfile
 import paddle.dataset.common
 import re
@@ -34,13 +35,13 @@ import paddle.compat as cpt
 
 __all__ = [
     'train', 'test', 'get_movie_title_dict', 'max_movie_id', 'max_user_id',
-    'age_table', 'movie_categories', 'max_job_id', 'user_info', 'movie_info',
-    'convert'
+    'age_table', 'movie_categories', 'max_job_id', 'user_info', 'movie_info'
 ]
 
 age_table = [1, 18, 25, 35, 45, 50, 56]
 
-URL = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
+#URL = 'http://files.grouplens.org/datasets/movielens/ml-1m.zip'
+URL = 'https://dataset.bj.bcebos.com/movielens%2Fml-1m.zip'
 MD5 = 'c4d9eecfca2ab87c1945afe126590906'
 
 
@@ -150,12 +151,12 @@ def __initialize_meta_info__():
 
 def __reader__(rand_seed=0, test_ratio=0.1, is_test=False):
     fn = __initialize_meta_info__()
-    rand = random.Random(x=rand_seed)
+    np.random.seed(rand_seed)
     with zipfile.ZipFile(file=fn) as package:
         with package.open('ml-1m/ratings.dat') as rating:
             for line in rating:
                 line = cpt.to_text(line, encoding='latin')
-                if (rand.random() < test_ratio) == is_test:
+                if (np.random.random() < test_ratio) == is_test:
                     uid, mov_id, rating, _ = line.strip().split("::")
                     uid = int(uid)
                     mov_id = int(mov_id)
@@ -256,14 +257,6 @@ def unittest():
 
 def fetch():
     paddle.dataset.common.download(URL, "movielens", MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    paddle.dataset.common.convert(path, train(), 1000, "movielens_train")
-    paddle.dataset.common.convert(path, test(), 1000, "movielens_test")
 
 
 if __name__ == '__main__':

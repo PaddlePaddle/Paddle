@@ -13,14 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/pass.h"
+
+#include <memory>
+#include <utility>
+
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-std::unique_ptr<Graph> Pass::Apply(std::unique_ptr<Graph> graph) const {
-  PADDLE_ENFORCE(!applied_, "Pass can only Apply() once.");
-  PADDLE_ENFORCE(graph.get(), "graph passed to Pass::Apply() cannot be empty.");
+
+Graph* Pass::Apply(Graph* graph) const {
+  CheckPrevPass();
+  PADDLE_ENFORCE(graph, "graph passed to Pass::Apply() cannot be empty.");
   for (const std::string& attr : required_pass_attrs_) {
     PADDLE_ENFORCE(attrs_.find(attr) != attrs_.end(),
                    "Required pass atrribute %s not set.", attr);
@@ -29,12 +34,19 @@ std::unique_ptr<Graph> Pass::Apply(std::unique_ptr<Graph> graph) const {
     PADDLE_ENFORCE(graph->Has(attr), "Required graph atrribute %s not set.",
                    attr);
   }
-  auto applied_graph = ApplyImpl(std::move(graph));
+  ApplyImpl(graph);
   // TODO(panyx0718): Add more verifications.
-  PADDLE_ENFORCE(!HasCircle(*applied_graph),
-                 "Illegal Pass. Generated graph shouldn't has cycle.");
+  PADDLE_ENFORCE(!HasCircle(*graph),
+                 "Illegal Pass %s. Generated graph shouldn't have cycle.",
+                 Type());
+  PADDLE_ENFORCE(VarDescIsConsistency(*graph),
+                 "The VarDescs of persistable variable are not consistency.");
   applied_ = true;
-  return applied_graph;
+  if (!graph->Has(kPassRecorder)) {
+    graph->Set<PassRecorder>(kPassRecorder, new PassRecorder);
+  }
+  graph->Get<PassRecorder>(kPassRecorder).insert(Type());
+  return graph;
 }
 
 PassRegistry& PassRegistry::Instance() {

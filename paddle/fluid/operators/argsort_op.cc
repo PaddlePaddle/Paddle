@@ -42,8 +42,8 @@ class ArgsortOp : public framework::OperatorWithKernel {
                    "-rank(Input(X)) (%d).",
                    axis, num_dims);
 
-    ctx->SetOutputDim("Out", in_dims);
-    ctx->SetOutputDim("Indices", in_dims);
+    ctx->ShareDim("X", "Out");
+    ctx->ShareDim("X", "Indices");
     ctx->ShareLoD("X", "Out");
     ctx->ShareLoD("X", "Indices");
   }
@@ -73,6 +73,13 @@ Output(Indices) gives the sorted order along the given axis Attr(axis).
                  "When axis < 0, the actual axis will be the |axis|'th "
                  "counting backwards. Default -1, the last dimension.")
         .SetDefault(-1);
+    AddAttr<bool>(
+        "descending",
+        "(bool, default false) The descending attribute is a flag to tell"
+        "algorithm how to sort the input data."
+        "If descending is true, will sort by descending order,"
+        "else if false, sort by ascending order. Default value is false.")
+        .SetDefault(false);
   }
 };
 
@@ -80,8 +87,10 @@ Output(Indices) gives the sorted order along the given axis Attr(axis).
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(argsort, ops::ArgsortOp, ops::ArgsortOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    argsort, ops::ArgsortOp, ops::ArgsortOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(argsort,
                        ops::ArgsortKernel<paddle::platform::CPUPlace, float>,
                        ops::ArgsortKernel<paddle::platform::CPUPlace, double>);

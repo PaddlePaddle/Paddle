@@ -43,13 +43,11 @@ __all__ = [
     "train",
     "test",
     "validation",
-    "convert",
     "fetch",
     "get_dict",
 ]
 
-DATA_URL = ("http://cloud.dlnel.org/filepub/"
-            "?uuid=46a0808e-ddd8-427c-bacd-0dbc6d045fed")
+DATA_URL = ("http://paddlemodels.bj.bcebos.com/wmt/wmt16.tar.gz")
 DATA_MD5 = "0c38be43600334966403524a40dcd81e"
 
 TOTAL_EN_WORDS = 11250
@@ -64,20 +62,23 @@ def __build_dict(tar_file, dict_size, save_path, lang):
     word_dict = defaultdict(int)
     with tarfile.open(tar_file, mode="r") as f:
         for line in f.extractfile("wmt16/train"):
-            line_split = line.strip().split(six.b("\t"))
+            line = cpt.to_text(line)
+            line_split = line.strip().split("\t")
             if len(line_split) != 2: continue
             sen = line_split[0] if lang == "en" else line_split[1]
             for w in sen.split():
                 word_dict[w] += 1
 
-    with open(save_path, "w") as fout:
-        fout.write("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK))
+    with open(save_path, "wb") as fout:
+        fout.write(
+            cpt.to_bytes("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)))
         for idx, word in enumerate(
                 sorted(
                     six.iteritems(word_dict), key=lambda x: x[1],
                     reverse=True)):
             if idx + 3 == dict_size: break
-            fout.write("%s\n" % (word[0]))
+            fout.write(cpt.to_bytes(word[0]))
+            fout.write(cpt.to_bytes('\n'))
 
 
 def __load_dict(tar_file, dict_size, lang, reverse=False):
@@ -123,7 +124,8 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
 
         with tarfile.open(tar_file, mode="r") as f:
             for line in f.extractfile(file_name):
-                line_split = line.strip().split(six.b("\t"))
+                line = cpt.to_text(line)
+                line_split = line.strip().split("\t")
                 if len(line_split) != 2:
                     continue
                 src_words = line_split[src_col].split()
@@ -322,33 +324,3 @@ def fetch():
     """
     paddle.v4.dataset.common.download(DATA_URL, "wmt16", DATA_MD5,
                                       "wmt16.tar.gz")
-
-
-def convert(path, src_dict_size, trg_dict_size, src_lang):
-    """Converts dataset to recordio format.
-    """
-
-    paddle.dataset.common.convert(
-        path,
-        train(
-            src_dict_size=src_dict_size,
-            trg_dict_size=trg_dict_size,
-            src_lang=src_lang),
-        1000,
-        "wmt16_train")
-    paddle.dataset.common.convert(
-        path,
-        test(
-            src_dict_size=src_dict_size,
-            trg_dict_size=trg_dict_size,
-            src_lang=src_lang),
-        1000,
-        "wmt16_test")
-    paddle.dataset.common.convert(
-        path,
-        validation(
-            src_dict_size=src_dict_size,
-            trg_dict_size=trg_dict_size,
-            src_lang=src_lang),
-        1000,
-        "wmt16_validation")

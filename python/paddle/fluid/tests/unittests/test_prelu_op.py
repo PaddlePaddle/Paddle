@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import six
 from op_test import OpTest
 
 
@@ -36,7 +37,8 @@ class PReluTest(OpTest):
             alpha_np = np.random.rand(1, x_np.shape[1], 1, 1).astype("float32")
             self.inputs = {'X': x_np, 'Alpha': alpha_np}
         else:
-            alpha_np = np.random.rand(*x_np.shape).astype("float32")
+            alpha_np = np.random.rand(1, x_np.shape[1], x_np.shape[2], \
+                x_np.shape[3]).astype("float32")
             self.inputs = {'X': x_np, 'Alpha': alpha_np}
 
         out_np = np.maximum(self.inputs['X'], 0.)
@@ -62,17 +64,20 @@ class PReluTest(OpTest):
 
 
 # TODO(minqiyang): Resume these test cases after fixing Python3 CI job issues
-#  class TestCase1(PReluTest):
-#  def initTestCase(self):
-#  self.attrs = {'mode': "all"}
+if six.PY2:
 
-#  class TestCase2(PReluTest):
-#  def initTestCase(self):
-#  self.attrs = {'mode': "channel"}
+    class TestCase1(PReluTest):
+        def initTestCase(self):
+            self.attrs = {'mode': "all"}
 
-#  class TestCase3(PReluTest):
-#  def initTestCase(self):
-#  self.attrs = {'mode': "element"}
+    class TestCase2(PReluTest):
+        def initTestCase(self):
+            self.attrs = {'mode': "channel"}
+
+    class TestCase3(PReluTest):
+        def initTestCase(self):
+            self.attrs = {'mode': "element"}
+
 
 if __name__ == "__main__":
     unittest.main()

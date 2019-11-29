@@ -50,11 +50,28 @@ function do_cpython_build {
     mkdir -p ${prefix}/lib
     # -Wformat added for https://bugs.python.org/issue17547 on Python 2.6
 
+    if [ $(lex_pyver $py_ver) -eq $(lex_pyver 3.6) ]; then
+        wget https://www.sqlite.org/2018/sqlite-autoconf-3250300.tar.gz
+        tar -zxf sqlite-autoconf-3250300.tar.gz
+        cd sqlite-autoconf-3250300
+        ./configure --prefix=/usr/local
+        make -j8 && make install
+        cd ../ && rm sqlite-autoconf-3250300.tar.gz
+    fi
+
     # NOTE --enable-shared for generating libpython shared library needed for
     # linking of some of the nupic.core test executables.
-    CFLAGS="-Wformat" ./configure --prefix=${prefix} --enable-shared $unicode_flags > /dev/null
-    make -j2 > /dev/null
-    make install > /dev/null
+    if [ $(lex_pyver $py_ver) -ge $(lex_pyver 3.7) ]; then
+        # NOTE python 3.7 should be installed via make altinstall rather than
+        # make install, and we should specify the location of ssl
+        CFLAGS="-Wformat" ./configure --prefix=${prefix} --with-openssl=/usr/local/ssl --enable-shared $unicode_flags > /dev/null
+        make -j8 > /dev/null
+        make altinstall > /dev/null
+    else
+        LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH} CFLAGS="-Wformat" ./configure --prefix=${prefix} --enable-shared $unicode_flags > /dev/null
+        LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH} make -j8 > /dev/null
+        LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH} make install > /dev/null
+    fi
     popd
     echo "ZZZ looking for libpython"
     find / -name 'libpython*.so*'
@@ -64,9 +81,14 @@ function do_cpython_build {
     if [ -e ${prefix}/bin/python3 ]; then
         ln -s python3 ${prefix}/bin/python
     fi
+    if [ -e ${prefix}/bin/python3.7 ]; then
+        ln -s python3.7 ${prefix}/bin/python
+    fi
     # NOTE Make libpython shared library visible to python calls below
     LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/python get-pip.py
     LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/pip install wheel
+    cd /
+    ls ${MY_DIR}
     local abi_tag=$(LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/python ${MY_DIR}/python-tag-abi-tag.py)
     ln -s ${prefix} /opt/python/${abi_tag}
 }

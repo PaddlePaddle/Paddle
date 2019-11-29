@@ -21,14 +21,13 @@ parse training set and test set into paddle reader creators.
 from __future__ import print_function
 
 import paddle.dataset.common
-import subprocess
+import gzip
 import numpy
-import platform
-import tempfile
+import struct
 from six.moves import range
-__all__ = ['train', 'test', 'convert']
+__all__ = ['train', 'test']
 
-URL_PREFIX = 'http://yann.lecun.com/exdb/mnist/'
+URL_PREFIX = 'https://dataset.bj.bcebos.com/mnist/'
 TEST_IMAGE_URL = URL_PREFIX + 't10k-images-idx3-ubyte.gz'
 TEST_IMAGE_MD5 = '9fb629c4189551a2d022fa330f9573f3'
 TEST_LABEL_URL = URL_PREFIX + 't10k-labels-idx1-ubyte.gz'
@@ -41,51 +40,50 @@ TRAIN_LABEL_MD5 = 'd53e105ee54ea40749a09fcbcd1e9432'
 
 def reader_creator(image_filename, label_filename, buffer_size):
     def reader():
-        if platform.system() == 'Darwin':
-            zcat_cmd = 'gzcat'
-        elif platform.system() == 'Linux':
-            zcat_cmd = 'zcat'
-        else:
-            raise NotImplementedError()
+        with gzip.GzipFile(image_filename, 'rb') as image_file:
+            img_buf = image_file.read()
+            with gzip.GzipFile(label_filename, 'rb') as label_file:
+                lab_buf = label_file.read()
 
-        # According to http://stackoverflow.com/a/38061619/724872, we
-        # cannot use standard package gzip here.
-        tmp_image_file = tempfile.TemporaryFile(prefix='paddle_dataset')
-        m = subprocess.Popen(
-            [zcat_cmd, image_filename], stdout=tmp_image_file).communicate()
-        tmp_image_file.seek(16)  # skip some magic bytes
+                step_label = 0
 
-        # Python3 will not take stdout as file
-        tmp_label_file = tempfile.TemporaryFile(prefix='paddle_dataset')
-        l = subprocess.Popen(
-            [zcat_cmd, label_filename], stdout=tmp_label_file).communicate()
-        tmp_label_file.seek(8)  # skip some magic bytes
+                offset_img = 0
+                # read from Big-endian
+                # get file info from magic byte
+                # image file : 16B
+                magic_byte_img = '>IIII'
+                magic_img, image_num, rows, cols = struct.unpack_from(
+                    magic_byte_img, img_buf, offset_img)
+                offset_img += struct.calcsize(magic_byte_img)
 
-        try:  # reader could be break.
-            while True:
-                labels = numpy.fromfile(
-                    tmp_label_file, 'ubyte', count=buffer_size).astype("int")
+                offset_lab = 0
+                # label file : 8B
+                magic_byte_lab = '>II'
+                magic_lab, label_num = struct.unpack_from(magic_byte_lab,
+                                                          lab_buf, offset_lab)
+                offset_lab += struct.calcsize(magic_byte_lab)
 
-                if labels.size != buffer_size:
-                    break  # numpy.fromfile returns empty slice after EOF.
+                while True:
+                    if step_label >= label_num:
+                        break
+                    fmt_label = '>' + str(buffer_size) + 'B'
+                    labels = struct.unpack_from(fmt_label, lab_buf, offset_lab)
+                    offset_lab += struct.calcsize(fmt_label)
+                    step_label += buffer_size
 
-                images = numpy.fromfile(
-                    tmp_image_file, 'ubyte', count=buffer_size * 28 *
-                    28).reshape((buffer_size, 28 * 28)).astype('float32')
+                    fmt_images = '>' + str(buffer_size * rows * cols) + 'B'
+                    images_temp = struct.unpack_from(fmt_images, img_buf,
+                                                     offset_img)
+                    images = numpy.reshape(images_temp, (
+                        buffer_size, rows * cols)).astype('float32')
+                    offset_img += struct.calcsize(fmt_images)
 
-                images = images / 255.0 * 2.0 - 1.0
+                    images = images / 255.0
+                    images = images * 2.0
+                    images = images - 1.0
 
-                for i in range(buffer_size):
-                    yield images[i, :], int(labels[i])
-        finally:
-            try:
-                m.terminate()
-            except:
-                pass
-            try:
-                l.terminate()
-            except:
-                pass
+                    for i in range(buffer_size):
+                        yield images[i, :], int(labels[i])
 
     return reader
 
@@ -95,7 +93,7 @@ def train():
     MNIST training set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
-    [0, 1] and label in [0, 9].
+    [-1, 1] and label in [0, 9].
 
     :return: Training reader creator
     :rtype: callable
@@ -112,7 +110,7 @@ def test():
     MNIST test set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
-    [0, 1] and label in [0, 9].
+    [-1, 1] and label in [0, 9].
 
     :return: Test reader creator.
     :rtype: callable
@@ -128,11 +126,3 @@ def fetch():
     paddle.dataset.common.download(TRAIN_LABEL_URL, 'mnist', TRAIN_LABEL_MD5)
     paddle.dataset.common.download(TEST_IMAGE_URL, 'mnist', TEST_IMAGE_MD5)
     paddle.dataset.common.download(TEST_LABEL_URL, 'mnist', TEST_LABEL_MD5)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    paddle.dataset.common.convert(path, train(), 1000, "minist_train")
-    paddle.dataset.common.convert(path, test(), 1000, "minist_test")

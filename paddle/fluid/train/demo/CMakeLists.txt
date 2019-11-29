@@ -15,34 +15,44 @@ include_directories("${PADDLE_LIB}")
 include_directories("${PADDLE_LIB}/third_party/install/protobuf/include")
 include_directories("${PADDLE_LIB}/third_party/install/glog/include")
 include_directories("${PADDLE_LIB}/third_party/install/gflags/include")
-include_directories("${PADDLE_LIB}/third_party/install/snappy/include")
-include_directories("${PADDLE_LIB}/third_party/install/snappystream/include")
+include_directories("${PADDLE_LIB}/third_party/install/xxhash/include")
 include_directories("${PADDLE_LIB}/third_party/install/zlib/include")
 
 include_directories("${PADDLE_LIB}/third_party/boost")
 include_directories("${PADDLE_LIB}/third_party/eigen3")
+include_directories("${PADDLE_LIB}/third_party/dlpack")
 
-link_directories("${PADDLE_LIB}/third_party/install/snappy/lib")
-link_directories("${PADDLE_LIB}/third_party/install/snappystream/lib")
 link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
 link_directories("${PADDLE_LIB}/third_party/install/glog/lib")
 link_directories("${PADDLE_LIB}/third_party/install/gflags/lib")
+link_directories("${PADDLE_LIB}/third_party/install/xxhash/lib")
 link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
 
 add_executable(demo_trainer demo_trainer.cc)
 
 if(WITH_MKLDNN)
+  add_definitions(-DPADDLE_WITH_MKLDNN)
   include_directories("${PADDLE_LIB}/third_party/install/mkldnn/include")
-  set(MKLDNN_LIB ${PADDLE_LIB}/third_party/install/mkldnn/lib/libmkldnn.so.0)
-endif()
+  if(WIN32)
+    set(MKLDNN_LIB ${PADDLE_LIB}/third_party/install/mkldnn/lib/mkldnn.lib)
+  else(WIN32)
+    set(MKLDNN_LIB ${PADDLE_LIB}/third_party/install/mkldnn/lib/libmkldnn.so.0)
+  endif(WIN32)
+endif(WITH_MKLDNN)
 
 if(WITH_MKL)
   include_directories("${PADDLE_LIB}/third_party/install/mklml/include")
-  set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel.so)
+  if(WIN32)
+    set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/mklml.lib)
+  else(WIN32)
+    set(MATH_LIB ${PADDLE_LIB}/third_party/install/mklml/lib/libmklml_intel.so)
+  endif(WIN32)
 else()
   if(APPLE)
     set(MATH_LIB cblas)
-  else(APPLE)
+  elseif(WIN32)
+    set(MATH_LIB ${PADDLE_LIB}/third_party/install/openblas/lib/libopenblas.lib)
+  else()
     set(MATH_LIB ${PADDLE_LIB}/third_party/install/openblas/lib/libopenblas.a)
   endif(APPLE)
 endif()
@@ -58,9 +68,9 @@ endif(APPLE)
 target_link_libraries(demo_trainer
         ${MACOS_LD_FLAGS}
         ${ARCHIVE_START}
-        ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.a
+        ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.so
         ${ARCHIVE_END}
         ${MATH_LIB}
         ${MKLDNN_LIB}
-        glog gflags protobuf snappystream snappy z
+        glog gflags protobuf z xxhash
         ${EXTERNAL_LIB})

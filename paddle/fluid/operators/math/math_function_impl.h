@@ -37,9 +37,6 @@ void Transpose<DeviceContext, T, Rank>::operator()(
   for (int i = 0; i < Rank; i++) {
     permute[i] = axis[i];
   }
-  auto in_dim = in.dims();
-  auto out_dim = out->dims();
-
   auto eigen_in = framework::EigenTensor<T, Rank>::From(in);
   auto eigen_out = framework::EigenTensor<T, Rank>::From(*out);
   auto* dev = context.eigen_device();

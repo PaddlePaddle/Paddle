@@ -1,15 +1,39 @@
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 INCLUDE(ExternalProject)
 
-SET(THREADPOOL_SOURCE_DIR ${THIRD_PARTY_PATH}/threadpool)
-SET(THREADPOOL_INCLUDE_DIR ${THREADPOOL_SOURCE_DIR}/src/extern_threadpool)
+SET(THREADPOOL_PREFIX_DIR ${THIRD_PARTY_PATH}/threadpool)
+set(THREADPOOL_REPOSITORY https://github.com/progschj/ThreadPool.git)
+set(THREADPOOL_TAG        9a42ec1329f259a5f4881a291db1dcb8f2ad9040)
+
 INCLUDE_DIRECTORIES(${THREADPOOL_INCLUDE_DIR})
+
+cache_third_party(extern_threadpool
+    REPOSITORY   ${THREADPOOL_REPOSITORY}
+    TAG          ${THREADPOOL_TAG}
+    DIR          ${THREADPOOL_PREFIX_DIR})
+
+include_directories(${THREADPOOL_SOURCE_DIR})
 
 ExternalProject_Add(
     extern_threadpool
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY  "https://github.com/progschj/ThreadPool.git"
-    GIT_TAG         9a42ec1329f259a5f4881a291db1dcb8f2ad9040
-    PREFIX          ${THREADPOOL_SOURCE_DIR}
+    ${SHALLOW_CLONE}
+    "${THREADPOOL_DOWNLOAD_CMD}"
+    PREFIX          ${THREADPOOL_PREFIX_DIR}
+    SOURCE_DIR      ${THREADPOOL_SOURCE_DIR}
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
     BUILD_COMMAND     ""
@@ -26,5 +50,3 @@ else()
 endif()
 
 add_dependencies(simple_threadpool extern_threadpool)
-
-LIST(APPEND external_project_dependencies simple_threadpool)

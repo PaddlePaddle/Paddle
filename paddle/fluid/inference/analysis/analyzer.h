@@ -36,28 +36,25 @@ limitations under the License. */
  */
 
 #include <gflags/gflags.h>
-#include "paddle/fluid/inference/analysis/pass.h"
-#include "paddle/fluid/inference/analysis/pass_manager.h"
-
-// TODO(Superjomn) add a definition flag like PADDLE_WITH_TENSORRT and hide this
-// flag if not available.
-DECLARE_bool(IA_enable_tensorrt_subgraph_engine);
-DECLARE_string(IA_graphviz_log_root);
-DECLARE_string(IA_output_storage_path);
-DECLARE_bool(IA_enable_ir);
+#include <string>
+#include <vector>
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
+#include "paddle/fluid/inference/analysis/flags.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-class Analyzer : public OrderedRegistry<PassManager> {
+class Analyzer final {
  public:
-  // Register all the pass-managers.
   Analyzer();
 
   void Run(Argument* argument);
 
   DISABLE_COPY_AND_ASSIGN(Analyzer);
+
+ protected:
+  void RunAnalysis(Argument* argument);
 };
 
 }  // namespace analysis

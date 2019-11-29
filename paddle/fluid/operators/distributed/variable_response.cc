@@ -16,6 +16,9 @@
 #include <vector>
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 
+DEFINE_string(rpc_server_profile_path, "./profile_ps",
+              "the profile log file path");
+
 namespace paddle {
 namespace operators {
 namespace distributed {
@@ -92,9 +95,14 @@ bool VariableResponse::CopyLodTensorData(
     ::google::protobuf::io::CodedInputStream* input,
     const platform::DeviceContext& ctx, const framework::DDim& dims,
     int length) {
+  auto server_var = GetVar();
+  if (!server_var) {
+    LOG(ERROR) << "recved var should not on current server: "
+               << meta_.varname();
+    return false;
+  }
   auto* tensor = GetVar()->GetMutable<framework::LoDTensor>();
   tensor->Resize(dims);
-
   framework::LoD lod;
   for (int i = 0; i < meta_.lod_level(); ++i) {
     framework::Vector<size_t> v;
@@ -106,13 +114,13 @@ bool VariableResponse::CopyLodTensorData(
   tensor->set_lod(lod);
 
   void* tensor_data =
-      tensor->mutable_data(ctx.GetPlace(), ToTypeIndex(meta_.data_type()));
+      tensor->mutable_data(ctx.GetPlace(), ToVarType(meta_.data_type()));
 
-  if (!ReadRaw(input, ctx, tensor->place(), tensor_data, length)) {
-    return false;
-  }
-
-  return true;
+  VLOG(6) << "Tensor.memory_size = " << tensor->memory_size()
+          << ", Buffer Size = " << length << ", dims:" << dims
+          << ", numel:" << tensor->numel();
+  PADDLE_ENFORCE_GE(tensor->memory_size(), static_cast<unsigned int>(length));
+  return ReadRaw(input, ctx, tensor->place(), tensor_data, length);
 }
 
 inline framework::DDim GetDims(
@@ -132,13 +140,13 @@ bool VariableResponse::CopySelectRowsTensorData(
   slr->set_height(meta_.slr_height());
   auto* tensor = slr->mutable_value();
   tensor->Resize(dims);
-  PADDLE_ENFORCE_EQ(static_cast<size_t>(tensor->numel()),
-                    length / framework::SizeOfType(
-                                 paddle::operators::distributed::ToTypeIndex(
-                                     meta_.data_type())));
+  PADDLE_ENFORCE_EQ(
+      static_cast<size_t>(tensor->numel()),
+      length / framework::SizeOfType(paddle::operators::distributed::ToVarType(
+                   meta_.data_type())));
   void* tensor_data = tensor->mutable_data(
       ctx.GetPlace(),
-      paddle::operators::distributed::ToTypeIndex(meta_.data_type()));
+      paddle::operators::distributed::ToVarType(meta_.data_type()));
 
   if (!ReadRaw(input, ctx, tensor->place(), tensor_data, length)) {
     return false;
@@ -152,8 +160,7 @@ bool VariableResponse::CopySelectRowsData(
     const platform::DeviceContext& ctx, int length) {
   auto* slr = GetVar()->GetMutable<framework::SelectedRows>();
   slr->mutable_rows()->clear();
-  slr->mutable_rows()->resize(length /
-                              framework::SizeOfType(typeid(int64_t)));  // int64
+  slr->mutable_rows()->resize(length / sizeof(int64_t));  // int64
   int64_t* rows_data = slr->mutable_rows()->data();
 
   // copy rows CPU data, GPU data will be copied lazily.

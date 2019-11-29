@@ -17,6 +17,7 @@
 
 // default to 3min to avoid temprary network failures.
 DEFINE_int32(rpc_deadline, 180000, "deadline timeouts for rpc");
+DEFINE_int32(rpc_retry_times, 3, "retry times for rpc");
 
 namespace paddle {
 namespace operators {
@@ -24,6 +25,7 @@ namespace distributed {
 
 std::once_flag RPCClient::init_flag_;
 std::unique_ptr<RPCClient> RPCClient::rpc_client_(nullptr);
+int RPCClient::trainer_id_ = 0;
 
 }  // namespace distributed
 }  // namespace operators

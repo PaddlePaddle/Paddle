@@ -15,7 +15,7 @@
 WMT14 dataset.
 The original WMT14 dataset is too large and a small set of data for set is
 provided. This module will download dataset from
-http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz and
+http://paddlepaddle.bj.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz and
 parse training set and test set into paddle reader creators.
 
 """
@@ -33,7 +33,6 @@ __all__ = [
     'train',
     'test',
     'get_dict',
-    'convert',
 ]
 
 URL_DEV_TEST = ('http://www-lium.univ-lemans.fr/~schwenk/'
@@ -89,7 +88,8 @@ def reader_creator(tar_file, file_name, dict_size):
             ]
             for name in names:
                 for line in f.extractfile(name):
-                    line_split = line.strip().split(six.b('\t'))
+                    line = cpt.to_text(line)
+                    line_split = line.strip().split('\t')
                     if len(line_split) != 2:
                         continue
                     src_seq = line_split[0]  # one source sequence
@@ -166,12 +166,3 @@ def get_dict(dict_size, reverse=True):
 def fetch():
     paddle.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN)
     paddle.dataset.common.download(URL_MODEL, 'wmt14', MD5_MODEL)
-
-
-def convert(path):
-    """
-    Converts dataset to recordio format
-    """
-    dict_size = 30000
-    paddle.dataset.common.convert(path, train(dict_size), 1000, "wmt14_train")
-    paddle.dataset.common.convert(path, test(dict_size), 1000, "wmt14_test")

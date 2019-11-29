@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_shift_op.h"
+#include <memory>
 #include "paddle/fluid/framework/eigen.h"
 
 namespace paddle {
@@ -36,15 +37,18 @@ class ConvShiftOp : public framework::OperatorWithKernel {
     auto y_dims = ctx->GetInputDim("Y");
     PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank should be 2.");
     PADDLE_ENFORCE_EQ(y_dims.size(), 2, "Input(Y)'s rank should be 2.");
-    PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
-                      "The 1st dimension of Input(X) and Input(Y) should "
-                      "be equal.");
-    PADDLE_ENFORCE_EQ(y_dims[1] % 2, 1,
-                      "The 2nd dimension of Input(Y) should be odd.");
-    PADDLE_ENFORCE_LE(y_dims[1], x_dims[1],
-                      "The 2nd dimension of Input(Y) should be less than or "
-                      "equal to the 2nd dimension of Input(X).");
-    ctx->SetOutputDim("Out", x_dims);
+    if (ctx->IsRuntime() || (x_dims[0] > 0 && y_dims[0] > 0))
+      PADDLE_ENFORCE_EQ(x_dims[0], y_dims[0],
+                        "The 1st dimension of Input(X) and Input(Y) should "
+                        "be equal.");
+    if (ctx->IsRuntime() || y_dims[1] > 0)
+      PADDLE_ENFORCE_EQ(y_dims[1] % 2, 1,
+                        "The 2nd dimension of Input(Y) should be odd.");
+    if (ctx->IsRuntime() || (x_dims[1] > 0 && y_dims[1] > 0))
+      PADDLE_ENFORCE_LE(y_dims[1], x_dims[1],
+                        "The 2nd dimension of Input(Y) should be less than or "
+                        "equal to the 2nd dimension of Input(X).");
+    ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
@@ -188,12 +192,33 @@ class ConvShiftGradKernel<platform::CPUPlace, T>
     }
   }
 };
+
+template <typename T>
+class ConvShiftGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType("conv_shift_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv_shift, ops::ConvShiftOp, ops::ConvShiftOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ConvShiftGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ConvShiftGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv_shift_grad, ops::ConvShiftGradOp);
 REGISTER_OP_CPU_KERNEL(conv_shift,
                        ops::ConvShiftKernel<paddle::platform::CPUPlace, float>);

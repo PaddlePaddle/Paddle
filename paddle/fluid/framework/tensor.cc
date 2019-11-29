@@ -13,10 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/var_type.h"
 
 namespace paddle {
 namespace framework {
-extern size_t SizeOfType(std::type_index type);
+extern size_t SizeOfType(proto::VarType::Type type);
 void Tensor::check_memory_size() const {
   PADDLE_ENFORCE_NOT_NULL(
       holder_, "Tensor holds no memory. Call Tensor::mutable_data first.");
@@ -27,52 +28,43 @@ void Tensor::check_memory_size() const {
       "or maybe the required data-type mismatches the data already stored.");
 }
 
+Tensor::Tensor(const proto::VarType::Type& dtype) : type_(dtype), offset_(0) {}
+
 size_t Tensor::memory_size() const {
   return holder_ == nullptr ? 0UL : holder_->size() - offset_;
 }
 
-void* Tensor::mutable_data(platform::Place place, std::type_index type,
-                           size_t requested_size) {
-  if (holder_ != nullptr) {
-    holder_->set_type(type);
-  }
+void* Tensor::mutable_data(const platform::Place& place,
+                           proto::VarType::Type type, size_t requested_size) {
+  type_ = type;
   PADDLE_ENFORCE_GE(numel(), 0,
                     "When calling this method, the Tensor's numel must be "
                     "equal or larger than zero. "
-                    "Please check Tensor::Resize has been called first.");
-  size_t size = requested_size ? requested_size : numel() * SizeOfType(type);
+                    "Please check Tensor::dims, or Tensor::Resize has been "
+                    "called first. The Tensor's shape is [",
+                    dims(), "] now");
+  size_t size = numel() * SizeOfType(type);
+  if (requested_size) {
+    PADDLE_ENFORCE_GE(requested_size, size);
+    size = requested_size;
+  }
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
-    if (platform::is_cpu_place(place)) {
-      holder_.reset(new PlaceholderImpl<platform::CPUPlace>(
-          boost::get<platform::CPUPlace>(place), size, type));
-    } else if (platform::is_gpu_place(place) ||
-               platform::is_cuda_pinned_place(place)) {
-#ifndef PADDLE_WITH_CUDA
-      PADDLE_THROW(
-          "CUDAPlace or CUDAPinnedPlace is not supported in CPU-only mode.");
-    }
-#else
-      if (platform::is_gpu_place(place)) {
-        holder_.reset(new PlaceholderImpl<platform::CUDAPlace>(
-            boost::get<platform::CUDAPlace>(place), size, type));
-      } else if (platform::is_cuda_pinned_place(place)) {
-        holder_.reset(new PlaceholderImpl<platform::CUDAPinnedPlace>(
-            boost::get<platform::CUDAPinnedPlace>(place), size, type));
-      }
-    }
-#endif
+    // Reset holder first before re-allocate to save memory
+    holder_.reset();
+    holder_ = memory::AllocShared(place, size);
     offset_ = 0;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  offset_);
 }
 
-void* Tensor::mutable_data(platform::Place place, size_t requested_size) {
-  PADDLE_ENFORCE(this->holder_ != nullptr,
-                 "Cannot invoke mutable data if current hold nothing.");
-  return mutable_data(place, holder_->type(), requested_size);
+void* Tensor::mutable_data(const platform::Place& place,
+                           size_t requested_size) {
+  PADDLE_ENFORCE_NOT_NULL(
+      this->holder_, "Cannot invoke mutable data if current hold nothing.");
+  return mutable_data(place, type_, requested_size);
 }
 
 Tensor& Tensor::ShareDataWith(const Tensor& src) {
@@ -81,7 +73,7 @@ Tensor& Tensor::ShareDataWith(const Tensor& src) {
   return *this;
 }
 
-Tensor Tensor::Slice(int begin_idx, int end_idx) const {
+Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   check_memory_size();
   PADDLE_ENFORCE_GE(begin_idx, 0,
                     "The start row index must be greater than 0.");
@@ -97,6 +89,7 @@ Tensor Tensor::Slice(int begin_idx, int end_idx) const {
     Tensor dst;
     dst.holder_ = holder_;
     dst.set_layout(layout_);
+    dst.type_ = type_;
     DDim dst_dims = dims_;
     dst_dims[0] = end_idx - begin_idx;
     dst.Resize(dst_dims);
@@ -113,6 +106,19 @@ Tensor& Tensor::Resize(const DDim& dims) {
 const DDim& Tensor::dims() const { return dims_; }
 
 int64_t Tensor::numel() const { return product(dims_); }
+
+void Tensor::ResetHolder(std::shared_ptr<memory::Allocation> holder) {
+  if (holder_) {
+    PADDLE_ENFORCE_EQ(numel() * SizeOfType(type()), holder->size());
+  }
+  holder_ = holder;
+}
+
+void Tensor::ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
+                                 const proto::VarType::Type type) {
+  ResetHolder(holder);
+  type_ = type;
+}
 
 }  // namespace framework
 }  // namespace paddle

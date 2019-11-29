@@ -19,7 +19,7 @@ import random
 import collections
 import paddle.fluid as fluid
 import unittest
-from decorators import *
+from decorator_helper import *
 
 
 class Memory(object):

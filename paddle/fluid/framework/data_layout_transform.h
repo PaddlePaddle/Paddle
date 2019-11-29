@@ -15,53 +15,60 @@
 #pragma once
 
 #include <map>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
 #ifdef PADDLE_WITH_MKLDNN
-using MKLDNNFormat = mkldnn::memory::format;
 using MKLDNNDataType = mkldnn::memory::data_type;
 
-inline MKLDNNFormat ToMKLDNNFormat(const DataLayout& layout) {
+inline MKLDNNMemoryFormat ToMKLDNNFormat(const DataLayout& layout) {
   switch (layout) {
     case DataLayout::kNHWC:
-      return MKLDNNFormat::nhwc;
+      return MKLDNNMemoryFormat::nhwc;
     case DataLayout::kNCHW:
-      return MKLDNNFormat::nchw;
+      return MKLDNNMemoryFormat::nchw;
     default:
       PADDLE_THROW("Fail to convert layout %s to MKLDNN format",
                    DataLayoutToString(layout));
   }
 }
 
-inline DataLayout ToPaddleLayout(const MKLDNNFormat& format) {
+inline DataLayout ToPaddleLayout(const MKLDNNMemoryFormat& format) {
   switch (format) {
-    case MKLDNNFormat::nhwc:
+    case MKLDNNMemoryFormat::nhwc:
       return DataLayout::kNHWC;
-    case MKLDNNFormat::nchw:
+    case MKLDNNMemoryFormat::nchw:
       return DataLayout::kNCHW;
     default:
       PADDLE_THROW("Fail to convert MKLDNN format to paddle layout");
   }
 }
 
-inline MKLDNNDataType ToMKLDNNDataType(const std::type_index type) {
-  static const std::map<std::type_index, MKLDNNDataType> dict{
-      {std::type_index(typeid(float)), MKLDNNDataType::f32},  // NOLINT
-      {std::type_index(typeid(char)), MKLDNNDataType::s8},    // NOLINT
-      {std::type_index(typeid(unsigned char)), MKLDNNDataType::u8},
-      {std::type_index(typeid(int16_t)), MKLDNNDataType::s16},
-      {std::type_index(typeid(int32_t)), MKLDNNDataType::s32}};
-  auto iter = dict.find(type);
+inline MKLDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
+  static std::unordered_map<int, MKLDNNDataType> dict{
+      {DataTypeTrait<float>::DataType(), MKLDNNDataType::f32},
+      {DataTypeTrait<int8_t>::DataType(), MKLDNNDataType::s8},
+      {DataTypeTrait<uint8_t>::DataType(), MKLDNNDataType::u8},
+      {DataTypeTrait<int16_t>::DataType(), MKLDNNDataType::s16},
+      {DataTypeTrait<int32_t>::DataType(), MKLDNNDataType::s32}};
+  auto iter = dict.find(static_cast<int>(type));
   if (iter != dict.end()) return iter->second;
   return MKLDNNDataType::data_undef;
 }
 
+void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
+                                    const Tensor& in, Tensor* out,
+                                    platform::Place place);
 #endif
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,

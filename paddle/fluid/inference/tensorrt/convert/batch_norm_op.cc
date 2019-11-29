@@ -23,7 +23,7 @@ class BatchNormOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-    LOG(INFO) << "convert a fluid batch norm op to tensorrt batch_norm";
+    VLOG(3) << "convert a fluid batch norm op to tensorrt batch_norm";
 
     framework::OpDesc op_desc(op, nullptr);
     PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
@@ -116,16 +116,11 @@ class BatchNormOpConverter : public OpConverter {
                              scale_weights.get(), power_weights.get());
 
     auto output_name = op_desc.Output("Y").front();
-    engine_->weight_map[op_desc.Input("Bias").front()] =
-        std::move(combile_bias_tensor);
-    engine_->weight_map[op_desc.Input("Scale").front()] =
-        std::move(combile_scale_tensor);
-
-    engine_->SetITensor(output_name, layer->getOutput(0));
-
-    if (test_mode) {
-      engine_->DeclareOutput(output_name);
-    }
+    engine_->SetWeights(op_desc.Input("Bias").front(),
+                        std::move(combile_bias_tensor));
+    engine_->SetWeights(op_desc.Input("Scale").front(),
+                        std::move(combile_scale_tensor));
+    RreplenishLayerAndOutput(layer, "pool2d", {output_name}, test_mode);
   }
 };
 

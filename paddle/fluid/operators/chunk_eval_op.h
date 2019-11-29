@@ -173,18 +173,41 @@ class ChunkEvalKernel : public framework::OpKernel<T> {
     *num_correct_chunks_data = 0;
 
     auto lod = label->lod();
-    PADDLE_ENFORCE_EQ(lod.size(), 1UL, "Only support one level sequence now.");
-    PADDLE_ENFORCE(lod == inference->lod(),
-                   "LoD must be same between Inference and Label.");
-    int num_sequences = lod[0].size() - 1;
-    for (int i = 0; i < num_sequences; ++i) {
-      int seq_length = lod[0][i + 1] - lod[0][i];
-      EvalOneSeq(inference_data + lod[0][i], label_data + lod[0][i], seq_length,
-                 &output_segments, &label_segments, num_infer_chunks_data,
-                 num_label_chunks_data, num_correct_chunks_data,
-                 num_chunk_types, num_tag_types, other_chunk_type, tag_begin,
-                 tag_inside, tag_end, tag_single, excluded_chunk_types);
+    bool use_padding = lod.empty();
+    int num_sequences = 0;
+
+    if (use_padding) {
+      auto dim1 = inference->dims()[1];
+      auto* seq_length_t = context.Input<Tensor>("SeqLength");
+      auto* seq_length_data = seq_length_t->data<int64_t>();
+      num_sequences = seq_length_t->dims()[0];
+
+      for (int i = 0; i < num_sequences; ++i) {
+        int seq_length = seq_length_data[i];
+        EvalOneSeq(inference_data + i * dim1, label_data + i * dim1, seq_length,
+                   &output_segments, &label_segments, num_infer_chunks_data,
+                   num_label_chunks_data, num_correct_chunks_data,
+                   num_chunk_types, num_tag_types, other_chunk_type, tag_begin,
+                   tag_inside, tag_end, tag_single, excluded_chunk_types);
+      }
+    } else {
+      PADDLE_ENFORCE_EQ(lod.size(), 1UL,
+                        "Only support one level sequence now.");
+      PADDLE_ENFORCE(lod == inference->lod(),
+                     "LoD must be same between Inference and Label.");
+      num_sequences = lod[0].size() - 1;
+
+      for (int i = 0; i < num_sequences; ++i) {
+        int seq_length = lod[0][i + 1] - lod[0][i];
+        EvalOneSeq(inference_data + lod[0][i], label_data + lod[0][i],
+                   seq_length, &output_segments, &label_segments,
+                   num_infer_chunks_data, num_label_chunks_data,
+                   num_correct_chunks_data, num_chunk_types, num_tag_types,
+                   other_chunk_type, tag_begin, tag_inside, tag_end, tag_single,
+                   excluded_chunk_types);
+      }
     }
+
     *precision_data = !(*num_infer_chunks_data)
                           ? 0
                           : static_cast<T>(*num_correct_chunks_data) /

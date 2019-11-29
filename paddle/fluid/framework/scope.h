@@ -14,12 +14,19 @@ limitations under the License. */
 
 #pragma once
 
+extern "C" {
+#include <xxhash.h>
+}
+
 #include <list>
-#include <mutex>  // NOLINT
+#include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -46,6 +53,10 @@ class Scope {
   /// Mark it to const because that new kid scope cannot change parent scope.
   Scope& NewScope() const;
 
+  /// Create a sub-scope for current scope but do not record it in the kids to
+  /// avoid performance problems.
+  std::unique_ptr<Scope> NewTmpScope() const;
+
   /// Create a variable with given name if it doesn't exist.
   /// Caller doesn't own the returned Variable.
   Variable* Var(const std::string& name);
@@ -56,20 +67,36 @@ class Scope {
 
   void EraseVars(const std::vector<std::string>& var_names);
 
+  // Erase all variables except the given `vars`
+  void EraseVarsExcept(const std::unordered_set<Variable*>& vars);
+
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
   /// Caller doesn't own the returned Variable.
   Variable* FindVar(const std::string& name) const;
+
+  /// Find a variable in the current scope.
+  /// Return nullptr if cannot find.
+  /// Caller doesn't own the returned Variable.
+  Variable* FindLocalVar(const std::string& name) const;
 
   const Scope* parent() const { return parent_; }
 
   /// Find the scope or an ancestor scope that contains the given variable.
   const Scope* FindScope(const Variable* var) const;
 
+  /// Find the scope or an ancestor scope that contains the given variable name.
+  const Scope* FindScope(const std::string& name) const;
+
   void DeleteScope(Scope* scope) const;
 
   /// Drop all kids scopes belonged to this scope.
   void DropKids();
+
+  /// Find if a scope exists in the kid scopes
+  bool HasKid(const Scope* scope) const;
+
+  const std::list<Scope*>& kids() const { return kids_; }
 
   // enumerate all the variables current contains.
   std::vector<std::string> LocalVarNames() const;
@@ -82,7 +109,14 @@ class Scope {
   std::string Rename(const std::string& origin_name) const;
 
  protected:
-  mutable std::unordered_map<std::string, std::unique_ptr<Variable>> vars_;
+  struct KeyHasher {
+    std::size_t operator()(const std::string& key) const {
+      return XXH32(key.c_str(), key.size(), 1);
+    }
+  };
+
+  mutable std::unordered_map<std::string, std::unique_ptr<Variable>, KeyHasher>
+      vars_;
 
  private:
   // Call Scope::NewScope for a sub-scope.
@@ -93,6 +127,9 @@ class Scope {
 
   // Called by FindScope.
   const Scope* FindScopeInternal(const Variable* var) const;
+
+  // Called by FindScope.
+  const Scope* FindScopeInternal(const std::string& name) const;
 
   // Called by Rename.
   void RenameInternal(const std::string& origin_name,
@@ -106,12 +143,21 @@ class Scope {
 
   // Scope in `kids_` are owned by this class.
   mutable std::list<Scope*> kids_;
-  Scope const* parent_{nullptr};
+  const Scope* parent_{nullptr};
 
   DISABLE_COPY_AND_ASSIGN(Scope);
 
+#ifndef PADDLE_ON_INFERENCE
+
  private:
-  mutable std::mutex mutex_;
+  mutable RWLock kids_lock_;
+  mutable RWLock vars_lock_;
+#endif
 };
+
+// Generate some debug string about the inherience structure of scope, quite
+// naive.
+std::string GenScopeTreeDebugInfo(Scope*);
+
 }  // namespace framework
 }  // namespace paddle

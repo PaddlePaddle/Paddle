@@ -17,9 +17,16 @@
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(stack, ops::StackKernel<plat::CUDADeviceContext, float>,
-                        ops::StackKernel<plat::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    stack, ops::StackKernel<plat::CUDADeviceContext, float>,
+    ops::StackKernel<plat::CUDADeviceContext, double>,
+    ops::StackKernel<plat::CUDADeviceContext, int>,
+    ops::StackKernel<plat::CUDADeviceContext, int64_t>,
+    ops::StackKernel<plat::CUDADeviceContext, plat::float16>);
 
-REGISTER_OP_CUDA_KERNEL(stack_grad,
-                        ops::StackGradKernel<plat::CUDADeviceContext, float>,
-                        ops::StackGradKernel<plat::CUDADeviceContext, double>);
+REGISTER_OP_CUDA_KERNEL(
+    stack_grad, ops::StackGradKernel<plat::CUDADeviceContext, float>,
+    ops::StackGradKernel<plat::CUDADeviceContext, double>,
+    ops::StackGradKernel<plat::CUDADeviceContext, int>,
+    ops::StackGradKernel<plat::CUDADeviceContext, int64_t>,
+    ops::StackGradKernel<plat::CUDADeviceContext, plat::float16>);

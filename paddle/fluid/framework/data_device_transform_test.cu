@@ -17,7 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/elementwise_op_function.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
@@ -63,7 +64,7 @@ template <typename DeviceContext, typename T>
 class TestKernel : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    std::cout << ctx.op().DebugString() << std::endl;
+    std::cout << ctx.DebugString() << std::endl;
 
     const Tensor* input = ctx.Input<Tensor>("input");
 

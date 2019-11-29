@@ -3,27 +3,37 @@ if(NOT WITH_AMD_GPU)
 endif()
 
 include_directories("/opt/rocm/include")
+include_directories("/opt/rocm/hip/include")
+include_directories("/opt/rocm/miopen/include")
 include_directories("/opt/rocm/hipblas/include")
 include_directories("/opt/rocm/hiprand/include")
 include_directories("/opt/rocm/rocrand/include")
 include_directories("/opt/rocm/rccl/include")
 include_directories("/opt/rocm/thrust")
 
-list(APPEND EXTERNAL_LIBS "-L/opt/rocm/lib/ -lhip_hcc")
-
-set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -fPIC -DPADDLE_WITH_HIP -std=c++14" )
+set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -fPIC -DPADDLE_WITH_HIP -std=c++11" )
 
 if(WITH_DSO)
   set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_USE_DSO")
 endif(WITH_DSO)
 
-if(WITH_DOUBLE)
-  set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_TYPE_DOUBLE")
-endif(WITH_DOUBLE)
-
 if(WITH_TESTING)
   set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_WITH_TESTING")
 endif(WITH_TESTING)
+
+if(WITH_DISTRIBUTE)
+  set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_WITH_DISTRIBUTE")
+endif(WITH_DISTRIBUTE)
+
+if(WITH_GRPC)
+  set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_WITH_GRPC")
+endif(WITH_GRPC)
+
+if(WITH_MKLDNN)
+  set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DPADDLE_WITH_MKLDNN")
+endif(WITH_MKLDNN)
+
+set(HIP_HCC_FLAGS "${HIP_HCC_FLAGS} -DANY_IMPL_ANY_CAST_MOVEABLE")
 
 if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
     list(APPEND HIP_HCC_FLAGS  ${CMAKE_CXX_FLAGS_DEBUG})
