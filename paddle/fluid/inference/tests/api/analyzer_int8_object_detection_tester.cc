@@ -50,7 +50,7 @@ template <typename T>
 class TensorReader {
  public:
   TensorReader(std::ifstream &file, size_t beginning_offset, std::string name)
-      : file_(file), position(beginning_offset), name_(name) {}
+      : file_(file), position_(beginning_offset), name_(name) {}
 
   PaddleTensor NextBatch(std::vector<int> shape, std::vector<size_t> lod) {
     int numel =
@@ -64,9 +64,9 @@ class TensorReader {
       tensor.lod.clear();
       tensor.lod.push_back(lod);
     }
-    file_.seekg(position);
+    file_.seekg(position_);
     file_.read(reinterpret_cast<char *>(tensor.data.data()), numel * sizeof(T));
-    position = file_.tellg();
+    position_ = file_.tellg();
     if (file_.eof()) LOG(ERROR) << name_ << ": reached end of stream";
     if (file_.fail())
       throw std::runtime_error(name_ + ": failed reading file.");
@@ -75,7 +75,7 @@ class TensorReader {
 
  protected:
   std::ifstream &file_;
-  size_t position;
+  size_t position_;
   std::string name_;
 };
 
