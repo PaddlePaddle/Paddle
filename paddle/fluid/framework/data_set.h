@@ -22,7 +22,9 @@
 #include <thread>  // NOLINT
 #include <utility>
 #include <vector>
+#include <unordered_set>
 
+#include <ThreadPool.h>
 #include "paddle/fluid/framework/data_feed.h"
 
 namespace paddle {
@@ -63,6 +65,7 @@ class Dataset {
   virtual void SetParseContent(bool parse_content) = 0;
   // set merge by ins id
   virtual void SetMergeByInsId(int merge_size) = 0;
+  virtual void SetGenerateUniqueFeasign(bool gen_uni_feasigns) = 0;
   // set fea eval mode
   virtual void SetFeaEval(bool fea_eval, int record_candidate_size) = 0;
   // get file list
@@ -150,7 +153,7 @@ class DatasetImpl : public Dataset {
   virtual void SetParseInsId(bool parse_ins_id);
   virtual void SetParseContent(bool parse_content);
   virtual void SetMergeByInsId(int merge_size);
-
+  virtual void SetGenerateUniqueFeasign(bool gen_uni_feasigns);
   virtual void SetFeaEval(bool fea_eval, int record_candidate_size);
   virtual const std::vector<std::string>& GetFileList() { return filelist_; }
   virtual int GetThreadNum() { return thread_num_; }
@@ -223,9 +226,11 @@ class DatasetImpl : public Dataset {
   bool parse_content_;
   int merge_size_;
   bool slots_shuffle_fea_eval_ = false;
+  bool gen_uni_feasigns_ = false;
   int preload_thread_num_;
   std::mutex global_index_mutex_;
   int64_t global_index_ = 0;
+  std::vector<std::shared_ptr<::ThreadPool>> consume_task_pool_;
 };
 
 // use std::vector<MultiSlotType> or Record as data type
