@@ -409,6 +409,14 @@ void MemoryReusePass::MarkAsNotReusableInVar(
   (*skip_reuse_vars_)[var.scope_idx()].insert(var.Name());
 }
 
+bool MemoryReusePass::IsLastVersionVar(const details::VarHandle &var) const {
+  auto iter = (*all_vars_)[var.scope_idx()].find(var.Name());
+  PADDLE_ENFORCE_EQ(
+      iter != (*all_vars_)[var.scope_idx()].end() && !iter->second.empty(),
+      true, platform::errors::NotFound("Cannot find variable %s", var.Name()));
+  return iter->second.back() == &var;
+}
+
 using InplaceOpMeta = std::unordered_map<std::string, InplaceInToOutMap>;
 
 static InplaceOpMeta *BuildIdentityInplaceOpMeta() {
@@ -436,6 +444,10 @@ static InplaceOpMeta *BuildIdentityInplaceOpMeta() {
   PADDLE_REGISTER_IDENTITY_OP("unsqueeze2", {"X", "Out"});
   PADDLE_REGISTER_IDENTITY_OP("unsqueeze2_grad", {framework::GradVarName("Out"),
                                                   framework::GradVarName("X")});
+
+  PADDLE_REGISTER_IDENTITY_OP("lod_reset", {"X", "Out"});
+  PADDLE_REGISTER_IDENTITY_OP("lod_reset_grad", {framework::GradVarName("Out"),
+                                                 framework::GradVarName("X")});
 
   return meta;
 
