@@ -504,6 +504,12 @@ class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
 class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_momentum_variable = True
+        self.use_global_stats = False
+        self.no_grad_set = set()
+        self.fetch_list = [
+            'y', 'mean', 'variance', 'saved_mean', 'saved_variance', 'x@GRAD',
+            'scale@GRAD', 'bias@GRAD'
+        ]
 
 
 class TestBatchNormOpFreezeStatsTraining(TestBatchNormOpTraining):
