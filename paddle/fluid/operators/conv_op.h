@@ -72,8 +72,8 @@ inline void UpdatePaddingAndDilation(std::vector<int>* paddings,
                                      const std::vector<int>& ksize) {
   // set padding size == data_dims.size() * 2
   auto data_shape = framework::vectorize<int>(data_dims);
-  if (paddings->size() == data_dims.size()) {
-    for (size_t i = 0; i < data_dims.size(); ++i) {
+  if (static_cast<int>(paddings->size()) == data_dims.size()) {
+    for (int i = 0; i < data_dims.size(); ++i) {
       int copy_pad = *(paddings->begin() + 2 * i);
       paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
     }
@@ -85,7 +85,7 @@ inline void UpdatePaddingAndDilation(std::vector<int>* paddings,
 
   // when padding_algorithm is "VALID" or "SAME"
   if (padding_algorithm == "SAME") {
-    for (size_t i = 0; i < data_dims.size(); ++i) {
+    for (int i = 0; i < data_dims.size(); ++i) {
       int out_size = (data_dims[i] + strides[i] - 1) / strides[i];
       int pad_sum =
           std::max((out_size - 1) * strides[i] + ksize[i] - data_shape[i], 0);
@@ -665,7 +665,7 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     Tensor* dX = ctx.Output<Tensor>("DInput");
     Tensor W = detail::Ref(ctx.Input<Tensor>("Filter"),
                            "Cannot find input Filter(%s) in scope)",
-                           ctx.Inputs("Filter")[0]);
+                           ctx.InputNames("Filter")[0]);
     if (!ddY && !dW && !dX) return;
 
     const int groups = ctx.Attr<int>("groups");

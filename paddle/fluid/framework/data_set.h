@@ -215,7 +215,7 @@ class DatasetImpl : public Dataset {
   bool merge_by_insid_;
   bool parse_ins_id_;
   bool parse_content_;
-  int merge_size_;
+  size_t merge_size_;
   bool slots_shuffle_fea_eval_ = false;
   int preload_thread_num_;
   std::mutex global_index_mutex_;
