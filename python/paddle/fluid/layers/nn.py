@@ -12326,10 +12326,10 @@ def prroi_pool(input,
                batch_roi_nums=None,
                name=None):
     """
-    The precise roi pooling implementation for paddle?https://arxiv.org/pdf/1807.11590.pdf
+    The precise roi pooling implementation for paddle. Reference: https://arxiv.org/pdf/1807.11590.pdf
 
     Args:
-        input (Variable):The input of Deformable PSROIPooling.The shape of input tensor is
+        input (Variable):The input of precise roi pooliing.The shape of input tensor is
                         [N,C,H,W]. Where N is batch size,C is number of input channels,H
                         is height of the feature, and W is the width of the feature.
         rois (Variable): ROIs (Regions of Interest) to pool over.It should be
@@ -12351,10 +12351,11 @@ def prroi_pool(input,
         name (str, default None): The name of this operation.
 
     Returns:
-        Variable(Tensor): The shape of the returned Tensor is (num_rois, output_channels, pooled_h, pooled_w), with value type float32,float16..
+        Variable(Tensor):The shape of the returned Tensor is (N, C, pooled_height, pooled_width), with value type float32,float16. N, C denote batch_size and channels of input respectively.
 
     Examples:
         .. code-block:: python
+
             ## prroi_pool without batch_roi_num
             import paddle.fluid as fluid
             x = fluid.data(name='x', shape=[None, 490, 28, 28], dtype='float32')
