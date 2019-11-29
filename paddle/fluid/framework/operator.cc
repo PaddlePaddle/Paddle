@@ -904,12 +904,15 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   // do data transformScope &transfer_scope;
   std::vector<std::string> transfered_inplace_vars;
+  Scope* transfer_scope = nullptr;
   if (platform::IsProfileEnabled() && platform::GetProfilerLevel() == 3) {
     platform::RecordEvent record_event(Type() + "data_transform");
+    transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
+                                 runtime_ctx);
+  } else {
+    transfer_scope = PrepareData(scope, *kernel_type_, &transfered_inplace_vars,
+                                 runtime_ctx);
   }
-  auto* transfer_scope =
-      PrepareData(scope, *kernel_type_, &transfered_inplace_vars, runtime_ctx);
-
   // exec scope is the scope that kernel actually executed on.
   const Scope& exec_scope =
       (transfer_scope == nullptr ? scope : *transfer_scope);
@@ -921,9 +924,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!all_kernels_must_compute_runtime_shape_) {
     if (platform::IsProfileEnabled() && platform::GetProfilerLevel() == 2) {
       platform::RecordEvent record_event(Type() + "_runtime_infer_shape");
+      RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
+      this->InferShape(&infer_shape_ctx);
+    } else {
+      RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
+      this->InferShape(&infer_shape_ctx);
     }
-    RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
-    this->InferShape(&infer_shape_ctx);
   }
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
