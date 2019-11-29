@@ -43,6 +43,23 @@ class AucKernel : public framework::OpKernel<T> {
     auto *origin_stat_neg = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
     auto *auc_value = auc_tensor->mutable_data<double>(ctx.GetPlace());
 
+    // Just for pass UT, since UT's input & output connot be set same var
+    auto *stat_pos_in_tensor = ctx.Input<Tensor>("StatPos");
+    auto *pos_in_data = stat_pos_in_tensor->data<int64_t>();
+    auto *stat_neg_in_tensor = ctx.Input<Tensor>("StatNeg");
+    auto *neg_in_data = stat_neg_in_tensor->data<int64_t>();
+    if (stat_pos_in_tensor != stat_pos) {
+      memcpy(origin_stat_pos, pos_in_data,
+             ((1 + slide_steps) * (num_thresholds + 1) +
+              (slide_steps > 0 ? 1 : 0)) *
+                 sizeof(int64_t));
+    }
+    if (stat_neg_in_tensor != stat_neg) {
+      memcpy(origin_stat_neg, neg_in_data,
+             ((1 + slide_steps) * (num_thresholds + 1) +
+              (slide_steps > 0 ? 1 : 0)) *
+                 sizeof(int64_t));
+    }
     statAuc(label, predict, num_thresholds, slide_steps, origin_stat_pos,
             origin_stat_neg);
 

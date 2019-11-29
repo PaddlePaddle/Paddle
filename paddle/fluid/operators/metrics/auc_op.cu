@@ -129,6 +129,25 @@ class AucCUDAKernel : public framework::OpKernel<T> {
     auto *origin_stat_neg = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
     auto *auc_value = auc_tensor->mutable_data<double>(ctx.GetPlace());
 
+    auto *stat_pos_in_tensor = ctx.Input<Tensor>("StatPos");
+    auto *pos_in_data = stat_pos_in_tensor->data<int64_t>();
+    auto *stat_neg_in_tensor = ctx.Input<Tensor>("StatNeg");
+    auto *neg_in_data = stat_neg_in_tensor->data<int64_t>();
+    if (stat_pos_in_tensor != stat_pos) {
+      cudaMemcpy(origin_stat_pos, pos_in_data,
+                 ((1 + slide_steps) * (num_thresholds + 1) +
+                  (slide_steps > 0 ? 1 : 0)) *
+                     sizeof(int64_t),
+                 cudaMemcpyDeviceToDevice);
+    }
+    if (stat_neg_in_tensor != stat_neg) {
+      cudaMemcpy(origin_stat_neg, neg_in_data,
+                 ((1 + slide_steps) * (num_thresholds + 1) +
+                  (slide_steps > 0 ? 1 : 0)) *
+                     sizeof(int64_t),
+                 cudaMemcpyDeviceToDevice);
+    }
+
     statAuc(ctx, label, predict, num_thresholds, slide_steps, origin_stat_pos,
             origin_stat_neg);
     int sum_offset = slide_steps * (num_thresholds + 1);

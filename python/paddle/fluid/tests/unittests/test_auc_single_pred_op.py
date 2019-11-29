@@ -29,9 +29,9 @@ class TestAucSinglePredOp(OpTest):
         num_thresholds = 200
         slide_steps = 1
 
-        stat_pos = np.zeros(slide_steps * (num_thresholds + 1) + 1,
+        stat_pos = np.zeros((1 + slide_steps) * (num_thresholds + 1) + 1,
                             ).astype("int64")
-        stat_neg = np.zeros(slide_steps * (num_thresholds + 1) + 1,
+        stat_neg = np.zeros((1 + slide_steps) * (num_thresholds + 1) + 1,
                             ).astype("int64")
 
         self.inputs = {
