@@ -2622,10 +2622,7 @@ def batch_norm(input,
         outputs["ReserveSpace"] = reserve_space
 
     helper.append_op(
-        type="batch_norm",
-        inputs=inputs,
-        outputs=outputs,
-        attrs=attrs)
+        type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
 
     return helper.append_activation(batch_norm_out)
 
