@@ -45,9 +45,9 @@ class LookupTableV2Kernel : public framework::OpKernel<T> {
     auto *output_t = context.Output<LoDTensor>("Out");  // float tensor
     auto *table_var = context.InputVar("W");
 
-    auto id_name = context.Inputs("Ids").front();
-    auto embedding_name = context.Inputs("W").front();
-    auto out_name = context.Outputs("Out").front();
+    auto id_name = context.InputNames("Ids").front();
+    auto embedding_name = context.InputNames("W").front();
+    auto out_name = context.OutputNames("Out").front();
 
     // for remote prefetch
     auto epmap = context.Attr<std::vector<std::string>>("epmap");

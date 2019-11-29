@@ -110,8 +110,8 @@ TEST(test_prepare_op, test_prepare_op) {
   framework::OperatorWithKernel op("split", var_in_map, var_out_map,
                                    split_attr_map);
   framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
-  ASSERT_NO_FATAL_FAILURE(PreparedOp preparedOp =
-                              PreparedOp::Prepare(ctx, op, place, ins));
+  ASSERT_NO_FATAL_FAILURE(PreparedOp preparedOp = PreparedOp::Prepare(
+                              ins, outs, op, place, &split_attr_map));
 }
 
 const framework::Tensor* GetTensorFromVar(const framework::Variable& var);
@@ -158,7 +158,8 @@ TEST(test_prepare_op, test_prepare_data) {
   framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
 
   // test if it can be transformed to GPU place
-  PreparedOp prepared_op = PreparedOp::Prepare(ctx, assign_op, gpu_place, ins);
+  PreparedOp prepared_op =
+      PreparedOp::Prepare(ins, outs, assign_op, gpu_place, &assign_attr_map);
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(
@@ -201,7 +202,8 @@ TEST(test_prepare_op, test_prepare_data_same_place) {
   framework::RuntimeContext ctx = PrepareRuntimeContext(ins, outs);
 
   // test if it never transfered on GPU place
-  PreparedOp prepared_op = PreparedOp::Prepare(ctx, assign_op, cpu_place, ins);
+  PreparedOp prepared_op =
+      PreparedOp::Prepare(ins, outs, assign_op, cpu_place, &assign_attr_map);
   for (const auto& name_pair : ins) {
     for (const auto& vb : name_pair.second) {
       ASSERT_TRUE(platform::is_same_place(

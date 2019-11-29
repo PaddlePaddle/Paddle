@@ -17,11 +17,32 @@ from __future__ import print_function
 import unittest
 
 from paddle.fluid.tests.unittests.test_sum_op import TestSumOp
+import numpy as np
 
 
 class TestMKLDNN(TestSumOp):
-    def init_kernel_type(self):
+    def setUp(self):
+        self.op_type = "sum"
+        self.init_kernel_type()
         self.use_mkldnn = True
+        x0 = np.random.random((3, 4)).astype(self.dtype)
+        x1 = np.random.random((3, 4)).astype(self.dtype)
+        x2 = np.random.random((3, 4)).astype(self.dtype)
+        self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
+        y = x0 + x1 + x2
+        self.outputs = {'Out': y}
+        self.attrs = {'use_mkldnn': self.use_mkldnn}
+
+    def init_kernel_type(self):
+        self.dtype = np.float32
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=False)
+
+    def test_check_grad(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_grad(['x0'], 'Out', check_dygraph=False)
 
 
 if __name__ == '__main__':

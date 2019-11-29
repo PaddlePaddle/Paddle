@@ -50,12 +50,12 @@ inline EP_SPLIT_TABLE_PAIRS GetMultiFieldRpcContext(
     PADDLE_ENFORCE_GT(multi_parts, 0, "multi_parts must >=1");
 
     if (multi_parts == 1) {
-      for (int i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+      for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
         table_pairs.push_back(
             std::make_pair(rpc_ctx.epmap[i], rpc_ctx.splited_var_names[i]));
       }
     } else {
-      for (int i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
+      for (size_t i = 0; i < rpc_ctx.splited_var_names.size(); i++) {
         for (int x = 0; x < multi_parts; x++) {
           auto table =
               string::Sprintf("%s@%d@PIECE", rpc_ctx.splited_var_names[i], x);
