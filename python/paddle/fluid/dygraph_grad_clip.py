@@ -192,15 +192,14 @@ class GradClipByGlobalNorm(GradClipBase):
     """
     Clips values of multiple tensors by the ratio of the sum of their norms.
 
-    Given a list of tensors t_list, and a clipping ratio clip_norm, this
-    operation returns a list of clipped tensors list_clipped and the global
-    norm (global_norm) of all tensors in t_list.
+    Given a list of tensors t_list, and a clipping ratio max_global_norm, this
+    operation returns a list of clipped tensors list_clipped.
 
     To perform the clipping, the values :math:`t\_list[i]` are set to:
 
     .. math::
 
-        t\_list[i] = t\_list[i] * \\frac{clip\_norm}{\max(global\_norm, clip\_norm)}
+        t\_list[i] = t\_list[i] * \\frac{max\_global\_norm}{\max(global\_norm, max\_global\_norm)}
 
     where:
 
@@ -208,12 +207,12 @@ class GradClipByGlobalNorm(GradClipBase):
 
         global\_norm = \sqrt{\sum_{i=0}^{N-1}(l2norm(t\_list[i]))^2}
 
-    If :math:`clip\_norm > global\_norm` then the entries in t_list remain as they are,
+    If :math:`max\_global\_norm > global\_norm` then the entries in t_list remain as they are,
     otherwise they're all shrunk by the global ratio.
 
     Args:
-        clip_norm (float): The maximum norm value
-        group_name (str, optional): The group name for this clip.
+        max_global_norm (float): The maximum norm value.
+        dtype (str, optional): The type of max_global_norm. Default: "float32".
 
     Examples:
         .. code-block:: python
@@ -225,7 +224,7 @@ class GradClipByGlobalNorm(GradClipBase):
             from paddle.fluid.dygraph.base import to_variable
             from paddle.fluid.dygraph.nn import FC
 
-            from paddle.fluid.clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
+            from paddle.fluid.dygraph_grad_clip import GradClipByValue, GradClipByNorm, GradClipByGlobalNorm
 
             from paddle.fluid.optimizer import SGDOptimizer
 
