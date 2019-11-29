@@ -18,6 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/init.h"
 
+DECLARE_bool(enable_unused_var_check);
+
 namespace paddle {
 namespace framework {
 
@@ -139,6 +141,8 @@ class CPUKernelTest : public OpKernel<float> {
     cpu_kernel_run_num++;
     ASSERT_EQ(ctx.InputName("x"), "IN1");
     ASSERT_EQ(ctx.OutputName("y"), "OUT1");
+    auto* x = ctx.Input<Tensor>("X");
+    ASSERT_EQ(x, nullptr);
   }
 };
 
@@ -626,3 +630,117 @@ void SetGetLoDLevelTestMain(std::string op_type) {
 TEST(GetLoDLevelTest, base) { SetGetLoDLevelTestMain("get_lod_level_test"); }
 
 TEST(SetLoDLevelTest, base) { SetGetLoDLevelTestMain("set_lod_level_test"); }
+
+namespace paddle {
+namespace framework {
+
+class OpUnusedVarTest : public OperatorWithKernel {
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {}
+  OpKernelType GetExpectedKernelType(
+      const ExecutionContext& ctx) const override {
+    return OpKernelType(proto::VarType::FP32, ctx.GetPlace(),
+                        framework::DataLayout::kAnyLayout);
+  }
+};
+
+class OpUnusedVarTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddInput("X", "input of test op");
+    AddOutput("Y", "output of test op");
+    AddComment("This is test op for unused var check.");
+  }
+};
+
+template <typename T>
+class OpWithUnusedVarKernelTest : public OpKernel<T> {
+ public:
+  void Compute(const ExecutionContext& ctx) const {
+    ASSERT_EQ(ctx.InputName("X"), "X");
+    ASSERT_EQ(ctx.OutputName("Y"), "Y");
+  }
+};
+
+template <typename T>
+class OpWithoutUnusedVarKernelTest : public OpKernel<T> {
+ public:
+  void Compute(const ExecutionContext& ctx) const {
+    ASSERT_EQ(ctx.InputName("X"), "X");
+    ASSERT_EQ(ctx.OutputName("Y"), "Y");
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Output<Tensor>("Y");
+    ASSERT_NE(x, y);
+    ASSERT_NE(y, nullptr);
+  }
+};
+
+}  // namespace framework
+}  // namespace paddle
+
+REGISTER_OP_WITHOUT_GRADIENT(
+    op_with_unused_var, paddle::framework::OpUnusedVarTest,
+    paddle::framework::OpUnusedVarTestProtoAndCheckerMaker);
+
+REGISTER_OP_CPU_KERNEL(op_with_unused_var,
+                       paddle::framework::OpWithUnusedVarKernelTest<float>);
+
+REGISTER_OP_WITHOUT_GRADIENT(
+    op_without_unused_var, paddle::framework::OpUnusedVarTest,
+    paddle::framework::OpUnusedVarTestProtoAndCheckerMaker);
+
+REGISTER_OP_CPU_KERNEL(op_without_unused_var,
+                       paddle::framework::OpWithoutUnusedVarKernelTest<float>);
+
+// test with single input
+TEST(OpWithUnusedVar, all) {
+  // enable the unused_var_check
+  FLAGS_enable_unused_var_check = true;
+  paddle::framework::InitDevices(true);
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("op_with_unused_var");
+  BuildVar("X", {"X"}, op_desc.add_inputs());
+  BuildVar("Y", {"Y"}, op_desc.add_outputs());
+
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+  auto* x = scope.Var("X")->GetMutable<paddle::framework::LoDTensor>();
+  auto* y = scope.Var("Y")->GetMutable<paddle::framework::LoDTensor>();
+  x->Resize({32, 64});
+  y->Resize({32, 64});
+  x->mutable_data<float>(cpu_place);
+  y->mutable_data<float>(cpu_place);
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  // should throw exception
+  ASSERT_THROW(op->Run(scope, cpu_place), paddle::platform::EnforceNotMet);
+  FLAGS_enable_unused_var_check = false;
+}
+
+TEST(OpWithoutUnusedVar, all) {
+  // enable the unused_var_check
+  FLAGS_enable_unused_var_check = true;
+
+  paddle::framework::InitDevices(true);
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("op_without_unused_var");
+  BuildVar("X", {"X"}, op_desc.add_inputs());
+  BuildVar("Y", {"Y"}, op_desc.add_outputs());
+
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+  auto* x = scope.Var("X")->GetMutable<paddle::framework::LoDTensor>();
+  auto* y = scope.Var("Y")->GetMutable<paddle::framework::LoDTensor>();
+  x->Resize({32, 64});
+  y->Resize({32, 64});
+  x->mutable_data<float>(cpu_place);
+  y->mutable_data<float>(cpu_place);
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  // should not throw exception
+  ASSERT_NO_THROW(op->Run(scope, cpu_place));
+  FLAGS_enable_unused_var_check = false;
+}

@@ -168,7 +168,8 @@ def __bootstrap__():
         'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
         'enable_parallel_graph', 'fuse_parameter_groups_size',
         'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
-        'tracer_profile_fname', 'dygraph_debug', 'use_system_allocator'
+        'tracer_profile_fname', 'dygraph_debug', 'use_system_allocator',
+        'enable_unused_var_check'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
