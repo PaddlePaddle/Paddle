@@ -211,7 +211,8 @@ float *TensorRTEngine::GetWeightCPUData(const std::string &name,
                                         const std::vector<float> &scale) {
   static int name_suffix_counter = 0;
   std::string name_suffix = std::to_string(name_suffix_counter);
-  std::string name_with_suffix = name + name_suffix;
+  std::string splitter = "__";
+  std::string name_with_suffix = name + splitter + name_suffix;
   auto w_dims = weight_tensor->dims();
   platform::CPUPlace cpu_place;
   PADDLE_ENFORCE_EQ(

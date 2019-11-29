@@ -24,6 +24,10 @@ class TestMKLDNNConcatOp(TestConcatOp):
         self.attrs["use_mkldnn"] = True
         self._cpu_only = True
 
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=(self.attrs["use_mkldnn"] == False))
+
     def test_check_grad(self):
         pass
 
@@ -37,6 +41,10 @@ class TestMKLDNNConcatOp2(TestConcatOp2):
         self.attrs["use_mkldnn"] = True
         self._cpu_only = True
 
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode 
+        self.check_output(check_dygraph=(self.attrs["use_mkldnn"] == False))
+
     def test_check_grad(self):
         pass
 
@@ -49,6 +57,10 @@ class TestMKLDNNConcatOp3(TestConcatOp3):
         super(TestMKLDNNConcatOp3, self).setUp()
         self.attrs["use_mkldnn"] = True
         self._cpu_only = True
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode 
+        self.check_output(check_dygraph=(self.attrs["use_mkldnn"] == False))
 
     def test_check_grad(self):
         pass

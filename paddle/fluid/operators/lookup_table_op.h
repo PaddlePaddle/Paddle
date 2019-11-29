@@ -107,7 +107,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
         int64_t row_width = table_t.value().dims()[1];
         const auto *table = table_t.value().data<T>();
         auto *output = output_t->mutable_data<T>(context.GetPlace());
-
+        auto input_data_type = table_t.value().type();
         auto is_test = context.Attr<bool>("is_test");
 
         if (is_test) {
@@ -126,11 +126,15 @@ class LookupTableKernel : public framework::OpKernel<T> {
                   "expected >= 0. But received %ld",
                   ids[i]);
               auto id_index = table_t.Index(ids[i]);
-
-              if (id_index == -1) {
-                PADDLE_THROW("the input key %d do not exist in table.", ids[i]);
-
+              PADDLE_ENFORCE_GE(
+                  id_index, 0,
+                  "the input key should be exists. But received %d.", id_index);
+              if (input_data_type == framework::proto::VarType::INT8) {
+                memcpy(output + i * row_width, table + id_index * row_width,
+                       row_width * sizeof(T));
               } else {
+                auto blas =
+                    math::GetBlas<platform::CPUDeviceContext, T>(context);
                 blas.VCOPY(row_width, table + id_index * row_width,
                            output + i * row_width);
               }

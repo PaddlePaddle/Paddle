@@ -171,7 +171,7 @@ bool RequestGetHandler::Handle(const std::string& varname,
         auto* data = out_slr->mutable_value()->mutable_data<float>(
             out_dims, origin_tensor.place());
         auto width = dims[1];
-        for (auto i = 0; i < updated_rows.size(); ++i) {
+        for (size_t i = 0; i < updated_rows.size(); ++i) {
           PADDLE_ENFORCE_LT(updated_rows[i], dims[0]);
           memcpy(data + i * width, origin_tensor_data + updated_rows[i] * width,
                  sizeof(float) * width);

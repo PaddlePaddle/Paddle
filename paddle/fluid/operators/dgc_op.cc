@@ -29,6 +29,9 @@ class DGCOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("V"), "Input(V) of DGCop should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Grad"),
                    "Input(Grad) of DGCop should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Param"), true,
+        platform::errors::NotFound("Input(Param) of DGCop is not found."));
     PADDLE_ENFORCE(ctx->HasInput("current_step"),
                    "Input(current_step) of DGCop should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("nranks"), true,
@@ -66,6 +69,7 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("U", "(Tensor) U velocity tensor of DGC");
     AddInput("V", "(Tensor) V velocity tensor of DGC");
     AddInput("Grad", "(Tensor) Input gradient");
+    AddInput("Param", "(Tensor) Input parameter");
     AddInput("current_step", "(Tensor) Current step.");
     AddInput("nranks", "(Tensor) nranks.");
 
@@ -98,6 +102,16 @@ class DGCOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("rampup_step",
                    "(float, 0.0)"
                    "The period when begin k_select.");
+
+    AddAttr<float>("regular_coeff",
+                   "(float, 0.0)"
+                   "The coeff of regularization, weight decay parameter")
+        .SetDefault(0.0);
+
+    AddAttr<int>("regular_type",
+                 "(int, 0)"
+                 "The type of regularization, {0:None, 1:L1Decay, 2:L2Decay")
+        .SetDefault(0);
 
     AddComment(R"DOC(
     Original paper is https://arxiv.org/abs/1712.01887

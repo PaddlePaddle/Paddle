@@ -30,6 +30,16 @@ namespace operators {
 
 namespace scatter = paddle::operators::math::scatter;
 
+static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
+  const float* tensor_data = tensor->data<float>();
+  framework::Tensor cpu_tensor;
+  if (platform::is_gpu_place(tensor->place())) {
+    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    tensor_data = cpu_tensor.data<float>();
+  }
+  return tensor_data[0];
+}
+
 class AdamOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -387,8 +397,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
     int64_t min_row_size_to_use_multithread =
         ctx.Attr<int64_t>("min_row_size_to_use_multithread");
     bool lazy_mode = ctx.Attr<bool>("lazy_mode");
-    T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
-    T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
 
     if (param_var->IsType<framework::LoDTensor>()) {
@@ -403,6 +411,17 @@ class AdamOpKernel : public framework::OpKernel<T> {
           Ref(ctx.Input<LoDTensor>("Beta1Pow"), "Must set Beta1Pow");
       auto& beta2_pow =
           Ref(ctx.Input<LoDTensor>("Beta2Pow"), "Must set Beta2Pow");
+
+      T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
+      if (ctx.HasInput("Beta1Tensor")) {
+        auto* beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
+        beta1 = static_cast<T>(GetAttrFromTensor(beta1_tensor));
+      }
+      T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
+      if (ctx.HasInput("Beta2Tensor")) {
+        auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
+        beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
+      }
 
       auto& param_out =
           Ref(ctx.Output<LoDTensor>("ParamOut"), "Must set ParamOut");

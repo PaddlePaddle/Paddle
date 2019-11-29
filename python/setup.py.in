@@ -273,9 +273,11 @@ def find_files(pattern, root):
 
 headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/framework')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/imperative')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/memory')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/platform')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/string')) +
+    list(find_files('*.pb.h', '${PADDLE_BINARY_DIR}/paddle/fluid/platform')) +
     list(find_files('*.pb.h', '${PADDLE_BINARY_DIR}/paddle/fluid/framework')) +
     ['${EIGEN_INCLUDE_DIR}/Eigen/Core'] + # eigen
     list(find_files('*', '${EIGEN_INCLUDE_DIR}/Eigen/src')) + # eigen
@@ -287,6 +289,9 @@ headers = (
     list(find_files('*', '${PROTOBUF_INCLUDE_DIR}')) + # protobuf
     list(find_files('*', '${DLPACK_INCLUDE_DIR}')) + # dlpack 
     list(find_files('*.h', '${THREADPOOL_INCLUDE_DIR}'))) # threadpool
+
+if '${WITH_MKLDNN}' == 'ON':
+    headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
 
 
 class InstallCommand(InstallCommandBase):
@@ -335,6 +340,7 @@ class InstallHeaders(Command):
                        'install/protobuf/include',
                        'install/gflags/include',
                        'install/glog/include', 'install/xxhash/include',
+                       'install/mkldnn/include',
                        'threadpool/src/extern_threadpool']
             for pattern in patterns:
                 install_dir = re.sub(pattern, '', install_dir)
