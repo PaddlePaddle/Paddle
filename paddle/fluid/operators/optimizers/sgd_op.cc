@@ -40,8 +40,15 @@ class SGDOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
                       "Learning rate should have 1 element");
     auto param_dim = ctx->GetInputDim("Param");
-    // TODO(qijun): check dimensions of Param and Grad at compile
-    // and runtime.
+    if (ctx->GetInputsVarType("Grad")[0] ==
+        framework::proto::VarType::LOD_TENSOR) {
+      PADDLE_ENFORCE_EQ(
+          param_dim, ctx->GetInputDim("Grad"),
+          platform::errors::InvalidArgument(
+              "SGD Operator's input Param and Grad dimensions do not match. "
+              "The Param shape is [%s], but the Grad shape is [%s].",
+              param_dim, ctx->GetInputDim("Grad")));
+    }
     ctx->SetOutputDim("ParamOut", param_dim);
   }
 

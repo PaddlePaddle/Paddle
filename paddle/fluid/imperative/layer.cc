@@ -141,6 +141,22 @@ static std::string DebugString(
         ss << "NOT_INITED";
       }
       ss << ">";
+    } else if (var.IsType<framework::SelectedRows>()) {
+      ss << "SelectedRows<";
+      auto& selected_rows = var.Get<framework::SelectedRows>();
+      auto& tensor = selected_rows.value();
+      auto& rows = selected_rows.rows();
+      if (tensor.IsInitialized()) {
+        ss << framework::DataTypeToString(tensor.type()) << ", ";
+        ss << tensor.place() << ", ";
+        ss << "height(" << selected_rows.height() << "), rows(";
+        std::for_each(rows.cbegin(), rows.cend(),
+                      [&ss](const int64_t r) { ss << r << " "; });
+        ss << "), dims(" << tensor.dims() << ")";
+      } else {
+        ss << "NOT_INITED";
+      }
+      ss << ">";
     } else {
       ss << "UNRESOLVED_TYPE";
     }
