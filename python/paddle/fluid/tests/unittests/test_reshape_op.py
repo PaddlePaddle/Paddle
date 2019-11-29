@@ -186,7 +186,7 @@ class TestReshapeOpDimInfer2_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
 
 
 # Test python API
-class TestReshapeAPI(OpTest):
+class TestReshapeAPI(unittest.TestCase):
     # situation 1: have shape( list, no tensor), no actual shape(Tensor)
     def test_1(self):
         input = np.random.random([2, 25]).astype("float32")
@@ -227,7 +227,7 @@ class TestReshapeAPI(OpTest):
 
 
 # Test Input Error
-class TestReshapeOpError(OpTest):
+class TestReshapeOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The x type of reshape_op must be Variable.

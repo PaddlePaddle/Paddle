@@ -214,7 +214,7 @@ class TestLookupTableApi(unittest.TestCase):
                       return_numpy=False)
 
 
-class TestEmbedOpError(OpTest):
+class TestEmbedOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.randint(0, 10, (4, 6)).astype("int64")
