@@ -25,7 +25,6 @@ namespace paddle {
 namespace framework {
 
 std::unordered_set<std::string>* GetThreadLocalUsedVarNameSet();
-void InitThreadLocalUsedVarNameSet();
 
 void LogVarUsageIfUnusedVarCheckEnabled(const std::string& name);
 void CheckUnusedVar(const OperatorBase& op, const Scope& scope);
