@@ -61,6 +61,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
+#include "paddle/fluid/pybind/global_value_getter_setter.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
@@ -457,61 +458,21 @@ PYBIND11_MODULE(core_noavx, m) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_clear", &Tensor::clear)
-      .def("set", PyCPUTensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"))
-#ifdef PADDLE_WITH_CUDA
-      .def("set", PyCUDATensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"), R"DOC(
+      .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
+           R"DOC(
         Set the data of LoDTensor on place with given numpy array.
         
         Args:
           lod (numpy.ndarray): The data to set.
           place (CPUPlace|CUDAPlace|CUDAPinnedPlace): The place where the 
           LoDTensor is to be set.
+          zero_copy (bool, optional): Whether to share memory with the input numpy array.
+          This parameter only works with CPUPlace. Default: False.
 
         Returns:
             None.
@@ -525,7 +486,7 @@ PYBIND11_MODULE(core_noavx, m) {
                 t = fluid.LoDTensor()
                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
           )DOC")
-#endif
+
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); }, R"DOC(
            Return the shape of LoDTensor.
 
@@ -571,6 +532,7 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); })
+      .def("_share_data_with", &Tensor::ShareDataWith)
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
       .def("__str__", [](const Tensor &self) {
         std::stringstream ostr;
@@ -1091,10 +1053,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("has_infer_inplace", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
   });
-  m.def("get_flags_use_mkldnn", []() { return FLAGS_use_mkldnn; });
-#ifdef PADDLE_WITH_NGRAPH
-  m.def("get_flags_use_ngraph", []() { return FLAGS_use_ngraph; });
-#endif
 
   m.def("prune", [](const ProgramDesc &origin,
                     const std::set<std::string> &feeded_var_names,
@@ -1366,10 +1324,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("close", &Executor::Close)
       .def("run_from_dataset", &Executor::RunFromDataset,
            py::call_guard<py::gil_scoped_release>())
+      .def("release_trainer", &Executor::ReleaseTrainer,
+           py::call_guard<py::gil_scoped_release>())
       .def("init_for_dataset",
            [](Executor &self, const ProgramDesc &prog,
               const std::string &trainer_desc, Scope *scope,
               Dataset *dataset) -> std::shared_ptr<TrainerBase> {
+             pybind11::gil_scoped_release release;
              return self.InitForDataset(prog, trainer_desc, scope, dataset);
            })
       .def("run_from_dataset",
@@ -1444,6 +1405,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindVarDsec(&m);
   BindOpDesc(&m);
   BindConstValue(&m);
+  BindGlobalValueGetterSetter(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {

@@ -44,12 +44,14 @@ class TestVariable(unittest.TestCase):
         self.assertEqual(core.VarDesc.VarType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
+        self.assertEqual("fc.w@GRAD", w.grad_name)
         self.assertEqual(0, w.lod_level)
 
         w = b.create_var(name='fc.w')
         self.assertEqual(core.VarDesc.VarType.FP64, w.dtype)
         self.assertEqual((784, 100), w.shape)
         self.assertEqual("fc.w", w.name)
+        self.assertEqual("fc.w@GRAD", w.grad_name)
         self.assertEqual(0, w.lod_level)
 
         self.assertRaises(ValueError,

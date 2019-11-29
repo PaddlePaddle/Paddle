@@ -206,13 +206,13 @@ class LoDTensorToArrayInferShape : public framework::InferShapeBase {
     context->SetOutputDim("Out", x_dim);
 
     // The output LoDTensor's lod_level should be input X's lod_level - 1.
-    // For compile time, we call DecreaseLoDLevel to set output's lod_level.
+    // For compile time, we call SetLoDLevel to set output's lod_level.
     // For runtime, output LoDTensor's lod is determined by input X's lod and
     // the level specified by input RandTable.
     // We cannot get X's detail lod and RankTable's level in this function, so
     // leave this work to the detail kernel implementation.
     if (!context->IsRuntime()) {
-      context->DecreaseLoDLevel("X", /*->*/ "Out");
+      context->SetLoDLevel("Out", context->GetLoDLevel("X") - 1);
     }
   }
 };

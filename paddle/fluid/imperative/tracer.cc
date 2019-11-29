@@ -16,15 +16,48 @@
 #include <unordered_set>
 #include <utility>
 #include "paddle/fluid/platform/profiler.h"
-
 namespace paddle {
 namespace imperative {
 
-struct OpBaseCmp {
-  bool operator()(OpBase* first, OpBase* second) {
-    return first->id() > second->id();
+static std::shared_ptr<Tracer> g_current_tracer(nullptr);
+
+const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
+
+void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer) {
+  g_current_tracer = tracer;
+  VLOG(6) << "Set current tracer: " << g_current_tracer;
+}
+
+static void ClearNoNeedBufferInputs(OpBase* op) {
+  auto& inferer = op->Info().NoNeedBufferVarsInferer();
+  if (!inferer) return;
+  auto* ins = op->GetMutableInsMap();
+  const auto& no_need_buffer_slots =
+      inferer(*ins, op->GetOutsMap(), op->Attrs());
+  if (no_need_buffer_slots.empty()) return;
+
+  for (auto& slot : no_need_buffer_slots) {
+    auto iter = ins->find(slot);
+    if (iter == ins->end()) continue;
+    VLOG(2) << "Clear data buffer of " << slot << " in " << op->Type();
+
+    for (auto& each_var : iter->second) {
+      if (!each_var) continue;
+
+      auto& var = each_var->Var();
+      PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(), true,
+                        "Only support LoDTensor");
+      // TODO(zjl): support higher order derivatives
+      auto new_var = new VarBase(false, each_var->Name());
+      auto* new_tensor =
+          new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto& old_tensor = var.Get<framework::LoDTensor>();
+      new_tensor->Resize(old_tensor.dims());
+      new_tensor->set_lod(old_tensor.lod());
+      each_var.reset(new_var);
+    }
   }
-};
+}
 
 static std::vector<std::unique_ptr<OpBase>> CreateGradOpBases(
     const OpBase* fw_op_base, const NameVarBaseMap& in,
@@ -49,10 +82,9 @@ static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward) {
-  platform::RecordEvent event(type);
   VLOG(1) << "Trace Op: " << type;
   size_t op_id = GenerateUniqueId();
-  auto op = OpBase::Create(op_id, type, ins, outs, std::move(attrs), place);
+  auto op = OpBase::Create(op_id, type, ins, outs, attrs, place);
   op->Run(ins, outs);
 
   if (enable_program_desc_tracing_) {
@@ -130,7 +162,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
       }
     }
 
-    std::set<OpBase*, OpBaseCmp> visited_preceding_ops;
+    std::set<OpBase*> visited_preceding_ops;
     for (auto& grad_out_it : grad_out) {
       bool flag_clear_list = false;
       for (auto& var_base_it : grad_out_it.second) {
@@ -157,6 +189,7 @@ void Tracer::TraceBackward(const std::shared_ptr<OpBase>& fwd_op,
 
     // this OpBase* is just used to manage op's life time
     engine_->InsertOp(grad_op.get(), grad_op);
+    ClearNoNeedBufferInputs(grad_op.get());
   }
 }
 

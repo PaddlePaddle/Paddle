@@ -37,7 +37,8 @@ class PReluTest(OpTest):
             alpha_np = np.random.rand(1, x_np.shape[1], 1, 1).astype("float32")
             self.inputs = {'X': x_np, 'Alpha': alpha_np}
         else:
-            alpha_np = np.random.rand(*x_np.shape).astype("float32")
+            alpha_np = np.random.rand(1, x_np.shape[1], x_np.shape[2], \
+                x_np.shape[3]).astype("float32")
             self.inputs = {'X': x_np, 'Alpha': alpha_np}
 
         out_np = np.maximum(self.inputs['X'], 0.)
