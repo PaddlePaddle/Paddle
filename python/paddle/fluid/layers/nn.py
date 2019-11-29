@@ -2525,9 +2525,10 @@ def batch_norm(input,
     dtype = helper.input_dtype()
 
     has_reserve_space = False
-    if data_layout == 'NHWC' and os.environ.get(
-            'FLAGS_cudnn_batchnorm_spatial_persistent'):
-        has_reserve_space = True
+    if data_layout == 'NHWC':
+        flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
+        if flag is not None and flag.lower() in ['true', '1']:
+            has_reserve_space = True
 
     # use fp32 for bn parameter
     if dtype == core.VarDesc.VarType.FP16:
