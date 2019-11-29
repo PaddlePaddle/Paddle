@@ -1159,7 +1159,7 @@ class Variable(object):
                 print(new_variable.to_string(True, True))
         """
         if in_dygraph_mode():
-            pass
+            return
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
