@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 from paddle.fluid.tests.unittests.test_lrn_op import TestLRNOp
+import paddle.fluid as fluid
 
 
 class TestLRNMKLDNNOp(TestLRNOp):
@@ -52,6 +53,16 @@ class TestLRNMKLDNNOpWithIsTest(TestLRNMKLDNNOp):
                     raise AttributeError
 
         self.assertRaises(AttributeError, check_raise_is_test)
+
+
+class TestLRNMKLDNNOpNHWC(TestLRNMKLDNNOp):
+    def init_test_case(self):
+        self.data_format = 'NHWC'
+
+    #TODO(jczaja): Add grad support
+    def test_check_grad_normal(self):
+        with self.assertRaises(fluid.core_avx.EnforceNotMet):
+            self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
 
 if __name__ == "__main__":

@@ -114,7 +114,7 @@ class InferNoNeedBufferVarsFN {
     return (*inferer_)(ctx);
   }
 
-  inline operator bool() const { return inferer_ != nullptr; }
+  inline explicit operator bool() const { return inferer_ != nullptr; }
 
   inline bool operator!() const { return inferer_ == nullptr; }
 
