@@ -1088,6 +1088,7 @@ class OpTest(unittest.TestCase):
 
         if no_grad_set is None:
             no_grad_set = set()
+            print('op_type: {}, no_grad_set: None'.format(self.op_type))
         else:
             if self.op_type not in NO_GRAD_SET_NULL:
                 with open("grag_set_val.txt", "a+") as f:
