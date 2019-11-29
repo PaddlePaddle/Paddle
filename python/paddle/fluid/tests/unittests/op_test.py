@@ -1091,7 +1091,8 @@ class OpTest(unittest.TestCase):
         else:
             if self.op_type not in NO_GRAD_SET_NULL:
                 with open("grag_set_val.txt", "a+") as f:
-                    f.write('op_type: {}\n'.format(self.op_type))
+                    print('op_type: {}, no_grad_set: {}'.format(self.op_type, no_grad_set))
+                    f.write('op_type: {}, no_grad_set: {} \n'.format(self.op_type, no_grad_set))
 
         if not type(output_names) is list:
             output_names = [output_names]
