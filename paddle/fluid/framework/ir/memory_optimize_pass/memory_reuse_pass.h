@@ -85,6 +85,8 @@ class MemoryReusePass : public Pass {
 
   bool IsOutVarReusable(const details::VarHandle &out_var) const;
 
+  bool IsLastVersionVar(const details::VarHandle &var) const;
+
   static std::unordered_set<Node *> FindNodesByName(
       const std::string &name, const std::vector<Node *> &nodes);
 

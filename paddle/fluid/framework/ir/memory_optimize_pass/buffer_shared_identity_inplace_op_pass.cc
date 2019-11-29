@@ -51,151 +51,205 @@ using IdentityInplaceVarInfo = std::unordered_map<
     std::vector<std::pair<VarHandle * /*output_var*/,
                           ComputationOpHandle * /*identity op*/>>>;
 
-/**
- * This method is used to build the adjacent map of the forest inside
- * `info`. The returned result maps a var to its parent var in the forest
- * `info`.
- *
- * For convenience, the root vars of the forest are also one of the key of
- * the output map, but their mapping value are nullptr. This method can
- * also distinguish whether the var is inside the forest or not to avoid
- * probable bug.
- */
-static std::unordered_map<VarHandle *, VarHandle *> BuildParent(
-    const IdentityInplaceVarInfo &info) {
-  std::unordered_map<VarHandle *, VarHandle *> parent;
-
-  for (auto &pair : info) {
-    PADDLE_ENFORCE_EQ(pair.second.empty(), false,
-                      platform::errors::InvalidArgument(
-                          "Var info list cannot be empty, this may be a bug"));
-
-    auto *in_var = pair.first;
-    // used to build nullptr parent for each root vars
-    parent[in_var];
-    for (auto &ovar_op : pair.second) {
-      auto *out_var = ovar_op.first;
-      parent[out_var] = in_var;
+class VarHandleForest {
+ public:
+  IdentityInplaceVarInfo ConvertToIdentityInplaceVarInfo() const {
+    IdentityInplaceVarInfo result;
+    for (auto &pair : ops_) {
+      auto *in_var = pair.first.first;
+      auto *out_var = pair.first.second;
+      auto *op = pair.second;
+      result[in_var].emplace_back(out_var, op);
     }
+    return result;
   }
-  return parent;
-}
 
-/**
- * This method is used to prune the leaf var nodes inside
- * `reused_vars` when branched identity inplace is performed
- * to avoid calculation error.
- */
-static void ShrinkIdentityInplacedOps(
-    IdentityInplaceVarInfo *info,
-    const std::unordered_set<VarHandle *> &reused_vars) {
-  if (reused_vars.empty()) {
-    return;
-  }
-  auto parent = BuildParent(*info);
+  void Insert(VarHandle *in_var, VarHandle *out_var, ComputationOpHandle *op) {
+    PADDLE_ENFORCE_NOT_NULL(in_var,
+                            platform::errors::InvalidArgument(
+                                "in_var cannot be nullptr, this may be a bug"));
 
-  auto get_parent = [&parent](VarHandle *var) {
-    auto iter = parent.find(var);
-    PADDLE_ENFORCE_EQ(iter != parent.end(), true,
-                      platform::errors::InvalidArgument(
-                          "Cannot get parent of variable %s, this may be a bug",
-                          var->Name()));
-    return iter->second;
-  };
+    PADDLE_ENFORCE_NOT_NULL(
+        out_var, platform::errors::InvalidArgument(
+                     "out_var cannot be nullptr, this may be a bug"));
 
-  auto get_mutable_info_list = [info](VarHandle *var) {
-    auto iter = info->find(var);
+    PADDLE_ENFORCE_NOT_NULL(op, platform::errors::InvalidArgument(
+                                    "op cannot be nullptr, this may be a bug"));
+
     PADDLE_ENFORCE_EQ(
-        iter != info->end(), true,
-        platform::errors::InvalidArgument(
-            "Cannot get info list of variable %s, this may be a bug",
-            var->Name()));
-    return &(iter->second);
-  };
+        ops_.count(std::make_pair(in_var, out_var)), 0,
+        platform::errors::AlreadyExists(
+            "Insert duplicate nodes in forest, this may be a bug"));
 
-  for (auto *var : reused_vars) {
-    bool is_branch_reused = false;
+    auto &parent_of_out_var = parent_[out_var];
+    PADDLE_ENFORCE_EQ(
+        parent_of_out_var, nullptr,
+        platform::errors::AlreadyExists(
+            "Insert duplicate nodes in forest, this may be a bug"));
 
-    auto *cur_var = var;
-    auto *parent_var = get_parent(cur_var);
-    while (parent_var != nullptr) {
-      auto *info_list = get_mutable_info_list(parent_var);
-      if (info_list->size() > 1) {
-        is_branch_reused = true;
-        break;
+    parent_of_out_var = in_var;
+    parent_[in_var];  // insert nullptr to parent_ if in_var not exist
+
+    auto &in_var_children = children_[in_var];
+    PADDLE_ENFORCE_EQ(
+        in_var_children.count(out_var), 0,
+        platform::errors::AlreadyExists(
+            "Insert duplicate nodes in forest, this may be a bug"));
+    in_var_children.insert(out_var);
+
+    children_[out_var];  // insert empty set to children_ if out_var not exist
+
+    ops_[std::make_pair(in_var, out_var)] = op;
+  }
+
+  VarHandle *Parent(VarHandle *var) const {
+    auto iter = parent_.find(var);
+    PADDLE_ENFORCE_EQ(
+        iter != parent_.end(), true,
+        platform::errors::NotFound("Variable not found, this may be a bug"));
+    return iter->second;
+  }
+
+  VarHandle *Root(VarHandle *var) const {
+    while (auto *parent = Parent(var)) {
+      var = parent;
+    }
+    return var;
+  }
+
+  const std::unordered_set<VarHandle *> &Children(VarHandle *var) const {
+    auto iter = children_.find(var);
+    PADDLE_ENFORCE_EQ(
+        iter != children_.end(), true,
+        platform::errors::NotFound("Variable not found, this may be a bug"));
+    return iter->second;
+  }
+
+  bool IsRoot(VarHandle *var) const { return Parent(var) == nullptr; }
+
+  bool IsLeaf(VarHandle *var) const { return Children(var).empty(); }
+
+  void PruneLeaf(VarHandle *var) {
+    PADDLE_ENFORCE_EQ(IsLeaf(var), true, platform::errors::InvalidArgument(
+                                             "Only support prune leaf vars"));
+    auto *parent = Parent(var);
+    parent_.erase(var);
+    children_.erase(var);
+    ops_.erase(std::make_pair(parent, var));
+    if (parent) {
+      MutableChildren(parent)->erase(var);
+      // Make sure that there is no tree with only one node
+      if (IsRoot(parent) && IsLeaf(parent)) {
+        PruneLeaf(parent);
       }
-      cur_var = parent_var;
-      parent_var = get_parent(cur_var);
-    }
-
-    if (!is_branch_reused) {
-      continue;
-    }
-
-    VLOG(5) << "Remove reused leaf var " << var->Name() << " on scope "
-            << var->scope_idx();
-    parent_var = get_parent(var);
-    parent.erase(var);
-    auto *target_list = get_mutable_info_list(parent_var);
-    target_list->erase(
-        std::remove_if(
-            target_list->begin(), target_list->end(),
-            [var](const std::pair<VarHandle *, ComputationOpHandle *> &p) {
-              return p.first == var;
-            }),
-        target_list->end());
-    if (target_list->empty()) {
-      info->erase(parent_var);
     }
   }
-}
 
-static std::unordered_set<VarHandle *>
-GetUnReusableLeafVarsAfterIdentityInplaced(
-    const IdentityInplaceVarInfo &info,
-    const std::unordered_set<VarHandle *> &is_read_by_other_ops) {
-  auto parent = BuildParent(info);
-
-  std::unordered_set<VarHandle *> unreusable_vars;
-  for (auto &pair : parent) {
-    if (pair.second) {  // non-root
-      continue;
+  std::unordered_set<VarHandle *> Leaves() const {
+    std::unordered_set<VarHandle *> result;
+    for (auto &pair : children_) {
+      if (pair.second.empty()) {
+        result.insert(pair.first);
+      }
     }
+    return result;
+  }
 
-    std::unordered_set<VarHandle *> leaves;
-    bool var_is_read_by_other_ops = false;
-    bool var_is_branched_reuse = false;
-    auto *cur_var = pair.first;
+  bool HasVar(VarHandle *var) const { return parent_.count(var) > 0; }
+
+  template <typename Callback>
+  bool BreadthFirstVisit(VarHandle *var, Callback &&callback) const {
+    auto *root = Root(var);
+    PADDLE_ENFORCE_NOT_NULL(root, "Root cannot be nullptr, this may be a bug");
     std::queue<VarHandle *> q;
-    q.push(cur_var);
-
+    q.push(root);
     while (!q.empty()) {
-      cur_var = q.front();
+      var = q.front();
       q.pop();
 
-      auto iter = info.find(cur_var);
-      if (iter == info.end()) {  // leaf var
-        leaves.insert(cur_var);
+      if (!callback(var)) {
+        return false;
+      }
+
+      for (auto *out_var : Children(var)) {
+        q.push(out_var);
+      }
+    }
+    return true;
+  }
+
+ private:
+  std::unordered_set<VarHandle *> *MutableChildren(VarHandle *var) {
+    auto iter = children_.find(var);
+    PADDLE_ENFORCE_EQ(
+        iter != children_.end(), true,
+        platform::errors::NotFound("Variable not found, this may be a bug"));
+    return &(iter->second);
+  }
+
+ private:
+  std::unordered_map<VarHandle * /*out_var*/, VarHandle * /*in_var*/> parent_;
+  std::unordered_map<VarHandle * /*in_var*/,
+                     std::unordered_set<VarHandle * /*out_var*/>>
+      children_;
+  std::map<std::pair<VarHandle * /*in_var*/, VarHandle * /*out_var*/>,
+           ComputationOpHandle *>
+      ops_;
+};
+
+static std::unordered_set<VarHandle *> PruneAndMarkNotReusableLeaves(
+    VarHandleForest *forest,
+    const std::unordered_set<VarHandle *> &is_read_by_other_ops,
+    const std::unordered_set<VarHandle *> &non_last_version_vars,
+    const std::unordered_set<VarHandle *> &reused_out_vars) {
+  auto is_linear_reuse = [forest](VarHandle *var) {
+    return forest->BreadthFirstVisit(var, [forest](VarHandle *v) {
+      return forest->Children(v).size() <= 1;
+    });
+  };
+
+  auto has_non_identity_last_lived_ops = [&](VarHandle *var) {
+    return !forest->BreadthFirstVisit(var, [&](VarHandle *v) {
+      if (!forest->IsLeaf(v) && is_read_by_other_ops.count(v) > 0) {
+        return false;
       } else {
-        if (is_read_by_other_ops.count(cur_var) > 0) {
-          var_is_read_by_other_ops = true;
-        }
+        return true;
+      }
+    });
+  };
 
-        if (iter->second.size() > 1) {
-          var_is_branched_reuse = true;
-        }
+  bool has_prune_leaf = true;
 
-        for (auto &ovar_op : iter->second) {
-          q.push(ovar_op.first);
-        }
+  // Prune until the forest is stable
+  while (has_prune_leaf) {
+    has_prune_leaf = false;
+    for (auto *leaf : forest->Leaves()) {
+      if (!is_linear_reuse(leaf) && reused_out_vars.count(leaf) > 0) {
+        forest->PruneLeaf(leaf);
+        has_prune_leaf = true;
       }
     }
 
-    if (var_is_read_by_other_ops || var_is_branched_reuse) {
-      unreusable_vars.insert(leaves.begin(), leaves.end());
+    for (auto *leaf : forest->Leaves()) {
+      if (is_linear_reuse(leaf) && has_non_identity_last_lived_ops(leaf) &&
+          non_last_version_vars.count(leaf) > 0) {
+        forest->PruneLeaf(leaf);
+        has_prune_leaf = true;
+      }
     }
   }
-  return unreusable_vars;
+
+  std::unordered_set<VarHandle *> non_reusable_vars;
+  for (auto *leaf : forest->Leaves()) {
+    if (is_linear_reuse(leaf)) {
+      if (has_non_identity_last_lived_ops(leaf)) {
+        non_reusable_vars.insert(leaf);
+      }
+    } else {
+      non_reusable_vars.insert(leaf);
+    }
+  }
+  return non_reusable_vars;
 }
 
 class BufferSharedIdentityInplaceOpPass : public MemoryReusePass {
@@ -217,16 +271,17 @@ std::pair<IdentityInplaceVarInfo, std::unordered_set<VarHandle *>>
 BufferSharedIdentityInplaceOpPass::RunOnEachScope(
     const std::unordered_map<std::string, LastLiveOpOfVarInfo> &var_infos)
     const {
-  IdentityInplaceVarInfo identity_inplace_info;
+  VarHandleForest var_forest;
   std::unordered_set<VarHandle *> is_read_by_other_ops;
-  std::unordered_set<VarHandle *> collected_out_vars;
+  std::unordered_set<VarHandle *> non_last_version_vars;
 
   /**
-   * The memory of some out var has been reused by non-identity ops,
+   * The memories of some out vars may be reused by non-identity ops,
    * this vars must be forced to be leaf when identity inplaced is performed.
    * If branched identity inplace is performed (many vars may reuse the memory
    * of the same var), this kind of leaf nodes must be pruned (otherwise,
    * caculation result may be wrong).
+   *
    * If non-branched identity inplace is performed, this kind of leaf nodes
    * should not be pruned.
    */
@@ -285,15 +340,11 @@ BufferSharedIdentityInplaceOpPass::RunOnEachScope(
         reused_out_vars.insert(out_var);
       }
 
-      // `identity_inplace_info` is a forest, so that `out_var` should
-      // has 1 parent `in_var` atmost.
-      PADDLE_ENFORCE_EQ(collected_out_vars.count(out_var), 0,
-                        platform::errors::InvalidArgument(
-                            "Out var %s occurs twice when building "
-                            "identity_inplace_info, this may be a bug",
-                            out_var->Name()));
-      identity_inplace_info[in_var].emplace_back(out_var, op);
-      collected_out_vars.insert(out_var);
+      if (!IsLastVersionVar(*out_var)) {
+        non_last_version_vars.insert(out_var);
+      }
+
+      var_forest.Insert(in_var, out_var, op);
       last_live_ops.erase(op);
     }
 
@@ -306,10 +357,11 @@ BufferSharedIdentityInplaceOpPass::RunOnEachScope(
     }
   }
 
-  ShrinkIdentityInplacedOps(&identity_inplace_info, reused_out_vars);
-  auto non_reusable_vars = GetUnReusableLeafVarsAfterIdentityInplaced(
-      identity_inplace_info, is_read_by_other_ops);
-  return std::make_pair(std::move(identity_inplace_info),
+  auto non_reusable_vars =
+      PruneAndMarkNotReusableLeaves(&var_forest, is_read_by_other_ops,
+                                    non_last_version_vars, reused_out_vars);
+
+  return std::make_pair(var_forest.ConvertToIdentityInplaceVarInfo(),
                         std::move(non_reusable_vars));
 }
 
