@@ -42,6 +42,7 @@ def _set_use_system_allocator(value=None):
     core.globals()[USE_SYSTEM_ALLOCATOR_FLAG] = value
     return old_value
 
+
 NO_GRAD_SET_NULL = []
 
 
@@ -237,7 +238,7 @@ class OpTest(unittest.TestCase):
             inputs=inputs,
             outputs=outputs,
             attrs=self.attrs if hasattr(self, "attrs") else dict())
-        # infer variable type and infer shape in compile-time 
+        # infer variable type and infer shape in compile-time
         op.desc.infer_var_type(block.desc)
         op.desc.infer_shape(block.desc)
 
@@ -396,8 +397,8 @@ class OpTest(unittest.TestCase):
         feed_map = self.feed_var(inputs, place)
 
         if for_inplace_test:
-            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op, 
-            # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]). 
+            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op,
+            # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]).
             # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
             # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
             for out_name in op.output_arg_names:
@@ -458,7 +459,7 @@ class OpTest(unittest.TestCase):
         """Compare expect outs and actual outs of an tested op.
 
         Args:
-            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            place (CPUPlace | CUDAPlace): The place where the op runs.
             fetch_list (list): The outputs of tested op.
             expect_outs (list): The expect outs of tested op.
             actual_outs (list): The actual outs of tested op.
@@ -495,7 +496,7 @@ class OpTest(unittest.TestCase):
         Args:
             fwd_program (tuple): The program that contains grad_op_desc's corresponding forward op.
             grad_op_desc (OpDesc): The OpDesc of grad op.
-            op_grad_to_var (dict): The relation of variables in grad op and its forward op. 
+            op_grad_to_var (dict): The relation of variables in grad op and its forward op.
 
         Returns:
             grad_program (program): The program which contains the grad_op.
@@ -522,8 +523,8 @@ class OpTest(unittest.TestCase):
                 type=fwd_var.type,
                 persistable=False)
 
-            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op, 
-            # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]). 
+            # Some variables' tensors hold no buffer (tensor's _holder is NULL), like XShape in reshape2 op,
+            # and the shapes of those variables contain 0 (eg. Xshape.shape = [0, 2, 5]).
             # Set persistable for those variables in order to get them from global_scope for inplace grad test directly other than feed them,
             # since feed op calls check_memory_size() which fails when tensor's holder_ is NULL.
             if 0 in grad_var.shape:
@@ -539,11 +540,11 @@ class OpTest(unittest.TestCase):
         we use fwd outs (also inputs sometimes) to construct grad inputs.
 
         Args:
-            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            place (CPUPlace | CUDAPlace): The place where the op runs.
             fwd_res (tuple): The outputs of its forward op, in the same form as returns of _calc_outputs() when for_inplace_test is True.
                 i.e., tuple(fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc)
             grad_op_desc (OpDesc): The OpDesc of grad op.
-            op_grad_to_var (dict): The relation of variables in grad op and its fwd_op. 
+            op_grad_to_var (dict): The relation of variables in grad op and its fwd_op.
 
         Returns:
             grad_feed_map (dict): The feed_map of grad_op.
@@ -575,12 +576,12 @@ class OpTest(unittest.TestCase):
         An op needs to run druing inplace check if,
         (1) it has infer_inplace,
         (2) it has infer_inplace in its grad descendants. (since we need its outputs as to construct its grad's inputs)
-        
+
         Args:
-            op_desc (OpDesc): The op_desc of current op. 
-            fwd_op_desc (OpDesc): The op_desc of current op's forward op, None if current op has no forward op. 
+            op_desc (OpDesc): The op_desc of current op.
+            fwd_op_desc (OpDesc): The op_desc of current op's forward op, None if current op has no forward op.
                 Eg. relu's fwd_op is None, relu_grad's fwd_op is relu, relu_grad_grad's fwd_op is relu_grad, etc.
-            
+
         Returns:
             need_run_ops (list[(op_desc, fwd_op_desc)]): The ops that need to run during inplace test.
         """
@@ -595,7 +596,7 @@ class OpTest(unittest.TestCase):
             if not has_grad_op_maker:
                 has_infer_inplace_in_descendants = False
             else:
-                # get grad_op_desc 
+                # get grad_op_desc
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
                     op_desc, set(), [])
                 if not grad_op_desc_list:
@@ -621,15 +622,15 @@ class OpTest(unittest.TestCase):
                                inplace_atol=None):
         """Chech the inplace correctness of given op (self.op_type).
         Run the op twice with same inputs, one enable inplace and another disable, compare their outputs.
-        
+
         Args:
-            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            place (CPUPlace | CUDAPlace): The place where the op runs.
             no_check_set (list): The names of outputs that needn't check, like XShape of reshape op.
             inplace_atol (float): The tolerable error, only set when op doesn't ensure computational consistency, like group_norm op.
 
         Returns:
-            expect_res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given op. 
-                We return this to construct grad_program and grad_feed_map for grad inplace check. 
+            expect_res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given op.
+                We return this to construct grad_program and grad_feed_map for grad inplace check.
         """
         # _calc_output() returns in the form tuple(outs, fetch_list, feed_map, program, op_desc) when for_inplace_test=True.
         expect_res = self._calc_output(
@@ -662,7 +663,7 @@ class OpTest(unittest.TestCase):
         we use fwd outs (also inputs sometimes) to construct grad inputs.
 
         Args:
-            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            place (CPUPlace | CUDAPlace): The place where the op runs.
             fwd_res (tuple): The outputs of its forward op, in the same form as returns of _calc_outputs() when for_inplace_test is True.
                 i.e., tuple(fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc).
             grad_op_desc (OpDesc): The OpDesc of grad op.
@@ -706,15 +707,15 @@ class OpTest(unittest.TestCase):
         So we define a new function for grad, grad_grad, etc.
 
         Args:
-            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            place (CPUPlace | CUDAPlace): The place where the op runs.
             fwd_res (tuple): The outputs of its forward op, in the same form as returns of _calc_outputs() when for_inplace_test is True.
                 i.e., tuple(fwd_outs, fwd_fetch_list, fwd_feed_map, fwd_program, fwd_op_desc).
             grad_op_desc (OpDesc): The OpDesc of grad op.
             inplace_atol (float): The tolerable error, only set when op doesn't ensure computational consistency, like group_norm op.
 
         Returns:
-            expect_res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given op. 
-                We return this to construct grad_program and grad_feed_map for grad inplace check. 
+            expect_res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given op.
+                We return this to construct grad_program and grad_feed_map for grad inplace check.
         """
         expect_res = self._calc_grad_output(
             place, fwd_res, grad_op_desc, enable_inplace=False)
@@ -738,7 +739,7 @@ class OpTest(unittest.TestCase):
         (2) Run op in need_run_ops, and do inplace check if it has infer_inplace.
 
         Args:
-            place (CPUPlace | CUDAPlace): The place where the op runs. 
+            place (CPUPlace | CUDAPlace): The place where the op runs.
             no_check_set (list): The names of outputs that needn't check, like XShape of reshape op.
             inplace_atol (float): The tolerable error, only set when op doesn't ensure computational consistency, like group_norm op.
 
@@ -925,7 +926,7 @@ class OpTest(unittest.TestCase):
             warnings.warn(
                 "By default, inplace_atol should not be set, please check it")
         # Check inplace for given op, its grad op, its grad_grad op, etc.
-        # No effect on original OpTest 
+        # No effect on original OpTest
         self.check_inplace_output_with_place(
             place, no_check_set=no_check_set, inplace_atol=inplace_atol)
 
@@ -1089,11 +1090,14 @@ class OpTest(unittest.TestCase):
         if no_grad_set is None:
             no_grad_set = set()
             print('op_type: {}, no_grad_set: None'.format(self.op_type))
+
         else:
             if self.op_type not in NO_GRAD_SET_NULL:
                 with open("grag_set_val.txt", "a+") as f:
-                    print('op_type: {}, no_grad_set: {}'.format(self.op_type, no_grad_set))
-                    f.write('op_type: {}, no_grad_set: {} \n'.format(self.op_type, no_grad_set))
+                    print('op_type: {}, no_grad_set: {}'.format(self.op_type,
+                                                                no_grad_set))
+                    f.write('op_type: {}, no_grad_set: {} \n'.format(
+                        self.op_type, no_grad_set))
 
         if not type(output_names) is list:
             output_names = [output_names]
