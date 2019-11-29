@@ -73,8 +73,8 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   const auto *x = ctx.Input<Tensor>("X");
   auto *y = ctx.Output<Tensor>("Out");
 
-  const T alpha = ctx.op().HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
-  const T beta = ctx.op().HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+  const T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
+  const T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
 
   PADDLE_ENFORCE(
       x->dims().size() == 2 || x->dims().size() == 3 || x->dims().size() == 4,
@@ -88,7 +88,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
 
   platform::ActivationMKLDNNHandler<T> handler(
       src_tz, algorithm, alpha, beta, src_format, is_test, dev_ctx,
-      ctx.GetPlace(), ctx.op().Input("X"));
+      ctx.GetPlace(), ctx.InputName("X"));
 
   auto src_memory_p = handler.AcquireSrcMemory(x);
   auto dst_memory_p = handler.AcquireDstMemory(y);
@@ -113,8 +113,8 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   const auto *diff_y = ctx.Input<Tensor>(framework::GradVarName("Out"));
   auto *diff_x = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-  const T alpha = ctx.op().HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
-  const T beta = ctx.op().HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
+  const T alpha = ctx.HasAttr("alpha") ? ctx.Attr<T>("alpha") : 0;
+  const T beta = ctx.HasAttr("beta") ? ctx.Attr<T>("beta") : 0;
 
   auto diff_dst_tz = framework::vectorize<int>(diff_y->dims());
 
@@ -127,7 +127,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
 
   platform::ActivationMKLDNNHandler<T> handler(
       diff_dst_tz, algorithm, alpha, beta, src_format, diff_y_format, dev_ctx,
-      ctx.GetPlace(), ctx.op().Input("X"));
+      ctx.GetPlace(), ctx.InputName("X"));
 
   auto src_memory_p = handler.AcquireBackwardSrcMemory(x);
   auto diff_dst_memory_p = handler.AcquireDiffDstMemory(diff_y);

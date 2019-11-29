@@ -40,7 +40,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
 
     auto *input_var = ctx.InputVar("X");
-    auto iname = ctx.Inputs("X").data();
+    auto iname = ctx.InputNames("X").data();
     PADDLE_ENFORCE(input_var != nullptr, "Cannot find variable %s for save_op",
                    iname);
 
