@@ -22,12 +22,12 @@ from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
 from .nn import logical_and, logical_not, logical_or
-from .utils import assert_same_structure, flatten, map_structure
+from .utils import assert_same_structure, map_structure
 import numpy
 import warnings
 import six
 from functools import reduce, partial
-from ..data_feeder import convert_dtype
+from ..data_feeder import convert_dtype, check_type_and_dtype
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -253,6 +253,10 @@ def Print(input,
                data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
                
     '''
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float32', 'float64', 'int32', 'int64', 'bool'],
+                         'fluid.layers.Print')
+
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
@@ -1706,7 +1710,6 @@ class ConditionalBlock(object):
 
         param_list = [
             parent_block._var_recursive(each_name) for each_name in params
-            if each_name not in input_set
         ]
 
         out_list = []
@@ -1751,7 +1754,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     helper = LayerHelper('cond', **locals())
     true_output = None
     false_output = None
-    copy_to_global_func = lambda var: copy_var_to_parent_block(var, helper)
+    copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
     if true_fn is not None:
         if not callable(true_fn):
             raise TypeError("The true_fn in cond must be callable")
@@ -1759,7 +1762,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
         with true_cond_block.block():
             origin_true_output = true_fn()
             if origin_true_output is not None:
-                true_output = map_structure(copy_to_global_func,
+                true_output = map_structure(copy_to_parent_func,
                                             origin_true_output)
     if false_fn is not None:
         if not callable(false_fn):
@@ -1769,7 +1772,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
         with false_cond_block.block():
             origin_false_output = false_fn()
             if origin_false_output is not None:
-                false_output = map_structure(copy_to_global_func,
+                false_output = map_structure(copy_to_parent_func,
                                              origin_false_output)
 
     if true_output is None and false_output is None:

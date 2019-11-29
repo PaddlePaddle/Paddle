@@ -80,7 +80,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         src_tz, dst_tz, ksize, strides, paddings, pooling_type,
         ctx.Attr<bool>("ceil_mode"), input->format(),
         paddle::framework::ToMKLDNNDataType(input->type()), is_test, dev_ctx,
-        ctx.GetPlace(), ctx.op().Output("Out"), ctx.Attr<bool>("exclusive"));
+        ctx.GetPlace(), ctx.OutputName("Out"), ctx.Attr<bool>("exclusive"));
 
     auto src_memory = handler.AcquireSrcMemory(input);
     auto dst_memory = handler.AcquireDstMemory(output);
@@ -162,13 +162,13 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     // This name will be used as key when referring info from device context
     const std::string key = platform::CreateKey(
         diff_src_tz, pooling_type, ksize, strides, paddings,
-        memory::data_type::f32, in_x->format(), ctx.op().Input("Out"));
+        memory::data_type::f32, in_x->format(), ctx.InputName("Out"));
 
     platform::PoolingMKLDNNHandler<T> handler(
         diff_dst_tz, diff_src_tz, ksize, strides, paddings, pooling_type,
         ctx.Attr<bool>("ceil_mode"), in_x->format(), out_grad->format(),
         paddle::framework::ToMKLDNNDataType(out_grad->type()), dev_ctx,
-        ctx.GetPlace(), ctx.op().Input("Out"), ctx.Attr<bool>("exclusive"));
+        ctx.GetPlace(), ctx.InputName("Out"), ctx.Attr<bool>("exclusive"));
 
     auto diff_dst_memory = handler.AcquireDiffDstMemory(out_grad);
     auto diff_src_memory = handler.AcquireDiffSrcMemory(in_x_grad);
