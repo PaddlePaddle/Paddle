@@ -1,3 +1,0 @@
-Basic Concept
-=============
-TBD

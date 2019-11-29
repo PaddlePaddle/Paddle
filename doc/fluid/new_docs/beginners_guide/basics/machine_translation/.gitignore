@@ -1,9 +1,0 @@
-data/wmt14
-data/pre-wmt14
-pretrained/wmt14_model
-gen.log
-gen_result
-train.log
-dataprovider_copy_1.py
-*.pyc
-multi-bleu.perl
