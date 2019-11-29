@@ -24,14 +24,24 @@ class TestArgsortOp(OpTest):
     def setUp(self):
         self.init_axis()
         self.init_datatype()
+        self.init_direction()
         x = np.random.random((2, 3, 4, 5, 10)).astype(self.dtype)
+        self.attrs = {'axis': self.axis, 'descending': self.descending}
         if self.axis < 0:
             self.axis = self.axis + len(x.shape)
-        self.indices = np.argsort(x, kind='quicksort', axis=self.axis)
-        self.out = np.sort(x, kind='quicksort', axis=self.axis)
+        if self.descending:
+            self.indices = np.flip(
+                np.argsort(
+                    x, kind='quicksort', axis=self.axis), self.axis)
+            self.out = np.flip(
+                np.sort(
+                    x, kind='quicksort', axis=self.axis), self.axis)
+        else:
+            self.indices = np.argsort(x, kind='quicksort', axis=self.axis)
+            self.out = np.sort(x, kind='quicksort', axis=self.axis)
+
         self.op_type = "argsort"
         self.inputs = {'X': x}
-        self.attrs = {'axis': self.axis}
         self.outputs = {'Indices': self.indices, 'Out': self.out}
 
     def init_axis(self):
@@ -39,6 +49,9 @@ class TestArgsortOp(OpTest):
 
     def init_datatype(self):
         self.dtype = "float32"
+
+    def init_direction(self):
+        self.descending = False
 
     def test_check_output(self):
         self.check_output()
@@ -101,6 +114,36 @@ class TestArgsortOpFP16AxisNeg2(TestArgsortOpFP16):
 class TestArgsortOpFP16Axis4Neg4(TestArgsortOpFP16):
     def init_axis(self):
         self.axis = -4
+
+
+class TestArgsortOpDescendingAxis(TestArgsortOp):
+    def init_direction(self):
+        self.descending = True
+
+
+class TestArgsortOpDescendingAxis0(TestArgsortOpAxis0):
+    def init_direction(self):
+        self.descending = True
+
+
+class TestArgsortOpDescendingAxis1(TestArgsortOpAxis1):
+    def init_direction(self):
+        self.descending = True
+
+
+class TestArgsortOpDescendingAxis2(TestArgsortOpAxis2):
+    def init_direction(self):
+        self.descending = True
+
+
+class TestArgsortOpDescendingAxisNeg1(TestArgsortOpAxisNeg1):
+    def init_direction(self):
+        self.descending = True
+
+
+class TestArgsortOpDescendingAxisNeg2(TestArgsortOpAxisNeg2):
+    def init_direction(self):
+        self.descending = True
 
 
 if __name__ == "__main__":
