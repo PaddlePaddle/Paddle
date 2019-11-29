@@ -41,8 +41,8 @@ class MKLDNNHandlerT {
         key_common_(base_key),
         fwd_pd_(nullptr),
         bwd_pd_(nullptr) {
-    if (platform::get_cur_mkldnn_session_id() !=
-        platform::kMKLDNNSessionID_Default) {
+    if (get_mkldnn_tls().get_cur_mkldnn_session_id() !=
+        MKLDNNTLS::kMKLDNNSessionID_Default) {
       key_ = key_common_;
     } else {
       key_ = key_common_ + "-t:" + ThreadIDasStr();
@@ -185,8 +185,8 @@ class MKLDNNHandler {
   MKLDNNHandler(const MKLDNNDeviceContext& dev_ctx, mkldnn::engine engine,
                 const std::string& base_key)
       : dev_ctx_(dev_ctx), engine_(engine), key_common_(base_key) {
-    if (platform::get_cur_mkldnn_session_id() !=
-        platform::kMKLDNNSessionID_Default) {
+    if (get_mkldnn_tls().get_cur_mkldnn_session_id() !=
+        MKLDNNTLS::kMKLDNNSessionID_Default) {
       key_ = key_common_;
     } else {
       key_ = key_common_ + "-t:" + ThreadIDasStr();

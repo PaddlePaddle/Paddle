@@ -113,7 +113,6 @@ void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
       PADDLE_THROW("wrong mkldnn type provided");
   }
 }
-#endif
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
@@ -127,14 +126,12 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
       "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
       "non-MKLDNN");
 
-#ifdef PADDLE_WITH_MKLDNN
-  innerTransDataLayoutFromMKLDNN(in_layout,
-                                 paddle::platform::get_cur_paddle_data_layout(),
-                                 in, out, place);
-#endif
+  innerTransDataLayoutFromMKLDNN(
+      in_layout,
+      paddle::platform::get_mkldnn_tls().get_cur_paddle_data_layout(), in, out,
+      place);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                                     const Tensor& in, Tensor* out,
                                     platform::Place place) {

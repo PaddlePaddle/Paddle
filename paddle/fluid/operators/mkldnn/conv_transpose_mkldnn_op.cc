@@ -156,9 +156,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
      * ('any') which lets a primitive (convolution in this case) choose
      * the memory format preferred for best performance
      */
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    auto chosen_memory_format =
-        platform::data_format_to_memory_format(data_format);
+    auto chosen_memory_format = MKLDNNMemoryFormat::any;
     std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
     float fuse_alpha = ctx.Attr<float>("fuse_alpha");
     float fuse_beta = ctx.Attr<float>("fuse_beta");
