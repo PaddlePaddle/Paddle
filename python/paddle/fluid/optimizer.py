@@ -1489,9 +1489,11 @@ class AdamOptimizer(Optimizer):
     Args:
         learning_rate (float|Variable, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a ``Variable`` with a float type. The default value is 0.001.
-        beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
+        beta1 (float|Variable, optional): The exponential decay rate for the 1st moment estimates.
+            It should be a float number or a Variable with shape [1] and data type as float32.
             The default value is 0.9.
-        beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
+        beta2 (float|Variable, optional): The exponential decay rate for the 2nd moment estimates.
+            It should be a float number or a Variable with shape [1] and data type as float32.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
@@ -1535,6 +1537,64 @@ class AdamOptimizer(Optimizer):
                 for data in train_reader():
                     exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
+        .. code-block:: python
+
+            # Adam with beta1/beta2 as Variable
+            import paddle
+            import paddle.fluid as fluid
+            import paddle.fluid.layers.learning_rate_scheduler as lr_scheduler
+
+            place = fluid.CPUPlace()
+            main = fluid.Program()
+            with fluid.program_guard(main):
+                x = fluid.data(name='x', shape=[None, 13], dtype='float32')
+                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                # define beta decay variable
+                def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate)
+                    global_step = lr_scheduler._decay_step_counter()
+
+                    beta1 = fluid.layers.create_global_var(
+                        shape=[1],
+                        value=float(beta1_init),
+                        dtype='float32',
+                        # set persistable for save checkpoints and resume
+                        persistable=True,
+                        name="beta1")
+                    beta2 = fluid.layers.create_global_var(
+                        shape=[1],
+                        value=float(beta2_init),
+                        dtype='float32',
+                        # set persistable for save checkpoints and resume
+                        persistable=True,
+                        name="beta2")
+
+                    div_res = global_step / decay_steps
+                    decayed_beta1 = beta1_init * (decay_rate**div_res)
+                    decayed_beta2 = beta2_init * (decay_rate**div_res)
+                    fluid.layers.assign(decayed_beta1, beta1)
+                    fluid.layers.assign(decayed_beta2, beta2)
+
+                    return beta1, beta2
+
+                beta1, beta2 = get_decayed_betas(0.9, 0.99, 1e5, 0.9)
+                adam_optimizer = fluid.optimizer.AdamOptimizer(
+                                                    learning_rate=0.01,
+                                                    beta1=beta1
+                                                    beta2=beta2)
+                adam_optimizer.minimize(avg_cost)
+
+                fetch_list = [avg_cost]
+                train_reader = paddle.batch(
+                    paddle.dataset.uci_housing.train(), batch_size=1)
+                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in train_reader():
+                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
@@ -1574,13 +1634,15 @@ class AdamOptimizer(Optimizer):
                 name=self._beta1_pow_acc_str,
                 param=p,
                 dtype='float32',
-                fill_value=self._beta1,
+                fill_value=0.9 if isinstance(self._beta1, Variable) \
+                        else self._beta1,
                 shape=[1])
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
                 dtype='float32',
-                fill_value=self._beta2,
+                fill_value=0.999 if isinstance(self._beta2, Variable) \
+                        else self._beta2,
                 shape=[1])
 
     def _append_optimize_op(self, block, param_and_grad):
@@ -1596,29 +1658,40 @@ class AdamOptimizer(Optimizer):
                                               param_and_grad[0])
 
         # create the adam optimize op
+        inputs = {
+            "Param": param_and_grad[0],
+            "Grad": param_and_grad[1],
+            "LearningRate": self._create_param_lr(param_and_grad),
+            "Moment1": moment1,
+            "Moment2": moment2,
+            "Beta1Pow": beta1_pow_acc,
+            "Beta2Pow": beta2_pow_acc
+        }
+        outputs = {
+            "ParamOut": param_and_grad[0],
+            "Moment1Out": moment1,
+            "Moment2Out": moment2
+        }
+        attrs = {
+            "epsilon": self._epsilon,
+            "lazy_mode": self._lazy_mode,
+            "min_row_size_to_use_multithread": 1000
+        }
+
+        if isinstance(self._beta1, Variable):
+            inputs['Beta1Tensor'] = self._beta1
+        else:
+            attrs['beta1'] = self._beta1
+        if isinstance(self._beta2, Variable):
+            inputs['Beta2Tensor'] = self._beta2
+        else:
+            attrs['beta2'] = self._beta2
+
         adam_op = block.append_op(
             type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad),
-                "Moment1": moment1,
-                "Moment2": moment2,
-                "Beta1Pow": beta1_pow_acc,
-                "Beta2Pow": beta2_pow_acc
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "Moment1Out": moment1,
-                "Moment2Out": moment2
-            },
-            attrs={
-                "beta1": self._beta1,
-                "beta2": self._beta2,
-                "epsilon": self._epsilon,
-                "lazy_mode": self._lazy_mode,
-                "min_row_size_to_use_multithread": 1000
-            },
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
             stop_gradient=True)
 
         return adam_op
@@ -1637,18 +1710,30 @@ class AdamOptimizer(Optimizer):
                                                       param)
                 beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                                       param)
+                inputs = {"X": beta1_pow_acc}
+                attrs = {}
+                if isinstance(self._beta1, Variable):
+                    inputs['ScaleTensor'] = self._beta1
+                else:
+                    attrs['scale'] = self._beta1
                 main_block.append_op(
                     type="scale",
-                    inputs={"X": beta1_pow_acc},
+                    inputs=inputs,
                     outputs={"Out": beta1_pow_acc},
-                    attrs={"scale": self._beta1},
+                    attrs=attrs,
                     stop_gradient=True)
 
+                inputs = {"X": beta2_pow_acc}
+                attrs = {}
+                if isinstance(self._beta2, Variable):
+                    inputs['ScaleTensor'] = self._beta2
+                else:
+                    attrs['scale'] = self._beta2
                 main_block.append_op(
                     type="scale",
-                    inputs={"X": beta2_pow_acc},
+                    inputs=inputs,
                     outputs={"Out": beta2_pow_acc},
-                    attrs={"scale": self._beta2},
+                    attrs=attrs,
                     stop_gradient=True)
 
 

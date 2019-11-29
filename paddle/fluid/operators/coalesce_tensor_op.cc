@@ -27,8 +27,8 @@ template <typename DeviceContext, typename T>
 class CoalesceTensorOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto &in_var_names = context.Inputs("Input");
-    auto &out_var_names = context.Outputs("Output");
+    auto in_var_names = context.InputNames("Input");
+    auto out_var_names = context.OutputNames("Output");
     auto &in_vars = context.MultiInputVar("Input");
     auto out_vars = context.MultiOutputVar("Output");
 

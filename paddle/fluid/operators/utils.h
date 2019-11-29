@@ -25,16 +25,16 @@ inline std::vector<T> GetDataFromTensor(const framework::Tensor* x) {
   std::vector<T> vec_new_data;
   if (x->type() == framework::proto::VarType::INT32) {
     auto* data = x->data<int>();
+    framework::Tensor cpu_attr_tensor;
     if (platform::is_gpu_place(x->place())) {
-      framework::Tensor cpu_attr_tensor;
       TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int>();
     }
     vec_new_data = std::vector<T>(data, data + x->numel());
   } else if (x->type() == framework::proto::VarType::INT64) {
     auto* data = x->data<int64_t>();
+    framework::Tensor cpu_attr_tensor;
     if (platform::is_gpu_place(x->place())) {
-      framework::Tensor cpu_attr_tensor;
       TensorCopySync(*x, platform::CPUPlace(), &cpu_attr_tensor);
       data = cpu_attr_tensor.data<int64_t>();
     }

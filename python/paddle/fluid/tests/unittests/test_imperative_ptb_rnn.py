@@ -220,7 +220,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
         init_scale = 0.1
         batch_size = 4
         batch_num = 200
-
         traced_layer = None
 
         with fluid.dygraph.guard():
