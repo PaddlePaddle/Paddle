@@ -210,7 +210,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
           auto *reserve_space = ctx.Output<Tensor>("ReserveSpace");
           PADDLE_ENFORCE_NOT_NULL(
               reserve_space,
-              platform::errors::NotFound("%s is not found.", reserve_space));
+              platform::errors::NotFound(
+                  "The argument ReserveSpace of batch_norm op is not found."));
 
           // --------------- cudnn batchnorm workspace ---------------
           CUDNN_ENFORCE(
