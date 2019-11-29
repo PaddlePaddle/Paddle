@@ -16,9 +16,11 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/data_norm_op.h"
-#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/nccl_helper.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -176,6 +178,7 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
         d_batch_sum, d_batch_square_sum);
 
     if (need_sync_stats) {
+#if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
       auto comm = platform::NCCLCommContext::Instance().Get(0, ctx.GetPlace());
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
           reinterpret_cast<const void *>(d_batch_size),
@@ -194,7 +197,13 @@ class DataNormGradKernel<platform::CUDADeviceContext, T>
         LOG(FATAL) << "Fail to sync nccl stream: "
                    << cudaGetErrorString(e_sync);
       }
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with GPU, and need_sync_stats connot be "
+          "supported on windows now."));
+#endif
     }
+
     T *batch_size_data =
         ctx.Output<Tensor>("BatchSize")->mutable_data<T>(ctx.GetPlace());
     T *batch_sum_data =

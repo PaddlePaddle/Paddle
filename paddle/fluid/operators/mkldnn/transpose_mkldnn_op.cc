@@ -46,8 +46,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto nchw_tz = paddle::framework::vectorize<int>(input->dims());
 
-    const std::string key =
-        platform::CreateKey(nchw_tz, ctx.op().Output("Out"));
+    const std::string key = platform::CreateKey(nchw_tz, ctx.OutputName("Out"));
 
     platform::TransposeMKLDNNHandler<T> handler(nchw_tz, axis, dev_ctx,
                                                 mkldnn_engine, key);
@@ -99,7 +98,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto nchw_tz = paddle::framework::vectorize<int>(out_grad->dims());
 
     const std::string key = platform::CreateKey(
-        nchw_tz, ctx.op().Output(framework::GradVarName("X")));
+        nchw_tz, ctx.OutputName(framework::GradVarName("X")));
 
     platform::TransposeMKLDNNHandler<T> handler(nchw_tz, reversed_axis, dev_ctx,
                                                 mkldnn_engine, key);

@@ -82,10 +82,9 @@ static void PassStopGradient(const NameVarBaseMap& outs, bool generate_grad) {
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs, framework::AttributeMap attrs,
                      const platform::Place& place, bool trace_backward) {
-  platform::RecordEvent event(type);
   VLOG(1) << "Trace Op: " << type;
   size_t op_id = GenerateUniqueId();
-  auto op = OpBase::Create(op_id, type, ins, outs, std::move(attrs), place);
+  auto op = OpBase::Create(op_id, type, ins, outs, attrs, place);
   op->Run(ins, outs);
 
   if (enable_program_desc_tracing_) {

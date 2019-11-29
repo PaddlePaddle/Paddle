@@ -1440,7 +1440,10 @@ class DistributeTranspiler(object):
                             param_name, endpoint)
                         break
                 for key in opt_op.input_names:
-                    if key in ["Param", "Grad", "LearningRate"]:
+                    if key in [
+                            "Param", "Grad", "LearningRate", "Beta1Tensor",
+                            "Beta2Tensor"
+                    ]:
                         continue
                     origin_var = self.origin_program.global_block().vars[
                         opt_op.input(key)[0]]
@@ -2204,7 +2207,10 @@ class DistributeTranspiler(object):
 
         for key in opt_op.input_names:
             new_shape = None
-            if key in ["Param", "Grad", "LearningRate"]:
+            if key in [
+                    "Param", "Grad", "LearningRate", "Beta1Tensor",
+                    "Beta2Tensor"
+            ]:
                 continue
             var = self.origin_program.global_block().vars[opt_op.input(key)[0]]
             param_var = new_inputs["Param"]
