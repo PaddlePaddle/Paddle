@@ -651,6 +651,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
+template <typename T>
 std::unique_ptr<T> BatchNormGradMaker<T>::Apply() const {
   auto *op = new T();
   op->SetType(this->ForwardOpType() + "_grad");
