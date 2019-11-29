@@ -503,6 +503,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       flags.push_back(flag);
       flags.push_back("--selected_gpus=" +
                       std::to_string(config.gpu_device_id()));
+      flags.push_back("--cudnn_deterministic=True");
       VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
     }
