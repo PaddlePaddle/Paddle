@@ -770,9 +770,17 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
                       platform::errors::PreconditionNotMet(
                           "The type of %s and %s is not the same.", in, out));
 
-    auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
-    auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
-    out_lod_tensor->Resize(in_lod_tensor.dims());
+    if (in_var->IsType<framework::SelectedRows>()) {
+      auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
+      auto out_sele_rows = out_var->GetMutable<framework::SelectedRows>();
+      out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
+      out_sele_rows->set_rows(in_sele_rows.rows());
+      out_sele_rows->set_height(in_sele_rows.height());
+    } else {
+      auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
+      auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+      out_lod_tensor->Resize(in_lod_tensor.dims());
+    }
   }
 
   void ShareAllLoD(const std::string& in,
