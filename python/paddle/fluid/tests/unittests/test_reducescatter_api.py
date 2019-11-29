@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 import numpy as np
+import paddle.fluid as fluid
 
 from test_collective_base import TestDistBase
 
@@ -26,9 +27,13 @@ class TestReduceScatterAPI(TestDistBase):
     def test_reducescatter(self, col_type="reduce_scatter"):
         self.check_with_place("collective_reducescatter.py", col_type)
 
-    def test_reducescatter(self, col_type="reduce_scatter"):
-        self.check_with_place("collective_reducescatter_with_error.py",
-                              col_type)
+    def test_reducescatter_with_error(self):
+        nranks = 2
+        tindata = fluid.data(name="tindata", shape=[5, 1000], dtype='float32')
+        try:
+            toutdata = fluid.layers.collective._c_reducescatter(tindata, nranks)
+        except ValueError:
+            pass
 
 
 if __name__ == '__main__':
