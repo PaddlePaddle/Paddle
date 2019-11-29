@@ -276,7 +276,7 @@ class MkldnnQuantizerTest : public testing::Test {
 
   std::pair<bool, framework::LoDTensor> GetMaxChScalingFactor(
       const framework::LoDTensor& var_tensor, bool is_unsigned) const {
-    return mkldnn_quantizer->GetMaxChScalingFactor(var_tensor, is_unsigned);
+    return mkldnn_quantizer->GetMaxChScalingFactor(var_tensor, is_unsigned, 0);
   }
 
   std::pair<bool, framework::LoDTensor> GetKLScalingFactor(

@@ -1640,6 +1640,9 @@ class TestBook(LayerTest):
         elif dtype == 'int64':
             return np.random.randint(self._low_data_bound,
                                      self._high_data_bound, shape).astype(dtype)
+        elif dtype == 'bool':
+            return np.random.randint(self._low_data_bound,
+                                     self._high_data_bound, shape).astype(dtype)
 
     def _get_data(self,
                   name,
@@ -2425,6 +2428,20 @@ class TestBook(LayerTest):
             out = layers.slice(input, axes=axes, starts=starts, ends=ends)
             return out
 
+    def make_scale_variable(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            input = self._get_data(
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
+            scale_var = self._get_data(
+                name="scale",
+                shape=[1],
+                dtype='float32',
+                append_batch_size=False)
+
+            out = layers.scale(input, scale=scale_var)
+            return out
+
     def make_softshrink(self):
         with program_guard(fluid.default_main_program(),
                            fluid.default_startup_program()):
@@ -2463,6 +2480,19 @@ class TestBook(LayerTest):
             data = self._get_data(
                 name='data', shape=[32, 128, 128], dtype="float32")
             out = layers.batch_norm(data)
+            return (out)
+
+    def make_batch_norm_momentum_variable(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            data = self._get_data(
+                name='data', shape=[32, 128, 128], dtype="float32")
+            momentum = self._get_data(
+                name='momentum',
+                shape=[1],
+                dtype='float32',
+                append_batch_size=False)
+            out = layers.batch_norm(data, momentum=momentum)
             return (out)
 
     def make_range(self):
@@ -2542,6 +2572,14 @@ class TestBook(LayerTest):
             x = self._get_data(name="X", shape=[1], dtype="float32")
             y = self._get_data(name="Y", shape=[1], dtype="float32")
             out = layers.square_error_cost(input=x, label=y)
+            return (out)
+
+    def make_masked_select(self):
+        with program_guard(fluid.default_main_program(),
+                           fluid.default_startup_program()):
+            x = self._get_data(name="X", shape=[4, 4], dtype="float32")
+            y = self._get_data(name="Y", shape=[1, 4], dtype="bool")
+            out = layers.masked_select(input=x, mask=y)
             return (out)
 
     def test_dynamic_lstmp(self):
