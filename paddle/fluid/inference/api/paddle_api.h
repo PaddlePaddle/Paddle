@@ -155,7 +155,17 @@ class ZeroCopyTensor {
    * This is for writing the input tensor.
    */
   template <typename T>
-  T* mutable_data(PaddlePlace place);
+  T* mutable_data(PaddlePlace place, int device);
+
+  template <typename T>
+  T* mutable_data(PaddlePlace place) {
+    return mutable_data<T>(place, device());
+  }
+
+  template <typename T>
+  T* mutable_data() {
+    return mutable_data<T>(place(), device());
+  }
   /** Get the memory directly, will return the place and element size by
    * pointer.
    * This is for reading the output tensor.
@@ -177,6 +187,12 @@ class ZeroCopyTensor {
   void SetPlace(PaddlePlace place, int device = -1) {
     place_ = place;
     device_ = device;
+  }
+  PaddlePlace place() const {
+      return place_;
+  }
+  int device() const {
+      return device_;
   }
 
   PaddleDType type() const;

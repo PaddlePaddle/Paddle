@@ -41,7 +41,8 @@ void ZeroCopyTensor::Reshape(const std::vector<int> &shape) {
   auto *tensor = static_cast<framework::LoDTensor *>(tensor_);
 
 template <typename T>
-T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
+T *ZeroCopyTensor::mutable_data(PaddlePlace place, int device) {
+  SetPlace(place, device);
   EAGER_GET_TENSOR;
   PADDLE_ENFORCE_GT(
       tensor->numel(), 0,
@@ -52,7 +53,7 @@ T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
       return tensor->mutable_data<T>(platform::CPUPlace());
     }
     case static_cast<int>(PaddlePlace::kGPU): {
-      return tensor->mutable_data<T>(platform::CUDAPlace());
+      return tensor->mutable_data<T>(platform::CUDAPlace(device));
     }
     default:
       PADDLE_THROW("Unsupported place: %d", static_cast<int>(place));
@@ -161,10 +162,10 @@ template int32_t *ZeroCopyTensor::data<int32_t>(PaddlePlace *place,
                                                 int *size) const;
 template uint8_t *ZeroCopyTensor::data<uint8_t>(PaddlePlace *place,
                                                 int *size) const;
-template float *ZeroCopyTensor::mutable_data<float>(PaddlePlace place);
-template int64_t *ZeroCopyTensor::mutable_data<int64_t>(PaddlePlace place);
-template int32_t *ZeroCopyTensor::mutable_data<int32_t>(PaddlePlace place);
-template uint8_t *ZeroCopyTensor::mutable_data<uint8_t>(PaddlePlace place);
+template float *ZeroCopyTensor::mutable_data<float>(PaddlePlace place, int device);
+template int64_t *ZeroCopyTensor::mutable_data<int64_t>(PaddlePlace place, int device);
+template int32_t *ZeroCopyTensor::mutable_data<int32_t>(PaddlePlace place, int device);
+template uint8_t *ZeroCopyTensor::mutable_data<uint8_t>(PaddlePlace place, int device);
 
 void *ZeroCopyTensor::FindTensor() const {
   PADDLE_ENFORCE(!name_.empty(),
