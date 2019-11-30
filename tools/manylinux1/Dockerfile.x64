@@ -32,7 +32,7 @@ ENV GOROOT=/usr/local/go GOPATH=/root/gopath
 ENV PATH=${GOROOT}/bin:${GOPATH}/bin:${PATH}
 
 # gcc8.2
-RUN wget -q http://mirror.linux-ia64.org/gnu/gcc/releases/gcc-8.2.0/gcc-8.2.0.tar.xz && \
+RUN wget -q https://paddle-docker-tar.bj.bcebos.com/home/users/tianshuo/bce-python-sdk-0.8.27/gcc-8.2.0.tar.xz && \
   tar -xvf gcc-8.2.0.tar.xz && \
   cd gcc-8.2.0 && \
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
