@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler.h"
-#include "paddle/fluid/string/to_string.h"
 
 namespace paddle {
 namespace operators {
@@ -71,9 +70,6 @@ class LoadOpKernel : public framework::OpKernel<T> {
     if (seek != -1) {
       PADDLE_ENFORCE_GE(seek, 0);
       auto shape = ctx.Attr<std::vector<int64_t>>("shape");
-
-      VLOG(4) << "load slice vars with seek=" << seek
-              << " shape=" << string::to_string<int64_t>(shape);
 
       DeserializeFromStream(fin, tensor, dev_ctx, seek, shape);
     } else {
