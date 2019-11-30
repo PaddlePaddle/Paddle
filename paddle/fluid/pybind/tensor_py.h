@@ -517,10 +517,14 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
           static_cast<size_t>(tensor.dims().size()), py_dims, py_strides));
     } else {
       py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
-      PADDLE_ENFORCE(
-          py_arr.writeable() && py_arr.owndata(),
-          "PyArray must be writable and own data, otherwise memory leak "
-          "or double free would occur");
+      PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
+                        platform::errors::InvalidArgument(
+                            "PyArray must be writable, otherwise memory leak "
+                            "or double free would occur"));
+      PADDLE_ENFORCE_EQ(py_arr.owndata(), true,
+                        platform::errors::InvalidArgument(
+                            "PyArray must own data, otherwise memory leak "
+                            "or double free would occur"));
       platform::CPUPlace place;
       size_t copy_bytes = sizeof_dtype * numel;
       paddle::memory::Copy(place, py_arr.mutable_data(), place, tensor_buf_ptr,

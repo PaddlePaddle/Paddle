@@ -76,7 +76,8 @@ static void InitTensorForVarBase(imperative::VarBase *self, bool persistable,
           tensor, array, boost::get<platform::CUDAPinnedPlace>(place),
           zero_copy);
     } else {
-      PADDLE_THROW("Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace"));
     }
   } else {
     if (py::isinstance<platform::CPUPlace>(obj)) {
@@ -89,7 +90,8 @@ static void InitTensorForVarBase(imperative::VarBase *self, bool persistable,
       SetTensorFromPyArray<platform::CUDAPinnedPlace>(
           tensor, array, obj.cast<platform::CUDAPinnedPlace>(), zero_copy);
     } else {
-      PADDLE_THROW("Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace");
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Place should be one of CPUPlace/CUDAPlace/CUDAPinnedPlace"));
     }
   }
   self->SetType(framework::proto::VarType::LOD_TENSOR);
@@ -98,7 +100,9 @@ static void InitTensorForVarBase(imperative::VarBase *self, bool persistable,
 
 static void InitVarBaseFromNumpyWithKwargs(imperative::VarBase *self,
                                            const py::kwargs &kwargs) {
-  PADDLE_ENFORCE_EQ(kwargs.contains("value"), true, "Missing arguments: value");
+  PADDLE_ENFORCE_EQ(
+      kwargs.contains("value"), true,
+      platform::errors::InvalidArgument("Missing argument: value"));
   if (kwargs.contains("place")) {
     InitTensorForVarBase(self, kwargs.contains("persistable")
                                    ? kwargs["persistable"].cast<bool>()
@@ -171,7 +175,8 @@ GetVarBaseListFromPyHandle(const py::handle &handle) {
     result.reserve(len);
     for (size_t i = 0; i < len; ++i) {
       PyObject *py_ivar = PyList_GET_ITEM(py_obj, i);
-      PADDLE_ENFORCE_NOT_NULL(py_ivar);
+      PADDLE_ENFORCE_NOT_NULL(
+          py_ivar, platform::errors::InvalidArgument("Python Object is NULL"));
       result.emplace_back(
           PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
     }
@@ -180,7 +185,8 @@ GetVarBaseListFromPyHandle(const py::handle &handle) {
     result.reserve(len);
     for (size_t i = 0; i < len; ++i) {
       PyObject *py_ivar = PyTuple_GET_ITEM(py_obj, i);
-      PADDLE_ENFORCE_NOT_NULL(py_ivar);
+      PADDLE_ENFORCE_NOT_NULL(
+          py_ivar, platform::errors::InvalidArgument("Python Object is NULL"));
       result.emplace_back(
           PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
     }
@@ -309,9 +315,11 @@ void BindImperative(py::module *m_ptr) {
            [](imperative::VarBase &self) -> py::array {
              const auto &tensor =
                  self.MutableVar()->Get<framework::LoDTensor>();
-             PADDLE_ENFORCE_EQ(tensor.IsInitialized(), true,
-                               "%s is Empty, Please check if it has no data in",
-                               self.Name());
+             PADDLE_ENFORCE_EQ(
+                 tensor.IsInitialized(), true,
+                 platform::errors::InvalidArgument(
+                     "%s is Empty, Please check if it has no data in",
+                     self.Name()));
              return TensorToPyArray(tensor, true);
            },
            R"DOC(
@@ -346,7 +354,8 @@ void BindImperative(py::module *m_ptr) {
            [](const imperative::VarBase &self) {
              const auto &tensor = self.Var().Get<framework::LoDTensor>();
              PADDLE_ENFORCE_EQ(tensor.IsInitialized(), true,
-                               "%s has not been initialized", self.Name());
+                               platform::errors::InvalidArgument(
+                                   "%s has not been initialized", self.Name()));
              return self.NewVarBase(tensor.place(), false);
            },
            py::return_value_policy::copy, R"DOC(
