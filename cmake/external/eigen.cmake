@@ -43,7 +43,7 @@ if(WITH_AMD_GPU)
         extern_eigen3
         ${EXTERNAL_PROJECT_LOG_ARGS}
         ${SHALLOW_CLONE}
-        "${DOWNLOAD_CMD}"
+        "${EIGEN_DOWNLOAD_CMD}"
         PREFIX          ${EIGEN_PREFIX_DIR}
         SOURCE_DIR      ${EIGEN_SOURCE_DIR}
         UPDATE_COMMAND    ""
