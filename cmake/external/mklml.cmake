@@ -64,7 +64,6 @@ ExternalProject_Add(
 			  ${CMAKE_COMMAND} -E copy_directory ${MKLML_SOURCE_DIR}/lib ${MKLML_LIB_DIR}
 )
 
-
 INCLUDE_DIRECTORIES(${MKLML_INC_DIR})
 
 ADD_LIBRARY(mklml SHARED IMPORTED GLOBAL)
