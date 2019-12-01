@@ -60,15 +60,15 @@ class FillConstantBatchSizeLikeOpKernel : public framework::OpKernel<T> {
     auto &dev_ctx = *pool.Get(ctx.GetPlace());
     bool cpu_place = force_cpu || ctx.GetPlace() == platform::CPUPlace();
     if (cpu_place) {
-      out->mutable_data(platform::CPUPlace(), data_type);
       math::SetConstant<platform::CPUDeviceContext, T> functor;
+      out->mutable_data(platform::CPUPlace(), data_type);
       functor(reinterpret_cast<const platform::CPUDeviceContext &>(dev_ctx),
               out, static_cast<T>(value));
     }
 #ifdef PADDLE_WITH_CUDA
     if (!cpu_place) {
-      out->mutable_data(ctx.GetPlace(), data_type);
       math::SetConstant<platform::CUDADeviceContext, T> functor;
+      out->mutable_data(ctx.GetPlace(), data_type);
       functor(reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx),
               out, static_cast<T>(value));
     }
