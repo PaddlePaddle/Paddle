@@ -12418,7 +12418,7 @@ def prroi_pool(input,
         pooled_width (integer): The pooled output width. Default: 1.
         batch_roi_nums (Variable): The number of roi for each image in batch. It 
                          shoule be 1-D Tensor, with shape [N] and dtype int64, 
-                         where N is the batch size. Default: None. Be note: The lod of input shoule be
+                         where N is the batch size. Default: None. Be note: The lod of input should be
                          empty when batch_roi_nums has values;
         name (str, default None): The name of this operation.
 
