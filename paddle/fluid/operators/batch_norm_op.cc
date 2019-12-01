@@ -25,27 +25,42 @@ namespace paddle {
 namespace operators {
 
 void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of ConvOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Scale"),
-                 "Input(Scale) of ConvOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                 "Input(Bias) of ConvOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Mean"),
-                 "Input(Mean) of ConvOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Variance"),
-                 "Input(Variance) of ConvOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Y"),
-                 "Output(Y) of ConvOp should not be null.");
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+                    platform::errors::InvalidArgument(
+                        "Input(X) of BatchNormOp should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Scale"), true,
+                    platform::errors::InvalidArgument(
+                        "Input(Scale) of BatchNormOp should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Bias"), true,
+                    platform::errors::InvalidArgument(
+                        "Input(Bias) of BatchNormOp should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Mean"), true,
+                    platform::errors::InvalidArgument(
+                        "Input(Mean) of BatchNormOp should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Variance"), true,
+                    platform::errors::InvalidArgument(
+                        "Input(Variance) of BatchNormOp should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasOutput("Y"), true,
+                    platform::errors::InvalidArgument(
+                        "Output(Y) of BatchNormOp should not be null."));
   bool is_test = ctx->Attrs().Get<bool>("is_test");
   if (!is_test) {
-    PADDLE_ENFORCE(ctx->HasOutput("MeanOut"),
-                   "Output(MeanOut) of ConvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("VarianceOut"),
-                   "Output(VarianceOut) of ConvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("SavedMean"),
-                   "Output(SavedMean) of ConvOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("SavedVariance"),
-                   "Output(SavedVariance) of ConvOp should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("MeanOut"), true,
+        platform::errors::InvalidArgument(
+            "Output(MeanOut) of BatchNormOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("VarianceOut"), true,
+        platform::errors::InvalidArgument(
+            "Output(VarianceOut) of BatchNormOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("SavedMean"), true,
+        platform::errors::InvalidArgument(
+            "Output(SavedMean) of BatchNormOp should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("SavedVariance"), true,
+        platform::errors::InvalidArgument(
+            "Output(SavedVariance) of BatchNormOp should not be null."));
   }
 
   // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
@@ -200,6 +215,10 @@ void BatchNormOpMaker::Make() {
             "Variance of the current mini batch, "
             "will apply to output when training")
       .AsIntermediate();
+  AddOutput("ReserveSpace",
+            "Reserve GPU space for triggering the new semi-persistent "
+            "NHWC kernel")
+      .AsDispensable();
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
@@ -643,6 +662,9 @@ std::unique_ptr<T> BatchNormGradMaker<T>::Apply() const {
   op->SetInput("Bias", this->Input("Bias"));
   op->SetInput("SavedMean", this->Output("SavedMean"));
   op->SetInput("SavedVariance", this->Output("SavedVariance"));
+  if (this->HasOutput("ReserveSpace")) {
+    op->SetInput("ReserveSpace", this->Output("ReserveSpace"));
+  }
 
   // used when setting use_global_stats True during training
   if (boost::get<bool>(this->GetAttr("use_global_stats"))) {
