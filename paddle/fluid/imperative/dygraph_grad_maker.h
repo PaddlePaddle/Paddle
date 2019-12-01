@@ -107,6 +107,12 @@ class GradOpBaseMakerBase {
     return it != var_base_map_in_.end();
   }
 
+  bool HasOutput(const std::string name) const {
+    auto it = var_base_map_out_.find(name);
+
+    return it != var_base_map_out_.end();
+  }
+
  private:
   std::vector<std::shared_ptr<VarBase>> GetVarBaseList(const std::string& name,
                                                        bool is_grad,
