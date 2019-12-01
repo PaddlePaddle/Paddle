@@ -481,7 +481,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     if (platform::is_gpu_place(dev_ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
       Tensor cpu_tensor;
-      cpu_tensor.Resize(framework::make_ddim(dims));
+      cpu_tensor.Resize(framework::make_ddim(shape));
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
