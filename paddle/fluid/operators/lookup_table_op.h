@@ -133,8 +133,6 @@ class LookupTableKernel : public framework::OpKernel<T> {
                 memcpy(output + i * row_width, table + id_index * row_width,
                        row_width * sizeof(T));
               } else {
-                auto blas =
-                    math::GetBlas<platform::CPUDeviceContext, T>(context);
                 blas.VCOPY(row_width, table + id_index * row_width,
                            output + i * row_width);
               }
