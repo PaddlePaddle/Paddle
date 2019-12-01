@@ -399,6 +399,17 @@ class AdamOpKernel : public framework::OpKernel<T> {
     bool lazy_mode = ctx.Attr<bool>("lazy_mode");
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
 
+    T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
+    if (ctx.HasInput("Beta1Tensor")) {
+      auto* beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
+      beta1 = static_cast<T>(GetAttrFromTensor(beta1_tensor));
+    }
+    T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
+    if (ctx.HasInput("Beta2Tensor")) {
+      auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
+      beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
+    }
+
     if (param_var->IsType<framework::LoDTensor>()) {
       auto& param = Ref(ctx.Input<LoDTensor>("Param"), "Must set Param");
       auto* grad_var = ctx.InputVar("Grad");
@@ -411,17 +422,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
           Ref(ctx.Input<LoDTensor>("Beta1Pow"), "Must set Beta1Pow");
       auto& beta2_pow =
           Ref(ctx.Input<LoDTensor>("Beta2Pow"), "Must set Beta2Pow");
-
-      T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
-      if (ctx.HasInput("Beta1Tensor")) {
-        auto* beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
-        beta1 = static_cast<T>(GetAttrFromTensor(beta1_tensor));
-      }
-      T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
-      if (ctx.HasInput("Beta2Tensor")) {
-        auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
-        beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
-      }
 
       auto& param_out =
           Ref(ctx.Output<LoDTensor>("ParamOut"), "Must set ParamOut");
