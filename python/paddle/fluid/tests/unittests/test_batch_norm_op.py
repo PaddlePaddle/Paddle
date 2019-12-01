@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import numpy as np
 import paddle.fluid.core as core
@@ -413,16 +414,28 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     inputs['MomentumTensor'] = block.var('momentum_var')
                 else:
                     attrs['momentum'] = momentum
+
+                outputs = {
+                    "Y": block.var('y'),
+                    "MeanOut": block.var('mean'),  # share memory
+                    "VarianceOut": block.var('variance'),  # share memory
+                    "SavedMean": block.var('saved_mean'),
+                    "SavedVariance": block.var('saved_variance')
+                }
+                has_reserve_space = False
+                if data_format == 'NHWC':
+                    flag = os.environ.get(
+                        'FLAGS_cudnn_batchnorm_spatial_persistent')
+                    if flag is not None and flag.lower() in ['true', '1']:
+                        has_reserve_space = True
+                if has_reserve_space:
+                    block.create_var(name="reserve_space", dtype='float16')
+                    outputs["ReserveSpace"] = block.var('reserve_space')
+                    del os.environ['FLAGS_cudnn_batchnorm_spatial_persistent']
                 bn_op = block.append_op(
                     type="batch_norm",
                     inputs=inputs,
-                    outputs={
-                        "Y": block.var('y'),
-                        "MeanOut": block.var('mean'),  # share memory
-                        "VarianceOut": block.var('variance'),  # share memory
-                        "SavedMean": block.var('saved_mean'),
-                        "SavedVariance": block.var('saved_variance')
-                    },
+                    outputs=outputs,
                     attrs=attrs)
                 block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
 
@@ -477,6 +490,17 @@ class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
         self.use_global_stats = False
         self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
+
+
+class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
+    def init_test_case(self):
+        self.use_global_stats = False
+        self.no_grad_set = set()
+        self.fetch_list = [
+            'y', 'mean', 'variance', 'saved_mean', 'saved_variance', 'x@GRAD',
+            'scale@GRAD', 'bias@GRAD'
+        ]
+        os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = "1"
 
 
 class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
