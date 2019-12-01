@@ -22,7 +22,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -43,6 +42,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/trainer.h"
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
@@ -65,6 +65,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
@@ -1031,6 +1032,19 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
+  m.def("get_op_attrs_default_value",
+        [](py::bytes byte_name) -> paddle::framework::AttributeMap {
+          std::string op_type = byte_name;
+          paddle::framework::AttributeMap res;
+          auto info = OpInfoMap::Instance().GetNullable(op_type);
+          if (info != nullptr) {
+            if (info->HasOpProtoAndChecker()) {
+              auto op_checker = info->Checker();
+              res = op_checker->GetAttrsDefaultValuesMap();
+            }
+          }
+          return res;
+        });
   m.def(
       "get_grad_op_desc", [](const OpDesc &op_desc,
                              const std::unordered_set<std::string> &no_grad_set,
