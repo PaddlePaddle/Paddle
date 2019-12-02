@@ -82,7 +82,7 @@ class TestPrintOpCPU(unittest.TestCase):
                        return_numpy=False)
 
 
-class TestPrintOpError(OpTest):
+class TestPrintOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of Print_op must be Variable.

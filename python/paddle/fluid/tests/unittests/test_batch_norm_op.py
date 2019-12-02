@@ -575,7 +575,7 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
-class TestBatchNormOpError(OpTest):
+class TestBatchNormOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of batch_norm must be Variable.
