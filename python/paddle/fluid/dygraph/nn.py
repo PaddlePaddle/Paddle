@@ -23,6 +23,7 @@ from ..framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter
 from ..param_attr import ParamAttr
 from ..initializer import Normal, Constant, NumpyArrayInitializer
 import numpy as np
+import numbers
 import logging
 
 __all__ = [
@@ -1480,14 +1481,14 @@ class LayerNorm(layers.Layer):
     - :math:`b`: the trainable bias parameter.
 
     Parameters:
-        input_shape(list or tuple): The shape of input.
+        normalized_shape(int or list or tuple): Input shape from an expected input of
+            size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
+            If it is a single integer, this module will normalize over the last dimension
+            which is expected to be of that specific size.
         scale(bool, optional): Whether to learn the adaptive gain :math:`g` after
             normalization. Default: True.
         shift(bool, optional): Whether to learn the adaptive bias :math:`b` after
             normalization. Default: True.
-        begin_norm_axis(int, optional): The normalization will be performed along
-            dimensions from :attr:`begin_norm_axis` to :attr:`rank(input)`.
-            Default: 1.
         epsilon(float, optional): The small value added to the variance to prevent
             division by zero. Default: 1e-05.
         param_attr(ParamAttr, optional): The parameter attribute for the learnable
@@ -1518,34 +1519,32 @@ class LayerNorm(layers.Layer):
           x = numpy.random.random((3, 32, 32)).astype('float32')
           with fluid.dygraph.guard():
               x = to_variable(x)
-              layerNorm = fluid.LayerNorm(x.shape, begin_norm_axis=1)
+              layerNorm = fluid.LayerNorm([32, 32])
               ret = layerNorm(x)
 
     """
 
     def __init__(self,
-                 input_shape,
+                 normalized_shape,
                  scale=True,
                  shift=True,
-                 begin_norm_axis=1,
                  epsilon=1e-05,
                  param_attr=None,
                  bias_attr=None,
                  act=None,
                  dtype='float32'):
         super(LayerNorm, self).__init__()
-        self._input_shape = list(input_shape)
+        if isinstance(normalized_shape, numbers.Integral):
+            normalized_shape = [normalized_shape]
+        self._normalized_shape = list(normalized_shape)
         self._scale = scale
         self._shift = shift
-        self._begin_norm_axis = begin_norm_axis
         self._epsilon = epsilon
         self._param_attr = param_attr
         self._bias_attr = bias_attr
         self._act = act
         self._dtype = dtype
-        param_shape = [
-            reduce(lambda x, y: x * y, self._input_shape[begin_norm_axis:])
-        ]
+        param_shape = [np.prod(self._normalized_shape)]
         if self._scale:
             self._scale_w = self.create_parameter(
                 attr=self._param_attr,
@@ -1568,6 +1567,15 @@ class LayerNorm(layers.Layer):
                 logging.warn("bias_attr are only avaliable with shift is True")
 
     def forward(self, input):
+        input_ndim = len(input.shape)
+        normalized_ndim = len(self._normalized_shape)
+        self._begin_norm_axis = input_ndim - normalized_ndim
+        if input_ndim < normalized_ndim or input.shape[
+                self._begin_norm_axis:] != self._normalized_shape:
+            str_normalized_shape = str(self._normalized_shape)
+            raise ValueError('Given normalized_shape is ' + str_normalized_shape
+                             + ', expected input with shape [*, ' +
+                             str_normalized_shape[1:])
         inputs = dict()
         inputs['X'] = input
         if self._scale:

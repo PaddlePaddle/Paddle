@@ -222,7 +222,7 @@ class TestLayer(LayerTest):
                 dtype='float32',
                 append_batch_size=False)
             lm = nn.LayerNorm(
-                input_shape=t.shape,
+                normalized_shape=[32, 32],
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
                 act='sigmoid')
             ret = lm(t)
@@ -230,14 +230,14 @@ class TestLayer(LayerTest):
                 feed={'data': inp}, fetch_list=[ret])[0]
         with self.dynamic_graph():
             lm = nn.LayerNorm(
-                input_shape=inp.shape,
+                normalized_shape=[32, 32],
                 bias_attr=fluid.initializer.ConstantInitializer(value=1),
                 act='sigmoid')
             dy_ret = lm(base.to_variable(inp))
             dy_ret_value = dy_ret.numpy()
         with self.dynamic_graph():
             lm = nn.LayerNorm(
-                input_shape=inp.shape,
+                normalized_shape=[32, 32],
                 shift=False,
                 scale=False,
                 param_attr=fluid.initializer.ConstantInitializer(value=1),
@@ -250,6 +250,14 @@ class TestLayer(LayerTest):
 
         self.assertTrue(np.array_equal(static_ret, static_ret2))
         self.assertTrue(np.array_equal(dy_ret_value, static_ret2))
+
+        with self.dynamic_graph():
+            lm = nn.LayerNorm(
+                normalized_shape=[16, 32],
+                bias_attr=fluid.initializer.ConstantInitializer(value=1),
+                act='sigmoid')
+            with self.assertRaises(ValueError):
+                lm(base.to_variable(inp))
 
     def test_relu(self):
         with self.static_graph():

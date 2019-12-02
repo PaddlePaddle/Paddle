@@ -354,8 +354,7 @@ class PrePostProcessLayer(Layer):
         for cmd in process_cmd:
             if cmd == "n":
                 self._layer_norm = LayerNorm(
-                    (shape_len - 1) * [-1] + [d_model],
-                    begin_norm_axis=shape_len - 1,
+                    normalized_shape=d_model,
                     param_attr=fluid.ParamAttr(
                         initializer=fluid.initializer.Constant(1.)),
                     bias_attr=fluid.ParamAttr(
