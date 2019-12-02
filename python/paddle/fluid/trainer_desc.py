@@ -76,6 +76,9 @@ class TrainerDesc(object):
     def _set_use_cvm(self, use_cvm=False):
         self.proto_desc.use_cvm = use_cvm
 
+    def _set_no_cvm(self, no_cvm=False):
+        self.proto_desc.no_cvm = no_cvm
+
     def _set_scale_datanorm(self, scale_datanorm=-1):
         self.proto_desc.scale_datanorm = scale_datanorm
 
@@ -100,6 +103,10 @@ class TrainerDesc(object):
 
     def _set_dump_converter(self, converter):
         self.proto_desc.dump_converter = converter
+
+    def _set_dump_param(self, dump_param):
+        for param in dump_param:
+            self.proto_desc.dump_param.append(param)
 
     def _set_check_nan_var_names(self, check_nan_var_names):
         for var in check_nan_var_names:

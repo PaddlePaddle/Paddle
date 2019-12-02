@@ -130,13 +130,22 @@ class DistributedAdam(DistributedOptimizerImplBase):
         find multi-sparse-table
         """
         table_names = set()
+        cnt = 0
+        tmp_list = []
+        ret_list = []
         for loss in losses:
             for op in loss.block.program.global_block().ops:
                 if op.type == "lookup_table":
                     if op.attr('is_distributed') is True:
                         table_name = op.input("W")[0]
-                        table_names.add(table_name)
-        return list(table_names)
+                        if table_name not in table_names:
+                            table_names.add(table_name)
+                            tmp_list.append([table_name, cnt])
+                            cnt += 1
+        tmp_list.sort(key=lambda k: k[1])
+        for x in tmp_list:
+            ret_list.append(x[0])
+        return ret_list
 
     def _minimize(self,
                   losses,
@@ -366,6 +375,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["fleet_desc"] = ps_param
         opt_info["worker_skipped_ops"] = worker_skipped_ops
         opt_info["use_cvm"] = strategy.get("use_cvm", False)
+        opt_info["no_cvm"] = strategy.get("no_cvm", False)
         opt_info["stat_var_names"] = strategy.get("stat_var_names", [])
         opt_info["scale_datanorm"] = strategy.get("scale_datanorm", -1)
         opt_info["check_nan_var_names"] = strategy.get("check_nan_var_names",
@@ -375,6 +385,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["dump_fields"] = strategy.get("dump_fields", [])
         opt_info["dump_file_num"] = strategy.get("dump_file_num", 16)
         opt_info["dump_fields_path"] = strategy.get("dump_fields_path", "")
+        opt_info["dump_param"] = strategy.get("dump_param", [])
         if server._server.downpour_server_param.downpour_table_param[
                 0].accessor.accessor_class == "DownpourCtrAccessor":
             opt_info["dump_slot"] = True
