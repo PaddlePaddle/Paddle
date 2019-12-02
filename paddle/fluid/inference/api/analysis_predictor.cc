@@ -187,13 +187,13 @@ bool AnalysisPredictor::PrepareExecutor() {
 void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
 #ifdef PADDLE_WITH_MKLDNN
   VLOG(2) << "AnalysisPredictor::Run get_cur_mkldnn_session_id="
-          << platform::get_mkldnn_tls().get_cur_mkldnn_session_id();
+          << platform::get_cur_mkldnn_session_id();
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0) {
     VLOG(2) << "In mkldnn cache clear mode.";
-    platform::get_mkldnn_tls().set_cur_mkldnn_session_id(
-        platform::MKLDNNTLS::kMKLDNNSessionID_CacheClearing);
-    platform::get_mkldnn_tls().set_cur_input_shape_cache_capacity(
+    platform::set_cur_mkldnn_session_id(
+        platform::kMKLDNNSessionID_CacheClearing);
+    platform::set_cur_input_shape_cache_capacity(
         config_.mkldnn_cache_capacity_);
     // Set current_input_shape for caching dynamic shape.
     std::stringstream ss;
@@ -203,7 +203,7 @@ void AnalysisPredictor::MkldnnPreSet(const std::vector<PaddleTensor> &inputs) {
       }
     }
     VLOG(2) << "Set input shape=" << ss.str();
-    platform::get_mkldnn_tls().set_cur_input_shape_str(ss.str());
+    platform::set_cur_input_shape_str(ss.str());
   }
 #endif
 }
@@ -212,10 +212,10 @@ void AnalysisPredictor::MkldnnPostReset() {
 #ifdef PADDLE_WITH_MKLDNN
   // In cache clearing mode.
   if (config_.mkldnn_cache_capacity_ > 0) {
-    platform::get_mkldnn_tls().set_cur_mkldnn_session_id(
-        platform::MKLDNNTLS::kMKLDNNSessionID_Default);
-    platform::get_mkldnn_tls().set_cur_input_shape_cache_capacity(0);
-    platform::get_mkldnn_tls().set_cur_input_shape_str("");
+    paddle::platform::set_cur_mkldnn_session_id(
+        platform::kMKLDNNSessionID_Default);
+    platform::set_cur_input_shape_cache_capacity(0);
+    platform::set_cur_input_shape_str("");
   }
 #endif
 }

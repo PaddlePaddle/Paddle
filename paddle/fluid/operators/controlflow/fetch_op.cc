@@ -61,9 +61,8 @@ class FetchOp : public framework::OperatorBase {
       if (src_item.layout() == framework::DataLayout::kMKLDNN) {
         framework::Tensor out;
         framework::innerTransDataLayoutFromMKLDNN(
-            src_item.layout(),
-            platform::get_mkldnn_tls().get_cur_paddle_data_layout(), src_item,
-            &out, platform::CPUPlace());
+            src_item.layout(), paddle::platform::get_cur_paddle_data_layout(),
+            src_item, &out, platform::CPUPlace());
         TensorCopySync(out, platform::CPUPlace(), &dst_item);
       } else {
         TensorCopySync(src_item, platform::CPUPlace(), &dst_item);

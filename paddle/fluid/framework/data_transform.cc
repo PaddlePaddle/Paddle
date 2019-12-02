@@ -63,7 +63,7 @@ void TransformData(const OpKernelType &expected_kernel_type,
           std::rotate(nchw_dims.begin() + 1, nchw_dims.end() - 1,
                       nchw_dims.end());
           out.Resize(framework::make_ddim(nchw_dims));
-          platform::get_mkldnn_tls().set_cur_paddle_data_layout(lin);
+          paddle::platform::set_cur_paddle_data_layout(lin);
         }
         out.set_layout(DataLayout::kMKLDNN);
         out.set_format(out_format);

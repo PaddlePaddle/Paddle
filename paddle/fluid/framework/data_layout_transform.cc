@@ -126,10 +126,9 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
       "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
       "non-MKLDNN");
 
-  innerTransDataLayoutFromMKLDNN(
-      in_layout,
-      paddle::platform::get_mkldnn_tls().get_cur_paddle_data_layout(), in, out,
-      place);
+  innerTransDataLayoutFromMKLDNN(in_layout,
+                                 paddle::platform::get_cur_paddle_data_layout(),
+                                 in, out, place);
 }
 
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,

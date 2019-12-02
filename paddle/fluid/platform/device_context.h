@@ -282,65 +282,17 @@ using KeyBlob = std::unordered_map<std::string, std::shared_ptr<void>>;
 using ShapeBlob = std::unordered_map<std::string, std::shared_ptr<KeyBlob>>;
 using BlobMap = std::unordered_map<int, std::shared_ptr<ShapeBlob>>;
 
-// Per thread attribs related to MKL-DNN
-class MKLDNNTLS {
- public:
-  inline void set_cur_mkldnn_session_id(size_t sid) {
-    cur_mkldnn_session_id_ = sid;
-  }
+// default mkldnn session id
+constexpr size_t kMKLDNNSessionID_Default = 0;
+// mkldnn session id for cache clearing mode
+constexpr size_t kMKLDNNSessionID_CacheClearing = -1;
 
-  inline size_t get_cur_mkldnn_session_id(void) {
-    return cur_mkldnn_session_id_;
-  }
-
-  inline void set_cur_input_shape_str(std::string input_shape_str) {
-    cur_input_shape_str_ = input_shape_str;
-  }
-
-  inline const std::string& get_cur_input_shape_str(void) {
-    return cur_input_shape_str_;
-  }
-
-  inline void set_cur_input_shape_cache_capacity(
-      int input_shape_cache_capacity) {
-    cur_input_shape_cache_capacity_ = input_shape_cache_capacity;
-  }
-
-  inline int get_cur_input_shape_cache_capacity(void) {
-    return cur_input_shape_cache_capacity_;
-  }
-
-  inline void set_cur_paddle_data_layout(framework::DataLayout dl) {
-    cur_paddle_data_layout_ = dl;
-  }
-
-  inline framework::DataLayout get_cur_paddle_data_layout(void) {
-    return cur_paddle_data_layout_;
-  }
-
- public:
-  // default mkldnn session id
-  static const size_t kMKLDNNSessionID_Default = 0;
-  // mkldnn session id for cache clearing mode
-  static const size_t kMKLDNNSessionID_CacheClearing = -1;
-
- private:
-  // Current mkldnn session id.
-  size_t cur_mkldnn_session_id_ = kMKLDNNSessionID_Default;
-  // Current data input shape string.
-  // - For fixed-shape, it's a null string in default.
-  // - For dynamic-shape, it's user specific.
-  std::string cur_input_shape_str_ = "";
-  // the cache capacity of different input shapes for MKLDNN.
-  // Default 1 means fixed input shape, not dynamic shape.
-  int cur_input_shape_cache_capacity_ = 1;
-  // Recently registered data_format. This is needed to
-  // know for converting MKL-DNN Tensor to non MKL-DNN
-  paddle::framework::DataLayout cur_paddle_data_layout_ =
-      paddle::framework::DataLayout::kNCHW;
-};
-
-MKLDNNTLS& get_mkldnn_tls(void);
+void set_cur_mkldnn_session_id(size_t);
+size_t get_cur_mkldnn_session_id(void);
+void set_cur_input_shape_str(std::string input_shape_str);
+void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
+void set_cur_paddle_data_layout(framework::DataLayout);
+framework::DataLayout get_cur_paddle_data_layout(void);
 
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:
