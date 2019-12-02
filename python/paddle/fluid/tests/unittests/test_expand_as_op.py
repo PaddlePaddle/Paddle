@@ -103,7 +103,7 @@ class TestExpandAsOpRank4(OpTest):
 
 
 # Test python API
-class TestExpandAPI(OpTest):
+class TestExpandAPI(unittest.TestCase):
     def test_api(self):
         input1 = np.random.random([12, 14]).astype("float32")
         input2 = np.random.random([48, 14]).astype("float32")

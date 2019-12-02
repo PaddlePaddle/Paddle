@@ -30,6 +30,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "mkldnn.hpp"
+#include "paddle/fluid/framework/data_layout.h"
 #endif
 
 #include <map>
@@ -290,6 +291,8 @@ void set_cur_mkldnn_session_id(size_t);
 size_t get_cur_mkldnn_session_id(void);
 void set_cur_input_shape_str(std::string input_shape_str);
 void set_cur_input_shape_cache_capacity(int input_shape_cache_capacity);
+void set_cur_paddle_data_layout(framework::DataLayout);
+framework::DataLayout get_cur_paddle_data_layout(void);
 
 class MKLDNNDeviceContext : public CPUDeviceContext {
  public:

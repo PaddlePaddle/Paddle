@@ -502,7 +502,7 @@ class LRNMKLDNNHandler
   std::shared_ptr<mkldnn::memory> AcquireWorkspaceMemory(
       framework::Tensor* workspace) {
     T* ptr = workspace->mutable_data<T>(
-        this->place_, this->fwd_pd_->dst_primitive_desc().get_size());
+        this->place_, this->fwd_pd_->workspace_primitive_desc().get_size());
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->workspace_primitive_desc(), ptr, "@wrk_mem_p");
   }

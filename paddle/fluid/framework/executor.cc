@@ -103,6 +103,7 @@ Executor::~Executor() {
     platform::MKLDNNDeviceContext* dev_ctx =
         (platform::MKLDNNDeviceContext*)pool.Get(place_);
     dev_ctx->ResetBlobMap();
+    platform::set_cur_paddle_data_layout(paddle::framework::DataLayout::kNCHW);
   }
 #endif
 }
@@ -119,13 +120,12 @@ void Executor::Close() {
 
 void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
                                int block_id) {
+  VLOG(3) << "Creating Variables for block " << block_id;
   auto& global_block = pdesc.Block(block_id);
-
   const Scope* ancestor_scope = scope;
   while (ancestor_scope->parent()) {
     ancestor_scope = ancestor_scope->parent();
   }
-
   if (ancestor_scope != scope) {
     for (auto& var : global_block.AllVars()) {
       if (var->Name() == framework::kEmptyVarName) {
@@ -195,11 +195,12 @@ void Executor::ReleaseTrainer(std::shared_ptr<TrainerBase> trainer) {
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars,
                    const std::vector<std::string>& skip_ref_cnt_vars,
-                   bool force_disable_gc) {
+                   bool force_disable_gc, bool keep_kid_scopes) {
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
-  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
+  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars,
+                     keep_kid_scopes);
 }
 
 // Check whether the block already has feed operators and feed_holder.
@@ -464,6 +465,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       // the sub scopes it created should not be dropped immediately, because
       // while_grad_op will use some variables created during while_op run, so
       // we need to keep the kids and wait for the outer executor to drop them.
+
       scope->DropKids();
     }
   }

@@ -114,7 +114,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   if (!channel_last) {
     output_shape.push_back(filter_dims[0]);
   }
-  for (size_t i = 0; i < in_data_dims.size(); ++i) {
+  for (int i = 0; i < in_data_dims.size(); ++i) {
     if ((!ctx->IsRuntime()) &&
         (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
       output_shape.push_back(-1);
@@ -151,6 +151,15 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
+    // TODO(jczaja): Add support for NHWC
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_NE(data_format, "NHWC",
+                      platform::errors::Unimplemented(
+                          "Conv MKLDNN does not support NHWC data format yet"));
+    PADDLE_ENFORCE_NE(
+        data_format, "NDHWC",
+        platform::errors::Unimplemented(
+            "Conv MKLDNN does not support NDHWC data format yet"));
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
     customized_type_value =
@@ -524,6 +533,16 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
+    // TODO(jczaja): Add support for NHWC
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_NE(
+        data_format, "NHWC",
+        platform::errors::Unimplemented(
+            "Conv MKLDNN grad does not support NHWC data format yet"));
+    PADDLE_ENFORCE_NE(
+        data_format, "NDHWC",
+        platform::errors::Unimplemented(
+            "Conv MKLDNN Grad does not support NDHWC data format yet"));
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
     customized_type_value = kConvMKLDNNFP32;
@@ -705,14 +724,6 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
-  }
-#endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = framework::DataLayout::kMKLDNN;
-    customized_type_value = kConvMKLDNNFP32;
   }
 #endif
   auto type = framework::OpKernelType(

@@ -560,6 +560,19 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 #endif
 }
 
+void FleetWrapper::PrintTableStat(const uint64_t table_id) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->print_table_stat(table_id);
+  ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "print table stat failed";
+  }
+#else
+  VLOG(0) << "FleetWrapper::PrintTableStat does nothing when no pslib";
+#endif
+}
+
 double FleetWrapper::GetCacheThreshold(int table_id) {
 #ifdef PADDLE_WITH_PSLIB
   double cache_threshold = 0.0;
