@@ -203,7 +203,7 @@ class TestUnsqueezeOp4_AxesTensor(TestUnsqueezeOp_AxesTensor):
 
 
 # test api
-class TestUnsqueezeAPI(OpTest):
+class TestUnsqueezeAPI(unittest.TestCase):
     def test_api(self):
         input = np.random.random([3, 2, 5]).astype("float32")
         x = fluid.data(name='x', shape=[3, 2, 5], dtype="float32")
