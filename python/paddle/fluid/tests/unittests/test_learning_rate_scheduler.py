@@ -286,7 +286,7 @@ class TestLinearWamrupLearningRateDecayDygraphMode(unittest.TestCase):
 class TestLinearWamrupLearningRateDecayDygraphModeTypeCheck(unittest.TestCase):
     def test_dygraph_mode(self):
         with fluid.dygraph.guard():
-            with self.assertRaises(Exception):
+            with self.assertRaises(TypeError):
                 lr = fluid.layers.linear_lr_warmup(
                     learning_rate="fake_lr",
                     warmup_steps=2,
