@@ -112,6 +112,18 @@ if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 47554610 
 fi
 
+HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
+if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+    python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 46782768 6836917 47554610 43953930`
+    echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+    if [ "${APPROVALS}" == "FALSE" ]; then
+        failed_num=`expr $failed_num + 1`
+        echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (XiaoguangHu01, phlrain, luotao1 or lanxianghit) approval for the usage of @unittest.skip and @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
+        echo_list=(${echo_list[@]}$failed_num "." "$echo_line")
+   fi
+fi
+
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
 if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_CUDA_SUCCESS instead.\nYou must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
