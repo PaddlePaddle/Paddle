@@ -550,7 +550,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
   }
   need_push_queue_->Push(ids_table);
   auto after_run_send = GetCurrentUS();
-  VLOG(3) << "run send_op use time " << after_run_send - before_run_send;
+  VLOG(1) << "run send_op use time " << after_run_send - before_run_send;
 }
 
 void GeoSgdCommunicator::SendThread() {
@@ -611,7 +611,7 @@ void GeoSgdCommunicator::SendThread() {
               SendUpdateDenseVars(var_name, splited_var_name);
               RecvUpdateDenseVars(var_name, splited_var_name);
               auto after_run_geo = GetCurrentUS();
-              VLOG(3) << "run GEO-SGD var " << splited_var_name << " use time "
+              VLOG(1) << "run GEO-SGD var " << splited_var_name << " use time "
                       << after_run_geo - before_run_geo;
             };
             task_futures.emplace_back(
