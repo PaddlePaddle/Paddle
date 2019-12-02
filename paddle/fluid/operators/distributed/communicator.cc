@@ -463,7 +463,7 @@ void GeoSgdCommunicator::InitImpl(
 
   send_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
   need_push_queue_ =
-      std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsVec>>>(
+      std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(
           geo_need_push_nums);
   delta_scope_.reset(new Scope());
   old_scope_.reset(new Scope());

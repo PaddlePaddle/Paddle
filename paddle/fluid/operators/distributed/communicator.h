@@ -429,6 +429,7 @@ class GeoSgdCommunicator : public Communicator {
   std::shared_ptr<Scope> pserver_scope_;  // parameter on pserver,gloabl scope
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
+  int send_var_nums_ = 0;
   std::unordered_map<std::string, bool>
       var_list_;  // if var is sparse, using selected rows, bool=true
 
