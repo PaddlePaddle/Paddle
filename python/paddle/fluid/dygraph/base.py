@@ -226,7 +226,7 @@ def to_variable(value, block=None, name=None, zero_copy=None):
         else:
             assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
             tensor.set(value, framework._current_expected_place(), False)
-        return py_var
+        return py_var._ivar
     elif isinstance(value, framework.Variable):
         #return value
         return value._ivar

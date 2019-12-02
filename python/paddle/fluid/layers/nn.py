@@ -5584,11 +5584,6 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
             reshaped_2 = fluid.layers.reshape(data_2, shape=[dim, 10])
             # the shape of reshaped_2 is [5,10].
     """
-    check_type_and_dtype(x, 'x', Variable,
-                         ['float16', 'float32', 'float64', 'int32', 'int64'],
-                         'reshape')
-    check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
-    check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
 
     if in_dygraph_mode():
         inputs = {'X': x}
@@ -5597,7 +5592,11 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
 
         return outs['Out'][0]
         # TODO(cql): refine append_activation
-
+    check_type_and_dtype(x, 'x', Variable,
+                         ['float16', 'float32', 'float64', 'int32', 'int64'],
+                         'reshape')
+    check_type(shape, 'shape', (list, tuple, Variable), 'reshape')
+    check_type(actual_shape, 'actual_shape', (Variable, type(None)), 'reshape')
     helper = LayerHelper("reshape2", **locals())
     inputs = {"X": x}
     attrs = {}

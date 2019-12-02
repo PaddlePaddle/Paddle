@@ -92,7 +92,7 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
     program_desc_tracer_->InsertOp(type, ins, outs, op->Attrs());
   }
 
-  if (ComputeRequiredGrad(ins, outs, trace_bacward)) {
+  if (ComputeRequiredGrad(ins, outs, trace_backward)) {
     TraceBackward(op, ins, outs);
   } else {
     VLOG(3) << "No Grad to track for Op: " << type;

@@ -19,10 +19,11 @@ from functools import partial, reduce
 from . import nn
 from .layer_function_generator import templatedoc
 from ..layer_helper import LayerHelper
-from ..framework import Variable
+from ..framework import Variable, in_dygraph_mode
 from ..data_feeder import check_type_and_dtype
 from ..param_attr import ParamAttr
 from ..initializer import NumpyArrayInitializer
+from .. import core
 
 __all__ = [
     'center_loss',
@@ -1213,6 +1214,20 @@ def softmax_with_cross_entropy(logits,
             out = fluid.layers.softmax_with_cross_entropy(
                 logits=fc, label=label)
     """
+    if in_dygraph_mode():
+        attrs = {
+            'soft_label': soft_label,
+            'ignore_index': ignore_index,
+            'numeric_stable_mode': numeric_stable_mode,
+            'axis': axis
+        }
+        inputs = {'Logits': [logits], 'Label': [label]}
+        outs = core.ops.softmax_with_cross_entropy(inputs, attrs)
+        if return_softmax:
+            return outs['Loss'][0], outs['Softmax'][0]
+        else:
+            return outs['Loss'][0]
+
     helper = LayerHelper('softmax_with_cross_entropy', **locals())
     softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
     loss = helper.create_variable_for_type_inference(dtype=logits.dtype)
