@@ -1567,15 +1567,17 @@ class LayerNorm(layers.Layer):
                 logging.warn("bias_attr are only avaliable with shift is True")
 
     def forward(self, input):
-        input_ndim = len(input.shape)
+        input_shape = list(input.shape)
+        input_ndim = len(input_shape)
         normalized_ndim = len(self._normalized_shape)
         self._begin_norm_axis = input_ndim - normalized_ndim
-        if input_ndim < normalized_ndim or input.shape[
+        if input_ndim < normalized_ndim or input_shape[
                 self._begin_norm_axis:] != self._normalized_shape:
             str_normalized_shape = str(self._normalized_shape)
-            raise ValueError('Given normalized_shape is ' + str_normalized_shape
-                             + ', expected input with shape [*, ' +
-                             str_normalized_shape[1:])
+            raise ValueError(
+                'Given normalized_shape is ' + str_normalized_shape +
+                ', expected input with shape [*, ' + str_normalized_shape[
+                    1:] + ', but got input shape ' + str(input_shape))
         inputs = dict()
         inputs['X'] = input
         if self._scale:
