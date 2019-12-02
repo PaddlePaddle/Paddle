@@ -12746,7 +12746,7 @@ def unique_with_counts(x, dtype='int32'):
     This OP return a unique tensor for `x` , and count tensor that the count of unqiue result in raw input, \
     and an index tensor pointing to this unique tensor. 
 
-    **NOTICE**: This op just be supported in device of CPU, and support the variable type of Tensor only.
+    **NOTICE**: This op support the variable type of Tensor only.
 
     Args:
         x(Variable): A 1-D input tensor with input shape of :math:`[N]` , the input data type is float32, float64, int32, int64.
