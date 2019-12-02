@@ -91,7 +91,7 @@ bool ParseLine(const std::string &line,
   tensors->reserve(4);
 
   int i = 0;
-auto input_name=FLAGS_ernie_large?"eval_placeholder_":"placeholder_";
+  auto input_name = FLAGS_ernie_large ? "eval_placeholder_" : "placeholder_";
   for (; i < 3; i++) {
     paddle::PaddleTensor temp;
     ParseTensor<int64_t>(fields[i], &temp);
@@ -101,8 +101,8 @@ auto input_name=FLAGS_ernie_large?"eval_placeholder_":"placeholder_";
 
   // input_mask
   paddle::PaddleTensor input_mask;
-  ParseTensor<float>(fields[i++], &input_mask);
-  input_mask.name = input_name + "_3";
+  ParseTensor<float>(fields[i], &input_mask);
+  input_mask.name = input_name + std::to_string(i);
   tensors->push_back(input_mask);
 
   return true;
@@ -185,7 +185,6 @@ TEST(Analyzer_Ernie, fuse_statis) {
     ASSERT_EQ(fuse_statis.at("fc_fuse"), 74);
     EXPECT_EQ(num_ops, 295);
   }
-
 }
 
 // Compare result of NativeConfig and AnalysisConfig
