@@ -1839,6 +1839,7 @@ def case(pred_fn_pairs, default=None, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
 
             def fn_1():
                 return layers.fill_constant(shape=[1, 2], dtype='float32', value=1)
@@ -1851,7 +1852,7 @@ def case(pred_fn_pairs, default=None, name=None):
 
             main_program = fluid.default_startup_program()
             startup_program = fluid.default_main_program()
-            with program_guard(main_program, startup_program):
+            with fluid.program_guard(main_program, startup_program):
                 x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
                 y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
                 z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
@@ -2942,6 +2943,8 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
         .. code-block:: python
 
             import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
             def fn_1():
                 return layers.fill_constant(shape=[1, 2], dtype='float32', value=1)
 
@@ -2953,7 +2956,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
             main_program = fluid.default_startup_program()
             startup_program = fluid.default_main_program()
-            with program_guard(main_program, startup_program):
+            with fluid.program_guard(main_program, startup_program):
                 index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
                 index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
 
