@@ -224,7 +224,10 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // gradient computation proper as this op is called directly without
     // fetch op following it , so numercial grad is computed (in python)
     // using block formats which will give wrong results
-    auto chosen_memory_format = is_test ? MKLDNNMemoryFormat::any : src_format;
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    auto chosen_memory_format =
+        is_test ? MKLDNNMemoryFormat::any
+                : platform::data_format_to_memory_format(data_format);
 
     weights_format = MKLDNNMemoryFormat::any;
     // Check the format for user's special output
