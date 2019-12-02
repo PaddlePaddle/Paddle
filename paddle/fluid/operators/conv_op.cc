@@ -50,30 +50,28 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   const std::string data_format = ctx->Attrs().Get<std::string>("data_format");
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
-  PADDLE_ENFORCE_EQ(in_dims.size() == 4 || in_dims.size() == 5, true,
-                    "ShapeError: Conv input should be 4-D or 5-D tensor. But "
-                    "received: %u-D Tensor,"
-                    "the shape of Conv input is [%s]",
-                    in_dims.size(), in_dims);
+  PADDLE_ENFORCE_EQ(
+      in_dims.size() == 4 || in_dims.size() == 5, true,
+      "ShapeError: the input of Op(conv) should be 4-D or 5-D Tensor. But "
+      "received: %u-D Tensor, the shape of input is [%s].",
+      in_dims.size(), in_dims);
 
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
-      "ShapeError: Conv input dimension and filter dimension should be the "
-      "equal."
-      "But received: the shape of Conv input is [%s], input dimension of Conv "
-      "input is [%d],"
-      "the shape of filter is [%s],  the filter dimension of Conv is [%d]",
+      "ShapeError: the input's dimension size and filter's dimension size of "
+      "Op(conv) should be equal. But received: the shape of input is [%s], "
+      "the dimension size of input is [%d], the shape of filter is [%s],  "
+      "the dimension size of filter is [%d].",
       in_dims, in_dims.size(), filter_dims, filter_dims.size());
 
   int in_sub_stride_size = in_dims.size() - strides.size();
   PADDLE_ENFORCE_EQ(in_dims.size() - strides.size() == 2U, true,
-                    "ShapeError: the dimension of input minus the dimension of "
-                    "stride must be euqal to 2."
-                    "But received: the dimension of input minus the dimension "
-                    "of stride is [%d], the"
-                    "input dimension of Conv is [%d], the shape of Conv input "
-                    "is [%s], the stride"
-                    "dimension of Conv is [%d]",
+                    "ShapeError: the dimension size of input minus the size of "
+                    "Attr(stride) must be euqal to 2 for Op(conv)."
+                    "But received: the dimension size of input minus the size "
+                    "of Attr(stride) is [%d], the "
+                    "input's dimension size is [%d], the shape of input "
+                    "is [%s], the Attr(stride)'s size is [%d].",
                     in_sub_stride_size, in_dims.size(), in_dims,
                     strides.size());
 
@@ -83,26 +81,31 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       input_channels, filter_dims[1] * groups,
       "ShapeError: The number of input channels should be equal to filter "
-      "channels * groups. But received: the input channels is [%d], the shape"
-      "of input is [%s], the filter channel is [%d], the shape of filter is "
-      "[%s],"
-      "the groups is [%d]",
-      in_dims[1], in_dims, filter_dims[1], filter_dims, groups);
+      "channels * groups for Op(conv). But received: the input's channels is "
+      "[%d], the shape "
+      "of input is [%s], the filter's channel is [%d], the shape of filter is "
+      "[%s], the groups is [%d], the data_format is %s. The error may come "
+      "from wrong data_format setting.",
+      input_channels, in_dims, filter_dims[1], filter_dims, groups,
+      data_format);
   PADDLE_ENFORCE_EQ(
       filter_dims[0] % groups, 0,
-      "ShapeError: The number of output channels should be divided by groups."
-      "But received: the output channels is [%d], the shape of filter is [%s]"
-      "(the first dimension of filter is output channel), the groups is [%d]",
+      "ShapeError: The number of output channels of Op(conv) should be divided "
+      "by groups. "
+      "But received: the output channels is [%d], the shape of filter is [%s] "
+      "(the first dimension of filter is output channel), the groups is [%d].",
       filter_dims[0], filter_dims, groups);
 
   framework::DDim in_data_dims;
+  framework::DDim filter_data_dims;
   if (channel_last) {
     in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
   } else {
     in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
   }
-  framework::DDim filter_data_dims =
-      framework::slice_ddim(filter_dims, 2, filter_dims.size());
+
+  filter_data_dims = framework::slice_ddim(filter_dims, 2, filter_dims.size());
+
   std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
   UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                            in_data_dims, strides, ksize);
@@ -111,14 +114,14 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   if (!channel_last) {
     output_shape.push_back(filter_dims[0]);
   }
-  for (size_t i = 0; i < in_data_dims.size(); ++i) {
+  for (int i = 0; i < in_data_dims.size(); ++i) {
     if ((!ctx->IsRuntime()) &&
         (in_data_dims[i] <= 0 || filter_dims[i + 2] <= 0)) {
       output_shape.push_back(-1);
     } else {
-      output_shape.push_back(ConvOutputSize(in_data_dims[i], filter_dims[i + 2],
-                                            dilations[i], paddings[2 * i],
-                                            paddings[2 * i + 1], strides[i]));
+      output_shape.push_back(
+          ConvOutputSize(in_data_dims[i], filter_data_dims[i], dilations[i],
+                         paddings[2 * i], paddings[2 * i + 1], strides[i]));
     }
   }
   if (channel_last) {
@@ -148,6 +151,15 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
+    // TODO(jczaja): Add support for NHWC
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_NE(data_format, "NHWC",
+                      platform::errors::Unimplemented(
+                          "Conv MKLDNN does not support NHWC data format yet"));
+    PADDLE_ENFORCE_NE(
+        data_format, "NDHWC",
+        platform::errors::Unimplemented(
+            "Conv MKLDNN does not support NDHWC data format yet"));
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
     customized_type_value =
@@ -334,7 +346,7 @@ parameters is checked in the infer-shape.
 Input(Input) and Output(Output) are in NCHW or NHWC format. Where N is batch
 size, C is the number of channels, H is the height of the feature, and W is
 the width of the feature.
-Filters(Input) is MCHW format. Where M is the number of output image channels, C is
+Filters(Input) is MCHW format format. Where M is the number of output image channels, C is
 the number of input image channels, H is the height of the filter, and W
 is the width of the filter.
 Parameters(strides, paddings, dilations) are two elements. These two elements represent
@@ -521,6 +533,16 @@ framework::OpKernelType ConvOpGrad::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
+    // TODO(jczaja): Add support for NHWC
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    PADDLE_ENFORCE_NE(
+        data_format, "NHWC",
+        platform::errors::Unimplemented(
+            "Conv MKLDNN grad does not support NHWC data format yet"));
+    PADDLE_ENFORCE_NE(
+        data_format, "NDHWC",
+        platform::errors::Unimplemented(
+            "Conv MKLDNN Grad does not support NDHWC data format yet"));
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
     customized_type_value = kConvMKLDNNFP32;
@@ -702,14 +724,6 @@ framework::OpKernelType ConvOpDoubleGrad::GetExpectedKernelType(
 #ifdef PADDLE_WITH_CUDA
   if (platform::CanCUDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kCUDNN;
-  }
-#endif
-#ifdef PADDLE_WITH_MKLDNN
-  if (library_ == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
-    library_ = framework::LibraryType::kMKLDNN;
-    layout_ = framework::DataLayout::kMKLDNN;
-    customized_type_value = kConvMKLDNNFP32;
   }
 #endif
   auto type = framework::OpKernelType(

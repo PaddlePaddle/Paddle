@@ -152,7 +152,7 @@ void DistMultiTrainer::Finalize() {
   for (auto &th : threads_) {
     th.join();
   }
-  for (int i = 0; i < need_merge_var_names_.size(); i++) {
+  for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable *root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
       continue;

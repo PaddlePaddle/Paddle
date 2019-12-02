@@ -20,6 +20,7 @@ import os
 import six
 from six.moves import zip, range, xrange
 import multiprocessing
+import warnings
 
 from .framework import Variable, default_main_program, _current_expected_place
 from .framework import _cpu_num, _cuda_ids
@@ -62,6 +63,39 @@ def convert_dtype(dtype):
     raise ValueError(
         "dtype must be any of [bool, float16, float32, float64, int8, int16, "
         "int32, int64, uint8]")
+
+
+def check_type_and_dtype(input,
+                         input_name,
+                         expected_type,
+                         expected_dtype,
+                         op_name,
+                         extra_message=''):
+    check_type(input, input_name, expected_type, op_name, extra_message)
+    check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
+
+
+def check_type(input, input_name, expected_type, op_name, extra_message=''):
+    if not isinstance(input, expected_type):
+        raise TypeError(
+            "The type of '%s' in %s must be %s, but received %s. %s" %
+            (input_name, op_name, expected_type, type(input), extra_message))
+
+
+def check_dtype(input_dtype,
+                input_name,
+                expected_dtype,
+                op_name,
+                extra_message=''):
+    if convert_dtype(input_dtype) in ['float16']:
+        warnings.warn(
+            "The data type of '%s' in %s only support float16 in GPU now. %s" %
+            (input_name, op_name, extra_message))
+    if convert_dtype(input_dtype) not in expected_dtype:
+        raise TypeError(
+            "The data type of '%s' in %s must be %s, but received %s. %s" %
+            (input_name, op_name, expected_dtype, convert_dtype(input_dtype),
+             extra_message))
 
 
 class DataToLoDTensorConverter(object):

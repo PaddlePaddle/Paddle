@@ -34,7 +34,7 @@ class TestDGCOp(unittest.TestCase):
         print("place:", place)
 
         # numpy data
-        # inputs: U, V, Grad, current_step
+        # inputs: U, V, Grad, current_step, nranks
         self.u_name = "U"
         self.u = np.random.random(size).astype("float32")
 
@@ -44,13 +44,20 @@ class TestDGCOp(unittest.TestCase):
         self.grad_name = "Grad"
         self.grad = np.random.random(size).astype("float32")
 
+        self.param_name = "Param"
+        self.param = np.random.random(size).astype("float32")
+
         self.current_step_name = "current_step"
         self.current_step = np.full((1), 0.0).astype("float32")
 
-        # output: U_out, V_out, EncodeGrad, GradLocal_out
+        self.nranks_name = "nranks"
+        self.nranks = np.full((1), 2.0).astype("float32")
+
+        # output: U_out, V_out, EncodeGrad, GradLocal_out, k, GatherBuff
         self.encode_grad_name = "EncodeGrad"
         self.k_name = "k"
         self.k = np.full((1), 0.0).astype("float32")
+        self.gather_buff_name = "GatherBuff"
 
         # scope data 
         self.u_tensor = self.scope.var(self.u_name).get_tensor()
@@ -62,15 +69,24 @@ class TestDGCOp(unittest.TestCase):
         self.grad_tensor = self.scope.var(self.grad_name).get_tensor()
         self.grad_tensor.set(self.grad, place)
 
-        self.encode_grad_tensor = self.scope.var(
-            self.encode_grad_name).get_tensor()
+        self.param_tensor = self.scope.var(self.param_name).get_tensor()
+        self.param_tensor.set(self.param, place)
 
         self.current_step_tensor = self.scope.var(
             self.current_step_name).get_tensor()
         self.current_step_tensor.set(self.current_step, core.CPUPlace())
 
+        self.nranks_tensor = self.scope.var(self.nranks_name).get_tensor()
+        self.nranks_tensor.set(self.nranks, core.CPUPlace())
+
+        self.encode_grad_tensor = self.scope.var(
+            self.encode_grad_name).get_tensor()
+
         self.k_tensor = self.scope.var(self.k_name).get_tensor()
         self.k_tensor.set(self.k, core.CPUPlace())
+
+        self.gather_buff_tensor = self.scope.var(
+            self.gather_buff_name).get_tensor()
 
     def check(self, actual_t, expect_t, place, out_name, atol=1e-5):
         self.assertTrue(
@@ -86,7 +102,9 @@ class TestDGCOp(unittest.TestCase):
             'U': self.u_name,
             'V': self.v_name,
             'Grad': self.grad_name,
+            'Param': self.param_name,
             'current_step': self.current_step_name,
+            'nranks': self.nranks_name,
 
             # outputs
             'U_out': self.u_name,
@@ -94,6 +112,7 @@ class TestDGCOp(unittest.TestCase):
             'EncodeGrad': self.encode_grad_name,
             'Grad_out': self.grad_name,
             'k': self.k_name,
+            'GatherBuff': self.gather_buff_name,
 
             # attrs
             'm': 0.9,
@@ -101,6 +120,8 @@ class TestDGCOp(unittest.TestCase):
             'use_nesterov': True,
             'rampup_begin_step': float(0.0),
             'rampup_step': float(10.0),
+            'regular_coeff': float(1e-4),
+            'regular_type': int(2),
         }
 
         dgc_op = Operator('dgc', **kwargs)

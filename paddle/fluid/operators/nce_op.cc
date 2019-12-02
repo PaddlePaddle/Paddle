@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/nce_op.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -212,6 +213,33 @@ By default this operator uses a uniform distribution for sampling.
   }
 };
 
+template <typename T>
+class NCEGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+  std::unique_ptr<T> Apply() const override {
+    auto *op = new T();
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Label", this->Input("Label"));
+    op->SetInput("Bias", this->Input("Bias"));
+    op->SetInput("Weight", this->Input("Weight"));
+    op->SetInput("Cost", this->Output("Cost"));
+    op->SetInput("SampleLogits", this->Output("SampleLogits"));
+    op->SetInput("SampleLabels", this->Output("SampleLabels"));
+    op->SetInput("SampleWeight", this->Input("SampleWeight"));
+    op->SetInput("CustomDistProbs", this->Input("CustomDistProbs"));
+    op->SetInput("CustomDistAlias", this->Input("CustomDistAlias"));
+    op->SetInput("CustomDistAliasProbs", this->Input("CustomDistAliasProbs"));
+    op->SetInput(framework::GradVarName("Cost"), this->OutputGrad("Cost"));
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    op->SetOutput(framework::GradVarName("Weight"), this->InputGrad("Weight"));
+    op->SetAttrMap(this->Attrs());
+    return std::unique_ptr<T>(op);
+  }
+};
+
 class NCEOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -277,11 +305,9 @@ class NCEOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    nce, ops::NCEOp,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>,
-    ops::NCEOpMaker);
+REGISTER_OPERATOR(nce, ops::NCEOp, ops::NCEOpMaker,
+                  ops::NCEGradOpMaker<paddle::framework::OpDesc>,
+                  ops::NCEGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(nce_grad, ops::NCEOpGrad, ops::NCEOpGradVarTypeInference);
 REGISTER_OP_CPU_KERNEL(nce, ops::NCEKernel<paddle::platform::CPUPlace, float>,
                        ops::NCEKernel<paddle::platform::CPUPlace, double>);

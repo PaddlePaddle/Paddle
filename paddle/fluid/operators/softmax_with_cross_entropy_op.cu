@@ -150,10 +150,7 @@ static __global__ void RowReductionForMax(const T* logits_data, T* max_data,
 
   cur_max = BlockReduce<T, BlockDim>(temp_storage).Reduce(cur_max, cub::Max());
 
-  if (threadIdx.x == 0) {
-    max_data[blockIdx.x] =
-        cur_max < static_cast<T>(-64) ? static_cast<T>(-64) : cur_max;
-  }
+  if (threadIdx.x == 0) max_data[blockIdx.x] = cur_max;
 }
 
 // Make sure that BlockDim <= axis_dim
@@ -175,6 +172,12 @@ static __global__ void RowReductionForDiffMaxSum(const T* logits_data,
   auto block_max = max_data[blockIdx.x];
   int step = BlockDim * remain;
 
+  // In numeric stable mode softmax_with_loss, we calc loss with
+  // tmp_i_j = x_i_j - max_i - logDiffMaxSum_i, instead of
+  // log(exp(x_i_j - max_i)/DiffMaxSum_i). Therefore, log(0) will not occur.
+  // Also we calc softmax_i_j = e^{tmp_i_j}, the maximum and minimum value will
+  // be 1.0 and 0.0, represent prob is 1.0 and 0.0.
+  // So there is no need to clip on shift_softmax.
   softmax[beg_idx] = logits_data[beg_idx] - block_max;
   T diff_max_sum = exp_on_device(softmax[beg_idx]);
   auto idx = beg_idx + step;

@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
@@ -238,36 +239,60 @@ class ExecutionContext {
         device_context_(device_context),
         ctx_(ctx),
         kernel_configs_(configs) {}
+  virtual ~ExecutionContext() {}
 
-  const OperatorBase& op() const { return op_; }
+  virtual std::string InputName(const std::string& name) const {
+    return op_.Input(name);
+  }
+  virtual std::vector<std::string> InputNames(const std::string& name) const {
+    return op_.Inputs(name);
+  }
+  virtual std::string OutputName(const std::string& name) const {
+    return op_.Output(name);
+  }
+
+  virtual std::vector<std::string> OutputNames(const std::string& name) const {
+    return op_.Outputs(name);
+  }
+
+  virtual bool HasAttr(const std::string& name) const {
+    return op_.HasAttr(name);
+  }
+  virtual const AttributeMap& Attrs() const { return op_.Attrs(); }
+
+  const std::string& Type() const { return op_.Type(); }
 
   const Scope& scope() const { return scope_; }
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return op_.Attr<T>(name);
+    return boost::get<T>(GetAttr(name));
   }
 
-  bool HasAttr(const std::string& name) const { return op_.HasAttr(name); }
+  virtual const Attribute& GetAttr(const std::string& name) const {
+    return op_.Attrs().at(name);
+  }
 
-  bool HasInput(const std::string& name) const;
+  virtual bool HasInput(const std::string& name) const;
 
-  bool HasOutput(const std::string& name) const;
+  virtual bool HasOutput(const std::string& name) const;
 
-  size_t InputSize(const std::string& name) const {
+  virtual size_t InputSize(const std::string& name) const {
     return op_.Inputs(name).size();
   }
 
-  size_t OutputSize(const std::string& name) const {
+  virtual size_t OutputSize(const std::string& name) const {
     return op_.Outputs(name).size();
   }
 
-  const Variable* InputVar(const std::string& name) const;
+  virtual const Variable* InputVar(const std::string& name) const;
 
-  Variable* OutputVar(const std::string& name) const;
+  virtual Variable* OutputVar(const std::string& name) const;
 
-  const std::vector<const Variable*> MultiInputVar(
+  virtual const std::vector<Variable*> MultiInputVar(
       const std::string& name) const {
+    LogVarUsageIfUnusedVarCheckEnabled(name);
+
     auto it = ctx_.inputs.find(name);
     if (it == ctx_.inputs.end()) {
       return {};
@@ -275,13 +300,23 @@ class ExecutionContext {
     return {it->second.begin(), it->second.end()};
   }
 
-  std::vector<Variable*> MultiOutputVar(const std::string& name) const {
-    auto names = op_.Outputs(name);
+  virtual std::vector<Variable*> MultiOutputVar(const std::string& name) const {
     auto it = ctx_.outputs.find(name);
     if (it == ctx_.outputs.end()) {
       return {};
     }
     return it->second;
+  }
+
+  virtual std::vector<std::string> InNameList() const {
+    std::vector<std::string> vec_temp;
+    vec_temp.reserve(ctx_.inputs.size());
+
+    for (auto& input : ctx_.inputs) {
+      vec_temp.push_back(input.first);
+    }
+
+    return vec_temp;
   }
 
   template <typename T>
@@ -298,15 +333,16 @@ class ExecutionContext {
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
-    auto it = ctx_.inputs.find(name);
-    if (it == ctx_.inputs.end()) {
+    LogVarUsageIfUnusedVarCheckEnabled(name);
+
+    auto vars = MultiInputVar(name);
+    if (vars.size() == 0) {
       return {};
     }
-    const std::vector<Variable*>& vars = it->second;
     std::vector<const T*> res;
     res.reserve(vars.size());
     std::transform(vars.begin(), vars.end(), std::back_inserter(res),
-                   [&](Variable* var) -> const T* {
+                   [&](const Variable* var) -> const T* {
                      return var == nullptr ? nullptr : &var->Get<T>();
                    });
     return res;
@@ -314,17 +350,19 @@ class ExecutionContext {
 
   template <typename T>
   std::vector<T*> MultiOutput(const std::string& name) const {
-    auto it = ctx_.outputs.find(name);
-    if (it == ctx_.outputs.end()) {
+    auto vars = MultiOutputVar(name);
+
+    if (vars.size() == 0) {
       return {};
     }
-    const std::vector<Variable*>& vars = it->second;
+
     std::vector<T*> res;
     res.reserve(vars.size());
     std::transform(vars.begin(), vars.end(), std::back_inserter(res),
                    [&](Variable* var) -> T* {
                      return var == nullptr ? nullptr : var->GetMutable<T>();
                    });
+
     return res;
   }
 
@@ -346,16 +384,6 @@ class ExecutionContext {
         &device_context_);
   }
 #endif
-
-  //! Get actual name vector for this input.
-  const std::vector<std::string>& Inputs(const std::string& name) const {
-    return op_.Inputs(name);
-  }
-
-  //! Get actual name vector for this output.
-  const std::vector<std::string>& Outputs(const std::string& name) const {
-    return op_.Outputs(name);
-  }
 
   template <typename T, typename DevContext>
   Tensor AllocateTmpTensor(const framework::DDim& dim,
@@ -385,7 +413,9 @@ class ExecutionContext {
     return *boost::get<std::shared_ptr<T>>((*kernel_configs_)[idx]);
   }
 
-  const RuntimeContext& Context() const { return ctx_; }
+  const RuntimeContext Context() const { return ctx_; }
+
+  std::string DebugString() const { return op_.DebugString(); }
 
  private:
   const OperatorBase& op_;
@@ -443,6 +473,11 @@ class OperatorWithKernel : public OperatorBase {
   AllOpKernels() {
     static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
     return g_all_op_kernels;
+  }
+
+  bool IsMKLDNNType() const {
+    return ((this->kernel_type_) && (this->kernel_type_->data_layout_ ==
+                                     framework::DataLayout::kMKLDNN));
   }
 
   bool SupportGPU() const override {
