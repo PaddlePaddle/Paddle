@@ -446,13 +446,15 @@ void GeoSgdCommunicator::InitImpl(
     recv_varname_to_ctx_[var_name] = operators::distributed::RpcContext(
         var_name, vars_names, vars_epmap, vars_sections_int, 0);
 
-    // record sparse section
-    if (is_sparse) {
-      need_thread_nums_ +=
-          send_varname_to_ctx_[send_var_name].height_sections.size();
-      absolute_section_[var_name] = operators::ToAbsoluteSection(
-          send_varname_to_ctx_[send_var_name].height_sections);
+    absolute_section_[var_name] = operators::ToAbsoluteSection(
+        send_varname_to_ctx_[send_var_name].height_sections);
+
+    vars_first_dimension_[var_name] = 0;
+    for (int64_t section : vars_sections_int) {
+      vars_first_dimension_[var_name] += section;
     }
+
+    send_var_nums_ += vars_names.size();
   }
 
   if (send_varname_to_ctx_.size() == 0 && recv_varname_to_ctx_.size() == 0) {
@@ -461,7 +463,7 @@ void GeoSgdCommunicator::InitImpl(
 
   send_threadpool_.reset(new ::ThreadPool(FLAGS_communicator_thread_pool_size));
   need_push_queue_ =
-      std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsMap>>>(
+      std::make_shared<BlockingQueue<std::shared_ptr<SparseIdsVec>>>(
           geo_need_push_nums);
   delta_scope_.reset(new Scope());
   old_scope_.reset(new Scope());
