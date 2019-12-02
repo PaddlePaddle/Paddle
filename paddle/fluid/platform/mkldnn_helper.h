@@ -152,6 +152,18 @@ inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
   return data_format;
 }
 
+inline MKLDNNMemoryFormat data_format_to_memory_format(
+    const std::string& data_format) {
+  switch (framework::StringToDataLayout(data_format)) {
+    case framework::DataLayout::kNHWC:
+      return MKLDNNMemoryFormat::nhwc;
+    case framework::DataLayout::kNCHW:
+      return MKLDNNMemoryFormat::nchw;
+    default:
+      return MKLDNNMemoryFormat::any;
+  }
+}
+
 inline MKLDNNMemoryFormat StringToMKLDNNFormat(std::string* format) {
   std::transform(format->begin(), format->end(), format->begin(), ::tolower);
 
