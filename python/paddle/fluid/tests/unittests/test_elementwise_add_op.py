@@ -356,7 +356,7 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestElementwiseAddOp):
         self.axis = 2
 
 
-class TestElementwiseAddOpError(OpTest):
+class TestElementwiseAddOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of elementwise_add must be Variable.
