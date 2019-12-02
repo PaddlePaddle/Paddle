@@ -919,11 +919,17 @@ def while_loop(cond, body, loop_vars, name=None):
 
     Args:
         cond(Callable): A callable returning a boolean tensor controlling whether to continue looping.
-        body(Callable): A callable returning a tuple, namedtuple or list of tensors of the same arity(length and
-            structure) and types as `loops_vars`.
-        loop_vars(list|tuple): A list, namedtuple or tuple of tensors that is passed to both `cond` and `body`.
+        body(Callable): A callable returning a tuple or list of tensors of the same arity(length and structure)
+	    and types as `loops_vars`.
+        loop_vars(list|tuple): A list or tuple of tensors that is passed to both `cond` and `body`.
         name(str, optional): Normally there is no need for users to set this property. For more information, please
             refer to :ref:`api_guide_Name`. Default is None.
+    
+    Returns:
+        A list or tuple of tensors which returned by `body`.
+    
+    Returen type:
+        list or tuple.
 
     Raises:
         TypeError: If the type of `cond` is not callable.
