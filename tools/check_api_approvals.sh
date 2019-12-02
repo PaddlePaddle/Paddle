@@ -68,7 +68,7 @@ if [ "$api_doc_spec_diff" != "" ]; then
     check_approval 1 31623103 2870059
 fi
 
-op_type_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_registry_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV_PR.spec`
+op_type_spec_diff=`python ${PADDLE_ROOT}/tools/check_op_register_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV_PR.spec`
 if [ "$op_type_spec_diff" != "" ]; then
     echo_line="More data_type of new operator should be regitered in your PR. Please make sure that both float/double (or int/int64_t) have been regitered. You must have one RD (Aurelius84 or liym27 or zhhsplendid)approval for the data_type registration of new operator.\n"
     check_approval 1 9301846 33742067 7913861
@@ -155,7 +155,7 @@ if [ -n "${echo_list}" ];then
 fi
 
 python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec
-python ${PADDLE_ROOT}/tools/check_op_registry_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_PR.spec
+python ${PADDLE_ROOT}/tools/check_op_register_type.py ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/OP_TYPE_PR.spec
 
 if [ -n "${echo_list}" ]; then
   exit 1
