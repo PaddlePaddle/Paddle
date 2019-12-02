@@ -1250,7 +1250,7 @@ create_test_cudnn_channel_last_fp16_class(
 
 
 # --------- test python API ---------------
-class TestConv2dAPI(OpTest):
+class TestConv2dAPI(unittest.TestCase):
     def test_api(self):
 
         input_NHWC = fluid.layers.data(
@@ -1326,7 +1326,7 @@ class TestConv2dAPI(OpTest):
             data_format="NCHW")
 
 
-class TestConv2dAPI_Error(OpTest):
+class TestConv2dAPI_Error(unittest.TestCase):
     def test_api(self):
         input = fluid.layers.data(
             name="input",
