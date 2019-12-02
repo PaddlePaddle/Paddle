@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant, zeros
+from .tensor import concat, assign, fill_constant, zeros, cast
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -183,6 +183,7 @@ __all__ = [
     'hard_swish',
     'gather_tree',
     'uniform_random',
+    'masked_select',
 ]
 
 
@@ -2432,13 +2433,14 @@ def batch_norm(input,
         sync_batch_norm automatically.
 
     Args:
-        input(variable): The rank of input variable can be 2, 3, 4, 5. The data type 
+        input(Variable): The rank of input variable can be 2, 3, 4, 5. The data type 
             is float16 or float32 or float64.
         act(string, Default None): Activation type, linear|relu|prelu|...
         is_test (bool, Default False): A flag indicating whether it is in
             test phrase or not.
-        momentum(float, Default 0.9): The value used for the moving_mean and
-            moving_var computation. The updated formula is:
+        momentum(float|Variable, Default 0.9): The value used for the moving_mean and
+            moving_var computation. This should be a float number or a Variable with
+            shape [1] and data type as float32. The updated formula is:
             :math:`moving\_mean = moving\_mean * momentum + new\_mean * (1. - momentum)`
             :math:`moving\_var = moving\_var * momentum + new\_var * (1. - momentum)`
             Default is 0.9.
@@ -2487,6 +2489,33 @@ def batch_norm(input,
             x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
             hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
             hidden2 = fluid.layers.batch_norm(input=hidden1)
+
+        .. code-block:: python
+
+            # batch_norm with momentum as Variable
+            import paddle.fluid as fluid
+            import paddle.fluid.layers.learning_rate_scheduler as lr_scheduler
+
+            def get_decay_momentum(momentum_init, decay_steps, decay_rate):
+                global_step = lr_scheduler._decay_step_counter()
+                momentum = fluid.layers.create_global_var(
+		    shape=[1],
+		    value=float(momentum_init),
+		    dtype='float32',
+		    # set persistable for save checkpoints and resume
+		    persistable=True,
+		    name="momentum")
+                div_res = global_step / decay_steps
+                decayed_momentum = momentum_init * (decay_rate**div_res)
+                fluid.layers.assign(decayed_momentum, momentum)
+
+                return momentum
+
+            x = fluid.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            hidden1 = fluid.layers.fc(input=x, size=200, param_attr='fc1.w')
+            momentum = get_decay_momentum(0.9, 1e5, 0.9)
+            hidden2 = fluid.layers.batch_norm(input=hidden1, momentum=momentum)
+
     """
     assert bias_attr is not False, "bias_attr should not be False in batch_norm."
     helper = LayerHelper('batch_norm', **locals())
@@ -2494,6 +2523,13 @@ def batch_norm(input,
     check_type_and_dtype(input, 'input', Variable,
                          ['float16', 'float32', 'float64'], 'batch_norm')
     dtype = helper.input_dtype()
+
+    has_reserve_space = False
+    if data_layout == 'NHWC':
+        flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
+        if flag is not None and flag.lower() in ['true', '1']:
+            has_reserve_space = True
+
     # use fp32 for bn parameter
     if dtype == core.VarDesc.VarType.FP16:
         dtype = core.VarDesc.VarType.FP32
@@ -2548,34 +2584,46 @@ def batch_norm(input,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
 
+    reserve_space = None
+    if has_reserve_space:
+        reserve_space = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
+
     batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
         dtype)
 
+    inputs = {
+        "X": input,
+        "Scale": scale,
+        "Bias": bias,
+        "Mean": mean,
+        "Variance": variance
+    }
+    attrs = {
+        "epsilon": epsilon,
+        "is_test": is_test,
+        "data_layout": data_layout,
+        "use_mkldnn": False,
+        "fuse_with_relu": False,
+        "use_global_stats": use_global_stats
+    }
+    if isinstance(momentum, Variable):
+        inputs['MomemtumTensor'] = momentum
+    else:
+        attrs['momentum'] = momentum
+
+    outputs = {
+        "Y": batch_norm_out,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out,
+        "SavedMean": saved_mean,
+        "SavedVariance": saved_variance
+    }
+    if reserve_space is not None:
+        outputs["ReserveSpace"] = reserve_space
+
     helper.append_op(
-        type="batch_norm",
-        inputs={
-            "X": input,
-            "Scale": scale,
-            "Bias": bias,
-            "Mean": mean,
-            "Variance": variance
-        },
-        outputs={
-            "Y": batch_norm_out,
-            "MeanOut": mean_out,
-            "VarianceOut": variance_out,
-            "SavedMean": saved_mean,
-            "SavedVariance": saved_variance
-        },
-        attrs={
-            "momentum": momentum,
-            "epsilon": epsilon,
-            "is_test": is_test,
-            "data_layout": data_layout,
-            "use_mkldnn": False,
-            "fuse_with_relu": False,
-            "use_global_stats": use_global_stats
-        })
+        type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
 
     return helper.append_activation(batch_norm_out)
 
@@ -2704,7 +2752,9 @@ def data_norm(input,
               moving_mean_name=None,
               moving_variance_name=None,
               do_model_average_for_mean_and_var=True,
-              slot_dim=-1):
+              slot_dim=-1,
+              sync_stats=False,
+              summary_decay_rate=0.9999999):
     """
     **Data Normalization Layer**
 
@@ -2750,6 +2800,9 @@ def data_norm(input,
             is new or empty, the normalization result may be impractical. To avoid this, we add slot_dim to locate 
             the show number and judge if the show number is zero. If so, we choose to skip normalization on this
             embedding.
+        sync_stats(bool, Default False): When running with multiple GPU cards, using allreduce to sync the
+            summary messages.
+        summary_decay_rate(float, Default 0.9999999): The decay rate when updating summary.
 
     Returns:
         Variable: A tensor variable which is the result after applying data normalization on the input.
@@ -2824,11 +2877,20 @@ def data_norm(input,
             "BatchSum": batch_sum,
             "BatchSquareSum": batch_square_sum
         },
-        outputs={"Y": data_norm_out,
-                 "Means": means,
-                 "Scales": scales},
-        attrs={"epsilon": epsilon,
-               "slot_dim": slot_dim})
+        outputs={
+            "Y": data_norm_out,
+            "Means": means,
+            "Scales": scales,
+            "BatchSize": batch_size,
+            "BatchSum": batch_sum,
+            "BatchSquareSum": batch_square_sum
+        },
+        attrs={
+            "epsilon": epsilon,
+            "slot_dim": slot_dim,
+            "sync_stats": sync_stats,
+            "summary_decay_rate": summary_decay_rate
+        })
 
     return helper.append_activation(data_norm_out)
 
@@ -10105,7 +10167,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     Args:
         x(Variable): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
-        scale(float): The scale factor of the input.
+        scale(float|Variable): The scale factor of the input, it should be a float number or a Variable with shape [1] and data type as float32.
         bias(float): The bias to be put on the input.
         bias_after_scale(bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
         act(str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
@@ -10130,6 +10192,27 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
             res = exe.run(fluid.default_main_program(), feed={'x':img}, fetch_list=[output])
             print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
+
+        .. code-block:: python
+
+            # scale with parameter scale as Variable
+            import paddle.fluid as fluid
+            import numpy as np
+
+            inputs = fluid.layers.data(name="x", shape=[2, 3], dtype='float32')
+            scale = fluid.layers.data(name="scale", shape=[1], dtype='float32'
+                                      append_batch_size=False)
+            output = fluid.layers.scale(inputs, scale = scale, bias = 1.0)
+
+            exe = fluid.Executor(fluid.CPUPlace())
+            exe.run(fluid.default_startup_program())
+
+            img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
+            scale_np = np.array([2.]).astype(np.float32)
+
+            res = exe.run(fluid.default_main_program(), feed={'x':img, 'scale':scale_np}, fetch_list=[output])
+            print(res) # [array([[ 3.,  5.,  7.], [ 9., 11., 13.]], dtype=float32)]
+
     """
 
     helper = LayerHelper('scale', **locals())
@@ -10139,15 +10222,18 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
 
+    inputs = {'X': x}
+    attrs = {
+        'bias': float(bias),
+        'bias_after_scale': bias_after_scale,
+    }
+    if isinstance(scale, Variable):
+        inputs['ScaleTensor'] = scale
+    else:
+        attrs['scale'] = float(scale)
+
     helper.append_op(
-        type='scale',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={
-            'scale': float(scale),
-            'bias': float(bias),
-            'bias_after_scale': bias_after_scale
-        })
+        type='scale', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return helper.append_activation(out)
 
 
@@ -13261,10 +13347,6 @@ def shard_index(input, index_num, nshards, shard_id, ignore_value=-1):
     """
     op_type = 'shard_index'
     helper = LayerHelper(op_type, **locals())
-    if index_num % nshards != 0:
-        raise ValueError(
-            'The index_num(%d) cannot be evenly divided by nshards(%d)' %
-            (index_num, nshards))
     if shard_id < 0 or shard_id >= nshards:
         raise ValueError('The shard_id(%d) should be in [0, %d)' %
                          (shard_id, nshards))
@@ -13538,3 +13620,63 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
         outputs={"Out": out})
 
     return helper.append_activation(out)
+
+
+def masked_select(input, mask):
+    """
+    This OP selects elements of the input tensor according to the mask tensor.
+    The shapes of the mask tensor don't have to match shapes of input tensor, but they must be broadcastable, and the result is a new 1-D tensor.
+
+    NOTE: The meaning of broadcastable is consistent with expand_as.
+
+    Parameters:
+
+        input(Variable): The input tensor, the data type should be int32, float32, float64.
+        mask(Variable): The boolean mask tensor, the data type should be bool.
+
+    Returns:
+        Variable: masked select tensor, its data type is same as the input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import numpy as np
+            mask_shape = [4,1]
+            shape = [4,4]
+            data = np.random.random(mask_shape).astype("float32")
+            input_data = np.random.randint(5,size=shape).astype("float32")
+            mask_data = data > 0.5
+
+            # print(input_data)
+            # [[0.38972723 0.36218056 0.7892614  0.50122297]
+            #  [0.14408113 0.85540855 0.30984417 0.7577004 ]
+            #  [0.97263193 0.5248062  0.07655851 0.75549215]
+            #  [0.26214206 0.32359877 0.6314582  0.2128865 ]]
+
+            # print(mask_data)
+            # [[ True]
+            #  [ True]
+            #  [False]
+            #  [ True]]
+
+            input = fluid.data(name="input",shape=[4,4],dtype="float32")
+            mask = fluid.data(name="mask",shape=[4,1],dtype="bool")
+            result = fluid.layers.masked_select(input=input, mask=mask)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            start = fluid.default_startup_program()
+            main = fluid.default_main_program()
+            exe.run(start)
+            masked_select_result= exe.run(main, feed={'input':input_data, 'mask':mask_data}, fetch_list=[result])
+            # print(masked_select_result)
+            # [0.38972723 0.36218056 0.7892614  0.50122297 0.14408113 0.85540855
+            #   0.30984417 0.7577004  0.26214206 0.32359877 0.6314582  0.2128865 ]
+
+    """
+    mask_cast = cast(x=mask, dtype=input.dtype)
+    mask_expand = expand_as(x=mask_cast, target_tensor=input)
+    mask_expand_cast_back_bool = cast(x=mask_expand, dtype="bool")
+    select = where(mask_expand_cast_back_bool)
+    result = gather_nd(input, select)
+    return result

@@ -215,7 +215,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   std::unordered_set<int64_t> s(ids_union.begin(), ids_union.end());
   ids_union.assign(s.begin(), s.end());
 
-  for (int i = 0; i < table_names.size(); i++) {
+  for (size_t i = 0; i < table_names.size(); i++) {
     tables.push_back(std::make_pair(table_names[i], endpoints[i]));
   }
 
@@ -230,7 +230,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   }
 
   // copy vectors to out vars
-  for (int i = 0; i < out_var_names.size(); i++) {
+  for (size_t i = 0; i < out_var_names.size(); i++) {
     auto& ids = ids_group[i];
     auto* out_t =
         scope.FindVar(out_var_names[i])->GetMutable<framework::LoDTensor>();
@@ -240,7 +240,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
 
     auto* out_d = out_t->mutable_data<float>(place);
 
-    for (int idx = 0; idx < ids.size(); idx++) {
+    for (size_t idx = 0; idx < ids.size(); idx++) {
       const auto& id = ids[idx];
 
       if (padding_idx != distributed::kNoPadding && id == padding_idx) {

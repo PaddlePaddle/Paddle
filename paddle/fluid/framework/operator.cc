@@ -28,11 +28,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
+#include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
+DECLARE_bool(enable_unused_var_check);
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
 DEFINE_bool(fast_check_nan_inf, false,
             "Fast checking NAN/INF after each operation. It will be a little"
@@ -321,8 +323,14 @@ OperatorBase::OperatorBase(const std::string& type,
       attrs_(attrs),
       // NOTE(zjl): why op_info may be nullptr?
       info_(OpInfoMap::Instance().GetNullable(type)) {
-  GenerateTemporaryNames();
-  CheckAllInputOutputSet();
+  // In dygraph mode, all the OperatorBase will be constructed by function:
+  // framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
+  // Inputs, outputs and attrs will be set to empty map
+  // to improve the execution efficiency of dygraph.
+  if (inputs_.size() > 0 || outputs_.size() > 0) {
+    GenerateTemporaryNames();
+    CheckAllInputOutputSet();
+  }
 }
 
 std::vector<std::string> OperatorBase::InputVars() const {
@@ -428,6 +436,8 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
 }
 
 const Variable* ExecutionContext::InputVar(const std::string& name) const {
+  LogVarUsageIfUnusedVarCheckEnabled(name);
+
   auto it = ctx_.inputs.find(name);
   if (it == ctx_.inputs.end()) return nullptr;
 
@@ -457,15 +467,16 @@ const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
-  auto it = ctx_.inputs.find(name);
-  if (it == ctx_.inputs.end()) {
+  LogVarUsageIfUnusedVarCheckEnabled(name);
+
+  auto vars = MultiInputVar(name);
+  if (vars.size() == 0) {
     return {};
   }
-  const std::vector<Variable*>& vars = it->second;
   std::vector<const Tensor*> res;
   res.reserve(vars.size());
   std::transform(vars.begin(), vars.end(), std::back_inserter(res),
-                 [&](Variable* var) -> const Tensor* {
+                 [&](const Variable* var) -> const Tensor* {
                    if (var == nullptr) return nullptr;
                    PADDLE_ENFORCE(
                        var->IsType<LoDTensor>(),
@@ -484,11 +495,11 @@ Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
     const std::string& name) const {
-  auto it = ctx_.outputs.find(name);
-  if (it == ctx_.outputs.end()) {
+  auto vars = MultiOutputVar(name);
+
+  if (vars.size() == 0) {
     return {};
   }
-  const std::vector<Variable*>& vars = it->second;
   std::vector<Tensor*> res;
   res.reserve(vars.size());
   std::transform(vars.begin(), vars.end(), std::back_inserter(res),
@@ -580,13 +591,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
 
-  const std::vector<std::string>& Inputs(
-      const std::string& name) const override {
+  std::vector<std::string> Inputs(const std::string& name) const override {
     return op_.Inputs(name);
   }
 
-  const std::vector<std::string>& Outputs(
-      const std::string& name) const override {
+  std::vector<std::string> Outputs(const std::string& name) const override {
     return op_.Outputs(name);
   }
 
@@ -619,6 +628,51 @@ class RuntimeInferShapeContext : public InferShapeContext {
       PADDLE_THROW(
           "Currently, the input type of ShareDim only can be LoDTensor "
           "or SelectedRows.");
+    }
+  }
+
+  void ShareAllLoD(const std::string& in,
+                   const std::string& out) const override {
+    auto in_it = ctx_.inputs.find(in);
+    auto out_it = ctx_.outputs.find(out);
+    PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
+                      platform::errors::NotFound(
+                          "Input [%s] found error in Op [%s]", in, op_.Type()));
+    PADDLE_ENFORCE_NE(
+        out_it, ctx_.outputs.end(),
+        platform::errors::NotFound("Output [%s] found error in Op [%s]", out,
+                                   op_.Type()));
+
+    auto& in_var_list = in_it->second;
+    auto& out_var_list = out_it->second;
+
+    PADDLE_ENFORCE_EQ(
+        in_var_list.size(), out_var_list.size(),
+        platform::errors::PreconditionNotMet(
+            "Op [%s]: Input var size should be equal with ouput var size",
+            op_.Type()));
+
+    auto& out_var_names = op_.Outputs(out);
+
+    for (size_t i = 0; i < in_var_list.size(); ++i) {
+      if (out_var_names[i] == framework::kEmptyVarName) {
+        continue;
+      }
+
+      Variable* in_var = in_var_list[i];
+      if (!in_var->IsType<LoDTensor>()) return;
+      Variable* out_var = out_var_list[i];
+      PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(), true,
+                        platform::errors::PreconditionNotMet(
+                            "The %d-th output of Output(%s) must be LoDTensor.",
+                            i, out_var_names[i]));
+      auto& in_tensor = in_var->Get<LoDTensor>();
+      auto* out_tensor = out_var->GetMutable<LoDTensor>();
+      out_tensor->set_lod(in_tensor.lod());
+#ifdef PADDLE_WITH_MKLDNN
+      if (in_tensor.layout() != DataLayout::kMKLDNN)
+#endif
+        out_tensor->set_layout(in_tensor.layout());
     }
   }
 
@@ -910,6 +964,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
+
+  if (FLAGS_enable_unused_var_check) {
+    GetThreadLocalUsedVarNameSet()->clear();
+  }
+
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
@@ -918,6 +977,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
+  }
+  if (FLAGS_enable_unused_var_check) {
+    // skip op that uses mkldnn because it has different memory reuse strategy.
+    // use attr here because some GradMakers (like ActivationGradOpMaker) add
+    // input when use_mkldnn=true;
+    if (!(HasAttr("use_mkldnn") && Attr<bool>("use_mkldnn"))) {
+      CheckUnusedVar(*this, scope);
+    }
   }
 
   /*For profiling/benchmark only*/
@@ -1138,7 +1205,7 @@ void OperatorWithKernel::ParseInputDataType(
     proto::VarType::Type* data_type) const {
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
-  const std::vector<const Variable*> vars = ctx.MultiInputVar(name);
+  const std::vector<Variable*> vars = ctx.MultiInputVar(name);
   for (size_t i = 0; i < vars.size(); ++i) {
     const Variable* var = vars[i];
     if (var != nullptr) {
@@ -1156,7 +1223,7 @@ void OperatorWithKernel::ParseInputDataType(
             platform::errors::InvalidArgument(
                 "The Tensor in the %s Op's Input Variable %s(%s) is "
                 "not initialized.",
-                Type(), name, ctx.Inputs(name).at(i)));
+                Type(), name, ctx.InputNames(name).at(i)));
         proto::VarType::Type tmp = t->type();
         PADDLE_ENFORCE(
             tmp == *data_type || *data_type == dafault_data_type,
@@ -1177,8 +1244,8 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto& input : ctx.Context().inputs) {
-    ParseInputDataType(ctx, input.first, &data_type);
+  for (auto& input : ctx.InNameList()) {
+    ParseInputDataType(ctx, input, &data_type);
   }
   PADDLE_ENFORCE_NE(data_type, dafault_data_type,
                     "DataType should be indicated by input Variable.");

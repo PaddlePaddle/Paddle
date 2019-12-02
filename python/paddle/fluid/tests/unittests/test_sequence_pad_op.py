@@ -72,10 +72,10 @@ class TestSequencePadOp(OpTest):
         self.compute()
 
     def test_check_output(self):
-        self.check_output(check_compile_vs_runtime=True)
+        self.check_output(check_compile_vs_runtime=True, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_dygraph=False)
 
 
 class TestSequencePadOp2(TestSequencePadOp):

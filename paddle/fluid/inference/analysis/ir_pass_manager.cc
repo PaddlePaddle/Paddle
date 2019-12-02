@@ -148,6 +148,9 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new bool(argument->anakin_auto_config_layout()));
     }
     disable_logs_ = argument->disable_logs();
+    if (pass_name == "fc_fuse_pass") {
+      pass->Set("use_gpu", new bool(argument->use_gpu()));
+    }
 
     pre_pass = pass_name;
 
