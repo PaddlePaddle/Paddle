@@ -149,25 +149,21 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
 #ifdef PADDLE_WITH_CUDA
   else if (platform::is_gpu_place(src_place) &&  // NOLINT
            platform::is_cpu_place(dst_place)) {
-    platform::RecordEvent record_event("TensorCopy:GPU->CPU");
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_cpu_place = boost::get<platform::CPUPlace>(dst_place);
     memory::Copy(dst_cpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   } else if (platform::is_cpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
-    platform::RecordEvent record_event("TensorCopy:CPU->GPU");
     auto src_cpu_place = boost::get<platform::CPUPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_cpu_place, src_ptr, size, nullptr);
   } else if (platform::is_gpu_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
-    platform::RecordEvent record_event("TensorCopy:GPU->GPU");
     auto src_gpu_place = boost::get<platform::CUDAPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, nullptr);
   } else if (platform::is_cuda_pinned_place(src_place) &&
              platform::is_gpu_place(dst_place)) {
-    platform::RecordEvent record_event("TensorCopy:CUDAPinned->GPU");
     auto src_pinned_place = boost::get<platform::CUDAPinnedPlace>(src_place);
     auto dst_gpu_place = boost::get<platform::CUDAPlace>(dst_place);
     memory::Copy(dst_gpu_place, dst_ptr, src_pinned_place, src_ptr, size,
