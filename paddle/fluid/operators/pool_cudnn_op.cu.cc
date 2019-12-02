@@ -72,8 +72,8 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     }
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
                   data_dims, strides, ksize);
-    if (data_dims.size() * 2 == paddings.size()) {
-      for (size_t i = 0; i < data_dims.size(); ++i) {
+    if (data_dims.size() * 2 == static_cast<int>(paddings.size())) {
+      for (int i = 0; i < data_dims.size(); ++i) {
         paddings.erase(paddings.begin() + i + 1);
       }
     }
@@ -205,8 +205,8 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
     }
     UpdatePadding(&paddings, global_pooling, adaptive, padding_algorithm,
                   data_dims, strides, ksize);
-    if (data_dims.size() * 2 == paddings.size()) {
-      for (size_t i = 0; i < data_dims.size(); ++i) {
+    if (data_dims.size() * 2 == static_cast<int>(paddings.size())) {
+      for (int i = 0; i < data_dims.size(); ++i) {
         paddings.erase(paddings.begin() + i + 1);
       }
     }
