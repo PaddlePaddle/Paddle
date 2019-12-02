@@ -107,7 +107,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
 
       // create output var in local scope
       size_t row_offset = 0;
-      for (auto i = 0; i < out_num; ++i) {
+      for (size_t i = 0; i < out_num; ++i) {
         framework::Tensor *out = local_scope->Var(rpc_ctx.splited_var_names[i])
             ->GetMutable<framework::LoDTensor>();
         *out = send_tensor.Slice(row_offset, row_offset + outs_dims[i][0]);
@@ -191,6 +191,7 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
     }
     auto place = platform::CPUPlace();
 
+<<<<<<< HEAD
     for (size_t i = 0; i < outs_rows_idx.size(); ++i) {
       auto rows_idx = outs_rows_idx[i];
       outs[i]->set_height(rpc_ctx.height_sections[i]);
@@ -221,6 +222,34 @@ void ParameterSend<T>::operator()(const RpcContext &rpc_ctx,
                         PADDLE_THROW("Paddle is not compiled with GPU");
             #endif
             */
+=======
+    for (size_t ctx = 0; ctx < rpc_ctx.splited_var_names.size(); ctx++) {
+      for (int part = 0; part < multi_parts; part++) {
+        auto out_idx = ctx * multi_parts + part;
+        auto rows_idx = outs_rows_idx[out_idx];
+
+        auto dims = send_slr.GetCompleteDims();
+        dims[0] = rows_idx.size();
+
+        outs[out_idx]->set_height(rpc_ctx.height_sections[ctx]);
+        outs[out_idx]->mutable_rows()->clear();
+        outs[out_idx]->mutable_value()->mutable_data<T>(dims, send_slr.place());
+
+        if (rows_idx.size() > 0) {
+          for (auto idx : rows_idx) {
+            outs[out_idx]->mutable_rows()->push_back(idx - abs_sections[ctx]);
+          }
+          auto dst = outs[out_idx]->mutable_value()->mutable_data<T>(place);
+          for (size_t j = 0; j < rows_idx.size(); j++) {
+            if (platform::is_cpu_place(place)) {
+              memory::Copy(platform::CPUPlace(), dst + j * row_numel,
+                           platform::CPUPlace(),
+                           src + outs_dense_idx[out_idx][j] * row_numel,
+                           sizeof(T) * row_numel);
+            } else {
+              PADDLE_THROW("do not support GPU now");
+            }
+>>>>>>> 01fa4ead61... fix -Wno-error=sign-compare warning in gcc8 (#21434)
           }
         }
       }

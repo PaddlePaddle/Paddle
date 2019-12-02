@@ -45,8 +45,8 @@ TEST(BestFitAllocator, test_allocation) {
           dynamic_cast<BestFitAllocation*>(allocation.get());
       ASSERT_NE(best_fit_allocation, nullptr);
       ASSERT_FALSE(best_fit_allocation->ChunkIterator()->is_free);
-      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 0);
-      ASSERT_EQ(allocation->size(), 80);
+      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 0UL);
+      ASSERT_EQ(allocation->size(), 80UL);
       ASSERT_EQ(allocation->ptr(), nullptr);
     }
 
@@ -58,7 +58,7 @@ TEST(BestFitAllocator, test_allocation) {
     {
       auto best_fit_allocation =
           dynamic_cast<BestFitAllocation*>(allocation2.get());
-      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 80);
+      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 80UL);
     }
     allocation2.reset();
     allocation2 = allocator.Allocate(60);
@@ -66,7 +66,7 @@ TEST(BestFitAllocator, test_allocation) {
     {
       auto best_fit_allocation =
           dynamic_cast<BestFitAllocation*>(allocation2.get());
-      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 80);
+      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 80UL);
     }
 
     allocation.reset();
@@ -76,7 +76,7 @@ TEST(BestFitAllocator, test_allocation) {
     {
       auto best_fit_allocation =
           dynamic_cast<BestFitAllocation*>(allocation.get());
-      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 0);
+      ASSERT_EQ(best_fit_allocation->ChunkIterator()->offset_, 0UL);
     }
 
     allocation.reset();
