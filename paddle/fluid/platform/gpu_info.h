@@ -48,6 +48,9 @@ int GetCUDAMaxThreadsPerMultiProcessor(int i);
 //! Get the current GPU device id in system.
 int GetCurrentDeviceId();
 
+//! Get the maximum GridDim size for GPU buddy allocator.
+dim3 GetGpuMaxGridDimSize(int);
+
 //! Get a list of device ids from environment variable or use all.
 std::vector<int> GetSelectedDevices();
 
