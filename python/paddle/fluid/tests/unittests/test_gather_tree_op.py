@@ -49,7 +49,7 @@ class TestGatherTreeOp(OpTest):
         return out
 
 
-class TestGatherTreeOpAPI(OpTest):
+class TestGatherTreeOpAPI(unittest.TestCase):
     def test_case(self):
         ids = fluid.layers.data(
             name='ids', shape=[5, 2, 2], dtype='int64', append_batch_size=False)

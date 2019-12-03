@@ -1554,7 +1554,7 @@ class AdamOptimizer(Optimizer):
                 avg_cost = fluid.layers.mean(cost)
 
                 # define beta decay variable
-                def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate)
+                def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate):
                     global_step = lr_scheduler._decay_step_counter()
 
                     beta1 = fluid.layers.create_global_var(
@@ -1583,7 +1583,7 @@ class AdamOptimizer(Optimizer):
                 beta1, beta2 = get_decayed_betas(0.9, 0.99, 1e5, 0.9)
                 adam_optimizer = fluid.optimizer.AdamOptimizer(
                                                     learning_rate=0.01,
-                                                    beta1=beta1
+                                                    beta1=beta1,
                                                     beta2=beta2)
                 adam_optimizer.minimize(avg_cost)
 
@@ -1633,14 +1633,12 @@ class AdamOptimizer(Optimizer):
             self._add_accumulator(
                 name=self._beta1_pow_acc_str,
                 param=p,
-                dtype='float32',
                 fill_value=0.9 if isinstance(self._beta1, Variable) \
                         else self._beta1,
                 shape=[1])
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
-                dtype='float32',
                 fill_value=0.999 if isinstance(self._beta2, Variable) \
                         else self._beta2,
                 shape=[1])
@@ -1840,7 +1838,6 @@ class AdamaxOptimizer(Optimizer):
             self._add_accumulator(
                 name=self._beta1_pow_acc_str,
                 param=p,
-                dtype='float32',
                 fill_value=self._beta1,
                 shape=[1])
 

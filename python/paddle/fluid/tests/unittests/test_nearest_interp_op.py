@@ -423,7 +423,7 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
-class TestNearestAPI(OpTest):
+class TestNearestAPI(unittest.TestCase):
     def test_case(self):
         x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
         y = fluid.data(name="y", shape=[2, 6, 6, 3], dtype="float32")
@@ -474,7 +474,7 @@ class TestNearestAPI(OpTest):
             self.assertTrue(np.allclose(results[i + 1], expect_res))
 
 
-class TestNearestInterpException(OpTest):
+class TestNearestInterpException(unittest.TestCase):
     def test_exception(self):
         input = fluid.data(name="input", shape=[1, 3, 6, 6], dtype="float32")
 

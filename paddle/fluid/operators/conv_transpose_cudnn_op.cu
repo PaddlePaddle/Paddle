@@ -243,6 +243,10 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
         cudnn_output_desc, CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
         workspace_size_limit, &algo));
 
+    if (algo == 0 && FLAGS_cudnn_deterministic) {
+      algo = static_cast<cudnnConvolutionBwdDataAlgo_t>(1);
+    }
+
     // get workspace size able to allocate
     CUDNN_ENFORCE(
         platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(

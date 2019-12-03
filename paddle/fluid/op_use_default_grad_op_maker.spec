@@ -1,17 +1,13 @@
 cos_sim
-flatten
 fsp
 gru
-lrn
 lstm_unit
 match_matrix_tensor
 max_pool2d_with_index
 max_pool3d_with_index
 maxout
-nce
 pool2d
 pool3d
-prelu
 reduce_max
 reduce_min
 reduce_prod
@@ -19,9 +15,6 @@ reshape
 rnn_memory_helper
 sequence_softmax
 spp
-squeeze
 tensor_array_to_tensor
 transpose
-unpool
 unsqueeze
-var_conv_2d

@@ -179,7 +179,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       case PaddleDType::FLOAT32: {
         float *pdata = static_cast<float *>(out.data.data());
         float *pdata_ref = ref_out.data<float>(&place, &ref_size);
-        EXPECT_EQ(size, ref_size);
+        EXPECT_EQ(size, static_cast<size_t>(ref_size));
         for (size_t j = 0; j < size; ++j) {
           CheckError(pdata_ref[j], pdata[j]);
         }
@@ -188,7 +188,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       case PaddleDType::INT32: {
         int32_t *pdata = static_cast<int32_t *>(out.data.data());
         int32_t *pdata_ref = ref_out.data<int32_t>(&place, &ref_size);
-        EXPECT_EQ(size, ref_size);
+        EXPECT_EQ(size, static_cast<size_t>(ref_size));
         for (size_t j = 0; j < size; ++j) {
           EXPECT_EQ(pdata_ref[j], pdata[j]);
         }
@@ -197,7 +197,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
       case PaddleDType::UINT8: {
         uint8_t *pdata = static_cast<uint8_t *>(out.data.data());
         uint8_t *pdata_ref = ref_out.data<uint8_t>(&place, &ref_size);
-        EXPECT_EQ(size, ref_size);
+        EXPECT_EQ(size, static_cast<size_t>(ref_size));
         for (size_t j = 0; j < size; ++j) {
           EXPECT_EQ(pdata_ref[j], pdata[j]);
         }
