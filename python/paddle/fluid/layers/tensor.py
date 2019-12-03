@@ -838,7 +838,7 @@ def argmax(x, axis=0):
     return out
 
 
-def argsort(input, axis=-1, name=None):
+def argsort(input, axis=-1, descending=False, name=None):
     """
     This OP sorts the input along the given axis, and returns sorted output
     data Varibale and its corresponding index Variable with the same shape as
@@ -850,6 +850,9 @@ def argsort(input, axis=-1, name=None):
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is Rank(x). when axis<0, it works the same way
             as axis+R. Default is 0.
+        descending(bool, optional) : Descending is a flag, if set to true,
+            algorithm will sort by descending order, else sort by
+            ascending order. Default is false.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -915,7 +918,8 @@ def argsort(input, axis=-1, name=None):
         inputs={'X': input},
         outputs={'Out': out,
                  'Indices': ids},
-        attrs={'axis': axis})
+        attrs={'axis': axis,
+               'descending': descending})
     return out, ids
 
 
