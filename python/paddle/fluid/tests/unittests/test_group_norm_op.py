@@ -15,7 +15,6 @@
 from __future__ import print_function
 import unittest
 import numpy as np
-import random
 
 from operator import mul
 import paddle.fluid.core as core
@@ -194,11 +193,7 @@ class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):
         self.compare_between_place = True
 
 
-class TestGroupNormAPI_With_NHWC(unittest.TestCase):
-    def setUp(self):
-        np.random.seed(123)
-        random.seed(124)
-
+class TestGroupNormAPI_With_NHWC(OpTest):
     def test_case1(self):
         data1 = fluid.data(name='data1', shape=[None, 3, 3, 4], dtype='float32')
         out1 = fluid.layers.group_norm(
