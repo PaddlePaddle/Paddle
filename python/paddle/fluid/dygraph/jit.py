@@ -20,7 +20,6 @@ from paddle.fluid import core
 from paddle.fluid.framework import Program, Block, Variable, _dygraph_tracer, dygraph_only, _dygraph_guard, _current_expected_place, in_dygraph_mode
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.compiler import CompiledProgram
-import paddle.fluid.io as fluid_io
 
 
 def create_program_from_desc(program_desc):
@@ -302,6 +301,8 @@ class TracedLayer(object):
                     static_layer.save_inference_model('./saved_infer_model')
         """
 
+        from paddle.fluid.io import save_inference_model
+
         def get_feed_fetch(all_vars, partial_vars):
             if partial_vars is None:
                 return all_vars
@@ -317,7 +318,7 @@ class TracedLayer(object):
                 assert target_var is not None, "{} cannot be found".format(name)
                 target_vars.append(target_var)
 
-            return fluid_io.save_inference_model(
+            return save_inference_model(
                 dirname=dirname,
                 feeded_var_names=feeded_var_names,
                 target_vars=target_vars,
