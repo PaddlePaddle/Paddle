@@ -466,8 +466,8 @@ function generate_upstream_develop_api_spec() {
     git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen $1
     build $2
-    generate_api_spec "$1" "DEV"
     git checkout $cur_branch
+    generate_api_spec "$1" "DEV"
     git branch -D develop_base_pr 
     ENABLE_MAKE_CLEAN="OFF"
 }
