@@ -143,18 +143,23 @@ void SelectedRowsAddToTensor(const framework::Variable& src,
 
 // Note(chenweihang): when two selected rows need to be added,
 //   adding one to another is not equal to merging two selected rows
-//   to one then add it to a empty selected rows, the after is correct
+//   to one then add it to a empty selected rows, the after is correct.
+//   Parameter has_src2 indicates whether src2 needs to participate in the
+//   compute.
 std::shared_ptr<VarBase> SelectedRowsMerge(const framework::Variable& src1,
-                                           const framework::Variable& src2) {
+                                           const framework::Variable& src2,
+                                           bool has_src2 = true) {
   auto& src_selected_rows1 = src1.Get<framework::SelectedRows>();
-  auto& src_selected_rows2 = src2.Get<framework::SelectedRows>();
   auto place = src_selected_rows1.value().place();
   auto data_type = src_selected_rows1.value().type();
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
 
   std::vector<const framework::SelectedRows*> src_selected_rows;
   src_selected_rows.emplace_back(&src_selected_rows1);
-  src_selected_rows.emplace_back(&src_selected_rows2);
+  if (has_src2) {
+    auto& src_selected_rows2 = src2.Get<framework::SelectedRows>();
+    src_selected_rows.emplace_back(&src_selected_rows2);
+  }
   auto dst_var = std::make_shared<VarBase>(false, "Temp");
   auto* dst_selected_rows =
       dst_var->MutableVar()->GetMutable<framework::SelectedRows>();
@@ -231,17 +236,48 @@ platform::Place GetPlaceOfVarBase(const std::shared_ptr<VarBase>& var) {
   return place;
 }
 
+void GradientAccumulate(std::shared_ptr<VarBase> src_varbase,
+                        VarBase* dst_varbase) {
+  auto* dst_var = dst_varbase->MutableVar();
+  auto* src_var = src_varbase->MutableVar();
+
+  if (src_var->IsType<framework::SelectedRows>()) {
+    if ((!dst_var->IsInitialized()) ||
+        (dst_var->IsInitialized() &&
+         dst_var->IsType<framework::SelectedRows>() &&
+         (!dst_var->Get<framework::SelectedRows>().value().IsInitialized()))) {
+      dst_varbase->SetType(framework::proto::VarType::SELECTED_ROWS);
+      std::shared_ptr<VarBase> temp =
+          SelectedRowsMerge(*src_var, *dst_var, false);
+      *dst_var = std::move(*(temp->MutableVar()));
+    } else if (dst_var->IsInitialized() &&
+               dst_var->IsType<framework::LoDTensor>() &&
+               (!dst_var->Get<framework::LoDTensor>().IsInitialized())) {
+      *dst_var = std::move(*(src_varbase->MutableVar()));
+    } else {
+      VarBaseAdd(src_varbase, dst_varbase);
+    }
+  } else {
+    if ((!dst_var->IsInitialized()) ||
+        (dst_var->IsInitialized() && dst_var->IsType<framework::LoDTensor>() &&
+         (!dst_var->Get<framework::LoDTensor>().IsInitialized())) ||
+        (dst_var->IsInitialized() &&
+         dst_var->IsType<framework::SelectedRows>() &&
+         (!dst_var->Get<framework::SelectedRows>().value().IsInitialized()))) {
+      *dst_var = std::move(*(src_varbase->MutableVar()));
+    } else {
+      VarBaseAdd(src_varbase, dst_varbase);
+    }
+  }
+}
+
 void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
                                    size_t trace_id) {
-  auto* dst_var = var_->MutableVar();
   platform::Place place = GetPlaceOfVarBase(var);
   if (!var_->OverridedStopGradient()) {
     VLOG(3) << "Sum Gradient for: " << var_->Name();
     if (cur_cnt_ == 0) {
-      if (var->Var().IsType<framework::SelectedRows>()) {
-        var_->SetType(framework::proto::VarType::SELECTED_ROWS);
-      }
-      *dst_var = std::move(*(var->MutableVar()));
+      GradientAccumulate(var, var_);
     } else {
       VarBaseAdd(var, var_);
     }
@@ -270,16 +306,10 @@ void EagerGradientAccumulator::Add(std::shared_ptr<VarBase> var,
 
 void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
                                     size_t trace_id) {
-  auto* dst_var = var_->MutableVar();
   platform::Place place = GetPlaceOfVarBase(var);
   if (!var_->OverridedStopGradient()) {
     if (ref_cnt_ == 1) {
-      if (var->Var().IsType<framework::SelectedRows>()) {
-        var_->SetType(framework::proto::VarType::SELECTED_ROWS);
-        *dst_var = std::move(*(var->MutableVar()));
-      } else {
-        *dst_var = std::move(*(var->MutableVar()));
-      }
+      GradientAccumulate(var, var_);
     } else {
       if (tmp_grad_vars_.empty()) {
         tmp_grad_vars_.reserve(ref_cnt_);
@@ -298,8 +328,22 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
                 });
 
 #ifdef PADDLE_WITH_CUDA
+      auto* dst_var = var_->MutableVar();
       if (paddle::platform::is_gpu_place(place)) {
         bool dst_varbase_is_initialized = false;
+        if (dst_var->IsInitialized()) {
+          if (dst_var->IsType<framework::SelectedRows>()) {
+            if (dst_var->Get<framework::SelectedRows>()
+                    .value()
+                    .IsInitialized()) {
+              dst_varbase_is_initialized = true;
+            }
+          } else {
+            if (dst_var->Get<framework::LoDTensor>().IsInitialized()) {
+              dst_varbase_is_initialized = true;
+            }
+          }
+        }
         // accumulate selected rows firstly
         for (size_t i = 0; i < tmp_grad_vars_.size(); ++i) {
           if (tmp_grad_vars_[i]
@@ -308,7 +352,9 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
             if (!dst_varbase_is_initialized) {
               dst_varbase_is_initialized = true;
               var_->SetType(framework::proto::VarType::SELECTED_ROWS);
-              *dst_var = std::move(*(tmp_grad_vars_[i].first->MutableVar()));
+              std::shared_ptr<VarBase> temp = SelectedRowsMerge(
+                  tmp_grad_vars_[i].first->Var(), *dst_var, false);
+              *dst_var = std::move(*(temp->MutableVar()));
             } else {
               VarBaseAdd(tmp_grad_vars_[i].first, var_);
             }
@@ -326,12 +372,7 @@ void SortedGradientAccumulator::Add(std::shared_ptr<VarBase> var,
         }
       } else {
 #endif
-        if (tmp_grad_vars_[0].first->Var().IsType<framework::SelectedRows>()) {
-          var_->SetType(framework::proto::VarType::SELECTED_ROWS);
-          *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
-        } else {
-          *dst_var = std::move(*(tmp_grad_vars_[0].first->MutableVar()));
-        }
+        GradientAccumulate(tmp_grad_vars_[0].first, var_);
         for (size_t i = 1; i < tmp_grad_vars_.size(); ++i) {
           VarBaseAdd(tmp_grad_vars_[i].first, var_);
         }
