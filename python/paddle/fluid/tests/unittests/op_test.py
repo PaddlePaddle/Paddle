@@ -33,6 +33,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
+import op_white_list
 
 
 def randomize_probability(batch_size, class_num, dtype='float32'):
@@ -1016,7 +1017,10 @@ class OpTest(unittest.TestCase):
 
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
-            abs_a[abs_a < 1e-3] = 1
+            if a.dtype == np.float64:
+                abs_a[abs_a < 1e-3] = 1
+            else:
+                abs_a[abs_a < 1e-3] = 1
 
             diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
@@ -1039,12 +1043,63 @@ class OpTest(unittest.TestCase):
                    max_relative_error=0.005,
                    user_defined_grads=None,
                    check_dygraph=True):
+        is_fp64_check = False
+        for key, vals in self.inputs:
+            if isinstance(vals, list):
+                for name, val in vals:
+                    if isinstance(val, tuple):
+                        is_fp64_check = is_fp64_check or val[
+                            0].dtype == np.float64
+                    else:
+                        is_fp64_check = is_fp64_check or val.dtype == np.float64
+            else:
+                is_fp64_check = is_fp64_check or vals.dtype == np.float64
+
+        run_ops = [set(), set()]  # fp64 other
+        filename = "tmp.txt"
+        if os.path.exists(filename):
+            with open(filename, "r") as f:
+                for op_set in run_ops:
+                    line = f.readline()
+                    for op in line.strip().split(','):
+                        op_set.add(op)
+
+        if is_fp64_check == np.float64:
+            run_ops[0].add(self.op_type)
+        else:
+            run_ops[1].add(self.op_type)
+
+        print("fp64 check op:")
+        print(run_ops[0])
+        print("other check op:")
+        print(run_ops[1])
+
+        with open("tmp.txt", "w") as f:
+            for op_set in run_ops:
+                for op in op_set:
+                    f.write(op + ",")
+                f.write("\n")
+
         places = self._get_places()
-        for place in places:
-            self.check_grad_with_place(place, inputs_to_check, output_names,
-                                       no_grad_set, numeric_grad_delta,
-                                       in_place, max_relative_error,
-                                       user_defined_grads, check_dygraph)
+        if is_fp64_check:
+            '''
+            numeric_grad_delta = 1e-7
+            max_relative_error = 1e-6
+            '''
+            for place in places:
+                self.check_grad_with_place(place, inputs_to_check, output_names,
+                                           no_grad_set, numeric_grad_delta,
+                                           in_place, max_relative_error,
+                                           user_defined_grads, check_dygraph)
+        else:
+            if self.op_type not in op_white_list.NO_NEED_FP64_CHECK_GRAD_OPS:
+                raise AssertionError(
+                    "%s needs check_grad of float64 precision." % self.op_type)
+            for place in places:
+                self.check_grad_with_place(place, inputs_to_check, output_names,
+                                           no_grad_set, numeric_grad_delta,
+                                           in_place, max_relative_error,
+                                           user_defined_grads, check_dygraph)
 
     def check_grad_with_place(self,
                               place,
