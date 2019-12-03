@@ -250,7 +250,7 @@ class DygraphExecutionContext : public framework::ExecutionContext {
     return vec_res;
   }
 
-  std::string OuputName(const std::string& name) const override {
+  std::string OutputName(const std::string& name) const override {
     auto it = var_base_map_out_.find(name);
     PADDLE_ENFORCE_NE(
         it, var_base_map_out_.end(),
