@@ -62,6 +62,8 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::shared_ptr<mkldnn::lrn_forward> lrn_p;
     if (is_test == false) {
       workspace_memory = handler.AcquireWorkspaceMemory(mid);
+      mid->set_layout(framework::DataLayout::kMKLDNN);
+      mid->set_format(platform::GetMKLDNNFormat(*workspace_memory));
       lrn_p = handler.AcquireForwardPrimitive(*src_memory, *workspace_memory,
                                               *dst_memory);
     } else {

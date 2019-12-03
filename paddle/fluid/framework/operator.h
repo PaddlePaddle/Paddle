@@ -443,6 +443,11 @@ class OperatorWithKernel : public OperatorBase {
     return g_all_op_kernels;
   }
 
+  bool IsMKLDNNType() const {
+    return ((this->kernel_type_) && (this->kernel_type_->data_layout_ ==
+                                     framework::DataLayout::kMKLDNN));
+  }
+
   bool SupportGPU() const override {
     auto& op_kernels = OperatorWithKernel::AllOpKernels().at(type_);
     return std::any_of(op_kernels.begin(), op_kernels.end(),
