@@ -268,7 +268,7 @@ Args:
 
 Returns:
 
-    Variable: The output of Thresholded ReLU op, Tensor or LoDTensor, dtype: float32 or float64, the same as the input, shape: the same as the input.
+    Variable: The output of GeLU op, Tensor or LoDTensor, dtype: float32 or float64, the same as the input, shape: the same as the input.
 
 Examples:
     
