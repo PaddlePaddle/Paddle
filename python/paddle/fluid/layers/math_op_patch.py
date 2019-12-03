@@ -223,20 +223,12 @@ def monkey_patch_variable():
 
             out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
 
-            axis = -1
-            if other_var.shape[0] == -1:
-                axis = 0
-            assert len(self.shape) >= len(other_var.shape), (
-                "The rank of the first argument of an binary operator cannot "
-                "be smaller than the rank of its second argument: %s vs %s" %
-                (len(self.shape), len(other_var.shape)))
-
             current_block(self).append_op(
                 type=op_type,
                 inputs={'X': [self],
                         'Y': [other_var]},
                 outputs={'Out': out},
-                attrs={'axis': axis})
+                attrs={'axis': -1})
             return out
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
