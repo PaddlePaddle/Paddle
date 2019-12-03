@@ -1344,6 +1344,24 @@ PDNode *patterns::ConvDequant::operator()() {
   return dequant_out;
 }
 
+PDNode *patterns::FcDequant::operator()() {
+  // Create Operators
+  auto fc_op = pattern->NewNode(fc_op_repr())->assert_is_op("fc");
+  auto dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+
+  auto fc_out =
+      pattern->NewNode(fc_out_repr())->assert_is_op_output("fc", "Out");
+  auto dequant_out = pattern->NewNode(dequant_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("dequantize", "Output");
+
+  fc_op->LinksTo({fc_out});
+  dequant_op->LinksFrom({fc_out}).LinksTo({dequant_out});
+
+  return dequant_out;
+}
+
 PDNode *patterns::PriorBox::operator()() {
   auto prior_box_op =
       pattern->NewNode(prior_box_op_repr())->assert_is_op("prior_box");

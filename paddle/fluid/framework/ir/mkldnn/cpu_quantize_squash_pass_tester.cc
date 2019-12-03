@@ -50,6 +50,12 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
   } else if (type == "concat") {
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
+  } else if (type == "fc") {
+    op->SetInput("Input", {inputs[0]});
+    PADDLE_ENFORCE_EQ(inputs.size(), 2,
+                      "The fc inputs should have input and weights.");
+    op->SetInput("W", {inputs[1]});
+    op->SetOutput("Out", outputs);
   }
 }
 
@@ -171,6 +177,21 @@ ProgramDesc BuildConvDequantConcatProgramDesc(bool use_mkldnn, float scale_out,
     prog.MutableBlock(0)->Var(v);
   }
   SetOp(&prog, "conv2d", "Conv1", {"a"}, {"b"}, use_mkldnn, scale_out);
+  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, scale);
+  SetOp(&prog, "concat", "Concat1", {"c"}, {"d"}, use_mkldnn);
+  return prog;
+}
+
+// a->fc->b
+// b->Dequant1->c
+// c->Concat1->d
+ProgramDesc BuildFcDequantConcatProgramDesc(bool use_mkldnn, float scale_out,
+                                            float scale) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "fc", "Fc1", {"a", "w1"}, {"b"}, use_mkldnn, scale_out);
   SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, scale);
   SetOp(&prog, "concat", "Concat1", {"c"}, {"d"}, use_mkldnn);
   return prog;
@@ -371,6 +392,22 @@ TEST(CpuQuantizeSquashPass, conv_dequant_more_than_one_op_after_conv) {
   // nothing change
   auto remove_nodes = 0;
   CountNodeTest(BuildConvDequantConvProgramDesc(use_mkldnn, scale_out, scale),
+                remove_nodes);
+}
+
+// from
+// a->fc->b
+// b->Dequant1->c
+// c->Concat1->d
+// to
+// a->fc->c->Concat->d
+TEST(CpuQuantizeSquashPass, fc_dequant_only_one_output) {
+  auto scale_out = 1.0f;
+  auto scale = 1.2345f;
+  auto use_mkldnn = true;
+  // remove 2 nodes: b, Dequant1
+  auto remove_nodes = 2;
+  CountNodeTest(BuildFcDequantConcatProgramDesc(use_mkldnn, scale_out, scale),
                 remove_nodes);
 }
 

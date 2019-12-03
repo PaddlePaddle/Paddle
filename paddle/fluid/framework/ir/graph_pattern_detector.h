@@ -844,6 +844,37 @@ struct ConvDequant : public PatternBase {
   PATTERN_DECL_NODE(dequant_out);
 };
 
+// Fc + Dequant
+struct FcDequant : public PatternBase {
+  FcDequant(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fc_dequant") {}
+
+  PDNode* operator()();
+
+  PATTERN_DECL_NODE(fc_op);
+  PATTERN_DECL_NODE(fc_out);
+
+  PATTERN_DECL_NODE(dequant_op);
+  PATTERN_DECL_NODE(dequant_out);
+};
+
+// reshape_op->reshape_out->transpose_op->transpose_out->scale->scale_out
+struct ReshapeTransposeScale : public PatternBase {
+  ReshapeTransposeScale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "reshape_transpose_scale") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(reshape_in);
+  PATTERN_DECL_NODE(reshape_op);
+  PATTERN_DECL_NODE(reshape_out);
+
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
+};
+
 // PriorBox operator
 // operator: prior_box_op
 // inputs: prior_box_input, prior_box_image
