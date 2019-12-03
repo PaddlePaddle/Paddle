@@ -15,8 +15,8 @@
 Print all registered kernels of a python module in alphabet order.
 
 Usage:
-    ./check_op_register_type > all_kernels.txt
-    ./check_op_register_type OP_TYPE_DEV.spec OP_TYPE_PR.spec > is_valid
+    python check_op_register_type.py > all_kernels.txt
+    python check_op_register_type.py OP_TYPE_DEV.spec OP_TYPE_PR.spec > is_valid
 """
 from __future__ import print_function
 import sys
@@ -81,5 +81,5 @@ elif len(sys.argv) == 3:
     check_add_op_valid()
 else:
     print("Usage:\n" \
-          "\t./check_op_register_type > all_kernels.txt\n" \
-          "\t./check_op_register_type OP_TYPE_DEV.spec OP_TYPE_PR.spec > is_valid")
+          "\tpython check_op_register_type.py > all_kernels.txt\n" \
+          "\tpython check_op_register_type.py OP_TYPE_DEV.spec OP_TYPE_PR.spec > diff")
