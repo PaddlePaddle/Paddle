@@ -186,11 +186,11 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   auto vec_dim_1 = 0;
   framework::Variable* var = scope.FindVar(persistable_var_name);
 
-  if (var->IsType<framework::SelectedRows>()) {
-    vec_dim_1 = var->Get<framework::SelectedRows>().value().dims()[1];
-  } else if (var->IsType<framework::LoDTensor>()) {
-    vec_dim_1 = var->Get<framework::LoDTensor>().dims()[1];
-  }
+  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), true,
+                    "prefetch can only support LodTensor only");
+
+  vec_dim_1 = var->Get<framework::LoDTensor>().dims()[1];
+
   PADDLE_ENFORCE_GT(vec_dim_1, 0, "lookup table var's dim must gather than 0");
 
   const auto place =
@@ -257,16 +257,6 @@ void prefetchs(const std::vector<std::string>& id_var_names,
       }
     }
   }
-
-  //  if (backfill) {
-  //    VLOG(3) << "backfill persistable var's id with vecs";
-  //
-  //    auto* reconstruct_d = reconstruct_var->data<float>();
-  //    for (auto& id : ids_union) {
-  //      std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
-  //                reconstruct_d + id * vec_dim_1);
-  //    }
-  //  }
 }
 
 };  // namespace distributed
