@@ -422,14 +422,11 @@ def srccoms_extract(srcfile, wlist):
 
 
 def test(file_list):
-    print("process started!")
     process_result = True
     for file in file_list:
-        print(file)
         with open(file, 'r') as src:
             if not srccoms_extract(src, wlist):
                 process_result = False
-    print("process finished!")
     return process_result
 
 
@@ -633,15 +630,12 @@ else:
     if not os.path.isdir("./samplecode_temp"):
         os.mkdir("./samplecode_temp")
 
-    print(len(filenames))
-
     cpus = multiprocessing.cpu_count()
     one_part_filenum = int(math.ceil(len(filenames) / cpus))
     divided_file_list = [
         filenames[i:i + one_part_filenum]
         for i in range(0, len(filenames), one_part_filenum)
     ]
-    print(divided_file_list)
     po = multiprocessing.Pool()
     results = po.map_async(test, divided_file_list)
     po.close()
