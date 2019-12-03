@@ -440,7 +440,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     "SavedVariance": block.var('saved_variance')
                 }
                 has_reserve_space = False
-                if data_format == 'NHWC':
+                if data_layout == 'NHWC':
                     flag = os.environ.get(
                         'FLAGS_cudnn_batchnorm_spatial_persistent')
                     if flag is not None and flag.lower() in ['true', '1']:

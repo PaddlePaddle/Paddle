@@ -26,12 +26,13 @@ import copy
 import numpy as np
 
 
-def resnet_cifar10(input, depth=32):
+def resnet_cifar10(input, data_format, depth=32):
     def conv_bn_layer(input,
                       ch_out,
                       filter_size,
                       stride,
                       padding,
+                      data_format=data_format,
                       act='relu',
                       bias_attr=False):
         tmp = fluid.layers.conv2d(
@@ -41,41 +42,54 @@ def resnet_cifar10(input, depth=32):
             stride=stride,
             padding=padding,
             act=None,
-            bias_attr=bias_attr)
-        return fluid.layers.batch_norm(input=tmp, act=act)
+            bias_attr=bias_attr,
+            data_format=data_format)
+        return fluid.layers.batch_norm(
+            input=tmp, act=act, data_layout=data_format)
 
-    def shortcut(input, ch_in, ch_out, stride):
+    def shortcut(input, ch_in, ch_out, stride, data_format):
         if ch_in != ch_out:
-            return conv_bn_layer(input, ch_out, 1, stride, 0, None)
+            return conv_bn_layer(input, ch_out, 1, stride, 0, data_format, None)
         else:
             return input
 
-    def basicblock(input, ch_in, ch_out, stride):
-        tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
-        tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
-        short = shortcut(input, ch_in, ch_out, stride)
+    def basicblock(input, ch_in, ch_out, stride, data_format):
+        tmp = conv_bn_layer(input, ch_out, 3, stride, 1, data_format)
+        tmp = conv_bn_layer(
+            tmp, ch_out, 3, 1, 1, data_format, act=None, bias_attr=True)
+        short = shortcut(input, ch_in, ch_out, stride, data_format)
         return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
 
-    def layer_warp(block_func, input, ch_in, ch_out, count, stride):
-        tmp = block_func(input, ch_in, ch_out, stride)
+    def layer_warp(block_func, input, ch_in, ch_out, count, stride,
+                   data_format):
+        tmp = block_func(input, ch_in, ch_out, stride, data_format)
         for i in range(1, count):
-            tmp = block_func(tmp, ch_out, ch_out, 1)
+            tmp = block_func(tmp, ch_out, ch_out, 1, data_format)
         return tmp
 
     assert (depth - 2) % 6 == 0
     n = (depth - 2) // 6
     conv1 = conv_bn_layer(
-        input=input, ch_out=16, filter_size=3, stride=1, padding=1)
-    res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
-    res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
-    res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
+        input=input,
+        ch_out=16,
+        filter_size=3,
+        stride=1,
+        padding=1,
+        data_format=data_format)
+    res1 = layer_warp(basicblock, conv1, 16, 16, n, 1, data_format)
+    res2 = layer_warp(basicblock, res1, 16, 32, n, 2, data_format)
+    res3 = layer_warp(basicblock, res2, 32, 64, n, 2, data_format)
     pool = fluid.layers.pool2d(
-        input=res3, pool_size=8, pool_type='avg', pool_stride=1)
+        input=res3,
+        pool_size=8,
+        pool_type='avg',
+        pool_stride=1,
+        data_format=data_format)
     return pool
 
 
-def vgg16_bn_drop(input):
-    def conv_block(input, num_filter, groups, dropouts):
+def vgg16_bn_drop(input, data_format):
+    def conv_block(input, num_filter, groups, dropouts, data_format):
         return fluid.nets.img_conv_group(
             input=input,
             pool_size=2,
@@ -85,23 +99,24 @@ def vgg16_bn_drop(input):
             conv_act='relu',
             conv_with_batchnorm=True,
             conv_batchnorm_drop_rate=dropouts,
-            pool_type='max')
+            pool_type='max',
+            data_format=data_format)
 
-    conv1 = conv_block(input, 64, 2, [0.3, 0])
-    conv2 = conv_block(conv1, 128, 2, [0.4, 0])
-    conv3 = conv_block(conv2, 256, 3, [0.4, 0.4, 0])
-    conv4 = conv_block(conv3, 512, 3, [0.4, 0.4, 0])
-    conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
+    conv1 = conv_block(input, 64, 2, [0.3, 0], data_format)
+    conv2 = conv_block(conv1, 128, 2, [0.4, 0], data_format)
+    conv3 = conv_block(conv2, 256, 3, [0.4, 0.4, 0], data_format)
+    conv4 = conv_block(conv3, 512, 3, [0.4, 0.4, 0], data_format)
+    conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0], data_format)
 
     drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
     fc1 = fluid.layers.fc(input=drop, size=4096, act=None)
-    bn = fluid.layers.batch_norm(input=fc1, act='relu')
+    bn = fluid.layers.batch_norm(input=fc1, act='relu', data_layout=data_format)
     drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
     fc2 = fluid.layers.fc(input=drop2, size=4096, act=None)
     return fc2
 
 
-def train(net_type, use_cuda, save_dirname, is_local):
+def train(net_type, use_cuda, data_format, save_dirname, is_local):
     classdim = 10
     data_shape = [3, 32, 32]
 
@@ -114,12 +129,17 @@ def train(net_type, use_cuda, save_dirname, is_local):
             name='pixel', shape=data_shape, dtype='float32')
         label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
+        if data_format == 'NHWC':
+            os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = "1"
+            new_images = fluid.layers.transpose(images, [0, 2, 3, 1])
+        else:
+            new_images = images
         if net_type == "vgg":
             print("train vgg net")
-            net = vgg16_bn_drop(images)
+            net = vgg16_bn_drop(new_images, data_format)
         elif net_type == "resnet":
             print("train resnet")
-            net = resnet_cifar10(images, 32)
+            net = resnet_cifar10(new_images, data_format, 32)
         else:
             raise ValueError("%s network is not supported" % net_type)
 
@@ -145,6 +165,8 @@ def train(net_type, use_cuda, save_dirname, is_local):
         mp_optimizer.minimize(avg_cost)
         loss_scaling = mp_optimizer.get_loss_scaling()
         scaled_loss = mp_optimizer.get_scaled_loss()
+        if data_format == 'NHWC':
+            os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = "0"
 
     BATCH_SIZE = 128
     PASS_NUM = 1
@@ -259,14 +281,14 @@ def infer(use_cuda, save_dirname=None):
                                       fetch_targets, exe, inference_program)
 
 
-def main(net_type, use_cuda, is_local=True):
+def main(net_type, use_cuda, data_format, is_local=True):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
 
     # Directory for saving the trained model
     save_dirname = "image_classification_" + net_type + ".inference.model"
 
-    train(net_type, use_cuda, save_dirname, is_local)
+    train(net_type, use_cuda, data_format, save_dirname, is_local)
     #infer(use_cuda, save_dirname)
 
 
@@ -398,12 +420,14 @@ class TestImageClassification(unittest.TestCase):
                           {'lstm'}, {'lstm'})
 
     def test_vgg_cuda(self):
-        with self.scope_prog_guard():
-            main('vgg', use_cuda=True)
+        for data_format in ['NCHW', 'NHWC']:
+            with self.scope_prog_guard():
+                main('vgg', use_cuda=True, data_format=data_format)
 
     def test_resnet_cuda(self):
-        with self.scope_prog_guard():
-            main('resnet', use_cuda=True)
+        for data_format in ['NCHW', 'NHWC']:
+            with self.scope_prog_guard():
+                main('resnet', use_cuda=True, data_format=data_format)
 
     @contextlib.contextmanager
     def scope_prog_guard(self):

@@ -146,7 +146,8 @@ def img_conv_group(input,
                    conv_batchnorm_drop_rate=0.0,
                    pool_stride=1,
                    pool_type="max",
-                   use_cudnn=True):
+                   use_cudnn=True,
+                   data_format="NCHW"):
     """
     The Image Convolution Group is composed of Convolution2d, BatchNorm, DropOut,
     and Pool2d. According to the input arguments, img_conv_group will do serials of
@@ -184,6 +185,7 @@ def img_conv_group(input,
             average-pooling. Default :math:`max`.
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
+        data_format (str): Data format of input tensor with shape NHWC or NHWC.
 
     Return:
         A Variable holding Tensor representing the final result after serial computation using Convolution2d,
@@ -231,10 +233,12 @@ def img_conv_group(input,
             padding=conv_padding[i],
             param_attr=param_attr[i],
             act=local_conv_act,
-            use_cudnn=use_cudnn)
+            use_cudnn=use_cudnn,
+            data_format=data_format)
 
         if conv_with_batchnorm[i]:
-            tmp = layers.batch_norm(input=tmp, act=conv_act, in_place=True)
+            tmp = layers.batch_norm(
+                input=tmp, act=conv_act, in_place=True, data_layout=data_format)
             drop_rate = conv_batchnorm_drop_rate[i]
             if abs(drop_rate) > 1e-5:
                 tmp = layers.dropout(x=tmp, dropout_prob=drop_rate)
@@ -244,7 +248,8 @@ def img_conv_group(input,
         pool_size=pool_size,
         pool_type=pool_type,
         pool_stride=pool_stride,
-        use_cudnn=use_cudnn)
+        use_cudnn=use_cudnn,
+        data_format=data_format)
     return pool_out
 
 
