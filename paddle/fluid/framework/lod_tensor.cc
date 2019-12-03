@@ -261,14 +261,6 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
     auto &lod = *tensor->mutable_lod();
     lod.resize(lod_level);
-    for (uint64_t i = 0; i < lod_level; ++i) {
-      uint64_t size;
-      is.read(reinterpret_cast<char *>(&size), sizeof(size));
-      std::vector<size_t> tmp(size / sizeof(size_t));
-      is.read(reinterpret_cast<char *>(tmp.data()),
-              static_cast<std::streamsize>(size));
-      lod[i] = tmp;
-    }
   }
   // the 3st filed, Tensor
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx, seek, shape);
