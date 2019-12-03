@@ -87,6 +87,15 @@ class VarBase {
 
   const std::shared_ptr<VarBase>& GradVarBase() const { return grad_var_; }
 
+  void ClearGradVarBase() { grad_var_ = nullptr; }
+
+  std::shared_ptr<VarBase>& MutableGradVarBase() {
+    if (grad_var_ == nullptr) {
+      grad_var_ = std::make_shared<VarBase>(false, GradVarName());
+    }
+    return grad_var_;
+  }
+
   const framework::Variable& GradVar() const {
     PADDLE_ENFORCE_NOT_NULL(grad_var_, "Gradient of %s does not exist", name_);
     return grad_var_->var_;
@@ -144,13 +153,15 @@ class VarBase {
 
   std::vector<OpBase*> GradOps() {
     std::vector<OpBase*> rlt;
-    // TODO(jiabin): use better data structure to remove nullptr when we find it
+    // TODO(jiabin): use better data structure to remove nullptr when we find
+    // it
     for (const auto& wk_ptr : grad_ops_) {
       OpBase* tmp_op = wk_ptr.lock().get();
       if (tmp_op) rlt.emplace_back(tmp_op);
     }
     return rlt;
   }
+
   void ClearGradOps() { grad_ops_.clear(); }
 
   const std::string& Name() const { return name_; }

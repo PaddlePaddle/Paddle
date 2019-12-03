@@ -296,6 +296,46 @@ TEST(test_tracer, test_expected_place) {
   ASSERT_EQ(platform::is_gpu_place(tracer.ExpectedPlace()), true);
 }
 
+TEST(test_tracer, test_var_without_grad_var) {
+  // Doing an mul
+  imperative::Tracer tracer;
+  std::shared_ptr<imperative::VarBase> x_in(
+      new imperative::VarBase(true, "x_in"));
+  x_in.ClearGradVarBase();
+  std::shared_ptr<imperative::VarBase> y_in(
+      new imperative::VarBase(true, "y_in"));
+  std::shared_ptr<imperative::VarBase> vout(
+      new imperative::VarBase(true, "vout"));
+  platform::CPUPlace place;
+  std::vector<float> src_data(10, 2.0);
+  std::vector<int64_t> dims1 = {2, 5};
+  std::vector<int64_t> dims2 = {5, 2};
+
+  auto* x_in_tensor = x_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  auto* y_in_tensor = y_in->MutableVar()->GetMutable<framework::LoDTensor>();
+  x_in_tensor->Resize(framework::make_ddim(dims1));
+  auto* mutable_x = x_in_tensor->mutable_data<float>(place);
+  paddle::memory::Copy(place, mutable_x, place, src_data.data(),
+                       sizeof(float) * src_data.size());
+  y_in_tensor->Resize(framework::make_ddim(dims2));
+  auto* mutable_y = y_in_tensor->mutable_data<float>(place);
+  paddle::memory::Copy(place, mutable_y, place, src_data.data(),
+                       sizeof(float) * src_data.size());
+
+  var_pair x_pair = var_pair("X", vb_vector(1, x_in));
+  var_pair y_pair = var_pair("Y", vb_vector(1, y_in));
+  var_pair out_pair = var_pair("Out", vb_vector(1, vout));
+  imperative::NameVarBaseMap ins = {x_pair, y_pair};
+  imperative::NameVarBaseMap outs = {out_pair};
+  framework::AttributeMap mul_attr_map;
+  mul_attr_map["use_mkldnn"] = false;
+  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
+  for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
+    ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
+  }
+}
+
 }  // namespace imperative
 }  // namespace paddle
 
