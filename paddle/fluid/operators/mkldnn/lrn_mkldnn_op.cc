@@ -61,10 +61,10 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto lrn_p = handler.AcquireForwardPrimitive();
 
     auto workspace_memory = handler.AcquireWorkspaceMemory(mid);
+    mid->set_layout(framework::DataLayout::kMKLDNN);
 
     mkldnn::stream astream(dev_ctx.GetEngine());
     if (!workspace_memory->get_desc().is_zero()) {
-      mid->set_layout(framework::DataLayout::kMKLDNN);
       mid->set_format(platform::GetMKLDNNFormat(*workspace_memory));
       lrn_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
                                {MKLDNN_ARG_DST, *dst_memory},
@@ -76,6 +76,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       mid->mutable_data<T>(ctx.GetPlace());
       auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
       e_mid = e_mid.constant(k);
+      mid->set_format(platform::GetMKLDNNFormat(*dst_memory));
 
       lrn_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
                                {MKLDNN_ARG_DST, *dst_memory}});
