@@ -44,6 +44,7 @@ DEFINE_string(int8_model, "", "INT8 model path");
 DEFINE_string(infer_data, "", "data file");
 DEFINE_string(refer_result, "", "reference result for comparison");
 DEFINE_int32(batch_size, 1, "batch size");
+DEFINE_bool(ernie_large, false, "Test ernie large");
 DEFINE_bool(with_accuracy_layer, true,
             "Calculate the accuracy while label is in the input");
 DEFINE_bool(enable_fp32, true, "Enable FP32 type prediction");
