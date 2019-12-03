@@ -17,6 +17,7 @@
 #include <cudnn.h>
 #endif
 #include <glog/logging.h>
+#include <iostream>
 
 namespace paddle {
 
@@ -182,6 +183,7 @@ void CpuPassStrategy::EnableCUDNN() { LOG(ERROR) << "CPU not support cuDNN"; }
 void CpuPassStrategy::EnableMKLDNN() {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
 #ifdef PADDLE_WITH_MKLDNN
+  std::cout<<"This is A Warning!"<<std::endl;
   if (!use_mkldnn_) {
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
@@ -199,6 +201,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "conv_relu_mkldnn_fuse_pass",        //
              "conv_leaky_relu_mkldnn_fuse_pass",  //
              "conv_relu6_mkldnn_fuse_pass",       //
+             "reshape_transpose_scale_pass",     //
              // Disabled due to topology-dependent speed-up
              // "fc_mkldnn_pass"
          })) {

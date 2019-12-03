@@ -917,6 +917,35 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
   }
 }
 
+PDNode *patterns::ReshapeTransposeScale::operator()() {
+  // Create Operators
+  auto reshape_in = pattern->NewNode(reshape_in_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("reshape2", "X");
+  auto reshape_op =
+      pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
+  auto transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+
+  auto reshape_out = pattern->NewNode(reshape_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("reshape2", "Out");
+  auto transpose_out = pattern->NewNode(transpose_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("transpose2", "Out");
+  auto scale_out = pattern->NewNode(scale_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("scale", "Out");
+
+  // reshape_op->reshape_out->transpose_op->transpose_out->scale->scale_out
+  reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
+  transpose_op->LinksFrom({reshape_out}).LinksTo({transpose_out});
+  scale_op->LinksFrom({transpose_out}).LinksTo({scale_out});
+
+  return scale_out;
+}
+
 PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
                                        bool with_bias) {
   // Create shared nodes.
@@ -1379,35 +1408,6 @@ PDNode *patterns::FcDequant::operator()() {
   dequant_op->LinksFrom({fc_out}).LinksTo({dequant_out});
 
   return dequant_out;
-}
-
-PDNode *patterns::Reshape2Transpose2Scale::operator()() {
-  // Create Operators
-  auto reshape_in = pattern->NewNode(reshape_in_repr())
-                        ->AsInput()
-                        ->assert_is_op_input("reshape2", "X");
-  auto reshape_op =
-      pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
-  auto transpose_op =
-      pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
-  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
-
-  auto reshape_out = pattern->NewNode(reshape_out_repr())
-                         ->AsOutput()
-                         ->assert_is_op_output("reshape2", "Out");
-  auto transpose_out = pattern->NewNode(transpose_out_repr())
-                           ->AsOutput()
-                           ->assert_is_op_output("transpose2", "Out");
-  auto scale_out = pattern->NewNode(scale_out_repr())
-                       ->AsOutput()
-                       ->assert_is_op_output("scale", "Out");
-
-  // reshape_op->reshape_out->transpose_op->transpose_out->scale->scale_out
-  reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
-  transpose_op->LinksFrom({reshape_out}).LinksTo({transpose_out});
-  scale_op->LinksFrom({transpose_op}).LinksTo({scale_out});
-
-  return scale_out;
 }
 
 PDNode *patterns::PriorBox::operator()() {
