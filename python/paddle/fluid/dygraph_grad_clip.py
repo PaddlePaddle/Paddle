@@ -263,7 +263,11 @@ class GradClipByGlobalNorm(GradClipBase):
         for p, g in para_and_grad:
             if g is None:
                 continue
-            power = layers.square(g)
+            merge_grad = g
+            if g._ivar.type == core.VarDesc.VarType.SELECTED_ROWS:
+                merge_grad = layers.merge_selected_rows(g)
+                merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
+            power = layers.square(merge_grad)
             sum_t = layers.reduce_sum(power)
             norm_arr.append(sum_t)
 
@@ -280,7 +284,7 @@ class GradClipByGlobalNorm(GradClipBase):
             if g is None:
                 out.append((p, g))
                 continue
-            new_grad = g * clip_scale
+            new_grad = layers.elementwise_mul(x=g, y=clip_scale)
 
             out.append((p, new_grad))
 
