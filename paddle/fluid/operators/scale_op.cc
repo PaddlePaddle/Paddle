@@ -34,6 +34,14 @@ class ScaleOp : public framework::OperatorWithKernel {
                    "Input(X) of ScaleOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of ScaleOp should not be null.");
+
+    if (ctx->IsRuntime() && ctx->HasInput("ScaleTensor")) {
+      auto scale = ctx->Inputs("ScaleTensor");
+      PADDLE_ENFORCE_EQ(scale.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(ScaleTensor) size must be 1"));
+    }
+
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -43,6 +51,11 @@ class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) Input tensor of scale operator.");
+    AddInput("ScaleTensor",
+             "(Tensor) If provided, use this as "
+             "scale factor, this has a higher priority than "
+             "attr(scale), the shape of this tensor MUST BE 1.")
+        .AsDispensable();
     AddOutput("Out", "(Tensor) Output tensor of scale operator.");
     AddComment(R"DOC(
 **Scale operator**
@@ -89,6 +102,9 @@ class ScaleGradMaker : public framework::SingleGradOpDescMaker {
     auto *grad_op = new framework::OpDesc();
     grad_op->SetType("scale");
     grad_op->SetInput("X", OutputGrad("Out"));
+    if (ForwardOp().Inputs().count("ScaleTensor") > 0) {
+      grad_op->SetInput("ScaleTensor", Input("ScaleTensor"));
+    }
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttr("scale", GetAttr("scale"));
     grad_op->SetAttr("bias", 0.0f);
@@ -97,14 +113,14 @@ class ScaleGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-using ScaleOpInplace = framework::SingleOpInplaceInToOut;
+DECLARE_INPLACE_OP_INFERER(ScaleOpInplaceInferer, {"X", "Out"});
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker, ops::ScaleGradMaker,
-                  ops::ScaleOpVarTypeInference, ops::ScaleOpInplace);
+                  ops::ScaleOpVarTypeInference, ops::ScaleOpInplaceInferer);
 REGISTER_OP_CPU_KERNEL(
     scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,

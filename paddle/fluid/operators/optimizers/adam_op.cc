@@ -20,27 +20,50 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("Param"),
-                 "Input(Param) of AdamOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                 "Input(Grad) of AdamOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Moment1"),
-                 "Input(Moment1) of AdamOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Moment2"),
-                 "Input(Moment2) of AdamOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                 "Input(LearningRate) of AdamOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Beta1Pow"),
-                 "Input(Beta1Pow) of AdamOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Beta2Pow"),
-                 "Input(Beta2Pow) of AdamOp should not be null.");
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("Param"), true,
+      platform::errors::NotFound("Input(Param) of AdamOp should not be null."));
+  PADDLE_ENFORCE_EQ(
+      ctx->HasInput("Grad"), true,
+      platform::errors::NotFound("Input(Grad) of AdamOp should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Moment1"), true,
+                    platform::errors::NotFound(
+                        "Input(Moment1) of AdamOp should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Moment2"), true,
+                    platform::errors::NotFound(
+                        "Input(Moment2) of AdamOp should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"), true,
+                    platform::errors::NotFound(
+                        "Input(LearningRate) of AdamOp should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Beta1Pow"), true,
+                    platform::errors::NotFound(
+                        "Input(Beta1Pow) of AdamOp should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasInput("Beta2Pow"), true,
+                    platform::errors::NotFound(
+                        "Input(Beta2Pow) of AdamOp should not be null."));
 
-  PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                 "Output(ParamOut) of AdamOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Moment1Out"),
-                 "Output(Moment1Out) of AdamOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Moment2Out"),
-                 "Output(Moment2Out) of AdamOp should not be null.");
+  if (ctx->IsRuntime() && ctx->HasInput("Beta1Tensor")) {
+    auto beta1 = ctx->Inputs("Beta1Tensor");
+    PADDLE_ENFORCE_EQ(
+        beta1.size(), 1,
+        platform::errors::InvalidArgument("Input(Beta1Tensor) size must be 1"));
+  }
+  if (ctx->IsRuntime() && ctx->HasInput("Beta2Tensor")) {
+    auto beta2 = ctx->Inputs("Beta2Tensor");
+    PADDLE_ENFORCE_EQ(
+        beta2.size(), 1,
+        platform::errors::InvalidArgument("Input(Beta2Tensor) size must be 1"));
+  }
+
+  PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
+                    platform::errors::NotFound(
+                        "Output(ParamOut) of AdamOp should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment1Out"), true,
+                    platform::errors::NotFound(
+                        "Output(Moment1Out) of AdamOp should not be null."));
+  PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment2Out"), true,
+                    platform::errors::NotFound(
+                        "Output(Moment2Out) of AdamOp should not be null."));
 
   auto lr_dims = ctx->GetInputDim("LearningRate");
   PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
@@ -92,6 +115,17 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Moment2", "(Tensor) Input second moment");
     AddInput("Beta1Pow", "(Tensor) Input beta1 power accumulator");
     AddInput("Beta2Pow", "(Tensor) Input beta2 power accumulator");
+
+    AddInput("Beta1Tensor",
+             "(Tensor<float32>, optional) If provided, Adam will use this "
+             "as beta1, this has a higher priority than attr(beta1), the "
+             "shape of this tensor MUST BE [1].")
+        .AsDispensable();
+    AddInput("Beta2Tensor",
+             "(Tensor<float32>, optional) If provided, Adam will use this "
+             "as beta2, this has a higher priority than attr(beta2), the "
+             "shape of this tensor MUST BE [1].")
+        .AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("Moment1Out", "(Tensor) Output first moment");
