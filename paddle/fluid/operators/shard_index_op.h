@@ -34,7 +34,7 @@ class ShardIndexCPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(shard_id >= 0 && shard_id < nshards,
                    "shard_id(%d) is not in range [0, %d)", shard_id, nshards);
 
-    int shard_size = index_num / nshards;
+    int shard_size = (index_num + nshards - 1) / nshards;
 
     out->Resize(in->dims());
     out->set_lod(in->lod());

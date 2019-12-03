@@ -174,6 +174,8 @@ def generate_layer_fn(op_type):
             if not isinstance(val, list) and not isinstance(val, tuple):
                 val = [val]
             if len(val) == 0:
+                if len(args) == 0:
+                    continue
                 val = [args[0]]
                 args = args[1:]
 
