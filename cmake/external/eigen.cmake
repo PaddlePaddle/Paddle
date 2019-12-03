@@ -25,11 +25,11 @@ endif()
 if(WIN32)
     set(EIGEN_REPOSITORY https://github.com/eigenteam/eigen-git-mirror)
     set(EIGEN_TAG        917060c364181f33a735dc023818d5a54f60e54c)
-    set(EIGEN_UPDATE_COMMAND git apply --ignore-space-change --ignore-whitespace "${PADDLE_SOURCE_DIR}/patches/eigen/support_cuda9_windows.patch")
+    set(EIGEN_PATCH_COMMAND git apply --ignore-space-change --ignore-whitespace "${PADDLE_SOURCE_DIR}/patches/eigen/support_cuda9_windows.patch")
 else()
     set(EIGEN_REPOSITORY https://github.com/eigenteam/eigen-git-mirror)
     set(EIGEN_TAG        917060c364181f33a735dc023818d5a54f60e54c)
-    set(EIGEN_UPDATE_COMMAND "")
+    set(EIGEN_PATCH_COMMAND  "")
 endif()
 
 cache_third_party(extern_eigen3
@@ -62,7 +62,8 @@ else()
         "${EIGEN_DOWNLOAD_CMD}"
         PREFIX          ${EIGEN_PREFIX_DIR}
         SOURCE_DIR      ${EIGEN_SOURCE_DIR}
-        UPDATE_COMMAND    ${EIGEN_UPDATE_COMMAND}
+        UPDATE_COMMAND    ""
+        PATCH_COMMAND ${EIGEN_PATCH_COMMAND}
         CONFIGURE_COMMAND ""
         BUILD_COMMAND     ""
         INSTALL_COMMAND   ""

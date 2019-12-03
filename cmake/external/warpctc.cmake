@@ -20,7 +20,7 @@ SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
 # TODO: Use the official github address instead of private branch
 set(WARPCTC_REPOSITORY https://github.com/baidu-research/warp-ctc)
 set(WARPCTC_TAG 14858fef201244c983f5f965d2166379bf3f11a5)
-set(WARPCTC_UPDATE_COMMAND git apply --ignore-space-change --ignore-whitespace "${PADDLE_SOURCE_DIR}/patches/warpctc/support_cuda10_1.patch")
+set(WARPCTC_PATCH_COMMAND git apply --ignore-space-change --ignore-whitespace "${PADDLE_SOURCE_DIR}/patches/warpctc/support_cuda10_1.patch")
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -45,7 +45,8 @@ ExternalProject_Add(
     "${WARPCTC_DOWNLOAD_CMD}"
     PREFIX          ${WARPCTC_PREFIX_DIR}
     SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
-    UPDATE_COMMAND  ${WARPCTC_UPDATE_COMMAND}
+    UPDATE_COMMAND  ""
+    PATCH_COMMAND ${WARPCTC_PATCH_COMMAND}
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
