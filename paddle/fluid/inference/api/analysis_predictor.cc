@@ -506,6 +506,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       framework::InitGflags(flags);
     }
   }
+  framework::InitGLOG("");
   if (config.glog_info_disabled()) {
     FLAGS_logtostderr = 1;
     FLAGS_minloglevel = 2;  // GLOG_ERROR
