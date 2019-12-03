@@ -1874,7 +1874,7 @@ def density_prior_box(input,
                  clip=True,
                  flatten_to_2d=True)
 
-            place = fluid.CPUPlace()
+	    place = fluid.CPUPlace()
 	    exe = fluid.Executor(place)
 	    exe.run(fluid.default_startup_program())
  
