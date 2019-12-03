@@ -80,6 +80,7 @@ class ElementwiseAddDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     std::unique_ptr<T> op(new T());
     op->SetType("elementwise_add_grad_grad");
     op->SetInput("Y", this->Input("Y"));
+    op->SetInput("X", this->Input("X"));
     op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
     op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
     op->SetInput("DDY", this->OutputGrad(framework::GradVarName("Y")));

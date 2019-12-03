@@ -431,6 +431,7 @@ class Reshape2GradMaker : public framework::SingleGradOpMaker<T> {
     auto *grad_op = new T();
     grad_op->SetType("reshape2_grad");
     grad_op->SetInput("XShape", this->Output("XShape"));
+    grad_op->SetInput("X", this->Input("X"));
     if (this->HasInput("ShapeTensor")) {
       grad_op->SetInput("ShapeTensor", this->Input("ShapeTensor"));
     }
