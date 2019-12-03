@@ -225,7 +225,7 @@ def create_test_fp16(parent):
 create_test_fp16(TestSplitOp)
 
 
-class TestSplitAPI(OpTest):
+class TestSplitAPI(unittest.TestCase):
     def test_api(self):
         input_1 = np.random.random([4, 5, 6]).astype("int32")
         positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
@@ -259,7 +259,7 @@ class TestSplitAPI(OpTest):
         assert np.array_equal(res_5, out[2])
 
 
-class TestSplitOpError(OpTest):
+class TestSplitOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The type of axis in split_op should be int or Variable.

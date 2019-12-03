@@ -13,25 +13,28 @@
 # limitations under the License.
 
 from __future__ import print_function
-
 import unittest
 import numpy as np
-from op_test import OpTest
-
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+
+from test_collective_base import TestDistBase
 
 
-class TestZerosOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The input dtype of zeros_op must be bool, float16, float32, float64, int32, int64.
-            shape = [4]
-            dtype = "int8"
-            self.assertRaises(TypeError, fluid.layers.zeros, shape, dtype)
+class TestReduceScatterAPI(TestDistBase):
+    def _setup_config(self):
+        pass
+
+    def test_reducescatter(self, col_type="reduce_scatter"):
+        self.check_with_place("collective_reducescatter.py", col_type)
+
+    def test_reducescatter_with_error(self):
+        nranks = 2
+        tindata = fluid.data(name="tindata", shape=[5, 1000], dtype='float32')
+        try:
+            toutdata = fluid.layers.collective._c_reducescatter(tindata, nranks)
+        except ValueError:
+            pass
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
