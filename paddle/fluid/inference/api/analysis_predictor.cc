@@ -458,14 +458,6 @@ void AnalysisPredictor::PrepareArgument() {
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.
 void AnalysisPredictor::OptimizeInferenceProgram() {
-  if (ProgOptimUnsupported(inference_program_)) {
-    LOG(INFO) << "NOTICE: Your inference model contains parameters such "
-                 "as asymmetric padding, and ir optimization is temporarily "
-                 "not supported, "
-                 "so it is turned off.";
-    config_.SwitchIrOptim(false);
-    argument_.SetEnableAnalysisOptim(false);
-  }
   PrepareArgument();
   Analyzer().Run(&argument_);
 

@@ -215,50 +215,5 @@ bool OpCompatibleMap::ReadFromProto(const proto::OpCompatibleMap& desc) {
   return true;
 }
 
-bool ProgOptimUnsupported(std::shared_ptr<framework::ProgramDesc> program) {
-  auto op_type_checker = [](const std::string& name) {
-    const std::vector<std::string> op_types({
-        "conv2d", "conv3d", "conv2d_transpose", "conv3d_transpose",
-        "depthwise_conv2d", "depthwise_conv2d_transpose", "pool2d", "pool3d",
-    });
-    return std::find(op_types.begin(), op_types.end(), name) != op_types.end();
-  };
-  auto checker = [](const framework::OpDesc& op) {
-    if (op.HasAttr("paddings") && op.HasAttr("strides")) {
-      auto paddings = boost::get<std::vector<int>>(op.GetAttr("paddings"));
-      auto strides = boost::get<std::vector<int>>(op.GetAttr("strides"));
-      if (paddings.size() != strides.size()) {
-        VLOG(3) << "== paddings size is not equal to strides size.";
-        return true;
-      }
-    }
-    if (op.HasAttr("data_format")) {
-      auto data_format = boost::get<std::string>(op.GetAttr("data_format"));
-      if (data_format == "NHWC" || data_format == "NDHWC") {
-        VLOG(3) << "== data_format is NHWC or NDHWC.";
-        return true;
-      }
-    }
-    if (op.HasAttr("padding_algorithm")) {
-      auto padding_algorithm =
-          boost::get<std::string>(op.GetAttr("padding_algorithm"));
-      if (padding_algorithm != "EXPLICIT") {
-        VLOG(3) << "== padding_algorithm is not EXPLICIT.";
-        return true;
-      }
-    }
-    return false;
-  };
-  for (size_t i = 0; i < program->Size(); i++) {
-    const auto& block = program->Block(i);
-    for (auto* op : block.AllOps()) {
-      if ((op_type_checker(op->Type())) && checker(*op)) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 }  // namespace framework
 }  // namespace paddle
