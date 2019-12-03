@@ -25,7 +25,7 @@ arg1: the first arg defined running in gpu version or cpu version
 
 for example, you can run cpu version python2 testing like this:
 
-    python sample_test.py cpu 
+    python sampcd_processor.py cpu 
 
 """
 
