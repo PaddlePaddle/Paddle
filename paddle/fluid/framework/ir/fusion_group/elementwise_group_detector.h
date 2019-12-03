@@ -25,7 +25,7 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-struct ElementwiseGroupDetector {
+class ElementwiseGroupDetector {
  public:
   int operator()(Node* n);
 
@@ -36,7 +36,6 @@ struct ElementwiseGroupDetector {
   bool IsInputOfElementwiseOp(Node* n, std::string name = "");
   bool IsOutputOfElementwiseOp(Node* n);
 
-  void Insert(Node* n);
   int Search(Node* n, std::vector<Node*> except_nodes = {});
 
  private:

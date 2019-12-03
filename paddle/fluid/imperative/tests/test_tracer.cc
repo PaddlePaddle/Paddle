@@ -69,7 +69,7 @@ TEST(test_tracer, test_trace_op) {
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
   const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
-  for (size_t i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
+  for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
   }
 }
@@ -108,7 +108,7 @@ TEST(test_tracer, test_trace_op_with_backward) {
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
   const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
-  for (size_t i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
+  for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
   }
 }
@@ -239,14 +239,14 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   framework::LoDTensor rlt;
   framework::TensorCopySync(vout->Var().Get<framework::LoDTensor>(), place,
                             &rlt);
-  for (size_t i = 0; i < rlt.numel(); i++) {
+  for (int i = 0; i < rlt.numel(); i++) {
     ASSERT_EQ(rlt.data<float>()[i], 4.0);
   }
 
   framework::LoDTensor out_grad;
   framework::TensorCopySync(vout->GradVar().Get<framework::LoDTensor>(), place,
                             &out_grad);
-  for (size_t i = 0; i < out_grad.numel(); ++i) {
+  for (int i = 0; i < out_grad.numel(); ++i) {
     ASSERT_EQ(out_grad.data<float>()[i], 1.0);
   }
 
@@ -254,7 +254,7 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   framework::TensorCopySync(x_in->GradVar().Get<framework::LoDTensor>(), place,
                             &x_grad);
 
-  for (size_t i = 0; i < x_grad.numel(); ++i) {
+  for (int i = 0; i < x_grad.numel(); ++i) {
     ASSERT_EQ(x_grad.data<float>()[i], 1.0);
   }
 
@@ -262,7 +262,7 @@ TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
   framework::TensorCopySync(y_in->GradVar().Get<framework::LoDTensor>(), place,
                             &y_grad);
 
-  for (size_t i = 0; i < y_grad.numel(); ++i) {
+  for (int i = 0; i < y_grad.numel(); ++i) {
     ASSERT_EQ(y_grad.data<float>()[i], 1.0);
   }
 }
@@ -276,6 +276,24 @@ TEST(test_tracer, test_unique_name_generator) {
   auto fc_2 = tracer.GenerateUniqueName("fc");
   ASSERT_STREQ("fc_1", fc_1.c_str());
   ASSERT_STREQ("fc_2", fc_2.c_str());
+}
+
+TEST(test_tracer, test_current_tracer) {
+  // use current_tracer
+  auto tracer = std::make_shared<imperative::Tracer>();
+  imperative::SetCurrentTracer(tracer);
+  auto current_tracer = imperative::GetCurrentTracer();
+  ASSERT_EQ(current_tracer, tracer);
+}
+
+TEST(test_tracer, test_expected_place) {
+  // default expected place is CPUPlace
+  imperative::Tracer tracer;
+  ASSERT_EQ(platform::is_cpu_place(tracer.ExpectedPlace()), true);
+  // set to CUDAPlace
+  platform::CUDAPlace gpu_place(0);
+  tracer.SetExpectedPlace(gpu_place);
+  ASSERT_EQ(platform::is_gpu_place(tracer.ExpectedPlace()), true);
 }
 
 }  // namespace imperative

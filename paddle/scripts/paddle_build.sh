@@ -280,7 +280,11 @@ function check_style() {
 
 function build_base() {
     if [ "$SYSTEM" == "Linux" ];then
-      parallel_number=`nproc`
+      if [ `nproc` -gt 16 ];then
+          parallel_number=$(expr `nproc` - 4)
+      else
+          parallel_number=`nproc`
+      fi
     else
       parallel_number=8
     fi
@@ -435,9 +439,7 @@ EOF
             pip3.7 install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         fi
 
-        # TODO: jiabin need to refine this part when these tests fixed on mac
         ctest --output-on-failure -j $2
-
         paddle version
     fi
 }
@@ -485,6 +487,8 @@ function generate_api_spec() {
 
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec 
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > $spec_path
+    awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
+    awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
     if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then 
         # Use sed to make python2 and python3 sepc keeps the same
         sed -i 's/arg0: str/arg0: unicode/g' $spec_path
@@ -492,14 +496,9 @@ function generate_api_spec() {
     fi   
 
     # TODO(paddle-dev): remove op_use_default_grad_op_maker.spec 
-    # Currently, we only check in PR_CI python 2.7
-    if [ "spec_kind" == "PR" ]; then
-        if [ "$SYSTEM" != "Darwin" ]; then
-            if [ "$1" == "" ] || [ "$1" == "cp27-cp27m" ] || [ "$1" == "cp27-cp27mu" ]; then
-                python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
-                    ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
-            fi
-        fi
+    if [ "$spec_kind" == "PR" ]; then
+        python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
+            ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
     fi
     deactivate
 }
@@ -701,6 +700,13 @@ function parallel_test() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     parallel_test_base
+}
+
+function enable_unused_var_check() {
+    # NOTE(zhiqiu): Set FLAGS_enable_unused_var_check=1 here to enable unused_var_check,
+    # which checks if an operator has unused input variable(s).
+    # Currently, use it in coverage CI job.
+    export FLAGS_enable_unused_var_check=1
 }
 
 function gen_doc_lib() {
@@ -1002,8 +1008,7 @@ function build_document_preview() {
 function example() {
     pip install ${PADDLE_ROOT}/build/python/dist/*.whl
     paddle version
-    cp ${PADDLE_ROOT}/tools/sampcd_processor.py ${PADDLE_ROOT}/python/paddle/fluid
-    cd ${PADDLE_ROOT}/python/paddle/fluid
+    cd ${PADDLE_ROOT}/tools
     python sampcd_processor.py cpu 
     if [ "$?" != "0" ];then
       echo "Code instance execution failed"
@@ -1074,6 +1079,7 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
+        enable_unused_var_check
         parallel_test
         ;;
       cicheck_brpc)
@@ -1133,6 +1139,7 @@ function main() {
         exit 1
         ;;
       esac
+      echo "paddle_build script finished as expected"
 }
 
 main $@

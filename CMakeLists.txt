@@ -66,9 +66,10 @@ option(WITH_MKL         "Compile PaddlePaddle with MKL support."        ${AVX_FO
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(WITH_DISTRIBUTE  "Compile with distributed support"              OFF)
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
-option(ON_INFER         "Turn on inference optimization."               OFF)
+option(ON_INFER         "Turn on inference optimization and inference-lib generation" OFF)
 ################################ Internal Configurations #######################################
 option(WITH_AMD_GPU     "Compile PaddlePaddle with AMD GPU"             OFF)
+option(WITH_NV_JETSON     "Compile PaddlePaddle with NV JETSON"             OFF)
 option(WITH_NGRAPH      "Compile PaddlePaddle with nGraph support."     OFF)
 option(WITH_PROFILER    "Compile PaddlePaddle with GPU profiler and gperftools"        OFF)
 option(WITH_COVERAGE    "Compile PaddlePaddle with code coverage"       OFF)
@@ -76,6 +77,7 @@ OPTION(WITH_LIBXSMM     "Compile with libxsmm"                          OFF)
 option(COVERALLS_UPLOAD "Package code coverage data to coveralls"       OFF)
 option(WITH_PSLIB       "Compile with pslib support"                    OFF)
 option(WITH_BOX_PS      "Compile with box_ps support"                   OFF)
+option(WITH_XBYAK       "Compile with xbyak support"                    ON)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
 option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
@@ -167,7 +169,6 @@ include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
-include(inference_lib)      # add paddle fluid inference libraries
 include(configure)          # add paddle env configuration
 
 include_directories("${PADDLE_SOURCE_DIR}")
@@ -183,7 +184,9 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG")
 
 if(ON_INFER)
+    # you can trun off the paddle fluid and inference lib by set ON_INFER=OFF
     message(STATUS "On inference mode, will take place some specific optimization.")
+    include(inference_lib)
     add_definitions(-DPADDLE_ON_INFERENCE)
 else()
     #TODO(luotao), combine this warning with `make inference_lib_dist` command.

@@ -21,10 +21,11 @@ from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.jit import TracedLayer
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
-from utils import DyGraphProgramDescTracerTestHelper
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -140,6 +141,7 @@ class PtbModel(fluid.Layer):
                  num_layers=2,
                  num_steps=20,
                  init_scale=0.1,
+                 is_sparse=False,
                  dropout=None):
         super(PtbModel, self).__init__(name_scope)
         self.hidden_size = hidden_size
@@ -159,7 +161,7 @@ class PtbModel(fluid.Layer):
             self.full_name(),
             size=[vocab_size, hidden_size],
             dtype='float32',
-            is_sparse=False,
+            is_sparse=is_sparse,
             param_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
@@ -211,7 +213,11 @@ class PtbModel(fluid.Layer):
 
 
 class TestDygraphPtbRnn(unittest.TestCase):
-    def test_ptb_rnn_cpu_float32(self):
+    def test_ptb_rnn(self):
+        for is_sparse in [True, False]:
+            self.ptb_rnn_cpu_float32(is_sparse)
+
+    def ptb_rnn_cpu_float32(self, is_sparse):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -220,6 +226,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         init_scale = 0.1
         batch_size = 4
         batch_num = 200
+        traced_layer = None
 
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
@@ -231,7 +238,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 vocab_size=vocab_size,
                 num_layers=num_layers,
                 num_steps=num_steps,
-                init_scale=init_scale)
+                init_scale=init_scale,
+                is_sparse=is_sparse)
 
             sgd = SGDOptimizer(learning_rate=1e-3)
             dy_param_updated = dict()
@@ -240,7 +248,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_hidden = None
             last_cell = None
 
-            helper = DyGraphProgramDescTracerTestHelper(ptb_model, self)
+            helper = DyGraphProgramDescTracerTestHelper(self)
+            program = None
 
             for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
@@ -256,11 +265,19 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
                 if i % 5 == 0:
-                    outs, outs_static = helper.run(
-                        [x, y, init_hidden, init_cell],
-                        feed_names=['x', 'y', 'init_hidden', 'init_cell'],
-                        fetch_names=['dy_loss', 'last_hidden', 'last_cell'])
+                    outs, traced_layer = TracedLayer.trace(
+                        ptb_model, [x, y, init_hidden, init_cell])
+                    outs_static = traced_layer([x, y, init_hidden, init_cell])
                     helper.assertEachVar(outs, outs_static)
+
+                    if program is not None:
+                        self.assertTrue(
+                            is_equal_program(traced_layer.program, program))
+
+                    program = traced_layer.program
+
+                    traced_layer.save_inference_model(
+                        './infe_imperative_ptb_rnn', feed=range(4))
                 else:
                     outs = ptb_model(x, y, init_hidden, init_cell)
 
@@ -289,7 +306,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 vocab_size=vocab_size,
                 num_layers=num_layers,
                 num_steps=num_steps,
-                init_scale=init_scale)
+                init_scale=init_scale,
+                is_sparse=is_sparse)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))

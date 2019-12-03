@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 
 #ifdef PADDLE_WITH_MKLDNN
+#include <algorithm>
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -54,8 +55,16 @@ void TransformData(const OpKernelType &expected_kernel_type,
 
         auto out_format = platform::MKLDNNFormatForSize(in.dims().size(),
                                                         ToMKLDNNFormat(lin));
-
         out.ShareDataWith(input_tensor);
+        // For NHWC data we need reshape of tensors as MKL-DNN
+        // is expecting NHWC dims description order
+        if (lin == DataLayout::kNHWC) {
+          auto nchw_dims = paddle::framework::vectorize<int>(out.dims());
+          std::rotate(nchw_dims.begin() + 1, nchw_dims.end() - 1,
+                      nchw_dims.end());
+          out.Resize(framework::make_ddim(nchw_dims));
+          paddle::platform::set_cur_paddle_data_layout(lin);
+        }
         out.set_layout(DataLayout::kMKLDNN);
         out.set_format(out_format);
 #endif

@@ -395,23 +395,28 @@ def _as_lodtensor(data, place):
 
 
 class FetchHandler(object):
-    def __init__(self, fetch_target_names, period_secs=60, return_np=True):
-        self.fetch_target_names = fetch_target_names
+    def __init__(self, var_dict=None, period_secs=60):
+        assert var_dict != None
+        self.var_dict = var_dict
         self.period_secs = period_secs
-        self.return_np = return_np
 
-    def handler(self, fetch_target_vars):
-        return
+    def handler(self, res_dict):
+        for key in res_dict:
+            if type(res_dict[key]) is np.ndarray:
+                sys.stdout.write("{}[0]: {} ".format(key, res_dict[key][0]))
+        sys.stdout.write("\n")
 
     @staticmethod
     def help():
         print("""
-class FetchHandlerExamlpe(FetchHandler):
-    def handler(self, fetch_target_vars):
-        b_auc = fetch_target_vars[0]
-        g_auc = fetch_target_vars[1]
-                        
-        print("b_auc: {}, g_auc: {} at time: {}".format(b_auc, g_auc, time.ctime()))
+class FetchHandlerExample(FetchHandler):
+    def handler(self, res_dict):
+        print(res_dict["auc"])
+        print("auc: {}, {}".format(res_dict["auc"], time.ctime()))
+
+auc = Variable()
+var_dict = {"auc": auc}
+handler = FetchHandlerExample(var_dict=var_dict)
 """)
 
 
@@ -987,11 +992,6 @@ class Executor(object):
 
         dataset._prepare_to_run()
 
-        if fetch_handler is not None:
-            fetch_instance = fetch_handler
-        else:
-            fetch_instance = FetchHandler([])
-
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
@@ -1006,17 +1006,26 @@ class Executor(object):
         trainer._gen_trainer_desc()
 
         self._dump_debug_info(program=program, trainer=trainer)
+        dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_instance = self._default_executor.init_for_dataset(
             program.desc, trainer._desc(), scope, dataset.dataset)
 
-        scope0 = trainer_instance.get_worker_scope(0)
+        if fetch_handler is not None:
+            scope0 = trainer_instance.get_worker_scope(0)
+            fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
+            fetch_monitor.start()
+            self._default_executor.run_from_dataset(trainer_instance)
+            fetch_monitor.stop()
+            self._default_executor.release_trainer(trainer_instance)
+        else:
 
-        fetch_monitor = FetchHandlerMonitor(scope0, fetch_instance)
-        fetch_monitor.start()
-        self._default_executor.run_from_dataset(trainer_instance)
-        fetch_monitor.stop()
+            self._default_executor.run_from_dataset(trainer_instance)
+            self._default_executor.release_trainer(trainer_instance)
+
+        dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
+
         return None
 
     def infer_from_dataset(self,

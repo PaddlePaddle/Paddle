@@ -529,9 +529,11 @@ class Optimizer(object):
                 if not param.trainable:
                     continue
                 if param._ivar._grad_ivar() is not None:
+                    ivar_type = param._ivar._grad_ivar().type
                     # create gradient variable
                     grad_var = Variable(
                         block=loss.block,
+                        type=ivar_type,
                         name=param._ivar._grad_name(),
                         stop_gradient=True,
                         ivar=param._ivar._grad_ivar())
@@ -867,7 +869,7 @@ class MomentumOptimizer(Optimizer):
         return momentum_op
 
 
-class DGCMomentumOptimizer(MomentumOptimizer):
+class DGCMomentumOptimizer(Optimizer):
     """
     DGC (Deep Gradient Compression) Momentum Optimizer. Original paper is https://arxiv.org/abs/1712.01887
 
@@ -923,6 +925,8 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                         sparsity=[0.999, 0.999])
 
     """
+    _u_velocity_acc_str = "_dgc_u_"
+    _v_velocity_acc_str = "_dgc_v_"
 
     def __init__(self,
                  learning_rate,
@@ -935,17 +939,25 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                  num_trainers=None,
                  regularization=None,
                  name=None):
-        self._sparsity = sparsity
-        self._rampup_step = rampup_step
-        self._rampup_step_var = None
+        assert learning_rate is not None
+        assert momentum is not None
+        super(DGCMomentumOptimizer, self).__init__(
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
+        self.type = "dgc_momentum"
+        self._momentum = momentum
+        self._use_nesterov = bool(use_nesterov)
 
         self._rampup_begin_step = rampup_begin_step
-        self._rampup_begin_step_var = None
+        self._rampup_step = rampup_step
+        self._sparsity = sparsity
 
+        self._rampup_begin_step_var = None
         self._global_step_var = None
+
         self._local_grad_clip_norm = None
         self._clip_norm = None
-
         if local_grad_clip_norm is not None:
             assert isinstance(num_trainers, int)
             assert isinstance(local_grad_clip_norm, float)
@@ -956,8 +968,21 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             self._clip_norm = local_grad_clip_norm / (num_trainers *
                                                       num_trainers)
 
-        super(DGCMomentumOptimizer, self).__init__(
-            learning_rate, momentum, use_nesterov, regularization, name)
+        self._get_dgc_regularization_param()
+
+    def _get_dgc_regularization_param(self):
+        self.regular_coeff = 0.0
+        self.regular_type = 0
+
+        if self.regularization is not None:
+            self.regular_coeff = self.regularization._regularization_coeff
+            from .regularizer import L1Decay, L2Decay
+            if isinstance(self.regularization, L1Decay):
+                self.regular_type = 1
+            elif isinstance(self.regularization, L2Decay):
+                self.regular_type = 2
+            else:
+                assert False, 'regularization must be None|L1Decay|L2Deacy'
 
     def _is_use_dgc(self, param_var, grad_var):
         var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
@@ -970,34 +995,40 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
+        velocity_acc = self._get_accumulator(self._u_velocity_acc_str,
+                                             param_and_grad[0])
+        assert velocity_acc is not None
+
+        inputs = {
+            "Param": param_and_grad[0],
+            "Grad": param_and_grad[1],
+            "Velocity": velocity_acc,
+            "LearningRate": self._create_param_lr(param_and_grad),
+        }
+        outputs = {
+            "ParamOut": param_and_grad[0],
+            "VelocityOut": velocity_acc,
+        }
+        attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
 
         if not self._is_use_dgc(param_and_grad[0], param_and_grad[1]):
-            return super(DGCMomentumOptimizer, self)._append_optimize_op(
-                block, param_and_grad)
+            type = "momentum"
+        else:
+            type = "dgc_momentum"
+            inputs.update({
+                "current_step": self._global_step_var,
+                "nranks": self._nranks_var
+            })
+            outputs.update({'Grad_out': param_and_grad[1]})
+            attrs.update({"rampup_begin_step": float(self._rampup_begin_step)})
 
-        velocity_acc = self._get_accumulator(self._velocity_acc_str,
-                                             param_and_grad[0])
         # create the dgc momentum optimize op
         dgc_momentum_op = block.append_op(
-            type="dgc_momentum",
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "Velocity": velocity_acc,
-                "LearningRate": self._create_param_lr(param_and_grad),
-                "current_step": self._global_step_var,
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "VelocityOut": velocity_acc
-            },
-            attrs={
-                "mu": self._momentum,
-                "use_nesterov": self._use_nesterov,
-                "rampup_begin_step": float(self._rampup_begin_step)
-            },
+            type=type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
             stop_gradient=True)
-
         return dgc_momentum_op
 
     def _add_auto_increment_var(self, counter_name, begin, step=1):
@@ -1019,14 +1050,29 @@ class DGCMomentumOptimizer(MomentumOptimizer):
 
         return counter
 
+    def _add_nranks_var(self, name, value=-1):
+        helper = LayerHelper('global_step_counter')
+        counter, is_new_var = helper.create_or_get_global_variable(
+            name=name, dtype='float32', shape=[1], persistable=True)
+        if is_new_var:
+            helper.set_variable_initializer(
+                counter,
+                initializer=Constant(
+                    value=float(value), force_cpu=True))
+            counter.stop_gradient = True
+
+        return counter
+
     def _append_dgc_ops(self, param_and_grads):
-        start_program = default_startup_program()
         main_program = default_main_program()
         main_program._enable_dgc = True
 
         # step counter
         self._global_step_var = self._add_auto_increment_var(
             counter_name=core.dgc.kDGCCounterName(), begin=0)
+
+        self._nranks_var = self._add_nranks_var(
+            name=core.dgc.kDGCNRanksName(), value=-1)
 
         # rampup begin step var for all_reduce_op_handle
         self._rampup_begin_step_var = tensor.create_global_var(
@@ -1037,22 +1083,16 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             value=self._rampup_begin_step * 1.0,
             force_cpu=True)
 
+        self.helper = LayerHelper(self.__class__.__name__)
+
         for param_var, grad_var in param_and_grads:
+            # reuse velocity in dgc_op and dgc_momentum_op
+            u_var = self._add_accumulator(self._u_velocity_acc_str, param_var)
+
             if not self._is_use_dgc(param_var, grad_var):
                 continue
 
-            u_var = tensor.create_global_var(
-                shape=param_var.shape,
-                dtype=param_var.dtype,
-                persistable=True,
-                name=param_var.name + core.dgc.kDGCUName(),
-                value=0.0)
-            v_var = tensor.create_global_var(
-                shape=param_var.shape,
-                dtype=param_var.dtype,
-                persistable=True,
-                name=param_var.name + core.dgc.kDGCVName(),
-                value=0.0)
+            v_var = self._add_accumulator(self._v_velocity_acc_str, param_var)
 
             k_var = tensor.create_global_var(
                 shape=[1],
@@ -1067,6 +1107,14 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                 dtype=param_var.dtype,
                 persistable=True,
                 name=param_var.name + core.dgc.kDGCEncodedName(),
+                value=0.0,
+                force_cpu=False)
+
+            gather_var = tensor.create_global_var(
+                shape=[1],
+                dtype=param_var.dtype,
+                persistable=True,
+                name=param_var.name + core.dgc.kDGCGatherName(),
                 value=0.0,
                 force_cpu=False)
 
@@ -1092,7 +1140,7 @@ class DGCMomentumOptimizer(MomentumOptimizer):
             if self._local_grad_clip_norm is not None:
                 clip_var = self._append_clip_norm(grad_var, self._clip_norm)
             self._dgc_op(param_var, clip_var, grad_var, u_var, v_var, k_var,
-                         encoded_var)
+                         encoded_var, gather_var)
 
     def _is_the_backward_op(self, op):
         op_maker = core.op_proto_and_checker_maker
@@ -1131,30 +1179,36 @@ class DGCMomentumOptimizer(MomentumOptimizer):
                 x=grad_var, max_norm=clip_norm, name=grad_var.name)
 
     def _dgc_op(self, param_var, clip_var, grad_var, u_var, v_var, k_var,
-                encoded_var):
+                encoded_var, gather_var):
         block = framework.default_main_program().global_block()
         op_maker = core.op_proto_and_checker_maker
+
         dgc_op = block.append_op(
             type="dgc",
             inputs={
                 "U": u_var,
                 "V": v_var,
                 "Grad": clip_var,
-                "current_step": self._global_step_var
+                "Param": param_var,
+                "current_step": self._global_step_var,
+                "nranks": self._nranks_var,
             },
             outputs={
                 "U_out": u_var,
                 "V_out": v_var,
                 "EncodeGrad": encoded_var,
                 "k": k_var,
-                "Grad_out": grad_var
+                "Grad_out": grad_var,
+                "GatherBuff": gather_var,
             },
             attrs={
                 "m": self._momentum,
                 "sparsity": self._sparsity,
                 "use_nesterov": self._use_nesterov,
                 "rampup_begin_step": float(self._rampup_begin_step),
-                "rampup_step": float(self._rampup_step)
+                "rampup_step": float(self._rampup_step),
+                "regular_coeff": float(self.regular_coeff),
+                "regular_type": int(self.regular_type),
             },
             stop_gradient=True)
 
@@ -1162,6 +1216,37 @@ class DGCMomentumOptimizer(MomentumOptimizer):
         dgc_op._set_attr(op_maker.kOpRoleAttrName(), backward)
         dgc_op._set_attr(op_maker.kOpRoleVarAttrName(),
                          [param_var.name, grad_var.name])
+
+    def apply_gradients(self, params_grads):
+        params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
+        params_grads, table_param_and_grad, table_optimize_op = \
+            self._process_distribute_lookuptable(params_grads)
+
+        not_dgc_params_grads = []
+        dgc_params_grads = []
+        for param, grad in params_grads:
+            if not self._is_use_dgc(param, grad):
+                not_dgc_params_grads.append((param, grad))
+            else:
+                dgc_params_grads.append((param, grad))
+
+        # DGC clip and regularization in local
+        not_dgc_params_grads = append_gradient_clip_ops(not_dgc_params_grads)
+
+        # Add regularization if any
+        not_dgc_params_grads = append_regularization_ops(not_dgc_params_grads,
+                                                         self.regularization)
+
+        params_grads = not_dgc_params_grads + dgc_params_grads
+        params_grads = sorted(params_grads, key=lambda x: x[0].name)
+
+        optimize_ops = self._create_optimization_pass(params_grads)
+        if table_optimize_op is not None:
+            optimize_ops.append(table_optimize_op)
+            params_grads.append(table_param_and_grad)
+
+        return optimize_ops
 
 
 class LarsMomentumOptimizer(Optimizer):
@@ -1401,9 +1486,11 @@ class AdamOptimizer(Optimizer):
     Args:
         learning_rate (float|Variable, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a ``Variable`` with a float type. The default value is 0.001.
-        beta1 (float, optional): The exponential decay rate for the 1st moment estimates.
+        beta1 (float|Variable, optional): The exponential decay rate for the 1st moment estimates.
+            It should be a float number or a Variable with shape [1] and data type as float32.
             The default value is 0.9.
-        beta2 (float, optional): The exponential decay rate for the 2nd moment estimates.
+        beta2 (float|Variable, optional): The exponential decay rate for the 2nd moment estimates.
+            It should be a float number or a Variable with shape [1] and data type as float32.
             The default value is 0.999.
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
@@ -1447,6 +1534,64 @@ class AdamOptimizer(Optimizer):
                 for data in train_reader():
                     exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 
+        .. code-block:: python
+
+            # Adam with beta1/beta2 as Variable
+            import paddle
+            import paddle.fluid as fluid
+            import paddle.fluid.layers.learning_rate_scheduler as lr_scheduler
+
+            place = fluid.CPUPlace()
+            main = fluid.Program()
+            with fluid.program_guard(main):
+                x = fluid.data(name='x', shape=[None, 13], dtype='float32')
+                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+                y_predict = fluid.layers.fc(input=x, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                # define beta decay variable
+                def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate):
+                    global_step = lr_scheduler._decay_step_counter()
+
+                    beta1 = fluid.layers.create_global_var(
+                        shape=[1],
+                        value=float(beta1_init),
+                        dtype='float32',
+                        # set persistable for save checkpoints and resume
+                        persistable=True,
+                        name="beta1")
+                    beta2 = fluid.layers.create_global_var(
+                        shape=[1],
+                        value=float(beta2_init),
+                        dtype='float32',
+                        # set persistable for save checkpoints and resume
+                        persistable=True,
+                        name="beta2")
+
+                    div_res = global_step / decay_steps
+                    decayed_beta1 = beta1_init * (decay_rate**div_res)
+                    decayed_beta2 = beta2_init * (decay_rate**div_res)
+                    fluid.layers.assign(decayed_beta1, beta1)
+                    fluid.layers.assign(decayed_beta2, beta2)
+
+                    return beta1, beta2
+
+                beta1, beta2 = get_decayed_betas(0.9, 0.99, 1e5, 0.9)
+                adam_optimizer = fluid.optimizer.AdamOptimizer(
+                                                    learning_rate=0.01,
+                                                    beta1=beta1,
+                                                    beta2=beta2)
+                adam_optimizer.minimize(avg_cost)
+
+                fetch_list = [avg_cost]
+                train_reader = paddle.batch(
+                    paddle.dataset.uci_housing.train(), batch_size=1)
+                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                for data in train_reader():
+                    exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
@@ -1485,14 +1630,14 @@ class AdamOptimizer(Optimizer):
             self._add_accumulator(
                 name=self._beta1_pow_acc_str,
                 param=p,
-                dtype='float32',
-                fill_value=self._beta1,
+                fill_value=0.9 if isinstance(self._beta1, Variable) \
+                        else self._beta1,
                 shape=[1])
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
-                dtype='float32',
-                fill_value=self._beta2,
+                fill_value=0.999 if isinstance(self._beta2, Variable) \
+                        else self._beta2,
                 shape=[1])
 
     def _append_optimize_op(self, block, param_and_grad):
@@ -1508,29 +1653,40 @@ class AdamOptimizer(Optimizer):
                                               param_and_grad[0])
 
         # create the adam optimize op
+        inputs = {
+            "Param": param_and_grad[0],
+            "Grad": param_and_grad[1],
+            "LearningRate": self._create_param_lr(param_and_grad),
+            "Moment1": moment1,
+            "Moment2": moment2,
+            "Beta1Pow": beta1_pow_acc,
+            "Beta2Pow": beta2_pow_acc
+        }
+        outputs = {
+            "ParamOut": param_and_grad[0],
+            "Moment1Out": moment1,
+            "Moment2Out": moment2
+        }
+        attrs = {
+            "epsilon": self._epsilon,
+            "lazy_mode": self._lazy_mode,
+            "min_row_size_to_use_multithread": 1000
+        }
+
+        if isinstance(self._beta1, Variable):
+            inputs['Beta1Tensor'] = self._beta1
+        else:
+            attrs['beta1'] = self._beta1
+        if isinstance(self._beta2, Variable):
+            inputs['Beta2Tensor'] = self._beta2
+        else:
+            attrs['beta2'] = self._beta2
+
         adam_op = block.append_op(
             type=self.type,
-            inputs={
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "LearningRate": self._create_param_lr(param_and_grad),
-                "Moment1": moment1,
-                "Moment2": moment2,
-                "Beta1Pow": beta1_pow_acc,
-                "Beta2Pow": beta2_pow_acc
-            },
-            outputs={
-                "ParamOut": param_and_grad[0],
-                "Moment1Out": moment1,
-                "Moment2Out": moment2
-            },
-            attrs={
-                "beta1": self._beta1,
-                "beta2": self._beta2,
-                "epsilon": self._epsilon,
-                "lazy_mode": self._lazy_mode,
-                "min_row_size_to_use_multithread": 1000
-            },
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
             stop_gradient=True)
 
         return adam_op
@@ -1549,18 +1705,30 @@ class AdamOptimizer(Optimizer):
                                                       param)
                 beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
                                                       param)
+                inputs = {"X": beta1_pow_acc}
+                attrs = {}
+                if isinstance(self._beta1, Variable):
+                    inputs['ScaleTensor'] = self._beta1
+                else:
+                    attrs['scale'] = self._beta1
                 main_block.append_op(
                     type="scale",
-                    inputs={"X": beta1_pow_acc},
+                    inputs=inputs,
                     outputs={"Out": beta1_pow_acc},
-                    attrs={"scale": self._beta1},
+                    attrs=attrs,
                     stop_gradient=True)
 
+                inputs = {"X": beta2_pow_acc}
+                attrs = {}
+                if isinstance(self._beta2, Variable):
+                    inputs['ScaleTensor'] = self._beta2
+                else:
+                    attrs['scale'] = self._beta2
                 main_block.append_op(
                     type="scale",
-                    inputs={"X": beta2_pow_acc},
+                    inputs=inputs,
                     outputs={"Out": beta2_pow_acc},
-                    attrs={"scale": self._beta2},
+                    attrs=attrs,
                     stop_gradient=True)
 
 
@@ -1667,7 +1835,6 @@ class AdamaxOptimizer(Optimizer):
             self._add_accumulator(
                 name=self._beta1_pow_acc_str,
                 param=p,
-                dtype='float32',
                 fill_value=self._beta1,
                 shape=[1])
 

@@ -105,3 +105,24 @@ class TestMKLDNNWithStride(TestConv2dTransposeMKLDNNOp):
         self.pad = [1, 1]
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]  # NCHW
+
+
+class TestMKLDNNWithAsymPad(TestConv2dTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        self.pad = [0, 0, 1, 2]
+        self.padding_algorithm = "EXPLICIT"
+
+
+class TestMKLDNNWithSamePad(TestConv2dTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        self.pad = [0, 0]
+        self.padding_algorithm = "SAME"
+
+
+class TestMKLDNNWithValidPad(TestConv2dTransposeMKLDNNOp):
+    def init_test_case(self):
+        TestConv2dTransposeMKLDNNOp.init_test_case(self)
+        self.pad = [1, 1]
+        self.padding_algorithm = "VALID"

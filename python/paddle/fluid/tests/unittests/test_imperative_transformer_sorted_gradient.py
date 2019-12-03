@@ -18,13 +18,14 @@ import unittest
 import paddle.fluid as fluid
 from paddle.fluid import Embedding, LayerNorm, FC, Layer
 from paddle.fluid.dygraph import to_variable, guard
+from paddle.fluid.dygraph.jit import TracedLayer
 from test_imperative_base import new_program_scope
 from paddle.fluid import core
 import numpy as np
 import six
 np.set_printoptions(suppress=True)
 
-from utils import DyGraphProgramDescTracerTestHelper
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 
 # Copy from models
@@ -585,6 +586,7 @@ class PrepareEncoderDecoderLayer(Layer):
                  src_emb_dim,
                  src_max_len,
                  dropout_rate,
+                 is_sparse=False,
                  word_emb_param_name=None,
                  pos_enc_param_name=None):
         super(PrepareEncoderDecoderLayer, self).__init__(name_scope)
@@ -595,6 +597,7 @@ class PrepareEncoderDecoderLayer(Layer):
         self._input_emb = Embedding(
             name_scope=self.full_name(),
             size=[src_vocab_size, src_emb_dim],
+            is_sparse=is_sparse,
             padding_idx=0,
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
@@ -607,6 +610,7 @@ class PrepareEncoderDecoderLayer(Layer):
         self._pos_emb = Embedding(
             name_scope=self.full_name(),
             size=[self._src_max_len, src_emb_dim],
+            is_sparse=is_sparse,
             param_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
                 initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
@@ -632,10 +636,23 @@ class PrepareEncoderDecoderLayer(Layer):
 
 
 class WrapEncoderLayer(Layer):
-    def __init__(self, name_cope, src_vocab_size, max_length, n_layer, n_head,
-                 d_key, d_value, d_model, d_inner_hid, prepostprocess_dropout,
-                 attention_dropout, relu_dropout, preprocess_cmd,
-                 postprocess_cmd, weight_sharing):
+    def __init__(self,
+                 name_cope,
+                 src_vocab_size,
+                 max_length,
+                 n_layer,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd,
+                 postprocess_cmd,
+                 weight_sharing,
+                 is_sparse=False):
         """
         The wrapper assembles together all needed layers for the encoder.
         """
@@ -647,6 +664,7 @@ class WrapEncoderLayer(Layer):
             d_model,
             max_length,
             prepostprocess_dropout,
+            is_sparse=is_sparse,
             word_emb_param_name=word_emb_param_names[0],
             pos_enc_param_name=pos_enc_param_names[0])
         self._encoder = EncoderLayer(
@@ -813,7 +831,8 @@ class WrapDecoderLayer(Layer):
                  postprocess_cmd,
                  weight_sharing,
                  caches=None,
-                 gather_idx=None):
+                 gather_idx=None,
+                 is_sparse=False):
         """
         The wrapper assembles together all needed layers for the encoder.
         """
@@ -825,6 +844,7 @@ class WrapDecoderLayer(Layer):
             d_model,
             max_length,
             prepostprocess_dropout,
+            is_sparse=is_sparse,
             word_emb_param_name=word_emb_param_names[1],
             pos_enc_param_name=pos_enc_param_names[1])
         self._decoder_layer = DecoderLayer(
@@ -892,7 +912,8 @@ class TransFormer(Layer):
                  weight_sharing,
                  label_smooth_eps,
                  use_py_reader=False,
-                 is_test=False):
+                 is_test=False,
+                 is_sparse=False):
         super(TransFormer, self).__init__(name_scope)
         self._label_smooth_eps = label_smooth_eps
         self._trg_vocab_size = trg_vocab_size
@@ -901,15 +922,39 @@ class TransFormer(Layer):
                 "Vocabularies in source and target should be same for weight sharing."
             )
         self._wrap_encoder_layer = WrapEncoderLayer(
-            self.full_name(), src_vocab_size, max_length, n_layer, n_head,
-            d_key, d_value, d_model, d_inner_hid, prepostprocess_dropout,
-            attention_dropout, relu_dropout, preprocess_cmd, postprocess_cmd,
-            weight_sharing)
+            self.full_name(),
+            src_vocab_size,
+            max_length,
+            n_layer,
+            n_head,
+            d_key,
+            d_value,
+            d_model,
+            d_inner_hid,
+            prepostprocess_dropout,
+            attention_dropout,
+            relu_dropout,
+            preprocess_cmd,
+            postprocess_cmd,
+            weight_sharing,
+            is_sparse=is_sparse)
         self._wrap_decoder_layer = WrapDecoderLayer(
-            self.full_name(), trg_vocab_size, max_length, n_layer, n_head,
-            d_key, d_value, d_model, d_inner_hid, prepostprocess_dropout,
-            attention_dropout, relu_dropout, preprocess_cmd, postprocess_cmd,
-            weight_sharing)
+            self.full_name(),
+            trg_vocab_size,
+            max_length,
+            n_layer,
+            n_head,
+            d_key,
+            d_value,
+            d_model,
+            d_inner_hid,
+            prepostprocess_dropout,
+            attention_dropout,
+            relu_dropout,
+            preprocess_cmd,
+            postprocess_cmd,
+            weight_sharing,
+            is_sparse=is_sparse)
 
         if weight_sharing:
             self._wrap_decoder_layer._prepare_decoder_layer._input_emb._w = self._wrap_encoder_layer._prepare_encoder_layer._input_emb._w
@@ -936,7 +981,11 @@ class TransFormer(Layer):
 
 
 class TestDygraphTransformerSortGradient(unittest.TestCase):
-    def test_transformer_sort_gradient_float32(self):
+    def test_transformer_sort_gradient(self):
+        for is_sparse in [True, False]:
+            self.transformer_sort_gradient_float32(is_sparse)
+
+    def transformer_sort_gradient_float32(self, is_sparse):
         seed = 90
 
         with guard():
@@ -963,7 +1012,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 ModelHyperParams.weight_sharing,
                 TrainTaskConfig.label_smooth_eps,
                 use_py_reader=use_py_reader,
-                is_test=False)
+                is_test=False,
+                is_sparse=is_sparse)
             if sync:
                 lr_decay = fluid.layers.learning_rate_scheduler.noam_decay(
                     ModelHyperParams.d_model, TrainTaskConfig.warmup_steps)
@@ -979,23 +1029,27 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
             dy_param_init = dict()
             dy_param_updated = dict()
 
-            helper = DyGraphProgramDescTracerTestHelper(transformer, self)
+            helper = DyGraphProgramDescTracerTestHelper(self)
+            program = None
 
             for i in range(batch_num):
                 enc_inputs, dec_inputs, label, weights = create_data()
-                if i % 5 == 0:
-                    outs, outs_static = helper.run(
-                        inputs=[enc_inputs, dec_inputs, label, weights],
-                        feed_names=[
-                            'enc_input_0', 'enc_input_1', 'enc_input_2',
-                            'dec_input_0', 'dec_input_1', 'dec_input_2',
-                            'dec_input_3', 'label', 'weights'
-                        ],
-                        fetch_names=[
-                            'dy_sum_cost', 'dy_avg_cost', 'dy_predict',
-                            'dy_token_num'
-                        ])
+                if i % 2 == 0:
+                    outs, traced_layer = TracedLayer.trace(
+                        transformer, [enc_inputs, dec_inputs, label, weights])
+
+                    ins_static = enc_inputs + dec_inputs + [label, weights]
+                    outs_static = traced_layer(ins_static)
                     helper.assertEachVar(outs, outs_static)
+                    if program is not None:
+                        self.assertTrue(
+                            is_equal_program(program, traced_layer.program))
+
+                    program = traced_layer.program
+                    traced_layer.save_inference_model(
+                        './infer_imperative_transformer',
+                        feed=range(len(ins_static)),
+                        fetch=range(len(outs_static)))
                 else:
                     outs = transformer(enc_inputs, dec_inputs, label, weights)
 
@@ -1040,7 +1094,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 ModelHyperParams.weight_sharing,
                 TrainTaskConfig.label_smooth_eps,
                 use_py_reader=use_py_reader,
-                is_test=False)
+                is_test=False,
+                is_sparse=is_sparse)
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             optimizer = fluid.optimizer.SGD(learning_rate=0.003)

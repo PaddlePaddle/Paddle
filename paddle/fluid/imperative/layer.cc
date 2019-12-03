@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <queue>
 #include <utility>
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/imperative/prepared_operator.h"
@@ -140,6 +141,22 @@ static std::string DebugString(
         ss << "NOT_INITED";
       }
       ss << ">";
+    } else if (var.IsType<framework::SelectedRows>()) {
+      ss << "SelectedRows<";
+      auto& selected_rows = var.Get<framework::SelectedRows>();
+      auto& tensor = selected_rows.value();
+      auto& rows = selected_rows.rows();
+      if (tensor.IsInitialized()) {
+        ss << framework::DataTypeToString(tensor.type()) << ", ";
+        ss << tensor.place() << ", ";
+        ss << "height(" << selected_rows.height() << "), rows(";
+        std::for_each(rows.cbegin(), rows.cend(),
+                      [&ss](const int64_t r) { ss << r << " "; });
+        ss << "), dims(" << tensor.dims() << ")";
+      } else {
+        ss << "NOT_INITED";
+      }
+      ss << ">";
     } else {
       ss << "UNRESOLVED_TYPE";
     }
@@ -189,45 +206,79 @@ void VarBase::AddGradOps(const std::weak_ptr<OpBase>& op) {
 
 void VarBase::ClearGradient() {
   if (grad_var_) {
-    auto* grad_t = grad_var_->var_.GetMutable<framework::LoDTensor>();
-    if (grad_t->IsInitialized()) {
-      auto* dev_ctx =
-          platform::DeviceContextPool::Instance().Get(grad_t->place());
-      operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+    if (grad_var_->var_.IsType<framework::SelectedRows>()) {
+      auto* grad_t = grad_var_->var_.GetMutable<framework::SelectedRows>();
+      if (grad_t->mutable_value()->IsInitialized()) {
+        grad_t->mutable_rows()->clear();
+        grad_t->mutable_value()->clear();
+      }
+    } else {
+      auto* grad_t = grad_var_->var_.GetMutable<framework::LoDTensor>();
+      if (grad_t->IsInitialized()) {
+        auto* dev_ctx =
+            platform::DeviceContextPool::Instance().Get(grad_t->place());
+        operators::math::set_constant(*dev_ctx, grad_t, 0.0);
+      }
     }
   }
 }
 
 std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                                              const bool blocking) const {
-  PADDLE_ENFORCE_EQ(var_.IsInitialized() && var_.IsType<framework::LoDTensor>(),
-                    true,
-                    "Variable must be initialized and type of LoDTensor when "
-                    "getting numpy tensor");
+  PADDLE_ENFORCE_EQ(
+      var_.IsInitialized() && (var_.IsType<framework::LoDTensor>() ||
+                               var_.IsType<framework::SelectedRows>()),
+      true, platform::errors::InvalidArgument(
+                "Variable is not initialized or Variable's type is not "
+                "LoDTensor or SelectedRows when getting numpy tensor"));
+  if (var_.IsType<framework::LoDTensor>()) {
+    auto& src_tensor = var_.Get<framework::LoDTensor>();
 
-  auto& src_tensor = var_.Get<framework::LoDTensor>();
+    // TODO(Jiabin): change this after move unique_name generator to CXX
+    auto new_var = std::make_shared<VarBase>(
+        false, "Itmp" + std::to_string(copied_counter_++));
 
-  // TODO(Jiabin): change this after move unique_name generator to CXX
-  auto new_var = std::make_shared<VarBase>(
-      false, "Itmp" + std::to_string(copied_counter_++));
+    auto* dst_tensor = new_var->var_.GetMutable<framework::LoDTensor>();
+    dst_tensor->set_lod(src_tensor.lod());
 
-  auto* dst_tensor = new_var->var_.GetMutable<framework::LoDTensor>();
-  dst_tensor->set_lod(src_tensor.lod());
-
-  framework::TensorCopy(src_tensor, dst_place, dst_tensor);
-  if (blocking) {
-    platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
-    auto src_place = src_tensor.place();
-    if (!(src_place == dst_place)) {
-      platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+    framework::TensorCopy(src_tensor, dst_place, dst_tensor);
+    if (blocking) {
+      platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+      auto src_place = src_tensor.place();
+      if (!(src_place == dst_place)) {
+        platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+      }
     }
-  }
 
-  if (platform::is_gpu_place(dst_place)) {
-    VLOG(3) << "copy tensor " << Name() << " from gpu";
-  }
+    if (platform::is_gpu_place(dst_place)) {
+      VLOG(3) << "copy tensor " << Name() << " from gpu";
+    }
 
-  return new_var;
+    return new_var;
+  } else {
+    auto& src_selected_rows = var_.Get<framework::SelectedRows>();
+    auto new_var = std::make_shared<VarBase>(
+        false, "Itmp" + std::to_string(copied_counter_++));
+    new_var->SetType(framework::proto::VarType::SELECTED_ROWS);
+    auto* dst_selected_rows =
+        new_var->var_.GetMutable<framework::SelectedRows>();
+
+    framework::TensorCopy(src_selected_rows.value(), dst_place,
+                          dst_selected_rows->mutable_value());
+    if (blocking) {
+      platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
+      auto src_place = src_selected_rows.place();
+      if (!(src_place == dst_place)) {
+        platform::DeviceContextPool::Instance().Get(src_place)->Wait();
+      }
+    }
+    dst_selected_rows->set_height(src_selected_rows.height());
+    dst_selected_rows->set_rows(src_selected_rows.rows());
+    if (platform::is_gpu_place(dst_place)) {
+      VLOG(3) << "copy selected rows " << Name() << " from gpu";
+    }
+    return new_var;
+  }
 }
 // create OpBase from optype
 OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
@@ -241,18 +292,9 @@ OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
     info.Checker()->Check(&attrs_);
   }
 
-  auto input_name_map = CreateVarNameMap(info, type, ins, true);
-  auto output_name_map = CreateVarNameMap(info, type, outs, false);
-  op_ = framework::OpRegistry::CreateOp(type, std::move(input_name_map),
-                                        std::move(output_name_map), attrs);
-  VLOG(3) << "Construct Op: " << type << std::endl;
-}
+  op_ = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
 
-// create OpBase from opdesc
-OpBase::OpBase(size_t id, const framework::OpDesc& op_desc,
-               const platform::Place& place)
-    : id_(id), op_(framework::OpRegistry::CreateOp(op_desc)), place_(place) {
-  VLOG(3) << "Construct Op: " << op_desc.Type() << std::endl;
+  VLOG(3) << "Construct Op: " << type << std::endl;
 }
 
 void OpBase::CreateOperatorBase() {
@@ -260,11 +302,7 @@ void OpBase::CreateOperatorBase() {
   if (info.Checker() != nullptr) {
     info.Checker()->Check(&attrs_);
   }
-
-  auto input_name_map = CreateVarNameMap(info, type_, ins_, true);
-  auto output_name_map = CreateVarNameMap(info, type_, outs_, false);
-  op_ = framework::OpRegistry::CreateOp(type_, std::move(input_name_map),
-                                        std::move(output_name_map), attrs_);
+  op_ = framework::OpRegistry::CreateOp(type_, {}, {}, {}, false);
 }
 
 void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
@@ -272,10 +310,9 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
   auto& info = op_->Info();
   if (info.infer_var_type_) {
-    RuntimeInferVarTypeContext infer_var_type_ctx(ins, &outs, op_->Attrs());
+    RuntimeInferVarTypeContext infer_var_type_ctx(ins, &outs, attrs_);
     info.infer_var_type_(&infer_var_type_ctx);
   }
-
   // Initialize output var type
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
@@ -285,13 +322,11 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
 
   VLOG(3) << "Running Op " << Type();
   VLOG(5) << LayerDebugString(Type(), ins, outs);
-  auto runtime_ctx = PrepareRuntimeContext(ins, outs);
+  framework::RuntimeContext runtime_ctx({}, {});
+  auto prepared_op =
+      PreparedOp::Prepare(ins, outs, *op_kernel, place(), &attrs_);
 
-  VLOG(6) << "start preparing op: " << Type();
-  auto prepared_op = PreparedOp::Prepare(runtime_ctx, *op_kernel, place(), ins);
-
-  VLOG(6) << "finish preparing op: " << Type();
-  prepared_op.Run();
+  prepared_op.Run(&ins, &outs, &attrs_);
 
   VLOG(4) << LayerDebugString(Type(), ins, outs);
 }
