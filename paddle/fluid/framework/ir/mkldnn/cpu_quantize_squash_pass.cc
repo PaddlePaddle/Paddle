@@ -49,6 +49,41 @@ void CPUQuantizeSquashPass::FindNodesToKeep(
   AddStatis(found_count);
 }
 
+void CPUQuantizeSquashPass::ReshapeTransposeScaleSquash(Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::Reshape2Transpose2Scale reshape_transpose_scale_pattern{
+      gpd.mutable_pattern(), "reshape_transpose_scale"};
+  reshape_transpose_scale_pattern();
+
+  int found_reshape_transpose_scale_count = 0;
+
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
+    GET_IR_NODE_FROM_SUBGRAPH(reshape_in, reshape_in,
+                              reshape_transpose_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(reshape_op, reshape_op,
+                              reshape_transpose_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(reshape_out, reshape_out,
+                              reshape_transpose_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(transpose_op, transpose_op,
+                              reshape_transpose_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(transpose_out, transpose_out,
+                              reshape_transpose_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(scale_op, scale_op,
+                              reshape_transpose_scale_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(scale_out, scale_out,
+                              reshape_transpose_scale_pattern);
+
+    IR_NODE_LINK_TO(transpose_op, scale_out);
+    GraphSafeRemoveNodes(graph, {scale_op, transpose_out});
+    found_reshape_transpose_scale_count++;
+  };
+  gpd(graph, handler);
+  AddStatis(found_reshape_transpose_scale_count);
+  PrettyLogDetail("---   squashed %d reshape2-transpose2-scale pairs",
+                  found_reshape_transpose_scale_count);
+}
+
 void CPUQuantizeSquashPass::DequantQuantSquash(
     Graph* graph,
     std::unordered_map<const Node*, int>* nodes_keep_counter) const {
@@ -240,6 +275,7 @@ void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   DequantQuantSquash(graph, &nodes_keep_counter);
   ConvDequantSquash(graph);
   FcDequantSquash(graph);
+  ReshapeTransposeScaleSquash(graph);
 }
 
 }  // namespace ir
