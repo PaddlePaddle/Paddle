@@ -1889,9 +1889,9 @@ def density_prior_box(input,
                 fetch_list=[box,var],
                 return_numpy=True)
  
-	    print(mask_out.shape)
+	    # print(box_out.shape)
 	    # (1134, 4)
-            print(z_out.shape)
+	    # print(var_out.shape)
 	    # (1134, 4)
 
 
@@ -1909,10 +1909,10 @@ def density_prior_box(input,
 		    fixed_ratios=[1.],
 		    clip=True)
 
-    		print(box.shape)
-		# [6L, 9L, 21L, 4L]
-		print(var.shape)
-		# [6L, 9L, 21L, 4L]
+	        # print(box.shape)
+	        # [6L, 9L, 21L, 4L]
+	        # print(var.shape)
+	        # [6L, 9L, 21L, 4L]
 
     """
     helper = LayerHelper("density_prior_box", **locals())
