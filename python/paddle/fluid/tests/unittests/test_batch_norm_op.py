@@ -20,10 +20,12 @@ import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from op_test import OpTest
+from op_test import OpTest, _set_use_system_allocator
 from paddle.fluid.framework import grad_var_name
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+
+_set_use_system_allocator(True)
 
 
 def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
