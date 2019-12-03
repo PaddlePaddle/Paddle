@@ -275,7 +275,6 @@ class TestUniformRandomOpApi(unittest.TestCase):
 
 
 class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
-    @unittest.skip(reason="make CI faster")
     def test_attr_tensor_API(self):
         startup_program = fluid.Program()
         train_program = fluid.Program()
@@ -326,7 +325,6 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
 
 class TestUniformRandomOp_API_seed(unittest.TestCase):
-    @unittest.skipIf(1, "core is not compiled with CUDA")
     def test_attr_tensor_API(self):
         startup_program = fluid.Program()
         train_program = fluid.Program()

@@ -110,7 +110,6 @@ class TestLayer(LayerTest):
             ret = custom(x, do_fc2=True)
             self.assertTrue(np.array_equal(ret.numpy().shape, [3, 1]))
 
-    # @unittest.skip(reason="make CI faster")
     def test_fc(self):
         inp = np.ones([3, 32, 32], dtype='float32')
         with self.static_graph():

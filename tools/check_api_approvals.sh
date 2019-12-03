@@ -119,7 +119,7 @@ if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
     if [ "${APPROVALS}" == "FALSE" ]; then
         failed_num=`expr $failed_num + 1`
-        echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (XiaoguangHu01, phlrain, luotao1 or lanxianghit) approval for the usage of @unittest.skip and @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
+        echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (XiaoguangHu01, phlrain, luotao1 or lanxianghit) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
         echo_list=(${echo_list[@]}$failed_num "." "$echo_line")
    fi
 fi
