@@ -15,6 +15,7 @@ limitations under the License. */
 #include "google/protobuf/text_format.h"
 
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/framework/fleet/box_wrapper.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/trainer_desc.pb.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -146,6 +147,9 @@ void SectionWorker::TrainFiles() {
   int64_t accum_num = 0;
   int batch_size = 0;
   Scope* scope = nullptr;
+  if (device_reader_ != nullptr) {
+    device_reader_->Start();
+  }
   while (in_scope_queue_->Receive(&scope)) {
     if (device_reader_ != nullptr) {
       device_reader_->AssignFeedVar(*scope);
@@ -153,6 +157,7 @@ void SectionWorker::TrainFiles() {
       if (batch_size <= 0) {
         break;
       }
+
       SEC_LOG << "read batch size: " << batch_size;
     } else {
       // TODO(hutuxian): Keep batch_size in scope? Or is there a better way to
@@ -202,6 +207,42 @@ void SectionWorker::TrainFiles() {
     // No effect when it is a CPUDeviceContext
     dev_ctx_->Wait();
 
+    // Workaround for print paddlebox metrics
+
+    auto box_ptr = BoxWrapper::GetInstance();
+    if (box_ptr->NeedMetric()) {
+      auto& metric_list = box_ptr->GetMetricList();
+      for (auto iter = metric_list.begin(); iter != metric_list.end(); iter++) {
+        auto& metric_msg = iter->second;
+        if (metric_msg.IsJoin() != box_ptr->PassFlag()) {
+          continue;
+        }
+        auto* label = exe_scope->FindVar(metric_msg.LabelVarname().c_str());
+        auto* predict = exe_scope->FindVar(metric_msg.PredVarname().c_str());
+        PADDLE_ENFORCE_NOT_NULL(
+            label, platform::errors::NotFound(
+                       "%s is not found.", metric_msg.LabelVarname().c_str()));
+        PADDLE_ENFORCE_NOT_NULL(
+            predict, platform::errors::NotFound(
+                         "%s is not found.", metric_msg.PredVarname().c_str()));
+        auto& actual_tensor = label->Get<LoDTensor>();
+        auto& pred_tensor = predict->Get<LoDTensor>();
+        auto* gpu_actual_data = actual_tensor.data<int64_t>();
+        auto* gpu_pred_data = pred_tensor.data<float>();
+
+        auto len = actual_tensor.numel();
+        std::vector<int64_t> actual_data(len);
+        std::vector<float> pred_data(len);
+        cudaMemcpy(actual_data.data(), gpu_actual_data, sizeof(int64_t) * len,
+                   cudaMemcpyDeviceToHost);
+        cudaMemcpy(pred_data.data(), gpu_pred_data, sizeof(float) * len,
+                   cudaMemcpyDeviceToHost);
+        auto cal = metric_msg.GetCalculator();
+        for (auto i = 0; i < len; ++i) {
+          cal->add_data(pred_data[i], actual_data[i]);
+        }
+      }
+    }
     if (section_id_ != section_num_ - 1 && platform::is_gpu_place(place_)) {
       // FIXME: Temporarily we assume two adjacent sections are in different
       // places,

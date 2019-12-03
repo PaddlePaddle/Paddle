@@ -41,6 +41,7 @@ from .executor import *
 from . import data_feed_desc
 from .data_feed_desc import *
 
+from .box_wrapper import *
 from . import dataset
 from .dataset import *
 

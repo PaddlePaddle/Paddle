@@ -783,6 +783,15 @@ class BoxPSDataset(InMemoryDataset):
         super(BoxPSDataset, self).__init__()
         self.boxps = core.BoxPS(self.dataset)
 
+    def set_date(self, date):
+        """
+        Workaround for date
+        """
+        year = int(date[:4])
+        month = int(date[4:6])
+        day = int(date[6:])
+        self.boxps.set_date(year, month, day)
+
     def begin_pass(self):
         """
         Begin Pass

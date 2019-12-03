@@ -23,6 +23,7 @@ namespace paddle {
 namespace pybind {
 
 void BindBoxHelper(py::module* m);
+void BindBoxWrapper(py::module* m);
 
 }  // namespace pybind
 }  // namespace paddle

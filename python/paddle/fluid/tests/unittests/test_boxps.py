@@ -123,8 +123,17 @@ class TestBoxPSPreload(unittest.TestCase):
                         binary_print(slot, fout)
                 fout.write("\n")
 
+        box = fluid.BoxWrapper()
+        try:
+            box.initialize_gpu(0, ["skip_slot"])
+        except TypeError as e:
+            print(e)
+        box.initialize_gpu("conf_file", ["skip_slot"])
+        box.init_metric("pass_ctr", fc.name, fc.name, True)
+
         def create_dataset():
             dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+            dataset.set_date("20190930")
             dataset.set_use_var([x, y])
             dataset.set_batch_size(2)
             dataset.set_thread(1)
@@ -143,6 +152,8 @@ class TestBoxPSPreload(unittest.TestCase):
             program=fluid.default_main_program(),
             dataset=datasets[0],
             print_period=1)
+        metric1 = box.get_metric_msg("pass_ctr")
+        box.flip_pass_flag()
         datasets[0].end_pass()
         datasets[1].wait_preload_done()
         datasets[1].begin_pass()
@@ -150,9 +161,12 @@ class TestBoxPSPreload(unittest.TestCase):
             program=fluid.default_main_program(),
             dataset=datasets[1],
             print_period=1)
+        metric2 = box.get_metric_msg("pass_ctr")
         datasets[1].end_pass()
         for f in filelist:
             os.remove(f)
+        box.save_model()
+        box.finalize()
 
 
 if __name__ == '__main__':
