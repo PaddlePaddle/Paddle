@@ -510,14 +510,9 @@ function generate_api_spec() {
     fi   
 
     # TODO(paddle-dev): remove op_use_default_grad_op_maker.spec 
-    # Currently, we only check in PR_CI python 2.7
-    if [ "spec_kind" == "PR" ]; then
-        if [ "$SYSTEM" != "Darwin" ]; then
-            if [ "$1" == "" ] || [ "$1" == "cp27-cp27m" ] || [ "$1" == "cp27-cp27mu" ]; then
-                python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
-                    ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
-            fi
-        fi
+    if [ "$spec_kind" == "PR" ]; then
+        python ${PADDLE_ROOT}/tools/diff_use_default_grad_op_maker.py \
+            ${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_op_maker.spec
     fi
     deactivate
 }
