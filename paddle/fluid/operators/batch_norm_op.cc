@@ -522,7 +522,7 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
       EigenVectorArrayMap<T> inv_var_tmp(running_inv_var_data, C);
       ConstEigenVectorArrayMap<T> var_arr(running_variance->data<T>(), C);
 
-      inv_var_tmp = (var_arr + epsilon).sqrt().inverse().eval();
+      inv_var_tmp = (var_arr + epsilon).sqrt().inverse();
       inv_var_data = running_inv_var_data;
     }
 
