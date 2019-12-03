@@ -10200,7 +10200,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             import numpy as np
 
             inputs = fluid.layers.data(name="x", shape=[2, 3], dtype='float32')
-            scale = fluid.layers.data(name="scale", shape=[1], dtype='float32'
+            scale = fluid.layers.data(name="scale", shape=[1], dtype='float32',
                                       append_batch_size=False)
             output = fluid.layers.scale(inputs, scale = scale, bias = 1.0)
 
