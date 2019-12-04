@@ -149,32 +149,37 @@ class SliceOp : public framework::OperatorWithKernel {
 class SliceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input", "(Tensor) Tensor of data to extract slices from.");
+    // test change Input
+    AddInput("Input", "(Tensor) Tensor of data to extract slices from.")
+        .AsIntermediate();
     AddInput("StartsTensor",
              "(Tensor<int32>, optional) If provided, slice will use this."
              "It has the highest priority of StartsTensor, StartsTensorList "
-             "and attr(starts).")
-        .AsDispensable();
+             "and attr(starts).");
     AddInput("EndsTensor",
              "(Tensor<int32>, optional) If provided, slice will use this."
              "It has the highest priority of EndsTensor, EndsTensorList and "
              "attr(ends).")
-        .AsDispensable();
+        .AsDispensable()
+        .AsIntermediate();
     AddInput(
         "StartsTensorList",
         "(vector<Tensor<int32>>, optional) If provided, slice will use this."
         "The shape of the tensor in vector MUST BE [1]."
         "It has higher priority compare with attr(starts).")
-        .AsDuplicable()
-        .AsDispensable();
-    AddInput(
-        "EndsTensorList",
-        "(vector<Tensor<int32>>, optional) If provided, slice will use this."
-        "The shape of the tensor in vector MUST BE [1]."
-        "It has higher priority compare with attr(ends).")
-        .AsDuplicable()
-        .AsDispensable();
-    AddOutput("Out", "Sliced data tensor.");
+        .AsDuplicable();
+
+    // test delete Input EndsTensorList
+    //    AddInput(
+    //        "EndsTensorList",
+    //        "(vector<Tensor<int32>>, optional) If provided, slice will use
+    //        this."
+    //        "The shape of the tensor in vector MUST BE [1]."
+    //        "It has higher priority compare with attr(ends).");
+
+    // test change Out
+    AddOutput("Out", "Sliced data tensor.").AsDuplicable();
+
     AddAttr<std::vector<int>>(
         "axes",
         "(list<int>) Axes that `starts` and `ends` apply to. It's optional."
@@ -191,6 +196,17 @@ class SliceOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<std::vector<int>>("decrease_axis", "(list<int>) decrease_axis")
         .SetDefault({});
+
+    // test Add Input
+    AddInput("Input_test_1", "dispensable is false 1").AsDuplicable();
+    AddInput("Input_test_2", "dispensable is false 2");
+    AddInput("Input_test_3", "dispensable is true 3").AsDispensable();
+
+    // test add Output
+    AddInput("Out_test_1", "dispensable is false 1").AsDuplicable();
+    AddInput("Out_test_2", "dispensable is false 2");
+    AddInput("Out_test_3", "dispensable is true 3").AsDispensable();
+
     AddComment(R"DOC(
 Slice Operator.
 

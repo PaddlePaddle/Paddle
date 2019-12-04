@@ -73,12 +73,14 @@ class FillConstantOpVarTypeInference : public framework::VarTypeInference {
 class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddAttr<int>("dtype",
-                 "(int, default 5 (FP32)) "
-                 "Output data type")
-        .SetDefault(framework::proto::VarType::FP32);
-    AddAttr<std::vector<int64_t>>("shape",
-                                  "(vector<int64_t>) The shape of the output")
+    // test delete Attr
+    //    AddAttr<int>("dtype",
+    //                 "(int, default 5 (FP32)) "
+    //                 "Output data type")
+    //        .SetDefault(framework::proto::VarType::FP32);
+    // test change Attr: type. int64_t -> float
+    AddAttr<std::vector<float>>("shape",
+                                "(vector<int64_t>) The shape of the output")
         .SetDefault({});
     AddInput("ShapeTensor",
              "(Tensor<int>), optional). The shape of the output."
@@ -90,8 +92,16 @@ class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
              "The shape of the element in vector must be [1].")
         .AsDuplicable()
         .AsDispensable();
+    // test change Attr: default value. 0.0f -> 1.0f
     AddAttr<float>("value", "(float, default 0.0f) The value to be filled")
-        .SetDefault(0.0f);
+        .SetDefault(1.0f);
+
+    // test add Attr
+    AddAttr<float>("test_attr_1", "has default value").SetDefault(1.0f);
+    AddAttr<float>("test_attr_2", "no default value");
+    AddAttr<std::vector<int>>("test_attr_3", "has default value")
+        .SetDefault({});
+
     AddAttr<std::string>(
         "str_value",
         "(string, default empty) The str convert to value to be filled")
