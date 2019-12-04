@@ -1044,26 +1044,31 @@ class OpTest(unittest.TestCase):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
 
         filename = "tmp.txt"
-        run_ops = [set(), set()]  # fp64 other
+        run_ops = [set(), set(), set()]  # fp16 fp32 fp64
         if os.path.exists(filename):
             with open(filename, "r") as f:
                 for op_set in run_ops:
                     line = f.readline()
                     for op in line.strip().split(','):
                         op_set.add(op)
-        if self.dtype == np.float64:
+        if self.dtype == np.float16:
             run_ops[0].add(self.op_type)
-        else:
+        elif self.dtype == np.float32:
             run_ops[1].add(self.op_type)
+        elif self.dtype == np.float64:
+            run_ops[2].add(self.op_type)
+
         with open(filename, "w") as f:
             for op_set in run_ops:
                 for op in op_set:
                     f.write(op + ",")
                 f.write("\n")
-        print("fp64 check op:")
+        print("fp16 check op:")
         print(run_ops[0])
-        print("other check op:")
+        print("fp32 check op:")
         print(run_ops[1])
+        print("fp64 check op:")
+        print(run_ops[2])
 
         places = self._get_places()
         if self.dtype == np.float64:
