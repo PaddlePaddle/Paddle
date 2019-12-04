@@ -142,7 +142,7 @@ if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
-HAS_INPLACE_TESTS=`git diff --name-only --diff-filter=A upstream/$BRANCH |grep -oE "inplace_atol[[:space:]]*=.*" || true`
+HAS_INPLACE_TESTS=`git diff -U0 upstream/$BRANCH |grep "+" |grep -oE "inplace_atol[[:space:]]*=.*" || true`
 if [ "${HAS_INPLACE_TESTS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="The calculation results of setting inplace enabled and disabled must be equal, that is, it's not recommended to set inplace_atol.\n If you do need to use inplace_atol, you must have one RD (XiaoguangHu01, lanxianghit, phlrain, luotao1) approval for the usage of inplace_atol.\n"
     check_approval 1 46782768 47554610 43953930 6836917
