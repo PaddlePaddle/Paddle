@@ -35,8 +35,6 @@ from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
 from white_list import op_accuracy_white_list
 
-NO_NEED_CHECK_GRAD_SET = []
-
 
 def _set_use_system_allocator(value=None):
     USE_SYSTEM_ALLOCATOR_FLAG = "FLAGS_use_system_allocator"
@@ -169,7 +167,7 @@ class OpTestBase(unittest.TestCase):
 
         _set_use_system_allocator(cls._use_system_allocator)
 
-        if cls.check_grad_times == 0 and OpTest.op_type not in NO_NEED_CHECK_GRAD_SET:
+        if cls.check_grad_times == 0 and OpTest.op_type not in No_Grad_Op_List:
             raise AssertionError("check_grad is required for " + OpTest.op_type
                                  + " Op.")
 
