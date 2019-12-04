@@ -154,8 +154,6 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
         self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestSoftmaxWithCrossEntropyOpNoCudnnFp16(
         TestSoftmaxWithCrossEntropyOpFp16):
     def initParams(self):
@@ -282,8 +280,6 @@ class TestSoftmaxWithCrossEntropyOpAxis4(TestSoftmaxWithCrossEntropyOp):
         self.shape = [3, 5, 7, 11]
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestSoftmaxWithCrossEntropyOpNoCudnnFp16Axis1(
         TestSoftmaxWithCrossEntropyOpNoCudnnFp16):
     def initParams(self):
@@ -296,8 +292,6 @@ class TestSoftmaxWithCrossEntropyOpNoCudnnFp16Axis1(
         self.dtype = np.float16
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestSoftmaxWithCrossEntropyOpNoCudnnFp16Axis2(
         TestSoftmaxWithCrossEntropyOpNoCudnnFp16):
     def initParams(self):
@@ -310,8 +304,6 @@ class TestSoftmaxWithCrossEntropyOpNoCudnnFp16Axis2(
         self.dtype = np.float16
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestSoftmaxWithCrossEntropyOpNoCudnnFp16Axis3(
         TestSoftmaxWithCrossEntropyOpNoCudnnFp16):
     def initParams(self):

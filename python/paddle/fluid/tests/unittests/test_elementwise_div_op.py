@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 import numpy as np
+import paddle.fluid.core as core
 from op_test import OpTest
 
 
@@ -204,6 +205,8 @@ class TestElementwiseDivOp_INT(OpTest):
         pass
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestElementwiseDivOpFp16(ElementwiseDivOp):
     def init_dtype(self):
         self.dtype = np.float16
