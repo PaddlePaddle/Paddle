@@ -70,7 +70,7 @@ class TestCastOp3(op_test.OpTest):
         self.check_output(atol=1e-3)
 
 
-class TestCastOpError(op_test.OpTest):
+class TestCastOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of cast_op must be Variable.
