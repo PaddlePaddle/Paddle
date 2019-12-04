@@ -142,8 +142,8 @@ if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
-NEW_OP_FILE_ADDED=`git diff --name-only --diff-filter=AM upstream/$BRANCH |grep -oE ".+_op..*" || true`
-if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+OP_FILE_CHANGE=`git diff --name-only --diff-filter=AM upstream/$BRANCH |grep -oE ".+_op..*" || true`
+if [ "${OP_FILE_CHANGE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     CHECK_SHAREDATAWITH_CNT=`git diff -U0 --diff-filter=AM upstrem/$BRANCH |grep "+" |grep -coE "ShareDataWith[(]" || true`
     CHECK_SHAREBUFFERWITH_CNT=`git diff -U0 --diff-filter=AM upstream/$BRANCH |grep "+" |grep -co "ShareBufferWith[(]" || true`
     if [ ${CHECK_SHAREDATAWITH_CNT} != ""] || [ ${CHECK_SHAREBUFFERWITH_CNT} != ""]; then
