@@ -102,9 +102,8 @@ void NaiveExecutor::CreateOps(const ProgramDesc &desc, int block_id,
   for (const auto &op_desc : desc.Block(block_id).AllOps()) {
     if (!with_feed_fetch_ops &&
         (op_desc->Type() == "feed" || op_desc->Type() == "fetch")) {
-      string::PrettyLogEndl(string::Style::detail(), "---  skip [%s], %s -> %s",
-                            op_desc->Input("X")[0], op_desc->Type(),
-                            op_desc->Output("Out")[0]);
+      LOG(INFO) << "---  skip [" << op_desc->Input("X")[0] << "], "
+                << op_desc->Type() << " -> " << op_desc->Output("Out")[0];
       continue;
     }
     ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
