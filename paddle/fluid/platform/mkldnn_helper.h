@@ -174,6 +174,18 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
       } else {
         return mkldnn::memory::format_tag::ndhwc;
       }
+    } else if (inner_nblks == 1) {
+      if (inner_blks[0] == 16 && inner_idxs[0] == 0) {
+        if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
+            strides[3] >= strides[4] && strides[4] >= strides[1]) {
+          return mkldnn::memory::format_tag::Acdeb16a;
+        }
+      } else if (inner_blks[0] == 16 && inner_idxs[0] == 1) {
+        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
+            strides[2] >= strides[3] && strides[3] >= strides[4]) {
+          return mkldnn::memory::format_tag::aBcde16b;
+        }
+      }
     }
   } else if (ndims == 6) {
     if (inner_nblks == 0) {
