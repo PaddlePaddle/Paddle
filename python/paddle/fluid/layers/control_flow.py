@@ -920,24 +920,25 @@ def while_loop(cond, body, loop_vars, name=None):
     Args:
         cond(Callable): A callable returning a boolean tensor controlling whether to continue looping.
         body(Callable): A callable returning a tuple or list of tensors of the same arity(length and structure)
-	    and types as `loops_vars`.
-        loop_vars(list|tuple): A list or tuple of tensors that is passed to both `cond` and `body`.
+	    and types as ``loops_vars``.
+        loop_vars(list|tuple): A list or tuple of tensors that is passed to both ``cond`` and ``body``.
         name(str, optional): Normally there is no need for users to set this property. For more information, please
             refer to :ref:`api_guide_Name`. Default is None.
     
     Returns:
-        A list or tuple of tensors which returned by `body`.
+        A list or tuple of tensors which returned by ``body``.
     
     Returen type:
-        list or tuple.
+        list(Variable)|tuple(Variable).
 
     Raises:
-        TypeError: If the type of `cond` is not callable.
-        TypeError: If the type of `body` is not callable.
-        TypeError: If the type of `loop_vars` is not list or tuple.
-        TypeError: If the type of `cond` returns is not Variable.
-        TypeError: If the type of `cond` returns is not a boolean variable.
-        TypeError: If the shape of `cond` returns is not equals 1.
+        TypeError: If the type of ``cond`` is not callable.
+        TypeError: If the type of ``body`` is not callable.
+        TypeError: If the type of ``loop_vars`` is not list or tuple.
+        TypeError: If the type of ``cond`` returns is not Variable.
+        TypeError: If the type of ``cond`` returns is not a boolean variable.
+        TypeError: If the shape of ``cond`` returns is not equals 1.
+        ValueError: If the ``var_loops`` is empty.
 
     Examples:
         .. code-block:: python
@@ -955,13 +956,13 @@ def while_loop(cond, body, loop_vars, name=None):
             startup_program = fluid.default_startup_program()
 
             with fluid.program_guard(main_program, startup_program):
-                i = layers.fill_constant(shape=[1], dtype='int64', value=0)
-                ten = layers.fill_constant(shape=[1], dtype="int64", value=10)
+                i = layers.fill_constant(shape=[1], dtype='int64', value=0)     # loop counter
+                ten = layers.fill_constant(shape=[1], dtype='int64', value=10)  # loop length
                 out = layers.while_loop(cond, body, [i])
                 
                 exe = fluid.Executor(fluid.CPUPlace())
                 res = exe.run(main_program, feed={}, fetch_list=out)
-                print(res) #[array([10])]
+                print(res) # [array([10])]
     """
     helper = LayerHelper('while_loop', **locals())
 
@@ -971,6 +972,8 @@ def while_loop(cond, body, loop_vars, name=None):
         raise TypeError("body in while_loop should be callable")
     if not isinstance(loop_vars, (list, tuple)):
         raise TypeError("loop_vars in while_loop should be a list or tuple")
+    if len(loop_vars) == 0:
+        raise ValueError("loop_vars in while_loop should not be empty")
 
     pre_cond = cond(*loop_vars)
     if not isinstance(pre_cond, Variable):

@@ -175,6 +175,12 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
             self.assertRaises(TypeError, type_error_loop_vars)
 
+            # The value of `loop_vars` is empty
+            def value_error_loop_vars():
+                out = layers.while_loop(cond_returns_bool_tensor, body, [])
+
+            self.assertRaises(ValueError, value_error_loop_vars)
+
             # The type of `cond` returns in Op(while_loop) must be Variable
             def type_error_cond_returns_not_variable():
                 out = layers.while_loop(cond_returns_constant, body, [data_1d])
