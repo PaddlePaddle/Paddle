@@ -167,7 +167,7 @@ class OpTestBase(unittest.TestCase):
     def try_call_once(self, data_type):
         if not self.call_once:
             self.call_once = True
-            self.q = data_type
+            self.dtype = data_type
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def infer_dtype(numpy_dict):
