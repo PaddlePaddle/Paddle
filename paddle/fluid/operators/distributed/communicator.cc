@@ -978,8 +978,8 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
   auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
   // calc sub = pserver - old
   blas.VSUB(var_y_tensor.numel(),
-            var_y_tensor.mutable_data<float>(var_y_tensor.place()),
             var_z_tensor.mutable_data<float>(var_z_tensor.place()),
+            var_y_tensor.mutable_data<float>(var_y_tensor.place()),
             var_y_sub_tensor->mutable_data<float>(var_y_sub_tensor->place()));
   // calc recv += sub
   blas.VADD(var_x_tensor.numel(),
