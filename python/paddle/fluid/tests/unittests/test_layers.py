@@ -720,7 +720,6 @@ class TestLayer(LayerTest):
                 shape=[5, 200, 100, 100],
                 dtype="float32",
                 append_batch_size=False)
-            mode = mode
             out = layers.prelu(
                 data_t, mode, param_attr=ParamAttr(initializer=Constant(1.0)))
             static_rlt = self.get_static_graph_result(
@@ -732,7 +731,6 @@ class TestLayer(LayerTest):
                 shape=[5, 200, 100, 100],
                 dtype="float32",
                 append_batch_size=False)
-            mode = mode
             prelu = nn.PRelu(
                 'prelu',
                 mode=mode,
@@ -742,7 +740,6 @@ class TestLayer(LayerTest):
                 feed={"input": inp_np}, fetch_list=[out])[0]
 
         with self.dynamic_graph():
-            mode = mode
             prelu = nn.PRelu(
                 'prelu',
                 mode=mode,
@@ -756,7 +753,6 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             inp_np = np.random.randn(5, 200, 100, 100).astype("float32")
             inp = base.to_variable(inp_np)
-            mode = mode
             prelu1 = nn.PRelu(
                 'prelu1',
                 mode=mode,
