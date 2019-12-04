@@ -525,7 +525,8 @@ void GeoSgdCommunicator::Send(const std::string &var_name,
 void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
                               const std::vector<std::string> &sparse_var_tables,
                               const framework::Scope &scope) {
-  // SparseIdsMap = std::unordered_map<std::string,std::unordered_set<int64_t>>
+  // SparseIdsMap=std::unordered_map<std::string,
+  // std::vector<std::vector<int64_t>>>;
   auto sparse_var_table_map =
       CreateSparseVarTableMap(sparse_var_names, sparse_var_tables);
   std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
@@ -542,7 +543,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
       auto ep_idx = GetSectionIndex(var_mutable_data[j],
                                     absolute_section_[sparse_var_tables[i]]);
       for (auto table : sparse_var_table_map[sparse_var_names[i]]) {
-        ids_table->at(table)[ep_idx].insert(var_mutable_data[j]);
+        ids_table->at(table)[ep_idx].emplace_back(var_mutable_data[j]);
       }
       VLOG(4) << "Sparse var " << sparse_var_tables[i] << " insert "
               << var_mutable_data[j];
@@ -562,12 +563,7 @@ void GeoSgdCommunicator::CreateIdsTable(SparseIdsMap *ids_table) {
           recv_varname_to_ctx_[var_name].splited_var_names.size();
       ids_table->insert(
           std::pair<std::string, std::vector<std::unordered_set<int64_t>>>(
-              var_name,
-              std::vector<std::unordered_set<int64_t>>{splited_var_nums}));
-      for (size_t i = 0; i < splited_var_nums; i++) {
-        auto section = recv_varname_to_ctx_[var_name].height_sections[i];
-        ids_table->at(var_name)[i].reserve(section);
-      }
+              var_name, std::vector<std::vector<int64_t>>{splited_var_nums}));
     }
   }
 }
@@ -627,9 +623,9 @@ void GeoSgdCommunicator::SendThread() {
           for (auto &splited_var_name : iter.second.splited_var_names) {
             auto send_task = [this, &var_name, &splited_var_name] {
               auto before_run_geo = GetCurrentUS();
-              auto ids_set =
+              auto ids_vec =
                   SparseIdsMerge(ids_send_vec_, var_name, splited_var_name);
-              SendUpdateSparseVars(var_name, splited_var_name, ids_set);
+              SendUpdateSparseVars(var_name, splited_var_name, ids_vec);
               RecvUpdateSparseVars(var_name, splited_var_name);
               auto after_run_geo = GetCurrentUS();
               VLOG(1) << "run GEO-SGD var " << splited_var_name << " use time "
@@ -674,7 +670,7 @@ void GeoSgdCommunicator::SendThread() {
   }
 }
 
-std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
+std::vector<int64_t> GeoSgdCommunicator::SparseIdsMerge(
     const std::vector<SparseIdsMap> &ids_send_vec, const std::string &var_name,
     const std::string &splited_var_name) {
   // every batch has some sparse id, merge them into one unoredered_set
@@ -683,21 +679,26 @@ std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
   auto before_run_ids_merge_ = GetCurrentUS();
   auto origin_var_name = DeltaVarToVar(var_name);
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
-  std::unordered_set<int64_t> ids_set;
-  auto section =
-      send_varname_to_ctx_[var_name].height_sections[splited_var_index];
-  ids_set.reserve(section);
+  std::vector<int64_t> ids_vec;
+  size_t vec_size = 0;
 
   for (auto ids_map : ids_send_vec) {
-    for (auto id : ids_map[origin_var_name][splited_var_index]) {
-      ids_set.insert(id);
-    }
+    vec_size += ids_map[origin_var_name][splited_var_index].size();
   }
+
+  ids_vec.reverse(vec_size);
+
+  for (auto ids_map : ids_send_vec) {
+    ids_vec.insert(ids_vec.end(),
+                   ids_map[origin_var_name][splited_var_index].begin(),
+                   ids_map[origin_var_name][splited_var_index].end());
+  }
+
   auto after_run_ids_merge_ = GetCurrentUS();
   VLOG(1) << "run SparseIdsMerge " << splited_var_name << " has nums "
-          << ids_set.size() << " use time "
+          << ids_vec.size() << " use time "
           << after_run_ids_merge_ - before_run_ids_merge_;
-  return ids_set;
+  return ids_vec;
 }
 
 void GeoSgdCommunicator::SendUpdateDenseVars(
@@ -998,15 +999,15 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
 
 void GeoSgdCommunicator::SendUpdateSparseVars(
     const std::string &var_name, const std::string &splited_var_name,
-    const std::unordered_set<int64_t> &ids_table) {
+    const std::vector<int64_t> &ids_table) {
   // calc var_delata = (var_training - var_old)/trainer_nums
   // calc var_old += var_delta
   // var_name: param.delta, splited_var_name: param.block0.delta
   // origin_var_name: param
   auto before_run_send_sparse = GetCurrentUS();
+  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
 
-  auto ids_num = ids_table.size();
-  VLOG(4) << "Sparse Ids nums is : " << ids_num;
+  VLOG(4) << "Sparse Ids vec size is : " << ids_table.size();
   auto origin_var_name = DeltaVarToVar(var_name);
 
   auto *var_x = training_scope_->FindVar(origin_var_name);
@@ -1021,51 +1022,59 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   float *x_value = var_x_tensor.mutable_data<float>(var_x_tensor.place());
   float *y_value = var_y_tensor.mutable_data<float>(var_y_tensor.place());
 
-  auto *var_z = delta_scope_->Var(splited_var_name);
-  auto *var_z_select_rows = var_z->GetMutable<framework::SelectedRows>();
-  auto *var_z_value = var_z_select_rows->mutable_value();
-  var_z_value->Resize({static_cast<int64_t>(ids_num), row_numel});
-  auto *z_value = var_z_value->mutable_data<float>(var_x_tensor.place());
-
-  std::vector<int64_t> new_rows;
-  new_rows.insert(new_rows.begin(), ids_table.begin(), ids_table.end());
-
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
   auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
   float avg = 1 / static_cast<float>(trainer_nums_);
-  for (int y = 0; y < new_rows.size(); y++) {
-    auto ids = new_rows[y];
 
+  auto section =
+      send_varname_to_ctx_[var_name].height_sections[splited_var_index];
+  std::unordered_set<int64_t> id_exist;
+  id_exist.reserve(section);
+  std::vector<std::vector<float>> update_rows;
+  std::vector<int64_t> send_rows;
+
+  for (int y = 0; y < ids_table.size(); y++) {
+    auto ids = ids_table[y];
+    if (id_exist.find(ids) == id_exist.end()) {
+      id_exist.insert(ids);
+      send_rows.emplace_back(
+          ids - absolute_section_[origin_var_name][splited_var_index]);
+    } else {
+      continue;
+    }
     float *x_val = x_value + ids * row_numel;
     float *y_val = y_value + ids * row_numel;
-    float *z_val = z_value + y * row_numel;
 
     std::vector<float> row_delta(row_numel, 0);
     blas.VSUB(row_numel, x_val, y_val, row_delta.data());
     blas.SCAL(row_numel, avg, row_delta.data());
     blas.VADD(row_numel, row_delta.data(), y_val, y_val);
-    blas.VCOPY(row_numel, row_delta.data(), z_val);
+    update_rows.emplace_back(row_delta);
   }
+
+  auto *var_z = delta_scope_->Var(splited_var_name);
+  auto *var_z_select_rows = var_z->GetMutable<framework::SelectedRows>();
+  auto *var_z_value = var_z_select_rows->mutable_value();
+  var_z_value->Resize({static_cast<int64_t>(update_rows.size()), row_numel});
+  auto *z_value = var_z_value->mutable_data<float>(var_x_tensor.place());
+
+  for (int i = 0; i < update_rows.size(); i++) {
+    float *z_val = z_value + i * row_numel;
+    blas.VCOPY(row_numel, update_rows[i].data(), z_val);
+  }
+
+  var_z_select_rows->set_rows(send_rows);
+  var_z_select_rows->set_height(
+      send_varname_to_ctx_[var_name].height_sections[splited_var_index]);
 
   auto after_run_send_sparse = GetCurrentUS();
   VLOG(1) << "run send update sparse var " << splited_var_name << " use time "
           << after_run_send_sparse - before_run_send_sparse;
 
-  auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
-  std::vector<int64_t> send_rows;
-  send_rows.reserve(new_rows.size());
-  for (auto idx : new_rows) {
-    send_rows.push_back(idx -
-                        absolute_section_[origin_var_name][splited_var_index]);
-  }
-  var_z_select_rows->set_rows(send_rows);
-  var_z_select_rows->set_height(
-      send_varname_to_ctx_[var_name].height_sections[splited_var_index]);
-
   auto before_send_sparse = GetCurrentUS();
   RpcSend(var_name, splited_var_name, splited_var_index);
   auto after_send_sparse = GetCurrentUS();
-  VLOG(1) << "send " << splited_var_name << " has nums " << new_rows.size()
+  VLOG(1) << "send " << splited_var_name << " has nums " << send_rows.size()
           << " use time " << after_send_sparse - before_send_sparse;
 }
 
