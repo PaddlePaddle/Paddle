@@ -278,7 +278,7 @@ class TestDataNormOpWithSlotDim(OpTest):
         self.check_grad(['X'], 'Y', no_grad_set=set([]), check_dygraph=False)
 
 
-class TestDataNormOpWithSyncStats(OpTest):
+class TestDataNormOpWithSyncStats(unittest.TestCase):
     """
     test class for data norm op
     test forward and backward
