@@ -451,6 +451,7 @@ void AnalysisPredictor::PrepareArgument() {
     passes.clear();
     LOG(INFO) << "ir_optim is turned off, no IR pass will be executed";
   }
+  argument_.SetDisableLogs(config_.glog_info_disabled());
   argument_.SetIrAnalysisPasses(passes);
   argument_.SetAnalysisPasses(config_.pass_builder()->AnalysisPasses());
   argument_.SetScopeNotOwned(scope_.get());
@@ -507,10 +508,10 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       framework::InitGflags(flags);
     }
   }
+  framework::InitGLOG("");
   if (config.glog_info_disabled()) {
     FLAGS_logtostderr = 1;
-    FLAGS_minloglevel = google::WARNING;
-    LOG(WARNING) << " - GLOG's LOG(INFO) is disabled.";
+    FLAGS_minloglevel = 2;  // GLOG_ERROR
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));

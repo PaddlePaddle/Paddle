@@ -46,6 +46,7 @@ namespace framework {
 #endif
 
 std::once_flag gflags_init_flag;
+std::once_flag glog_init_flag;
 std::once_flag p2p_init_flag;
 
 void InitGflags(std::vector<std::string> argv) {
@@ -213,13 +214,15 @@ void SignalHandle(const char *data, int size) {
 #endif
 
 void InitGLOG(const std::string &prog_name) {
-  // glog will not hold the ARGV[0] inside.
-  // Use strdup to alloc a new string.
-  google::InitGoogleLogging(strdup(prog_name.c_str()));
+  std::call_once(glog_init_flag, [&]() {
+    // glog will not hold the ARGV[0] inside.
+    // Use strdup to alloc a new string.
+    google::InitGoogleLogging(strdup(prog_name.c_str()));
 #ifndef _WIN32
-  google::InstallFailureSignalHandler();
-  google::InstallFailureWriter(&SignalHandle);
+    google::InstallFailureSignalHandler();
+    google::InstallFailureWriter(&SignalHandle);
 #endif
+  });
 }
 
 }  // namespace framework
