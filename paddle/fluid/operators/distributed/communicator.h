@@ -366,12 +366,15 @@ class GeoSgdCommunicator : public Communicator {
 
   void SendUpdateDenseVars(const std::string& var_name,
                            const std::string& splited_var_name);
+  void SendUpdateDenseVars(const std::string& var_name);
+
   void SendUpdateSparseVars(const std::string& var_name,
                             const std::string& splited_var_name,
                             const std::unordered_set<int64_t>& ids_table);
 
   void RecvUpdateDenseVars(const std::string& var_name,
                            const std::string& splited_var_name);
+  void RecvUpdateDenseVars(const std::string& var_name);
   void RecvUpdateSparseVars(const std::string& var_name,
                             const std::string& splited_var_name);
 
@@ -390,6 +393,12 @@ class GeoSgdCommunicator : public Communicator {
   void RpcRecv(const std::string& origin_var_name,
                const std::string& splited_var_name,
                const size_t& splited_var_index);
+
+  void CreateIdsTable(SparseIdsMap* ids_table);
+
+  std::unordered_map<std::string, std::vector<std::string>>
+  CreateSparseVarTableMap(const std::vector<std::string>& sparse_var_names,
+                          const std::vector<std::string>& sparse_var_tables);
 
   const std::string VarToDeltaVar(const std::string var_name) {
     std::string delta_name = var_name;
@@ -430,8 +439,13 @@ class GeoSgdCommunicator : public Communicator {
   RpcCtxMap send_varname_to_ctx_;
   RpcCtxMap recv_varname_to_ctx_;
   int send_var_nums_ = 0;
-  std::unordered_map<std::string, bool>
-      var_list_;  // if var is sparse, using selected rows, bool=true
+
+  // if var is sparse, using selected rows, bool=true
+  std::unordered_map<std::string, bool> var_list_;
+
+  // if dense var is huge ,like PyramidHash Embedding, height_section > 100000,
+  // we calc & communication it using multi threads
+  std::unordered_map<std::string, bool> huge_var_list_;
 
   std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>>
       need_push_queue_;
