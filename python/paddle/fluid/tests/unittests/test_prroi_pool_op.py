@@ -83,8 +83,8 @@ class TestPRROIPoolOp(OpTest):
         self.check_output()
 
     def test_backward(self):
-        grad_diff = [1.0, 0.007]
-        places = [fluid.CPUPlace()]
+        grad_diff = [0.007]
+        places = []
         if fluid.core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place, error in zip(places, grad_diff):
@@ -205,8 +205,8 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
         self.check_output()
 
     def test_backward(self):
-        places = [fluid.CPUPlace()]
-        grad_diff = [1.0, 0.007]
+        places = []
+        grad_diff = [0.007]
         if fluid.core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
         for place, error in zip(places, grad_diff):
