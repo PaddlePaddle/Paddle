@@ -1052,6 +1052,8 @@ class OpTest(unittest.TestCase):
                    user_defined_grads=None,
                    check_dygraph=True):
         places = self._get_places()
+        print('check_grad')
+        print('places: ', places)
         for place in places:
             self.check_grad_with_place(place, inputs_to_check, output_names,
                                        no_grad_set, numeric_grad_delta,
@@ -1086,6 +1088,10 @@ class OpTest(unittest.TestCase):
 
         if no_grad_set is None:
             no_grad_set = set()
+            print('no_grad_set: None, op_type: ', self.op_type)
+        else:
+            print('op_type: ', self.op_type)
+            print('no_grad_set: ', no_grad_set)
 
         if not type(output_names) is list:
             output_names = [output_names]
