@@ -1044,16 +1044,11 @@ class OpTest(unittest.TestCase):
                    user_defined_grads=None,
                    check_dygraph=True):
         is_fp64_check = False
-        for key, vals in self.inputs.items():
-            if isinstance(vals, list) or isinstance(vals, tuple):
-                for name, val in vals:
-                    if isinstance(val, tuple) or isinstance(vals, tuple):
-                        is_fp64_check = is_fp64_check or val[
-                            0].dtype == np.float64
-                    else:
-                        is_fp64_check = is_fp64_check or val.dtype == np.float64
+        for _, val in self.inputs.items():
+            if isinstance(val, list) or isinstance(val, tuple):
+                is_fp64_check = is_fp64_check or val[0].dtype == np.float64
             else:
-                is_fp64_check = is_fp64_check or vals.dtype == np.float64
+                is_fp64_check = is_fp64_check or val.dtype == np.float64
 
         run_ops = [set(), set()]  # fp64 other
         filename = "tmp.txt"
