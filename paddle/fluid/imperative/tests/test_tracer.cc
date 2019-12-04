@@ -119,7 +119,7 @@ TEST(test_tracer, test_track_backward_output) {
   std::shared_ptr<imperative::VarBase> x_in(
       new imperative::VarBase(true, "x_in"));
   std::shared_ptr<imperative::VarBase> y_in(
-      new imperative::VarBase(false, "y_in"));
+      new imperative::VarBase(true, "y_in"));
   x_in->SetOverridedStopGradient(false);
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(true, "vout"));
@@ -146,7 +146,9 @@ TEST(test_tracer, test_track_backward_output) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  ASSERT_ANY_THROW(tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true));
+  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  auto* engine = tracer.GetDefaultEngine();
+  ASSERT_NE(engine->GradOps().size(), 0UL);  // trace_backward already ran.
 }
 
 TEST(test_tracer, test_track_backward_input) {
@@ -157,7 +159,7 @@ TEST(test_tracer, test_track_backward_input) {
   std::shared_ptr<imperative::VarBase> y_in(
       new imperative::VarBase(true, "y_in"));
   std::shared_ptr<imperative::VarBase> vout(
-      new imperative::VarBase(false, "vout"));
+      new imperative::VarBase(true, "vout"));
   platform::CPUPlace place;
   x_in->SetOverridedStopGradient(false);
   std::vector<float> src_data(10, 2.0);
@@ -182,7 +184,9 @@ TEST(test_tracer, test_track_backward_input) {
   imperative::NameVarBaseMap outs = {out_pair};
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
-  ASSERT_ANY_THROW(tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true));
+  tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+  auto* engine = tracer.GetDefaultEngine();
+  ASSERT_NE(engine->GradOps().size(), 0UL);  // trace_backward already ran.
 }
 #if defined(PADDLE_WITH_CUDA)
 TEST(test_tracer, test_trace_op_with_multi_device_inputs) {
