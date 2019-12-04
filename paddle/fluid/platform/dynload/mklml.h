@@ -33,7 +33,7 @@ extern void* mklml_dso_handle;
     template <typename... Args>                                              \
     auto operator()(Args... args) -> DECLARE_TYPE(__name, args...) {         \
       using mklmlFunc = decltype(&::__name);                                 \
-      static void* p_##_name = dlsym(RTLD_DEFAULT, #__name);                 \
+      static void* p_##_name = dlsym(NULL, #__name);                         \
       if (p_##_name) return reinterpret_cast<mklmlFunc>(p_##_name)(args...); \
       std::call_once(mklml_dso_flag, []() {                                  \
         mklml_dso_handle = paddle::platform::dynload::GetMKLMLDsoHandle();   \
