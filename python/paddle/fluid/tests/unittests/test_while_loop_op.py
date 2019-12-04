@@ -130,6 +130,45 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
         self.assertTrue(np.allclose(np.asarray(ret[3]), data_sums))
 
 
+class TestApiWhileLoop_WithSwitchCase(unittest.TestCase):
+    def test_with_switch_case(self):
+        def cond(i):
+            return layers.less_than(i, ten)
+
+        def body(i):
+            def fn_1():
+                fn_1_data = layers.elementwise_add(x=i, y=three)
+                return fn_1_data
+
+            def fn_2():
+                fn_2_data = layers.elementwise_mul(x=i, y=i)
+                return fn_2_data
+
+            def fn_3():
+                fn_3_data = layers.elementwise_sub(x=i, y=one)
+                return fn_3_data
+
+            return layers.switch_case(
+                branch_index=i, branch_fns={3: fn_1,
+                                            6: fn_2}, default=fn_3)
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            i = layers.fill_constant(shape=[1], dtype='int64', value=5)
+            one = layers.fill_constant(shape=[1], dtype='int64', value=1)
+            three = layers.fill_constant(shape=[1], dtype='int64', value=3)
+            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+            out = layers.while_loop(cond, body, [i])
+
+            data = np.asarray([36]).astype('float32')
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        ret = exe.run(main_program, feed={}, fetch_list=out)
+        self.assertTrue(np.allclose(np.asarray(ret[0]), data))
+
+
 class TestApiWhileLoop_Error(unittest.TestCase):
     def test_error(self):
         def cond_returns_constant(i):
