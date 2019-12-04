@@ -23,7 +23,7 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
 
-class TestSqrtOpError(OpTest):
+class TestSqrtOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of sqrt op must be Variable or numpy.ndarray.
@@ -537,7 +537,7 @@ class TestELU(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
 
-class TestELUOpError(OpTest):
+class TestELUOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of elu_op must be Variable.
