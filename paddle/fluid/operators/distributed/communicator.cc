@@ -529,7 +529,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
   auto sparse_var_table_map =
       CreateSparseVarTableMap(sparse_var_names, sparse_var_tables);
   std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
-  CreateIdsTable(ids_table->Get());
+  CreateIdsTable(ids_table->get());
 
   auto before_run_send = GetCurrentUS();
   for (size_t i = 0; i < sparse_var_names.size(); i++) {
@@ -566,7 +566,7 @@ void GeoSgdCommunicator::CreateIdsTable(SparseIdsMap *ids_table) {
               std::vector<std::unordered_set<int64_t>>{splited_var_nums}));
       for (size_t i = 0; i < splited_var_nums; i++) {
         auto section = recv_varname_to_ctx_[var_name].height_sections[i];
-        ids_table[var_name][i].reserve(section);
+        ids_table->at(var_name)[i].reserve(section);
       }
     }
   }
