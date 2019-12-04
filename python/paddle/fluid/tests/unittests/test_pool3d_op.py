@@ -891,7 +891,7 @@ create_test_cudnn_padding_VALID_class(TestCase5_channel_last)
 
 
 #test API
-class TestPool3dAPI(OpTest):
+class TestPool3dAPI(unittest.TestCase):
     def test_api(self):
         x_NDHWC = np.random.random([2, 5, 5, 5, 3]).astype("float32")
         x_NCDHW = np.random.random([2, 3, 5, 5, 5]).astype("float32")
@@ -1076,7 +1076,7 @@ class TestPool3dAPI(OpTest):
             atol=1e-05)
 
 
-class TestPool3dAPI_Error(OpTest):
+class TestPool3dAPI_Error(unittest.TestCase):
     def test_api(self):
         input_NDHWC = fluid.layers.data(
             name="input_NDHWC",

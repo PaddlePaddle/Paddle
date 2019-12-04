@@ -182,6 +182,11 @@ class SubGraph {
           }
         }
 
+        if (from > to) {
+          LOG(INFO) << "subgraph: {\n" << DebugString(Nodes()) << "}\n";
+          LOG(INFO) << "sorted nodes: {\n"
+                    << DebugString(sorted_nodes_) << "}\n";
+        }
         PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid.", from, to);
         sorted_nodes_.insert(sorted_nodes_.begin() + to, n);
         sorted_vars[n->Name()] = n;
@@ -242,6 +247,9 @@ class SubGraph {
         }
         if (found_connected_ops) {
           LOG(INFO) << DebugString(op_n) << ", from:" << from << ", to:" << to;
+          if (from > to) {
+            LOG(INFO) << "subgraph: {\n" << DebugString(Nodes()) << "}\n";
+          }
           PADDLE_ENFORCE_LE(from, to, "Range [%d, %d] is invalid.", from, to);
           sorted_ops.insert(sorted_ops.begin() + to, op_n);
           erased_ops.insert(op_n);

@@ -108,7 +108,7 @@ class SumOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto x_vars = ctx.MultiInputVar("X");
-    auto x_vars_name = ctx.Inputs("X");
+    auto x_vars_name = ctx.InputNames("X");
 
     framework::LibraryType library{framework::LibraryType::kPlain};
     framework::DataLayout layout{framework::DataLayout::kAnyLayout};

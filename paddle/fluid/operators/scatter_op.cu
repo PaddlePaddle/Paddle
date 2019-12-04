@@ -32,7 +32,7 @@ class ScatterOpCUDAKernel : public framework::OpKernel<T> {
     auto *Out = ctx.Output<Tensor>("Out");
     bool overwrite = ctx.Attr<bool>("overwrite");
 
-    Out->ShareDataWith(*X);
+    framework::TensorCopy(*X, ctx.GetPlace(), Out);
     // use template class to support int32_t and int64_t
     const auto &index_type = Ids->type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||

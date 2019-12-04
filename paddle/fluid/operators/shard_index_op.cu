@@ -26,7 +26,7 @@ __global__ void ShardIndexInner(const T* in_data, T* out_data,
                                 const int64_t numel, const int index_num,
                                 const int nshards, const int shard_id,
                                 const int ignore_value) {
-  int shard_size = index_num / nshards;
+  int shard_size = (index_num + nshards - 1) / nshards;
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx < numel) {
     assert(in_data[idx] >= 0 && in_data[idx] < index_num);
