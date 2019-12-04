@@ -297,7 +297,6 @@ class TestUnderstandSentiment(unittest.TestCase):
                 use_cuda=False,
                 parallel=True)
 
-    @unittest.skip(reason="make CI faster")
     def test_stacked_lstm_cpu(self):
         with self.new_program_scope():
             main(
@@ -330,7 +329,6 @@ class TestUnderstandSentiment(unittest.TestCase):
                 use_cuda=True,
                 parallel=True)
 
-    @unittest.skip(reason="make CI faster")
     def test_stacked_lstm_gpu(self):
         with self.new_program_scope():
             main(
@@ -347,7 +345,6 @@ class TestUnderstandSentiment(unittest.TestCase):
                 use_cuda=True,
                 parallel=True)
 
-    @unittest.skip(reason='make CI faster')
     def test_dynrnn_lstm_gpu(self):
         with self.new_program_scope():
             main(

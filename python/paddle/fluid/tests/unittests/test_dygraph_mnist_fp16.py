@@ -117,7 +117,6 @@ class MNIST(fluid.dygraph.Layer):
 
 class TestMnist(unittest.TestCase):
     # FIXME(zcd): disable this random failed test temporally.
-    @unittest.skip("should fix this later")
     def test_mnist_fp16(self):
         if not fluid.is_compiled_with_cuda():
             return
