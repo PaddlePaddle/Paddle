@@ -67,6 +67,8 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             learning_rate=learning_rate,
             momentum=0.2,
             rampup_begin_step=0,
+            local_grad_clip_norm=1.0,
+            num_trainers=2,
             regularization=regularization)
         mean_out = block.create_var(
             dtype="float32", shape=[1], lod_level=0, name="mean.out")
