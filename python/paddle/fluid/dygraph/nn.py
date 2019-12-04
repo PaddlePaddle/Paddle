@@ -2146,7 +2146,9 @@ class PRelu(layers.Layer):
         if self._mode == 'channel':
             self._alpha_shape = [1, input.shape[1], 1, 1]
         elif self._mode == 'element':
-            self._alpha_shape = input.shape
+            self._alpha_shape = [
+                1, input.shape[1], input.shape[2], input.shape[3]
+            ]
         self._dtype = self._helper.input_dtype(input)
         self._alpha = self.create_parameter(
             attr=self._param_attr,
