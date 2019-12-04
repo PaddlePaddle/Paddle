@@ -277,14 +277,19 @@ void BindImperative(py::module *m_ptr) {
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
-             auto *tensor =
-                 grad_var->MutableVar()->GetMutable<framework::LoDTensor>();
-             if (grad_var && grad_var->Var().IsInitialized() &&
-                 tensor->IsInitialized()) {
-               return grad_var;
-             } else {
-               return std::shared_ptr<imperative::VarBase>(nullptr);
+             if (grad_var && grad_var->Var().IsInitialized()) {
+               auto *tensor =
+                   grad_var->MutableVar()->IsType<framework::LoDTensor>()
+                       ? grad_var->MutableVar()
+                             ->GetMutable<framework::LoDTensor>()
+                       : grad_var->MutableVar()
+                             ->GetMutable<framework::SelectedRows>()
+                             ->mutable_value();
+               if (tensor->IsInitialized()) {
+                 return grad_var;
+               }
              }
+             return std::shared_ptr<imperative::VarBase>(nullptr);
            },
            py::return_value_policy::copy)
       .def("_copy_to",
@@ -305,6 +310,9 @@ void BindImperative(py::module *m_ptr) {
             if (self.Var().IsType<framework::LoDTensor>()) {
               return framework::vectorize<int>(
                   self.Var().Get<framework::LoDTensor>().dims());
+            } else if (self.Var().IsType<framework::SelectedRows>()) {
+              return framework::vectorize<int>(
+                  self.Var().Get<framework::SelectedRows>().value().dims());
             } else {
               VLOG(2) << "It is meaningless to get shape of variable type "
                       << GetTypeName(self);

@@ -152,7 +152,7 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(
             assert (row == result_array[idx]).all()
 
 
-class TestEmbedOpError(OpTest):
+class TestEmbedOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.randint(0, 10, (4, 1)).astype("int64")

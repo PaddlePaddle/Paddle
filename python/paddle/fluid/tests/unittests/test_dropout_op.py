@@ -182,7 +182,7 @@ class TestFP16DropoutOp2(TestFP16DropoutOp):
         self.fix_seed = False
 
 
-class TestDropoutOpError(OpTest):
+class TestDropoutOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
 

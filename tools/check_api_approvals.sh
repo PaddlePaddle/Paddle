@@ -25,7 +25,8 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/parallel_executor.py"
            "python/paddle/fluid/framework.py"
            "python/paddle/fluid/backward.py"
-           "paddle/fluid/operators/distributed/send_recv.proto.in")
+           "paddle/fluid/operators/distributed/send_recv.proto.in"
+           "paddle/fluid/framework/unused_var_check.cc")
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
 git_files=`git diff --numstat upstream/$BRANCH| wc -l`
@@ -73,7 +74,7 @@ for API_FILE in ${API_FILES[*]}; do
   echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
   if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
       # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
-      # approval_user_list: XiaoguangHu01 46782768,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,Dianhai 38231817,JiabinYang 22361972,chenwhql 22561442,seiriosPlus 5442383,gongweibao 10721757,saxon-zh 2870059,Boyan-Liu 2870059. 
+      # approval_user_list: XiaoguangHu01 46782768,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,Dianhai 38231817,JiabinYang 22361972,chenwhql 22561442,zhiqiu 6888866,seiriosPlus 5442383,gongweibao 10721757,saxon-zh 2870059,Boyan-Liu 2870059. 
       if [ "${API_FILE}" == "paddle/fluid/op_use_default_grad_op_maker.spec" ];then
           echo_line="You must have one RD (sneaxiy (Recommend) or luotao1) approval for op_use_default_grad_op_maker.spec, which manages the grad_op memory optimization.\n"
           check_approval 1 32832641 6836917
@@ -89,6 +90,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "paddle/fluid/operators/distributed/send_recv.proto.in" ];then
           echo_line="You must have one RD (gongweibao or seiriosPlus) approval for the paddle/fluid/operators/distributed/send_recv.proto.in, which manages the environment variables.\n"
           check_approval 1 10721757 5442383
+      elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.cc" ];then
+          echo_line="You must have one RD (zhiqiu (Recommend) , sneaxiy or luotao1) approval for the paddle/fluid/framework/unused_var_check.cc, which manages the white list of operators that have unused input variables. Before change the white list, please read the spicification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
+          check_approval 1 6888866 32832641 6836917
       else
           echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 3048612 46782768 12538138 6836917 32832641
@@ -108,9 +112,15 @@ if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 47554610 
 fi
 
+HAS_UNITTEST_SKIP=`git diff -U0 upstream/$BRANCH | grep "^+[[:space:]]\{0,\}@unittest.skip" || true`
+if [ "${HAS_UNITTEST_SKIP}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="Unittest is not allowed to be disabled.\nYou must have one RD (XiaoguangHu01, phlrain, luotao1 or lanxianghit) approval for the usage of @unittest.skip or @unittest.skipIf.\n${HAS_UNITTEST_SKIP}\n"
+    check_approval 1 46782768 6836917 47554610 43953930
+fi
+
 ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
 if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_CUDA_SUCCESS instead.\nYou must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
+    echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_CUDA_SUCCESS instead, see [ https://github.com/PaddlePaddle/Paddle/wiki/PADDLE_ENFORCE-Rewriting-Specification ] for details.\nYou must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
     check_approval 1 6836917 47554610 22561442
 fi
 
