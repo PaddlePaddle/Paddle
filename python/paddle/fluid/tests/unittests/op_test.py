@@ -798,6 +798,14 @@ class OpTest(unittest.TestCase):
                                 equal_nan=False,
                                 check_dygraph=True,
                                 inplace_atol=None):
+        if no_check_set is None:
+            no_check_set = set()
+            print('no_check_set: None, op_type: ', self.op_type)
+        else:
+            raise AssertionError("no_check_set of op %s needs to be empty." %
+                                 self.op_type)
+            print('op_type: ', self.op_type)
+            print('no_check_set: ', no_check_set)
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
@@ -1005,6 +1013,8 @@ class OpTest(unittest.TestCase):
                      inplace_atol=None,
                      check_compile_vs_runtime=False):
         places = self._get_places()
+        print('check_output')
+        print('places: ', places)
         for place in places:
             res = self.check_output_with_place(place, atol, no_check_set,
                                                equal_nan, check_dygraph)
