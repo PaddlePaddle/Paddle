@@ -94,6 +94,8 @@ class TestPRROIPoolOp(OpTest):
                 max_relative_error=error,
                 numeric_grad_delta=0.005)
 
+        self._get_gradient(['X'], fluid.CPUPlace(), ["Out"], None)
+
     def run_net(self, place):
         with program_guard(Program(), Program()):
             x = fluid.layers.data(
@@ -215,6 +217,8 @@ class TestPRROIPoolOpTensorRoIs(OpTest):
                 'Out',
                 max_relative_error=error,
                 numeric_grad_delta=0.005)
+
+        self._get_gradient(['X'], fluid.CPUPlace(), ["Out"], None)
 
     def run_net(self, place):
         with program_guard(Program(), Program()):
