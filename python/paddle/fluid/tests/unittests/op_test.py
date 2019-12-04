@@ -1043,43 +1043,37 @@ class OpTest(unittest.TestCase):
                    max_relative_error=0.005,
                    user_defined_grads=None,
                    check_dygraph=True):
-        is_fp64_check = False
-        for _, val in self.inputs.items():
-            if isinstance(val, list) or isinstance(val, tuple):
-                is_fp64_check = is_fp64_check or val[0].dtype == np.float64
-            else:
-                is_fp64_check = is_fp64_check or val.dtype == np.float64
 
-        run_ops = [set(), set()]  # fp64 other
+        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+
         filename = "tmp.txt"
+        run_ops = [set(), set()]  # fp64 other
         if os.path.exists(filename):
             with open(filename, "r") as f:
                 for op_set in run_ops:
                     line = f.readline()
                     for op in line.strip().split(','):
                         op_set.add(op)
-
-        if is_fp64_check == np.float64:
+        if self.dtype == np.float64:
             run_ops[0].add(self.op_type)
         else:
             run_ops[1].add(self.op_type)
-
-        print("fp64 check op:")
-        print(run_ops[0])
-        print("other check op:")
-        print(run_ops[1])
-
         with open("tmp.txt", "w") as f:
             for op_set in run_ops:
                 for op in op_set:
                     f.write(op + ",")
                 f.write("\n")
+        print("fp64 check op:")
+        print(run_ops[0])
+        print("other check op:")
+        print(run_ops[1])
 
         places = self._get_places()
-        if is_fp64_check:
+        if self.dtype == np.float64:
             '''
-            numeric_grad_delta = 1e-7
-            max_relative_error = 1e-6
+            if self.op_type not in op_white_list.OLD_FP64_CHECK_GRAD_OPS:
+                numeric_grad_delta = 1e-7
+                max_relative_error = 1e-6
             '''
             for place in places:
                 self.check_grad_with_place(place, inputs_to_check, output_names,
