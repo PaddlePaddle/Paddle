@@ -499,8 +499,11 @@ function generate_api_spec() {
     source .${spec_kind}_env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
 
-    spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec 
+    spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > $spec_path
+    # used to log op_register data_type
+    op_type_path=${PADDLE_ROOT}/paddle/fluid/OP_TYPE_${spec_kind}.spec
+    python ${PADDLE_ROOT}/tools/check_op_register_type.py > $op_type_path
     awk -F '(' '{print $NF}' $spec_path >${spec_path}.doc
     awk -F '(' '{$NF="";print $0}' $spec_path >${spec_path}.api
     if [ "$1" == "cp35-cp35m" ] || [ "$1" == "cp36-cp36m" ] || [ "$1" == "cp37-cp37m" ]; then 
