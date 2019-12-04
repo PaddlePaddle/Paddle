@@ -578,7 +578,7 @@ GeoSgdCommunicator::CreateSparseVarTableMap(
     const std::vector<std::string> &sparse_var_tables) {
   std::unordered_map<std::string, std::vector<std::string>> var_table_map;
   for (size_t i = 0; i < sparse_var_names.size(); i++) {
-    if (var_table_map->find(sparse_var_names[i]) == var_table_map->end()) {
+    if (var_table_map.find(sparse_var_names[i]) == var_table_map.end()) {
       var_table_map.insert(std::pair<std::string, std::vector<std::string>>(
           sparse_var_names[i], std::vector<std::string>{}));
     }
