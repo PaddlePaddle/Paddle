@@ -46,8 +46,11 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   int groups = ctx->Attrs().Get<int>("groups");
   std::string padding_algorithm =
       ctx->Attrs().Get<std::string>("padding_algorithm");
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_format"));
+  const std::string data_layout_str =
+      ctx->Attrs().Get<std::string>("data_format");
+  const DataLayout data_layout =
+      this->IsMKLDNNType() ? DataLayout::kNCHW
+                           : framework::StringToDataLayout(data_layout_str);
 
   PADDLE_ENFORCE_EQ(in_dims.size() == 4 || in_dims.size() == 5, true,
                     "ConvTransposeOp intput should be 4-D or 5-D tensor.");
@@ -127,11 +130,6 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
 #ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
-    // TODO(jczaja): Add support for NHWC
-    const std::string data_format = ctx.Attr<std::string>("data_format");
-    PADDLE_ENFORCE_NE(
-        data_format, "NHWC",
-        "Conv Transpose MKLDNN does not support NHWC data format yet");
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
@@ -140,6 +138,32 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
   return framework::OpKernelType(
       OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
       layout_, library_);
+}
+
+framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
+    const std::string& var_name, const Tensor& tensor,
+    const framework::OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if ((var_name == "Input") &&
+      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_format = ar.Get<std::string>("data_format");
+    auto dl = framework::StringToDataLayout(data_format);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != framework::DataLayout::kAnyLayout) {
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(),
+          framework::StringToDataLayout(data_format));
+    }
+  }
+#endif
+  return framework::OpKernelType(expected_kernel_type.data_type_,
+                                 tensor.place(), tensor.layout());
 }
 
 void Conv2DTransposeOpMaker::Make() {

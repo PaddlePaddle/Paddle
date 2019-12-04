@@ -35,7 +35,7 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.exhaustive_search = False
         self.use_cuda = False
         self.use_mkldnn = False
-        self.data_format = "AnyLayout"
+        self.data_format = "NCHW"
         self.weighttype = np.float32
         self.use_mkldnn = True
         self.init_group()
