@@ -240,7 +240,7 @@ class TestSaveLoadBase(unittest.TestCase):
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
-                name="x", shape=[-1, num_steps, 1], dtype='int64')
+                name="x", shape=[-1, num_steps], dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
             init_hidden = fluid.layers.data(
                 name="init_hidden", shape=[1], dtype='float32')
@@ -341,7 +341,7 @@ class TestSaveLoadPartial(unittest.TestCase):
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
-                name="x", shape=[-1, num_steps, 1], dtype='int64')
+                name="x", shape=[-1, num_steps], dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
             init_hidden = fluid.layers.data(
                 name="init_hidden", shape=[1], dtype='float32')
@@ -451,7 +451,7 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
-                name="x", shape=[-1, num_steps, 1], dtype='int64')
+                name="x", shape=[-1, num_steps], dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
             init_hidden = fluid.layers.data(
                 name="init_hidden", shape=[1], dtype='float32')
@@ -552,7 +552,7 @@ class TestProgramStatePartial(unittest.TestCase):
             exe = fluid.Executor(place)
             sgd = Adam(learning_rate=1e-3)
             x = fluid.layers.data(
-                name="x", shape=[-1, num_steps, 1], dtype='int64')
+                name="x", shape=[-1, num_steps], dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
             init_hidden = fluid.layers.data(
                 name="init_hidden", shape=[1], dtype='float32')
