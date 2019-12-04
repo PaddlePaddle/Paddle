@@ -263,15 +263,16 @@ def _create_loss_op_desc_(loss):
     return op_desc
 
 
-def _infer_var_data_type_(grad_var_name, block):
+def _infer_var_data_type_shape_(grad_var_name, block):
     """
-    Infer the data type of given grad variable
+    Infer the data type and shape of given grad variable
     """
     grad_var = block.desc.find_var(cpt.to_bytes(grad_var_name))
     fwd_name = _strip_grad_suffix_(grad_var_name)
     if block.desc.has_var_recursive(cpt.to_bytes(fwd_name)):
         fwd_var = block.desc.find_var_recursive(cpt.to_bytes(fwd_name))
         grad_var.set_dtype(fwd_var.dtype())
+        grad_var.set_shape(fwd_var.shape())
     else:
         grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
@@ -921,9 +922,10 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         # infer_shape and infer_type
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
+
         for arg in op_desc.output_arg_names():
             if arg in new_vars:
-                _infer_var_data_type_(arg, block)
+                _infer_var_data_type_shape_(arg, block)
 
 
 def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
@@ -958,6 +960,8 @@ def _get_stop_gradients_(program):
             assert isinstance(var, framework.Variable)
             if var.stop_gradient:
                 block_no_grad_set.add(_append_grad_suffix_(var.name))
+        if block.idx != 0:
+            block_no_grad_set.update(no_grad_dict[block.parent_idx])
         no_grad_dict[block.idx] = block_no_grad_set
     return no_grad_dict
 
@@ -1062,7 +1066,6 @@ def append_backward(loss,
     no_grad_dict = _get_stop_gradients_(program)
     no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
 
-    grad_info_map = dict()
     root_block = program.block(0)
 
     fwd_op_num = root_block.desc.op_size()
@@ -1114,6 +1117,7 @@ def append_backward(loss,
     # different names.
     _rename_grad_(root_block, fwd_op_num, grad_to_var, {})
 
+    grad_info_map = dict()
     _append_backward_vars_(root_block, fwd_op_num, grad_to_var, grad_info_map)
 
     program.current_block_idx = current_block_idx

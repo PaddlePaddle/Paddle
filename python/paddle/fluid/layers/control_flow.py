@@ -80,9 +80,11 @@ def select_input(inputs, mask):
     helper = LayerHelper('select_input', **locals())
     if isinstance(inputs, list) or isinstance(inputs, tuple):
         input_dtype = inputs[0].dtype
+        input_shape = inputs[0].shape
     else:
         input_dtype = inputs.dtype
-    out = helper.create_variable(dtype=input_dtype)
+        input_shape = inputs.shape
+    out = helper.create_variable(dtype=input_dtype, shape=input_shape)
     helper.append_op(
         type='select_input',
         inputs={'X': inputs,
@@ -1742,7 +1744,8 @@ def copy_var_to_parent_block(var, layer_helper):
     assert parent_idx >= 0, "Got wrong parent block index when assigning var to parent scope in control_flow"
     parent_block = prog.block(parent_idx)
 
-    parent_block_var = parent_block.create_var(dtype=var.dtype, type=var.type)
+    parent_block_var = parent_block.create_var(
+        dtype=var.dtype, shape=var.shape, type=var.type)
     assign(var, parent_block_var)
     return parent_block_var
 
