@@ -13,12 +13,28 @@
 # limitations under the License.
 
 from __future__ import print_function
-
 import unittest
-from paddle.fluid.tests.unittests.test_batch_norm_op import TestBatchNormOpTraining, TestBatchNormOpInference
-from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator
+import numpy as np
+import paddle.fluid as fluid
 
-_set_use_system_allocator(True)
+from test_collective_base import TestDistBase
+
+
+class TestReduceScatterAPI(TestDistBase):
+    def _setup_config(self):
+        pass
+
+    def test_reducescatter(self, col_type="reduce_scatter"):
+        self.check_with_place("collective_reducescatter.py", col_type)
+
+    def test_reducescatter_with_error(self):
+        nranks = 2
+        tindata = fluid.data(name="tindata", shape=[5, 1000], dtype='float32')
+        try:
+            toutdata = fluid.layers.collective._c_reducescatter(tindata, nranks)
+        except ValueError:
+            pass
+
 
 if __name__ == '__main__':
     unittest.main()
