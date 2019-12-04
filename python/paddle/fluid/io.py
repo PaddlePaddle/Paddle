@@ -1544,7 +1544,11 @@ def save(program, model_path):
         f.write(program.desc.serialize_to_string())
 
 
-def load(program, model_path, executor=None):
+def load(program,
+         model_path,
+         executor=None,
+         is_inference=False,
+         pserver_endpoints=None):
     """
     This function filter out parameters and optimizer information from program, and then get corresponding value from file.
     An exception will throw if shape or dtype of the parameters is not match.
@@ -1571,6 +1575,16 @@ def load(program, model_path, executor=None):
     """
 
     assert executor is None or isinstance(executor, Executor)
+
+    if is_inference and program is not None:
+        raise TypeError("When inference is True, program should be None")
+
+    if is_inference:
+        dec_model_file = model_path + ".pdmodel"
+        with open(dec_model_file, "rb") as f:
+            program_desc_str = f.read()
+
+        program = Program.parse_from_string(program_desc_str)
 
     parameter_file_name = model_path + ".pdparams"
     assert os.path.exists(parameter_file_name), \
@@ -1623,6 +1637,20 @@ def load(program, model_path, executor=None):
                 "Can not find [{}] in model file [{}]".format(
                     v.name, opt_file_name)
             set_var(v, load_dict[v.name])
+
+    if is_inference:
+        if pserver_endpoints:
+            program = _endpoints_replacement(program, pserver_endpoints)
+
+        feed_target_names = program.desc.get_feed_target_names()
+        fetch_target_names = program.desc.get_fetch_target_names()
+        fetch_targets = [
+            program.global_block().var(name) for name in fetch_target_names
+        ]
+
+        return [program, feed_target_names, fetch_targets]
+    else:
+        return None
 
 
 def load_program_state(model_path):
@@ -1746,3 +1774,71 @@ def set_program_state(program, state_dict):
         warnings.warn(
             "This list is not set, Because of Paramerter not found in program. There are: {}".
             format(" ".join(unused_para_list)))
+
+
+def program_prune_by_in_out(program, feeded_var_names, target_vars):
+    if isinstance(feeded_var_names, six.string_types):
+        feeded_var_names = [feeded_var_names]
+
+    if len(feeded_var_names) > 0:
+        if not (bool(feeded_var_names) and all(
+                isinstance(name, six.string_types)
+                for name in feeded_var_names)):
+            raise ValueError("'feed_var_names' should be a list of str.")
+
+    if isinstance(target_vars, Variable):
+        target_vars = [target_vars]
+    if not (bool(target_vars) and
+            all(isinstance(var, Variable) for var in target_vars)):
+        raise ValueError("'target_vars' should be a list of Variable.")
+
+    # remind user to set auc_states to zeros if the program contains auc op 
+    all_ops = program.global_block().ops
+    for op in all_ops:
+        if op.type == 'auc':
+            warnings.warn(
+                "please ensure that you have set the auc states to zeros before saving inference model"
+            )
+            break
+
+    # fix the bug that the activation op's output as target will be pruned.
+    # will affect the inference performance.
+    # TODO(Superjomn) add an IR pass to remove 1-scale op.
+    with program_guard(program):
+        uniq_target_vars = []
+        for i, var in enumerate(target_vars):
+            if isinstance(var, Variable):
+                var = layers.scale(
+                    var, 1., name="save_infer_model/scale_{}".format(i))
+            uniq_target_vars.append(var)
+        target_vars = uniq_target_vars
+    target_var_name_list = [var.name for var in target_vars]
+
+    # modify the program online so that
+    # it can only be loaded for inference directly
+
+    program = program.clone()
+    global_block = program.global_block()
+    need_to_remove_op_index = []
+    for i, op in enumerate(global_block.ops):
+        op.desc.set_is_target(False)
+        if op.type == "feed" or op.type == "fetch":
+            need_to_remove_op_index.append(i)
+
+    for index in need_to_remove_op_index[::-1]:
+        global_block._remove_op(index)
+
+    program.desc.flush()
+
+    program = program._prune_with_input(
+        feeded_var_names=feeded_var_names, targets=target_vars)
+    program = program._inference_optimize(prune_read_op=True)
+    fetch_var_names = [v.name for v in target_vars]
+
+    prepend_feed_ops(program, feeded_var_names)
+    append_fetch_ops(program, fetch_var_names)
+
+    program.desc._set_version()
+    paddle.fluid.core.save_op_compatible_info(main_program.desc)
+
+    return program
