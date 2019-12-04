@@ -31,7 +31,7 @@ def simple_fc_net_with_inputs(img, label, class_num=10):
     return loss
 
 
-def simple_fc_net():
+def simple_fc_net(use_feed=None):
     img = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     return simple_fc_net_with_inputs(img, label, class_num=10)
@@ -55,13 +55,14 @@ def batchnorm_fc_with_inputs(img, label, class_num=10):
     return loss
 
 
-def fc_with_batchnorm():
+def fc_with_batchnorm(use_feed=None):
     img = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     return batchnorm_fc_with_inputs(img, label, class_num=10)
 
 
-def bow_net(dict_dim,
+def bow_net(use_feed,
+            dict_dim,
             is_sparse=False,
             emb_dim=128,
             hid_dim=128,

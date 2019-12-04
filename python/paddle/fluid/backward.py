@@ -960,8 +960,6 @@ def _get_stop_gradients_(program):
             assert isinstance(var, framework.Variable)
             if var.stop_gradient:
                 block_no_grad_set.add(_append_grad_suffix_(var.name))
-        if block.idx != 0:
-            block_no_grad_set.update(no_grad_dict[block.parent_idx])
         no_grad_dict[block.idx] = block_no_grad_set
     return no_grad_dict
 
