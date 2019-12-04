@@ -586,6 +586,7 @@ class PrepareEncoderDecoderLayer(Layer):
                  src_emb_dim,
                  src_max_len,
                  dropout_rate,
+                 is_sparse=False,
                  word_emb_param_name=None,
                  pos_enc_param_name=None):
         super(PrepareEncoderDecoderLayer, self).__init__(name_scope)
@@ -596,6 +597,7 @@ class PrepareEncoderDecoderLayer(Layer):
         self._input_emb = Embedding(
             name_scope=self.full_name(),
             size=[src_vocab_size, src_emb_dim],
+            is_sparse=is_sparse,
             padding_idx=0,
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
@@ -608,6 +610,7 @@ class PrepareEncoderDecoderLayer(Layer):
         self._pos_emb = Embedding(
             name_scope=self.full_name(),
             size=[self._src_max_len, src_emb_dim],
+            is_sparse=is_sparse,
             param_attr=fluid.ParamAttr(
                 name=pos_enc_param_name,
                 initializer=fluid.initializer.NumpyArrayInitializer(pos_inp),
@@ -633,10 +636,23 @@ class PrepareEncoderDecoderLayer(Layer):
 
 
 class WrapEncoderLayer(Layer):
-    def __init__(self, name_cope, src_vocab_size, max_length, n_layer, n_head,
-                 d_key, d_value, d_model, d_inner_hid, prepostprocess_dropout,
-                 attention_dropout, relu_dropout, preprocess_cmd,
-                 postprocess_cmd, weight_sharing):
+    def __init__(self,
+                 name_cope,
+                 src_vocab_size,
+                 max_length,
+                 n_layer,
+                 n_head,
+                 d_key,
+                 d_value,
+                 d_model,
+                 d_inner_hid,
+                 prepostprocess_dropout,
+                 attention_dropout,
+                 relu_dropout,
+                 preprocess_cmd,
+                 postprocess_cmd,
+                 weight_sharing,
+                 is_sparse=False):
         """
         The wrapper assembles together all needed layers for the encoder.
         """
@@ -648,6 +664,7 @@ class WrapEncoderLayer(Layer):
             d_model,
             max_length,
             prepostprocess_dropout,
+            is_sparse=is_sparse,
             word_emb_param_name=word_emb_param_names[0],
             pos_enc_param_name=pos_enc_param_names[0])
         self._encoder = EncoderLayer(
@@ -814,7 +831,8 @@ class WrapDecoderLayer(Layer):
                  postprocess_cmd,
                  weight_sharing,
                  caches=None,
-                 gather_idx=None):
+                 gather_idx=None,
+                 is_sparse=False):
         """
         The wrapper assembles together all needed layers for the encoder.
         """
@@ -826,6 +844,7 @@ class WrapDecoderLayer(Layer):
             d_model,
             max_length,
             prepostprocess_dropout,
+            is_sparse=is_sparse,
             word_emb_param_name=word_emb_param_names[1],
             pos_enc_param_name=pos_enc_param_names[1])
         self._decoder_layer = DecoderLayer(
@@ -893,7 +912,8 @@ class TransFormer(Layer):
                  weight_sharing,
                  label_smooth_eps,
                  use_py_reader=False,
-                 is_test=False):
+                 is_test=False,
+                 is_sparse=False):
         super(TransFormer, self).__init__(name_scope)
         self._label_smooth_eps = label_smooth_eps
         self._trg_vocab_size = trg_vocab_size
@@ -902,15 +922,39 @@ class TransFormer(Layer):
                 "Vocabularies in source and target should be same for weight sharing."
             )
         self._wrap_encoder_layer = WrapEncoderLayer(
-            self.full_name(), src_vocab_size, max_length, n_layer, n_head,
-            d_key, d_value, d_model, d_inner_hid, prepostprocess_dropout,
-            attention_dropout, relu_dropout, preprocess_cmd, postprocess_cmd,
-            weight_sharing)
+            self.full_name(),
+            src_vocab_size,
+            max_length,
+            n_layer,
+            n_head,
+            d_key,
+            d_value,
+            d_model,
+            d_inner_hid,
+            prepostprocess_dropout,
+            attention_dropout,
+            relu_dropout,
+            preprocess_cmd,
+            postprocess_cmd,
+            weight_sharing,
+            is_sparse=is_sparse)
         self._wrap_decoder_layer = WrapDecoderLayer(
-            self.full_name(), trg_vocab_size, max_length, n_layer, n_head,
-            d_key, d_value, d_model, d_inner_hid, prepostprocess_dropout,
-            attention_dropout, relu_dropout, preprocess_cmd, postprocess_cmd,
-            weight_sharing)
+            self.full_name(),
+            trg_vocab_size,
+            max_length,
+            n_layer,
+            n_head,
+            d_key,
+            d_value,
+            d_model,
+            d_inner_hid,
+            prepostprocess_dropout,
+            attention_dropout,
+            relu_dropout,
+            preprocess_cmd,
+            postprocess_cmd,
+            weight_sharing,
+            is_sparse=is_sparse)
 
         if weight_sharing:
             self._wrap_decoder_layer._prepare_decoder_layer._input_emb._w = self._wrap_encoder_layer._prepare_encoder_layer._input_emb._w
@@ -937,7 +981,11 @@ class TransFormer(Layer):
 
 
 class TestDygraphTransformerSortGradient(unittest.TestCase):
-    def test_transformer_sort_gradient_float32(self):
+    def test_transformer_sort_gradient(self):
+        for is_sparse in [True, False]:
+            self.transformer_sort_gradient_float32(is_sparse)
+
+    def transformer_sort_gradient_float32(self, is_sparse):
         seed = 90
 
         with guard():
@@ -964,7 +1012,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 ModelHyperParams.weight_sharing,
                 TrainTaskConfig.label_smooth_eps,
                 use_py_reader=use_py_reader,
-                is_test=False)
+                is_test=False,
+                is_sparse=is_sparse)
             if sync:
                 lr_decay = fluid.layers.learning_rate_scheduler.noam_decay(
                     ModelHyperParams.d_model, TrainTaskConfig.warmup_steps)
@@ -1045,7 +1094,8 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 ModelHyperParams.weight_sharing,
                 TrainTaskConfig.label_smooth_eps,
                 use_py_reader=use_py_reader,
-                is_test=False)
+                is_test=False,
+                is_sparse=is_sparse)
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             optimizer = fluid.optimizer.SGD(learning_rate=0.003)

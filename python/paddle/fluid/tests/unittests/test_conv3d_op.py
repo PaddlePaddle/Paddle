@@ -755,7 +755,7 @@ create_test_cudnn_channel_last_class(TestWith1x1_AsyPadding)
 
 
 # --------- test python API ---------------
-class TestConv3dAPI(OpTest):
+class TestConv3dAPI(unittest.TestCase):
     def test_api(self):
 
         input_NDHWC = fluid.layers.data(
@@ -831,7 +831,7 @@ class TestConv3dAPI(OpTest):
             data_format="NCDHW")
 
 
-class TestConv3dAPI_Error(OpTest):
+class TestConv3dAPI_Error(unittest.TestCase):
     def test_api(self):
         input = fluid.layers.data(
             name="input",

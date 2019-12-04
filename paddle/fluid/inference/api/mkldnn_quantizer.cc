@@ -37,6 +37,11 @@ using framework::LoDTensor;
 using framework::ir::Graph;
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<float, Eigen::Dynamic, 1>>;
+using EigenMatrixDoubleArray =
+    Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+using EigenMatrixArray =
+    Eigen::Array<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+using ConstEigenMatrixArrayMap = Eigen::Map<const EigenMatrixArray>;
 using string::PrettyLogH1;
 static LoDTensor CreateScaleTensor(int64_t channels_num = 1);
 
@@ -66,7 +71,7 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
             bool is_unsigned = false;
             bool compute_scale = true;
             if (is_output) {
-              if (op->Type() == "conv2d") {
+              if (op->Type() == "conv2d" || op->Type() == "fc") {
                 // output of conv2d with relu must be unsigned
                 std::string fuse_activation =
                     op->GetAttrIfExists<std::string>("fuse_activation");
@@ -138,7 +143,12 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateSingleScale(
       scales_[var_name] = GetMaxScalingFactor(var_tensor, is_unsigned);
       break;
     case ScaleAlgo::MAX_CH:
-      scales_[var_name] = GetMaxChScalingFactor(var_tensor, is_unsigned);
+      scales_[var_name] = GetMaxChScalingFactor(var_tensor, is_unsigned,
+                                                /*is_transposed*/ false);
+      break;
+    case ScaleAlgo::MAX_CH_T:
+      scales_[var_name] = GetMaxChScalingFactor(var_tensor, is_unsigned,
+                                                /*is_transposed*/ true);
       break;
     case ScaleAlgo::KL:
       scales_[var_name] = GetKLScalingFactor(var_tensor, is_unsigned);
@@ -319,7 +329,7 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxScalingFactor(
 
 std::pair<bool, LoDTensor>
 AnalysisPredictor::MkldnnQuantizer::GetMaxChScalingFactor(
-    const LoDTensor& var_tensor, bool is_unsigned) const {
+    const LoDTensor& var_tensor, bool is_unsigned, bool is_transposed) const {
   PADDLE_ENFORCE(var_tensor.dims().size() > 0, "Tensor dimension is empty.");
 
   ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
@@ -331,18 +341,23 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChScalingFactor(
         "Tensor is claimed to be unsigned, but its min value (%f) is < 0.0",
         min_val);
 
-  int channels = var_tensor.dims()[0];
+  auto dims = var_tensor.dims();
+  constexpr int num_col_dims = 1;
+  auto flattened_dims = framework::flatten_to_2d(dims, num_col_dims);
+  ConstEigenMatrixArrayMap eigen_tensor_mat{
+      var_tensor.data<float>(), flattened_dims[0], flattened_dims[1]};
+
+  EigenMatrixDoubleArray scales;
+  if (is_transposed) {
+    scales = 1.0 / eigen_tensor_mat.cast<double>().abs().colwise().maxCoeff();
+  } else {
+    scales = 1.0 / eigen_tensor_mat.cast<double>().abs().rowwise().maxCoeff();
+  }
+  int output_channel_axis = is_transposed;
+  int channels = dims[output_channel_axis];
   LoDTensor scale_tensor = CreateScaleTensor(channels);
   auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
-
-  for (int i = 0; i < channels; ++i) {
-    const auto tensor = var_tensor.Slice(i, i + 1);
-
-    ConstEigenVectorArrayMap eigen_tensor{tensor.data<float>(), tensor.numel(),
-                                          1};
-    float max_abs = eigen_tensor.abs().maxCoeff();
-    scale_ptr[i] = 1.0 / max_abs;
-  }
+  std::copy(scales.data(), scales.data() + scales.size(), scale_ptr);
 
   return std::make_pair(is_unsigned, scale_tensor);
 }

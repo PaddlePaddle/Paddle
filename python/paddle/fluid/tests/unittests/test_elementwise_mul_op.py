@@ -220,7 +220,7 @@ class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
         self.init_kernel_type()
 
 
-class TestElementwiseMulOpError(OpTest):
+class TestElementwiseMulOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of elementwise_mul must be Variable.

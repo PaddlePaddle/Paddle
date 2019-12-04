@@ -22,7 +22,7 @@ class AutoMixedPrecisionLists(object):
     AutoMixedPrecisionLists is a class for black/white list. It can update
     pre-defined black list and white list according to users' custom black
     white lists. The lists are used for an algorithm which determines op's
-    exectuion mode (fp32 or fp16).
+    execution mode (fp32 or fp16).
 
     Args:
         custom_white_list (set): Users' custom white list.
@@ -95,7 +95,7 @@ black_list = {
 
 # This set contains two types of ops. All ops supported fp16 calculation. One 
 # of two types is considered numerically-safe, but may be made unsafe by an
-# updtream blacklist op. Another type do not have numerically-significant 
+# upstream blacklist op. Another type do not have numerically-significant
 # effects, like stack, flatten2.
 gray_list = {
     'elementwise_add',
@@ -139,7 +139,7 @@ gray_list = {
 '''
 # The set of ops that don't support fp16 calculation
 unsupported_fp16_list = {
-		# from python/paddle/fluid/layers/io.py
+	# from python/paddle/fluid/layers/io.py
     'send',
     'send_barrier',
     'recv',

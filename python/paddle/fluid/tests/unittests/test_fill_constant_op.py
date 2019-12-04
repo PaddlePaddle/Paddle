@@ -190,7 +190,7 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
 
 
 # Test python API
-class TestFillConstantAPI(OpTest):
+class TestFillConstantAPI(unittest.TestCase):
     def test_api(self):
         positive_2_int32 = fluid.layers.fill_constant([1], "int32", 2)
 
@@ -232,7 +232,7 @@ class TestFillConstantAPI(OpTest):
         assert np.array_equal(res_5, np.full([1, 2], 1.1, dtype="float32"))
 
 
-class TestFillConstantOpError(OpTest):
+class TestFillConstantOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             #for ci coverage

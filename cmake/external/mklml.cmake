@@ -60,12 +60,9 @@ ExternalProject_Add(
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND         ""
     UPDATE_COMMAND        ""
-    INSTALL_COMMAND       ""
+    INSTALL_COMMAND       ${CMAKE_COMMAND} -E copy_directory ${MKLML_SOURCE_DIR}/include ${MKLML_INC_DIR} &&
+			  ${CMAKE_COMMAND} -E copy_directory ${MKLML_SOURCE_DIR}/lib ${MKLML_LIB_DIR}
 )
-
-add_custom_command(TARGET ${MKLML_PROJECT} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${MKLML_SOURCE_DIR}/include ${MKLML_INC_DIR}
-    COMMAND ${CMAKE_COMMAND} -E copy_directory ${MKLML_SOURCE_DIR}/lib ${MKLML_LIB_DIR})
 
 INCLUDE_DIRECTORIES(${MKLML_INC_DIR})
 
