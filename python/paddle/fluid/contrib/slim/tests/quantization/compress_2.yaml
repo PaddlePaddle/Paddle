@@ -1,0 +1,50 @@
+#start_epoch(int): The epoch to insert quantization operators. default: 0
+#
+#end_epoch(int): The epoch to save inference model. default: 0
+#
+#float_model_save_path(str): The path to save model with float weights.
+#                None means it doesn't save float model. default: None.
+#
+#mobile_model_save_path(str): The path to save model for paddle-mobile execution.
+#                None means it doesn't save mobile model. default: None.
+#
+#int8_model_save_path(str): The path to save model with int8_t weight.
+#                None means it doesn't save int8 model. default: None.
+#
+#activation_bits(int): quantization bit number for activation. default: 8.
+#
+#weight_bits(int): quantization bit number for weights. The bias is not quantized.
+#                  default: 8.
+#
+#activation_quantize_type(str): quantization type for activation,
+#    now support 'abs_max', 'range_abs_max' and 'moving_average_abs_max'.
+#    If use 'abs_max' mode, the quantization scale will be calculated
+#    dynamically each step in both training and testing period. If use
+#    'range_abs_max', a static quantization scale will be calculated
+#    during training and used in inference.
+#
+#save_in_nodes(list<str>): A list of variable names used to prune graph
+#                          for saving inference model.
+#
+#save_out_nodes(list<str>): A list of variable names used to prune graph
+#                                      for saving inference model.
+version: 1.0
+strategies:
+    quantization_strategy:
+        class: 'QuantizationStrategy'
+        start_epoch: 0
+        end_epoch: 0
+        float_model_save_path: './output/float'
+        mobile_model_save_path: './output/mobile'
+        int8_model_save_path: './output/int8'
+        weight_bits: 8
+        activation_bits: 8
+        weight_quantize_type: 'abs_max'
+        activation_quantize_type: 'abs_max'
+        save_in_nodes: ['image']
+        save_out_nodes: ['quan.tmp_2']
+compressor:
+    epoch: 2
+    checkpoint_path: './checkpoints_quan_2/'
+    strategies:
+        - quantization_strategy

@@ -36,7 +36,7 @@ class LoadOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(static_cast<bool>(fin), "Cannot open file %s for load op",
                    filename);
 
-    auto out_var_name = ctx.Outputs("Out").data();
+    auto out_var_name = ctx.OutputNames("Out").data();
     auto *out_var = ctx.OutputVar("Out");
 
     PADDLE_ENFORCE(out_var != nullptr, "Output variable %s cannot be found ",

@@ -49,9 +49,12 @@ class AucOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("AUC", {1});
 
-    slide_steps = slide_steps == 0 ? 1 : slide_steps;
-    ctx->SetOutputDim("StatPosOut", {slide_steps, num_pred_buckets});
-    ctx->SetOutputDim("StatNegOut", {slide_steps, num_pred_buckets});
+    // slide_steps = slide_steps == 0 ? 1 : slide_steps;
+    int need_batch_id = slide_steps ? 1 : 0;
+    ctx->SetOutputDim("StatPosOut",
+                      {(1 + slide_steps) * num_pred_buckets + need_batch_id});
+    ctx->SetOutputDim("StatNegOut",
+                      {(1 + slide_steps) * num_pred_buckets + need_batch_id});
   }
 
  protected:
@@ -59,7 +62,7 @@ class AucOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "Predict"),
-        platform::CPUPlace());
+        ctx.device_context());
   }
 };
 

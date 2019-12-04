@@ -169,6 +169,9 @@ class Tensor {
 
   void ResetHolder(std::shared_ptr<memory::Allocation> holder);
 
+  void ResetHolderWithType(std::shared_ptr<memory::Allocation> holder,
+                           const proto::VarType::Type type);
+
  private:
   /*! holds the memory block if allocated. */
   std::shared_ptr<memory::Allocation> holder_;

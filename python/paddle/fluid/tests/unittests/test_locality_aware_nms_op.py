@@ -307,7 +307,7 @@ class TestLocalAwareNMSOp4Points(OpTest):
         self.check_output()
 
 
-class TestLocalityAwareNMSAPI(OpTest):
+class TestLocalityAwareNMSAPI(unittest.TestCase):
     def test_api(self):
         boxes = fluid.data(name='bboxes', shape=[None, 81, 8], dtype='float32')
         scores = fluid.data(name='scores', shape=[None, 1, 81], dtype='float32')

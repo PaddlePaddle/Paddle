@@ -141,6 +141,7 @@ class PtbModel(fluid.Layer):
                  num_layers=2,
                  num_steps=20,
                  init_scale=0.1,
+                 is_sparse=False,
                  dropout=None):
         super(PtbModel, self).__init__(name_scope)
         self.hidden_size = hidden_size
@@ -160,7 +161,7 @@ class PtbModel(fluid.Layer):
             self.full_name(),
             size=[vocab_size, hidden_size],
             dtype='float32',
-            is_sparse=False,
+            is_sparse=is_sparse,
             param_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
@@ -212,7 +213,11 @@ class PtbModel(fluid.Layer):
 
 
 class TestDygraphPtbRnn(unittest.TestCase):
-    def test_ptb_rnn_cpu_float32(self):
+    def test_ptb_rnn(self):
+        for is_sparse in [True, False]:
+            self.ptb_rnn_cpu_float32(is_sparse)
+
+    def ptb_rnn_cpu_float32(self, is_sparse):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -221,7 +226,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
         init_scale = 0.1
         batch_size = 4
         batch_num = 200
-
         traced_layer = None
 
         with fluid.dygraph.guard():
@@ -234,7 +238,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 vocab_size=vocab_size,
                 num_layers=num_layers,
                 num_steps=num_steps,
-                init_scale=init_scale)
+                init_scale=init_scale,
+                is_sparse=is_sparse)
 
             sgd = SGDOptimizer(learning_rate=1e-3)
             dy_param_updated = dict()
@@ -301,7 +306,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 vocab_size=vocab_size,
                 num_layers=num_layers,
                 num_steps=num_steps,
-                init_scale=init_scale)
+                init_scale=init_scale,
+                is_sparse=is_sparse)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))

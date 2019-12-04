@@ -20,14 +20,13 @@ import math
 import platform
 """
 please make sure to run in the tools path
-usage: python sample_test.py {arg1} {arg2}
+usage: python sample_test.py {arg1} 
 arg1: the first arg defined running in gpu version or cpu version
-arg2: the second arg defined testing python2 or python3 
 
 for example, you can run cpu version python2 testing like this:
-    
-    python sample_test.py cpu 2
-    
+
+    python sampcd_processor.py cpu 
+
 """
 
 
@@ -86,25 +85,6 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
     Extract and run sample codes from source comment and
     the result will be returned.
 
-    As an ultimate result, this function returns a list of
-    status codes for each sample code (in top-down order)
-    found in srccom.
-
-    status code deciphering:
-
-        3:error sample code
-        2:have sample code but format is wrong
-        1:no sample code
-        0:successful
-        -1:no comments found
-        -2:in white list
-
-    there may be several examples in a source comment
-    so status deserves a list to contain the states.
-    For instance, some API has three example codes,
-    code 1 is successful, code 2 is error, code 3 is successful
-    so the list to return is [0,3,0]
-
     Args:
         srccom(str): the source comment of some API whose
                      example codes will be extracted and run.
@@ -113,12 +93,10 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         hname(str): the name of the hint  banners , e.t. def hname.
 
     Returns:
-        list: the status code of all the sample codes found in srccom.
-
-
-
-
+        result: True or False
     """
+
+    result = True
 
     def sampcd_header_print(name, sampcd, htype, hname):
         """
@@ -139,7 +117,6 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         print("execution result:")
 
     sampcd_begins = find_all(srccom, " code-block:: python")
-    status = []
     if len(sampcd_begins) == 0:
         print_header(htype, hname)
         '''
@@ -153,14 +130,10 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
                     "Deprecated sample code style:\n\n    Examples:\n\n        >>>codeline\n        >>>codeline\n\n\n ",
                     "Please use '.. code-block:: python' to ",
                     "format sample code.\n")
-                status.append(2)
-                print("status code for all sample codes in ", name, " : ",
-                      str(status))
+                result = False
         else:
-            print("No sample code!\n")
-            status.append(1)
-            print("status code for all sample codes in ", name, " : ",
-                  str(status))
+            print("Error: No sample code!\n")
+            result = False
 
     for y in range(1, len(sampcd_begins) + 1):
         sampcd_begin = sampcd_begins[y - 1]
@@ -205,7 +178,8 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
         elif platform.python_version()[0] == "3":
             cmd = ["python3", "samplecode_temp/" + tfname]
         else:
-            print("fail to parse python version!")
+            print("Error: fail to parse python version!")
+            result = False
             exit(1)
 
         subprc = subprocess.Popen(
@@ -221,14 +195,10 @@ def sampcd_extract_and_run(srccom, name, htype="def", hname=""):
             print("Error Raised from Sample Code ", name, " :\n")
             print(err)
             print(msg)
-            status.append(3)
-            print("status code for all sample codes in ", name, str(status))
-        # It works!
-        else:
-            status.append(0)
+            result = False
         # msg is the returned code execution report
         os.remove("samplecode_temp/" + tfname)
-    return status
+    return result
 
 
 def single_defcom_extract(start_from, srcls, is_class_begin=False):
@@ -247,6 +217,7 @@ def single_defcom_extract(start_from, srcls, is_class_begin=False):
         string : the extracted comment body, inclusive of its quote marks.
 
     """
+
     i = start_from
     fcombody = ""  # def comment body
     comstart = -1  # the starting line index of comment mark "'''" or """"""
@@ -289,7 +260,7 @@ def print_header(htype, name):
     print("-----------------------")
 
 
-def srccoms_extract(srcfile, status_all, wlist):
+def srccoms_extract(srcfile, wlist):
     """
     Given a source file ``srcfile``, this function will
     extract its API(doc comments) and run sample codes in the
@@ -297,16 +268,13 @@ def srccoms_extract(srcfile, status_all, wlist):
 
     Args:
         srcfile(file): the source file
-        status_all(dict): record all the sample code execution states.
         wlist(list): white list
 
     Returns:
-
-        string: the length of __all__ list in srcfile versus the exact number of
-                analysed API to make sure no API is missed in this srcfile and it
-                is useful for statistic practices.
+    result: True or False
     """
 
+    process_result = True
     srcc = srcfile.read()
 
     # 2. get defs and classes header line number
@@ -351,7 +319,6 @@ def srccoms_extract(srcfile, status_all, wlist):
                 if srcls[i].find("__doc__") != -1:
                     opname = srcls[i][:srcls[i].find("__doc__") - 1]
                     if opname in wlist:
-                        status_all[srcfile.name + '/' + opname] = [-2]
                         continue
                     comstart = i
                     for j in range(i, len(srcls)):
@@ -362,10 +329,9 @@ def srccoms_extract(srcfile, status_all, wlist):
                         opcom += srcls[j]
                         if srcls[j].find("\"\"\"") != -1:
                             break
-                    status = sampcd_extract_and_run(opcom, opname, "def",
-                                                    opname)
+                    process_result = sampcd_extract_and_run(opcom, opname,
+                                                            "def", opname)
                     api_count += 1
-                    status_all[srcfile.name + '/' + opname] = status
                     handled.append(
                         opname)  # ops.py also has normal formatted functions
                     # use list 'handled'  to mark the functions have been handled here
@@ -381,19 +347,16 @@ def srccoms_extract(srcfile, status_all, wlist):
                 if fn in alllist:
                     api_count += 1
                     if fn in wlist or fn + "@" + srcfile.name in wlist:
-                        status_all[srcfile.name + '/' + fn] = [-2]
                         continue
                     fcombody = single_defcom_extract(i, srcls)
                     if fcombody == "":  # if no comment
                         print_header("def", fn)
                         print("WARNING: no comments in function ", fn,
                               ", but it deserves.")
-                        status_all[srcfile.name + '/' + fn] = [-1]
-                        print(status_all[srcfile.name + '/' + fn])
                         continue
                     else:
-                        status = sampcd_extract_and_run(fcombody, fn, "def", fn)
-                        status_all[srcfile.name + '/' + fn] = status
+                        if not sampcd_extract_and_run(fcombody, fn, "def", fn):
+                            process_result = False
             if srcls[i].startswith('class '):
                 c_header = srcls[i].replace(" ", '')
                 cn = c_header[len('class'):c_header.find('(')]  # class name
@@ -402,19 +365,16 @@ def srccoms_extract(srcfile, status_all, wlist):
                 if cn in alllist:
                     api_count += 1
                     if cn in wlist or cn + "@" + srcfile.name in wlist:
-                        status_all[srcfile.name + '/' + cn] = [-2]
                         continue
                     # class comment
                     classcom = single_defcom_extract(i, srcls, True)
                     if classcom != "":
-                        status = sampcd_extract_and_run(classcom, cn, "class",
-                                                        cn)
-                        status_all[srcfile.name + '/' + cn] = status
+                        if not sampcd_extract_and_run(classcom, cn, "class",
+                                                      cn):
+                            process_result = False
                     else:
                         print("WARNING: no comments in class itself ", cn,
                               ", but it deserves.\n")
-                        status_all[srcfile.name + '/' + cn] = [-1]
-                        print(status_all[srcfile.name + '/' + cn])
                     # handling methods in class bodies
                     for x in range(
                             i + 1,
@@ -435,7 +395,6 @@ def srccoms_extract(srcfile, status_all, wlist):
                                 if mn.startswith('_'):
                                     continue
                                 if name in wlist or name + "@" + srcfile.name in wlist:
-                                    status_all[srcfile.name + '/' + name] = [-2]
                                     continue
                                 thismethod = [thisl[indent:]
                                               ]  # method body lines
@@ -456,21 +415,19 @@ def srccoms_extract(srcfile, status_all, wlist):
                                 thismtdcom = single_defcom_extract(0,
                                                                    thismethod)
                                 if thismtdcom != "":
-                                    status = sampcd_extract_and_run(
-                                        thismtdcom, name, "method", name)
-                                    status_all[srcfile.name + '/' +
-                                               name] = status
-    return [
-        srcfile.name + " all list length: " + str(api_alllist_count),
-        "analysed api count: " + str(api_count)
-    ]
+                                    if not sampcd_extract_and_run(
+                                            thismtdcom, name, "method", name):
+                                        process_result = False
+    return process_result
 
 
 def test(file_list):
+    process_result = True
     for file in file_list:
-        src = open(file, 'r')
-        counts = srccoms_extract(src, status_all, wlist)
-        src.close()
+        with open(file, 'r') as src:
+            if not srccoms_extract(src, wlist):
+                process_result = False
+    return process_result
 
 
 '''
@@ -479,8 +436,6 @@ Important constant lists:
     filenames : the modules pending for check .
     wlist : a list of API that should not trigger the example check .
             It is composed of wlist_temp + wlist_inneed + wlist_ignore.
-    status_all: a status list containing all the execution status of all
-                APIs
     srcfile: the source .py code file
 '''
 
@@ -653,7 +608,6 @@ gpu_not_white = [
     "deformable_conv", "cuda_places", "CUDAPinnedPlace", "CUDAPlace",
     "cuda_profiler"
 ]
-
 wlist = wlist_temp + wlist_inneed + wlist_ignore
 
 if len(sys.argv) < 2:
@@ -673,49 +627,30 @@ else:
         sys.exit("Invalid arguments")
     print("API check -- Example Code")
     print("sample_test running under python", platform.python_version())
-    status_all = {}
-    # a temp directory to store temporary sample code file
-    # subprocess needs a single file to run the code
     if not os.path.isdir("./samplecode_temp"):
         os.mkdir("./samplecode_temp")
 
-    one_part_filenum = int(math.ceil(len(filenames) / 10))
+    cpus = multiprocessing.cpu_count()
+    one_part_filenum = int(math.ceil(len(filenames) / cpus))
     divided_file_list = [
         filenames[i:i + one_part_filenum]
         for i in range(0, len(filenames), one_part_filenum)
     ]
-    po = multiprocessing.Pool(10)
-    for file_list in divided_file_list:
-        po.apply_async(test, (file_list, ))
+    po = multiprocessing.Pool()
+    results = po.map_async(test, divided_file_list)
     po.close()
     po.join()
+    result = results.get()
 
-    # clear temp files
+    # delete temp files
     for root, dirs, files in os.walk("./samplecode_temp"):
         for fntemp in files:
             os.remove("./samplecode_temp/" + fntemp)
     os.rmdir("./samplecode_temp")
 
-    status_groups = {-2: [], -1: [], 0: [], 1: [], 2: [], 3: []}
-
-    ci_pass = True
-    for key in status_all:
-        statusl = status_all[key]
-        for ele in statusl:
-            if ele != 0 and ele != -2 and ele != -1:
-                ci_pass = False
-                break
-        if len(statusl) == 1:
-            status_groups[statusl[0]].append(key)
-        else:
-            for u in range(0, len(statusl)):
-                status_groups[statusl[u]].append(key + '_' + str(u + 1))
     print("----------------End of the Check--------------------")
-    errorapisl = status_groups[1] + status_groups[2] + status_groups[3]
-    if len(errorapisl) > 0:
-        print("Error raised from: ", str(errorapisl))
-    if not ci_pass:
-        print("Mistakes found in sample codes")
-        exit(1)
-    else:
-        print("Sample code check is successful!")
+    for temp in result:
+        if not temp:
+            print("Mistakes found in sample codes")
+            exit(1)
+    print("Sample code check is successful!")

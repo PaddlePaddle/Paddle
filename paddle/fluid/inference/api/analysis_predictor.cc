@@ -123,7 +123,7 @@ bool AnalysisPredictor::PrepareScope(
     status_is_cloned_ = true;
   } else {
     if (config_.use_gpu_) {
-      paddle::framework::InitDevices(false, {config_.device_id_});
+      paddle::framework::InitDevices(false);
     } else {
       paddle::framework::InitDevices(false, {});
     }
@@ -501,8 +501,9 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(fraction_of_gpu_memory);
       flags.push_back(flag);
-      flags.push_back("--selected_gpus=" +
-                      std::to_string(config.gpu_device_id()));
+      // use auto growth strategy here.
+      flags.push_back("--allocator_strategy=auto_growth");
+      flags.push_back("--cudnn_deterministic=True");
       VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
     }

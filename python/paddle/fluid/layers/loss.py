@@ -1060,8 +1060,9 @@ def sampled_softmax_with_cross_entropy(logits,
                       logits=fc, label=label, num_samples=25)
     """
     helper = LayerHelper('sample_logits', **locals())
-    samples = helper.create_variable_for_type_inference(dtype='int64')
-    probabilities = helper.create_variable_for_type_inference(
+    samples = customized_samples if use_customized_samples else helper.create_variable_for_type_inference(
+        dtype='int64')
+    probabilities = customized_probabilities if use_customized_samples else helper.create_variable_for_type_inference(
         dtype=logits.dtype)
     sampled_logits \
         = helper.create_variable_for_type_inference(dtype=logits.dtype)
