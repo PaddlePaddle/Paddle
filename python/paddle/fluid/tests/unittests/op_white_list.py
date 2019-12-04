@@ -173,3 +173,5 @@ NO_NEED_FP64_CHECK_GRAD_OPS = [
     'unstack',
     'warpctc',
 ]
+
+OLD_FP64_CHECK_GRAD_OPS = []

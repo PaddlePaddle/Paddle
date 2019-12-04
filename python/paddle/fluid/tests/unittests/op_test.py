@@ -1017,10 +1017,7 @@ class OpTest(unittest.TestCase):
 
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
-            if a.dtype == np.float64:
-                abs_a[abs_a < 1e-3] = 1
-            else:
-                abs_a[abs_a < 1e-3] = 1
+            abs_a[abs_a < 1e-3] = 1
 
             diff_mat = np.abs(a - b) / abs_a
             max_diff = np.max(diff_mat)
@@ -1058,7 +1055,7 @@ class OpTest(unittest.TestCase):
             run_ops[0].add(self.op_type)
         else:
             run_ops[1].add(self.op_type)
-        with open("tmp.txt", "w") as f:
+        with open(filename, "w") as f:
             for op_set in run_ops:
                 for op in op_set:
                     f.write(op + ",")
