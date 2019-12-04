@@ -1045,9 +1045,9 @@ class OpTest(unittest.TestCase):
                    check_dygraph=True):
         is_fp64_check = False
         for key, vals in self.inputs.items():
-            if isinstance(vals, list):
+            if isinstance(vals, list) or isinstance(vals, tuple):
                 for name, val in vals:
-                    if isinstance(val, tuple):
+                    if isinstance(val, tuple) or isinstance(vals, tuple):
                         is_fp64_check = is_fp64_check or val[
                             0].dtype == np.float64
                     else:
