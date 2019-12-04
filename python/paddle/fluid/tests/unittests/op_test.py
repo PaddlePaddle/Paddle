@@ -141,7 +141,7 @@ def get_numeric_gradient(place,
     return gradient_flat.reshape(tensor_to_check.shape())
 
 
-class OpTest(unittest.TestCase):
+class OpTestBase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         '''Fix random seeds to remove randomness from tests'''
@@ -167,7 +167,7 @@ class OpTest(unittest.TestCase):
     def try_call_once(self, data_type):
         if not self.call_once:
             self.call_once = True
-            self.dtype = data_type
+            self.q = data_type
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def infer_dtype(numpy_dict):
@@ -1263,3 +1263,76 @@ class OpTest(unittest.TestCase):
         return list(
             map(np.array,
                 executor.run(prog, feed_dict, fetch_list, return_numpy=False)))
+
+
+class OpTestInt8(OpTestBase):
+    pass
+
+
+class OpTestFp16(OpTestBase):
+    def check_grad(self,
+                   inputs_to_check,
+                   output_names,
+                   no_grad_set=None,
+                   numeric_grad_delta=0.005,
+                   in_place=False,
+                   max_relative_error=0.005,
+                   user_defined_grads=None,
+                   check_dygraph=True):
+        OpTestFp16.exist_check_grad = True
+        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        assert self.dtype in (np.float16, "float16"
+                              ), "The dtype of this test should be float16."
+
+        places = self._get_places()
+        for place in places:
+            self.check_grad_with_place(place, inputs_to_check, output_names,
+                                       no_grad_set, numeric_grad_delta,
+                                       in_place, max_relative_error,
+                                       user_defined_grads, check_dygraph)
+
+    @classmethod
+    def tearDownClass(cls):
+        """Restore random seeds"""
+        np.random.set_state(cls._np_rand_state)
+        random.setstate(cls._py_rand_state)
+
+        if not cls.exist_check_grad:
+            raise AssertionError("The op test need check_grad")
+
+
+class OpTest(OpTestBase):
+    def check_grad(self,
+                   inputs_to_check,
+                   output_names,
+                   no_grad_set=None,
+                   numeric_grad_delta=0.005,
+                   in_place=False,
+                   max_relative_error=0.005,
+                   user_defined_grads=None,
+                   check_dygraph=True):
+        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        assert self.dtype in (np.float32, np.float64, "float32", "float64"), \
+            "The dtype of this test should be float32 or float64."
+        OpTest.exist_check_grad = True
+        if self.dtype in (np.float64, "float64"):
+            OpTest.exist_fp64_check_grad = True
+        OpTest.op_type = self.op_type
+
+        places = self._get_places()
+        for place in places:
+            self.check_grad_with_place(place, inputs_to_check, output_names,
+                                       no_grad_set, numeric_grad_delta,
+                                       in_place, max_relative_error,
+                                       user_defined_grads, check_dygraph)
+
+    @classmethod
+    def tearDownClass(cls):
+        """Restore random seeds"""
+        np.random.set_state(cls._np_rand_state)
+        random.setstate(cls._py_rand_state)
+
+        assert hasattr(cls, "exist_check_grad"), \
+            "The test of %s op need check_grad" % cls.op_type
+        assert hasattr(cls, "exist_fp64_check_grad"), \
+            "The test of %s op test need fp64 check_grad" % cls.op_type
