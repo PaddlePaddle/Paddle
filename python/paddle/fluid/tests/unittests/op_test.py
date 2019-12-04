@@ -1088,10 +1088,10 @@ class OpTest(unittest.TestCase):
 
         if no_grad_set is None:
             no_grad_set = set()
-            print('no_grad_set: None, op_type: ', self.op_type)
+            print('--no_grad_set: None, op_type: ', self.op_type)
         else:
-            print('op_type: ', self.op_type)
-            print('no_grad_set: ', no_grad_set)
+            print('--op_type: ', self.op_type)
+            print('--no_grad_set: ', no_grad_set)
 
         if not type(output_names) is list:
             output_names = [output_names]
