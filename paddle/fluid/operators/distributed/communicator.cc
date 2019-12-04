@@ -529,7 +529,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
   auto sparse_var_table_map =
       CreateSparseVarTableMap(sparse_var_names, sparse_var_tables);
   std::shared_ptr<SparseIdsMap> ids_table = std::make_shared<SparseIdsMap>();
-  CreateIdsTable(ids_table->get());
+  CreateIdsTable(ids_table.get());
 
   auto before_run_send = GetCurrentUS();
   for (size_t i = 0; i < sparse_var_names.size(); i++) {
@@ -658,7 +658,7 @@ void GeoSgdCommunicator::SendThread() {
               SendUpdateDenseVars(var_name);
               RecvUpdateDenseVars(var_name);
               auto after_run_geo = GetCurrentUS();
-              VLOG(3) << "run GEO-SGD var " << var_name << " use time "
+              VLOG(1) << "run GEO-SGD var " << var_name << " use time "
                       << after_run_geo - before_run_geo;
             };
             task_futures.emplace_back(
@@ -694,7 +694,7 @@ std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
     }
   }
   auto after_run_ids_merge_ = GetCurrentUS();
-  VLOG(3) << "run SparseIdsMerge " << splited_var_name << " has nums "
+  VLOG(1) << "run SparseIdsMerge " << splited_var_name << " has nums "
           << ids_set.size() << " use time "
           << after_run_ids_merge_ - before_run_ids_merge_;
   return ids_set;
@@ -1048,7 +1048,7 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   }
 
   auto after_run_send_sparse = GetCurrentUS();
-  VLOG(3) << "run send update sparse var " << splited_var_name << " use time "
+  VLOG(1) << "run send update sparse var " << splited_var_name << " use time "
           << after_run_send_sparse - before_run_send_sparse;
 
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
@@ -1065,7 +1065,7 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   auto before_send_sparse = GetCurrentUS();
   RpcSend(var_name, splited_var_name, splited_var_index);
   auto after_send_sparse = GetCurrentUS();
-  VLOG(3) << "send " << splited_var_name << " has nums " << new_rows.size()
+  VLOG(1) << "send " << splited_var_name << " has nums " << new_rows.size()
           << " use time " << after_send_sparse - before_send_sparse;
 }
 
@@ -1079,7 +1079,7 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
   auto before_run_recv = GetCurrentUS();
   RpcRecv(origin_var_name, origin_splited_var_name, splited_var_index);
   auto after_run_recv = GetCurrentUS();
-  VLOG(3) << "recv var " << origin_splited_var_name << " use time "
+  VLOG(1) << "recv var " << origin_splited_var_name << " use time "
           << after_run_recv - before_run_recv;
 
   // step 2: update sparse var
@@ -1126,7 +1126,7 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
   }
 
   auto after_run_update = GetCurrentUS();
-  VLOG(3) << "sparse var recv update " << origin_splited_var_name << " has num "
+  VLOG(1) << "sparse var recv update " << origin_splited_var_name << " has num "
           << new_rows.size() << " use time "
           << after_run_update - before_run_update;
 }
