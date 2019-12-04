@@ -142,6 +142,16 @@ if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
+NEW_OP_FILE_ADDED=`git diff --name-only --diff-filter=AM upstream/$BRANCH |grep -oE ".+_op..*" || true`
+if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    CHECK_SHAREDATAWITH_CNT=`git diff -U0 --diff-filter=AM upstrem/$BRANCH |grep "+" |grep -coE "ShareDataWith[(]" || true`
+    CHECK_SHAREBUFFERWITH_CNT=`git diff -U0 --diff-filter=AM upstream/$BRANCH |grep "+" |grep -co "ShareBufferWith[(]" || true`
+    if [ ${CHECK_SHAREDATAWITH_CNT} != ""] || [ ${CHECK_SHAREBUFFERWITH_CNT} != ""]; then
+        echo_line="If you use the ShareDataWith or ShareBufferWith method, please change the method to others. Because this method cloud casus some bug of memory. If you don't want to change the method, you must have one RD (lanxianghit or luotao1 or sneaxiy) approval for the usage of other method.\n"
+        check_approval 1 6836917 32832641 47554610
+    fi
+fi
+
 if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e "${echo_list[@]}"
