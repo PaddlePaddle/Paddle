@@ -562,7 +562,7 @@ void GeoSgdCommunicator::CreateIdsTable(SparseIdsMap *ids_table) {
       auto splited_var_nums =
           recv_varname_to_ctx_[var_name].splited_var_names.size();
       ids_table->insert(
-          std::pair<std::string, std::vector<std::unordered_set<int64_t>>>(
+          std::pair<std::string, std::vector<std::vector<int64_t>>>(
               var_name, std::vector<std::vector<int64_t>>{splited_var_nums}));
     }
   }
@@ -686,7 +686,7 @@ std::vector<int64_t> GeoSgdCommunicator::SparseIdsMerge(
     vec_size += ids_map[origin_var_name][splited_var_index].size();
   }
 
-  ids_vec.reverse(vec_size);
+  ids_vec.reserve(vec_size);
 
   for (auto ids_map : ids_send_vec) {
     ids_vec.insert(ids_vec.end(),
