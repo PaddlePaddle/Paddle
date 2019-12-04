@@ -815,10 +815,10 @@ void GeoSgdCommunicator::SendUpdateDenseVars(const std::string &var_name) {
   blas.VSUB(var_x_tensor.numel(),
             var_x_tensor.mutable_data<float>(var_x_tensor.place()),
             var_y_tensor.mutable_data<float>(var_y_tensor.place()),
-            var_z_tensor->mutable_data<float>(var_z_tensor->place()))
+            var_z_tensor->mutable_data<float>(var_z_tensor->place()));
 
-      // calc var_delta = sub / trainer_nums
-      float trainer_param = 1.0 / static_cast<float>(trainer_nums_);
+  // calc var_delta = sub / trainer_nums
+  float trainer_param = 1.0 / static_cast<float>(trainer_nums_);
   blas.SCAL(var_z_tensor->numel(), trainer_param,
             var_z_tensor->mutable_data<float>(var_z_tensor->place()));
 
@@ -969,9 +969,9 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
 
   auto *var_y_sub = old_scope_->Var(origin_var_name);
   auto *var_y_sub_tensor = var_y_sub->GetMutable<framework::LoDTensor>();
-  var_y_sub_tensor->mutable_data<float>(dims, var_y_tensor.place())
+  var_y_sub_tensor->mutable_data<float>(dims, var_y_tensor.place());
 
-      auto *var_z = pserver_scope_.get()->FindVar(origin_var_name);
+  auto *var_z = pserver_scope_.get()->FindVar(origin_var_name);
   auto var_z_tensor = var_z->Get<framework::LoDTensor>();
 
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
@@ -980,11 +980,11 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
   blas.VSUB(var_y_tensor.numel(),
             var_y_tensor.mutable_data<float>(var_y_tensor.place()),
             var_z_tensor.mutable_data<float>(var_z_tensor.place()),
-            var_y_sub_tensor->mutable_data<float>(var_y_sub_tensor.place()));
+            var_y_sub_tensor->mutable_data<float>(var_y_sub_tensor->place()));
   // calc recv += sub
   blas.VADD(var_x_tensor.numel(),
             var_x_tensor.mutable_data<float>(var_x_tensor.place()),
-            var_y_sub_tensor->mutable_data<float>(var_y_sub_tensor.place()),
+            var_y_sub_tensor->mutable_data<float>(var_y_sub_tensor->place()),
             var_x_tensor.mutable_data<float>(var_x_tensor.place()));
   // calc old = pserver
   blas.VCOPY(var_x_tensor.numel(),
