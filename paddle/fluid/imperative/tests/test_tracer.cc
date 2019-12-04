@@ -301,7 +301,7 @@ TEST(test_tracer, test_var_without_grad_var) {
   imperative::Tracer tracer;
   std::shared_ptr<imperative::VarBase> x_in(
       new imperative::VarBase(true, "x_in"));
-  x_in.ClearGradVarBase();
+  x_in->ClearGradVarBase();
   std::shared_ptr<imperative::VarBase> y_in(
       new imperative::VarBase(true, "y_in"));
   std::shared_ptr<imperative::VarBase> vout(
