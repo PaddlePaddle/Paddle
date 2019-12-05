@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, unique_name
+from ..framework import Variable, unique_name, in_dygraph_mode, default_main_program
 from .layer_function_generator import OpProtoHolder
 from ..initializer import force_init_on_cpu
 
@@ -40,7 +40,10 @@ def monkey_patch_variable():
         return dtype
 
     def current_block(var):
-        return var.block
+        if in_dygraph_mode():
+            return default_main_program().global_block()
+        else:
+            return var.block
 
     def create_new_tmp_var(block, dtype):
         tmp_name = unique_tmp_name()
@@ -223,20 +226,12 @@ def monkey_patch_variable():
 
             out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
 
-            axis = -1
-            if other_var.shape[0] == -1:
-                axis = 0
-            assert len(self.shape) >= len(other_var.shape), (
-                "The rank of the first argument of an binary operator cannot "
-                "be smaller than the rank of its second argument: %s vs %s" %
-                (len(self.shape), len(other_var.shape)))
-
             current_block(self).append_op(
                 type=op_type,
                 inputs={'X': [self],
                         'Y': [other_var]},
                 outputs={'Out': out},
-                attrs={'axis': axis})
+                attrs={'axis': -1})
             return out
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
@@ -281,5 +276,9 @@ def monkey_patch_variable():
         setattr(Variable, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse,
                                           scalar_method))
+        setattr(core.VarBase, method_name,
+                _elemwise_method_creator_(method_name, op_type, reverse,
+                                          scalar_method))
 
     Variable.astype = astype
+    setattr(core.VarBase, "astype", astype)

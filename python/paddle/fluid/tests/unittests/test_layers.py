@@ -712,7 +712,7 @@ class TestLayer(LayerTest):
             self.assertTrue(
                 np.array_equal(btp1.bias.numpy(), btp2.bias.numpy()))
 
-    def test_prelu(self):
+    def prelu_test(self, mode):
         inp_np = np.ones([5, 200, 100, 100]).astype('float32')
         with self.static_graph():
             data_t = layers.data(
@@ -720,7 +720,6 @@ class TestLayer(LayerTest):
                 shape=[5, 200, 100, 100],
                 dtype="float32",
                 append_batch_size=False)
-            mode = 'channel'
             out = layers.prelu(
                 data_t, mode, param_attr=ParamAttr(initializer=Constant(1.0)))
             static_rlt = self.get_static_graph_result(
@@ -732,7 +731,6 @@ class TestLayer(LayerTest):
                 shape=[5, 200, 100, 100],
                 dtype="float32",
                 append_batch_size=False)
-            mode = 'channel'
             prelu = nn.PRelu(
                 'prelu',
                 mode=mode,
@@ -742,7 +740,6 @@ class TestLayer(LayerTest):
                 feed={"input": inp_np}, fetch_list=[out])[0]
 
         with self.dynamic_graph():
-            mode = 'channel'
             prelu = nn.PRelu(
                 'prelu',
                 mode=mode,
@@ -756,7 +753,6 @@ class TestLayer(LayerTest):
         with self.dynamic_graph():
             inp_np = np.random.randn(5, 200, 100, 100).astype("float32")
             inp = base.to_variable(inp_np)
-            mode = 'channel'
             prelu1 = nn.PRelu(
                 'prelu1',
                 mode=mode,
@@ -778,6 +774,11 @@ class TestLayer(LayerTest):
             prelu2.weight = prelu1.weight
             self.assertTrue(
                 np.array_equal(prelu1.weight.numpy(), prelu2.weight.numpy()))
+
+    def test_prelu(self):
+        self.prelu_test("channel")
+        self.prelu_test("element")
+        self.prelu_test("all")
 
     def test_embeding(self):
         inp_word = np.array([[[1]]]).astype('int64')
@@ -842,7 +843,7 @@ class TestLayer(LayerTest):
         window_size = 5
         dict_size = 20
         label_word = int(window_size // 2) + 1
-        inp_word = np.array([[[1]], [[2]], [[3]], [[4]], [[5]]]).astype('int64')
+        inp_word = np.array([[1], [2], [3], [4], [5]]).astype('int64')
         nid_freq_arr = np.random.dirichlet(np.ones(20) * 1000).astype('float32')
         seed = 1
         with self.static_graph():
@@ -850,7 +851,7 @@ class TestLayer(LayerTest):
             for i in range(window_size):
                 words.append(
                     layers.data(
-                        name='word_{0}'.format(i), shape=[1], dtype='int64'))
+                        name='word_{0}'.format(i), shape=[None], dtype='int64'))
             sample_weights = layers.fill_constant(
                 shape=[5, 1], dtype='float32', value=1)
             embs = []
@@ -858,7 +859,7 @@ class TestLayer(LayerTest):
                 if i == label_word:
                     continue
 
-                emb = layers.embedding(
+                emb = fluid.embedding(
                     input=words[i],
                     size=[dict_size, 32],
                     param_attr='emb.w',
@@ -866,8 +867,9 @@ class TestLayer(LayerTest):
                 embs.append(emb)
 
             embs = layers.concat(input=embs, axis=1)
+            wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
             nce_loss = layers.nce(input=embs,
-                                  label=words[label_word],
+                                  label=wl,
                                   num_total_classes=dict_size,
                                   num_neg_samples=2,
                                   sampler="custom_dist",
@@ -886,7 +888,7 @@ class TestLayer(LayerTest):
             for i in range(window_size):
                 words.append(
                     layers.data(
-                        name='word_{0}'.format(i), shape=[1], dtype='int64'))
+                        name='word_{0}'.format(i), shape=[None], dtype='int64'))
             sample_weights = layers.fill_constant(
                 shape=[5, 1], dtype='float32', value=1)
             emb = nn.Embedding(
@@ -914,7 +916,8 @@ class TestLayer(LayerTest):
                          bias_attr='nce.b',
                          sample_weight=sample_weights)
 
-            nce_loss2 = nce(embs2, words[label_word])
+            wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+            nce_loss2 = nce(embs2, wl)
             feed_dict = dict()
             for i in range(len(words)):
                 feed_dict['word_{0}'.format(i)] = inp_word[i]
@@ -953,7 +956,8 @@ class TestLayer(LayerTest):
                          bias_attr='nce.b',
                          sample_weight=sample_weights)
 
-            dy_rlt = nce(embs3, words[label_word])
+            wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+            dy_rlt = nce(embs3, wl)
             dy_rlt_value = dy_rlt.numpy()
 
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
@@ -1004,14 +1008,15 @@ class TestLayer(LayerTest):
                           bias_attr='nce2.b',
                           sample_weight=sample_weights)
 
-            nce1_loss = nce1(embs3, words[label_word])
-            nce2_loss = nce2(embs3, words[label_word])
+            wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+            nce1_loss = nce1(embs3, wl)
+            nce2_loss = nce2(embs3, wl)
             self.assertFalse(
                 np.array_equal(nce1_loss.numpy(), nce2_loss.numpy()))
             nce2.weight.set_value(nce1.weight.numpy())
             nce2.bias.set_value(nce1.bias)
-            nce1_loss = nce1(embs3, words[label_word])
-            nce2_loss = nce2(embs3, words[label_word])
+            nce1_loss = nce1(embs3, wl)
+            nce2_loss = nce2(embs3, wl)
             self.assertTrue(
                 np.array_equal(nce1_loss.numpy(), nce2_loss.numpy()))
 
