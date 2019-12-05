@@ -8693,7 +8693,7 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode == 'channel':
         alpha_shape = [1, x.shape[1], 1, 1]
     elif mode == 'element':
-        alpha_shape = x.shape[1:]
+        alpha_shape = [1, x.shape[1], x.shape[2], x.shape[3]]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,
