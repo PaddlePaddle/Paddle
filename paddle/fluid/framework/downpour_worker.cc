@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/string/string_helper.h"
 
@@ -72,7 +73,6 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   need_to_push_sparse_ = param_.push_sparse();
   need_to_push_dense_ = param_.push_dense();
 
-  fleet_ptr_ = FleetWrapper::GetInstance();
   fetch_config_ = desc.fetch_config();
   use_cvm_ = desc.use_cvm();
   // for sparse value accessor, embedding only
@@ -435,6 +435,7 @@ void DownpourWorker::AdjustInsWeight() {
 }
 
 void DownpourWorker::CopySparseTable() {
+  auto fleet_ptr = FleetWrapper::GetInstance();
   for (size_t i = 0; i < copy_sparse_tables_.size(); ++i) {
     int64_t src_table = copy_sparse_tables_[i].first;
     int64_t dest_table = copy_sparse_tables_[i].second;
@@ -447,11 +448,11 @@ void DownpourWorker::CopySparseTable() {
       } else if (feasign_set_[src_table].size() == 0) {
         continue;
       }
-      feanum = fleet_ptr_->CopyTable(src_table, dest_table);
+      feanum = fleet_ptr->CopyTable(src_table, dest_table);
     } else {
       std::vector<uint64_t> fea_vec(feasign_set_[src_table].begin(),
                                     feasign_set_[src_table].end());
-      feanum = fleet_ptr_->CopyTableByFeasign(src_table, dest_table, fea_vec);
+      feanum = fleet_ptr->CopyTableByFeasign(src_table, dest_table, fea_vec);
       fea_vec.clear();
       std::vector<uint64_t>().swap(fea_vec);
     }
@@ -464,6 +465,7 @@ void DownpourWorker::CopySparseTable() {
 }
 
 void DownpourWorker::CopyDenseTable() {
+  auto fleet_ptr = FleetWrapper::GetInstance();
   if (thread_id_ != 0) {
     return;
   }
@@ -474,13 +476,13 @@ void DownpourWorker::CopyDenseTable() {
     if (src_table == dest_table) {
       continue;
     }
-    int32_t dim = fleet_ptr_->CopyTable(src_table, dest_table);
+    int32_t dim = fleet_ptr->CopyTable(src_table, dest_table);
     VLOG(3) << "copy param from table " << src_table << " to table "
             << dest_table << ", dim=" << dim;
     if (copy_table_config_.dense_pull_after_copy()) {
       VLOG(3) << "dense pull after copy, table=" << dest_table;
       pull_dense_status.resize(0);
-      fleet_ptr_->PullDenseVarsAsync(*root_scope_, dest_table,
+      fleet_ptr->PullDenseVarsAsync(*root_scope_, dest_table,
                                      dense_value_names_[dest_table],
                                      &pull_dense_status);
       for (auto& t : pull_dense_status) {
@@ -531,6 +533,7 @@ void DownpourWorker::CopyDenseVars() {
 }
 
 void DownpourWorker::TrainFilesWithProfiler() {
+  auto fleet_ptr = FleetWrapper::GetInstance();
   VLOG(3) << "Begin to train files with profiler";
   platform::SetNumThreads(1);
   device_reader_->Start();
@@ -606,7 +609,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
       }
       timeline.Start();
-      fleet_ptr_->PullSparseVarsSync(
+      fleet_ptr->PullSparseVarsSync(
           *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
           &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
       timeline.Pause();
@@ -684,7 +687,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
           }
         }
         timeline.Start();
-        fleet_ptr_->PushSparseVarsWithLabelAsync(
+        fleet_ptr->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
@@ -701,7 +704,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
            ++i) {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
-        fleet_ptr_->PushDenseVarsAsync(
+        fleet_ptr->PushDenseVarsAsync(
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
             scale_datanorm_, cur_batch);
       }
@@ -820,6 +823,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
 }
 
 void DownpourWorker::TrainFiles() {
+  auto fleet_ptr = FleetWrapper::GetInstance();
   VLOG(3) << "Begin to train files";
   platform::SetNumThreads(1);
   device_reader_->Start();
@@ -852,7 +856,7 @@ void DownpourWorker::TrainFiles() {
           break;
         }
       }
-      fleet_ptr_->PullSparseVarsSync(
+      fleet_ptr->PullSparseVarsSync(
           *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
           &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
       CollectLabelInfo(i);
@@ -909,7 +913,7 @@ void DownpourWorker::TrainFiles() {
             break;
           }
         }
-        fleet_ptr_->PushSparseVarsWithLabelAsync(
+        fleet_ptr->PushSparseVarsWithLabelAsync(
             *thread_scope_, tid, features_[tid], feature_labels_[tid],
             sparse_key_names_[tid], sparse_grad_names_[tid], table.emb_dim(),
             &feature_grads_[tid], &push_sparse_status_, cur_batch, use_cvm_,
@@ -922,7 +926,7 @@ void DownpourWorker::TrainFiles() {
            ++i) {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_dense_table_id(i));
-        fleet_ptr_->PushDenseVarsAsync(
+        fleet_ptr->PushDenseVarsAsync(
             *thread_scope_, tid, dense_grad_names_[tid], &push_sparse_status_,
             scale_datanorm_, cur_batch);
       }

@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_feed_factory.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/trainer.h"
 
 namespace paddle {
@@ -190,8 +191,8 @@ void DistMultiTrainer::Finalize() {
   root_scope_->DropKids();
 
   // flush local client push queue
-  auto fleet_ptr_ = FleetWrapper::GetInstance();
-  fleet_ptr_->ClientFlush();
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  fleet_ptr->ClientFlush();
 }
 
 template <typename T>

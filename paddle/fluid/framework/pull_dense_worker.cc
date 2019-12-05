@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include <time.h>
 #include "paddle/fluid/framework/device_worker.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 
 namespace paddle {
 namespace framework {
@@ -54,7 +55,6 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
     last_versions_[tid] = 0;
     current_version_[tid] = 0;
   }
-  fleet_ptr_ = FleetWrapper::GetInstance();
 }
 
 void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
@@ -84,13 +84,14 @@ void PullDenseWorker::Stop() {
 }
 
 void PullDenseWorker::PullDense(bool force_update) {
+  auto fleet_ptr = FleetWrapper::GetInstance();
   pull_dense_status_.resize(0);
   for (int i = 0; i < dwp_param_.program_config(0).pull_dense_table_id_size();
        ++i) {
     uint64_t tid = static_cast<uint64_t>(
         dwp_param_.program_config(0).pull_dense_table_id(i));
     if (force_update || CheckUpdateParam(tid)) {
-      fleet_ptr_->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
+      fleet_ptr->PullDenseVarsAsync(*root_scope_, tid, dense_value_names_[tid],
                                      &pull_dense_status_);
       ResetThreadVersion(tid);
     }

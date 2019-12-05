@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_thread_worker.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -82,7 +81,6 @@ class AsyncExecutor {
   void SaveModel(const std::string& path);
 
  public:
-  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   Scope* root_scope_;
   platform::Place place_;
 

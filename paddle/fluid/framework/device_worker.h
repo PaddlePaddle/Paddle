@@ -27,7 +27,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_feed.h"
-#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -75,7 +74,6 @@ class PullDenseWorker {
 
  private:
   static std::shared_ptr<PullDenseWorker> s_instance_;
-  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   PullDenseWorkerParameter param_;
   DownpourWorkerParameter dwp_param_;
   Scope* root_scope_;
@@ -195,7 +193,6 @@ class DownpourWorker : public HogwildWorker {
   virtual void SetChannelWriter(ChannelObject<std::string>* queue);
 
  protected:
-  std::shared_ptr<paddle::framework::FleetWrapper> fleet_ptr_;
   std::shared_ptr<paddle::framework::PullDenseWorker> pull_dense_worker_;
   void FillSparseValue(size_t table_id);
   void PushGradients();

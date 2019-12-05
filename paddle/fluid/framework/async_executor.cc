@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor_thread_worker.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -39,24 +40,31 @@ AsyncExecutor::AsyncExecutor(Scope* scope, const platform::Place& place)
     : root_scope_(scope), place_(place) {}
 
 void AsyncExecutor::InitServer(const std::string& dist_desc, int index) {
-  fleet_ptr_ = FleetWrapper::GetInstance();
-  fleet_ptr_->InitServer(dist_desc, index);
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  fleet_ptr->InitServer(dist_desc, index);
 }
 
 void AsyncExecutor::InitWorker(const std::string& dist_desc,
                                const std::vector<uint64_t>& host_sign_list,
                                int node_num, int index) {
-  fleet_ptr_ = FleetWrapper::GetInstance();
-  fleet_ptr_->InitWorker(dist_desc, host_sign_list, node_num, index);
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  fleet_ptr->InitWorker(dist_desc, host_sign_list, node_num, index);
 }
 
-uint64_t AsyncExecutor::StartServer() { return fleet_ptr_->RunServer(); }
+uint64_t AsyncExecutor::StartServer() {
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  return fleet_ptr->RunServer();
+}
 
-void AsyncExecutor::StopServer() { fleet_ptr_->StopServer(); }
+void AsyncExecutor::StopServer() {
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  fleet_ptr->StopServer();
+}
 
 void AsyncExecutor::GatherServers(const std::vector<uint64_t>& host_sign_list,
                                   int node_num) {
-  fleet_ptr_->GatherServers(host_sign_list, node_num);
+  auto fleet_ptr = FleetWrapper::GetInstance();
+  fleet_ptr->GatherServers(host_sign_list, node_num);
 }
 
 // todo InitModel
