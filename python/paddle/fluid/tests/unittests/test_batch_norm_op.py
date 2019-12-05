@@ -14,15 +14,18 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from op_test import OpTest
+from op_test import OpTest, _set_use_system_allocator
 from paddle.fluid.framework import grad_var_name
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+
+_set_use_system_allocator(True)
 
 
 def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
@@ -413,16 +416,28 @@ class TestBatchNormOpTraining(unittest.TestCase):
                     inputs['MomentumTensor'] = block.var('momentum_var')
                 else:
                     attrs['momentum'] = momentum
+
+                outputs = {
+                    "Y": block.var('y'),
+                    "MeanOut": block.var('mean'),  # share memory
+                    "VarianceOut": block.var('variance'),  # share memory
+                    "SavedMean": block.var('saved_mean'),
+                    "SavedVariance": block.var('saved_variance')
+                }
+                has_reserve_space = False
+                if data_format == 'NHWC':
+                    flag = os.environ.get(
+                        'FLAGS_cudnn_batchnorm_spatial_persistent')
+                    if flag is not None and flag.lower() in ['true', '1']:
+                        has_reserve_space = True
+                if has_reserve_space:
+                    block.create_var(name="reserve_space", dtype='float16')
+                    outputs["ReserveSpace"] = block.var('reserve_space')
+                    del os.environ['FLAGS_cudnn_batchnorm_spatial_persistent']
                 bn_op = block.append_op(
                     type="batch_norm",
                     inputs=inputs,
-                    outputs={
-                        "Y": block.var('y'),
-                        "MeanOut": block.var('mean'),  # share memory
-                        "VarianceOut": block.var('variance'),  # share memory
-                        "SavedMean": block.var('saved_mean'),
-                        "SavedVariance": block.var('saved_variance')
-                    },
+                    outputs=outputs,
                     attrs=attrs)
                 block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
 
@@ -477,6 +492,17 @@ class TestBatchNormOpTrainingCase1(TestBatchNormOpTraining):
         self.use_global_stats = False
         self.no_grad_set = set(['scale@GRAD', 'bias@GRAD'])
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
+
+
+class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
+    def init_test_case(self):
+        self.use_global_stats = False
+        self.no_grad_set = set()
+        self.fetch_list = [
+            'y', 'mean', 'variance', 'saved_mean', 'saved_variance', 'x@GRAD',
+            'scale@GRAD', 'bias@GRAD'
+        ]
+        os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = "1"
 
 
 class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
@@ -551,7 +577,7 @@ class TestBatchNormOpFreezeStatsAndScaleBiasTraining(
         self.fetch_list = ['y', 'mean', 'variance', 'x@GRAD']
 
 
-class TestBatchNormOpError(OpTest):
+class TestBatchNormOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of batch_norm must be Variable.

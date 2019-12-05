@@ -28,11 +28,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
+#include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
+DECLARE_bool(enable_unused_var_check);
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
 DEFINE_bool(fast_check_nan_inf, false,
             "Fast checking NAN/INF after each operation. It will be a little"
@@ -434,6 +436,8 @@ bool ExecutionContext::HasOutput(const std::string& name) const {
 }
 
 const Variable* ExecutionContext::InputVar(const std::string& name) const {
+  LogVarUsageIfUnusedVarCheckEnabled(name);
+
   auto it = ctx_.inputs.find(name);
   if (it == ctx_.inputs.end()) return nullptr;
 
@@ -463,6 +467,8 @@ const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
+  LogVarUsageIfUnusedVarCheckEnabled(name);
+
   auto vars = MultiInputVar(name);
   if (vars.size() == 0) {
     return {};
@@ -958,6 +964,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     RuntimeInferShapeContext infer_shape_ctx(*this, exec_scope, *runtime_ctx);
     this->InferShape(&infer_shape_ctx);
   }
+
+  if (FLAGS_enable_unused_var_check) {
+    GetThreadLocalUsedVarNameSet()->clear();
+  }
+
   // TODO(panyx0718): ExecutionContext should only depend on RuntimeContext
   // not Scope. Imperative mode only pass inputs and get outputs.
   (*kernel_func_)(ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx,
@@ -966,6 +977,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (!transfered_inplace_vars.empty()) {
     // there is inplace variable has been transfered.
     TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
+  }
+  if (FLAGS_enable_unused_var_check) {
+    // skip op that uses mkldnn because it has different memory reuse strategy.
+    // use attr here because some GradMakers (like ActivationGradOpMaker) add
+    // input when use_mkldnn=true;
+    if (!(HasAttr("use_mkldnn") && Attr<bool>("use_mkldnn"))) {
+      CheckUnusedVar(*this, scope);
+    }
   }
 
   /*For profiling/benchmark only*/

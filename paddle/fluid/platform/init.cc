@@ -46,7 +46,9 @@ namespace framework {
 #endif
 
 std::once_flag gflags_init_flag;
+std::once_flag glog_init_flag;
 std::once_flag p2p_init_flag;
+std::once_flag glog_warning_once_flag;
 
 void InitGflags(std::vector<std::string> argv) {
   std::call_once(gflags_init_flag, [&]() {
@@ -202,6 +204,15 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 void SignalHandle(const char *data, int size) {
   auto file_path = string::Sprintf("/tmp/paddle.%d.dump_info", ::getpid());
   try {
+    // The signal is coming line by line but we print general guide just once
+    std::call_once(glog_warning_once_flag, [&]() {
+      LOG(WARNING) << "Initialize GLOG failed, PaddlePaddle may not be able to "
+                      "print GLOG\n";
+      LOG(WARNING) << "You could check whether you killed GLOG initialize "
+                      "process or PaddlePaddle process accidentally\n";
+      LOG(WARNING) << "The detail failure signal is:\n\n";
+    });
+
     LOG(WARNING) << std::string(data, size);
     std::ofstream dump_info;
     dump_info.open(file_path, std::ios::app);
@@ -213,13 +224,15 @@ void SignalHandle(const char *data, int size) {
 #endif
 
 void InitGLOG(const std::string &prog_name) {
-  // glog will not hold the ARGV[0] inside.
-  // Use strdup to alloc a new string.
-  google::InitGoogleLogging(strdup(prog_name.c_str()));
+  std::call_once(glog_init_flag, [&]() {
+    // glog will not hold the ARGV[0] inside.
+    // Use strdup to alloc a new string.
+    google::InitGoogleLogging(strdup(prog_name.c_str()));
 #ifndef _WIN32
-  google::InstallFailureSignalHandler();
-  google::InstallFailureWriter(&SignalHandle);
+    google::InstallFailureSignalHandler();
+    google::InstallFailureWriter(&SignalHandle);
 #endif
+  });
 }
 
 }  // namespace framework

@@ -113,7 +113,6 @@ void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
       PADDLE_THROW("wrong mkldnn type provided");
   }
 }
-#endif
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
                                const OpKernelType& expected_kernel_type,
@@ -127,13 +126,14 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
       "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
       "non-MKLDNN");
 
-  innerTransDataLayoutFromMKLDNN(in_layout, out_layout, in, out, place);
+  innerTransDataLayoutFromMKLDNN(in_layout,
+                                 paddle::platform::get_cur_paddle_data_layout(),
+                                 in, out, place);
 }
 
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                                     const Tensor& in, Tensor* out,
                                     platform::Place place) {
-#ifdef PADDLE_WITH_MKLDNN
   PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::format_undef,
                     platform::errors::InvalidArgument(
                         "Input tensor format is invalid. Input tensor should "
@@ -185,11 +185,17 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   } else {
     out->ShareDataWith(in);
   }
+  // For exepected NHWC data format we need to reshape the Output tensor
+  // As MKL-DNN description was in NCHW and paddle is expecting NHWC
+  if (out_layout == DataLayout::kNHWC) {
+    std::rotate(out_tz.begin() + 1, out_tz.begin() + 2, out_tz.end());
+    out->Resize(framework::make_ddim(out_tz));
+  }
   out->set_layout(out_layout);
   // reset format since the out tensor will be feed to non-MKLDNN OPkernel
   out->set_format(MKLDNNMemoryFormat::format_undef);
-#endif
 }
+#endif
 
 }  // namespace framework
 }  // namespace paddle

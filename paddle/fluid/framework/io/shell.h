@@ -31,6 +31,11 @@
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/string_helper.h"
 
+#if defined(__arm__) || defined(__aarch64__) || defined(__ARM_NEON) || \
+    defined(__ARM_NEON__)
+#define PADDLE_ARM
+#endif
+
 namespace paddle {
 namespace framework {
 

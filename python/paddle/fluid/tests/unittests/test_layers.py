@@ -842,7 +842,7 @@ class TestLayer(LayerTest):
         window_size = 5
         dict_size = 20
         label_word = int(window_size // 2) + 1
-        inp_word = np.array([[[1]], [[2]], [[3]], [[4]], [[5]]]).astype('int64')
+        inp_word = np.array([[1], [2], [3], [4], [5]]).astype('int64')
         nid_freq_arr = np.random.dirichlet(np.ones(20) * 1000).astype('float32')
         seed = 1
         with self.static_graph():
@@ -850,7 +850,7 @@ class TestLayer(LayerTest):
             for i in range(window_size):
                 words.append(
                     layers.data(
-                        name='word_{0}'.format(i), shape=[1], dtype='int64'))
+                        name='word_{0}'.format(i), shape=[None], dtype='int64'))
             sample_weights = layers.fill_constant(
                 shape=[5, 1], dtype='float32', value=1)
             embs = []
@@ -858,7 +858,7 @@ class TestLayer(LayerTest):
                 if i == label_word:
                     continue
 
-                emb = layers.embedding(
+                emb = fluid.embedding(
                     input=words[i],
                     size=[dict_size, 32],
                     param_attr='emb.w',
@@ -866,8 +866,9 @@ class TestLayer(LayerTest):
                 embs.append(emb)
 
             embs = layers.concat(input=embs, axis=1)
+            wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
             nce_loss = layers.nce(input=embs,
-                                  label=words[label_word],
+                                  label=wl,
                                   num_total_classes=dict_size,
                                   num_neg_samples=2,
                                   sampler="custom_dist",
@@ -886,7 +887,7 @@ class TestLayer(LayerTest):
             for i in range(window_size):
                 words.append(
                     layers.data(
-                        name='word_{0}'.format(i), shape=[1], dtype='int64'))
+                        name='word_{0}'.format(i), shape=[None], dtype='int64'))
             sample_weights = layers.fill_constant(
                 shape=[5, 1], dtype='float32', value=1)
             emb = nn.Embedding(
@@ -914,7 +915,8 @@ class TestLayer(LayerTest):
                          bias_attr='nce.b',
                          sample_weight=sample_weights)
 
-            nce_loss2 = nce(embs2, words[label_word])
+            wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+            nce_loss2 = nce(embs2, wl)
             feed_dict = dict()
             for i in range(len(words)):
                 feed_dict['word_{0}'.format(i)] = inp_word[i]
@@ -953,7 +955,8 @@ class TestLayer(LayerTest):
                          bias_attr='nce.b',
                          sample_weight=sample_weights)
 
-            dy_rlt = nce(embs3, words[label_word])
+            wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+            dy_rlt = nce(embs3, wl)
             dy_rlt_value = dy_rlt.numpy()
 
         self.assertTrue(np.allclose(static_rlt2, static_rlt))
@@ -1004,14 +1007,15 @@ class TestLayer(LayerTest):
                           bias_attr='nce2.b',
                           sample_weight=sample_weights)
 
-            nce1_loss = nce1(embs3, words[label_word])
-            nce2_loss = nce2(embs3, words[label_word])
+            wl = fluid.layers.unsqueeze(words[label_word], axes=[0])
+            nce1_loss = nce1(embs3, wl)
+            nce2_loss = nce2(embs3, wl)
             self.assertFalse(
                 np.array_equal(nce1_loss.numpy(), nce2_loss.numpy()))
             nce2.weight.set_value(nce1.weight.numpy())
             nce2.bias.set_value(nce1.bias)
-            nce1_loss = nce1(embs3, words[label_word])
-            nce2_loss = nce2(embs3, words[label_word])
+            nce1_loss = nce1(embs3, wl)
+            nce2_loss = nce2(embs3, wl)
             self.assertTrue(
                 np.array_equal(nce1_loss.numpy(), nce2_loss.numpy()))
 
@@ -1638,9 +1642,6 @@ class TestBook(LayerTest):
             return np.random.randint(self._low_data_bound,
                                      self._high_data_bound, shape).astype(dtype)
         elif dtype == 'int64':
-            return np.random.randint(self._low_data_bound,
-                                     self._high_data_bound, shape).astype(dtype)
-        elif dtype == 'bool':
             return np.random.randint(self._low_data_bound,
                                      self._high_data_bound, shape).astype(dtype)
 
@@ -2574,14 +2575,6 @@ class TestBook(LayerTest):
             out = layers.square_error_cost(input=x, label=y)
             return (out)
 
-    def make_masked_select(self):
-        with program_guard(fluid.default_main_program(),
-                           fluid.default_startup_program()):
-            x = self._get_data(name="X", shape=[4, 4], dtype="float32")
-            y = self._get_data(name="Y", shape=[1, 4], dtype="bool")
-            out = layers.masked_select(input=x, mask=y)
-            return (out)
-
     def test_dynamic_lstmp(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():
@@ -2691,6 +2684,14 @@ class TestBook(LayerTest):
             x = layers.data(name="x", shape=[245, 30, 30], dtype="float32")
             out = layers.strided_slice(
                 x, axes=axes, starts=starts, ends=ends, strides=strides)
+            return out
+
+    def test_fill_constant_batch_size_like(self):
+        with self.static_graph():
+            like = fluid.layers.fill_constant(
+                shape=[1, 200], value=10, dtype='int64')
+            out = layers.fill_constant_batch_size_like(
+                input=like, shape=[2, 3300], value=1315454564656, dtype='int64')
             return out
 
     def test_psroi_pool(self):

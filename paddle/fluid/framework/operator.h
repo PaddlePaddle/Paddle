@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
@@ -290,6 +291,8 @@ class ExecutionContext {
 
   virtual const std::vector<Variable*> MultiInputVar(
       const std::string& name) const {
+    LogVarUsageIfUnusedVarCheckEnabled(name);
+
     auto it = ctx_.inputs.find(name);
     if (it == ctx_.inputs.end()) {
       return {};
@@ -330,6 +333,8 @@ class ExecutionContext {
 
   template <typename T>
   const std::vector<const T*> MultiInput(const std::string& name) const {
+    LogVarUsageIfUnusedVarCheckEnabled(name);
+
     auto vars = MultiInputVar(name);
     if (vars.size() == 0) {
       return {};
@@ -468,6 +473,11 @@ class OperatorWithKernel : public OperatorBase {
   AllOpKernels() {
     static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
     return g_all_op_kernels;
+  }
+
+  bool IsMKLDNNType() const {
+    return ((this->kernel_type_) && (this->kernel_type_->data_layout_ ==
+                                     framework::DataLayout::kMKLDNN));
   }
 
   bool SupportGPU() const override {
