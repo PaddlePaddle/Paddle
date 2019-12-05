@@ -69,6 +69,7 @@ message OpDesc {
   repeated Var outputs = 2;
   repeated Attr attrs = 4;
   optional bool is_target = 5 [ default = false ];
+  optional string device = 6;
 };
 
 // OpProto describes a C++ framework::OperatorBase derived class.
@@ -100,6 +101,7 @@ message OpProto {
   repeated Var outputs = 3;
   repeated Attr attrs = 4;
   required string comment = 5;
+  optional string device = 6;
 }
 
 message VarType {

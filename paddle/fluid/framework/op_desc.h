@@ -104,6 +104,10 @@ class OpDesc {
 
   void RenameInput(const std::string &old_name, const std::string &new_name);
 
+  void SetDeviceType(const std::string &device_type) {
+    desc_.set_device(device_type);
+  }
+
   // Only be used in C++
   const AttributeMap &GetAttrMap() const;
 
@@ -116,6 +120,8 @@ class OpDesc {
   const VariableNameMap &Inputs() const { return inputs_; }
 
   const VariableNameMap &Outputs() const { return outputs_; }
+
+  const std::string &DeviceType() const { return desc_.device(); }
 
   AttributeMap *MutableAttrMap() {
     this->need_update_ = true;

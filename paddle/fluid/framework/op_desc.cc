@@ -289,6 +289,7 @@ OpDesc::OpDesc(const OpDesc &other, BlockDesc *block) {
 
 void OpDesc::CopyFrom(const OpDesc &op_desc) {
   desc_.set_type(op_desc.Type());
+  desc_.set_device(op_desc.DeviceType());
   inputs_ = op_desc.inputs_;
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;

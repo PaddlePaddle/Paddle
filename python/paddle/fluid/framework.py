@@ -51,6 +51,7 @@ __all__ = [
     'Variable',
     'load_op_library',
     'require_version',
+    'device_guard',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -2112,6 +2113,9 @@ class Operator(object):
 
         return attr_map
 
+    def _set_device(self, device_type):
+        self.desc._set_device(device_type)
+
 
 class Block(object):
     """
@@ -2482,6 +2486,7 @@ class Block(object):
                 outputs=kwargs.get("outputs", None),
                 attrs=kwargs.get("attrs", None))
 
+            self.program._apply_device_type_to_op(op_desc)
             self.ops.append(op)
 
         return op
@@ -3618,6 +3623,9 @@ class Program(object):
         # appending gradients times
         self._appending_grad_times = 0
 
+        # a stack to store device type
+        self._device_type_stack = []
+
     @property
     def _op_role(self):
         """
@@ -4474,6 +4482,32 @@ class Program(object):
             for each_var in list(each_block.vars.values()):
                 yield each_var
 
+    def _apply_device_type_to_op(self, op):
+        if len(self._device_type_stack) != 0:
+            device_type = self._device_type_stack[-1]
+            if device_type is not None:
+                op._set_device_type(device_type)
+
+    @signature_safe_contextmanager
+    def device_guard(self, device_type):
+        """
+        Returns a context manager that specifies the device type to use.
+
+        Args:
+        device_type(str): Specify the device type to use inside `"with"` statement. 
+            Wnen it is set to "cpu" or "gpu", all operations constructed 
+            inside `"with"` statement will be placed on CPU or CUDAPlace to execute. 
+            ToDO: add more information for usage
+        """
+        self._device_type_stack.append(device_type)
+        old_top_of_stack = self._device_type_stack[-1]
+        yield
+        new_top_of_stack = self._device_type_stack[-1]
+        if old_top_of_stack is not new_top_of_stack:
+            raise Exception(
+                "Exiting device scope without proper scope nesting.")
+        self._device_type_stack.pop()
+
 
 @six.add_metaclass(ParameterMetaClass)
 class Parameter(Variable):
@@ -4916,3 +4950,17 @@ def load_op_library(lib_filename):
     """
     core.load_op_library(lib_filename)
     OpProtoHolder.instance().update_op_proto()
+
+
+def device_guard(device_type):
+    """
+    Returns a context manager that specifies the device type to use.
+
+    Args:
+        device_type(str): Specify the device type to use inside `"with"` statement. 
+            Wnen it is set to "cpu" or "gpu", all operations constructed 
+            inside `"with"` statement will be placed on CPU or CUDAPlace to execute. 
+            ToDO: add more information for usage
+        
+    """
+    return _main_program_.device_guard(device_type)
