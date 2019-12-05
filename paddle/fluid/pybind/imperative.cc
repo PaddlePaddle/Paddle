@@ -287,7 +287,6 @@ void BindImperative(py::module *m_ptr) {
               const std::vector<int> &dims, const py::handle &name,
               framework::proto::VarType::Type type, bool persistable) {
              std::string act_name = "";
-             std::cout << name << " " << name.cast<std::string>() << std::endl;
              if (!name.ptr() || name.ptr() == Py_None) {
                act_name = imperative::GetCurrentTracer()->GenerateUniqueName(
                    "generated_var");
@@ -388,26 +387,6 @@ void BindImperative(py::module *m_ptr) {
                     y = x.detach()
 
        )DOC")
-      .def("_run_backward",
-           [](imperative::VarBase &self,
-              const imperative::detail::BackwardStrategy &bckst,
-              const imperative::Tracer &tracer) {
-             // TODO(jiabin): when we impl more backward execution we can select
-             // them
-
-             imperative::Engine *engine = tracer.GetDefaultEngine();
-             VLOG(3) << "Start backward";
-             engine->Init(&self, bckst);
-             engine->Execute();
-             VLOG(3) << "Finish backward";
-           },
-           py::call_guard<py::gil_scoped_release>())
-      .def("_grad_name", &imperative::VarBase::GradVarName)
-      .def("_grad_value",
-           [](imperative::VarBase &self) {
-             return self.MutableGradVar()->Get<framework::LoDTensor>();
-           },
-           py::return_value_policy::reference)
       .def("clear_gradient", &imperative::VarBase::ClearGradient, R"DOC(
 
         **Notes**:
@@ -441,6 +420,26 @@ void BindImperative(py::module *m_ptr) {
                     loss2.clear_gradient()
                     print("After clear {}".format(loss2.gradient()))
       )DOC")
+      .def("_run_backward",
+           [](imperative::VarBase &self,
+              const imperative::detail::BackwardStrategy &bckst,
+              const imperative::Tracer &tracer) {
+             // TODO(jiabin): when we impl more backward execution we can select
+             // them
+
+             imperative::Engine *engine = tracer.GetDefaultEngine();
+             VLOG(3) << "Start backward";
+             engine->Init(&self, bckst);
+             engine->Execute();
+             VLOG(3) << "Finish backward";
+           },
+           py::call_guard<py::gil_scoped_release>())
+      .def("_grad_name", &imperative::VarBase::GradVarName)
+      .def("_grad_value",
+           [](imperative::VarBase &self) {
+             return self.MutableGradVar()->Get<framework::LoDTensor>();
+           },
+           py::return_value_policy::reference)
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
@@ -471,6 +470,11 @@ void BindImperative(py::module *m_ptr) {
            py::return_value_policy::reference)
       .def_property("name", &imperative::VarBase::Name,
                     &imperative::VarBase::SetName)
+      .def_property("stop_gradient",
+                    &imperative::VarBase::OverridedStopGradient,
+                    &imperative::VarBase::SetOverridedStopGradient)
+      .def_property("persistable", &imperative::VarBase::Persistable,
+                    &imperative::VarBase::SetPersistable)
       .def_property_readonly(
           "shape",
           [](imperative::VarBase &self) {
@@ -487,12 +491,7 @@ void BindImperative(py::module *m_ptr) {
             }
           })
       .def_property_readonly("type", &imperative::VarBase::Type)
-      .def_property_readonly("dtype", &imperative::VarBase::DataType)
-      .def_property("persistable", &imperative::VarBase::Persistable,
-                    &imperative::VarBase::SetPersistable)
-      .def_property("stop_gradient",
-                    &imperative::VarBase::OverridedStopGradient,
-                    &imperative::VarBase::SetOverridedStopGradient);
+      .def_property_readonly("dtype", &imperative::VarBase::DataType);
 
   py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
   layer.def(py::init<>())
