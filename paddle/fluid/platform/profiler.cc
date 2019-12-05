@@ -472,7 +472,10 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
 
         if (rit != pushed_events.rend()) {
           double event_time = 0;
-          double gpu_time = rit->CudaElapsedMs((*analyze_events)[i][j]);
+          double gpu_time = 0.0f;
+#ifdef PADDLE_WITH_CUDA
+          gpu_time = rit->CudaElapsedMs((*analyze_events)[i][j]);
+#endif
           double cpu_time = rit->CpuElapsedMs((*analyze_events)[i][j]);
           if (g_state == ProfilerState::kCUDA) {
             event_time = gpu_time;
