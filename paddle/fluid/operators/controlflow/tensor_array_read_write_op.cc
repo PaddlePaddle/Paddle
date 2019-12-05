@@ -220,7 +220,7 @@ class WriteToArrayGradMaker : public framework::SingleGradOpMaker<T> {
     grad_op->SetType("read_from_array");
     grad_op->SetInput("I", this->Input("I"));
     grad_op->SetInput("X", this->OutputGrad("Out"));
-    grad_op->SetInput("X_W", Input("X"));
+    grad_op->SetInput("X_W", this->Input("X"));
     grad_op->SetOutput("Out", this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
     return std::unique_ptr<T>(grad_op);
