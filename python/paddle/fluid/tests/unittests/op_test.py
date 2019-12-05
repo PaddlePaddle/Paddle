@@ -1090,8 +1090,8 @@ class OpTest(unittest.TestCase):
         else:
             if (self.op_type not in Need_To_Fix_Op_List) or (
                     self.op_type not in Grad_White_List):
-                raise AssertionError("no_grad_set muste be None " + self.op_type
-                                     + " Op.")
+                raise AssertionError("no_grad_set muste be None, op_type is " +
+                                     self.op_type + " Op.")
 
         if not type(output_names) is list:
             output_names = [output_names]
