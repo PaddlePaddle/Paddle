@@ -1298,7 +1298,7 @@ class OpTestFp16(OpTestBase):
         random.setstate(cls._py_rand_state)
 
         if not cls.exist_check_grad:
-            raise AssertionError("The op test need check_grad")
+            raise AssertionError("The op test need check_grad.")
 
 
 class OpTest(OpTestBase):
@@ -1333,6 +1333,6 @@ class OpTest(OpTestBase):
         random.setstate(cls._py_rand_state)
 
         assert hasattr(cls, "exist_check_grad"), \
-            "The test of %s op need check_grad" % cls.op_type
+            "This op test need check_grad"
         assert hasattr(cls, "exist_fp64_check_grad"), \
-            "The test of %s op test need fp64 check_grad" % cls.op_type
+            "This op test need fp64 check_grad"
