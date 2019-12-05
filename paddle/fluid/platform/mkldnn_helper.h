@@ -151,6 +151,11 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
         return mkldnn::memory::format_tag::nChw16c;
       } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
         return mkldnn::memory::format_tag::nChw8c;
+      } else if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
+        if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
+            strides[3] >= strides[1]) {
+          return mkldnn::memory::format_tag::Acdb8a;
+        }
       } else if (inner_blks[0] == 4 && inner_idxs[0] == 1) {
         return mkldnn::memory::format_tag::nChw4c;
       } else if (inner_blks[0] == 16 && inner_idxs[0] == 0) {
@@ -163,6 +168,10 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
       if (inner_blks[0] == 16 && inner_blks[1] == 16) {
         if (inner_idxs[0] == 1 && inner_idxs[1] == 0) {
           return mkldnn::memory::format_tag::OIhw16i16o;
+        }
+      } else if (inner_blks[0] == 8 && inner_blks[1] == 8) {
+        if (inner_idxs[0] == 1 && inner_idxs[1] == 0) {
+          return mkldnn::memory::format_tag::OIhw8i8o;
         }
       }
     }
