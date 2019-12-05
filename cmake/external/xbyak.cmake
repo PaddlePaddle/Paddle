@@ -15,6 +15,9 @@
 option(WITH_XBYAK   "Compile with xbyak support"    ON)
 if(WIN32 OR APPLE)
     SET(WITH_XBYAK OFF CACHE STRING "Disable XBYAK in Windows and MacOS" FORCE)
+endif()
+
+if(NOT WITH_XBYAK)
     return()
 endif()
 
