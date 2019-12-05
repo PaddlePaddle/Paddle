@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, unique_name
+from ..framework import Variable, unique_name, in_dygraph_mode, default_main_program
 from .layer_function_generator import OpProtoHolder
 from ..initializer import force_init_on_cpu
 
@@ -40,7 +40,10 @@ def monkey_patch_variable():
         return dtype
 
     def current_block(var):
-        return var.block
+        if in_dygraph_mode():
+            return default_main_program().global_block()
+        else:
+            return var.block
 
     def create_new_tmp_var(block, dtype):
         tmp_name = unique_tmp_name()
@@ -281,5 +284,9 @@ def monkey_patch_variable():
         setattr(Variable, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse,
                                           scalar_method))
+        setattr(core.VarBase, method_name,
+                _elemwise_method_creator_(method_name, op_type, reverse,
+                                          scalar_method))
 
     Variable.astype = astype
+    setattr(core.VarBase, "astype", astype)

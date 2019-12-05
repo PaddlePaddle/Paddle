@@ -264,7 +264,7 @@ class GradClipByGlobalNorm(GradClipBase):
             if g is None:
                 continue
             merge_grad = g
-            if g._ivar.type == core.VarDesc.VarType.SELECTED_ROWS:
+            if g.type == core.VarDesc.VarType.SELECTED_ROWS:
                 merge_grad = layers.merge_selected_rows(g)
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
             power = layers.square(merge_grad)

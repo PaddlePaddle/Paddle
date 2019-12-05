@@ -88,13 +88,13 @@ from .dygraph.nn import *
 from .dygraph.layers import *
 from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
-
+from .dygraph.varbase_patch_methods import monkey_patch_varbase
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + \
     trainer_desc.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + \
-    data_feed_desc.__all__ + compiler.__all__ + backward.__all__ + [
+    data_feed_desc.__all__ + compiler.__all__ + backward.__all__  + [
         'io',
         'initializer',
         'embedding',
@@ -126,6 +126,7 @@ __all__ = framework.__all__ + executor.__all__ + \
         'install_check',
         'save',
         'load',
+        'VarBase'
     ]
 
 
@@ -234,3 +235,4 @@ def __bootstrap__():
 # Consider paddle.init(args) or paddle.main(args)
 monkey_patch_variable()
 __bootstrap__()
+monkey_patch_varbase()

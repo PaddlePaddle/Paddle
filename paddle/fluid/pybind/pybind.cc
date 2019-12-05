@@ -194,14 +194,8 @@ static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
     if (!py_obj || py_obj == Py_None) {
       PADDLE_THROW("Save parameter [%s] is None", para.first);
     }
-
-    const char *kIVarField = "_ivar";
-    PyObject *py_ivar = GetPythonAttribute(py_obj, kIVarField);
-    PADDLE_ENFORCE_NOT_NULL(py_ivar, "Can not find  ivar in Variable");
-
     vec_res.emplace_back(
-        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
-    Py_DECREF(py_ivar);
+        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_obj));
   }
 
   return vec_res;

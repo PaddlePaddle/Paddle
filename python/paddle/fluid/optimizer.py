@@ -32,7 +32,6 @@ from .layers import ops
 from .regularizer import append_regularization_ops
 from .dygraph import base as imperative_base
 from .dygraph.learning_rate_scheduler import LearningRateDecay
-from .framework import _var_base_to_np
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
@@ -122,7 +121,13 @@ class Optimizer(object):
                 state_dict[var_tmp.name] = var_tmp
         # global step if use lr decay
         if isinstance(self._learning_rate, LearningRateDecay):
-            var_temp = Variable(None, name='global_step', dtype='int32')
+            var_tmp = None
+            if not framework.in_dygraph_mode():
+                var_temp = Variable(None, name='global_step', dtype='int32')
+            else:
+                var_temp = framework._varbase_creator(
+                    None, name='global_step', dtype='int32')
+
             tensor.fill_constant(
                 [1], "int32", self._learning_rate.step_num, out=var_temp)
 
@@ -164,7 +169,7 @@ class Optimizer(object):
             global_step = state_dict['global_step']
 
             if isinstance(global_step, core.VarBase):
-                step_np = global_step._copy_to(core.CPUPlace(), True)
+                step_np = global_step
                 step_np = np.array(step_np.value().get_tensor())
                 assert step_np.shape == (1,),  \
                         "global step shape is (1,), the shape is {}".format( step_np.shape )
@@ -189,7 +194,7 @@ class Optimizer(object):
             for para_name, var_tmp in v.items():
                 assert var_tmp.name in state_dict, \
                         "optimizer variable {} not found".format( var_tmp.name )
-                var = var_tmp._ivar.value()
+                var = var_tmp.value()
                 tensor = var.get_tensor()
                 model_np = np.array(tensor)
 
@@ -198,7 +203,7 @@ class Optimizer(object):
                 if isinstance(load_para, Variable):
                     load_para_np = load_para.numpy()
                 elif isinstance(load_para, core.VarBase):
-                    load_para_np = _var_base_to_np(load_para)
+                    load_para_np = load_para.numpy()
                 elif isinstance(load_para, np.ndarray):
                     load_para_np = load_para
                 else:
@@ -515,7 +520,11 @@ class Optimizer(object):
         Examples:
             See examples in ``apply_gradients``.
         """
-        no_grad_set = self._get_no_grad_set(loss, no_grad_set)
+        act_no_grad_set = None
+        if not framework.in_dygraph_mode():
+            act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
+        else:
+            pass
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
@@ -528,15 +537,9 @@ class Optimizer(object):
             for param in parameters:
                 if not param.trainable:
                     continue
-                if param._ivar._grad_ivar() is not None:
-                    ivar_type = param._ivar._grad_ivar().type
+                if param._grad_ivar() is not None:
                     # create gradient variable
-                    grad_var = Variable(
-                        block=loss.block,
-                        type=ivar_type,
-                        name=param._ivar._grad_name(),
-                        stop_gradient=True,
-                        ivar=param._ivar._grad_ivar())
+                    grad_var = param._grad_ivar()
                     params_grads.append((param, grad_var))
         else:
             if callbacks is None:
@@ -550,7 +553,7 @@ class Optimizer(object):
                     loss.shape)
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
-                                               no_grad_set, callbacks)
+                                               act_no_grad_set, callbacks)
                 # Note: since we can't use all_reduce_op now,
                 #  dgc_op should be the last op of one grad.
                 self._append_dgc_ops(params_grads)
