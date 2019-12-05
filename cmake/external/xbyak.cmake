@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(WITH_XBYAK ON)
+option(WITH_XBYAK   "Compile with xbyak support"    ON)
 if(WIN32 OR APPLE)
     SET(WITH_XBYAK OFF CACHE STRING "Disable XBYAK in Windows and MacOS" FORCE)
     return()
