@@ -33,7 +33,7 @@ class UniqueNameGenerator {
  public:
   explicit UniqueNameGenerator(std::string prefix = "") : prefix_(prefix) {}
   std::string Generate(std::string key = "tmp") {
-    return prefix_ + key + "_" + std::to_string(++id_);
+    return prefix_ + key + "_" + std::to_string(id_++);
   }
 
  private:

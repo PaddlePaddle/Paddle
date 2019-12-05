@@ -221,6 +221,18 @@ def _current_expected_place():
     return _dygraph_current_expected_place_
 
 
+# NOTE(zhiqiu): this is deprecated, use var_base.numpy() directly.
+def _var_base_to_np(var_base):
+    """	
+    convert VarBase tp numpy	
+    	
+    Args:	
+        var_base(VarBase) : the VarBase to convert	
+    Returns (np.ndarray): the np.ndarray contain the value of VarBase	
+    """
+    return var_base.numpy()
+
+
 def _cpu_num():
     if "CPU_NUM" not in os.environ.keys():
         if multiprocessing.cpu_count() > 1:
