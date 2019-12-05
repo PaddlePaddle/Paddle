@@ -58,6 +58,13 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
+  if (ctx->IsRuntime() && ctx->HasInput("MomentumTensor")) {
+    auto mom = ctx->Inputs("MomentumTensor");
+    PADDLE_ENFORCE_EQ(mom.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "Input(MomentumTensor) size must be 1"));
+  }
+
   PADDLE_ENFORCE_GE(
       x_dims.size(), 2,
       "ShapeError: the dimension of input X must greater than or equal to 2."
@@ -115,7 +122,7 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
 
 framework::OpKernelType BatchNormOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
-  auto input_data_type = ctx.Input<Tensor>("X")->type();
+  auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
   // By default, the type of the scale, bias, mean,
   // and var tensors should both be float. (For float or float16 input tensor)
   // or double (For double input tensor).
@@ -173,6 +180,11 @@ void BatchNormOpMaker::Make() {
   AddInput("Variance",
            "The global variance (for training) "
            "or estimated Variance (for testing)");
+  AddInput("MomentumTensor",
+           "(Tensor<float32>, optional) If provided, batch_norm will "
+           "use this as momentum, this has a higher priority than "
+           "attr(momentum), the shape of this tensor MUST BE [1].")
+      .AsDispensable();
   AddOutput("Y", "result after normalization");
   AddOutput("MeanOut",
             "Share memory with Mean. "
@@ -221,7 +233,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const float epsilon = ctx.Attr<float>("epsilon");
-    const float momentum = ctx.Attr<float>("momentum");
+    float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
 
@@ -304,6 +316,13 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
         }
         default:
           PADDLE_THROW("Unknown storage order: %s", data_layout_str);
+      }
+
+      // if MomentumTensor is set, use MomentumTensor value, momentum
+      // is only used in this training branch
+      if (ctx.HasInput("MomentumTensor")) {
+        const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
+        momentum = mom_tensor->data<float>()[0];
       }
 
       running_mean_arr =
@@ -432,8 +451,9 @@ framework::OpKernelType BatchNormGradOp::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(ctx.Input<Tensor>("X")->type(), ctx.GetPlace(),
-                                 layout, library);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(), layout,
+      library);
 }
 
 template <typename T>
@@ -612,38 +632,47 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
   }
 };
 
-std::unique_ptr<framework::OpDesc> BatchNormGradMaker::Apply() const {
-  auto *op = new framework::OpDesc();
-  op->SetType(GradOpType());
-  op->SetInput("X", Input("X"));
-  op->SetInput(framework::GradVarName("Y"), OutputGrad("Y"));
+template <typename T>
+class BatchNormGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
-  op->SetInput("Scale", Input("Scale"));
-  op->SetInput("Bias", Input("Bias"));
-  op->SetInput("SavedMean", Output("SavedMean"));
-  op->SetInput("SavedVariance", Output("SavedVariance"));
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    auto *op = new T();
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 
-  // used when setting use_global_stats True during training
-  if (boost::get<bool>(GetAttr("use_global_stats"))) {
-    op->SetInput("Mean", Output("MeanOut"));
-    op->SetInput("Variance", Output("VarianceOut"));
+    op->SetInput("Scale", this->Input("Scale"));
+    op->SetInput("Bias", this->Input("Bias"));
+    op->SetInput("SavedMean", this->Output("SavedMean"));
+    op->SetInput("SavedVariance", this->Output("SavedVariance"));
+
+    // used when setting use_global_stats True during training
+    if (boost::get<bool>(this->GetAttr("use_global_stats"))) {
+      op->SetInput("Mean", this->Output("MeanOut"));
+      op->SetInput("Variance", this->Output("VarianceOut"));
+    }
+
+    op->SetAttrMap(this->Attrs());
+
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
+    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+
+    return std::unique_ptr<T>(op);
   }
-
-  op->SetAttrMap(Attrs());
-
-  op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-  op->SetOutput(framework::GradVarName("Scale"), InputGrad("Scale"));
-  op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
-
-  return std::unique_ptr<framework::OpDesc>(op);
-}
+};
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(batch_norm, ops::BatchNormOp, ops::BatchNormOpMaker,
-                  ops::BatchNormOpInferVarType, ops::BatchNormGradMaker);
+                  ops::BatchNormOpInferVarType,
+                  ops::BatchNormGradMaker<paddle::framework::OpDesc>,
+                  ops::BatchNormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(batch_norm_grad, ops::BatchNormGradOp);
 
 REGISTER_OP_CPU_KERNEL(

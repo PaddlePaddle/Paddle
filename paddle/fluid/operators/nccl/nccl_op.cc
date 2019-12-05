@@ -230,10 +230,12 @@ Bcast the tensors.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(ncclInit, ops::NCCLInitOp,
-                  paddle::framework::EmptyGradOpMaker, ops::NCCLInitOpMaker,
-                  ops::NCCLInitOpVarTypeInference,
-                  ops::NCCLInitOpShapeInference);
+REGISTER_OPERATOR(
+    ncclInit, ops::NCCLInitOp,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::NCCLInitOpMaker, ops::NCCLInitOpVarTypeInference,
+    ops::NCCLInitOpShapeInference);
 
 REGISTER_OP_WITHOUT_GRADIENT(ncclAllReduce, ops::NCCLAllReduceOp,
                              ops::NCCLAllReduceOpMaker);

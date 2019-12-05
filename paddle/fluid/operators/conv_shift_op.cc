@@ -193,20 +193,21 @@ class ConvShiftGradKernel<platform::CPUPlace, T>
   }
 };
 
-class ConvShiftGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ConvShiftGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("conv_shift_grad");
-    op->SetInput("X", Input("X"));
-    op->SetInput("Y", Input("Y"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -216,7 +217,8 @@ class ConvShiftGradOpDescMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conv_shift, ops::ConvShiftOp, ops::ConvShiftOpMaker,
-                  ops::ConvShiftGradOpDescMaker);
+                  ops::ConvShiftGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ConvShiftGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv_shift_grad, ops::ConvShiftGradOp);
 REGISTER_OP_CPU_KERNEL(conv_shift,
                        ops::ConvShiftKernel<paddle::platform::CPUPlace, float>);

@@ -46,19 +46,19 @@ def queue_dict(member, cur_name):
     if cur_name in omitted_list:
         return
 
-    try:
-        doc = ('document', md5(member.__doc__))
-        if inspect.isclass(member):
-            args = member.__module__ + "." + member.__name__
-        else:
+    doc = ('document', md5(member.__doc__))
+
+    if inspect.isclass(member):
+        args = member.__module__ + "." + member.__name__
+    else:
+        try:
             args = inspect.getargspec(member)
-        all = (args, doc)
-        member_dict[cur_name] = all
-    except TypeError:  # special for PyBind method
-        member_dict[cur_name] = "  ".join([
-            line.strip() for line in pydoc.render_doc(member).split('\n')
-            if "->" in line
-        ])
+        except TypeError:  # special for PyBind method
+            args = "  ".join([
+                line.strip() for line in pydoc.render_doc(member).split('\n')
+                if "->" in line
+            ])
+    member_dict[cur_name] = (args, doc)
 
 
 def visit_member(parent_name, member):

@@ -53,7 +53,7 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     platform::LRNMKLDNNHandler<T> handler(dims, n, alpha, beta, k, x->format(),
                                           is_test, dev_ctx, ctx.GetPlace(),
-                                          ctx.op().Output("Out"));
+                                          ctx.OutputName("Out"));
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto dst_memory = handler.AcquireDstMemory(out);
@@ -109,9 +109,9 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     auto dims = paddle::framework::vectorize<int>(x->dims());
 
-    platform::LRNMKLDNNHandler<T> handler(
-        dims, n, alpha, beta, k, x->format(), out_grad->format(), dev_ctx,
-        ctx.GetPlace(), ctx.op().Input("Out"));
+    platform::LRNMKLDNNHandler<T> handler(dims, n, alpha, beta, k, x->format(),
+                                          out_grad->format(), dev_ctx,
+                                          ctx.GetPlace(), ctx.InputName("Out"));
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto workspace = handler.AcquireBackwardWorkspaceMemory(mid);

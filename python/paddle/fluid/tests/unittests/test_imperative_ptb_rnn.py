@@ -21,9 +21,11 @@ from paddle.fluid.dygraph.nn import Embedding
 import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.dygraph.base import to_variable
+from paddle.fluid.dygraph.jit import TracedLayer
 from test_imperative_base import new_program_scope
 import numpy as np
 import six
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 
 class SimpleLSTMRNN(fluid.Layer):
@@ -219,6 +221,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
         init_scale = 0.1
         batch_size = 4
         batch_num = 200
+        traced_layer = None
 
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
@@ -239,6 +242,9 @@ class TestDygraphPtbRnn(unittest.TestCase):
             last_hidden = None
             last_cell = None
 
+            helper = DyGraphProgramDescTracerTestHelper(self)
+            program = None
+
             for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
@@ -252,8 +258,25 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
                 init_cell = to_variable(init_cell_data)
-                dy_loss, last_hidden, last_cell = ptb_model(x, y, init_hidden,
-                                                            init_cell)
+                if i % 5 == 0:
+                    outs, traced_layer = TracedLayer.trace(
+                        ptb_model, [x, y, init_hidden, init_cell])
+                    outs_static = traced_layer([x, y, init_hidden, init_cell])
+                    helper.assertEachVar(outs, outs_static)
+
+                    if program is not None:
+                        self.assertTrue(
+                            is_equal_program(traced_layer.program, program))
+
+                    program = traced_layer.program
+
+                    traced_layer.save_inference_model(
+                        './infe_imperative_ptb_rnn', feed=range(4))
+                else:
+                    outs = ptb_model(x, y, init_hidden, init_cell)
+
+                dy_loss, last_hidden, last_cell = outs
+
                 if i == 0:
                     for param in ptb_model.parameters():
                         dy_param_init[param.name] = param.numpy()

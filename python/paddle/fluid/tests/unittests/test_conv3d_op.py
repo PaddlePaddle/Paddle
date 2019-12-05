@@ -75,11 +75,7 @@ def conv3d_forward_naive(input,
         pad = [0, 0, 0, 0, 0, 0]
     elif padding_algorithm == "SAME":
         dilation = [1, 1, 1]
-        input_data_shape = []
-        if data_format == "NCDHW":
-            input_data_shape = input.shape[2:5]
-        elif data_format == "NDHWC":
-            input_data_shape = input.shape[1:4]
+        input_data_shape = input.shape[2:5]
         pad = _get_padding_with_SAME(input_data_shape, ksize, stride)
 
     pad_d_0, pad_d_1 = pad[0], pad[0]
@@ -275,35 +271,45 @@ class TestConv3dOp(OpTest):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
     def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
-        self.check_output_with_place(place, atol=1e-5)
+        self.check_output_with_place(
+            place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
-            place, {'Input', 'Filter'}, 'Output', max_relative_error=0.03)
+            place, {'Input', 'Filter'},
+            'Output',
+            max_relative_error=0.03,
+            check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
             place, ['Input'],
             'Output',
             max_relative_error=0.03,
-            no_grad_set=set(['Filter']))
+            no_grad_set=set(['Filter']),
+            check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
-            place, ['Input'],
+            place, ['Filter'],
             'Output',
             max_relative_error=0.03,
-            no_grad_set=set(['Input']))
+            no_grad_set=set(['Input']),
+            check_dygraph=(self.use_mkldnn == False))
 
     def init_test_case(self):
         self.pad = [0, 0, 0]
@@ -564,7 +570,7 @@ class TestConv3dOp_2(OpTest):
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_grad_with_place(
-            place, ['Input'],
+            place, ['Filter'],
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Input']))
@@ -597,9 +603,34 @@ class TestConv3dOp_2(OpTest):
 
 
 class TestConv3dOp_AsyPadding(TestConv3dOp_2):
+    def init_test_case(self):
+        self.stride = [1, 1, 2]
+        self.input_size = [2, 3, 4, 4, 4]  # NCDHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3, 3]
+
     def init_paddings(self):
         self.pad = [1, 0, 1, 0, 0, 2]
         self.padding_algorithm = "EXPLICIT"
+
+
+class TestConv3dOp_DiffDataInDiffDim(TestConv3dOp_2):
+    def init_test_case(self):
+        self.stride = [1, 1, 2]
+        self.input_size = [2, 3, 4, 5, 5]  # NCDHW
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 4, 3]
+
+    def init_paddings(self):
+        self.pad = [1, 0, 1, 0, 0, 2]
+        self.padding_algorithm = "EXPLICIT"
+
+
+create_test_padding_SAME_class(TestConv3dOp_DiffDataInDiffDim)
+create_test_padding_VALID_class(TestConv3dOp_DiffDataInDiffDim)
+create_test_channel_last_class(TestConv3dOp_DiffDataInDiffDim)
 
 
 class TestCase1_AsyPadding(TestConv3dOp_2):

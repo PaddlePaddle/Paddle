@@ -275,21 +275,32 @@ class TestPool2D_Op(OpTest):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
     def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.has_cudnn():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(
+                place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
         else:
-            self.check_output()
+            self.check_output(check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.has_cudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, set(['X']), 'Out', max_relative_error=0.07)
+                place,
+                set(['X']),
+                'Out',
+                max_relative_error=0.07,
+                check_dygraph=(self.use_mkldnn == False))
         elif self.pool_type != "max":
-            self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
+            self.check_grad(
+                set(['X']),
+                'Out',
+                max_relative_error=0.07,
+                check_dygraph=(self.use_mkldnn == False))
 
     def init_data_format(self):
         self.data_format = "NCHW"
@@ -418,17 +429,26 @@ def create_test_cudnn_fp16_class(parent, check_grad=True):
             self.dtype = np.float16
 
         def test_check_output(self):
+            # TODO(wangzhongpu): support mkldnn op in dygraph mode
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(place, atol=1e-3)
+                    self.check_output_with_place(
+                        place,
+                        atol=1e-3,
+                        check_dygraph=(self.use_mkldnn == False))
 
         def test_check_grad(self):
+            # TODO(wangzhongpu): support mkldnn op in dygraph mode
             place = core.CUDAPlace(0)
             if core.is_float16_supported(
                     place) and self.pool_type != "max" and check_grad:
                 self.check_grad_with_place(
-                    place, set(['X']), 'Out', max_relative_error=0.07)
+                    place,
+                    set(['X']),
+                    'Out',
+                    max_relative_error=0.07,
+                    check_dygraph=(self.use_mkldnn == False))
 
     cls_name = "{0}_{1}".format(parent.__name__, "CUDNNFp16Op")
     TestCUDNNFp16Case.__name__ = cls_name
@@ -950,6 +970,20 @@ create_test_cudnn_padding_VALID_class(TestCase4_channel_last)
 create_test_cudnn_padding_VALID_class(TestCase5_channel_last)
 
 
+class TestCase1_strides(TestCase1):
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 2]
+
+    def init_shape(self):
+        self.shape = [2, 3, 4, 5]
+
+
+create_test_cudnn_class(TestCase1_strides)
+create_test_padding_SAME_class(TestCase1_strides)
+create_test_cudnn_padding_SAME_class(TestCase1_strides)
+
+
 # ----- test API
 class TestPool2dAPI(OpTest):
     def test_api(self):
@@ -1179,7 +1213,7 @@ class TestPool2dAPI_Error(OpTest):
             dtype="float32")
         ksize = [3, 3]
 
-        # cudnn value error
+        # cudnn type error
         def run_1():
             out_1 = fluid.layers.pool2d(
                 input=input_NHWC,
@@ -1189,7 +1223,7 @@ class TestPool2dAPI_Error(OpTest):
                 use_cudnn=[0],
                 data_format="NHWC")
 
-        self.assertRaises(ValueError, run_1)
+        self.assertRaises(TypeError, run_1)
 
         # data_format value error
         def run_2():

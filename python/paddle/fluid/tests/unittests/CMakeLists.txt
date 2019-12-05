@@ -10,12 +10,15 @@ list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
 set(MIXED_DIST_TEST_OPS ${DIST_TEST_OPS})
 #remove distribute unittests.
 list(APPEND MIXED_DIST_TEST_OPS test_dgc_op)
+list(APPEND MIXED_DIST_TEST_OPS test_dgc_momentum_op)
+list(APPEND MIXED_DIST_TEST_OPS test_dgc_optimizer)
 list(APPEND MIXED_DIST_TEST_OPS test_simple_dist_transpiler)
 list(APPEND MIXED_DIST_TEST_OPS test_listen_and_serv_op)
 list(APPEND MIXED_DIST_TEST_OPS test_nce_remote_table_op)
 list(APPEND MIXED_DIST_TEST_OPS test_hsigmoid_remote_table_op)
 list(APPEND MIXED_DIST_TEST_OPS test_lookup_remote_table_op)
 list(APPEND MIXED_DIST_TEST_OPS test_launch)
+list(APPEND MIXED_DIST_TEST_OPS test_launch_ps)
 foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
@@ -68,10 +71,13 @@ if(NOT WITH_MKLML)
     list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
 endif()
 
-if(NOT WITH_MKL)
+if(NOT WITH_MKL OR NOT WITH_AVX)
   list(REMOVE_ITEM TEST_OPS test_match_matrix_tensor_op)
   list(REMOVE_ITEM TEST_OPS test_var_conv_2d)
-endif(NOT WITH_MKL)
+endif()
+if(WITH_COVERAGE OR NOT WITH_AVX OR WIN32)
+  list(REMOVE_ITEM TEST_OPS test_pyramid_hash_op)
+endif()
 
 if(WITH_GPU OR NOT WITH_MKLML)
     # matmul with multiple heads need MKL support
@@ -141,6 +147,7 @@ endfunction()
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
+list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
@@ -248,10 +255,13 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_nce_remote_table_op MODULES test_nce_remote_table_op ENVS ${dist_ENVS})
     if(WITH_DGC)
         py_test_modules(test_dgc_op MODULES test_dgc_op)
+        py_test_modules(test_dgc_momentum_op MODULES test_dgc_momentum_op)
+        py_test_modules(test_dgc_optimizer MODULES test_dgc_optimizer)
     endif()
     if(NOT APPLE)
         bash_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv.sh)
         bash_test_modules(test_launch MODULES test_launch.sh)
+	bash_test_modules(test_launch_ps MODULES test_launch_ps.sh)
 
         set(dist_ut_port 1000)
         foreach(TEST_OP ${DIST_TEST_OPS})
@@ -270,6 +280,7 @@ py_test_modules(test_layers MODULES test_layers ENVS FLAGS_cudnn_deterministic=1
 py_test_modules(test_parallel_executor_seresnext_base_cpu MODULES test_parallel_executor_seresnext_base_cpu)
 py_test_modules(test_parallel_executor_seresnext_with_reduce_cpu MODULES test_parallel_executor_seresnext_with_reduce_cpu)
 py_test_modules(test_parallel_executor_seresnext_with_fuse_all_reduce_cpu MODULES test_parallel_executor_seresnext_with_fuse_all_reduce_cpu)
+py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 
 if(NOT WIN32)
     py_test_modules(test_ir_memory_optimize_transformer MODULES test_ir_memory_optimize_transformer)
@@ -291,7 +302,7 @@ if (WITH_MKLDNN)
 endif()
 
 if (WITH_TESTING)
-    set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=scope_buffered_ssa_graph_executor=5)
+    set_property(TEST test_parallel_executor_mnist PROPERTY ENVIRONMENT GLOG_vmodule=all_reduce_deps_pass=10)
 endif()
 
 set_tests_properties(test_parallel_executor_test_while_train test_parallel_executor_mnist
@@ -300,4 +311,5 @@ set_tests_properties(test_parallel_executor_test_while_train test_parallel_execu
         test_parallel_executor_crf test_sync_batch_norm_op
         test_parallel_executor_feed_persistable_var
         test_parallel_executor_crf_auto_growth test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
+        test_data_norm_op
         test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")

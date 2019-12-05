@@ -60,8 +60,9 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("Anchors")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "Anchors"),
+        ctx.device_context());
   }
 };
 
@@ -294,10 +295,10 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     auto *im_info = context.Input<Tensor>("ImInfo");
     auto anchors = detail::Ref(context.Input<Tensor>("Anchors"),
                                "Cannot find input Anchors(%s) in scope",
-                               context.Inputs("Anchors")[0]);
+                               context.InputNames("Anchors")[0]);
     auto variances = detail::Ref(context.Input<Tensor>("Variances"),
                                  "Cannot find input Variances(%s) in scope",
-                                 context.Inputs("Variances")[0]);
+                                 context.InputNames("Variances")[0]);
 
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
@@ -493,8 +494,9 @@ boxes.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(generate_proposals, ops::GenerateProposalsOp,
-                  ops::GenerateProposalsOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    generate_proposals, ops::GenerateProposalsOp, ops::GenerateProposalsOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(generate_proposals, ops::GenerateProposalsKernel<float>,
                        ops::GenerateProposalsKernel<double>);

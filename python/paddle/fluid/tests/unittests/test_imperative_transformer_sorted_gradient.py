@@ -18,11 +18,14 @@ import unittest
 import paddle.fluid as fluid
 from paddle.fluid import Embedding, LayerNorm, FC, Layer
 from paddle.fluid.dygraph import to_variable, guard
+from paddle.fluid.dygraph.jit import TracedLayer
 from test_imperative_base import new_program_scope
 from paddle.fluid import core
 import numpy as np
 import six
 np.set_printoptions(suppress=True)
+
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
 
 
 # Copy from models
@@ -976,10 +979,32 @@ class TestDygraphTransformerSortGradient(unittest.TestCase):
                 optimizer = fluid.optimizer.SGD(learning_rate=0.003)
             dy_param_init = dict()
             dy_param_updated = dict()
+
+            helper = DyGraphProgramDescTracerTestHelper(self)
+            program = None
+
             for i in range(batch_num):
                 enc_inputs, dec_inputs, label, weights = create_data()
-                dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = transformer(
-                    enc_inputs, dec_inputs, label, weights)
+                if i % 2 == 0:
+                    outs, traced_layer = TracedLayer.trace(
+                        transformer, [enc_inputs, dec_inputs, label, weights])
+
+                    ins_static = enc_inputs + dec_inputs + [label, weights]
+                    outs_static = traced_layer(ins_static)
+                    helper.assertEachVar(outs, outs_static)
+                    if program is not None:
+                        self.assertTrue(
+                            is_equal_program(program, traced_layer.program))
+
+                    program = traced_layer.program
+                    traced_layer.save_inference_model(
+                        './infer_imperative_transformer',
+                        feed=range(len(ins_static)),
+                        fetch=range(len(outs_static)))
+                else:
+                    outs = transformer(enc_inputs, dec_inputs, label, weights)
+
+                dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = outs
 
                 if i == 0:
                     for param in transformer.parameters():

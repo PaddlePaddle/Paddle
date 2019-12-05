@@ -7,8 +7,8 @@ TURN_ON_MKL=$2 # use MKL or Openblas
 
 # download models
 function download() {
-    wget -q http://paddle-tar.bj.bcebos.com/train_demo/LR/main_program
-    wget -q http://paddle-tar.bj.bcebos.com/train_demo/LR/startup_program
+    wget -q http://paddle-tar.bj.bcebos.com/train_demo/LR-1-7/main_program
+    wget -q http://paddle-tar.bj.bcebos.com/train_demo/LR-1-7/startup_program
 }
 
 download

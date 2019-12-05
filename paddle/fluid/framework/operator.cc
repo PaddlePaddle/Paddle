@@ -48,16 +48,6 @@ std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CPUPlace(), LibraryType::kPlain),
 };
 
-proto::VarType::Type GetDataTypeOfVar(const Variable* var) {
-  if (var->IsType<framework::LoDTensor>()) {
-    return var->Get<framework::LoDTensor>().type();
-  } else if (var->IsType<framework::SelectedRows>()) {
-    return var->Get<framework::SelectedRows>().value().type();
-  } else {
-    PADDLE_THROW("Var should be LoDTensor or SelectedRows");
-  }
-}
-
 static DDim GetDimsDebug(const Scope& scope, const std::string& name,
                          bool get_actual_dim = false) {
   Variable* var = scope.FindVar(name);
@@ -183,7 +173,14 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
+  } catch (platform::EOFException&) {
+    std::rethrow_exception(std::current_exception());
+  } catch (std::exception& ex) {
+    LOG(WARNING) << Type() << " raises an exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    std::rethrow_exception(std::current_exception());
   } catch (...) {
+    LOG(WARNING) << Type() << " raises an unknown exception";
     std::rethrow_exception(std::current_exception());
   }
 }
@@ -194,9 +191,11 @@ bool OperatorBase::HasInputs(const std::string& name) const {
 
 std::string OperatorBase::Input(const std::string& name) const {
   auto& ins = Inputs(name);
-  PADDLE_ENFORCE_LE(ins.size(), 1UL,
-                    "Operator %s's input %s should contain only one variable.",
-                    type_, name);
+  PADDLE_ENFORCE_LE(
+      ins.size(), 1UL,
+      platform::errors::AlreadyExists(
+          "Operator %s's input %s should contain only one variable.", type_,
+          name));
   return ins.empty() ? kEmptyVarName : ins[0];
 }
 
@@ -236,15 +235,17 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
   std::stringstream ss;
   ss << "Op(" << type_ << "), inputs:{";
 
-  std::unordered_set<std::string> no_need_buffer_vars;
+  const std::unordered_set<std::string>* no_need_buffer_vars = nullptr;
   if (info_ && info_->NoNeedBufferVarsInferer()) {
     no_need_buffer_vars =
-        Info().NoNeedBufferVarsInferer()(Inputs(), Outputs(), Attrs());
+        &(Info().NoNeedBufferVarsInferer()(Inputs(), Outputs(), Attrs()));
+    if (no_need_buffer_vars->empty()) no_need_buffer_vars = nullptr;
   }
 
   for (auto it = inputs_.begin(); it != inputs_.end();) {
     auto& input = *it;
-    bool is_no_need_buffer_var = (no_need_buffer_vars.count(input.first) > 0);
+    bool is_no_need_buffer_var =
+        (no_need_buffer_vars && no_need_buffer_vars->count(input.first) > 0);
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
       auto var_name = input.second[i];
@@ -320,8 +321,14 @@ OperatorBase::OperatorBase(const std::string& type,
       attrs_(attrs),
       // NOTE(zjl): why op_info may be nullptr?
       info_(OpInfoMap::Instance().GetNullable(type)) {
-  GenerateTemporaryNames();
-  CheckAllInputOutputSet();
+  // In dygraph mode, all the OperatorBase will be constructed by function:
+  // framework::OpRegistry::CreateOp(type, {}, {}, {}, false).
+  // Inputs, outputs and attrs will be set to empty map
+  // to improve the execution efficiency of dygraph.
+  if (inputs_.size() > 0 || outputs_.size() > 0) {
+    GenerateTemporaryNames();
+    CheckAllInputOutputSet();
+  }
 }
 
 std::vector<std::string> OperatorBase::InputVars() const {
@@ -430,9 +437,11 @@ const Variable* ExecutionContext::InputVar(const std::string& name) const {
   auto it = ctx_.inputs.find(name);
   if (it == ctx_.inputs.end()) return nullptr;
 
-  PADDLE_ENFORCE_LE(it->second.size(), 1UL,
-                    "Operator %s's input %s should contain only one variable.",
-                    op_.Type(), name);
+  PADDLE_ENFORCE_LE(
+      it->second.size(), 1UL,
+      platform::errors::AlreadyExists(
+          "Operator %s's input %s should contain only one variable.",
+          op_.Type(), name));
   return it->second.empty() ? nullptr : it->second[0];
 }
 
@@ -454,15 +463,14 @@ const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
 template <>
 const std::vector<const Tensor*> ExecutionContext::MultiInput<Tensor>(
     const std::string& name) const {
-  auto it = ctx_.inputs.find(name);
-  if (it == ctx_.inputs.end()) {
+  auto vars = MultiInputVar(name);
+  if (vars.size() == 0) {
     return {};
   }
-  const std::vector<Variable*>& vars = it->second;
   std::vector<const Tensor*> res;
   res.reserve(vars.size());
   std::transform(vars.begin(), vars.end(), std::back_inserter(res),
-                 [&](Variable* var) -> const Tensor* {
+                 [&](const Variable* var) -> const Tensor* {
                    if (var == nullptr) return nullptr;
                    PADDLE_ENFORCE(
                        var->IsType<LoDTensor>(),
@@ -481,11 +489,11 @@ Tensor* ExecutionContext::Output<Tensor>(const std::string& name) const {
 template <>
 std::vector<Tensor*> ExecutionContext::MultiOutput<Tensor>(
     const std::string& name) const {
-  auto it = ctx_.outputs.find(name);
-  if (it == ctx_.outputs.end()) {
+  auto vars = MultiOutputVar(name);
+
+  if (vars.size() == 0) {
     return {};
   }
-  const std::vector<Variable*>& vars = it->second;
   std::vector<Tensor*> res;
   res.reserve(vars.size());
   std::transform(vars.begin(), vars.end(), std::back_inserter(res),
@@ -577,13 +585,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
 
-  const std::vector<std::string>& Inputs(
-      const std::string& name) const override {
+  std::vector<std::string> Inputs(const std::string& name) const override {
     return op_.Inputs(name);
   }
 
-  const std::vector<std::string>& Outputs(
-      const std::string& name) const override {
+  std::vector<std::string> Outputs(const std::string& name) const override {
     return op_.Outputs(name);
   }
 
@@ -616,6 +622,51 @@ class RuntimeInferShapeContext : public InferShapeContext {
       PADDLE_THROW(
           "Currently, the input type of ShareDim only can be LoDTensor "
           "or SelectedRows.");
+    }
+  }
+
+  void ShareAllLoD(const std::string& in,
+                   const std::string& out) const override {
+    auto in_it = ctx_.inputs.find(in);
+    auto out_it = ctx_.outputs.find(out);
+    PADDLE_ENFORCE_NE(in_it, ctx_.inputs.end(),
+                      platform::errors::NotFound(
+                          "Input [%s] found error in Op [%s]", in, op_.Type()));
+    PADDLE_ENFORCE_NE(
+        out_it, ctx_.outputs.end(),
+        platform::errors::NotFound("Output [%s] found error in Op [%s]", out,
+                                   op_.Type()));
+
+    auto& in_var_list = in_it->second;
+    auto& out_var_list = out_it->second;
+
+    PADDLE_ENFORCE_EQ(
+        in_var_list.size(), out_var_list.size(),
+        platform::errors::PreconditionNotMet(
+            "Op [%s]: Input var size should be equal with ouput var size",
+            op_.Type()));
+
+    auto& out_var_names = op_.Outputs(out);
+
+    for (size_t i = 0; i < in_var_list.size(); ++i) {
+      if (out_var_names[i] == framework::kEmptyVarName) {
+        continue;
+      }
+
+      Variable* in_var = in_var_list[i];
+      if (!in_var->IsType<LoDTensor>()) return;
+      Variable* out_var = out_var_list[i];
+      PADDLE_ENFORCE_EQ(out_var->IsType<LoDTensor>(), true,
+                        platform::errors::PreconditionNotMet(
+                            "The %d-th output of Output(%s) must be LoDTensor.",
+                            i, out_var_names[i]));
+      auto& in_tensor = in_var->Get<LoDTensor>();
+      auto* out_tensor = out_var->GetMutable<LoDTensor>();
+      out_tensor->set_lod(in_tensor.lod());
+#ifdef PADDLE_WITH_MKLDNN
+      if (in_tensor.layout() != DataLayout::kMKLDNN)
+#endif
+        out_tensor->set_layout(in_tensor.layout());
     }
   }
 
@@ -658,9 +709,19 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_tensor->set_layout(in_tensor.layout());
   }
 
-  void DecreaseLoDLevel(const std::string& in, const std::string& out,
-                        size_t i = 0, size_t j = 0) const override {
-    PADDLE_THROW("DecreaseLoDLevel is only used in compile time.");
+  int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override {
+    PADDLE_THROW(
+        "GetLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
+  }
+
+  void SetLoDLevel(const std::string& out, int32_t lod_level,
+                   size_t j = 0) const override {
+    PADDLE_THROW(
+        "SetLoDLevel is only used in compile time. The calculation of "
+        "output's actual lod is different among operators so that should be "
+        "set in the runtime kernel.");
   }
 
   bool IsRuntime() const override { return true; }
@@ -1019,21 +1080,18 @@ Scope* OperatorWithKernel::PrepareData(
     RuntimeContext* ctx) const {
   Scope* new_scope = nullptr;
 
-  std::unordered_set<std::string> no_buffer_ins;
+  const std::unordered_set<std::string>* no_buffer_ins = nullptr;
   if (info_) {
     auto& no_buffer_inferer = info_->NoNeedBufferVarsInferer();
     // Some op may not register NoNeedBufferVarsInferer
     if (no_buffer_inferer) {
-      no_buffer_ins = no_buffer_inferer(Inputs(), Outputs(), Attrs());
+      no_buffer_ins = &(no_buffer_inferer(Inputs(), Outputs(), Attrs()));
+      if (no_buffer_ins->empty()) no_buffer_ins = nullptr;
     }
   }
 
   for (auto& var_name_item : Inputs()) {
-    // NOTE(zjl): STL does not guarantee fast std::unordered_set::count when set
-    // is empty. At least STL implemented on my mac does calculate hash code
-    // of search key even though the set is empty.
-    if (!no_buffer_ins.empty() &&
-        no_buffer_ins.count(var_name_item.first) > 0) {
+    if (no_buffer_ins && no_buffer_ins->count(var_name_item.first) > 0) {
       VLOG(7) << "Skip scanning input " << var_name_item.first
               << " in Operator " << type_;
       continue;
@@ -1128,7 +1186,7 @@ void OperatorWithKernel::ParseInputDataType(
     proto::VarType::Type* data_type) const {
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
-  const std::vector<const Variable*> vars = ctx.MultiInputVar(name);
+  const std::vector<Variable*> vars = ctx.MultiInputVar(name);
   for (size_t i = 0; i < vars.size(); ++i) {
     const Variable* var = vars[i];
     if (var != nullptr) {
@@ -1141,17 +1199,21 @@ void OperatorWithKernel::ParseInputDataType(
         t = &(var->Get<SelectedRows>().value());
       }
       if (t != nullptr) {
-        PADDLE_ENFORCE_EQ(t->IsInitialized(), true,
-                          "The Tensor in the %s Op's Input Variable %s(%s) is "
-                          "not initialized.",
-                          Type(), name, ctx.Inputs(name).at(i));
+        PADDLE_ENFORCE_EQ(
+            t->IsInitialized(), true,
+            platform::errors::InvalidArgument(
+                "The Tensor in the %s Op's Input Variable %s(%s) is "
+                "not initialized.",
+                Type(), name, ctx.InputNames(name).at(i)));
         proto::VarType::Type tmp = t->type();
-        PADDLE_ENFORCE(tmp == *data_type || *data_type == dafault_data_type,
-                       "The DataType of %s Op's duplicable Variable %s must be "
-                       "consistent. The current variable type is (%s), but the "
-                       "previous variable type is (%s).",
-                       Type(), name, DataTypeToString(tmp),
-                       DataTypeToString(*data_type));
+        PADDLE_ENFORCE(
+            tmp == *data_type || *data_type == dafault_data_type,
+            platform::errors::InvalidArgument(
+                "The DataType of %s Op's duplicable Variable %s must be "
+                "consistent. The current variable type is (%s), but the "
+                "previous variable type is (%s).",
+                Type(), name, DataTypeToString(tmp),
+                DataTypeToString(*data_type)));
         *data_type = tmp;
       }
     }
@@ -1163,8 +1225,8 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  for (auto& input : this->inputs_) {
-    ParseInputDataType(ctx, input.first, &data_type);
+  for (auto& input : ctx.InNameList()) {
+    ParseInputDataType(ctx, input, &data_type);
   }
   PADDLE_ENFORCE_NE(data_type, dafault_data_type,
                     "DataType should be indicated by input Variable.");

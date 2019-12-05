@@ -135,10 +135,10 @@ template <typename T1, typename T2>
 class CPUKernelTest : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    std::cout << ctx.op().DebugString() << std::endl;
+    std::cout << ctx.DebugString() << std::endl;
     cpu_kernel_run_num++;
-    ASSERT_EQ(ctx.op().Input("x"), "IN1");
-    ASSERT_EQ(ctx.op().Output("y"), "OUT1");
+    ASSERT_EQ(ctx.InputName("x"), "IN1");
+    ASSERT_EQ(ctx.OutputName("y"), "OUT1");
   }
 };
 
@@ -146,10 +146,10 @@ template <typename T1, typename T2>
 class CPUKernel2Test : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    std::cout << ctx.op().DebugString() << std::endl;
+    std::cout << ctx.DebugString() << std::endl;
     cpu_kernel2_run_num++;
-    ASSERT_EQ(ctx.op().Input("x"), "IN1");
-    ASSERT_EQ(ctx.op().Output("y"), "OUT1");
+    ASSERT_EQ(ctx.InputName("x"), "IN1");
+    ASSERT_EQ(ctx.OutputName("y"), "OUT1");
   }
 };
 
@@ -172,7 +172,7 @@ class OpKernelTestMultiInputsProtoAndCheckerMaker
 class CPUKernalMultiInputsTest : public OpKernel<float> {
  public:
   void Compute(const ExecutionContext& ctx) const {
-    auto xs = ctx.op().Inputs("xs");
+    auto xs = ctx.InputNames("xs");
     ASSERT_EQ(xs.size(), 3UL);
     ASSERT_EQ(xs[0], "x0");
     ASSERT_EQ(xs[1], "x1");
@@ -196,10 +196,10 @@ class CPUKernalMultiInputsTest : public OpKernel<float> {
     auto outTensor0 = ctx.MultiOutput<Tensor>("ys");
     ASSERT_EQ(outTensor0.size(), 2U);
 
-    auto k = ctx.op().Input("k");
+    auto k = ctx.InputName("k");
     ASSERT_EQ(k, "k0");
 
-    auto ys = ctx.op().Outputs("ys");
+    auto ys = ctx.OutputNames("ys");
     ASSERT_EQ(ys.size(), 2UL);
     ASSERT_EQ(ys[0], "y0");
     ASSERT_EQ(ys[1], "y1");
@@ -331,6 +331,7 @@ class IndicateLoDTensorDataTypeTest : public OperatorWithKernel {
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
+
 class IndicateLoDTensorDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {
@@ -382,7 +383,7 @@ class IndicateOtherDataTypeTestProtoMaker : public OpProtoAndCheckerMaker {
 };
 
 template <typename DeviceContext, typename T>
-class IndicateVarDataTypeKernelTest : public OpKernel<T> {
+class EmptyTestKernel : public OpKernel<T> {
  public:
   void Compute(const ExecutionContext& ctx) const {}
 };
@@ -403,13 +404,13 @@ REGISTER_OP_WITHOUT_GRADIENT(
     paddle::framework::IndicateOtherDataTypeTestProtoMaker);
 
 REGISTER_OP_CPU_KERNEL(indicate_lod_tensor_data_type_test,
-                       paddle::framework::IndicateVarDataTypeKernelTest<
+                       paddle::framework::EmptyTestKernel<
                            paddle::platform::CPUDeviceContext, int>);
 REGISTER_OP_CPU_KERNEL(indicate_selected_rows_data_type_test,
-                       paddle::framework::IndicateVarDataTypeKernelTest<
+                       paddle::framework::EmptyTestKernel<
                            paddle::platform::CPUDeviceContext, int>);
 REGISTER_OP_CPU_KERNEL(indicate_other_data_type_test,
-                       paddle::framework::IndicateVarDataTypeKernelTest<
+                       paddle::framework::EmptyTestKernel<
                            paddle::platform::CPUDeviceContext, int>);
 
 TEST(IndicateVarDataTypeTest, lodtensor) {
@@ -428,7 +429,7 @@ TEST(IndicateVarDataTypeTest, lodtensor) {
   bool caught = false;
   try {
     op->Run(scope, cpu_place);
-  } catch (paddle::platform::EnforceNotMet err) {
+  } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
     EXPECT_TRUE(
@@ -456,7 +457,7 @@ TEST(IndicateVarDataTypeTest, selectedrows) {
   bool caught = false;
   try {
     op->Run(scope, cpu_place);
-  } catch (paddle::platform::EnforceNotMet err) {
+  } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
     EXPECT_TRUE(
@@ -483,7 +484,7 @@ TEST(IndicateVarDataTypeTest, other) {
   bool caught = false;
   try {
     op->Run(scope, cpu_place);
-  } catch (paddle::platform::EnforceNotMet err) {
+  } catch (paddle::platform::EnforceNotMet& err) {
     caught = true;
     std::string ex_msg = err.what();
     EXPECT_TRUE(ex_msg.find("The Input Variable(Other) of "
@@ -494,3 +495,134 @@ TEST(IndicateVarDataTypeTest, other) {
   }
   ASSERT_TRUE(caught);
 }
+
+TEST(ExecutionContextAttrAndInOut, new_api) {
+  paddle::framework::InitDevices(true);
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type("test_operator");
+  BuildVar("input", {"IN1"}, op_desc.add_inputs());
+  BuildVar("output", {"OUT1"}, op_desc.add_outputs());
+
+  auto attr = op_desc.mutable_attrs()->Add();
+  attr->set_name("scale");
+  attr->set_type(paddle::framework::proto::AttrType::FLOAT);
+  attr->set_f(3.14);
+
+  paddle::platform::CPUPlace cpu_place;
+  paddle::framework::Scope scope;
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto* var = scope.Var("OUT1");
+  var->GetMutable<paddle::framework::LoDTensorArray>();
+
+  paddle::platform::DeviceContextPool& pool =
+      paddle::platform::DeviceContextPool::Instance();
+  auto* dev_ctx = pool.Get(cpu_place);
+
+  paddle::framework::RuntimeContext ctx({}, {});
+  paddle::framework::ExecutionContext exe_context(*(op.get()), scope, *dev_ctx,
+                                                  ctx, nullptr);
+
+  ASSERT_EQ(exe_context.InputSize("input"), 1u);
+  ASSERT_EQ(exe_context.OutputSize("output"), 1u);
+
+  auto attr_map = exe_context.Attrs();
+  ASSERT_EQ(boost::get<float>(attr_map["scale"]), 3.14f);
+  ASSERT_EQ(exe_context.Type(), "test_operator");
+}
+
+namespace paddle {
+namespace framework {
+
+class GetLoDLevelTest : public OperatorWithKernel {
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
+                      "Input(X) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) should not be null.");
+    PADDLE_ENFORCE_GT(ctx->GetLoDLevel("X"), 0,
+                      "The LoD level Input(X) should be larger than 0.");
+  }
+};
+
+class SetLoDLevelTest : public OperatorWithKernel {
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("X"), true,
+                      "Input(X) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+                      "Output(Out) should not be null.");
+    ctx->SetLoDLevel("Out", 1);
+  }
+};
+
+class GetSetLoDLevelTestMaker : public OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddInput("X", "(LoDTensor) Input Variable.");
+    AddOutput("Out", "(LoDTensor) Output Variable.");
+    AddComment("This Op is only for Get/SetLoDLevel inferface test.");
+  }
+};
+
+}  // namespace framework
+}  // namespace paddle
+
+REGISTER_OP_WITHOUT_GRADIENT(get_lod_level_test,
+                             paddle::framework::GetLoDLevelTest,
+                             paddle::framework::GetSetLoDLevelTestMaker);
+REGISTER_OP_CPU_KERNEL(get_lod_level_test,
+                       paddle::framework::EmptyTestKernel<
+                           paddle::platform::CPUDeviceContext, float>);
+
+REGISTER_OP_WITHOUT_GRADIENT(set_lod_level_test,
+                             paddle::framework::SetLoDLevelTest,
+                             paddle::framework::GetSetLoDLevelTestMaker);
+REGISTER_OP_CPU_KERNEL(set_lod_level_test,
+                       paddle::framework::EmptyTestKernel<
+                           paddle::platform::CPUDeviceContext, float>);
+
+void SetGetLoDLevelTestMain(std::string op_type) {
+  paddle::framework::InitDevices(false, {});
+  paddle::framework::proto::OpDesc op_desc;
+  op_desc.set_type(op_type);
+  BuildVar("X", {"x.0"}, op_desc.add_inputs());
+  BuildVar("Out", {"out.0"}, op_desc.add_outputs());
+
+  paddle::platform::CPUPlace place;
+  paddle::framework::Scope scope;
+
+  auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
+  auto* x_var = scope.Var("x.0");
+  auto* x = x_var->GetMutable<paddle::framework::LoDTensor>();
+  x->mutable_data<float>(paddle::framework::make_ddim({64}), place);
+  auto* out_var = scope.Var("out.0");
+  out_var->GetMutable<paddle::framework::LoDTensor>();
+
+  bool caught = false;
+  std::string err_str =
+      (op_type == "get_lod_level_test") ? "GetLoDLevel" : "SetLoDLevel";
+  err_str +=
+      " is only used in compile time. The calculation of output's actual lod "
+      "is different among operators so that should be set in the runtime "
+      "kernel.";
+  try {
+    op->Run(scope, place);
+  } catch (paddle::platform::EnforceNotMet& err) {
+    caught = true;
+    std::string ex_msg = err.what();
+    EXPECT_TRUE(ex_msg.find(err_str) != std::string::npos);
+  }
+  ASSERT_TRUE(caught);
+}
+
+TEST(GetLoDLevelTest, base) { SetGetLoDLevelTestMain("get_lod_level_test"); }
+
+TEST(SetLoDLevelTest, base) { SetGetLoDLevelTestMain("set_lod_level_test"); }

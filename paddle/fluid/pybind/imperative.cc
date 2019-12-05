@@ -229,6 +229,10 @@ void BindImperative(py::module *m_ptr) {
   m.def("_is_dygraph_debug_enabled",
         []() { return imperative::IsDebugEnabled(); });
   m.def("_dygraph_debug_level", []() { return imperative::GetDebugLevel(); });
+  m.def("_switch_tracer",
+        [](const std::shared_ptr<imperative::Tracer> &tracer) {
+          imperative::SetCurrentTracer(tracer);
+        });
 
   py::class_<imperative::VarBase, std::shared_ptr<imperative::VarBase>>(
       m, "VarBase",
@@ -273,7 +277,10 @@ void BindImperative(py::module *m_ptr) {
       .def("_grad_ivar",
            [](const imperative::VarBase &self) {
              auto &grad_var = self.GradVarBase();
-             if (grad_var && grad_var->Var().IsInitialized()) {
+             auto *tensor =
+                 grad_var->MutableVar()->GetMutable<framework::LoDTensor>();
+             if (grad_var && grad_var->Var().IsInitialized() &&
+                 tensor->IsInitialized()) {
                return grad_var;
              } else {
                return std::shared_ptr<imperative::VarBase>(nullptr);
@@ -320,9 +327,46 @@ void BindImperative(py::module *m_ptr) {
              return self.Forward(inputs);
            });
 
-  py::class_<imperative::Tracer>(m, "Tracer", "")
+  py::class_<imperative::jit::ProgramDescTracer>(m, "ProgramDescTracer", "")
+      .def("create_program_desc",
+           &imperative::jit::ProgramDescTracer::CreateProgramDesc)
+      .def("reset", &imperative::jit::ProgramDescTracer::Reset);
+
+  py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
+      m, "Tracer",
+      R"DOC()DOC")
       .def("__init__",
            [](imperative::Tracer &self) { new (&self) imperative::Tracer(); })
+      .def_property("_enable_program_desc_tracing",
+                    &imperative::Tracer::IsProgramDescTracingEnabled,
+                    &imperative::Tracer::SetEnableProgramDescTracing)
+      .def_property("_train_mode", &imperative::Tracer::NoGrad,
+                    &imperative::Tracer::SetNoGrad)
+      .def_property(
+          "_expected_place",
+          [](const imperative::Tracer &self) -> py::object {
+            return py::cast(self.ExpectedPlace());
+          },
+          [](imperative::Tracer &self, const py::object &obj) {
+            if (py::isinstance<platform::CUDAPlace>(obj)) {
+              auto p = obj.cast<platform::CUDAPlace *>();
+              self.SetExpectedPlace<platform::CUDAPlace>(*p);
+            } else if (py::isinstance<platform::CPUPlace>(obj)) {
+              auto p = obj.cast<platform::CPUPlace *>();
+              self.SetExpectedPlace<platform::CPUPlace>(*p);
+            } else if (py::isinstance<platform::CUDAPinnedPlace>(obj)) {
+              auto p = obj.cast<platform::CUDAPinnedPlace *>();
+              self.SetExpectedPlace<platform::CUDAPinnedPlace>(*p);
+            } else {
+              PADDLE_THROW(
+                  "Incompatible Place Type: supports CUDAPlace, CPUPlace, "
+                  "CUDAPinnedPlace, "
+                  "but got Unknown Type!");
+            }
+          })
+      .def("_get_program_desc_tracer",
+           &imperative::Tracer::GetProgramDescTracer,
+           py::return_value_policy::reference)
       .def("trace",
            [](imperative::Tracer &self, const std::string &type,
               const PyNameVarBaseMap &ins, const PyNameVarBaseMap &outs,

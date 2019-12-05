@@ -540,13 +540,12 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
     auto dst_md =
         platform::MKLDNNMemDesc(dst_dims, dt, MKLDNNMemoryFormat::any);
 
-    std::vector<int> padding_left_top(paddings);
-    std::vector<int> padding_right_bottom(paddings);
+    auto mkldnn_paddings = ToMkldnnPadding(paddings);
+
     if (ceil_mode) {
       CorrectOutputSize(src_dims, dst_dims, ksize, paddings, strides,
-                        padding_right_bottom);
+                        mkldnn_paddings[1]);
     }
-
     this->AcquireForwardPrimitiveDescriptor(
         is_test ? mkldnn::prop_kind::forward_inference
                 : mkldnn::prop_kind::forward_training,
@@ -555,7 +554,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
             : (exclude_padding
                    ? mkldnn::algorithm::pooling_avg_exclude_padding
                    : mkldnn::algorithm::pooling_avg_include_padding),
-        src_md, dst_md, strides, ksize, padding_left_top, padding_right_bottom,
+        src_md, dst_md, strides, ksize, mkldnn_paddings[0], mkldnn_paddings[1],
         mkldnn::padding_kind::zero);
   }
 
@@ -578,14 +577,16 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
         mkldnn::memory::desc(diff_src_dims, platform::MKLDNNGetDataType<T>(),
                              MKLDNNMemoryFormat::any);
 
+    auto mkldnn_paddings = ToMkldnnPadding(paddings);
+
     this->AcquireBackwardPrimitiveDescriptor(
         pooling_type == "max"
             ? mkldnn::algorithm::pooling_max
             : (exclude_padding
                    ? mkldnn::algorithm::pooling_avg_exclude_padding
                    : mkldnn::algorithm::pooling_avg_include_padding),
-        diff_src_md, diff_dst_md, strides, ksize, paddings, paddings,
-        mkldnn::padding_kind::zero);
+        diff_src_md, diff_dst_md, strides, ksize, mkldnn_paddings[0],
+        mkldnn_paddings[1], mkldnn::padding_kind::zero);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireWorkspaceMemory(void) {
@@ -632,6 +633,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
   }
 };
 
+template <typename T>
 class TransposeMKLDNNHandler : public MKLDNNHandler {
  public:
   TransposeMKLDNNHandler(std::vector<int>& dims,  // NOLINT
@@ -654,9 +656,10 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
       for (size_t i = 0; i < logical_axis_.size(); ++i) {
         logical_axis_[i] = i;
       }
-      auto src_md = fmt != MKLDNNMemoryFormat::nchw
+
+      auto src_md = fmt != mkldnn::memory::format::nchw
                         ? platform::MKLDNNMemDesc(
-                              dims_, platform::MKLDNNGetDataType<float>(), fmt)
+                              dims_, platform::MKLDNNGetDataType<T>(), fmt)
                         : Axis2MemoryDesc(dims_, logical_axis_);
       mem_p = std::make_shared<mkldnn::memory>(
           mkldnn::memory::primitive_desc{src_md, engine_}, ptr);
@@ -676,12 +679,12 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
       auto dst_mdp = mkldnn::memory::primitive_desc{
           Axis2MemoryDesc(dims_, axis_), engine_};
 
-      auto dst_data = output->mutable_data<float>(place, dst_mdp.get_size());
+      auto dst_data = output->mutable_data<T>(place, dst_mdp.get_size());
 
       mem_p = std::make_shared<mkldnn::memory>(dst_mdp, dst_data);
       dev_ctx_.SetBlob(local_key, mem_p);
     } else {
-      auto dst_data = output->mutable_data<float>(place);
+      auto dst_data = output->mutable_data<T>(place);
       mem_p->set_data_handle(dst_data);
     }
     return mem_p;
@@ -702,9 +705,9 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
   }
 
  protected:
-  mkldnn_memory_desc_t Axis2MemoryDesc(std::vector<int>& nchw_tz,  // NOLINT
-                                       std::vector<int>& axis      // NOLINT
-                                       ) {
+  mkldnn_memory_desc_t Axis2MemoryDesc(
+      const std::vector<int>& nchw_tz,  // NOLINT
+      const std::vector<int>& axis) {
     mkldnn_memory_desc_t mem_fmt;
 
     mem_fmt.primitive_kind = mkldnn_memory;
@@ -713,7 +716,12 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
       mem_fmt.dims[i] = nchw_tz[i];  // logical dimensions (nchw format,
       // regardless physical layout)
     }
-    mem_fmt.data_type = mkldnn_f32;
+    if (platform::MKLDNNGetDataType<T>() == mkldnn::memory::data_type::s8)
+      mem_fmt.data_type = mkldnn_s8;
+    else if (platform::MKLDNNGetDataType<T>() == mkldnn::memory::data_type::u8)
+      mem_fmt.data_type = mkldnn_u8;
+    else
+      mem_fmt.data_type = mkldnn_f32;
     mem_fmt.format = mkldnn_blocked;
 
     unsigned int total_stride = 1;
@@ -1035,17 +1043,19 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
           dev_ctx_.GetBlob(key_conv_pd));
       if (conv_pd_ == nullptr) {
         mkldnn::memory::dims stride_dims = strides;
-        mkldnn::memory::dims padding_dims = paddings;
+
+        auto mkldnn_paddings = ToMkldnnPadding(paddings);
 
         auto conv_desc =
-            bias ? typename forward_t::desc(
-                       fwd_prop_kind, convolutional_algorithm<forward_t>::T,
-                       src, weights, *bias, dst, stride_dims, padding_dims,
-                       padding_dims, mkldnn::padding_kind::zero)
-                 : typename forward_t::desc(
-                       fwd_prop_kind, convolutional_algorithm<forward_t>::T,
-                       src, weights, dst, stride_dims, padding_dims,
-                       padding_dims, mkldnn::padding_kind::zero);
+            bias
+                ? typename forward_t::desc(
+                      fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
+                      weights, *bias, dst, stride_dims, mkldnn_paddings[0],
+                      mkldnn_paddings[1], mkldnn::padding_kind::zero)
+                : typename forward_t::desc(
+                      fwd_prop_kind, convolutional_algorithm<forward_t>::T, src,
+                      weights, dst, stride_dims, mkldnn_paddings[0],
+                      mkldnn_paddings[1], mkldnn::padding_kind::zero);
 
         mkldnn::primitive_attr conv_attr =
             CreatePostOps(fuse_activation, fuse_alpha, fuse_beta,

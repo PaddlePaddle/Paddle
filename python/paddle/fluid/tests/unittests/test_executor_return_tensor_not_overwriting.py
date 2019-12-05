@@ -47,7 +47,7 @@ class TestExecutorReturnTensorNotOverwritingWithOptest(OpTest):
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
         self.outputs = {'Out': self.out}
-        self.op_type = "elementwise_mul"
+        self.op_type = "mul"
         self.dtype = np.float32
         outs, fetch_list = self._calc_output(place, parallel=parallel)
         return outs

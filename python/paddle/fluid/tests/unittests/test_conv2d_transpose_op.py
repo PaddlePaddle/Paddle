@@ -59,12 +59,8 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
     if padding_algorithm == "VALID":
         pad = [0, 0, 0, 0]
     elif padding_algorithm == "SAME":
-        dilation = [1, 1]
-        input_data_shape = []
-        if attrs['data_format'] == "NCHW":
-            input_data_shape = input_.shape[2:4]
-        elif attrs['data_format'] == "NHWC":
-            input_data_shape = input_.shape[1:3]
+        dilations = [1, 1]
+        input_data_shape = input_.shape[2:4]
         pad = _get_padding_with_SAME(input_data_shape, ksize, stride)
 
     pad_h_0, pad_h_1 = pad[0], pad[0]
@@ -99,7 +95,7 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
                             filter_[g * sub_in_c:(g + 1) * sub_in_c, k, :, :],
                             axis=0)
                         i1, i2 = i * stride[0], i * stride[0] + d_bolck_h
-                        j1, j2 = j * stride[0], j * stride[0] + d_bolck_h
+                        j1, j2 = j * stride[1], j * stride[1] + d_bolck_w
                         out[n, g * f_out_c + k, i1:i2:dilations[0], j1:j2:
                             dilations[1]] += tmp_out
 
@@ -146,11 +142,13 @@ class TestConv2dTransposeOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(
+                place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
         else:
-            self.check_output()
+            self.check_output(check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_input(self):
         if self.use_cudnn:
@@ -231,12 +229,12 @@ class TestWithAsymmetricPad(TestConv2dTransposeOp):
 
 class TestWithSAMEPad(TestConv2dTransposeOp):
     def init_test_case(self):
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
+        self.stride = [2, 1]
+        self.dilations = [1, 2]
         self.groups = 1
-        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.input_size = [2, 3, 6, 5]  # NCHW
         f_c = self.input_size[1]
-        self.filter_size = [f_c, 6, 3, 3]
+        self.filter_size = [f_c, 6, 4, 3]
         self.padding_algorithm = 'SAME'
 
 
@@ -429,7 +427,7 @@ class TestCUDNNWithAsymmetricPad(TestWithAsymmetricPad):
 class TestCUDNNWithSAMEPad(TestWithSAMEPad):
     def init_test_case(self):
         self.pad = [1, 0, 1, 2]
-        self.stride = [1, 1]
+        self.stride = [1, 2]
         self.groups = 1
         self.dilations = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW

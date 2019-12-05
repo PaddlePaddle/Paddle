@@ -402,33 +402,31 @@ class RequestNotify final : public RequestBase {
                          RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
     request_.reset(new GRPCVariableResponse(request_handler->scope(),
-                                            request_handler->dev_ctx()));
+                                            request_handler->dev_ctx(),
+                                            !request_handler->sync_mode()));
     int method_id = static_cast<int>(distributed::GrpcMethod::kRequestNotify);
     service_->RequestAsyncUnary(
         method_id, &ctx_, request_.get(), &responder_, cq_, cq_,
         reinterpret_cast<void*>(static_cast<intptr_t>(req_id)));
   }
-
   virtual ~RequestNotify() {}
-
   std::string GetReqName() override { return request_->Varname(); }
 
   void Process() override {
+    std::string varname = GetReqName();
+    VLOG(4) << "RequestNotify var_name:" << varname;
+
     auto scope = request_->GetMutableLocalScope();
-
-    std::string varname = request_->Varname();
+    auto invar = request_->GetVar();
     int trainer_id = request_->GetTrainerId();
-
-    VLOG(4) << "RequestNotify notify: " << varname
-            << ", trainer id: " << trainer_id;
-
-    request_handler_->Handle(varname, scope, nullptr, nullptr, trainer_id);
+    framework::Variable* outvar = nullptr;
+    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
     Finish(reply_, &responder_);
   }
 
  protected:
-  std::shared_ptr<GRPCVariableResponse> request_;
   sendrecv::VoidMessage reply_;
+  std::shared_ptr<GRPCVariableResponse> request_;
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
 };
 

@@ -43,7 +43,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use CUDAPlace.");
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
-    const float momentum = ctx.Attr<float>("momentum");
+    float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
@@ -133,6 +133,15 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
           est_mean->template data<BatchNormParamType<T>>(),
           est_var->template data<BatchNormParamType<T>>(), epsilon));
     } else {
+      // if MomentumTensor is set, use MomentumTensor value, momentum
+      // is only used in this training branch
+      if (ctx.HasInput("MomentumTensor")) {
+        const auto *mom_tensor = ctx.Input<Tensor>("MomentumTensor");
+        Tensor mom_cpu;
+        TensorCopySync(*mom_tensor, platform::CPUPlace(), &mom_cpu);
+        momentum = mom_cpu.data<float>()[0];
+      }
+
       // Run training mode.
       // obtain running mean and running inv var, and see if we need to
       // initialize them.
@@ -418,7 +427,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           }
         } else {
           if (d_x) {
-            BNBackwardData<T, block, framework::DataLayout::kNCHW><<<
+            BNBackwardData<T, block, framework::DataLayout::kNHWC><<<
                 grid2, block, 0, dev_ctx.stream()>>>(
                 d_y->data<T>(), scale->data<BatchNormParamType<T>>(),
                 saved_mean_data, x->data<T>(), saved_var_data, C, N, H * W * D,

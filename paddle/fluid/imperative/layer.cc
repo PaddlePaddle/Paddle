@@ -53,7 +53,18 @@ static framework::VariableNameMap CreateVarNameMap(
     const framework::OpInfo& op_info, const std::string& op_type,
     const NameVarBaseMap& varbase_map, bool is_input) {
   if (op_info.proto_ == nullptr) {
-    return {};
+    framework::VariableNameMap result;
+
+    for (auto& it : varbase_map) {
+      auto& var_vector = it.second;
+      std::vector<std::string> args;
+      args.reserve(var_vector.size());
+      for (auto& var_base : var_vector) {
+        args.emplace_back(var_base->Name());
+      }
+      result[it.first] = std::move(args);
+    }
+    return result;
   }
 
   framework::VariableNameMap result;
@@ -129,6 +140,22 @@ static std::string DebugString(
         ss << "NOT_INITED";
       }
       ss << ">";
+    } else if (var.IsType<framework::SelectedRows>()) {
+      ss << "SelectedRows<";
+      auto& selected_rows = var.Get<framework::SelectedRows>();
+      auto& tensor = selected_rows.value();
+      auto& rows = selected_rows.rows();
+      if (tensor.IsInitialized()) {
+        ss << framework::DataTypeToString(tensor.type()) << ", ";
+        ss << tensor.place() << ", ";
+        ss << "height(" << selected_rows.height() << "), rows(";
+        std::for_each(rows.cbegin(), rows.cend(),
+                      [&ss](const int64_t r) { ss << r << " "; });
+        ss << "), dims(" << tensor.dims() << ")";
+      } else {
+        ss << "NOT_INITED";
+      }
+      ss << ">";
     } else {
       ss << "UNRESOLVED_TYPE";
     }
@@ -179,6 +206,7 @@ void VarBase::AddGradOps(const std::weak_ptr<OpBase>& op) {
 void VarBase::ClearGradient() {
   if (grad_var_) {
     auto* grad_t = grad_var_->var_.GetMutable<framework::LoDTensor>();
+
     if (grad_t->IsInitialized()) {
       auto* dev_ctx =
           platform::DeviceContextPool::Instance().Get(grad_t->place());
@@ -220,29 +248,27 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
 }
 // create OpBase from optype
 OpBase::OpBase(size_t id, const std::string& type, const NameVarBaseMap& ins,
-               const NameVarBaseMap& outs, framework::AttributeMap attrs,
+               const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
                const platform::Place& place)
-    : id_(id), place_(place) {
+    : id_(id), place_(place), attrs_(attrs) {
   const auto& info = framework::OpInfoMap::Instance().Get(type);
 
   // Step 1: Run forward
   if (info.Checker() != nullptr) {
-    info.Checker()->Check(&attrs);
+    info.Checker()->Check(&attrs_);
   }
 
-  auto input_name_map = CreateVarNameMap(info, type, ins, true);
-  auto output_name_map = CreateVarNameMap(info, type, outs, false);
-  op_ = framework::OpRegistry::CreateOp(type, std::move(input_name_map),
-                                        std::move(output_name_map),
-                                        std::move(attrs));
+  op_ = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
+
   VLOG(3) << "Construct Op: " << type << std::endl;
 }
 
-// create OpBase from opdesc
-OpBase::OpBase(size_t id, const framework::OpDesc& op_desc,
-               const platform::Place& place)
-    : id_(id), op_(framework::OpRegistry::CreateOp(op_desc)), place_(place) {
-  VLOG(3) << "Construct Op: " << op_desc.Type() << std::endl;
+void OpBase::CreateOperatorBase() {
+  const auto& info = framework::OpInfoMap::Instance().Get(type_);
+  if (info.Checker() != nullptr) {
+    info.Checker()->Check(&attrs_);
+  }
+  op_ = framework::OpRegistry::CreateOp(type_, {}, {}, {}, false);
 }
 
 void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
@@ -250,10 +276,9 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
   PADDLE_ENFORCE_NOT_NULL(op_kernel, "only support op with kernel");
   auto& info = op_->Info();
   if (info.infer_var_type_) {
-    RuntimeInferVarTypeContext infer_var_type_ctx(ins, &outs, op_->Attrs());
+    RuntimeInferVarTypeContext infer_var_type_ctx(ins, &outs, attrs_);
     info.infer_var_type_(&infer_var_type_ctx);
   }
-
   // Initialize output var type
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
@@ -263,13 +288,11 @@ void OpBase::Run(const NameVarBaseMap& ins, const NameVarBaseMap& outs) {
 
   VLOG(3) << "Running Op " << Type();
   VLOG(5) << LayerDebugString(Type(), ins, outs);
-  auto runtime_ctx = PrepareRuntimeContext(ins, outs);
+  framework::RuntimeContext runtime_ctx({}, {});
+  auto prepared_op =
+      PreparedOp::Prepare(ins, outs, *op_kernel, place(), &attrs_);
 
-  VLOG(6) << "start preparing op: " << Type();
-  auto prepared_op = PreparedOp::Prepare(runtime_ctx, *op_kernel, place(), ins);
-
-  VLOG(6) << "finish preparing op: " << Type();
-  prepared_op.Run();
+  prepared_op.Run(&ins, &outs, &attrs_);
 
   VLOG(4) << LayerDebugString(Type(), ins, outs);
 }

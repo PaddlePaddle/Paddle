@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/depthwise_conv.h"
@@ -75,47 +76,6 @@ static void Slice(const framework::ExecutionContext& context,
   std::vector<int64_t> end_vec = {end_idx};
   std::vector<int64_t> axes_vec = {axes};
   Slice<DeviceContext, T, D>(context, input, out, begin_vec, end_vec, axes_vec);
-}
-
-inline void UpdatePaddingAndDilation(std::vector<int>* paddings,
-                                     std::vector<int>* dilation,
-                                     const std::string padding_algorithm,
-                                     const framework::DDim data_dims,
-                                     const std::vector<int>& strides,
-                                     const std::vector<int>& ksize) {
-  // set padding size == data_dims.size() * 2
-  auto data_shape = framework::vectorize<int>(data_dims);
-  if (paddings->size() == data_dims.size()) {
-    for (size_t i = 0; i < data_dims.size(); ++i) {
-      int copy_pad = *(paddings->begin() + 2 * i);
-      paddings->insert(paddings->begin() + 2 * i + 1, copy_pad);
-    }
-  } else {
-    PADDLE_ENFORCE_EQ(
-        data_dims.size() * 2, paddings->size(),
-        "Paddings size should be the same or twice as the input data size.");
-  }
-
-  // when padding_algorithm is "VALID" or "SAME"
-  if (padding_algorithm == "SAME") {
-    for (size_t i = 0; i < data_dims.size(); ++i) {
-      int out_size = (data_dims[i] + strides[i] - 1) / strides[0];
-      int pad_sum =
-          std::max((out_size - 1) * strides[i] + ksize[i] - data_shape[i], 0);
-      int pad_0 = pad_sum / 2;
-      int pad_1 = pad_sum - pad_0;
-      *(paddings->begin() + i * 2) = pad_0;
-      *(paddings->begin() + i * 2 + 1) = pad_1;
-
-      // dilation
-      *(dilation->begin() + i) = 1;
-    }
-
-  } else if (padding_algorithm == "VALID") {
-    for (auto it = paddings->begin(); it != paddings->end(); it++) {
-      *it = 0;
-    }
-  }
 }
 
 // Define Op classes in .h file so that other conv transpose
@@ -328,7 +288,9 @@ class GemmConvTransposeKernel : public framework::OpKernel<T> {
           col2vol(dev_ctx, col, dilations, strides, paddings, &out_slice,
                   data_layout);
         }
-        output_batch_vec.push_back(out_slice);
+        if (data_layout == framework::DataLayout::kNHWC) {
+          output_batch_vec.push_back(out_slice);
+        }
       }
       if (data_layout == framework::DataLayout::kNHWC) {
         concat_functor(dev_ctx, output_batch_vec, static_cast<int>(D - 2),

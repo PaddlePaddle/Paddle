@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -45,11 +46,10 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto nchw_tz = paddle::framework::vectorize<int>(input->dims());
 
-    const std::string key =
-        platform::CreateKey(nchw_tz, ctx.op().Output("Out"));
+    const std::string key = platform::CreateKey(nchw_tz, ctx.OutputName("Out"));
 
-    platform::TransposeMKLDNNHandler handler(nchw_tz, axis, dev_ctx,
-                                             mkldnn_engine, key);
+    platform::TransposeMKLDNNHandler<T> handler(nchw_tz, axis, dev_ctx,
+                                                mkldnn_engine, key);
 
     auto transpose_src_memory_p = handler.AcquireSrcMemory(
         input->format(), platform::to_void_cast<T>(input_data));
@@ -77,7 +77,6 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* x_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     if (!x_grad) return;
-
     auto& dev_ctx =
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
@@ -99,10 +98,10 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     auto nchw_tz = paddle::framework::vectorize<int>(out_grad->dims());
 
     const std::string key = platform::CreateKey(
-        nchw_tz, ctx.op().Output(framework::GradVarName("X")));
+        nchw_tz, ctx.OutputName(framework::GradVarName("X")));
 
-    platform::TransposeMKLDNNHandler handler(nchw_tz, reversed_axis, dev_ctx,
-                                             mkldnn_engine, key);
+    platform::TransposeMKLDNNHandler<T> handler(nchw_tz, reversed_axis, dev_ctx,
+                                                mkldnn_engine, key);
 
     auto transpose_src_memory_p = handler.AcquireSrcMemory(
         out_grad->format(), platform::to_void_cast<T>(out_grad_data));
@@ -122,11 +121,35 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(transpose2, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::TransposeMKLDNNOpKernel<float>);
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN,
+                                    ::paddle::platform::CPUPlace, FP32,
+                                    ops::kTransposeMKLDNNFP32,
+                                    ops::TransposeMKLDNNOpKernel<float>);
 
-REGISTER_OP_KERNEL(transpose, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::TransposeMKLDNNOpKernel<float>);
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN,
+                                    ::paddle::platform::CPUPlace, U8,
+                                    ops::kTransposeMKLDNNINT8,
+                                    ops::TransposeMKLDNNOpKernel<uint8_t>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose2, MKLDNN,
+                                    ::paddle::platform::CPUPlace, S8,
+                                    ops::kTransposeMKLDNNINT8,
+                                    ops::TransposeMKLDNNOpKernel<int8_t>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose, MKLDNN,
+                                    ::paddle::platform::CPUPlace, FP32,
+                                    ops::kTransposeMKLDNNFP32,
+                                    ops::TransposeMKLDNNOpKernel<float>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose, MKLDNN,
+                                    ::paddle::platform::CPUPlace, U8,
+                                    ops::kTransposeMKLDNNINT8,
+                                    ops::TransposeMKLDNNOpKernel<uint8_t>);
+
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(transpose, MKLDNN,
+                                    ::paddle::platform::CPUPlace, S8,
+                                    ops::kTransposeMKLDNNINT8,
+                                    ops::TransposeMKLDNNOpKernel<int8_t>);
 
 REGISTER_OP_KERNEL(transpose_grad, MKLDNN, ::paddle::platform::CPUPlace,
                    ops::TransposeMKLDNNGradOpKernel<float>);

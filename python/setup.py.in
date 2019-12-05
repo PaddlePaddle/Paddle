@@ -1,10 +1,12 @@
 import subprocess
 import os
+import os.path
 import re
 import shutil
 import sys
 import fnmatch
 
+from contextlib import contextmanager
 from setuptools import Command
 from setuptools import setup, Distribution, Extension
 from setuptools.command.install import install as InstallCommandBase
@@ -173,8 +175,8 @@ package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + 
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 
 if '${TENSORRT_FOUND}' == 'ON' and os.name == 'nt':
-    shutil.copy(os.path.join('${TENSORRT_ROOT}', 'lib', '${TR_INFER_RT}'), libs_path)
-    shutil.copy(os.path.join('${TENSORRT_ROOT}', 'lib', '${TR_INFER_PLUGIN_RT}'), libs_path)
+    shutil.copy(os.path.join('${TENSORRT_LIBRARY_DIR}', '${TR_INFER_RT}'), libs_path)
+    shutil.copy(os.path.join('${TENSORRT_LIBRARY_DIR}', '${TR_INFER_PLUGIN_RT}'), libs_path)
     package_data['paddle.libs'] += ['${TR_INFER_RT}', '${TR_INFER_PLUGIN_RT}']
 
 if '${WITH_MKL}' == 'ON':
@@ -271,9 +273,11 @@ def find_files(pattern, root):
 
 headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/framework')) +
+    list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/imperative')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/memory')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/platform')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/string')) +
+    list(find_files('*.pb.h', '${PADDLE_BINARY_DIR}/paddle/fluid/platform')) +
     list(find_files('*.pb.h', '${PADDLE_BINARY_DIR}/paddle/fluid/framework')) +
     ['${EIGEN_INCLUDE_DIR}/Eigen/Core'] + # eigen
     list(find_files('*', '${EIGEN_INCLUDE_DIR}/Eigen/src')) + # eigen
@@ -285,6 +289,9 @@ headers = (
     list(find_files('*', '${PROTOBUF_INCLUDE_DIR}')) + # protobuf
     list(find_files('*', '${DLPACK_INCLUDE_DIR}')) + # dlpack 
     list(find_files('*.h', '${THREADPOOL_INCLUDE_DIR}'))) # threadpool
+
+if '${WITH_MKLDNN}' == 'ON':
+    headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
 
 
 class InstallCommand(InstallCommandBase):
@@ -328,9 +335,15 @@ class InstallHeaders(Command):
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
-            install_dir = re.sub('src/extern_eigen3/', '', install_dir)
-            install_dir = re.sub('src/extern_boost/', '', install_dir)
-            install_dir = re.sub('src/extern_dlpack/', '', install_dir)
+            patterns = ['eigen3/src/extern_eigen3', 'boost/src/extern_boost',
+                       'dlpack/src/extern_dlpack/include',
+                       'install/protobuf/include',
+                       'install/gflags/include',
+                       'install/glog/include', 'install/xxhash/include',
+                       'install/mkldnn/include',
+                       'threadpool/src/extern_threadpool']
+            for pattern in patterns:
+                install_dir = re.sub(pattern, '', install_dir)
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))
         if not os.path.exists(install_dir):
             self.mkpath(install_dir)
@@ -353,36 +366,40 @@ class InstallHeaders(Command):
     def get_outputs(self):
         return self.outfiles
 
-# Saving the installation log generated from setup.py to log_file.
-# The log_file is ${PADDLE_BINARY_DIR}/python/setup.py.log.
-stdout = sys.stdout
-stderr = sys.stderr
-log_file = open('setup.py.log', 'w')
-sys.stdout = log_file
-sys.stderr = log_file
+# we redirect setuptools log for non-windows
+if sys.platform != 'win32':
+    @contextmanager
+    def redirect_stdout():
+        with open('${SETUP_LOG_FILE}', 'w') as f:
+            origin_stdout = sys.stdout
+            sys.stdout = f
+            yield
+            sys.stdout = origin_stdout
+else:
+    @contextmanager
+    def redirect_stdout():
+        yield
 
-setup(name='${PACKAGE_NAME}',
-      version='${PADDLE_VERSION}',
-      description='Parallel Distributed Deep Learning',
-      install_requires=setup_requires,
-      packages=packages,
-      ext_modules=ext_modules,
-      package_data=package_data,
-      package_dir=package_dir,
-      scripts=paddle_bins,
-      distclass=BinaryDistribution,
-      headers=headers,
-      cmdclass={
-          'install_headers': InstallHeaders,
-          'install': InstallCommand,
-      }
-)
+with redirect_stdout():
+    setup(name='${PACKAGE_NAME}',
+        version='${PADDLE_VERSION}',
+        description='Parallel Distributed Deep Learning',
+        install_requires=setup_requires,
+        packages=packages,
+        ext_modules=ext_modules,
+        package_data=package_data,
+        package_dir=package_dir,
+        scripts=paddle_bins,
+        distclass=BinaryDistribution,
+        headers=headers,
+        cmdclass={
+            'install_headers': InstallHeaders,
+            'install': InstallCommand,
+        }
+    )
 
-log_file.close()
-# Revert back the stdout/stderr to their default references.
-sys.stdout = stdout
-sys.stderr = stderr
 # As there are a lot of files in purelib which causes many logs,
 # we don't print them on the screen, and you can open `setup.py.log` 
 # for the full logs.
-os.system('grep -v "purelib" setup.py.log')
+if os.path.exists('${SETUP_LOG_FILE}'):
+    os.system('grep -v "purelib" ${SETUP_LOG_FILE}')

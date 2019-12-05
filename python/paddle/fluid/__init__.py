@@ -86,7 +86,7 @@ from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from . import install_check
 from .dygraph.nn import *
 from .dygraph.layers import *
-from .io import save, load
+from .io import save, load, load_program_state, set_program_state
 from .dygraph.checkpoint import save_dygraph, load_dygraph
 
 Tensor = LoDTensor
@@ -168,7 +168,7 @@ def __bootstrap__():
         'print_sub_graph_dir', 'pe_profile_fname', 'inner_op_parallelism',
         'enable_parallel_graph', 'fuse_parameter_groups_size',
         'multiple_of_cupti_buffer_size', 'fuse_parameter_memory_size',
-        'tracer_profile_fname', 'dygraph_debug'
+        'tracer_profile_fname', 'dygraph_debug', 'use_system_allocator'
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')

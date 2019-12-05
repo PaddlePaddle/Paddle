@@ -19,6 +19,17 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
+  const float* tensor_data = tensor->data<float>();
+  framework::Tensor cpu_tensor;
+  if (platform::is_gpu_place(tensor->place())) {
+    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    tensor_data = cpu_tensor.data<float>();
+  }
+  return tensor_data[0];
+}
+
 template <typename DeviceContext, typename T>
 class ScaleKernel : public framework::OpKernel<T> {
  public:
@@ -26,9 +37,14 @@ class ScaleKernel : public framework::OpKernel<T> {
     auto* in_var = ctx.InputVar("X");
     auto* in = framework::GetLoDTensorOrSelectedRowsValueFromVar(*in_var);
 
-    auto scale = static_cast<T>(ctx.Attr<float>("scale"));
     auto bias = static_cast<T>(ctx.Attr<float>("bias"));
     auto bias_after_scale = ctx.Attr<bool>("bias_after_scale");
+
+    auto scale = static_cast<T>(ctx.Attr<float>("scale"));
+    if (ctx.HasInput("ScaleTensor")) {
+      auto* scale_tensor = ctx.Input<framework::Tensor>("ScaleTensor");
+      scale = GetAttrFromTensor(scale_tensor);
+    }
 
     auto* out_var = ctx.OutputVar("Out");
     if (in_var->IsType<framework::SelectedRows>() && in_var != out_var) {

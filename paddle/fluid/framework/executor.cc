@@ -185,6 +185,9 @@ void Executor::RunFromDataset(std::shared_ptr<TrainerBase> trainer) {
   // training and finalize training
   VLOG(3) << "Trainer starts to run";
   trainer->Run();
+}
+
+void Executor::ReleaseTrainer(std::shared_ptr<TrainerBase> trainer) {
   VLOG(3) << "Trainer going to finalize";
   trainer->Finalize();
 }
@@ -285,12 +288,6 @@ static bool has_fetch_operators(
   }
 
   return fetch_count > 0;
-}
-
-std::unique_ptr<ExecutorPrepareContext> Executor::PrepareCtxCache(
-    const ProgramDesc& program, int block_id,
-    const std::vector<std::string>& skip_ref_cnt_vars, bool force_disable_gc) {
-  return Prepare(program, block_id, skip_ref_cnt_vars, force_disable_gc);
 }
 
 void Executor::Run(const ProgramDesc& program, Scope* scope,
