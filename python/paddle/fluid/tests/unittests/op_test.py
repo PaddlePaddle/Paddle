@@ -68,6 +68,8 @@ def get_numeric_gradient(place,
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
+    if not hasattr(get_numeric_gradient, 'check_shape_time'):
+        get_numeric_gradient.check_shape_time = 0
     if tensor_size > 100:
         get_numeric_gradient.check_shape_time += 1
     tensor_to_check_dtype = tensor_to_check._dtype()
@@ -154,7 +156,6 @@ class OpTest(unittest.TestCase):
         cls.outputs = {}
         cls.check_shape_times = 0
         cls.op_type = None
-        get_numeric_gradient.check_shape_time = 0
 
         np.random.seed(123)
         random.seed(124)
@@ -168,7 +169,8 @@ class OpTest(unittest.TestCase):
         random.setstate(cls._py_rand_state)
         _set_use_system_allocator(cls._use_system_allocator)
 
-        if get_numeric_gradient.check_shape_time == 0:
+        if hasattr(get_numeric_gradient, 'check_shape_time'
+                   ) and get_numeric_gradient.check_shape_time == 0:
             raise AssertionError(
                 "At least one input's shape should be large than 100 for " +
                 OpTest.op_type + " Op.")
