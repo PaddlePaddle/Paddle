@@ -16,16 +16,13 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import paddle.fluid.core as core
-from op_test import OpTest
 from scipy.special import erf
 import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
-from paddle.fluid import compiler, Program, program_guard
 
 
 class TestGeluOp(unittest.TestCase):
-    def test_case1_cpu(self):
+    def _test_case1_cpu(self):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
         y_ref = 0.5 * x * (1 + erf(x / np.sqrt(2)))
 
@@ -36,7 +33,7 @@ class TestGeluOp(unittest.TestCase):
             y_test = y_var.numpy()
         self.assertTrue(np.allclose(y_ref, y_test, rtol=1e-05, atol=1e-08))
 
-    def test_case1_gpu(self):
+    def _test_case1_gpu(self):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
         y_ref = 0.5 * x * (1 + erf(x / np.sqrt(2)))
 
@@ -46,6 +43,11 @@ class TestGeluOp(unittest.TestCase):
             y_var = fluid.layers.gelu(x_var)
             y_test = y_var.numpy()
         self.assertTrue(np.allclose(y_ref, y_test, rtol=1e-05, atol=1e-08))
+
+    def test_cases(self):
+        self._test_case1_cpu()
+        if fluid.is_compiled_with_cuda():
+            self._test_case1_gpu()
 
 
 if __name__ == '__main__':
