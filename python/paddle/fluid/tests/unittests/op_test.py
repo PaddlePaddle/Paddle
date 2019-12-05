@@ -167,9 +167,10 @@ class OpTestBase(unittest.TestCase):
 
         _set_use_system_allocator(cls._use_system_allocator)
 
-        if cls.check_grad_times == 0 and OpTest.op_type not in No_Grad_Op_List:
-            raise AssertionError("check_grad is required for " + OpTest.op_type
-                                 + " Op.")
+        if cls.check_grad_times == 0:
+            if OpTest.op_type not in No_Grad_Op_List and cls.__name__ not in No_Need_Check_Grad_Cases:
+                raise AssertionError("check_grad is required for " +
+                                     OpTest.op_type + " Op.")
 
     def try_call_once(self, data_type):
         if not self.call_once:

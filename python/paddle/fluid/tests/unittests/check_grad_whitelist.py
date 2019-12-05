@@ -52,7 +52,39 @@ No_Grad_Op_List = [
     'proximal_gd', 'collect_fpn_proposals', 'unique_with_counts'
 ]
 
-Need_To_Fix_Op_List = [
+No_Need_Check_Grad_Cases = [
+    'TestLookupTableOpWithPadding',
+    'TestLookupTableOpWithTensorIdsAndPadding',
+    'TestLookupTableOpWithPadding',
+    'TestLookupTableOpWithTensorIdsAndPadding',
+    'TestSeqMaxPool2DInference',
+    'TestSeqMaxPool2DInferenceLen0',
+    'TestSeqMaxPool2DInferenceLen0LoDLevel2',
+    'TestDropoutOp4',
+    'TestDropoutOp5',
+    'TestDropoutOp8',
+    'TestDropoutOp9',
+    'TestFP16DropoutOp',
+    'TestFP16DropoutOp2',
+    'TestExpandOpBoolean',
+    'TestLookupTableOpWithPadding',
+    'TestFusedEmbeddingSeqPoolOp',
+    'TestConcatOp3',
+    'TestMKLDNNConcatOp',
+    'TestMKLDNNConcatOp',
+    'TestMKLDNNConcatOp3',
+    'TestElementwiseMulMKLDNNOp_Integrated_With_Convs',
+    'TestConv2dTransposeMKLDNNOp',
+    'TestMKLDNNFuseBias',
+    'TestMKLDNNWithPad',
+    'TestMKLDNNWithStride',
+    'TestMKLDNNWithAsymPad',
+    'TestMKLDNNWithSamePad',
+    'TestMKLDNNWithValidPad',
+    'TestMKLDNNWithValidPad_NHWC',
+]
+
+Need_To_Fix_Check_Grad_Op_List = [
     'concat', 'elementwise_add', 'lookup_table', 'sequence_pool', 'prroi_pool',
     'norm', 'split', 'pool3d', 'conv3d', 'conv2d', 'trilinear_interp',
     'softmax', 'dropout', 'reduce_max', 'reduce_min', 'hierarchical_sigmoid',
