@@ -186,7 +186,7 @@ class OpTestBase(unittest.TestCase):
 
         dtype_set = set()
         infer_dtype(inputs, dtype_set)
-        infer_dtype(outputs, dtype_set)
+        # infer_dtype(outputs, dtype_set)
         dtype_list = [
             np.float64, np.float32, np.float16, np.int64, np.int32, np.int16,
             np.int8
