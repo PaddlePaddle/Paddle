@@ -142,9 +142,9 @@ if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
-OP_FILE_CHANGE=`git diff --name-only --diff-filter=AM upstream/$BRANCH |grep -oE ".+_op..*" || true`
-if [ "${OP_FILE_CHANGE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    CHECK_SHAREDATAWITH=`git diff -U0 --diff-filter=AM upstrem/$BRANCH |grep "+" |grep -oE "ShareDataWith[(]" || true`
+OP_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH |grep -oE ".+_op..*" || true`
+if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    CHECK_SHAREDATAWITH=`git diff -U0 --diff-filter=AM upstream/$BRANCH |grep "+" |grep -oE "ShareDataWith[(]" || true`
     CHECK_SHAREBUFFERWITH=`git diff -U0 --diff-filter=AM upstream/$BRANCH |grep "+" |grep -oE "ShareBufferWith[(]" || true`
     if [ "${CHECK_SHAREDATAWITH}" != "" ] || [ "${CHECK_SHAREBUFFERWITH}" != "" ]; then
         echo_line="If you use the ShareDataWith or ShareBufferWith method, please change the method to others. Because this method cloud casus some bug of memory. If you don't want to change the method, you must have one RD (lanxianghit or luotao1 or sneaxiy) approval for the usage of other method.\n"
