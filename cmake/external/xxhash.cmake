@@ -15,6 +15,7 @@
 INCLUDE(ExternalProject)
 
 set(XXHASH_PREFIX_DIR ${THIRD_PARTY_PATH}/xxhash)
+set(XXHASH_SOURCE_DIR ${THIRD_PARTY_PATH}/xxhash/src/extern_xxhash)
 set(XXHASH_INSTALL_DIR ${THIRD_PARTY_PATH}/install/xxhash)
 set(XXHASH_INCLUDE_DIR "${XXHASH_INSTALL_DIR}/include")
 set(XXHASH_REPOSITORY  https://github.com/Cyan4973/xxHash)
@@ -22,8 +23,7 @@ set(XXHASH_TAG         v0.6.5)
 
 cache_third_party(extern_xxhash
     REPOSITORY    ${XXHASH_REPOSITORY}
-    TAG           ${XXHASH_TAG}
-    DIR           ${XXHASH_PREFIX_DIR})
+    TAG           ${XXHASH_TAG})
 
 IF(WITH_STATIC_LIB)
   SET(BUILD_CMD make lib)

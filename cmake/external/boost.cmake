@@ -29,10 +29,11 @@ set(BOOST_URL   "http://paddlepaddledeps.bj.bcebos.com/${BOOST_TAR}.tar.gz" CACH
 MESSAGE(STATUS "BOOST_VERSION: ${BOOST_VER}, BOOST_URL: ${BOOST_URL}")
 
 set(BOOST_PREFIX_DIR ${THIRD_PARTY_PATH}/boost)
-cache_third_party(${BOOST_PROJECT}
-        URL       ${BOOST_URL}
-        DIR       ${BOOST_PREFIX_DIR})
+set(BOOST_SOURCE_DIR ${THIRD_PARTY_PATH}/boost/src/${BOOST_PROJECT})
 
+cache_third_party(${BOOST_PROJECT}
+        URL       ${BOOST_URL})
+        
 set(BOOST_INCLUDE_DIR "${BOOST_SOURCE_DIR}" CACHE PATH "boost include directory." FORCE)
 set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
 include_directories(${BOOST_INCLUDE_DIR})

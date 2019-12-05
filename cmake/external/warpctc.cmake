@@ -15,12 +15,10 @@
 INCLUDE(ExternalProject)
 
 SET(WARPCTC_PREFIX_DIR ${THIRD_PARTY_PATH}/warpctc)
+SET(WARPCTC_SOURCE_DIR ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
-
-# TODO: Use the official github address instead of private branch
 set(WARPCTC_REPOSITORY https://github.com/baidu-research/warp-ctc)
-set(WARPCTC_TAG 14858fef201244c983f5f965d2166379bf3f11a5)
-set(WARPCTC_PATCH_COMMAND git apply --ignore-space-change --ignore-whitespace "${PADDLE_SOURCE_DIR}/patches/warpctc/support_cuda10_1.patch")
+set(WARPCTC_TAG        14858fef201244c983f5f965d2166379bf3f11a5)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -38,6 +36,18 @@ cache_third_party(extern_warpctc
     REPOSITORY   ${WARPCTC_REPOSITORY}
     TAG          ${WARPCTC_TAG})
 
+# the official repository will be modified according to the patch file
+# first, whether the patch file is usable should be checked
+execute_process(
+    COMMAND git apply --check ${PADDLE_SOURCE_DIR}/patches/warpctc/support_cuda10_1.patch
+    WORKING_DIRECTORY ${WARPCTC_SOURCE_DIR}
+    RESULT_VARIABLE check_result
+    OUTPUT_QUIET ERROR_QUIET
+)
+if(NOT ${check_result})
+    set(WARPCTC_PATCH_COMMAND git apply --ignore-space-change --ignore-whitespace ${PADDLE_SOURCE_DIR}/patches/warpctc/support_cuda10_1.patch)
+endif()
+
 ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -46,7 +56,7 @@ ExternalProject_Add(
     PREFIX          ${WARPCTC_PREFIX_DIR}
     SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
     UPDATE_COMMAND  ""
-    PATCH_COMMAND ${WARPCTC_PATCH_COMMAND}
+    PATCH_COMMAND   ${WARPCTC_PATCH_COMMAND}
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
@@ -80,7 +90,6 @@ ENDIF(WIN32)
 MESSAGE(STATUS "warp-ctc library: ${WARPCTC_LIBRARIES}")
 get_filename_component(WARPCTC_LIBRARY_PATH ${WARPCTC_LIBRARIES} DIRECTORY)
 INCLUDE_DIRECTORIES(${WARPCTC_INCLUDE_DIR}) # For warpctc code to include its headers.
-INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include warpctc headers.
 
 ADD_LIBRARY(warpctc SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET warpctc PROPERTY IMPORTED_LOCATION ${WARPCTC_LIBRARIES})

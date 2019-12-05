@@ -23,10 +23,9 @@ set(THIRD_PARTY_CACHE_PATH     "${CMAKE_SOURCE_DIR}"    CACHE STRING
 set(THIRD_PARTY_BUILD_TYPE Release)
 
 # cache funciton to avoid repeat download code of third_party.
-# This function has 4 parameters, URL/REPOSITOR/TAG/DIR:
+# This function has 3 parameters, URL/REPOSITOR/TAG:
 # 1. URL: specify download url of 3rd party
 # 2. REPOSITORY and TAG: specify git REPOSITORY and tag/branch/commitID of 3rd party
-# 3. DIR(optional): Unify the source dir in cached and uncached mode to "${TARGET}_SOURCE_DIR". 
 #
 # The function Return 2 PARENT_SCOPE variables:
 # 1. ${TARGET}_DOWNLOAD_DIR: Simply place "${TARGET}_DOWNLOAD_DIR" in ExternalProject_Add, 
@@ -38,7 +37,7 @@ set(THIRD_PARTY_BUILD_TYPE Release)
 #            TAG ${TARGET_TAG})
 FUNCTION(cache_third_party TARGET)
     SET(options "")
-    SET(oneValueArgs URL REPOSITORY TAG DIR)
+    SET(oneValueArgs URL REPOSITORY TAG)
     SET(multiValueArgs "")
     cmake_parse_arguments(cache_third_party "${optionps}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -58,15 +57,7 @@ FUNCTION(cache_third_party TARGET)
     ELSE()
         MESSAGE(FATAL_ERROR "Download link (Git repo or URL) must be specified for cache!")
     ENDIF()
-    IF(NOT WITH_TP_CACHE)
-        # The uniform argument "{TAGGET}_SOURCE_DIR" must exists for these targets even if not cache
-        SET(LISTS xxhash protobuf boost mklml cub dlpack eigen pybind threadpool)
-        FOREACH(tmp ${LISTS})
-            IF(${TARGET} MATCHES ${tmp} AND cache_third_party_DIR)
-                SET(${TARGET_NAME}_SOURCE_DIR "${cache_third_party_DIR}/src/${TARGET}")
-            ENDIF()
-        ENDFOREACH()
-    ELSE()
+    IF(WITH_TP_CACHE)
         # Generate and verify cache dir for third_party source code
         SET(cache_third_party_REPOSITORY ${cache_third_party_REPOSITORY} ${cache_third_party_URL})
         IF(cache_third_party_REPOSITORY AND cache_third_party_TAG)
