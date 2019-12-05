@@ -282,6 +282,30 @@ static void inline CreateVariableIfNotExit(
   return;
 }
 
+static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
+  std::set<std::string> ops;
+  for (auto &pair : framework::OpInfoMap::Instance().map()) {
+    bool has_static_grad_maker = (pair.second.grad_op_maker_ != nullptr);
+    bool has_dygraph_grad_maker =
+        (pair.second.dygraph_grad_op_maker_ != nullptr);
+    if (has_static_grad_maker ^ has_dygraph_grad_maker) {
+      bool has_kernel =
+          (framework::OperatorWithKernel::AllOpKernels().count(pair.first) > 0);
+      if (has_kernel) {
+        ops.insert(pair.first);
+      } else {
+        VLOG(5) << pair.first << " has no kernels, skip";
+      }
+    }
+  }
+  PADDLE_ENFORCE_EQ(ops.empty(), true,
+                    platform::errors::Unimplemented(
+                        "OperatorWithKernel [%s] have only static graph grad "
+                        "maker or have only dygraph grad maker, which is not "
+                        "allowed",
+                        string::join_strings(ops, ',')));
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -292,6 +316,8 @@ PYBIND11_MODULE(core_noavx, m) {
   paddle::platform::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
+
+  AssertStaticGraphAndDygraphGradMakerNoDiff();
 
   m.doc() = "C++ core of PaddlePaddle";
 
