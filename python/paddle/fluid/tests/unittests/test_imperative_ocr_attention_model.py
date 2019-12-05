@@ -459,8 +459,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 for batch_id in range(batch_num):
                     label_in = to_variable(label_in_np)
                     label_out = to_variable(label_out_np)
-                    label_out._stop_gradient = True
-                    label_out.trainable = False
+                    label_out.stop_gradient = True
                     img = to_variable(image_np)
                     dy_prediction = ocr_attention(img, label_in)
                     label_out = fluid.layers.reshape(
@@ -481,7 +480,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                     dy_grad_value = {}
                     for param in ocr_attention.parameters():
                         if param.trainable:
-                            np_array = np.array(param._ivar._grad_ivar().value()
+                            np_array = np.array(param._grad_ivar().value()
                                                 .get_tensor())
                             dy_grad_value[param.name + core.grad_var_suffix(
                             )] = np_array
@@ -514,7 +513,7 @@ class TestDygraphOCRAttention(unittest.TestCase):
                 name='label_in', shape=[1], dtype='int64', lod_level=0)
             static_label_out = fluid.layers.data(
                 name='label_out', shape=[1], dtype='int64', lod_level=0)
-            static_label_out._stop_gradient = True
+            static_label_out.stop_gradient = True
             static_label_out.trainable = False
 
             static_prediction = ocr_attention(images, static_label_in)
