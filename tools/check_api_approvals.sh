@@ -39,15 +39,14 @@ function check_approval(){
     person_num=`echo $@|awk '{for (i=2;i<=NF;i++) $i}'`
     APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py $1 $person_num`
     if [ "${APPROVALS}" == "FALSE" ]; then
-        add_failed "$failed_num $echo_line"
+        add_failed "${failed_num}. ${echo_line}"
     fi
 }
 
 
 function add_failed(){
     failed_num=`expr $failed_num + 1`
-    add_line=`echo $@|awk '{for (i=2;i<=NF;i++)print $i}'`
-    echo_list="(${echo_list[@]}$1 "." $add_line)"
+    echo_list="${echo_list[@]}$1"
 } 
 
 
