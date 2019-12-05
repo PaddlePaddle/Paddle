@@ -519,23 +519,29 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
 
     linear_step = float(end_lr) - float(start_lr)
     with default_main_program()._lr_schedule_guard():
-        lr = tensor.create_global_var(
-            shape=[1],
-            value=0.0,
-            dtype=dtype,
-            persistable=True,
-            name="learning_rate_warmup")
 
-        global_step = _decay_step_counter()
+        if imperative_base.enabled():
+            lr = imperate_lr.LinearLrWarmup(learning_rate, warmup_steps,
+                                            start_lr, end_lr)
+            return lr
+        else:
+            lr = tensor.create_global_var(
+                shape=[1],
+                value=0.0,
+                dtype=dtype,
+                persistable=True,
+                name="learning_rate_warmup")
 
-        with control_flow.Switch() as switch:
-            with switch.case(global_step < warmup_steps):
-                decayed_lr = start_lr + linear_step * (global_step /
-                                                       float(warmup_steps))
-                tensor.assign(decayed_lr, lr)
-            with switch.default():
-                if not isinstance(learning_rate, Variable):
-                    learning_rate = tensor.fill_constant(
-                        shape=[1], dtype=dtype, value=float(learning_rate))
-                tensor.assign(learning_rate, lr)
-    return lr
+            global_step = _decay_step_counter()
+
+            with control_flow.Switch() as switch:
+                with switch.case(global_step < warmup_steps):
+                    decayed_lr = start_lr + linear_step * (global_step /
+                                                           float(warmup_steps))
+                    tensor.assign(decayed_lr, lr)
+                with switch.default():
+                    if not isinstance(learning_rate, Variable):
+                        learning_rate = tensor.fill_constant(
+                            shape=[1], dtype=dtype, value=float(learning_rate))
+                    tensor.assign(learning_rate, lr)
+            return lr

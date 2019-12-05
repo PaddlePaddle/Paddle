@@ -155,10 +155,11 @@ class TestGRUOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-8, check_dygraph=True)
+        self.check_output(atol=1e-8, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['Input', 'H0', 'Weight', 'Bias'], ['Hidden'])
+        self.check_grad(
+            ['Input', 'H0', 'Weight', 'Bias'], ['Hidden'], check_dygraph=False)
 
 
 class TestGRUOriginMode(TestGRUOp):
@@ -207,7 +208,8 @@ class TestGRUOpNoInitial(TestGRUOp):
         self.with_h0 = False
 
     def test_check_grad(self):
-        self.check_grad(['Input', 'Weight', 'Bias'], ['Hidden'])
+        self.check_grad(
+            ['Input', 'Weight', 'Bias'], ['Hidden'], check_dygraph=False)
 
 
 class TestGRUOpNoBias(TestGRUOp):
@@ -215,7 +217,8 @@ class TestGRUOpNoBias(TestGRUOp):
         self.with_bias = False
 
     def test_check_grad(self):
-        self.check_grad(['Input', 'H0', 'Weight'], ['Hidden'])
+        self.check_grad(
+            ['Input', 'H0', 'Weight'], ['Hidden'], check_dygraph=False)
 
 
 class TestGRUOpReverse(TestGRUOp):

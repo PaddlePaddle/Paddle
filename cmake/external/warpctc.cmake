@@ -14,8 +14,13 @@
 
 INCLUDE(ExternalProject)
 
-SET(WARPCTC_SOURCES_DIR ${THIRD_PARTY_PATH}/warpctc)
+SET(WARPCTC_PREFIX_DIR ${THIRD_PARTY_PATH}/warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
+
+# TODO: Use the official github address instead of private branch
+set(WARPCTC_REPOSITORY https://github.com/baidu-research/warp-ctc)
+set(WARPCTC_TAG 14858fef201244c983f5f965d2166379bf3f11a5)
+set(WARPCTC_PATCH_COMMAND git apply --ignore-space-change --ignore-whitespace "${PADDLE_SOURCE_DIR}/patches/warpctc/support_cuda10_1.patch")
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -29,16 +34,19 @@ ELSE()
     SET(USE_OMP ON)
 ENDIF()
 
-# TODO: Use the official github address instead of private branch
-SET(WARPCTC_REPOSITORY "https://github.com/wopeizl/warp-ctc.git")
+cache_third_party(extern_warpctc
+    REPOSITORY   ${WARPCTC_REPOSITORY}
+    TAG          ${WARPCTC_TAG})
 
 ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
     ${SHALLOW_CLONE}
-    GIT_REPOSITORY ${WARPCTC_REPOSITORY}
-    PREFIX          ${WARPCTC_SOURCES_DIR}
+    "${WARPCTC_DOWNLOAD_CMD}"
+    PREFIX          ${WARPCTC_PREFIX_DIR}
+    SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
     UPDATE_COMMAND  ""
+    PATCH_COMMAND ${WARPCTC_PATCH_COMMAND}
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}

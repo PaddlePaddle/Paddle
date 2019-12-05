@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/lod_reset_op.h"
 #include <memory>
+#include <string>
 
 namespace paddle {
 namespace operators {
@@ -49,6 +50,14 @@ class LoDResetOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"),
         ctx.device_context());
+  }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   expected_kernel_type.place_,
+                                   tensor.layout());
   }
 };
 
@@ -196,6 +205,11 @@ class LoDResetGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+DECLARE_INPLACE_OP_INFERER(LoDResetInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(LoDResetGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
+
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(LoDResetGradNoNeedBufferVarInference,
                                       "X");
 
@@ -206,9 +220,10 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(lod_reset, ops::LoDResetOp, ops::LoDResetOpMaker,
                   ops::LoDResetGradMaker<paddle::framework::OpDesc>,
                   ops::LoDResetGradMaker<paddle::imperative::OpBase>,
-                  ops::LoDResetOpVarTypeInference);
+                  ops::LoDResetOpVarTypeInference, ops::LoDResetInplaceInferer);
 REGISTER_OPERATOR(lod_reset_grad, ops::LoDResetGradOp,
-                  ops::LoDResetGradNoNeedBufferVarInference);
+                  ops::LoDResetGradNoNeedBufferVarInference,
+                  ops::LoDResetGradInplaceInferer);
 
 REGISTER_OP_CPU_KERNEL(
     lod_reset, ops::LoDResetKernel<paddle::platform::CPUPlace, float>,

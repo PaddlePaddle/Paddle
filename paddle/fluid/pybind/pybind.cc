@@ -61,6 +61,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
+#include "paddle/fluid/pybind/global_value_getter_setter.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
@@ -193,14 +194,8 @@ static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
     if (!py_obj || py_obj == Py_None) {
       PADDLE_THROW("Save parameter [%s] is None", para.first);
     }
-
-    const char *kIVarField = "_ivar";
-    PyObject *py_ivar = GetPythonAttribute(py_obj, kIVarField);
-    PADDLE_ENFORCE_NOT_NULL(py_ivar, "Can not find  ivar in Variable");
-
     vec_res.emplace_back(
-        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
-    Py_DECREF(py_ivar);
+        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_obj));
   }
 
   return vec_res;
@@ -287,6 +282,30 @@ static void inline CreateVariableIfNotExit(
   return;
 }
 
+static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
+  std::set<std::string> ops;
+  for (auto &pair : framework::OpInfoMap::Instance().map()) {
+    bool has_static_grad_maker = (pair.second.grad_op_maker_ != nullptr);
+    bool has_dygraph_grad_maker =
+        (pair.second.dygraph_grad_op_maker_ != nullptr);
+    if (has_static_grad_maker ^ has_dygraph_grad_maker) {
+      bool has_kernel =
+          (framework::OperatorWithKernel::AllOpKernels().count(pair.first) > 0);
+      if (has_kernel) {
+        ops.insert(pair.first);
+      } else {
+        VLOG(5) << pair.first << " has no kernels, skip";
+      }
+    }
+  }
+  PADDLE_ENFORCE_EQ(ops.empty(), true,
+                    platform::errors::Unimplemented(
+                        "OperatorWithKernel [%s] have only static graph grad "
+                        "maker or have only dygraph grad maker, which is not "
+                        "allowed",
+                        string::join_strings(ops, ',')));
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -297,6 +316,8 @@ PYBIND11_MODULE(core_noavx, m) {
   paddle::platform::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
+
+  AssertStaticGraphAndDygraphGradMakerNoDiff();
 
   m.doc() = "C++ core of PaddlePaddle";
 
@@ -382,6 +403,22 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("_get_use_default_grad_op_desc_maker_ops",
         [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
 
+  m.def("_get_all_register_op_kernels", [] {
+    auto &all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
+    std::unordered_map<std::string, std::vector<std::string>> all_kernels_info;
+    for (auto &kernel_pair : all_kernels) {
+      auto op_type = kernel_pair.first;
+      std::vector<std::string> kernel_types;
+      for (auto &info_pair : kernel_pair.second) {
+        paddle::framework::OpKernelType kernel_type = info_pair.first;
+        kernel_types.push_back(
+            paddle::framework::KernelTypeToString(kernel_type));
+      }
+      all_kernels_info.emplace(op_type, kernel_types);
+    }
+    return all_kernels_info;
+  });
+
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
   // to enable eager deletion mode in unittest.
@@ -458,17 +495,20 @@ PYBIND11_MODULE(core_noavx, m) {
            })
       .def("_clear", &Tensor::clear)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
-           py::arg("array"), py::arg("place"))
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPlace>,
-           py::arg("array"), py::arg("place"))
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
-           py::arg("array"), py::arg("place"), R"DOC(
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
+           R"DOC(
         Set the data of LoDTensor on place with given numpy array.
         
         Args:
           lod (numpy.ndarray): The data to set.
           place (CPUPlace|CUDAPlace|CUDAPinnedPlace): The place where the 
           LoDTensor is to be set.
+          zero_copy (bool, optional): Whether to share memory with the input numpy array.
+          This parameter only works with CPUPlace. Default: False.
 
         Returns:
             None.
@@ -1049,10 +1089,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("has_infer_inplace", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
   });
-  m.def("get_flags_use_mkldnn", []() { return FLAGS_use_mkldnn; });
-#ifdef PADDLE_WITH_NGRAPH
-  m.def("get_flags_use_ngraph", []() { return FLAGS_use_ngraph; });
-#endif
 
   m.def("prune", [](const ProgramDesc &origin,
                     const std::set<std::string> &feeded_var_names,
@@ -1324,10 +1360,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("close", &Executor::Close)
       .def("run_from_dataset", &Executor::RunFromDataset,
            py::call_guard<py::gil_scoped_release>())
+      .def("release_trainer", &Executor::ReleaseTrainer,
+           py::call_guard<py::gil_scoped_release>())
       .def("init_for_dataset",
            [](Executor &self, const ProgramDesc &prog,
               const std::string &trainer_desc, Scope *scope,
               Dataset *dataset) -> std::shared_ptr<TrainerBase> {
+             pybind11::gil_scoped_release release;
              return self.InitForDataset(prog, trainer_desc, scope, dataset);
            })
       .def("run_from_dataset",
@@ -1402,6 +1441,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindVarDsec(&m);
   BindOpDesc(&m);
   BindConstValue(&m);
+  BindGlobalValueGetterSetter(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {

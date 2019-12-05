@@ -32,6 +32,7 @@ class ConcatOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE_GE(ctx->Inputs("X").size(), 1UL,
                       "Inputs(X) of ConcatOp should not be empty.");
+
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       "Output(Out) of ConcatOp should not be null.");
 
@@ -152,17 +153,8 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
     auto in_x = "X";
     auto out_x_g_n = framework::GradVarName(in_x);
     ctx->SetOutputsDim(out_x_g_n, ctx->GetInputsDim(in_x));
-    auto &in_names = ctx->Inputs(in_x);
-    auto &out_names = ctx->Outputs(out_x_g_n);
-    PADDLE_ENFORCE_EQ(
-        in_names.size(), out_names.size(),
-        "The number of arguments in %s[%d] and %s[%d] is not equal.", in_x,
-        in_names.size(), out_x_g_n, out_names.size());
-    for (size_t i = 0; i < in_names.size(); ++i) {
-      if (out_names[i] != framework::kEmptyVarName) {
-        ctx->ShareLoD(in_x, out_x_g_n, i, i);
-      }
-    }
+
+    ctx->ShareAllLoD(in_x, out_x_g_n);
   }
 
  protected:
@@ -197,7 +189,9 @@ class ConcatGradOpMaker : public framework::SingleGradOpMaker<T> {
     std::unique_ptr<T> op(new T());
     op->SetType("concat_grad");
     op->SetInput("X", this->Input("X"));
-    op->SetInput("AxisTensor", this->Input("AxisTensor"));
+    if (this->HasInput("AxisTensor")) {
+      op->SetInput("AxisTensor", this->Input("AxisTensor"));
+    }
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X", false));
     op->SetAttrMap(this->Attrs());

@@ -59,7 +59,7 @@ class NCCLBroadcastOpKernel : public framework::OpKernel<T> {
         send_recv_buffer, static_cast<size_t>(in->numel()),
         platform::ToNCCLDataType(in->type()), root_dev_id, comm, stream));
 
-    VLOG(3) << "Bcast " << ctx.Inputs("X")[0] << ", (" << in->numel() << ")"
+    VLOG(3) << "Bcast " << ctx.InputNames("X")[0] << ", (" << in->numel() << ")"
             << " From " << root_dev_id << " to " << dev_id;
 
     if (ctx.Attr<bool>("sync_mode")) {

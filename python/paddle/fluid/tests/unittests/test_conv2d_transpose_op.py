@@ -142,11 +142,13 @@ class TestConv2dTransposeOp(OpTest):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(
+                place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
         else:
-            self.check_output()
+            self.check_output(check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_input(self):
         if self.use_cudnn:
@@ -716,7 +718,7 @@ class TestDepthwiseConvTransposeAsymmetricPad_NHWC(TestConv2dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestConv2dTransposeAPI(OpTest):
+class TestConv2dTransposeAPI(unittest.TestCase):
     def test_case1(self):
         data1 = fluid.layers.data(
             name='data1', shape=[3, 5, 5], dtype='float32')
@@ -794,7 +796,7 @@ class TestConv2dTransposeAPI(OpTest):
         self.assertIsNotNone(results[6])
 
 
-class TestConv2dTransposeOpException(OpTest):
+class TestConv2dTransposeOpException(unittest.TestCase):
     def test_exception(self):
         data = fluid.layers.data(name='data', shape=[3, 5, 5], dtype="float32")
 

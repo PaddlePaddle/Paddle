@@ -42,6 +42,7 @@ class TestFCMKLDNNOp(OpTest):
 
     def setUp(self):
         self.op_type = "fc"
+        self._cpu_only = True
         self.use_mkldnn = True
         self.create_data()
         self.inputs = {'Input': self.matrix.input, 'W': self.matrix.weights}
@@ -53,7 +54,8 @@ class TestFCMKLDNNOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
         pass

@@ -158,7 +158,7 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
 
 
 #Test Python API
-class TestScatterNdOpAPI(OpTest):
+class TestScatterNdOpAPI(unittest.TestCase):
     """
     test scatter_nd_add api and scatter_nd api
     """
@@ -231,7 +231,7 @@ class TestScatterNdOpAPI(OpTest):
 
 
 #Test Raise Error
-class TestScatterNdOpRaise(OpTest):
+class TestScatterNdOpRaise(unittest.TestCase):
     def test_check_raise(self):
         def check_raise_is_test():
             try:
