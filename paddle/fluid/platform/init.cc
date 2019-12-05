@@ -206,10 +206,11 @@ void SignalHandle(const char *data, int size) {
   try {
     // The signal is coming line by line but we print general guide just once
     std::call_once(glog_warning_once_flag, [&]() {
-      LOG(WARNING) << "Initialize GLOG failed, PaddlePaddle may not be able to "
-                      "print GLOG\n";
-      LOG(WARNING) << "You could check whether you killed GLOG initialize "
-                      "process or PaddlePaddle process accidentally\n";
+      LOG(WARNING) << "Warning: PaddlePaddle catches a failure signal, it may "
+                      "not work properly\n";
+      LOG(WARNING) << "You could check whether you killed PaddlePaddle "
+                      "thread/process accidentally or report the case to "
+                      "PaddlePaddle\n";
       LOG(WARNING) << "The detail failure signal is:\n\n";
     });
 
