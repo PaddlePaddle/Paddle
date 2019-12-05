@@ -435,9 +435,15 @@ class TestParallelDyGraphRunnerBase(object):
                 if args.update_method == "nccl2":
                     model.apply_collective_grads()
 
+                # get gradient
+                grads = {}
+                for param in model.parameters():
+                    if param.trainable and param._ivar._grad_ivar():
+                        grads[param.name] = param.gradient()
+
                 opt.minimize(loss)
                 model.clear_gradients()
-        print_to_out(out_losses)
+        print_to_out((out_losses, grads))
 
 
 def runtime_main(test_class):
@@ -683,7 +689,7 @@ class TestDistBase(unittest.TestCase):
             err_log.close()
 
         sys.stderr.write('local_stderr: %s\n' % local_err)
-        sys.stderr.write('local_stdout: %s\n' % pickle.loads(local_out))
+        sys.stderr.write('local_stdout: %s, %s\n' % pickle.loads(local_out))
 
         return pickle.loads(local_out)
 
@@ -930,7 +936,7 @@ class TestDistBase(unittest.TestCase):
                          log_name=""):
         required_envs = self._get_required_envs(check_error_log, need_envs)
 
-        local_losses \
+        local_losses, local_grads \
             = self._run_local(model_file, required_envs,
                               check_error_log, log_name=log_name)
 
@@ -955,11 +961,18 @@ class TestDistBase(unittest.TestCase):
 
         for step_id in range(RUN_STEP):
             local_loss = local_losses[step_id]
-            tr0_loss = tr0_losses[step_id]
-            tr1_loss = tr1_losses[step_id]
+            tr0_loss = tr0_losses[0][step_id]
+            tr1_loss = tr1_losses[0][step_id]
             dist_loss = (np.array([tr0_loss]) + np.array([tr1_loss])) / 2
             print("=======", local_loss, ":", dist_loss[0], "=======")
             self.assertAlmostEqual(local_loss, dist_loss[0], delta=delta)
+            # compare grads
+            for name, grad in local_grads.items():
+                print("======= gradients: ", name, "=======")
+                self.assertTrue(
+                    np.array_equal(tr0_losses[1][name], tr1_losses[1][name]))
+                np.testing.assert_array_almost_equal(grad, tr0_losses[1][name])
+                # self.assertTrue(np.allclose(grad, tr0_losses[1][name], rtol=1e-01))
 
     def check_with_place_multi_cards(self,
                                      model_file,
