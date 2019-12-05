@@ -142,9 +142,9 @@ if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
-HAS_OPERATORBASE_FLAG=`git diff -U0 upstream/$BRANCH | grep -oE -m 1 "public[[:space:]]+.*OperatorBase" || true`
+HAS_OPERATORBASE_FLAG=`git diff -U0 --diff-filter=A upstream/$BRANCH | grep -nE "public[[:space:]]+.*OperatorBase" || true`
 if [ "${HAS_OPERATORBASE_FLAG}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="Inherit OperatorBase is not recommended. Please use OperatorWithKernel instead.\nYou must have one RD (luotao1, XiaoguangHu01, lanxianghit or phlrain) approval for the usage (either add or delete) of OperatorBase. \n"
+    echo_line="In order to support dynamic graph, all ops are not recommedned to inherit OperatorBase. Please use OperatorWithKernel instead.\nYou must have one RD (phlrain (Recommend), luotao1, lanxianghit or XiaoguangHu01) approval for the inherit of OperatorBase.\n${HAS_OPERATORBASE_FLAG}"
     check_approval 1 47554610 46782768 22561442 6836917
 fi
 
