@@ -194,14 +194,8 @@ static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
     if (!py_obj || py_obj == Py_None) {
       PADDLE_THROW("Save parameter [%s] is None", para.first);
     }
-
-    const char *kIVarField = "_ivar";
-    PyObject *py_ivar = GetPythonAttribute(py_obj, kIVarField);
-    PADDLE_ENFORCE_NOT_NULL(py_ivar, "Can not find  ivar in Variable");
-
     vec_res.emplace_back(
-        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
-    Py_DECREF(py_ivar);
+        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_obj));
   }
 
   return vec_res;
@@ -382,6 +376,22 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_get_use_default_grad_op_desc_maker_ops",
         [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
+
+  m.def("_get_all_register_op_kernels", [] {
+    auto &all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
+    std::unordered_map<std::string, std::vector<std::string>> all_kernels_info;
+    for (auto &kernel_pair : all_kernels) {
+      auto op_type = kernel_pair.first;
+      std::vector<std::string> kernel_types;
+      for (auto &info_pair : kernel_pair.second) {
+        paddle::framework::OpKernelType kernel_type = info_pair.first;
+        kernel_types.push_back(
+            paddle::framework::KernelTypeToString(kernel_type));
+      }
+      all_kernels_info.emplace(op_type, kernel_types);
+    }
+    return all_kernels_info;
+  });
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API

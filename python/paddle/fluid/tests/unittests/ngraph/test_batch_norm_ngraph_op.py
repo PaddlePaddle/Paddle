@@ -16,6 +16,9 @@ from __future__ import print_function
 
 import unittest
 from paddle.fluid.tests.unittests.test_batch_norm_op import TestBatchNormOpTraining, TestBatchNormOpInference
+from paddle.fluid.tests.unittests.op_test import _set_use_system_allocator
+
+_set_use_system_allocator(True)
 
 if __name__ == '__main__':
     unittest.main()

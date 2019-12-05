@@ -71,6 +71,12 @@ bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc,
     return false;
 
   for (auto& teller : tellers_) {
+    if (op_type == "pool2d" || op_type == "conv2d" ||
+        op_type == "depthwise_conv2d" || op_type == "conv2d_transpose") {
+      std::vector<int> paddings =
+          boost::get<std::vector<int>>(desc.GetAttr("paddings"));
+      if (paddings.size() > 2) return false;
+    }
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
   return false;
