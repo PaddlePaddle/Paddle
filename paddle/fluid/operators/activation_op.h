@@ -340,10 +340,8 @@ struct GeluFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// gelu_grad(x) = dout * (0.5 * (1 + erf(x / sqrt(2))) + 0.5 * 2 / sqrt(pie) /
-// sqrt(2) * x * exp (-0.5 * sqrt(x)))
-// gelu_grad(x) = dout * (0.5 + 0.5 * erf(x * M_SQRT1_2) + (0.5 * M_2_SQRTPI *
-// M_SQRT1_2) * x * exp (-0.5 * sqrt(x)))
+// gelu_grad(x) = dout * (0.5 * (1 + erf(x / sqrt(2))) + 0.5 * 2 / sqrt(pi) /
+// sqrt(2) * x * exp (-0.5 * x^2))
 template <typename T>
 struct GeluGradFunctor : BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
@@ -353,42 +351,35 @@ struct GeluGradFunctor : BaseActivationFunctor<T> {
     !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
     auto x_data = x.data();
     auto dx_data = dx.data();
+    auto dout_data = dout.data();
     int n = std::min(x.size(), dx.size());
 
-    std::memset(dx_data, 0, n * sizeof(T));
-
-    // First(dx_data) = erf(x * M_SQRT1_2)
-    math::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, dx_data, 1);
-    math::CBlas<T>::VMERF(n, dx_data, dx_data, VML_LA);
-
-    // Second = 0.5 * M_2_SQRTPI * M_SQRT1_2 * x * exp (-0.5 * sqrt(x))
+    auto first = static_cast<T*>(std::malloc(n * sizeof(T)));
+    std::memset(first, 0, n * sizeof(T));
     auto second = static_cast<T*>(std::malloc(n * sizeof(T)));
     std::memset(second, 0, n * sizeof(T));
 
-    math::CBlas<T>::VSQUARE(n, x_data, second);
+    // first = (0.5 * (1 + erf(x / sqrt(2))))
+    math::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, first, 1);
+    math::CBlas<T>::VMERF(n, first, first, VML_LA);
     for (int i = 0; i < n; i++) {
-      second[i] *= static_cast<T>(-0.5);
+      first[i] += static_cast<T>(1);
     }
+    math::CBlas<T>::SCAL(n, static_cast<T>(0.5), first, 1);
+
+    // second = (0.5 * 2/sqrt(pi) * 1/sqrt(2) * x * exp(-0.5 * x^2))
+    math::CBlas<T>::VSQUARE(n, x_data, second);
+    math::CBlas<T>::SCAL(n, -static_cast<T>(0.5), second, 1);
     math::CBlas<T>::VEXP(n, second, second);
     math::CBlas<T>::VMUL(n, x_data, second, second);
-    T tmp = static_cast<T>(0.5) * static_cast<T>(M_SQRT1_2) *
-            static_cast<T>(M_2_SQRTPI);
-    for (int i = 0; i < n; i++) {
-      second[i] *= tmp;
-    }
+    math::CBlas<T>::SCAL(n, static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2),
+                         second, 1);
 
-    // Sum = 0.5 * First + Second
-    math::CBlas<T>::AXPY(n, static_cast<T>(0.5), dx_data, 1, second, 1);
+    // dx = dout * (first + second);
+    math::CBlas<T>::VADD(n, first, second, first);
+    math::CBlas<T>::VMUL(n, dout_data, first, dx_data);
 
-    // 0.5 + Sum
-    for (int i = 0; i < n; i++) {
-      second[i] += static_cast<T>(0.5);
-    }
-
-    // * dout
-    auto dout_data = dout.data();
-    math::CBlas<T>::VMUL(n, dout_data, second, dx_data);
-
+    std::free(first);
     std::free(second);
 #else
     auto first = static_cast<T>(0.5) *

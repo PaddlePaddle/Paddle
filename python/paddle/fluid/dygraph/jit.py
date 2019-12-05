@@ -47,82 +47,19 @@ def extract_vars(inputs):
 
 
 @dygraph_only
-def _trace(layer, inputs, feed_names=None, fetch_names=None):
-    """
-    Trace dygraph network into a :code:`Program`. The returned :code:`Program`
-    can be run in static graph mode. This method would simply record all
-    operators in the network with :code:`inputs` . Users should guarantee that
-    the traced dygraph network is independent with input data, input shapes,
-    and would not be changed between different batches. Otherwise, the traced
-    result may be different.
-
-    Args:
-        layer(Layer): the layer to be traced.
-        inputs(list): the input arguments of :code:`layer.forward()` method.
-        feed_names(list(str), optional): the input variable names in the 
-                traced :code:`Program` corresponding to :code:`inputs` . If it
-                is None, the variable name of :code:`inputs` would be used. 
-                It is suggested that users should set :code:`feed_names` 
-                manually. Otherwise, the input variable names would be 
-                different between different batches. Default None.
-        fetch_names(list(str), optional): the output variable names in the 
-                traced :code:`Program` corresponding to the output variables
-                of :code:`layer.forward()` method. If it is None, the variable
-                name of the outputs of :code:`layer.forward()` would be used.
-                It is suggested that users should set :code:`fetch_names`
-                manually. Otherwise, the output variable names would be
-                different between different batches. Default None.
-                
-    Returns:
-        A tuple of 4 items, whose first item is the outputs of 
-        :code:`layer.forward()` method, and second item is the traced 
-        :code:`Program`, and the third item is names of feed variables,
-        and the fourth item is names of fetch variables.
-
-    Examples:
-
-        .. code-block:: python:
-
-            import paddle.fluid as fluid
-            from paddle.fluid.dygraph import FC, to_variable
-            import paddle.fluid.dygraph.jit as jit
-            import numpy as np
-
-            class ExampleLayer(fluid.dygraph.Layer):
-                def __init__(self, name_scope):
-                    super(ExampleLayer, self).__init__(name_scope)
-                    self._fc = FC(self.full_name(), 10)
-
-                def forward(self, input):
-                    return self._fc(input)
-
-            with fluid.dygraph.guard():
-                layer = ExampleLayer("example_layer")
-                in_np = np.random.random([2, 3]).astype('float32')
-                in_var = to_variable(in_np)
-                out, program, _, _ = jit._trace(layer, inputs=[in_var],
-                                         feed_names=['input'],
-                                         fetch_names=['fc_out'])
-
-    """
+def _trace(layer,
+           inputs,
+           feed_prefix='feed_',
+           fetch_prefix='fetch_',
+           tmp_prefix='t_'):
     assert isinstance(layer, Layer)
 
     if not isinstance(inputs, (list, tuple)):
         inputs = [inputs]
 
-    if feed_names is None:
-        feed_names = []
-
-    if fetch_names is None:
-        fetch_names = []
-
     tracer = _dygraph_tracer()._get_program_desc_tracer()
 
     var_list = extract_vars(inputs)
-    if callable(feed_names):
-        feed_names = feed_names(len(var_list))
-
-    tracer.set_feed_vars(var_list, feed_names)
 
     with program_desc_tracing_guard(True):
         original_outputs = layer(*inputs)
@@ -132,13 +69,8 @@ def _trace(layer, inputs, feed_names=None, fetch_names=None):
             outputs = original_outputs
         out_vars = [var._ivar for var in outputs]
 
-        if callable(fetch_names):
-            fetch_names = fetch_names(len(out_vars))
-
-        tracer.set_fetch_vars(out_vars, fetch_names)
-        tracer.set_name_prefix('t_')
-
-        program_desc = tracer.create_program_desc()
+        program_desc, feed_names, fetch_names = tracer.create_program_desc(
+            var_list, feed_prefix, out_vars, fetch_prefix, tmp_prefix)
         tracer.reset()
 
     with _dygraph_guard(None):
@@ -233,9 +165,7 @@ class TracedLayer(object):
                     out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
                     out_static_graph = static_layer([in_var]) 
         """
-        feed_func = lambda n: ['feed_{}'.format(i) for i in range(n)]
-        fetch_func = lambda n: ['fetch_{}'.format(i) for i in range(n)]
-        outs, prog, feed, fetch = _trace(layer, inputs, feed_func, fetch_func)
+        outs, prog, feed, fetch = _trace(layer, inputs)
         traced = TracedLayer(prog, layer.parameters(), feed, fetch)
         return outs, traced
 
@@ -376,7 +306,7 @@ class TracedLayer(object):
             if partial_vars is None:
                 return all_vars
 
-            return [all_vars[idx] for idx in feed]
+            return [all_vars[idx] for idx in partial_vars]
 
         with scope_guard(self._scope):
             feeded_var_names = get_feed_fetch(self._feed_names, feed)

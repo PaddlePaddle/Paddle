@@ -56,6 +56,10 @@ struct SimpleOpTypeSetTeller : public Teller {
 };
 
 bool OpTeller::Tell(const std::string& op_type, const framework::OpDesc& desc) {
+  // do not support the op which is labeled the `skip_quant`
+  if (desc.HasAttr("op_namescope") &&
+      boost::get<std::string>(desc.GetAttr("op_namescope")) == "/skip_quant_2/")
+    return false;
   for (auto& teller : tellers_) {
     if ((*teller)(op_type, desc)) return true;
   }

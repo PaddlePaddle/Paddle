@@ -53,10 +53,10 @@ fi
 
 api_doc_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.doc  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.doc` 
 if [ "$api_doc_spec_diff" != "" ]; then
-    APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 46782768 7534971 14105589 12605721 3064195 328693 47554610 39645414 11195205 20274488 45024560`
+    APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 31623103 2870059`
     if [ "${APPROVALS}" == "FALSE" ]; then
         failed_num=`expr $failed_num + 1`
-        echo_line="You must have two RD (XiaoguangHu01 or wanghaoshuang or guoshengCS or heavengate or kuke or Superjomn or lanxianghit or cyj1986 or hutuxian or frankwhzhang or nepeplwu) approval for the api change for the management reason of API document.\n"
+        echo_line="You must have one TPM (saxon-zh or Boyan-Liu) approval for the api change for the management reason of API document.\n"
         echo_list=(${echo_list[@]}$failed_num "." $echo_line)
     fi
 fi
@@ -67,7 +67,7 @@ for API_FILE in ${API_FILES[*]}; do
   echo "checking ${API_FILE} change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
   if [ "${API_CHANGE}" ] && [ "${GIT_PR_ID}" != "" ]; then
       # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
-      # approval_user_list: XiaoguangHu01 46782768,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,Dianhai 38231817,JiabinYang 22361972,chenwhql 22561442,seiriosPlus 5442383,gongweibao 10721757,saxon-zh 2870059. 
+      # approval_user_list: XiaoguangHu01 46782768,Xreki 12538138,luotao1 6836917,sneaxiy 32832641,qingqing01 7845005,guoshengCS 14105589,heavengate 12605721,kuke 3064195,Superjomn 328693,lanxianghit 47554610,cyj1986 39645414,hutuxian 11195205,frankwhzhang 20274488,nepeplwu 45024560,Dianhai 38231817,JiabinYang 22361972,chenwhql 22561442,seiriosPlus 5442383,gongweibao 10721757,saxon-zh 2870059,Boyan-Liu 2870059. 
       if [ "${API_FILE}" == "paddle/fluid/op_use_default_grad_op_maker.spec" ];then
         APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32832641 6836917`
       elif [ "${API_FILE}" == "CMakeLists.txt" ];then
@@ -136,15 +136,29 @@ if [ ${HAS_DEFINE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
-HAS_PADDLE_ENFORCE_FLAG=`git diff -U0 upstream/$BRANCH |grep "+" |grep -v "PADDLE_ENFORCE_" |grep -o -m 1 "PADDLE_ENFORCE" || true`
-if [ ${HAS_PADDLE_ENFORCE_FLAG} ] && [ "${GIT_PR_ID}" != "" ]; then
+ALL_PADDLE_ENFORCE=`git diff -U0 upstream/$BRANCH |grep "+" |grep -zoE "PADDLE_ENFORCE\(.[^,\);]+.[^;]*\);\s" || true`
+if [ "${ALL_PADDLE_ENFORCE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
     python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 47554610 22561442`
     echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
     if [ "${APPROVALS}" == "FALSE" ]; then
         failed_num=`expr $failed_num + 1`
-        echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_CUDA_SUCCESS instead.\nYou must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n"
-        echo_list=(${echo_list[@]}$failed_num "." $echo_line)
+        echo_line="PADDLE_ENFORCE is not recommended. Please use PADDLE_ENFORCE_EQ/NE/GT/GE/LT/LE or PADDLE_ENFORCE_NOT_NULL or PADDLE_ENFORCE_CUDA_SUCCESS instead.\nYou must have one RD (chenwhql (Recommend) , luotao1 (Recommend) or lanxianghit) approval for the usage (either add or delete) of PADDLE_ENFORCE.\n${ALL_PADDLE_ENFORCE}\n"
+        echo_list=(${echo_list[@]}$failed_num "." "$echo_line")
+    fi
+fi
+
+ALL_PADDLE_CHECK=`git diff -U0 upstream/$BRANCH |grep "+" |grep -zoE "(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\(.[^,\);]*.[^;]*\);\s" || true`
+VALID_PADDLE_CHECK=`echo "$ALL_PADDLE_CHECK" | grep -zoE '(PADDLE_ENFORCE[A-Z_]{0,9}|PADDLE_THROW)\((.[^,;]+,)*.[^";]*(errors::).[^"]*".[^";]{20,}.[^;]*\);\s' || true`
+INVALID_PADDLE_CHECK=`echo "$ALL_PADDLE_CHECK" |grep -vxF "$VALID_PADDLE_CHECK" || true`
+if [ "${INVALID_PADDLE_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
+    python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 6836917 47554610 22561442`
+    echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+    if [ "${APPROVALS}" == "FALSE" ]; then
+        failed_num=`expr $failed_num + 1`
+        echo_line="The error message you wrote in PADDLE_ENFORCE{_**} or PADDLE_THROW does not meet our error message writing specification. Possible errors include 1. the error message is empty / 2. the error message is too short / 3. the error type is not specified. Please read the specification [ https://github.com/PaddlePaddle/Paddle/wiki/Paddle-Error-Message-Writing-Specification ], then refine the error message. If it is a mismatch, please specify chenwhql (Recommend), luotao1 or lanxianghit review and approve.\nThe PADDDLE_ENFORCE or PADDLE_THROW entries that do not meet the specification are as follows:\n${INVALID_PADDLE_CHECK}\n"
+        echo_list=(${echo_list[@]}$failed_num "." "$echo_line")
     fi
 fi
 
@@ -166,8 +180,7 @@ fi
 
 if [ -n "${echo_list}" ];then
   echo "****************"
-  echo -e ${echo_list[@]}
-  git diff -U0 upstream/$BRANCH |grep "+" |grep -v "PADDLE_ENFORCE_" |grep "PADDLE_ENFORCE"
+  echo -e "${echo_list[@]}"
   echo "There are ${failed_num} approved errors."
   echo "****************"
 fi
