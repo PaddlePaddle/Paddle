@@ -1313,7 +1313,7 @@ class OpTest(OpTestBase):
                    check_dygraph=True):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         assert self.dtype in (np.float32, np.float64, "float32", "float64"), \
-            "The dtype of this test should be float32 or float64."
+            "The dtype of this test should be float32 or float64. op: %s dtype: %s" % (self.op_type, self.dtype)
         OpTest.exist_check_grad = True
         if self.dtype in (np.float64, "float64"):
             OpTest.exist_fp64_check_grad = True
