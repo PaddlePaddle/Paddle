@@ -39,15 +39,14 @@ function check_approval(){
     person_num=`echo $@|awk '{for (i=2;i<=NF;i++)print $i}'`
     APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py $1 $person_num`
     if [ "${APPROVALS}" == "FALSE" ]; then
-        add_failed $failed_num $echo_line
+        add_failed "${failed_num}. ${echo_line}"
     fi
 }
 
 
 function add_failed(){
     failed_num=`expr $failed_num + 1`
-    add_line=`echo $@|awk '{for (i=2;i<=NF;i++)print $i}'`
-    echo_list=(${echo_list[@]}$1 "." $add_line)
+    echo_list="${echo_list[@]}$1"
 } 
 
 
@@ -145,6 +144,12 @@ if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
         echo_line="If you override GetExpectedKernelType method of OperatorWithKernel, please use OperatorWithKernel::IndicateVarDataType() method to get specific input variable's dtype, which checked whether the input variable is initialized (The details in https://github.com/PaddlePaddle/FluidDoc/pull/1527). If you don't use this method to check, you must have one RD (chenwhql (Recommend) , luotao1 or lanxianghit) approval for the usage of other methods.\n"
         check_approval 1 6836917 47554610 22561442
     fi
+fi
+
+HAS_INPLACE_TESTS=`git diff -U0 upstream/$BRANCH |grep "+" |grep -E "inplace_atol[[:space:]]*=.*" || true`
+if [ "${HAS_INPLACE_TESTS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="The calculation results of setting inplace enabled and disabled must be equal, that is, it's not recommended to set inplace_atol.\n If you do need to use inplace_atol, you must have one RD (XiaoguangHu01, lanxianghit, phlrain, luotao1) approval for the usage of inplace_atol.\nThe corresponding lines are as follows:\n${HAS_INPLACE_TESTS}\n"
+    check_approval 1 46782768 47554610 43953930 6836917
 fi
 
 if [ -n "${echo_list}" ];then
