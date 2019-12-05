@@ -701,6 +701,7 @@ def search_pyramid_hash(input,
         black_list.stop_gradient = True
         input_vars['BlackList'] = black_list
 
+    distribute_update_vars_str = ""
     if distribute_update_vars:
         assert isinstance(distribute_update_vars, list)
         special_name_list = []
