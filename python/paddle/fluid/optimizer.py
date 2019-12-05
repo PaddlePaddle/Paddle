@@ -949,6 +949,7 @@ class DGCMomentumOptimizer(Optimizer):
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
 
+        assert rampup_begin_step >= 0, "rampup_begin_step must >= 0"
         self._rampup_begin_step = rampup_begin_step
         self._rampup_step = rampup_step
         self._sparsity = sparsity
@@ -965,8 +966,7 @@ class DGCMomentumOptimizer(Optimizer):
 
             self._local_grad_clip_norm = local_grad_clip_norm
             self._num_trainers = num_trainers
-            self._clip_norm = local_grad_clip_norm / (num_trainers *
-                                                      num_trainers)
+            self._clip_norm = local_grad_clip_norm * (num_trainers**-0.5)
 
         self._get_dgc_regularization_param()
 

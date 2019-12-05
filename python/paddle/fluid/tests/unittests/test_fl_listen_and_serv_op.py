@@ -91,7 +91,7 @@ def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):
     exe.run(main_program)
 
 
-class TestFlListenAndServOp(OpTest):
+class TestFlListenAndServOp(unittest.TestCase):
     def setUp(self):
         self.ps_timeout = 5
         self.ip = "127.0.0.1"
