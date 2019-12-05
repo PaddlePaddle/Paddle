@@ -147,7 +147,7 @@ if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     CHECK_SHAREDATAWITH=`git diff -U0 --diff-filter=AM upstream/$BRANCH |grep "+" |grep -oE "ShareDataWith[(]" || true`
     CHECK_SHAREBUFFERWITH=`git diff -U0 --diff-filter=AM upstream/$BRANCH |grep "+" |grep -oE "ShareBufferWith[(]" || true`
     if [ "${CHECK_SHAREDATAWITH}" != "" ] || [ "${CHECK_SHAREBUFFERWITH}" != "" ]; then
-        echo_line="If you use the ShareDataWith or ShareBufferWith method, please change the method to others. Because this method cloud casus some bug of memory. If you don't want to change the method, you must have one RD (lanxianghit or luotao1 or sneaxiy) approval for the usage of other method.\n"
+        echo_line="Using ShareDataWith or ShareBufferWith is not recommended. You must have one RD's (sneaxiy(Recommend) or luotao1 or lanxianghit) approval to use these methods"
         check_approval 1 6836917 32832641 47554610
     fi
 fi
