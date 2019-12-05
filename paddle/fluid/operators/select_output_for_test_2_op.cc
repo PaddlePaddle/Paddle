@@ -107,7 +107,7 @@ class SelectOutputForTest2GradMaker : public framework::SingleGradOpMaker<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    select_output_for_test2, ops::SelectOutputForTest2Op,
+    select_output_for_test_2, ops::SelectOutputForTest2Op,
     ops::SelectOutputForTest2OpProtoMaker, ops::SelectOutputForTest2InferShape,
     ops::SelectOutputForTest2GradMaker<paddle::framework::OpDesc>,
     ops::SelectOutputForTest2GradMaker<paddle::imperative::OpBase>);
