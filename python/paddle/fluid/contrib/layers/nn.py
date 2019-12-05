@@ -714,6 +714,7 @@ def search_pyramid_hash(input,
             if param not in special_name_list:
                 raise ValueError(
                     "Pyramid Hash layer didn't have parameter {}".format(param))
+        distribute_update_vars_str = ",".join(distribute_update_vars)
 
     res = helper.create_variable_for_type_inference(dtype)
     drop_pos = helper.create_variable_for_type_inference(dtype)
@@ -736,7 +737,7 @@ def search_pyramid_hash(input,
             'black_list_len': black_list_len,
             'seed': seed,
             'lr': lr,
-            'distribute_update_vars': distribute_update_vars
+            'distribute_update_vars': distribute_update_vars_str
         })
 
     return res
