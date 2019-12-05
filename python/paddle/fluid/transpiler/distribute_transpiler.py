@@ -370,10 +370,10 @@ class DistributeTranspiler(object):
             endpoints = trainers.split(",")
         elif isinstance(trainers, list):
             endpoints = trainers
-        else:
+        elif collective_mode != "multi_thread":
             raise ValueError('invalid trainers config: ' + str(trainers))
 
-        if len(endpoints) == 1:
+        if len(endpoints) == 1 and collective_mode != "multi_thread":
             raise ValueError('invalid trainer number in distributed: 1')
 
         if startup_program is None:
@@ -387,6 +387,8 @@ class DistributeTranspiler(object):
             transpiler = collective.GradAllReduce(self.config.nccl_comm_num)
         elif collective_mode == 'local_sgd':
             transpiler = collective.LocalSGD(self.config.nccl_comm_num)
+        elif collective_mode == "multi_thread":
+            transpiler = collective.SingleProcessMultiThread()
         else:
             raise ValueError('invalid collective_mode: %s' % collective_mode)
 

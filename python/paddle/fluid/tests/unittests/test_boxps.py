@@ -21,6 +21,32 @@ import unittest
 from paddle.fluid.layers.nn import _pull_box_sparse
 
 
+class TestTranspile(unittest.TestCase):
+    """  TestCases for BoxPS Preload """
+
+    def get_transpile(self, mode, trainers="127.0.0.1:6174"):
+        config = fluid.DistributeTranspilerConfig()
+        config.mode = 'collective'
+        config.collective_mode = mode
+        t = fluid.DistributeTranspiler(config=config)
+        return t
+        t.transpile(
+            trainer_id=0,
+            startup_program=startup_program,
+            trainers=trainers,
+            program=main_program)
+
+    def test_transpile(self):
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        t = self.get_transpile("multi_thread")
+        t.transpile(
+            trainer_id=0,
+            startup_program=startup_program,
+            trainers="127.0.0.1:6174",
+            program=main_program)
+
+
 class TestBoxPSPreload(unittest.TestCase):
     """  TestCases for BoxPS Preload """
 
