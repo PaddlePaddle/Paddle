@@ -400,7 +400,7 @@ class DistributeTranspiler(object):
 
     def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []
-        sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
+        sparse_update_op_types = ["lookup_table", "nce"]
         for op in main_program.global_block().ops:
             if op.type in sparse_update_op_types and op.attr(
                     'remote_prefetch') is True:
@@ -861,8 +861,8 @@ class DistributeTranspiler(object):
         self._get_distributed_optimizer_vars()
         self.origin_program._parameters_on_pservers = self.vars_overview
 
-    def get_sparse_table_names(self):
-        sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
+    def _get_sparse_table_names(self):
+        sparse_update_op_types = ["lookup_table", "nce"]
 
         sparse_table_names = []
         for op in self.origin_program.global_block().ops:
@@ -876,7 +876,7 @@ class DistributeTranspiler(object):
             sparse_table_names.append(self.table_name)
         return list(set(sparse_table_names))
 
-    def fake_init_sparsetable(self, sparse_table_names):
+    def _fake_init_sparsetable(self, sparse_table_names):
         # delete table init op
         for table_name in sparse_table_names:
             table_var = self.startup_program.global_block().vars[table_name]
@@ -922,12 +922,15 @@ class DistributeTranspiler(object):
                         param_init_op.append(op)
                 init_ops.extend(param_init_op)
             delete_ops(self.startup_program.global_block(), init_ops)
+
             for var in need_delete_optimize_vars:
-                self.startup_program.global_block()._remove_var(var)
+                if self.startup_program.global_block().has_var(var):
+                    self.startup_program.global_block()._remove_var(var)
         else:
             delete_ops(self.origin_program.global_block(), self.optimize_ops)
             for var in need_delete_optimize_vars:
-                self.origin_program.global_block()._remove_var(var)
+                if self.origin_program.global_block().has_var(var):
+                    self.origin_program.global_block()._remove_var(var)
 
     def get_trainer_program(self, wait_port=True):
         """
@@ -960,8 +963,8 @@ class DistributeTranspiler(object):
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
 
         self._delete_trainer_optimizer(is_startup=True)
-        sparse_table_names = self.get_sparse_table_names()
-        self.fake_init_sparsetable(sparse_table_names)
+        sparse_table_names = self._get_sparse_table_names()
+        self._fake_init_sparsetable(sparse_table_names)
 
         lr_ops = self._get_lr_ops()
         delete_ops(self.origin_program.global_block(), lr_ops)
@@ -990,20 +993,7 @@ class DistributeTranspiler(object):
 
         # FIXME(gongwb): delete not need ops.
         # note that: some parameter is not trainable and those ops can't be deleted.
-        sparse_table_names = self.get_sparse_table_names()
-
-        sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
-
-        sparse_table_names = []
-        for op in self.origin_program.global_block().ops:
-            if op.type in sparse_update_op_types and op.attr(
-                    'is_sparse') is True:
-                sparse_table_names.append(op.input("W")[0])
-            if op.type == "distributed_lookup_table":
-                sparse_table_names.append(op.input("W")[0])
-
-        if self.has_distributed_lookup_table:
-            sparse_table_names.append(self.table_name)
+        sparse_table_names = self._get_sparse_table_names()
 
         for varname, splited_var in six.iteritems(self.param_var_mapping):
             if varname in sparse_table_names:
