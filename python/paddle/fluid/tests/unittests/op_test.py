@@ -33,6 +33,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
+import op_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -1288,43 +1289,7 @@ class OpTestFp16(OpTestBase):
                    check_dygraph=True):
         OpTestFp16.exist_check_grad = True
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
-        assert self.dtype in (np.float16, "float16"
-                              ), "The dtype of this test should be float16."
-
-        places = self._get_places()
-        for place in places:
-            self.check_grad_with_place(place, inputs_to_check, output_names,
-                                       no_grad_set, numeric_grad_delta,
-                                       in_place, max_relative_error,
-                                       user_defined_grads, check_dygraph)
-
-    @classmethod
-    def tearDownClass(cls):
-        """Restore random seeds"""
-        np.random.set_state(cls._np_rand_state)
-        random.setstate(cls._py_rand_state)
-
-        if not cls.exist_check_grad:
-            raise AssertionError("The op test need check_grad.")
-
-
-class OpTest(OpTestBase):
-    def check_grad(self,
-                   inputs_to_check,
-                   output_names,
-                   no_grad_set=None,
-                   numeric_grad_delta=0.005,
-                   in_place=False,
-                   max_relative_error=0.005,
-                   user_defined_grads=None,
-                   check_dygraph=True):
-        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
-        assert self.dtype in (np.float32, np.float64, "float32", "float64"), \
-            "The dtype of this test should be float32 or float64. op: %s dtype: %s" % (self.op_type, self.dtype)
-        OpTest.exist_check_grad = True
-        if self.dtype in (np.float64, "float64"):
-            OpTest.exist_fp64_check_grad = True
-        OpTest.op_type = self.op_type
+        assert self.dtype == np.float16, "The dtype of this test should be float16."
 
         places = self._get_places()
         for place in places:
@@ -1341,5 +1306,46 @@ class OpTest(OpTestBase):
 
         assert hasattr(cls, "exist_check_grad"), \
             "The op test needs check_grad"
+
+
+class OpTest(OpTestBase):
+    def check_grad(self,
+                   inputs_to_check,
+                   output_names,
+                   no_grad_set=None,
+                   numeric_grad_delta=0.005,
+                   in_place=False,
+                   max_relative_error=0.005,
+                   user_defined_grads=None,
+                   check_dygraph=True):
+        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        assert self.dtype in [np.float16, np.float32, np.float64]
+        if self.dtype == np.float16 and \
+            self.dtype not in op_white_list.FP16_DTYPE_OP_LIST:
+            raise AssertionError("The dtype of this test should be float32 "
+                                 "or float64. op: %s dtype: %s" %
+                                 (self.op_type, self.dtype))
+
+        # OpTest.exist_check_grad = True
+        OpTest.op_type = self.op_type
+        if self.dtype in (np.float64, "float64"):
+            OpTest.exist_fp64_check_grad = True
+
+        places = self._get_places()
+        for place in places:
+            self.check_grad_with_place(place, inputs_to_check, output_names,
+                                       no_grad_set, numeric_grad_delta,
+                                       in_place, max_relative_error,
+                                       user_defined_grads, check_dygraph)
+
+    @classmethod
+    def tearDownClass(cls):
+        """Restore random seeds"""
+        np.random.set_state(cls._np_rand_state)
+        random.setstate(cls._py_rand_state)
+        '''
+        assert hasattr(cls, "exist_check_grad"), \
+            "The op test needs check_grad"
+        '''
         assert hasattr(cls, "exist_fp64_check_grad"), \
             "The test of %s op needs fp64 check_grad" % cls.op_type
