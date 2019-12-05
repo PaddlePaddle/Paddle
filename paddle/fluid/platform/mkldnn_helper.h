@@ -175,7 +175,17 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
         return mkldnn::memory::format_tag::ndhwc;
       }
     } else if (inner_nblks == 1) {
-      if (inner_blks[0] == 16 && inner_idxs[0] == 0) {
+      if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
+        if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
+            strides[3] >= strides[4] && strides[4] >= strides[1]) {
+          return mkldnn::memory::format_tag::Acdeb8a;
+        }
+      } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
+        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
+            strides[2] >= strides[3] && strides[3] >= strides[4]) {
+          return mkldnn::memory::format_tag::aBcde8b;
+        }
+      } else if (inner_blks[0] == 16 && inner_idxs[0] == 0) {
         if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
             strides[3] >= strides[4] && strides[4] >= strides[1]) {
           return mkldnn::memory::format_tag::Acdeb16a;
