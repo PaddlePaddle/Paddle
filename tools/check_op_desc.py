@@ -45,12 +45,12 @@ def get_attr_default_value(op_name):
 
 def get_vars_info(op_vars_proto):
     vars_info = {}
-    for vat_proto in op_vars_proto:
-        name = str(vat_proto.name)
+    for var_proto in op_vars_proto:
+        name = str(var_proto.name)
         vars_info[name] = {}
-        vars_info[name][DUPLICABLE] = vat_proto.duplicable
-        vars_info[name][DISPENSABLE] = vat_proto.dispensable
-        vars_info[name][INTERMEDIATE] = vat_proto.intermediate
+        vars_info[name][DUPLICABLE] = var_proto.duplicable
+        vars_info[name][DISPENSABLE] = var_proto.dispensable
+        vars_info[name][INTERMEDIATE] = var_proto.intermediate
     return vars_info
 
 
@@ -232,7 +232,7 @@ def print_error_message(error_message):
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    "The arg `{}` of Input '{}' is changed: from '{}' to `{}`.".
+                    "The arg '{}' of Input '{}' is changed: from '{}' to '{}'.".
                     format(arg, name, ori_value, new_value))
 
         # 2. print outputs error message
@@ -248,7 +248,7 @@ def print_error_message(error_message):
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    "The arg `{}` of Output '{}' is changed: from '{}' to `{}`.".
+                    "The arg '{}' of Output '{}' is changed: from '{}' to '{}'.".
                     format(arg, name, ori_value, new_value))
 
         # 3. print attrs error message
@@ -264,7 +264,7 @@ def print_error_message(error_message):
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    "The arg `{}` of attr '{}' is changed: from '{}' to `{}`.".
+                    "The arg '{}' of attr '{}' is changed: from '{}' to '{}'.".
                     format(arg, name, ori_value, new_value))
 
 
@@ -314,4 +314,4 @@ else:
     print("Usage:\n" \
           "\t1. python check_op_desc.py > OP_DESC_DEV.spec\n" \
           "\t2. python check_op_desc.py > OP_DESC_PR.spec\n"\
-          "\t3. python check_op_desc.py > OP_DESC_DEV.spec OP_DESC_PR.spec > diff_message")
+          "\t3. python check_op_desc.py OP_DESC_DEV.spec OP_DESC_PR.spec > error_message")
