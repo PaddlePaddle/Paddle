@@ -170,24 +170,31 @@ class OpTestBase(unittest.TestCase):
             self.dtype = data_type
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
-        def infer_dtype(numpy_dict):
+        def infer_dtype(numpy_dict, dtype_set):
             assert isinstance(
                 numpy_dict,
                 dict), "self.inputs, self.outputs must be numpy_dict"
-            for var_name, var_value in six.iteritems(numpy_dict):
+            for _, var_value in six.iteritems(numpy_dict):
                 if isinstance(var_value, (np.ndarray, np.generic)):
-                    self.try_call_once(var_value.dtype)
+                    dtype_set.add(var_value.dtype)
                 elif isinstance(var_value, (list, tuple)):
                     # the case of self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
-                    if len(var_value) > 1 and isinstance(var_value[1], (
-                            np.ndarray, np.generic)):
-                        instance = var_value[1]
-                        self.try_call_once(instance[1].dtype)
-                else:
-                    self.try_call_once("float32")
+                    for sub_val_value in var_value:
+                        if len(sub_val_value) > 1 and isinstance(
+                                sub_val_value[1], (np.ndarray, np.generic)):
+                            dtype_set.add(sub_val_value[1].dtype)
 
-        infer_dtype(inputs)
-        infer_dtype(outputs)
+        dtype_set = set()
+        infer_dtype(inputs, dtype_set)
+        infer_dtype(outputs, dtype_set)
+        dtype_list = [
+            np.float64, np.float32, np.float16, np.int64, np.int32, np.int16,
+            np.int8
+        ]
+        for dtype in dtype_list:
+            if dtype in dtype_set:
+                self.dtype = dtype
+                break
 
     def feed_var(self, input_vars, place):
         feed_map = {}
