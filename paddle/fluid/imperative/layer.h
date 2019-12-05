@@ -89,7 +89,7 @@ class VarBase {
 
   void ClearGradVarBase() { grad_var_ = nullptr; }
 
-  std::shared_ptr<VarBase>& MutableGradVarBase() {
+  const std::shared_ptr<VarBase>& MutableGradVarBase() {
     if (grad_var_ == nullptr) {
       grad_var_ = std::make_shared<VarBase>(false, GradVarName());
     }
@@ -153,8 +153,7 @@ class VarBase {
 
   std::vector<OpBase*> GradOps() {
     std::vector<OpBase*> rlt;
-    // TODO(jiabin): use better data structure to remove nullptr when we find
-    // it
+    // TODO(jiabin): use better data structure to remove nullptr when we find it
     for (const auto& wk_ptr : grad_ops_) {
       OpBase* tmp_op = wk_ptr.lock().get();
       if (tmp_op) rlt.emplace_back(tmp_op);
