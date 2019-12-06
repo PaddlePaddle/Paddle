@@ -323,7 +323,7 @@ void AsyncCommunicator::RecvAll() {
     task.wait();
   }
   auto after_recv = GetCurrentUS();
-  VLOG(1) << "run recv graph use time " << after_recv - before_send;
+  VLOG(3) << "run recv graph use time " << after_recv - before_send;
 }
 
 void AsyncCommunicator::Start() {
@@ -994,7 +994,7 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
   auto recv_functor = distributed::ParameterRecv<float>();
   recv_functor(recv_varname_to_ctx_[origin_var_name], *pserver_scope_.get());
   auto after_run_recv = GetCurrentUS();
-  VLOG(1) << "recv var " << origin_var_name << " use time "
+  VLOG(3) << "recv var " << origin_var_name << " use time "
           << after_run_recv - before_run_recv;
 
   // step2: update dense var
@@ -1031,7 +1031,7 @@ void GeoSgdCommunicator::RecvUpdateDenseVars(const std::string &var_name) {
              var_y_tensor.mutable_data<float>(var_y_tensor.place()));
 
   auto after_run_update = GetCurrentUS();
-  VLOG(1) << "dense var update " << origin_var_name << " use time "
+  VLOG(3) << "dense var update " << origin_var_name << " use time "
           << after_run_update - before_run_update;
 }
 
