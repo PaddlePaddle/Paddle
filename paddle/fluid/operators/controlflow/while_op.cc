@@ -88,7 +88,7 @@ class WhileOp : public framework::OperatorBase {
         executor.RunPreparedContext(ctx.get(), &current_scope, false, true,
                                     true);
         cond_data =
-            GetCondData(scope->.FindVar(Input(kCondition))->Get<LoDTensor>());
+            GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
       }
     } else {
       auto &current_scope = scope.NewScope();
@@ -110,7 +110,7 @@ class WhileOp : public framework::OperatorBase {
         executor.RunPreparedContext(ctx.get(), &current_scope, false, false,
                                     false);
         cond_data =
-            GetCondData(scope->.FindVar(Input(kCondition))->Get<LoDTensor>());
+            GetCondData(scope.FindVar(Input(kCondition))->Get<LoDTensor>());
       }
       scope.DeleteScope(&current_scope);
     }
