@@ -181,34 +181,37 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
       if (input_var->IsType<framework::LoDTensor>()) {
         PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensor>(), true,
-                          "Type of outside_var %s is NOT LoDTensor, which "
-                          "doesn't match input_var %s",
-                          outside_grad_name, input_name);
+                          platform::errors::InvalidArgument(
+                              "Type of outside_var %s is NOT LoDTensor, which "
+                              "doesn't match input_var %s",
+                              outside_grad_name, input_name));
         AssignZeroToOutsideTensor(
             place, scope, input_var->Get<framework::LoDTensor>(),
             outside_var->GetMutable<framework::LoDTensor>());
       } else if (input_var->IsType<framework::LoDTensorArray>()) {
         PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensorArray>(),
                           true,
-                          "Type of outside_var %s is NOT LoDTensorArray, which "
-                          "doesn't match input_var %s",
-                          outside_grad_name, input_name);
+                          platform::errors::InvalidArgument(
+                              "Type of outside_var %s is NOT LoDTensorArray, "
+                              "which doesn't match input_var %s",
+                              outside_grad_name, input_name));
         const auto &input_tensors = input_var->Get<framework::LoDTensorArray>();
         auto *outside_tensors =
             outside_var->GetMutable<framework::LoDTensorArray>();
         PADDLE_ENFORCE_EQ(input_tensors.size(), outside_tensors->size(),
-                          "LoDTensorArray outside_var %s doen't have same size "
-                          "as input_var %s",
-                          outside_grad_name, input_name);
+                          platform::errors::InvalidArgument(
+                              "LoDTensorArray outside_var %s doen't have same "
+                              "size as input_var %s",
+                              outside_grad_name, input_name));
         for (size_t j = 0; j < input_tensors.size(); ++j) {
           AssignZeroToOutsideTensor(place, scope, input_tensors[j],
                                     &((*outside_tensors)[j]));
         }
       } else {
         // TODO(huihuangzheng): add support for SelectedRows
-        PADDLE_THROW(
+        PADDLE_THROW(platform::errors::InvalidArgument(
             "Conditional block grad op doesn't support non-LoDTensor output "
-            "now");
+            "now"));
       }
     }
   }
