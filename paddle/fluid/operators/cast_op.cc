@@ -38,17 +38,6 @@ the input dtype, but it's fine if you do so.
   }
 };
 
-class CastOpInferShape : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInput("X"), "The input of cast op must be set");
-    PADDLE_ENFORCE(context->HasOutput("Out"),
-                   "The output of cast op must be set");
-    context->SetOutputDim("Out", context->GetInputDim("X"));
-    context->ShareLoD("X", "Out");
-  }
-};
-
 template <typename T>
 class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -71,6 +60,17 @@ class CastOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
+  void InferShape(framework::InferShapeContext *context) const override {
+    PADDLE_ENFORCE_EQ(
+        context->HasInput("X"), true,
+        platform::errors::NotFound("The input(X) of cast op must be set"));
+    PADDLE_ENFORCE_EQ(
+        context->HasOutput("Out"), true,
+        platform::errors::NotFound("The output of cast op must be set"));
+    context->SetOutputDim("Out", context->GetInputDim("X"));
+    context->ShareLoD("X", "Out");
+  }
+
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
@@ -88,7 +88,7 @@ using CPU = paddle::platform::CPUDeviceContext;
 REGISTER_OPERATOR(cast, ops::CastOp,
                   ops::CastOpGradMaker<paddle::framework::OpDesc>,
                   ops::CastOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CastOpInferShape, ops::CastOpProtoMaker);
+                  ops::CastOpProtoMaker);
 REGISTER_OP_CPU_KERNEL(cast, ops::CastOpKernel<CPU, float>,
                        ops::CastOpKernel<CPU, double>,
                        ops::CastOpKernel<CPU, int>,

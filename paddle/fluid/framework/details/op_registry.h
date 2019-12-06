@@ -164,13 +164,12 @@ struct OpInfoFiller<T, kOperator> {
       return new T(type, inputs, outputs, attrs);
     };
 
-    /**
-     * NOTE(paddle-dev): InferShapeBase has higher priority than
-     * OperatorWithKernel::InferShape. If info->infer_shape_ has
-     * been set by InferShapeBase, skip it here.
-     */
-    if (std::is_base_of<OperatorWithKernel, T>::value &&
-        info->infer_shape_ == nullptr) {
+    if (std::is_base_of<OperatorWithKernel, T>::value) {
+      PADDLE_ENFORCE_EQ(
+          info->infer_shape_, nullptr,
+          platform::errors::AlreadyExists(
+              "Duplicate InferShapeFN of %s has been registered", op_type));
+
       auto* op =
           dynamic_cast<OperatorWithKernel*>(info->creator_("", {}, {}, {}));
       PADDLE_ENFORCE_NOT_NULL(op, platform::errors::InvalidArgument(
@@ -261,6 +260,10 @@ struct OpInfoFiller<T, kVarTypeInference> {
 template <typename T>
 struct OpInfoFiller<T, kShapeInference> {
   void operator()(const char* op_type, OpInfo* info) const {
+    PADDLE_ENFORCE_EQ(
+        info->infer_shape_, nullptr,
+        platform::errors::AlreadyExists(
+            "Duplicate InferShapeFN of %s has been registered", op_type));
     info->infer_shape_ = [](InferShapeContext* ctx) {
       T inference;
       inference(ctx);
