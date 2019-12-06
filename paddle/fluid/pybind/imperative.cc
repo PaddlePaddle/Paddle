@@ -31,17 +31,12 @@ limitations under the License. */
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
+#include "paddle/fluid/pybind/tensor_py.h"
 
 namespace paddle {
 namespace pybind {
 
 namespace py = ::pybind11;
-
-template <typename P>
-extern void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
-                                 const P &place, bool zero_copy);
-extern py::array TensorToPyArray(const framework::Tensor &tensor,
-                                 bool need_deep_copy = false);
 
 class Layer : public imperative::Layer {
  public:

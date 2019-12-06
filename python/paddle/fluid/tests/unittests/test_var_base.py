@@ -101,6 +101,13 @@ class TestVarBase(unittest.TestCase):
             var = fluid.dygraph.to_variable(self.array)
             self.assertTrue(np.array_equal(var[1, :].numpy(), self.array[1, :]))
 
+    def test_var_base_to_np(self):
+        with fluid.dygraph.guard():
+            var = fluid.dygraph.to_variable(self.array)
+            self.assertTrue(
+                np.array_equal(var.numpy(),
+                               fluid.framework._var_base_to_np(var)))
+
 
 if __name__ == '__main__':
     unittest.main()
