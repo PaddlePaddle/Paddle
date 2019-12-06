@@ -839,8 +839,8 @@ class TestRecomputeOptimizer(unittest.TestCase):
         self.assertEqual([op.type for op in mean_out.block.ops], [
             "mul", "seed", "dropout", "elementwise_add", "elementwise_add",
             "mean", "fill_constant", "mean_grad", "elementwise_add_grad", "mul",
-            "dropout", "elementwise_add_grad", "dropout", "mul_grad", "sgd",
-            "sgd", "sgd"
+            "dropout", "elementwise_add_grad", "dropout_grad", "mul_grad",
+            "sgd", "sgd", "sgd"
         ])
 
 
