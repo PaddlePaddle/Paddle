@@ -40,11 +40,16 @@ void BindBoxHelper(py::module* m) {
       .def(py::init([](paddle::framework::Dataset* dataset) {
         return std::make_shared<paddle::framework::BoxHelper>(dataset);
       }))
-      .def("begin_pass", &framework::BoxHelper::BeginPass)
-      .def("end_pass", &framework::BoxHelper::EndPass)
-      .def("wait_feed_pass_done", &framework::BoxHelper::WaitFeedPassDone)
-      .def("preload_into_memory", &framework::BoxHelper::PreLoadIntoMemory)
-      .def("load_into_memory", &framework::BoxHelper::LoadIntoMemory);
+      .def("begin_pass", &framework::BoxHelper::BeginPass,
+           py::call_guard<py::gil_scoped_release>())
+      .def("end_pass", &framework::BoxHelper::EndPass,
+           py::call_guard<py::gil_scoped_release>())
+      .def("wait_feed_pass_done", &framework::BoxHelper::WaitFeedPassDone,
+           py::call_guard<py::gil_scoped_release>())
+      .def("preload_into_memory", &framework::BoxHelper::PreLoadIntoMemory,
+           py::call_guard<py::gil_scoped_release>())
+      .def("load_into_memory", &framework::BoxHelper::LoadIntoMemory,
+           py::call_guard<py::gil_scoped_release>());
 }  // end BoxHelper
 }  // end namespace pybind
 }  // end namespace paddle
