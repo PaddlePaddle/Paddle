@@ -719,7 +719,7 @@ void MultiSlotDataset::MergeByInsId() {
         if (feature.sign().uint64_feasign_ != 0) {
           dense_empty[slot] = false;
         } else if (dense_empty.find(slot) == dense_empty.end() &&
-            all_dense_uint64.find(slot) == all_dense_uint64.end()) {
+                   all_dense_uint64.find(slot) == all_dense_uint64.end()) {
           dense_empty[slot] = true;
         }
       }
@@ -732,7 +732,7 @@ void MultiSlotDataset::MergeByInsId() {
         if (fabs(feature.sign().float_feasign_) >= 1e-6) {
           dense_empty[slot] = false;
         } else if (dense_empty.find(slot) == dense_empty.end() &&
-            all_dense_float.find(slot) == all_dense_float.end()) {
+                   all_dense_float.find(slot) == all_dense_float.end()) {
           dense_empty[slot] = true;
         }
       }
