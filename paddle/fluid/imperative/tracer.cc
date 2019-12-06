@@ -102,7 +102,6 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                      const NameVarBaseMap& outs,
                      framework::AttributeMap attrs) {
-  platform::RecordEvent event(type);
   VLOG(1) << "Trace Op: " << type;
   size_t op_id = GenerateUniqueId();
   auto op =
