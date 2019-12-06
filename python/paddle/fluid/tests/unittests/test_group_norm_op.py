@@ -222,7 +222,7 @@ class TestGroupNormAPI_With_NHWC(OpTest):
         self.assertTrue(np.allclose(results[1], expect_res2[0]))
 
 
-class TestGroupNormException(OpTest):
+class TestGroupNormException(unittest.TestCase):
     # data_layout is not NHWC or NCHW
     def test_exception(self):
         data = fluid.data(name='data', shape=[None, 3, 3, 4], dtype="float32")
