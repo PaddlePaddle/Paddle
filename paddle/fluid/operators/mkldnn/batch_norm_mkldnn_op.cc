@@ -149,6 +149,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const unsigned int C = scale_tz[0];
 
     // MKLDNN requires a single piece of memory for scale and shift/bias data
+
     std::vector<T> scaleshift_data(scale->data<T>(), scale->data<T>() + C);
     scaleshift_data.reserve(2 * C);
     scaleshift_data.insert(scaleshift_data.end(), shift->data<T>(),
@@ -162,7 +163,7 @@ class BatchNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     BatchNormMKLDNNHandler<T> handler(
         src_tz, epsilon, flags, global_stats,
         platform::MKLDNNFormatForSize(src_tz.size(), x->format()), dev_ctx,
-        ctx.GetPlace(), ctx.op().Output("SavedMean"));
+        ctx.GetPlace(), ctx.OutputName("SavedMean"));
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto scaleshift_memory =
@@ -261,7 +262,7 @@ class BatchNormMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     BatchNormMKLDNNHandler<T> handler(
         src_tz, epsilon, mkldnn::use_scale_shift, dst_format, input_format,
-        dev_ctx, ctx.GetPlace(), ctx.op().Input("SavedMean"));
+        dev_ctx, ctx.GetPlace(), ctx.InputName("SavedMean"));
 
     // MKLDNN requires a single piece of memory for scale and shift/bias data
     const size_t scaleshift_size = 2 * C;

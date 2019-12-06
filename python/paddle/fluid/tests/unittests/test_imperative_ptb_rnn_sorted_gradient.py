@@ -28,7 +28,11 @@ import six
 
 
 class TestDygraphPtbRnnSortGradient(unittest.TestCase):
-    def test_ptb_rnn_sort_gradient_cpu_float32(self):
+    def test_ptb_rnn_sort_gradient(self):
+        for is_sparse in [True, False]:
+            self.ptb_rnn_sort_gradient_cpu_float32(is_sparse)
+
+    def ptb_rnn_sort_gradient_cpu_float32(self, is_sparse):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -50,7 +54,8 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                 vocab_size=vocab_size,
                 num_layers=num_layers,
                 num_steps=num_steps,
-                init_scale=init_scale)
+                init_scale=init_scale,
+                is_sparse=is_sparse)
 
             sgd = SGDOptimizer(learning_rate=1e-3)
             dy_param_updated = dict()
@@ -97,7 +102,8 @@ class TestDygraphPtbRnnSortGradient(unittest.TestCase):
                 vocab_size=vocab_size,
                 num_layers=num_layers,
                 num_steps=num_steps,
-                init_scale=init_scale)
+                init_scale=init_scale,
+                is_sparse=is_sparse)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))

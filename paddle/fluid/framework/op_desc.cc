@@ -47,18 +47,16 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   AttrReader Attrs() const override;
 
-  const std::vector<std::string> &Inputs(
-      const std::string &name) const override;
+  std::vector<std::string> Inputs(const std::string &name) const override;
 
-  const std::vector<std::string> &Outputs(
-      const std::string &name) const override;
+  std::vector<std::string> Outputs(const std::string &name) const override;
 
   void ShareDim(const std::string &in, const std::string &out, size_t i = 0,
                 size_t j = 0) override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    const std::string &input_n = Inputs(in)[i];
-    const std::string &output_n = Outputs(out)[j];
+    std::string input_n = Inputs(in)[i];
+    std::string output_n = Outputs(out)[j];
 
     PADDLE_ENFORCE(input_n != framework::kEmptyVarName, "The %s[%d] is @EMPTY@",
                    in, i);
@@ -72,6 +70,33 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                    "The type of %s and %s is not the same.", input_n, output_n);
 
     SetDim(output_n, GetDim(input_n));
+  }
+
+  void ShareAllLoD(const std::string &in,
+                   const std::string &out) const override {
+    auto &in_var_names = op_.Input(in);
+    auto &out_var_names = op_.Output(out);
+
+    PADDLE_ENFORCE_EQ(
+        in_var_names.size(), out_var_names.size(),
+        platform::errors::PreconditionNotMet(
+            "Op [%s]:  Input var number shoule be equal with output var number",
+            op_.Type()));
+
+    for (size_t i = 0; i < in_var_names.size(); ++i) {
+      if (out_var_names[i] == framework::kEmptyVarName) {
+        continue;
+      }
+
+      auto *in_var = block_.FindVarRecursive(in_var_names[i]);
+      auto *out_var = block_.FindVarRecursive(out_var_names[i]);
+      if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
+          in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
+        VLOG(3) << "input " << in << " is not LoDTensor or LoDTensorArray.";
+        return;
+      }
+      out_var->SetLoDLevel(in_var->GetLoDLevel());
+    }
   }
 
   void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,
@@ -92,45 +117,35 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
 
-  void DecreaseLoDLevel(const std::string &in, const std::string &out,
-                        size_t i = 0, size_t j = 0) const override {
-    // When in is a LoDTensor and out is a LoDTensorArray, there may need to
-    // decrease the lod_level.
-    PADDLE_ENFORCE_LT(i, Inputs(in).size());
-    PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    PADDLE_ENFORCE(Inputs(in)[i] != framework::kEmptyVarName,
-                   "The %s[%d] is @EMPTY@", in, i);
-    PADDLE_ENFORCE(Outputs(out)[j] != framework::kEmptyVarName,
-                   "The %s[%d] is @EMPTY@", out, j);
+  int32_t GetLoDLevel(const std::string &in, size_t i = 0) const override {
+    PADDLE_ENFORCE_LT(i, Inputs(in).size(),
+                      "Input %s of operator %s only has %d elements.", in,
+                      op_.Type(), Inputs(in).size());
+    PADDLE_ENFORCE_NE(Inputs(in)[i], framework::kEmptyVarName,
+                      "Input %s[%d] of operator %s is @EMPTY@", in, op_.Type(),
+                      i);
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
-    auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
-    PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarType::LOD_TENSOR,
-                      "The input %s should be LoDTensor.", in_var->Name());
-    PADDLE_ENFORCE_EQ(out_var->GetType(), proto::VarType::LOD_TENSOR_ARRAY,
-                      "The output %s should be LoDTensorArray.",
-                      out_var->Name());
-    if (in_var->GetLoDLevel() > 0) {
-      out_var->SetLoDLevel(in_var->GetLoDLevel() - 1);
-    }
+    PADDLE_ENFORCE_NOT_NULL(
+        in_var, "Input %s[%d] of operator %s should not be nullptr.", in,
+        op_.Type(), i);
+    return in_var->GetLoDLevel();
   }
 
-  void IncreaseLoDLevel(const std::string &in, const std::string &out,
-                        size_t i = 0, size_t j = 0) const override {
-    // When in is a LoDTensorArray and out is a LoDTensor, there may need to
-    // increase the lod_level.
-    PADDLE_ENFORCE_LT(i, Inputs(in).size());
-    PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    PADDLE_ENFORCE_NE(Inputs(in)[i], framework::kEmptyVarName,
-                      "The %s[%d] is @EMPTY@", in, i);
+  void SetLoDLevel(const std::string &out, int32_t lod_level,
+                   size_t j = 0) const override {
+    PADDLE_ENFORCE_LT(j, Outputs(out).size(),
+                      "Output %s of operator %s only has %d elements.", out,
+                      op_.Type(), Outputs(out).size());
     PADDLE_ENFORCE_NE(Outputs(out)[j], framework::kEmptyVarName,
-                      "The %s[%d] is @EMPTY@", out, j);
-    auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
+                      "Output %s[%d] of operator %s is @EMPTY@", out,
+                      op_.Type(), j);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
-    PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarType::LOD_TENSOR_ARRAY,
-                      "The input %s should be LoDTensorArray.", in_var->Name());
-    PADDLE_ENFORCE_EQ(out_var->GetType(), proto::VarType::LOD_TENSOR,
-                      "The output %s should be LoDTensor.", out_var->Name());
-    out_var->SetLoDLevel(in_var->GetLoDLevel() + 1);
+    PADDLE_ENFORCE_NOT_NULL(
+        out_var, "Output %s[%d] of operator %s should not be nullptr.", out,
+        op_.Type(), j);
+    if (lod_level >= 0) {
+      out_var->SetLoDLevel(lod_level);
+    }
   }
 
   std::vector<InferShapeVarPtr> GetInputVarPtrs(
@@ -183,7 +198,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   }
 
   void SetOutputDim(const std::string &name, const DDim &dim) override {
-    auto &arg_names = Outputs(name);
+    auto arg_names = Outputs(name);
     PADDLE_ENFORCE_EQ(arg_names.size(), 1UL,
                       "Output(%s) should hold one element, but now it holds %d",
                       name, arg_names.size());
@@ -192,7 +207,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
   void SetOutputsDim(const std::string &name,
                      const std::vector<DDim> &dims) override {
-    auto &names = Outputs(name);
+    auto names = Outputs(name);
     SetDims(names, dims);
   }
 
@@ -799,12 +814,12 @@ AttrReader CompileTimeInferShapeContext::Attrs() const {
   return AttrReader(op_.GetAttrMap());
 }
 
-const std::vector<std::string> &CompileTimeInferShapeContext::Inputs(
+std::vector<std::string> CompileTimeInferShapeContext::Inputs(
     const std::string &name) const {
   return op_.Input(name);
 }
 
-const std::vector<std::string> &CompileTimeInferShapeContext::Outputs(
+std::vector<std::string> CompileTimeInferShapeContext::Outputs(
     const std::string &name) const {
   return op_.Output(name);
 }

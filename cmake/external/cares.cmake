@@ -28,6 +28,7 @@ endif()
 
 ExternalProject_Add(
     extern_cares
+    ${SHALLOW_CLONE}
     GIT_REPOSITORY "https://github.com/c-ares/c-ares.git"
     GIT_TAG "cares-1_13_0"
     PREFIX          ${CARES_SOURCES_DIR}
@@ -35,7 +36,7 @@ ExternalProject_Add(
     CONFIGURE_COMMAND ./buildconf && ./configure --disable-shared --prefix=${CARES_INSTALL_DIR}
     BUILD_IN_SOURCE 1
     PATCH_COMMAND ${PATCH_COMMAND_CARES}
-    BUILD_COMMAND   make -j8
+    BUILD_COMMAND   make -j $(nproc)
     INSTALL_COMMAND make install
 )
 

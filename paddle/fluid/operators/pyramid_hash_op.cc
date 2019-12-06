@@ -161,10 +161,21 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
   void hash_embedding_ff(const T* hash_id, int len, T* top_pos,
                          const T* weights, int _num_emb, int _rand_len,
                          int _space_len) const {
-    for (unsigned int j = 0; j != _num_emb; j += _rand_len) {
-      unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
-      memcpy(top_pos + j, const_cast<float*>(weights + pos),
+    unsigned int pos1 = XXH32(hash_id, len * sizeof(T), 0) % _space_len;
+    unsigned int pos2 = XXH32(hash_id, len * sizeof(T), _rand_len) % _space_len;
+
+    for (int j = 0; j != _num_emb; j += _rand_len) {
+      if (j + _rand_len < _num_emb) {
+        __builtin_prefetch(weights + pos2);
+        __builtin_prefetch(top_pos + j + _rand_len);
+      }
+
+      unsigned int pos3 =
+          XXH32(hash_id, len * sizeof(T), j + 2 * _rand_len) % _space_len;
+      memcpy(top_pos + j, const_cast<float*>(weights + pos1),
              _rand_len * sizeof(T));
+      pos1 = pos2;
+      pos2 = pos3;
     }
   }
 
@@ -193,7 +204,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     auto* buff = ctx.Output<LoDTensor>("X_Temp_Out");
     buff->Resize(framework::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
     T* bottom_data = buff->mutable_data<T>(ctx.GetPlace());
-    for (size_t i = 0; i < bottom->dims()[0]; i++) {
+    for (int i = 0; i < bottom->dims()[0]; i++) {
       bottom_data[i] = bottom_data_ori[i];
     }
 
@@ -226,7 +237,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
     int* iter = drop_pos->mutable_data<int>(ctx.GetPlace());
     int* iter_end = iter;
 
-    for (int i = 0; i < top_offset.size() - 1; ++i) {
+    for (size_t i = 0; i < top_offset.size() - 1; ++i) {
       int w = offset[i + 1] - offset[i];
       int nsentense_with_pyramid = 0;
       if (w < 2) {
@@ -272,7 +283,7 @@ class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
 
     iter = drop_pos->mutable_data<int>(ctx.GetPlace());
     int top_counter = 0;
-    for (int i = 0; i < offset.size() - 1; ++i) {
+    for (size_t i = 0; i < offset.size() - 1; ++i) {
       int w_drop = drop_pos_offset[i + 1] - drop_pos_offset[i];
       int w = offset[i + 1] - offset[i];
       if (w_drop == 0) {
@@ -322,6 +333,8 @@ class PyramidHashOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true, "Input(W) should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("DropPos"), true,
                       "Input(DropPos) should not be null.");
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X_Temp_Out"), true,
+                      "Input(X_Temp_Out) should not be null.");
     PADDLE_ENFORCE_EQ(
         ctx->HasInput(framework::GradVarName("Out")), true,
         "Input(Out@GRAD) of PyramidHashGradOp should not be null.");
@@ -347,6 +360,7 @@ class PyramidHashGradOpMaker : public framework::SingleGradOpMaker<T> {
     op_desc_ptr->SetInput("X", this->Input("X"));
     op_desc_ptr->SetInput("W", this->Input("W"));
     op_desc_ptr->SetInput("DropPos", this->Output("DropPos"));
+    op_desc_ptr->SetInput("X_Temp_Out", this->Output("X_Temp_Out"));
 
     op_desc_ptr->SetInput(framework::GradVarName("Out"),
                           this->OutputGrad("Out"));
@@ -362,7 +376,7 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
   void hash_embedding_bp(const T* hash_id, int len, const T* top_pos,
                          T* weights, T mlr, int _num_emb, int _rand_len,
                          int _space_len) const {
-    for (unsigned int j = 0; j != _num_emb; j += _rand_len) {
+    for (int j = 0; j != _num_emb; j += _rand_len) {
       unsigned int pos = XXH32(hash_id, len * sizeof(T), j) % _space_len;
       avx_axpy(top_pos + j, weights + pos, _rand_len, mlr);
     }
@@ -380,16 +394,11 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
     int _space_len = ctx.Attr<int>("space_len");
     int _pyramid_layer = ctx.Attr<int>("pyramid_layer");
 
-    const auto* bottom_data_ori = bottom->data<int32_t>();
-    Tensor buff;
-    buff.Resize(framework::make_ddim({bottom->dims()[0], bottom->dims()[1]}));
-    T* bottom_data = buff.mutable_data<T>(ctx.GetPlace());
-    for (size_t i = 0; i < bottom->dims()[0]; i++) {
-      bottom_data[i] = bottom_data_ori[i];
-    }
+    auto* buff = ctx.Input<LoDTensor>("X_Temp_Out");
+    auto* bottom_data = buff->data<T>();
 
     int _slot_len = bottom->dims()[0];
-    if (_slot_len == bottom->lod()[0].size() - 1 &&
+    if (static_cast<size_t>(_slot_len) == bottom->lod()[0].size() - 1 &&
         std::count(bottom_data, bottom_data + _slot_len, -1) == _slot_len) {
       return;
     }
@@ -403,7 +412,7 @@ class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
 
     const int* iter = drop_pos->data<int>();
     int top_counter = 0;
-    for (int i = 0; i < offset.size() - 1; ++i) {
+    for (size_t i = 0; i < offset.size() - 1; ++i) {
       int w = offset[i + 1] - offset[i];
       int w_drop = drop_pos_offset[i + 1] - drop_pos_offset[i];
       if (w_drop == 0) {

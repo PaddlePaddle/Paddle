@@ -271,35 +271,45 @@ class TestConv3dOp(OpTest):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
     def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
-        self.check_output_with_place(place, atol=1e-5)
+        self.check_output_with_place(
+            place, atol=1e-5, check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
-            place, {'Input', 'Filter'}, 'Output', max_relative_error=0.03)
+            place, {'Input', 'Filter'},
+            'Output',
+            max_relative_error=0.03,
+            check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
             place, ['Input'],
             'Output',
             max_relative_error=0.03,
-            no_grad_set=set(['Filter']))
+            no_grad_set=set(['Filter']),
+            check_dygraph=(self.use_mkldnn == False))
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
-            place, ['Input'],
+            place, ['Filter'],
             'Output',
             max_relative_error=0.03,
-            no_grad_set=set(['Input']))
+            no_grad_set=set(['Input']),
+            check_dygraph=(self.use_mkldnn == False))
 
     def init_test_case(self):
         self.pad = [0, 0, 0]
@@ -560,7 +570,7 @@ class TestConv3dOp_2(OpTest):
             return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         self.check_grad_with_place(
-            place, ['Input'],
+            place, ['Filter'],
             'Output',
             max_relative_error=0.03,
             no_grad_set=set(['Input']))
@@ -745,7 +755,7 @@ create_test_cudnn_channel_last_class(TestWith1x1_AsyPadding)
 
 
 # --------- test python API ---------------
-class TestConv3dAPI(OpTest):
+class TestConv3dAPI(unittest.TestCase):
     def test_api(self):
 
         input_NDHWC = fluid.layers.data(
@@ -821,7 +831,7 @@ class TestConv3dAPI(OpTest):
             data_format="NCDHW")
 
 
-class TestConv3dAPI_Error(OpTest):
+class TestConv3dAPI_Error(unittest.TestCase):
     def test_api(self):
         input = fluid.layers.data(
             name="input",

@@ -17,7 +17,6 @@ if(APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
 endif(APPLE)
 
-
 set(inference_deps ${analysis_deps}
   paddle_inference_api paddle_fluid_api
   analysis pass naive_executor

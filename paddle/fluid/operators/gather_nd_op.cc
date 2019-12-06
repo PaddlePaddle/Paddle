@@ -55,6 +55,7 @@ class GatherNdOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Out", framework::make_ddim(result_dims));
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 
  protected:

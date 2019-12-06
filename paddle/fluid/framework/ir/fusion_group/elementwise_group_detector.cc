@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/fusion_group/elementwise_group_detector.h"
+#include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
@@ -20,12 +21,22 @@ namespace framework {
 namespace ir {
 namespace fusion_group {
 
-static std::unordered_set<std::string> binary_op_types = {
-    "elementwise_add", "elementwise_sub", "elementwise_mul",
-    "elementwise_div", "elementwise_min", "elementwise_max"};
+static std::unordered_set<std::string> binary_op_types;
+static std::unordered_set<std::string> unary_op_types;
 
-static std::unordered_set<std::string> unary_op_types = {"relu", "sigmoid",
-                                                         "tanh"};
+static std::unordered_set<std::string>& GetBinaryOpTypes() {
+  if (binary_op_types.empty()) {
+    binary_op_types = OperationMap::Instance().Find(0, 2);
+  }
+  return binary_op_types;
+}
+
+static std::unordered_set<std::string>& GetUnaryOpTypes() {
+  if (unary_op_types.empty()) {
+    unary_op_types = OperationMap::Instance().Find(0, 1);
+  }
+  return unary_op_types;
+}
 
 static bool IsSpecifiedOp(const std::unordered_set<std::string>& op_types,
                           Node* n) {
@@ -39,7 +50,7 @@ static bool IsSpecifiedOp(const std::unordered_set<std::string>& op_types,
 }
 
 static bool IsBinaryOp(Node* n) {
-  if (IsSpecifiedOp(binary_op_types, n) && n->inputs.size() == 2U) {
+  if (IsSpecifiedOp(GetBinaryOpTypes(), n) && n->inputs.size() == 2U) {
     auto* x = n->inputs[0];
     auto* y = n->inputs[1];
 
@@ -64,7 +75,7 @@ static bool IsBinaryOp(Node* n) {
   return false;
 }
 
-static bool IsUnaryOp(Node* n) { return IsSpecifiedOp(unary_op_types, n); }
+static bool IsUnaryOp(Node* n) { return IsSpecifiedOp(GetUnaryOpTypes(), n); }
 
 bool ElementwiseGroupDetector::IsElementwiseOp(Node* n) {
   return IsBinaryOp(n) || IsUnaryOp(n);
@@ -97,13 +108,6 @@ bool ElementwiseGroupDetector::IsOutputOfElementwiseOp(Node* n) {
   return false;
 }
 
-void ElementwiseGroupDetector::Insert(Node* n) {
-  if (subgraph_.nodes_set.find(n) == subgraph_.nodes_set.end()) {
-    VLOG(5) << "Insert " << n->Name() << " to subgraph " << name_;
-    subgraph_.nodes_set.insert(n);
-  }
-}
-
 int ElementwiseGroupDetector::Search(Node* n, std::vector<Node*> except_nodes) {
   std::unordered_set<Node*> except_nodes_set;
   for (size_t i = 0; i < except_nodes.size(); ++i) {
@@ -112,16 +116,16 @@ int ElementwiseGroupDetector::Search(Node* n, std::vector<Node*> except_nodes) {
 
   int num_operations = 0;
   if (IsElementwiseOp(n)) {
-    Insert(n);
+    subgraph_.Insert(n);
     num_operations += 1;
     for (auto* var : n->inputs) {
-      Insert(var);
+      subgraph_.Insert(var);
       if (except_nodes_set.find(var) == except_nodes_set.end()) {
         num_operations += Search(var, {n});
       }
     }
     for (auto* var : n->outputs) {
-      Insert(var);
+      subgraph_.Insert(var);
       if (except_nodes_set.find(var) == except_nodes_set.end()) {
         num_operations += Search(var, {n});
       }
@@ -146,7 +150,7 @@ int ElementwiseGroupDetector::Search(Node* n, std::vector<Node*> except_nodes) {
 int ElementwiseGroupDetector::operator()(Node* n) {
   if (!IsOutputOfElementwiseOp(n) && IsInputOfElementwiseOp(n, "X")) {
     name_ = n->Name();
-    Insert(n);
+    subgraph_.Insert(n);
     num_operations_ = Search(n, n->inputs);
     VLOG(4) << "Detect elementwise subgraph begin with " << name_ << ", "
             << num_operations_ << " operations, " << GetSubgraph().GetNumNodes()

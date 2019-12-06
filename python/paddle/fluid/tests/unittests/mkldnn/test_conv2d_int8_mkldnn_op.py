@@ -35,7 +35,7 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.exhaustive_search = False
         self.use_cuda = False
         self.use_mkldnn = False
-        self.data_format = "AnyLayout"
+        self.data_format = "NCHW"
         self.weighttype = np.float32
         self.use_mkldnn = True
         self.init_group()
@@ -146,7 +146,9 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.outputs = {'Output': output}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), atol=0)
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output_with_place(
+            core.CPUPlace(), atol=0, check_dygraph=False)
 
     def test_check_grad(self):
         pass
