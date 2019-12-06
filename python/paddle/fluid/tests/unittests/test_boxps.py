@@ -19,6 +19,7 @@ import os
 import paddle.fluid.core as core
 import unittest
 from paddle.fluid.layers.nn import _pull_box_sparse
+from paddle.fluid.transpiler import collective
 
 
 class TestTranspile(unittest.TestCase):
@@ -30,21 +31,49 @@ class TestTranspile(unittest.TestCase):
         config.collective_mode = mode
         t = fluid.DistributeTranspiler(config=config)
         return t
-        t.transpile(
-            trainer_id=0,
-            startup_program=startup_program,
-            trainers=trainers,
-            program=main_program)
 
     def test_transpile(self):
         main_program = fluid.Program()
         startup_program = fluid.Program()
-        t = self.get_transpile("multi_thread")
+        t = self.get_transpile("single_process_multi_thread")
         t.transpile(
             trainer_id=0,
             startup_program=startup_program,
             trainers="127.0.0.1:6174",
             program=main_program)
+        t = self.get_transpile("grad_allreduce")
+        try:
+            t.transpile(
+                trainer_id=0,
+                startup_program=startup_program,
+                trainers="127.0.0.1:6174",
+                program=main_program)
+        except ValueError as e:
+            print(e)
+
+    def test_single_trainers(self):
+        transpiler = collective.GradAllReduce(0)
+        try:
+            transpiler.transpile(
+                startup_program=fluid.Program(),
+                main_program=fluid.Program(),
+                rank=1,
+                endpoints="127.0.0.1:6174",
+                current_endpoint="127.0.0.1:6174",
+                wait_port="6174")
+        except ValueError as e:
+            print(e)
+        transpiler = collective.LocalSGD(0)
+        try:
+            transpiler.transpile(
+                startup_program=fluid.Program(),
+                main_program=fluid.Program(),
+                rank=1,
+                endpoints="127.0.0.1:6174",
+                current_endpoint="127.0.0.1:6174",
+                wait_port="6174")
+        except ValueError as e:
+            print(e)
 
 
 class TestBoxPSPreload(unittest.TestCase):
