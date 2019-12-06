@@ -92,6 +92,9 @@ class VarBase {
   const std::shared_ptr<VarBase>& MutableGradVarBase() {
     if (grad_var_ == nullptr) {
       grad_var_ = std::make_shared<VarBase>(false, GradVarName());
+      // NOTE(zhiqiu): we should keep grad_var_'s stop_gradient property same as
+      // fwd varbase
+      grad_var_->SetOverridedStopGradient(overrided_stop_gradient_);
     }
     return grad_var_;
   }

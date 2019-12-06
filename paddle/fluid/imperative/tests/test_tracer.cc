@@ -148,6 +148,7 @@ TEST(test_tracer, test_track_backward_output) {
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
   auto* engine = tracer.GetDefaultEngine();
+  ASSERT_NE(engine->GradVars().size(), 0UL);
   ASSERT_NE(engine->GradOps().size(), 0UL);  // trace_backward already ran.
 }
 
@@ -186,6 +187,7 @@ TEST(test_tracer, test_track_backward_input) {
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
   auto* engine = tracer.GetDefaultEngine();
+  ASSERT_NE(engine->GradVars().size(), 0UL);
   ASSERT_NE(engine->GradOps().size(), 0UL);  // trace_backward already ran.
 }
 #if defined(PADDLE_WITH_CUDA)
@@ -310,6 +312,8 @@ TEST(test_tracer, test_var_without_grad_var) {
       new imperative::VarBase(true, "y_in"));
   std::shared_ptr<imperative::VarBase> vout(
       new imperative::VarBase(true, "vout"));
+  x_in->SetOverridedStopGradient(false);
+  y_in->SetOverridedStopGradient(false);
   platform::CPUPlace place;
   std::vector<float> src_data(10, 2.0);
   std::vector<int64_t> dims1 = {2, 5};
@@ -334,9 +338,34 @@ TEST(test_tracer, test_var_without_grad_var) {
   framework::AttributeMap mul_attr_map;
   mul_attr_map["use_mkldnn"] = false;
   tracer.TraceOp("mul", ins, outs, mul_attr_map, place, true);
+
   const auto& out_tensor = vout->Var().Get<framework::LoDTensor>();
   for (int i = 0; i < vout->Var().Get<framework::LoDTensor>().numel(); i++) {
     ASSERT_EQ(out_tensor.data<float>()[i], 20.0);
+  }
+
+  detail::BackwardStrategy back_st;
+  imperative::Engine* engine = tracer.GetDefaultEngine();
+  ASSERT_NE(engine->GradVars().size(), 0UL);
+  ASSERT_NE(engine->GradOps().size(), 0UL);  // trace_backward already ran.
+  engine->Init(vout.get(), back_st);
+  engine->Execute();
+
+  // check the grad
+  framework::LoDTensor x_grad;
+  framework::TensorCopySync(x_in->GradVar().Get<framework::LoDTensor>(), place,
+                            &x_grad);
+
+  for (int i = 0; i < x_grad.numel(); ++i) {
+    ASSERT_EQ(x_grad.data<float>()[i], 4.0);
+  }
+
+  framework::LoDTensor y_grad;
+  framework::TensorCopySync(y_in->GradVar().Get<framework::LoDTensor>(), place,
+                            &y_grad);
+
+  for (int i = 0; i < y_grad.numel(); ++i) {
+    ASSERT_EQ(y_grad.data<float>()[i], 4.0);
   }
 }
 
