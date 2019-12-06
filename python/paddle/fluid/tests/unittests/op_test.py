@@ -32,6 +32,7 @@ from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
+from no_check_set_whitelist import No_Check_Set_White_List, No_Check_Set_Need_To_Fix_Op_List
 from paddle.fluid import unique_name
 
 
@@ -798,6 +799,11 @@ class OpTest(unittest.TestCase):
                                 equal_nan=False,
                                 check_dygraph=True,
                                 inplace_atol=None):
+        if no_check_set is not None:
+            if (self.op_type not in No_Check_Set_White_List) and (
+                    self.op_type not in No_Check_Set_Need_To_Fix_Op_List):
+                raise AssertionError(
+                    "no_check_set of op %s must be set to None." % self.op_type)
         if check_dygraph:
             dygraph_outs = self._calc_dygraph_output(
                 place, no_check_set=no_check_set)
