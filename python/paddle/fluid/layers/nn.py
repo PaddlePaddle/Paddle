@@ -35,6 +35,11 @@ from functools import reduce
 from .. import core
 from ..dygraph import layers
 from ..data_feeder import convert_dtype, check_type_and_dtype, check_type, check_dtype
+import logging
+
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("fluid")
+logger.setLevel(logging.INFO)
 
 __all__ = [
     'fc',
@@ -185,6 +190,7 @@ __all__ = [
     'uniform_random',
     'masked_select',
     'shuffle_batch',
+    'nce_sampler',
 ]
 
 
@@ -13717,4 +13723,72 @@ def shuffle_batch(x, shuffle_order=[]):
                  'ShuffleIdx': shuffle_idx},
         attrs={'ShuffleOrder': shuffle_order})
 
+    return out
+
+def nce_sampler(custom_dist, num_total_classes, num_neg_samples=10, seed=0, sample_batch_size=1):
+    helper = LayerHelper('nce_sampler', **locals())
+    logger.info("begin nce sampler") 
+    custom_dist_len = len(custom_dist)
+    alias_probs_ = [0] * custom_dist_len
+    alias_ = [-1] * custom_dist_len
+    bigs = []
+    littles = []
+    idx = 0
+    while idx < custom_dist_len:
+        alias_probs_[idx] = custom_dist[idx] * custom_dist_len
+        if alias_probs_[idx] - 1.0 > 0:
+            bigs.append(idx)
+        elif 1.0 - alias_probs_[idx] > 0:
+            littles.append(idx)
+        idx += 1
+    logger.info("in nce_sampler, finish first for loop")
+    while len(bigs) and len(littles):
+        big_idx = bigs[0]
+        little_idx = littles[0]
+
+        alias_[little_idx] = big_idx
+        del littles[0]
+        alias_probs_[big_idx] = alias_probs_[big_idx] + alias_probs_[little_idx] - 1.0
+        if 1.0 - alias_probs_[big_idx] > 0:
+            littles.append(big_idx)
+            del bigs[0] 
+    logger.info("in nce_sampler, finish while loop")
+    if len(bigs):
+        big = bigs[0]
+        del bigs[0]
+        alias_probs_[big] = 1.0
+    if len(littles):
+        little = littles[0]
+        del littles[0]
+        alias_probs_[little] = 1.0
+
+    def _init_by_numpy_array(numpy_array):
+        ret = helper.create_parameter(
+            attr=ParamAttr(),
+            shape=numpy_array.shape,
+            dtype=numpy_array.dtype,
+            default_initializer=NumpyArrayInitializer(numpy_array))
+        ret.stop_gradient = True
+        return ret
+    logger.info("in nce_sampler, begin to create tensor")
+    probs_tensor = _init_by_numpy_array(
+        np.array(custom_dist).astype('float32'))
+    logger.info("in nce_sampler, finish create probs_tensor")
+    alias_tensor = _init_by_numpy_array(
+        np.array(alias_).astype('int32'))
+    logger.info("in nce_sampler, finish create alias_tensor")
+    alias_probs_tensor = _init_by_numpy_array(
+        np.array(alias_probs_).astype('float32'))
+    logger.info("in nce_sampler, finish create alias_probs_tensor")
+    out = helper.create_variable_for_type_inference(core.VarDesc.VarType.INT64)
+    helper.append_op(
+        type='nce_sampler',
+        inputs={'CustomDistProbs': probs_tensor,
+                'CustomDistAlias': alias_tensor,
+                'CustomDistAliasProbs': alias_probs_tensor},
+        outputs={'Out': out},
+        attrs={'num_total_classes': int(num_total_classes),
+               'num_neg_samples': int(num_neg_samples),
+               'sample_batch_size': int(sample_batch_size),
+               'seed': seed})
     return out
