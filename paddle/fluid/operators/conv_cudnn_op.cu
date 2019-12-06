@@ -39,60 +39,9 @@ using ScopedTensorDescriptor = platform::ScopedTensorDescriptor;
 using ScopedFilterDescriptor = platform::ScopedFilterDescriptor;
 using ScopedConvolutionDescriptor = platform::ScopedConvolutionDescriptor;
 using DataLayout = platform::DataLayout;
-template <typename T>
-using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
-using framework::AlgorithmsCache;
 
-static inline void GetNCDHW(const framework::DDim& dims,
-                            const DataLayout& layout, int* N, int* C, int* D,
-                            int* H, int* W) {
-  *N = dims[0];
-  *C = layout == DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
-  int i = layout == DataLayout::kNCHW ? 0 : 1;
-  if (dims.size() == 5) {
-    *D = dims[2 - i];
-    *H = dims[3 - i];
-    *W = dims[4 - i];
-  } else {
-    *D = 1;
-    *H = dims[2 - i];
-    *W = dims[3 - i];
-  }
-}
-
-template <typename DeviceContext, typename T, size_t D>
-static void Slice_2(const framework::ExecutionContext& context,
-                    const Tensor* input, Tensor* out,
-                    const std::vector<int>& starts,
-                    const std::vector<int>& axes) {
-  auto& place =
-      *context.template device_context<DeviceContext>().eigen_device();
-  auto in_dims = input->dims();
-  auto new_out_dims = out->dims();
-  auto offsets = Eigen::array<int, D>();
-  auto extents = Eigen::array<int, D>();
-  for (size_t i = 0; i < D; ++i) {
-    offsets[i] = 0;
-    extents[i] = new_out_dims[i];
-  }
-
-  int start;
-  for (size_t i = 0; i < axes.size(); ++i) {
-    start = starts[i];
-    if (start < 0) {
-      start = (start + in_dims[axes[i]]);
-    }
-    start = std::max(start, 0);
-    offsets[axes[i]] = start;
-  }
-  auto in_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *input);
-
-  auto out_t =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *out, new_out_dims);
-  out_t.device(place) = in_t.slice(offsets, extents);
+static inline bool IsVoltaOrLater(const platform::CUDADeviceContext& dev_ctx) {
+  return dev_ctx.GetComputeCapability() >= 70;
 }
 
 template <typename T>
@@ -123,11 +72,27 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     const std::string data_format = ctx.Attr<std::string>("data_format");
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
+    auto dtype = platform::CudnnDataType<T>::type;
+
+    // Tensor Core introduced from Volta GPUs supports more faster conv op
+    // with FP16 in NHWC data format.
+    const bool compute_in_nhwc =
+        dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
+    // We will only do data format conversion from NHWC to NCHW.
+    // cudnn will convert NCHW to NHWC automatically on Tensor Core.
+    auto compute_format =
+        compute_in_nhwc && channel_last ? DataLayout::kNHWC : DataLayout::kNCHW;
+    VLOG(3) << "Compute ConvOp with cuDNN:"
+            << " data_format=" << data_format << " compute_format="
+            << (compute_format == DataLayout::kNHWC ? "NHWC" : "NCHW");
+
     // ------------ transformed tensor -----------
     Tensor transformed_input_channel(input->type());
     Tensor transformed_output(output->type());
+    Tensor transformed_filter_channel(filter->type());
     T* output_data = nullptr;
-    if (channel_last) {
+    if (channel_last && compute_format == DataLayout::kNCHW) {
+      VLOG(3) << "Transform input tensor from NHWC to NCHW.";
       ResizeToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, input, &transformed_input_channel);
       TransToChannelFirst<platform::CUDADeviceContext, T>(
@@ -137,19 +102,36 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
                                                            &transformed_output);
 
     } else {
-      transformed_input_channel = *input;
-      transformed_output = *output;
+      transformed_input_channel.ShareDataWith(*input);
+      transformed_output.ShareDataWith(*output);
+    }
+    if (compute_format == DataLayout::kNHWC) {
+      VLOG(3) << "Transform filter tensor from NCHW to NHWC.";
+      ResizeToChannelLast<platform::CUDADeviceContext, T>(
+          ctx, filter, &transformed_filter_channel);
+      TransToChannelLast<platform::CUDADeviceContext, T>(
+          ctx, filter, &transformed_filter_channel);
+    } else {
+      transformed_filter_channel.ShareDataWith(*filter);
     }
     output_data = transformed_output.data<T>();
 
     // update padding and dilation
     auto in_dims = transformed_input_channel.dims();
-    auto filter_dims = filter->dims();
+    auto filter_dims = transformed_filter_channel.dims();
     framework::DDim in_data_dims;
-    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+    framework::DDim filter_data_dims;
 
-    framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    if (compute_format == DataLayout::kNCHW) {
+      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      filter_data_dims =
+          framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    } else {
+      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      filter_data_dims =
+          framework::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+    }
+
     std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
@@ -163,17 +145,33 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
       std::vector<int> padding_diff(data_dim);
       std::vector<int> new_input_shape_vec(data_dim + 2);
       new_input_shape_vec[0] = transformed_input_channel.dims()[0];
-      new_input_shape_vec[1] = transformed_input_channel.dims()[1];
+
+      if (compute_format == DataLayout::kNCHW) {
+        new_input_shape_vec[1] = transformed_input_channel.dims()[1];
+      } else {
+        new_input_shape_vec[data_dim + 1] =
+            transformed_input_channel.dims()[data_dim + 1];
+      }
 
       std::vector<int> input_pad(transformed_input_channel.dims().size() * 2,
                                  0);
       for (size_t i = 0; i < data_dim; ++i) {
         padding_diff[i] = std::abs(paddings[2 * i] - paddings[2 * i + 1]);
         padding_common[i] = std::min(paddings[2 * i], paddings[2 * i + 1]);
-        new_input_shape_vec[i + 2] =
-            transformed_input_channel.dims()[i + 2] + padding_diff[i];
-        input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
-        input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
+        if (compute_format == DataLayout::kNCHW) {
+          new_input_shape_vec[i + 2] =
+              transformed_input_channel.dims()[i + 2] + padding_diff[i];
+        } else {
+          new_input_shape_vec[i + 1] =
+              transformed_input_channel.dims()[i + 1] + padding_diff[i];
+        }
+        if (compute_format == DataLayout::kNCHW) {
+          input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
+          input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
+        } else {
+          input_pad[2 * i + 2] = paddings[2 * i] - padding_common[i];
+          input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
+        }
       }
       framework::DDim new_input_shape(
           framework::make_ddim(new_input_shape_vec));
@@ -202,7 +200,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
       }
 
     } else {
-      transformed_input = transformed_input_channel;
+      transformed_input.ShareDataWith(transformed_input_channel);
       if (paddings.size() == data_dim) {
         for (size_t i = 0; i < data_dim; ++i) {
           padding_common[i] = paddings[i];
@@ -215,18 +213,20 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     }
 
     const T* input_data = transformed_input.data<T>();
-    const T* filter_data = filter->data<T>();
+    const T* filter_data = transformed_filter_channel.data<T>();
 
     // ------------------- cudnn descriptors ---------------------
-    ConvArgs args{&transformed_input, filter,   &transformed_output, strides,
-                  padding_common,     dilations};
+    ConvArgs args{&transformed_input,  &transformed_filter_channel,
+                  &transformed_output, strides,
+                  padding_common,      dilations};
 
     auto handle = dev_ctx.cudnn_handle();
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
-    auto dtype = platform::CudnnDataType<T>::type;
-    DataLayout layout = DataLayout::kNCHW;
-    if (transformed_input_channel.dims().size() == 5) {
-      layout = DataLayout::kNCDHW;
+    DataLayout layout = compute_format == DataLayout::kNHWC ? DataLayout::kNHWC
+                                                            : DataLayout::kNCHW;
+    if (transformed_input.dims().size() == 5) {
+      layout = compute_format == DataLayout::kNHWC ? DataLayout::kNDHWC
+                                                   : DataLayout::kNCDHW;
     }
     auto layout_format = GetCudnnTensorFormat(layout);
 
@@ -241,21 +241,27 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
         args.cdesc.desc(), groups));
     groups = 1;
 #endif
-    args.idesc.set(transformed_input, groups);
-
-    args.wdesc.set(*filter, layout_format, groups);
-    args.odesc.set(transformed_output, groups);
+    args.idesc.set(transformed_input, layout_format);
+    args.wdesc.set(transformed_filter_channel, layout_format, groups);
+    args.odesc.set(transformed_output, layout_format);
     int i_n, i_c, i_d, i_h, i_w;
-
-    GetNCDHW(transformed_input.dims(), DataLayout::kNCHW, &i_n, &i_c, &i_d,
-             &i_h, &i_w);
     int o_n, o_c, o_d, o_h, o_w;
-    GetNCDHW(transformed_output.dims(), DataLayout::kNCHW, &o_n, &o_c, &o_d,
-             &o_h, &o_w);
+
+    if (compute_format == DataLayout::kNHWC) {
+      GetNCDHW(transformed_input.dims(), DataLayout::kNHWC, &i_n, &i_c, &i_d,
+               &i_h, &i_w);
+      GetNCDHW(transformed_output.dims(), DataLayout::kNHWC, &o_n, &o_c, &o_d,
+               &o_h, &o_w);
+    } else {
+      GetNCDHW(transformed_input.dims(), DataLayout::kNCHW, &i_n, &i_c, &i_d,
+               &i_h, &i_w);
+      GetNCDHW(transformed_output.dims(), DataLayout::kNCHW, &o_n, &o_c, &o_d,
+               &o_h, &o_w);
+    }
 
     int group_offset_in = i_c / groups * i_h * i_w * i_d;
     int group_offset_out = o_c / groups * o_h * o_w * o_d;
-    int group_offset_filter = filter->numel() / groups;
+    int group_offset_filter = transformed_filter_channel.numel() / groups;
     // ------------------- cudnn conv workspace ---------------------
     size_t workspace_size = 0;  // final workspace to allocate.
     // ------------------- cudnn conv algorithm ---------------------
@@ -280,7 +286,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
           workspace_size);
     }
 
-    if (channel_last) {
+    if (channel_last && compute_format == DataLayout::kNCHW) {
       TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
           ctx, &transformed_output, output);
     }
@@ -300,7 +306,6 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     auto filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
 
-    const T* filter_data = filter->data<T>();
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
     }
@@ -324,12 +329,25 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     const std::string data_format = ctx.Attr<std::string>("data_format");
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
+    auto dtype = platform::CudnnDataType<T>::type;
+    const bool compute_in_nhwc =
+        dtype == CUDNN_DATA_HALF && IsVoltaOrLater(dev_ctx);
+    auto compute_format =
+        compute_in_nhwc && channel_last ? DataLayout::kNHWC : DataLayout::kNCHW;
+    VLOG(3) << "Compute ConvGradOp with cuDNN:"
+            << " data_format=" << data_format << " compute_format="
+            << (compute_format == DataLayout::kNHWC ? "NHWC" : "NCHW");
+
     // transform Tensor
     Tensor transformed_input_channel(input->type());
     Tensor transformed_output_grad_channel(output_grad->type());
     Tensor transformed_input_grad_channel(input->type());
+    Tensor transformed_filter_channel(filter->type());
+    Tensor transformed_filter_grad_channel(filter->type());
 
-    if (channel_last) {
+    if (channel_last && compute_format == DataLayout::kNCHW) {
+      VLOG(3) << "Transform input, output_grad, input_grad and tensor from "
+                 "NHWC to NCHW.";
       ResizeToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, input, &transformed_input_channel);
       TransToChannelFirst<platform::CUDADeviceContext, T>(
@@ -344,22 +362,46 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
         ResizeToChannelFirst<platform::CUDADeviceContext, T>(
             ctx, input_grad, &transformed_input_grad_channel);
       }
-
     } else {
-      transformed_input_channel = *input;
-      transformed_output_grad_channel = *output_grad;
+      transformed_input_channel.ShareDataWith(*input);
+      transformed_output_grad_channel.ShareDataWith(*output_grad);
       if (input_grad) {
         transformed_input_grad_channel.ShareDataWith(*input_grad);
       }
     }
 
+    if (compute_format == DataLayout::kNHWC) {
+      VLOG(3) << "Transform filter and filter_grad tensor from NCHW to NHWC.";
+      ResizeToChannelLast<platform::CUDADeviceContext, T>(
+          ctx, filter, &transformed_filter_channel);
+      TransToChannelLast<platform::CUDADeviceContext, T>(
+          ctx, filter, &transformed_filter_channel);
+
+      if (filter_grad) {
+        ResizeToChannelLast<platform::CUDADeviceContext, T>(
+            ctx, filter_grad, &transformed_filter_grad_channel);
+      }
+    } else {
+      transformed_filter_channel.ShareDataWith(*filter);
+      if (filter_grad) {
+        transformed_filter_grad_channel.ShareDataWith(*filter_grad);
+      }
+    }
+
     //  update paddings
     auto in_dims = transformed_input_channel.dims();
-    auto filter_dims = filter->dims();
+    auto filter_dims = transformed_filter_channel.dims();
     framework::DDim in_data_dims;
-    in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
-    framework::DDim filter_data_dims =
-        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    framework::DDim filter_data_dims;
+    if (compute_format == DataLayout::kNCHW) {
+      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+      filter_data_dims =
+          framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    } else {
+      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+      filter_data_dims =
+          framework::slice_ddim(filter_dims, 1, filter_dims.size() - 1);
+    }
     std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
     UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
                              in_data_dims, strides, ksize);
@@ -378,15 +420,30 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       std::vector<int> padding_diff(data_dim);
       std::vector<int> new_input_shape_vec(data_dim + 2);
       new_input_shape_vec[0] = transformed_input_channel.dims()[0];
-      new_input_shape_vec[1] = transformed_input_channel.dims()[1];
+      if (compute_format == DataLayout::kNCHW) {
+        new_input_shape_vec[1] = transformed_input_channel.dims()[1];
+      } else {
+        new_input_shape_vec[data_dim + 1] =
+            transformed_input_channel.dims()[data_dim + 1];
+      }
 
       for (size_t i = 0; i < data_dim; ++i) {
         padding_diff[i] = std::abs(paddings[2 * i] - paddings[2 * i + 1]);
         padding_common[i] = std::min(paddings[2 * i], paddings[2 * i + 1]);
-        new_input_shape_vec[i + 2] =
-            transformed_input_channel.dims()[i + 2] + padding_diff[i];
-        input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
-        input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
+        if (compute_format == DataLayout::kNCHW) {
+          new_input_shape_vec[i + 2] =
+              transformed_input_channel.dims()[i + 2] + padding_diff[i];
+        } else {
+          new_input_shape_vec[i + 1] =
+              transformed_input_channel.dims()[i + 1] + padding_diff[i];
+        }
+        if (compute_format == DataLayout::kNCHW) {
+          input_pad[2 * i + 4] = paddings[2 * i] - padding_common[i];
+          input_pad[2 * i + 4 + 1] = paddings[2 * i + 1] - padding_common[i];
+        } else {
+          input_pad[2 * i + 2] = paddings[2 * i] - padding_common[i];
+          input_pad[2 * i + 2 + 1] = paddings[2 * i + 1] - padding_common[i];
+        }
       }
       framework::DDim new_input_shape(
           framework::make_ddim(new_input_shape_vec));
@@ -439,42 +496,51 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
     const T* input_data = transformed_input.data<T>();
     const T* output_grad_data = transformed_output_grad_channel.data<T>();
+    const T* filter_data = transformed_filter_channel.data<T>();
     T* filter_grad_data = nullptr;
     T* input_grad_data = nullptr;
     T* transformed_input_grad_data = nullptr;
 
     ConvArgs args1{&transformed_input_grad,
-                   filter,
+                   &transformed_filter_channel,
                    &transformed_output_grad_channel,
                    strides,
                    padding_common,
                    dilations};
     ConvArgs args2{&transformed_input,
-                   filter_grad,
+                   &transformed_filter_grad_channel,
                    &transformed_output_grad_channel,
                    strides,
                    padding_common,
                    dilations};
 
     auto handle = dev_ctx.cudnn_handle();
-    auto dtype = platform::CudnnDataType<T>::type;
-    DataLayout layout = DataLayout::kNCHW;
-    if (input->dims().size() == 5) {
-      layout = DataLayout::kNCDHW;
+    DataLayout layout = compute_format == DataLayout::kNHWC ? DataLayout::kNHWC
+                                                            : DataLayout::kNCHW;
+    if (transformed_input.dims().size() == 5) {
+      layout = compute_format == DataLayout::kNHWC ? DataLayout::kNDHWC
+                                                   : DataLayout::kNCDHW;
     }
     auto layout_tensor = GetCudnnTensorFormat(layout);
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
 
     int i_n, i_c, i_d, i_h, i_w;
-    GetNCDHW(transformed_input.dims(), DataLayout::kNCHW, &i_n, &i_c, &i_d,
-             &i_h, &i_w);
     int o_n, o_c, o_d, o_h, o_w;
-    GetNCDHW(transformed_output_grad_channel.dims(), DataLayout::kNCHW, &o_n,
-             &o_c, &o_d, &o_h, &o_w);
+    if (compute_format == DataLayout::kNHWC) {
+      GetNCDHW(transformed_input.dims(), DataLayout::kNHWC, &i_n, &i_c, &i_d,
+               &i_h, &i_w);
+      GetNCDHW(transformed_output_grad_channel.dims(), DataLayout::kNHWC, &o_n,
+               &o_c, &o_d, &o_h, &o_w);
+    } else {
+      GetNCDHW(transformed_input.dims(), DataLayout::kNCHW, &i_n, &i_c, &i_d,
+               &i_h, &i_w);
+      GetNCDHW(transformed_output_grad_channel.dims(), DataLayout::kNCHW, &o_n,
+               &o_c, &o_d, &o_h, &o_w);
+    }
 
     int group_offset_in = i_c / groups * i_h * i_w * i_d;
     int group_offset_out = o_c / groups * o_h * o_w * o_d;
-    int group_offset_filter = filter->numel() / groups;
+    int group_offset_filter = transformed_filter_channel.numel() / groups;
     // ------------------- cudnn backward algorithm ---------------------
     cudnnConvolutionBwdDataAlgo_t data_algo =
         static_cast<cudnnConvolutionBwdDataAlgo_t>(0);
@@ -494,9 +560,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       input_grad_data = input_grad->data<T>();
       transformed_input_grad_data = transformed_input_grad.data<T>();
       args1.handle = handle;
-      args1.idesc.set(transformed_input_grad, iwo_groups);
-      args1.wdesc.set(*filter, layout_tensor, iwo_groups);
-      args1.odesc.set(transformed_output_grad_channel, iwo_groups);
+      args1.idesc.set(transformed_input_grad, layout_tensor);
+      args1.wdesc.set(transformed_filter_channel, layout_tensor, iwo_groups);
+      args1.odesc.set(transformed_output_grad_channel, layout_tensor);
       args1.cdesc.set(dtype, padding_common, strides, dilations, c_groups);
 
       using search1 = SearchAlgorithm<cudnnConvolutionBwdDataAlgoPerf_t>;
@@ -508,11 +574,12 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
     if (filter_grad) {
       // ------------------- cudnn descriptors ---------------------
-      filter_grad_data = filter_grad->data<T>();
+      filter_grad_data = transformed_filter_grad_channel.data<T>();
       args2.handle = handle;
-      args2.idesc.set(transformed_input, iwo_groups);
-      args2.wdesc.set(*filter_grad, layout_tensor, iwo_groups);
-      args2.odesc.set(transformed_output_grad_channel, iwo_groups);
+      args2.idesc.set(transformed_input, layout_tensor);
+      args2.wdesc.set(transformed_filter_grad_channel, layout_tensor,
+                      iwo_groups);
+      args2.odesc.set(transformed_output_grad_channel, layout_tensor);
       args2.cdesc.set(dtype, padding_common, strides, dilations, c_groups);
 
       using search2 = SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t>;
@@ -540,26 +607,28 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
             workspace_size);
       }
 
-      std::vector<int> starts(transformed_input_channel.dims().size(), 0);
-      std::vector<int> axes(transformed_input_channel.dims().size(), 0);
+      if (!is_sys_pad) {
+        std::vector<int> starts(transformed_input_channel.dims().size(), 0);
+        std::vector<int> axes(transformed_input_channel.dims().size(), 0);
 
-      for (size_t i = 0; i < transformed_input_channel.dims().size(); ++i) {
-        starts[i] = input_pad[2 * i];
-        axes[i] = i;
+        for (size_t i = 0; i < transformed_input_channel.dims().size(); ++i) {
+          starts[i] = input_pad[2 * i];
+          axes[i] = i;
+        }
+
+        transformed_input_grad_channel.mutable_data(ctx.GetPlace());
+        if (transformed_input_channel.dims().size() == 4) {
+          RemovePaddingSlice<paddle::platform::CUDADeviceContext, T, 4>(
+              ctx, &transformed_input_grad, &transformed_input_grad_channel,
+              starts, axes);
+        } else {
+          RemovePaddingSlice<paddle::platform::CUDADeviceContext, T, 5>(
+              ctx, &transformed_input_grad, &transformed_input_grad_channel,
+              starts, axes);
+        }
       }
 
-      transformed_input_grad_channel.mutable_data(ctx.GetPlace());
-      if (transformed_input_channel.dims().size() == 4) {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
-            ctx, &transformed_input_grad, &transformed_input_grad_channel,
-            starts, axes);
-      } else {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
-            ctx, &transformed_input_grad, &transformed_input_grad_channel,
-            starts, axes);
-      }
-
-      if (channel_last) {
+      if (channel_last && compute_format == DataLayout::kNCHW) {
         TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
             ctx, &transformed_input_grad_channel, input_grad);
       }
@@ -579,6 +648,11 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                   filter_grad_data + i * group_offset_filter));
             },
             workspace_size);
+      }
+
+      if (compute_format == DataLayout::kNHWC) {
+        TransToChannelFirst<paddle::platform::CUDADeviceContext, T>(
+            ctx, &transformed_filter_grad_channel, filter_grad);
       }
     }
   }
@@ -609,6 +683,8 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     auto dX = ctx.Output<Tensor>("DInput");
     if (ddO) {
       ddO->mutable_data<T>(ctx.GetPlace());
+      math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+      set_zero(dev_ctx, ddO, static_cast<T>(0));
     }
     if (dW) {
       dW->mutable_data<T>(ctx.GetPlace());
@@ -646,7 +722,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     // transform Tensors to channel first-----------
     Tensor transformed_X_channel(X->type());
     Tensor transformed_dO_channel(dO->type());
-    Tensor transformed_ddX_channel(ddX->type());
+    Tensor transformed_ddX_channel(X->type());
 
     Tensor transformed_ddO_channel(dO->type());
     Tensor transformed_dX_channel(X->type());
@@ -662,10 +738,12 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       TransToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, dO, &transformed_dO_channel);
 
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(
-          ctx, ddX, &transformed_ddX_channel);
-      TransToChannelFirst<platform::CUDADeviceContext, T>(
-          ctx, ddX, &transformed_ddX_channel);
+      if (ddX) {
+        ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+            ctx, ddX, &transformed_ddX_channel);
+        TransToChannelFirst<platform::CUDADeviceContext, T>(
+            ctx, ddX, &transformed_ddX_channel);
+      }
 
       if (ddO) {
         ResizeToChannelFirst<platform::CUDADeviceContext, T>(
@@ -680,7 +758,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     } else {
       transformed_X_channel = *X;
       transformed_dO_channel = *dO;
-      transformed_ddX_channel = *ddX;
+      if (ddX) {
+        transformed_ddX_channel = *ddX;
+      }
       if (ddO) {
         transformed_ddO_channel.ShareDataWith(*ddO);
       }
@@ -729,15 +809,15 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
       transformed_X.Resize(new_input_shape);
       transformed_ddX.Resize(new_input_shape);
       transformed_dX.Resize(new_input_shape);
-      auto& dev_ctx =
-          ctx.template device_context<paddle::platform::CUDADeviceContext>();
 
       transformed_X =
           ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
               new_input_shape, dev_ctx);
-      transformed_ddX =
-          ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
-              new_input_shape, dev_ctx);
+      if (ddX) {
+        transformed_ddX =
+            ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
+                new_input_shape, dev_ctx);
+      }
       if (dX) {
         transformed_dX =
             ctx.AllocateTmpTensor<T, paddle::platform::CUDADeviceContext>(
@@ -751,16 +831,20 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
         case 4: {
           math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
               ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
-              ctx, input_pad, transformed_ddX_channel, pad_value,
-              &transformed_ddX);
+          if (ddX) {
+            math::PadFunction<paddle::platform::CUDADeviceContext, T, 4>(
+                ctx, input_pad, transformed_ddX_channel, pad_value,
+                &transformed_ddX);
+          }
         } break;
         case 5: {
           math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
               ctx, input_pad, transformed_X_channel, pad_value, &transformed_X);
-          math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
-              ctx, input_pad, transformed_ddX_channel, pad_value,
-              &transformed_ddX);
+          if (ddX) {
+            math::PadFunction<paddle::platform::CUDADeviceContext, T, 5>(
+                ctx, input_pad, transformed_ddX_channel, pad_value,
+                &transformed_ddX);
+          }
         } break;
         default:
           PADDLE_THROW("ConvOp only support tensors with 4 or 5 dimensions.");
@@ -768,7 +852,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
 
     } else {
       transformed_X.ShareDataWith(transformed_X_channel);
-      transformed_ddX.ShareDataWith(transformed_ddX_channel);
+      if (ddX) {
+        transformed_ddX.ShareDataWith(transformed_ddX_channel);
+      }
       if (dX) {
         transformed_dX.ShareDataWith(transformed_dX_channel);
       }
@@ -936,10 +1022,9 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
             ctx, &transformed_ddO_channel, ddO);
       }
     }
-    T* transformed_dy_channel = nullptr;
+    T* transformed_dy_channel = transformed_dO_channel.data<T>();
     if (dW && ddX) {
       ddx = transformed_ddX.data<T>();
-      transformed_dy_channel = transformed_dO_channel.data<T>();
       for (int i = 0; i < groups; i++) {
         wkspace_handle.RunFunc(
             [&](void* workspace_ptr) {
@@ -971,20 +1056,22 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
             workspace_size);
       }
 
-      // reverse padded input
-      std::vector<int> starts(X->dims().size(), 0);
-      std::vector<int> axes(X->dims().size(), 0);
+      if (!is_sys_pad) {
+        // reverse padded input
+        std::vector<int> starts(X->dims().size(), 0);
+        std::vector<int> axes(X->dims().size(), 0);
 
-      for (size_t i = 0; i < X->dims().size(); ++i) {
-        starts[i] = input_pad[2 * i];
-        axes[i] = i;
-      }
-      if (X->dims().size() == 4) {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 4>(
-            ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
-      } else {
-        Slice_2<paddle::platform::CUDADeviceContext, T, 5>(
-            ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
+        for (size_t i = 0; i < X->dims().size(); ++i) {
+          starts[i] = input_pad[2 * i];
+          axes[i] = i;
+        }
+        if (X->dims().size() == 4) {
+          RemovePaddingSlice<paddle::platform::CUDADeviceContext, T, 4>(
+              ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
+        } else {
+          RemovePaddingSlice<paddle::platform::CUDADeviceContext, T, 5>(
+              ctx, &transformed_dX, &transformed_dX_channel, starts, axes);
+        }
       }
       if (channel_last) {
         TransToChannelLast<paddle::platform::CUDADeviceContext, T>(

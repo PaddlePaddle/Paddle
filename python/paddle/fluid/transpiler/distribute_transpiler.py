@@ -176,7 +176,7 @@ class DistributeTranspilerConfig(object):
     mode = "pserver"
     print_log = False
     wait_port = True
-    ada_optimizer = False
+    half_async = False
     # split the send recv var in runtime
     _runtime_split_send_recv = False
     _sync_mode = True
@@ -305,6 +305,7 @@ class DistributeTranspiler(object):
             PRINT_LOG = True
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
+        self.counter_var = None
 
     def _transpile_nccl2(self,
                          trainer_id,
@@ -712,6 +713,47 @@ class DistributeTranspiler(object):
         input_deps = list(self.grad_name_to_send_dummy_out.values())
 
         if self.sync_mode:
+            fetch_barrier_input = []
+
+            program.global_block().append_op(
+                type="send_barrier",
+                inputs={"X": list(input_deps)},
+                outputs={"Out": send_barrier_out},
+                attrs={
+                    "endpoints": pserver_endpoints,
+                    "trainer_id": self.trainer_id,
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                })
+
+            fetch_barrier_input.append(send_barrier_out)
+        else:
+            lr_ops = self._get_lr_ops()
+            if len(lr_ops) > 0 and self.counter_var:
+                decay_dummy_output = program.global_block().create_var(
+                    name=framework.generate_control_dev_var_name())
+                if self.config.runtime_split_send_recv:
+                    ## async mode, using communicator to merge and send
+                    send_varnames = [self.counter_var.name]
+                else:
+                    send_varnames = []
+                sections = []
+                program.global_block().append_op(
+                    type="send",
+                    inputs={"X": self.counter_var},
+                    outputs={"Out": decay_dummy_output},
+                    attrs={
+                        "epmap": pserver_endpoints,
+                        "sections": sections,
+                        "send_varnames": send_varnames,
+                        "merge_add": True,
+                        "use_send_handler": False,
+                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                        OP_ROLE_VAR_ATTR_NAME:
+                        [self.counter_var.name, self.counter_var.name]
+                    })
+                input_deps.append(decay_dummy_output)
+
+        if self.sync_mode:
             program.global_block().append_op(
                 type="send_barrier",
                 inputs={"X": list(input_deps)},
@@ -723,7 +765,7 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
         else:
-            if self.config.runtime_split_send_recv and self.config.ada_optimizer:
+            if self.config.runtime_split_send_recv and self.config.half_async:
                 program.global_block().append_op(
                     type="send_barrier",
                     inputs={"X": list(input_deps)},
@@ -805,6 +847,8 @@ class DistributeTranspiler(object):
                         [param_varname, recv_op_role_var_name]
                     })
 
+        self._update_remote_sparse_update_op(program, need_sparse_update_params)
+
         if self.sync_mode:
             # form a WAW dependency
             program.global_block().append_op(
@@ -831,9 +875,6 @@ class DistributeTranspiler(object):
                             "axis": 0,
                             RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
                         })
-
-            self._update_remote_sparse_update_op(program,
-                                                 need_sparse_update_params)
 
         self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
 
@@ -1423,7 +1464,10 @@ class DistributeTranspiler(object):
                             param_name, endpoint)
                         break
                 for key in opt_op.input_names:
-                    if key in ["Param", "Grad", "LearningRate"]:
+                    if key in [
+                            "Param", "Grad", "LearningRate", "Beta1Tensor",
+                            "Beta2Tensor"
+                    ]:
                         continue
                     origin_var = self.origin_program.global_block().vars[
                         opt_op.input(key)[0]]
@@ -2187,7 +2231,10 @@ class DistributeTranspiler(object):
 
         for key in opt_op.input_names:
             new_shape = None
-            if key in ["Param", "Grad", "LearningRate"]:
+            if key in [
+                    "Param", "Grad", "LearningRate", "Beta1Tensor",
+                    "Beta2Tensor"
+            ]:
                 continue
             var = self.origin_program.global_block().vars[opt_op.input(key)[0]]
             param_var = new_inputs["Param"]
@@ -2377,11 +2424,57 @@ class DistributeTranspiler(object):
     def _get_lr_ops(self):
         lr_ops = []
         block = self.origin_program.global_block()
-        for op in block.ops:
+        for index, op in enumerate(block.ops):
             role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
             if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
                     role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
                     int(OPT_OP_ROLE_ATTR_VALUE):
+                if self.sync_mode == False and op.type == 'increment':
+                    inputs = self._get_input_map_from_op(
+                        self.origin_program.global_block().vars, op)
+                    outputs = self._get_output_map_from_op(
+                        self.origin_program.global_block().vars, op)
+                    for key in outputs:
+                        counter_var = outputs[key]
+                    all_trainer_counter_inputs = [
+                        self.origin_program.global_block().create_var(
+                            name="%s.trainer_%d" % (counter_var.name, id_),
+                            type=counter_var.type,
+                            shape=counter_var.shape,
+                            dtype=counter_var.dtype,
+                            persistable=counter_var.persistable)
+                        for id_ in range(self.trainer_num)
+                    ]
+                    for i, op in enumerate(self.startup_program.global_block()
+                                           .ops):
+                        if op.type == 'fill_constant':
+                            for key in op.output_names:
+                                if len(op.output(key)) == 1 and op.output(key)[
+                                        0] == counter_var.name:
+                                    self.startup_program.global_block().ops[
+                                        i]._set_attr(
+                                            'value',
+                                            float(0.0 - self.trainer_num))
+                    for var in all_trainer_counter_inputs:
+                        if var.name == "%s.trainer_%d" % (counter_var.name,
+                                                          self.trainer_id):
+                            self.counter_var = var
+                        self.startup_program.global_block().create_var(
+                            name=var.name,
+                            type=var.type,
+                            dtype=var.dtype,
+                            shape=var.shape,
+                            persistable=var.persistable,
+                            initializer=initializer.Constant(1))
+                    op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
+                    )
+                    block._remove_op(index)
+                    op = block._insert_op(
+                        index,
+                        type='sum',
+                        inputs={'X': all_trainer_counter_inputs},
+                        outputs=outputs,
+                        attrs={op_role_attr_name: LR_SCHED_OP_ROLE_ATTR_VALUE})
                 lr_ops.append(op)
                 log("append lr op: ", op.type)
         return lr_ops

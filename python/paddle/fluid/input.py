@@ -13,8 +13,10 @@
 # limitations under the License.
 
 from __future__ import print_function
+import warnings
 from .framework import Variable, in_dygraph_mode
 from .layer_helper import LayerHelper
+from .data_feeder import check_type_and_dtype, check_dtype
 
 __all__ = ['one_hot', 'embedding']
 
@@ -102,16 +104,16 @@ def one_hot(input, depth, allow_out_of_range=False):
 
     if in_dygraph_mode():
         inputs = {'X': input}
-        attrs = {'depth': depth}
+        attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
     else:
         if not isinstance(depth, Variable):
             # user attribute 
             inputs = {'X': input}
-            attrs = {'depth': depth}
+            attrs = {'depth': depth, 'allow_out_of_range': allow_out_of_range}
         else:
             depth.stop_gradient = True
             inputs = {'X': input, 'depth_tensor': depth}
-            attrs = {}
+            attrs = {'allow_out_of_range': allow_out_of_range}
     helper.append_op(
         type="one_hot_v2",
         inputs=inputs,
@@ -231,6 +233,9 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
+    check_type_and_dtype(input, 'input', Variable, ['int64'], 'fluid.embedding')
+    check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
+                'fluid.embedding')
     remote_prefetch = is_sparse and (not is_distributed)
     if remote_prefetch:
         assert is_sparse is True and is_distributed is False

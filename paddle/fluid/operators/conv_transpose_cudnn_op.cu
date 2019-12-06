@@ -72,7 +72,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     const T* filter_data = filter->data<T>();
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
     const paddle::operators::DataLayout data_layout =
-        (data_layout_str == "NCHW" ? DataLayout::kNCHW : DataLayout::kNHWC);
+        (data_layout_str != "NHWC" ? DataLayout::kNCHW : DataLayout::kNHWC);
 
     // if channel_last, transpose to channel_first
     Tensor input_transpose;
@@ -243,6 +243,10 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
         cudnn_output_desc, CUDNN_CONVOLUTION_BWD_DATA_SPECIFY_WORKSPACE_LIMIT,
         workspace_size_limit, &algo));
 
+    if (algo == 0 && FLAGS_cudnn_deterministic) {
+      algo = static_cast<cudnnConvolutionBwdDataAlgo_t>(1);
+    }
+
     // get workspace size able to allocate
     CUDNN_ENFORCE(
         platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
@@ -316,7 +320,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     int user_workspace_size = ctx.Attr<int>("workspace_size_MB");
     const std::string data_layout_str = ctx.Attr<std::string>("data_format");
     const paddle::operators::DataLayout data_layout =
-        (data_layout_str == "NCHW" ? DataLayout::kNCHW : DataLayout::kNHWC);
+        (data_layout_str != "NHWC" ? DataLayout::kNCHW : DataLayout::kNHWC);
 
     // if channel_last, transpose to channel_first
     Tensor input_transpose;

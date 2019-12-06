@@ -193,7 +193,7 @@ class TestExpandOpInt64_t(OpTest):
         self.check_output()
 
 
-class TestExpandError(OpTest):
+class TestExpandError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             x1 = fluid.create_lod_tensor(
@@ -208,7 +208,7 @@ class TestExpandError(OpTest):
 
 
 # Test python API
-class TestExpandAPI(OpTest):
+class TestExpandAPI(unittest.TestCase):
     def test_api(self):
         input = np.random.random([12, 14]).astype("float32")
         x = fluid.layers.data(
@@ -221,6 +221,8 @@ class TestExpandAPI(OpTest):
         out_1 = fluid.layers.expand(x, expand_times=[2, 3])
         out_2 = fluid.layers.expand(x, expand_times=[positive_2, 3])
         out_3 = fluid.layers.expand(x, expand_times=expand_times)
+
+        g0 = fluid.backward.calc_gradient(out_2, x)
 
         exe = fluid.Executor(place=fluid.CPUPlace())
         res_1, res_2, res_3 = exe.run(fluid.default_main_program(),

@@ -152,9 +152,9 @@ class TestNearestNeighborInterpCase2(TestNearestInterpOp):
 class TestNearestNeighborInterpCase3(TestNearestInterpOp):
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [1, 1, 128, 64]
+        self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
-        self.out_w = 128
+        self.out_w = 32
         self.scale = 0.
         self.align_corners = True
 
@@ -184,9 +184,9 @@ class TestNearestNeighborInterpCase5(TestNearestInterpOp):
 class TestNearestNeighborInterpCase6(TestNearestInterpOp):
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [1, 1, 128, 64]
+        self.input_shape = [1, 1, 32, 64]
         self.out_h = 64
-        self.out_w = 128
+        self.out_w = 32
         self.scale = 0.
         self.out_size = np.array([65, 129]).astype("int32")
         self.align_corners = True
@@ -195,8 +195,8 @@ class TestNearestNeighborInterpCase6(TestNearestInterpOp):
 class TestNearestNeighborInterpSame(TestNearestInterpOp):
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [2, 3, 128, 64]
-        self.out_h = 128
+        self.input_shape = [2, 3, 32, 64]
+        self.out_h = 32
         self.out_w = 64
         self.scale = 0.
         self.align_corners = True
@@ -271,9 +271,9 @@ class TestNearestInterpOpUint8(OpTest):
 class TestNearestNeighborInterpCase1Uint8(TestNearestInterpOpUint8):
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [2, 3, 128, 64]
-        self.out_h = 120
-        self.out_w = 50
+        self.input_shape = [2, 3, 32, 64]
+        self.out_h = 80
+        self.out_w = 40
         self.scale = 0.
         self.align_corners = True
 
@@ -423,10 +423,10 @@ class TestNearestInterp_attr_tensor_Case3(TestNearestInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
-class TestNearestAPI(OpTest):
+class TestNearestAPI(unittest.TestCase):
     def test_case(self):
-        x = fluid.data(name="x", shape=[1, 3, 6, 6], dtype="float32")
-        y = fluid.data(name="y", shape=[1, 6, 6, 3], dtype="float32")
+        x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
+        y = fluid.data(name="y", shape=[2, 6, 6, 3], dtype="float32")
 
         dim = fluid.data(name="dim", shape=[1], dtype="int32")
         shape_tensor = fluid.data(name="shape_tensor", shape=[2], dtype="int32")
@@ -442,14 +442,18 @@ class TestNearestAPI(OpTest):
             x, out_shape=[4, 4], actual_shape=actual_size)
         out5 = fluid.layers.resize_nearest(x, scale=scale_tensor)
 
-        x_data = np.random.random((1, 3, 6, 6)).astype("float32")
+        x_data = np.random.random((2, 3, 6, 6)).astype("float32")
         dim_data = np.array([12]).astype("int32")
         shape_data = np.array([12, 12]).astype("int32")
         actual_size_data = np.array([12, 12]).astype("int32")
         scale_data = np.array([2.0]).astype("float32")
 
-        place = core.CPUPlace()
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+        else:
+            place = core.CPUPlace()
         exe = fluid.Executor(place)
+        exe.run(fluid.default_startup_program())
         results = exe.run(fluid.default_main_program(),
                           feed={
                               "x": x_data,
@@ -470,7 +474,7 @@ class TestNearestAPI(OpTest):
             self.assertTrue(np.allclose(results[i + 1], expect_res))
 
 
-class TestNearestInterpException(OpTest):
+class TestNearestInterpException(unittest.TestCase):
     def test_exception(self):
         input = fluid.data(name="input", shape=[1, 3, 6, 6], dtype="float32")
 

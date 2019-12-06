@@ -186,7 +186,7 @@ class TestReshapeOpDimInfer2_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
 
 
 # Test python API
-class TestReshapeAPI(OpTest):
+class TestReshapeAPI(unittest.TestCase):
     # situation 1: have shape( list, no tensor), no actual shape(Tensor)
     def test_1(self):
         input = np.random.random([2, 25]).astype("float32")
@@ -227,7 +227,7 @@ class TestReshapeAPI(OpTest):
 
 
 # Test Input Error
-class TestReshapeOpError(OpTest):
+class TestReshapeOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The x type of reshape_op must be Variable.
@@ -238,16 +238,26 @@ class TestReshapeOpError(OpTest):
 
             self.assertRaises(TypeError, test_x_type)
 
-            # The x dtype of reshape_op must be float32, float64, int32 or int64.
+            # The x dtype of reshape_op must be float16, float32, float64, int32 or int64.
             def test_x_dtype():
                 x2 = fluid.layers.data(
                     name="x2",
                     shape=[2, 25],
                     append_batch_size=False,
-                    dtype="float16")
+                    dtype="bool")
                 fluid.layers.reshape(x2, shape=[2, 5, 5])
 
             self.assertRaises(TypeError, test_x_dtype)
+
+            def test_x_dtype_float16():
+                x_float16 = fluid.layers.data(
+                    name="x_float16",
+                    shape=[2, 25],
+                    append_batch_size=False,
+                    dtype="float16")
+                fluid.layers.reshape(x_float16, shape=[2, 5, 5])
+
+            test_x_dtype_float16()
 
             x3 = fluid.layers.data(
                 name="x3",

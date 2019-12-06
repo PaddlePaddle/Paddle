@@ -108,8 +108,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   framework::BlockDesc block_desc(nullptr, &block_proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
-  string::PrettyLogDetail("---  detect a sub-graph with %d nodes",
-                          subgraph.size());
+  LOG(INFO) << "---  detect a sub-graph with " << subgraph.size() << " nodes";
 
   for (auto *node : subgraph) {
     auto *new_block_op = new_block->AppendOp();
@@ -213,7 +212,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   for (auto *x : node->inputs) {
     if (x->IsVar() && x->Var()) {
       framework::VarDesc *var = x->Var();
-      SetAttr(op_desc->Proto(), var->Name() + "_shape", var->GetShape());
+      op_desc->SetAttr(var->Name() + "_shape", var->GetShape());
     }
   }
 

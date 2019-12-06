@@ -16,23 +16,79 @@ from __future__ import print_function
 from ..wrapped_decorator import signature_safe_contextmanager
 
 from .layer_function_generator import autodoc, templatedoc
-from .tensor import assign, fill_constant
+from .tensor import assign, cast, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
 from .nn import logical_and, logical_not, logical_or
+from .utils import assert_same_structure, map_structure
 import numpy
 import warnings
 import six
-from functools import reduce
+from functools import reduce, partial
+from ..data_feeder import convert_dtype, check_type_and_dtype
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
     'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
-    'array_read', 'array_length', 'IfElse', 'DynamicRNN', 'StaticRNN',
-    'reorder_lod_tensor_by_rank', 'Print', 'is_empty'
+    'array_read', 'array_length', 'cond', 'IfElse', 'DynamicRNN', 'StaticRNN',
+    'reorder_lod_tensor_by_rank', 'Print', 'is_empty', 'case', 'switch_case'
 ]
+
+
+def select_output(input, outputs, mask):
+    """
+    **select_output**    
+    This API takes in one input and multiple outputs and an integer mask. It
+    selects the output specified by the mask and copy the input to selected
+    output. It is useful in control flow.
+
+    Args:
+        input(Variable): The input variable
+        outputs(tuple|list): The output variables
+        mask(Variable): A tensor containing 1 integer number selecting which
+            output to be copied with input
+
+    Returns:
+        Variable: The outputs variables
+    """
+    helper = LayerHelper('select_output', **locals())
+    helper.append_op(
+        type='select_output',
+        inputs={'X': input,
+                'Mask': mask},
+        outputs={'Out': outputs})
+    return outputs
+
+
+def select_input(inputs, mask):
+    """
+    **select_input**
+    
+    This API takes in multiple inputs and uses an integer mask to select one
+    input to output. It is useful in control flow.
+
+    Args:
+        inputs(tuple|list): The input variables
+        mask(Variable): A tensor containing 1 integer number selecting which
+            input to output
+
+    Returns:
+        Variable: The selected input variable
+    """
+    helper = LayerHelper('select_input', **locals())
+    if isinstance(inputs, list) or isinstance(inputs, tuple):
+        input_dtype = inputs[0].dtype
+    else:
+        input_dtype = inputs.dtype
+    out = helper.create_variable(dtype=input_dtype)
+    helper.append_op(
+        type='select_input',
+        inputs={'X': inputs,
+                'Mask': mask},
+        outputs={'Out': out})
+    return out
 
 
 def split_lod_tensor(input, mask, level=0):
@@ -154,17 +210,18 @@ def Print(input,
 
     Args:
         input (Variable): A Tensor to print.
-        summarize (int): Print this number of elements in the tensor, will print
-                all if left is negative.
+        summarize (int): Number of elements in the tensor to be print. If it's
+                vaule is -1, then all elements in the tensor will be print.
         message (str): A string message to print as a prefix.
         first_n (int): Only log `first_n` number of times.
-        print_tensor_name (bool): Print the tensor name.
-        print_tensor_type (bool): Print the tensor type.
-        print_tensor_shape (bool): Print the tensor shape.
-        print_tensor_lod (bool): Print the tensor lod.
+        print_tensor_name (bool, optional): Print the tensor name. Default: True.
+        print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
+        print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
+        print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
         print_phase (str): Which phase to displace, including 'forward',
-                'backward' and 'both'. If set to 'backward' or 'both', will
-                print the gradients of input tensor.
+                'backward' and 'both'. Default: 'both'. If set to 'backward', will 
+                only print the gradients of input tensor; If set to 'both', will
+                both print the input tensor itself and the gradients of input tensor.
 
     Returns:
         Variable: Output tensor.
@@ -189,17 +246,17 @@ def Print(input,
     Output at runtime:
         .. code-block:: bash 
            
-           1564546375   The content of input layer:     The place is:CPUPlace
+           The content of input layer:     The place is:CPUPlace
            Tensor[fill_constant_0.tmp_0]
                shape: [10,2,]
                dtype: x
                data: 3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3, 
                
-           # The information of dtype at runtime may vary in different environments.
-           # Eg: 
-           #    If the dtype='int64' of Tensor y, the corresponding c++ type is int64_t.
-           #    The dtype of output is "x" ("x" is typeid(int64_t).name()) with MacOS and gcc4.8.2
     '''
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float32', 'float64', 'int32', 'int64', 'bool'],
+                         'fluid.layers.Print')
+
     helper = LayerHelper('print' + "_" + input.name, **locals())
     output = helper.create_variable_for_type_inference(input.dtype)
     helper.append_op(
@@ -1021,26 +1078,24 @@ def array_to_lod_tensor(x, table):
 
 def increment(x, value=1.0, in_place=True):
     """
-    This function performs an operation that increments the value in the
-    input :math:`x` by an amount: :math:`value` as mentioned in the input
-    parameter. This operation is performed in-place by default. Notice that
-    the number of elements in :math:`x` must be equal to 1.
+    The OP is usually used for control flow to increment the data of :attr:`x` by an amount :attr:`value`.
+    Notice that the number of elements in :attr:`x` must be equal to 1.
 
-    Args:
-        x (Variable|list): The tensor that has the input values.
-        value (float): The amount by which the values should be incremented.
-        in_place (bool): If the increment should be performed in-place.
+    Parameters:
+        x (Variable): A tensor that must alway contain only one element, its data type supports
+            float32, float64, int32 and int64.
+        value (float, optional): The amount to increment the data of :attr:`x`. Default: 1.0.
+        in_place (bool, optional): Whether the OP should be performed in-place. Default: True.
 
     Returns:
-        Variable: The elementwise-incremented object.
+        Variable: The elementwise-incremented tensor with the same shape and data type as :attr:`x`.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.data(name='data', shape=[1], dtype='float32',
-                                   append_batch_size=False)
-          data = fluid.layers.increment(x=data, value=3.0, in_place=True)
+          counter = fluid.layers.zeros(shape=[1], dtype='float32') # [0.]
+          fluid.layers.increment(counter) # [1.]
     """
     helper = LayerHelper("increment", **locals())
     if not in_place:
@@ -1121,22 +1176,23 @@ def array_write(x, i, array=None):
 
 def create_array(dtype):
     """
-    **Create LoDTensorArray**
-
-    This function creates an array of LOD_TENSOR_ARRAY . It is mainly used to
-    implement RNN with array_write, array_read and While.
+    This OP creates an LOD_TENSOR_ARRAY. It is used as
+    the input of :ref:`api_fluid_layers_array_read` and 
+    :ref:`api_fluid_layers_array_write`. Also it can be used
+    with  :ref:`api_fluid_layers_While` to create RNN network.
 
     Args:
-        dtype (int|float): The data type of the elements in the lod_tensor_array.
+        dtype (str): The data type of the elements in the lod_tensor_array.
+                     Support data type: float32, float64, int32, int64.
 
     Returns:
-        Variable: The lod_tensor_array variable storing the elements of data type.
+        Variable: The empty lod_tensor_array. The data type of elements in Tensor is ``dtype``.
 
     Examples:
         .. code-block:: python
 
           import paddle.fluid as fluid
-          data = fluid.layers.create_array(dtype='float32')
+          data = fluid.layers.create_array(dtype='float32') # Create a float32 LoDTensorArray.
 
     """
     helper = LayerHelper("array", **locals())
@@ -1164,9 +1220,24 @@ def less_than(x, y, force_cpu=None, cond=None):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          label = fluid.layers.data(name='y', shape=[1], dtype='int64')
-          limit = fluid.layers.fill_constant(shape=[1], dtype='int64', value=5)
-          cond = fluid.layers.less_than(x=label, y=limit)
+          import numpy as np
+  
+          # Graph Organizing
+          x = fluid.layers.data(name='x', shape=[2], dtype='float64')
+          y = fluid.layers.data(name='y', shape=[2], dtype='float64')
+          result = fluid.layers.less_than(x=x, y=y)
+          # The comment lists another available method.
+          # result = fluid.layers.fill_constant(shape=[2], dtype='float64', value=0)
+          # fluid.layers.less_than(x=x, y=y, cond=result)
+  
+          # Create an executor using CPU as example
+          exe = fluid.Executor(fluid.CPUPlace())
+  
+          # Execute
+          x_i = np.array([[1, 2], [3, 4]]).astype(np.float64)
+          y_i = np.array([[2, 2], [1, 3]]).astype(np.float64)
+          result_value, = exe.run(fluid.default_main_program(), feed={'x':x_i, 'y':y_i}, fetch_list=[result])
+          print(result_value) # [[True, False], [False, False]]
     """
     helper = LayerHelper("less_than", **locals())
     if cond is None:
@@ -1639,7 +1710,6 @@ class ConditionalBlock(object):
 
         param_list = [
             parent_block._var_recursive(each_name) for each_name in params
-            if each_name not in input_set
         ]
 
         out_list = []
@@ -1662,6 +1732,270 @@ class ConditionalBlock(object):
                 'sub_block': inside_block,
                 'is_scalar_condition': self.is_scalar_condition
             })
+
+
+def copy_var_to_parent_block(var, layer_helper):
+    if var is None:
+        return None
+    prog = layer_helper.main_program
+    parent_idx = prog.current_block().parent_idx
+    assert parent_idx >= 0, "Got wrong parent block index when assigning var to parent scope in control_flow"
+    parent_block = prog.block(parent_idx)
+
+    parent_block_var = parent_block.create_var(dtype=var.dtype, type=var.type)
+    assign(var, parent_block_var)
+    return parent_block_var
+
+
+def cond(pred, true_fn=None, false_fn=None, name=None):
+    """
+    This API returns ``true_fn()`` if the predicate ``pred`` is true else
+    ``false_fn()`` . Users could also set ``true_fn`` or ``false_fn`` to
+    ``None`` if do nothing and this API will treat the callable simply returns
+    ``None`` in this case.
+
+    ``true_fn`` and ``false_fn`` should return same nest structure of tensors
+    or both return ``None`` if user doens't like to return anything. A nest
+    structure of tensors in PaddlePaddle is tensor(s), or tuple of tensors, or
+    list of tensors.
+    
+    Note: 
+        The tuples or lists in ``true_fn`` and ``false_fn`` must have same
+        shape because of dataflow model of PaddlePaddle while the tensors in the
+        tuples or the lists can have different shapes.
+
+    Args:
+        pred(Variable): A boolean tensor whose numel should be 1. The boolean
+            value determines whether to return the result of ``true_fn`` or
+            ``false_fn``
+        true_fn(callable): A callable to be performed if ``pred`` is true
+        false_fn(callable): A callable to be performed if ``pred`` is false
+        name(str, optional): The default value is ``None``. Normally users
+             don't have to set this parameter. For more information, please
+             refer to :ref:`api_guide_Name`.
+
+    Raises:
+        TypeError: if ``true_fn`` or ``false_fn`` is not callable.
+        ValueError: if ``true_fn`` and ``false_fn`` doesn't return the same
+            nest structure of tensors.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+            from paddle.fluid.executor import Executor
+            from paddle.fluid.framework import Program, program_guard
+
+            #
+            # pseudocode:
+            # if 0.1 < 0.23:
+            #     return 1, True
+            # else:
+            #     return 3, 2
+            #
+
+            def true_func():
+                return layers.fill_constant(
+                    shape=[1, 2], dtype='int32', value=1), layers.fill_constant(
+                        shape=[2, 3], dtype='bool', value=True)
+
+            def false_func():
+                return layers.fill_constant(
+                    shape=[3, 4], dtype='float32', value=3), layers.fill_constant(
+                        shape=[4, 5], dtype='int64', value=2)
+
+            main_program = Program()
+            startup_program = Program()
+            with program_guard(main_program, startup_program):
+                x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
+                y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
+                pred = layers.less_than(x, y)            
+                out = layers.cond(pred, true_func, false_func)
+                # out is a tuple containing 2 tensors
+
+            place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            ret = exe.run(main_program, fetch_list=out)
+            # ret[0] = [[1 1]]
+            # ret[1] = [[ True  True  True]
+            #           [ True  True  True]]
+
+    """
+    helper = LayerHelper('cond', **locals())
+    true_output = None
+    false_output = None
+    copy_to_parent_func = lambda var: copy_var_to_parent_block(var, helper)
+    if true_fn is not None:
+        if not callable(true_fn):
+            raise TypeError("The true_fn in cond must be callable")
+        true_cond_block = ConditionalBlock([pred], is_scalar_condition=True)
+        with true_cond_block.block():
+            origin_true_output = true_fn()
+            if origin_true_output is not None:
+                true_output = map_structure(copy_to_parent_func,
+                                            origin_true_output)
+    if false_fn is not None:
+        if not callable(false_fn):
+            raise TypeError("The false_fn in cond must be callable")
+        false_cond_block = ConditionalBlock(
+            [logical_not(pred)], is_scalar_condition=True)
+        with false_cond_block.block():
+            origin_false_output = false_fn()
+            if origin_false_output is not None:
+                false_output = map_structure(copy_to_parent_func,
+                                             origin_false_output)
+
+    if true_output is None and false_output is None:
+        return None
+
+    if true_output is None:
+        raise ValueError(
+            "Incompatible return values of true_fn and false_fn in cond: "
+            "true_fn returns None while false_fn returns non-None")
+    if false_output is None:
+        raise ValueError(
+            "Incompatible return values of true_fn and false_fn in cond: "
+            "true_fn returns non-None while false_fn returns None")
+
+    # Merge ture and false output if they are not None
+    try:
+        assert_same_structure(true_output, false_output, check_types=False)
+    except ValueError as e:
+        raise ValueError(
+            "Incompatible return values of true_fn and false_fn in cond: {}".
+            format(e))
+
+    mask = cast(pred, dtype='int32')
+    merge_func = lambda false_var, true_var : select_input([false_var, true_var], mask)
+    merged_output = map_structure(merge_func, false_output, true_output)
+    return merged_output
+
+
+def _error_message(what, arg_name, op_name, right_value, error_value):
+    error_message = "{what} of '{arg_name}' in Op({op_name}) must be " \
+        "{right_value}, but received: {error_value}.".format(
+        what=what,
+        arg_name=arg_name,
+        op_name=op_name,
+        right_value=right_value,
+        error_value=error_value)
+
+    return error_message
+
+
+def case(pred_fn_pairs, default=None, name=None):
+    '''
+    This operator works like an if-elif-elif-else chain.
+
+    Args:
+        pred_fn_pairs(list|tuple): A list or tuple of (pred, fn) pairs. ``pred`` is a boolean Tensor with shape [1], ``fn`` is a callable. All callables return the same structure of Tensors.
+        default(callable, optional): Callable that returns a structure of Tensors.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable|list(Variable): Tensors returned by the callable from the first pair whose pred is True,
+        or Tensors returned by ``default`` if no pred in ``pred_fn_pairs`` is True and ``default`` is not None,
+        or Tensors returned by the last callable in ``pred_fn_pairs``  if no pred in ``pred_fn_pairs`` is True and ``default`` is None.
+
+    Raises:
+        TypeError: If the type of ``pred_fn_pairs`` is not list or tuple.
+        TypeError: If the type of elements in ``pred_fn_pairs`` is not tuple.
+        TypeError: If the size of tuples in ``pred_fn_pairs`` is not 2.
+        TypeError: If the first element of 2-tuple in ``pred_fn_pairs`` is not Variable.
+        TypeError: If the second element of 2-tuple in ``pred_fn_pairs`` is not callable.
+        TypeError: If ``default`` is not None but it is not callable.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            def fn_1():
+                return layers.fill_constant(shape=[1, 2], dtype='float32', value=1)
+
+            def fn_2():
+                return layers.fill_constant(shape=[2, 2], dtype='int32', value=2)
+
+            def fn_3():
+                return layers.fill_constant(shape=[3], dtype='int32', value=3)
+
+            main_program = fluid.default_startup_program()
+            startup_program = fluid.default_main_program()
+            with fluid.program_guard(main_program, startup_program):
+                x = layers.fill_constant(shape=[1], dtype='float32', value=0.3)
+                y = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
+                z = layers.fill_constant(shape=[1], dtype='float32', value=0.2)
+
+                pred_1 = layers.less_than(z, x)  # true: 0.2 < 0.3
+                pred_2 = layers.less_than(x, y)  # false: 0.3 < 0.1
+                pred_3 = layers.equal(x, y)      # false: 0.3 == 0.1
+
+                # Call fn_1 because pred_1 is True
+                out_1 = layers.case(
+                    pred_fn_pairs=[(pred_1, fn_1), (pred_2, fn_2)], default=fn_3)
+
+                # Argument default is None and no pred in pred_fn_pairs is True. fn_3 will be called.
+                # because fn_3 is the last callable in pred_fn_pairs.
+                out_2 = layers.case(pred_fn_pairs=[(pred_2, fn_2), (pred_3, fn_3)])
+
+                exe = fluid.Executor(fluid.CPUPlace())
+                res_1, res_2 = exe.run(main_program, fetch_list=[out_1, out_2])
+                print(res_1)  # [[1. 1.]]
+                print(res_2)  # [3 3 3]
+    '''
+    helper = LayerHelper('case', **locals())
+
+    def _case_check_args(pred_fn_pairs, default):
+        '''
+        Check arguments pred_fn_pairs and default. Return canonical pre_fn_pairs and default.
+        '''
+        if not isinstance(pred_fn_pairs, (list, tuple)):
+            raise TypeError(
+                _error_message("The type", "pred_fn_pairs", "case",
+                               "list or tuple", type(pred_fn_pairs)))
+
+        for pred_fn in pred_fn_pairs:
+            if not isinstance(pred_fn, tuple):
+                raise TypeError(
+                    _error_message("The elements' type", "pred_fn_pairs",
+                                   "case", "tuple", type(pred_fn)))
+            if len(pred_fn) != 2:
+                raise TypeError(
+                    _error_message("The tuple's size", "pred_fn_pairs", "case",
+                                   "2", str(len(pred_fn)) + "-tuple"))
+            pred, fn = pred_fn
+
+            if not isinstance(pred, Variable):
+                raise TypeError(
+                    _error_message("The pred's type", "pred_fn_pairs", "case",
+                                   "boolean Variable", type(pred)))
+
+            if not callable(fn):
+                raise TypeError(
+                    "The fn for {} of pred_fn_pairs in Op(case) must"
+                    " be callable.".format(pred.name))
+
+        if default is None:
+            default_index = len(pred_fn_pairs) - 1  # pick the last one
+            default = pred_fn_pairs[default_index][1]
+            pred_fn_pairs = pred_fn_pairs[:default_index]
+        elif not callable(default):
+            raise TypeError("The default in Op(case) must be callable.")
+
+        return pred_fn_pairs, default
+
+    pred_fn_pairs, default = _case_check_args(pred_fn_pairs, default)
+
+    false_fn = default
+    for pred, true_fn in reversed(pred_fn_pairs):
+        false_fn = partial(cond, pred=pred, true_fn=true_fn, false_fn=false_fn)
+
+    final_fn = false_fn
+
+    return final_fn()
 
 
 class Switch(object):
@@ -1987,44 +2321,68 @@ class IfElse(object):
 
 class DynamicRNN(object):
     """
-    The dynamic RNN can process a batch of sequence data. The length of each
-    sample sequence can be different. This API automatically process them in
-    batch.
+    **Note: the input of this class should be LoDTensor which holds the
+    information of variable-length sequences. If the input is fixed-length Tensor,
+    please use StaticRNN (fluid.layers.** :ref:`api_fluid_layers_StaticRNN` **) for
+    better performance.**
 
-    The input lod must be set. Please reference to `lod_tensor`.
+    DynamicRNN can process a minibatch of variable-length sequences.
+    The length of each sample can be different and is recorded in LoD.
+    In DynamicRNN, an input sequence will be unfolded into time steps and users
+    can define how to process each time step in :code:`block()` .
+    The total number of time steps is determined by the longest sequence.
+    DynamicRNN will not pad all sequences to the same length, instead it will
+    sort the sequences internally by the sequence length in descending order.
+    The input sequences will be shrinked because only sequences of which the
+    length is larger than the time step will participate the remaining calculation.
 
-    The dynamic RNN will unfold sequence into timesteps. Users need to define
-    how to process each time step during the :code:`with` block.
+    If defined :code:`drnn = DynamicRNN()`, then users can call :code:`drnn()`
+    to obtain the result sequences. It is a LoDTensor gained by merging all
+    time steps's output. When RNN's input sequence x meets :code:`x.lod_level == 1`,
+    the output LoDTensor will have the same LoD with x. The result of :code:`drnn()`
+    includes RNN's outputs of all time steps, users can call
+    :ref:`api_fluid_layers_sequence_last_step` to extract the data of the last time step.
 
-    The `memory` is used staging data cross time step. The initial value of
-    memory can be zero or another variable.
+    Warning:
+        Currently it is not supported to set :code:`is_sparse = True` of any
+        layers defined within DynamicRNN's :code:`block` function.
 
-    The dynamic RNN can mark multiple variables as its output. Use `drnn()` to
-    get the output sequence.
-
-    NOTES:
-        Currently it is not supported that setting is_sparse to True of any 
-        layers within DynamicRNN.
+    Args:
+        name (str, optional): The default value is None.  Normally there is no
+            need for user to set this property.  For more information,
+            please refer to :ref:`api_guide_Name` .
 
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
+            import paddle.fluid as fluid
 
-          sentence = fluid.layers.data(name='sentence', shape=[1], dtype='int64', lod_level=1)
-          embedding = fluid.layers.embedding(input=sentence, size=[65536, 32], is_sparse=True)
-    
-          drnn = fluid.layers.DynamicRNN()
-          with drnn.block():
-              word = drnn.step_input(embedding)
-              prev = drnn.memory(shape=[200])
-              hidden = fluid.layers.fc(input=[word, prev], size=200, act='relu')
-              drnn.update_memory(prev, hidden)  # set prev to hidden
-              drnn.output(hidden)
+            sentence = fluid.data(name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
+            encoder_proj = fluid.data(name='encoder_proj', shape=[None, 32], dtype='float32', lod_level=1)
+            decoder_boot = fluid.data(name='boot', shape=[None, 10], dtype='float32')
 
-          # Get the last time step of rnn. It is the encoding result.
-          rnn_output = drnn()
-          last = fluid.layers.sequence_last_step(rnn_output)
+            drnn = fluid.layers.DynamicRNN()
+            with drnn.block():
+                # Set sentence as RNN's input, each time step processes a word from the sentence
+                current_word = drnn.step_input(sentence)
+                # Set encode_proj as RNN's static input
+                encoder_word = drnn.static_input(encoder_proj)
+                # Initialize memory with boot_memory, which need reorder according to RNN's input sequences
+                memory = drnn.memory(init=decoder_boot, need_reorder=True)
+                fc_1 = fluid.layers.fc(input=encoder_word, size=30)
+                fc_2 = fluid.layers.fc(input=current_word, size=30)
+                decoder_inputs = fc_1 + fc_2
+                hidden, _, _ = fluid.layers.gru_unit(input=decoder_inputs, hidden=memory, size=30)
+                # Update memory with hidden
+                drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                out = fluid.layers.fc(input=hidden, size=10, bias_attr=True, act='softmax')
+                # Set hidden and out as RNN's outputs
+                drnn.output(hidden, out)
+
+            # Get RNN's result
+            hidden, out = drnn()
+            # Get RNN's result of the last time step
+            last = fluid.layers.sequence_last_step(out)
     """
     BEFORE_RNN = 0
     IN_RNN = 1
@@ -2048,14 +2406,94 @@ class DynamicRNN(object):
 
     def step_input(self, x, level=0):
         """
-        Mark a sequence as a dynamic RNN input.
+        This function is used to set sequence x as DynamicRNN's input.
+        The maximum sequence length in x determines the number of time steps
+        the RNN unit will be executed. DynamicRNN can take multiple inputs.
+        When all inputs' :code:`lod_level` are 1, all inputs should hold the
+        same LoD. When :code:`x.lod_level >= 2` , the input sequence will be
+        unfold along specified level, and the slice of each time step is a
+        LoDTensor whose lod_level is :code:`x.lod_level - level - 1` .
+        In this case, the specified LoD level of multiple inputs should be the same.
+
+        - Case 1:
+
+        .. code-block:: text
+
+            # input, where Si is slice data of shape [1, N]
+            level = 0
+            x.lod = [[2, 1, 3]]
+            x.shape = [6, N]
+            x.data = [[S0],
+                      [S0],
+                      [S1],
+                      [S2],
+                      [S2],
+                      [S2]]
+
+            # output
+            # step 0, time step data of 3 sequences
+            out.lod = [[]]
+            out.shape = [3, N]
+            out.data = [[S2],
+                        [S0],
+                        [S1]]
+
+            # step 1, time step data of 2 sequences
+            out.lod = [[]]
+            out.shape = [2, N]
+            out.data = [[S2],
+                        [S0]]
+
+            # step 2, time step data of 1 sequences
+            out.lod = [[]]
+            out.shape = [1, N]
+            out.data = [[S2]]
+
 
         Args:
-            x (Variable): The input sequence which should have lod information.
-            level (int): The level of lod used to split steps. Default: 0.
+            x (Variable): The input LoDTensor which holds information of a
+                minibatch of variable-length sequences and should meet :code:`x.lod_level >= 1` .
+                When RNN has multiple inputs, the first dimension should match
+                across all inputs, but other shape components may differ.
+                Optional data types are: bool, float16, float32, float64, int8, int16, int32, int64, uint8.
+            level (int, optional): The level of lod used to split steps.
+                It should be in range :math:`[0, x.lod\_level)` . The default value is 0.
 
         Returns:
-            The current timestep in the input sequence.
+            Variable: The current time step in the input sequence. If there are :code:`num_sequences` \
+                sequences in x whose length is larger than :code:`step_idx` , the returned Variable \
+                will only hold the :code:`step_idx` -th time step of those `num_sequences` sequences. \
+                The data type is the same as input. If :code:`x.lod_level == 1` , the return value is \
+                a Tensor of shape :math:`\{num\_sequences, x.shape[1], ...\}` , or it will \
+                be a variable-length LoDTensor.
+
+        Raises:
+            ValueError: When :code:`step_input()` is called outside :code:`block()` .
+            TypeError: When x is not a Variable.
+
+        Examples:
+            ..  code-block:: python
+
+                import paddle.fluid as fluid
+
+                sentence = fluid.data(name='sentence', shape=[None, 1], dtype='int64', lod_level=1)
+                embedding = fluid.layers.embedding(input=sentence, size=[65536, 32], is_sparse=True)
+
+                drnn = fluid.layers.DynamicRNN()
+                with drnn.block():
+                    # Set embedding as RNN's input, each time step processes a word from the sentence
+                    word = drnn.step_input(embedding)
+                    # Initialize memory to a Tensor whose value is 0, shape=[batch_size, 200],
+                    # where batch_size is the number of sequences in embedding.
+                    memory = drnn.memory(shape=[200])
+                    hidden = fluid.layers.fc(input=[word, memory], size=200, act='relu')
+                    # Update memory to hidden
+                    drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                    # Set hidden as RNN's output
+                    drnn.output(hidden)
+
+                # Get RNN's result
+                rnn_output = drnn()
         """
         self._assert_in_rnn_block_("step_input")
         if not isinstance(x, Variable):
@@ -2102,38 +2540,129 @@ class DynamicRNN(object):
 
     def static_input(self, x):
         """
-        Mark a variable as a RNN input. The input will not be scattered into
-        time steps. It is optional.
+        This function is used to set x as DynamicRNN's static input. It is optional.
+
+        - Case 1, set static input with LoD
+
+        .. code-block:: text
+
+            # RNN's input is the same as the case listed in step_input
+            # static input, where Si is slice data of shape [1, M]
+            x.lod = [[3, 1, 2]]
+            x.shape = [6, M]
+            x.data = [[S0],
+                      [S0],
+                      [S0],
+                      [S1],
+                      [S2],
+                      [S2]]
+
+            # step 0, batch data corresponding to the 3 input sequences
+            out.lod = [[2, 3, 1]]
+            out.shape = [6, M]
+            out.data = [[S2],
+                        [S2],
+                        [S0],
+                        [S0],
+                        [S0],
+                        [S1]]
+
+            # step 1, batch data corresponding to the 2 input sequences
+            out.lod = [[2, 3]]
+            out.shape = [5, M]
+            out.data = [[S2],
+                        [S2],
+                        [S0],
+                        [S0],
+                        [S0]]
+
+            # step 2, batch data corresponding to the 1 input sequences
+            out.lod = [[2]]
+            out.shape = [2, M]
+            out.data = [[S2],
+                        [S2]]
+
+
+        - Case 2, set static input without LoD
+
+        .. code-block:: text
+
+            # RNN's input is the same as the case listed in step_input
+            # static input, where Si is slice data of shape [1, M]
+            x.lod = [[]]
+            x.shape = [3, M]
+            x.data = [[S0],
+                      [S1],
+                      [S2]]
+
+            # step 0, batch data corresponding to the 3 input sequences
+            out.lod = [[]]
+            out.shape = [3, M]
+            out.data = [[S2],
+                        [S0],
+                        [S1]]
+
+            # step 1, batch data corresponding to the 2 input sequences
+            out.lod = [[]]
+            out.shape = [2, M]
+            out.data = [[S2],
+                        [S0]]
+
+            # step 2, batch data corresponding to the 1 input sequences
+            out.lod = [[]]
+            out.shape = [1, M]
+            out.data = [[S2]]
+
 
         Args:
-            x (Variable): The input variable.
+            x (Variable): The static input LoDTensor which should hold the same number of sequences
+                as RNN's input (the input LoDTensor set by :code:`step_input()` ). If the LoD is None,
+                the input x will be treated as a minibatch with :code:`x.shape[0]` sequences of length 1.
+                Optional data types are: bool, float16, float32, float64, int8, int16, int32, int64, uint8.
 
         Returns:
-            The input variable that can access in RNN.
+            Variable: The input LoDTensor after sorted and shrinked. If there are :code:`num_sequences` \
+                sequences in RNN's input LoDTensor whose length is larger than :code:`step_idx` , \
+                the static input Tensor will be sorted to the same order as RNN's input and \
+                will only retain data corresponding to those :code:`num_sequences` sequences. \
+                The data type is the same as input. If :code:`x.lod == None` , the return value is \
+                a Tensor of shape :math:`\{num\_sequences, x.shape[1], ...\}` , or it will \
+                be a variable-length LoDTensor.
+
+        Raises:
+            ValueError: When :code:`static_input()` is called outside :code:`block()` .
+            TypeError: When x is not a Variable.
+            RuntimeError: When :code:`static_input()` is called before :code:`step_input()` .
 
         Examples:
             .. code-block:: python
 
-              import paddle.fluid as fluid
+                import paddle.fluid as fluid
 
-              sentence = fluid.layers.data(name='sentence', dtype='float32', shape=[32], lod_level=1)
-              encoder_proj = fluid.layers.data(name='encoder_proj', dtype='float32', shape=[32], lod_level=1)
-              decoder_boot = fluid.layers.data(name='boot', dtype='float32', shape=[10], lod_level=1)
+                sentence = fluid.data(name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
+                encoder_proj = fluid.data(name='encoder_proj', shape=[None, 32], dtype='float32', lod_level=1)
+                decoder_boot = fluid.data(name='boot', shape=[None, 10], dtype='float32')
 
-              drnn = fluid.layers.DynamicRNN()
-              with drnn.block():
-                  current_word = drnn.step_input(sentence)
-                  encoder_word = drnn.static_input(encoder_proj)
-                  hidden_mem = drnn.memory(init=decoder_boot, need_reorder=True)
-                  fc_1 = fluid.layers.fc(input=encoder_word, size=30, bias_attr=False)
-                  fc_2 = fluid.layers.fc(input=current_word, size=30, bias_attr=False)
-                  decoder_inputs = fc_1 + fc_2
-                  h, _, _ = fluid.layers.gru_unit(input=decoder_inputs, hidden=hidden_mem, size=30)
-                  drnn.update_memory(hidden_mem, h)
-                  out = fluid.layers.fc(input=h, size=10, bias_attr=True, act='softmax') 
-                  drnn.output(out)
+                drnn = fluid.layers.DynamicRNN()
+                with drnn.block():
+                    # Set sentence as RNN's input, each time step processes a word from the sentence
+                    current_word = drnn.step_input(sentence)
+                    # Set encode_proj as RNN's static input
+                    encoder_word = drnn.static_input(encoder_proj)
+                    # Initialize memory with boot_memory, which need reorder according to RNN's input sequences
+                    memory = drnn.memory(init=decoder_boot, need_reorder=True)
+                    fc_1 = fluid.layers.fc(input=encoder_word, size=30)
+                    fc_2 = fluid.layers.fc(input=current_word, size=30)
+                    decoder_inputs = fc_1 + fc_2
+                    hidden, _, _ = fluid.layers.gru_unit(input=decoder_inputs, hidden=memory, size=30)
+                    # Update memory with hidden
+                    drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                    out = fluid.layers.fc(input=hidden, size=10, bias_attr=True, act='softmax')
+                    # Set out as RNN's output
+                    drnn.output(out)
 
-              rnn_output = drnn()
+                # Get RNN's result
+                rnn_output = drnn()
         """
         self._assert_in_rnn_block_("static_input")
         if not isinstance(x, Variable):
@@ -2157,7 +2686,12 @@ class DynamicRNN(object):
     @signature_safe_contextmanager
     def block(self):
         """
-        The block for user to define operators in RNN.
+        The function is used to list the operations executed during
+        each time step in RNN. The operation list will be executed :code:`max_sequence_len`
+        times (where :code:`max_sequence_len` is the maximum length of RNN's input sequences).
+
+        Raises:
+            ValueError: When :code:`block()` is called multi-times.
         """
         if self.status != DynamicRNN.BEFORE_RNN:
             raise ValueError("rnn.block() can only be invoke once")
@@ -2186,7 +2720,16 @@ class DynamicRNN(object):
 
     def __call__(self, *args, **kwargs):
         """
-        Get the output of RNN. This API should only be invoked after RNN.block()
+        This function is used to get the output  sequneces of DynamicRNN.
+
+        Args:
+            None
+
+        Returns:
+            Variable or Variable list: RNN's output sequences.
+
+        Raises:
+            ValueError: When :code:`__call__()` is called before :code:`block()` .
         """
         if self.status != DynamicRNN.AFTER_RNN:
             raise ValueError(("Output of the dynamic RNN can only be visited "
@@ -2203,62 +2746,89 @@ class DynamicRNN(object):
                need_reorder=False,
                dtype='float32'):
         """
-        Create a memory variable for dynamic rnn.
-
-        If the :code:`init` is not None, :code:`memory` will be initialized by
-        this variable. The :code:`need_reorder` is used to reorder the memory as
-        the input variable. It should be set to true when the initialized memory
-        depends on the input sample.
-
-        Examples:
-            .. code-block:: python
-
-              import paddle.fluid as fluid
-
-              sentence = fluid.layers.data(name='sentence', shape=[32], dtype='float32', lod_level=1)
-              boot_memory = fluid.layers.data(name='boot', shape=[10], dtype='float32', lod_level=1)
-              
-              drnn = fluid.layers.DynamicRNN()
-              with drnn.block():
-                  word = drnn.step_input(sentence)
-                  memory = drnn.memory(init=boot_memory, need_reorder=True)
-                  hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
-                  drnn.update_memory(ex_mem=memory, new_mem=hidden)
-                  drnn.output(hidden)
-
-              rnn_output = drnn()
-
-
-        Otherwise, if :code:`shape`, :code:`value`, :code:`dtype` are set, the
-        :code:`memory` will be initialized by this :code:`value`.
-
-        Examples:
-            .. code-block:: python
-
-              import paddle.fluid as fluid
-
-              sentence = fluid.layers.data(name='sentence', dtype='float32', shape=[32], lod_level=1)
-              
-              drnn = fluid.layers.DynamicRNN()
-              with drnn.block():
-                  word = drnn.step_input(sentence)
-                  memory = drnn.memory(shape=[10], dtype='float32', value=0)
-                  hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
-                  drnn.update_memory(ex_mem=memory, new_mem=hidden)
-                  drnn.output(hidden)
-
-              rnn_output = drnn()
-
+        Create a memory Variable for DynamicRNN to deliver data cross time steps.
+        It can be initialized by an existing Tensor or a constant Tensor of given
+        dtype and shape.
 
         Args:
-            init(Variable|None): The initialized variable.
-            shape(list|tuple): The memory shape. The shape does not contain batch_size.
-            value(float): the initalized value.
-            need_reorder(bool): True if the initialized memory depends on the input sample.
-            dtype(str|numpy.dtype): The data type of the initialized memory.
+            init (Variable, optional): LoDTensor used to initialize the memory.
+                If init is not None, it should hold the same number of sequences
+                as RNN's input (the input LoDTensor set by :code:`step_input()` )
+                and the memory will be initialized to it. If init's LoD is None,
+                it will be treated as a minibatch with :code:`init.shape[0]` sequences
+                of length 1. The default value is None.
+            shape (list|tuple, optional): When init is None, it is used to specify
+                the memory's shape. Note that the shape does not include the batch_size.
+                If setting shape to :math:`\{D_1, D_2, ...\}` , the shape of memory Tensor
+                will be :math:`\{batch\_size, D_1, D_2, ...\}` , where batch_size is
+                determined by RNN's input sequences. The default value is None.
+            value (float, optional): When init is None, it is used as initalized value
+                of memory. The default value is 0.0.
+            need_reorder (bool, optional): When init is not None, it determines whether
+                the memory needs to reorder like the RNN's input sequeneces. It should be
+                set to True when the initialized memory depends on the order of input samples.
+                The default value is False.
+            dtype (str|numpy.dtype, optional): When init is None, it is used to set the
+                data type of memory. The default value is "float32". Optional data types
+                are: "float32", "float64", "int32", "int64".
 
         Returns:
-            The memory variable.
+            Variable: The memory LoDTensor after shrinked.  If there are :code:`num_sequences` \
+                sequences in RNN's input LoDTensor whose length is larger than :code:`step_idx` , \
+                the memory Tensor also need to be shrinked and will only retain data \
+                corresponding to those :code:`num_sequences` sequences.
+
+        Raises:
+            ValueError: When :code:`memory()` is called outside :code:`block()` .
+            TypeError: When init is set and is not a Variable.
+            ValueError: When :code:`memory()` is called before :code:`step_input()` .
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                sentence = fluid.data(name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
+                boot_memory = fluid.data(name='boot', shape=[None, 10], dtype='float32')
+
+                drnn = fluid.layers.DynamicRNN()
+                with drnn.block():
+                    # Set sentence as RNN's input, each time step processes a word from the sentence
+                    word = drnn.step_input(sentence)
+                    # Initialize memory with boot_memory, which need reorder according to RNN's input sequences
+                    memory = drnn.memory(init=boot_memory, need_reorder=True)
+                    hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
+                    # Update memory with hidden
+                    drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                    # Set hidden as RNN's output
+                    drnn.output(hidden)
+
+                # Get RNN's result
+                rnn_output = drnn()
+
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                sentence = fluid.data(name='sentence', shape=[None, 32], dtype='float32', lod_level=1)
+
+                drnn = fluid.layers.DynamicRNN()
+                with drnn.block():
+                    # Set sentence as RNN's input, each time step processes a word from the sentence
+                    word = drnn.step_input(sentence)
+                    # Initialize memory to a Tensor whose value is 0, shape=[batch_size, 10],
+                    # where batch_size is the number of sequences in sentence.
+                    memory = drnn.memory(shape=[10], dtype='float32', value=0)
+                    hidden = fluid.layers.fc(input=[word, memory], size=10, act='tanh')
+                    # Update memory with hidden
+                    drnn.update_memory(ex_mem=memory, new_mem=hidden)
+                    # Set hidden as RNN's output
+                    drnn.output(hidden)
+
+                # Get RNN's result
+                rnn_output = drnn()
         """
         self._assert_in_rnn_block_('memory')
         self._init_zero_idx_()
@@ -2329,15 +2899,21 @@ class DynamicRNN(object):
 
     def update_memory(self, ex_mem, new_mem):
         """
-        Update the memory from ex_mem to new_mem. NOTE that the shape and data
-        type of :code:`ex_mem` and :code:`new_mem` must be same.
-        
+        Update the memory which need to be delivered across time steps.
+
         Args:
-            ex_mem(Variable): the memory variable.
-            new_mem(Variable): the plain variable generated in RNN block.
+            ex_mem (Variable): The memory data of previous time step.
+            new_mem (Variable): The new memory data produced in current time step.
+                The shape and data type of ex_mem and new_mem should be the same.
 
         Returns:
             None
+        
+        Raises:
+            ValueError: When :code:`update_memory()` is called outside :code:`block()` .
+            TypeError: When :code:`ex_mem` or :code:`new_mem` is not a Variable.
+            ValueError: When :code:`ex_mem` is defined by :code:`memory()` .
+            ValueError: When :code:`update_memory()` is called before :code:`step_input()` .
         """
         self._assert_in_rnn_block_('update_memory')
         if not isinstance(ex_mem, Variable):
@@ -2357,13 +2933,17 @@ class DynamicRNN(object):
 
     def output(self, *outputs):
         """
-        Mark the RNN output variables.
+        This function is used to set :code:`outputs` as RNN's output.
 
         Args:
-            outputs: The output variables.
+            *outputs (Variable ...): The output Tensor. DynamicRNN can mark multiple
+                Variables as its output.
 
         Returns:
             None
+
+        Raises:
+            ValueError: When :code:`output()` is called outside :code:`block()` .
         """
         self._assert_in_rnn_block_('output')
         parent_block = self._parent_block_()
@@ -2404,6 +2984,158 @@ class DynamicRNN(object):
         if self.status != DynamicRNN.IN_RNN:
             raise ValueError("{0} can only be invoked inside rnn block.".format(
                 method))
+
+
+def switch_case(branch_index, branch_fns, default=None, name=None):
+    '''
+    This operator is like a C++ switch/case statement.
+
+    Args:
+        branch_index(Variable): A Tensor with shape [1] to specify which branch to execute. The data type is ``int32``, ``int64`` or ``uint8``.
+        branch_fns(dict|list|tuple): If it's a list or tuple, the elements in it could be pairs of (int, callable) or simple callables whose actual index will be used as the index of callable. If it's a dict, its key is a python integer and the value is a callable. All callables return the same structure of Tensors.
+        default(callable, optional): Callable that returns a structure of Tensors.
+        name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Variable|list(Variable): Tensors returned by the callable specified by ``branch_index`` in ``branch_fns``,
+        or Tensors returned by ``default`` if ``default`` is not None and no index matches in ``branch_fns``,
+        or Tensors returned by the callable with the max index in ``branch_fns`` if ``default`` is None and no index matches in ``branch_fns``.
+
+    Raises:
+        TypeError: If the type of ``branch_index`` is not Variable.
+        TypeError: If the data type of ``branch_index`` is not ``int32``, ``int64`` or ``uint8``.
+        TypeError: If the type of ``branch_fns`` is not dict, list or tuple.
+        TypeError: If the elements of ``branch_fns`` is not 2-tuple.
+        TypeError: If the first element of 2-tuple in ``branch_fns`` is not integer.
+        ValueError: If the first element of 2-tuple in ``branch_fns`` is not unique.
+        TypeError: If the second element of 2-tuple in ``branch_fns`` is not callable.
+        TypeError: If ``default`` is not None but it is not callable.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            def fn_1():
+                return layers.fill_constant(shape=[1, 2], dtype='float32', value=1)
+
+            def fn_2():
+                return layers.fill_constant(shape=[2, 2], dtype='int32', value=2)
+
+            def fn_3():
+                return layers.fill_constant(shape=[3], dtype='int32', value=3)
+
+            main_program = fluid.default_startup_program()
+            startup_program = fluid.default_main_program()
+            with fluid.program_guard(main_program, startup_program):
+                index_1 = layers.fill_constant(shape=[1], dtype='int32', value=1)
+                index_2 = layers.fill_constant(shape=[1], dtype='int32', value=2)
+
+                out_1 = layers.switch_case(
+                    branch_index=index_1,
+                    branch_fns={1: fn_1, 2: fn_2},
+                    default=fn_3)
+
+                out_2 = layers.switch_case(
+                    branch_index=index_2,
+                    branch_fns=[(1, fn_1), (2, fn_2)],
+                    default=fn_3)
+
+                # Argument default is None and no index matches. fn_3 will be called because of the max index 7.
+                out_3 = layers.switch_case(
+                    branch_index=index_2,
+                    branch_fns=[(0, fn_1), (4, fn_2), (7, fn_3)])
+
+                exe = fluid.Executor(fluid.CPUPlace())
+                res_1, res_2, res_3 = exe.run(main_program,
+                                              fetch_list=[out_1, out_2, out_3])
+                print(res_1)  # [[1. 1.]]
+                print(res_2)  # [[2 2] [2 2]]
+                print(res_3)  # [3 3 3]
+    '''
+    helper = LayerHelper('switch_case', **locals())
+
+    def _check_args(branch_index, branch_fns, default):
+        if not isinstance(branch_index, Variable):
+            raise TypeError(
+                _error_message("The type", "branch_index", "switch_case",
+                               "Variable", type(branch_index)))
+
+        if convert_dtype(branch_index.dtype) not in ["uint8", "int32", "int64"]:
+            raise TypeError(
+                _error_message("The data type", "branch_index", "switch_case",
+                               "uint8, int32 or int64",
+                               convert_dtype(branch_index.dtype)))
+
+        if convert_dtype(branch_index.dtype) != "int64":
+            branch_index = cast(branch_index, "int64")
+
+        if not isinstance(branch_fns, (list, tuple, dict)):
+            raise TypeError(
+                _error_message("The type", "branch_fns", "switch_case",
+                               "dict, tuple or list", type(branch_fns)))
+
+        branch_fns = branch_fns.items() if isinstance(branch_fns,
+                                                      dict) else branch_fns
+
+        branch_fns = list(enumerate(branch_fns)) if all(
+            callable(fn) for fn in branch_fns) else branch_fns
+
+        keys_of_fns = []
+        for index_fn_pair in branch_fns:
+            if not isinstance(index_fn_pair, tuple):
+                raise TypeError(
+                    _error_message("The elements' type", "branch_fns",
+                                   "switch_case", "tuple", type(branch_fns)))
+
+            if len(index_fn_pair) != 2:
+                raise TypeError(
+                    _error_message("The tuple's size", "branch_fns",
+                                   "switch_case", "2",
+                                   str(len(index_fn_pair)) + "-tuple"))
+
+            key, fn = index_fn_pair
+
+            if not isinstance(key, int):
+                raise TypeError(
+                    _error_message("The key's type", "branch_fns",
+                                   "switch_case", "int", type(key)))
+
+            if key in keys_of_fns:
+                raise ValueError(
+                    "The key in 'branch_fns' must be unique, but '{}' appears more than once.".
+                    format(key))
+            else:
+                keys_of_fns.append(key)
+
+            if not callable(fn):
+                raise TypeError(
+                    _error_message("The type of function for key {}".format(
+                        key), "branch_fns", "switch_case", "callable", type(
+                            fn)))
+
+        if default is None:
+            default = sorted(branch_fns)[-1][1]
+            branch_fns = sorted(branch_fns)[:-1]
+        elif not callable(default):
+            raise TypeError("The default in Op(case) must be callable.")
+
+        pred_fn_pairs = []
+        for index, fn in branch_fns:
+            new_index = fill_constant(shape=[1], dtype="int64", value=index)
+            pred = equal(branch_index, new_index)
+            pred_fn_pairs.append((pred, fn))
+
+        return pred_fn_pairs, default
+
+    pred_fn_pairs, default = _check_args(branch_index, branch_fns, default)
+    false_fn = default
+    for pred, true_fn in pred_fn_pairs:
+        false_fn = partial(cond, pred=pred, true_fn=true_fn, false_fn=false_fn)
+
+    final_fn = false_fn
+    return final_fn()
 
 
 @templatedoc()
@@ -2449,8 +3181,8 @@ def is_empty(x, cond=None):
 
     Args:
         x (Variable): The Variable to be tested.
-        cond (Variable|None): Output parameter. Returns the test result
-                              of given 'x'. Default: None
+        cond (Variable, optional): Output parameter. Default: None. If this parameter is given, it
+                              saves the test result of given 'x'.
 
     Returns:
         Variable: A bool scalar. True if 'x' is an empty Variable.

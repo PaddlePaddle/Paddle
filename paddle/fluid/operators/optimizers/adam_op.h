@@ -15,6 +15,8 @@ limitations under the License. */
 #pragma once
 #include <math.h>  // for sqrt in CPU and CUDA
 #include <Eigen/Dense>
+#include <algorithm>
+#include <string>
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
@@ -27,7 +29,65 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+inline std::string GetTensorDetails(const framework::SelectedRows& var_t,
+                                    const std::string& var_name) {
+  std::stringstream ss;
+  ss << "------------  " << var_name << "  ---------------\n";
+
+  auto& rows = var_t.rows();
+
+  std::vector<int64_t> rs(rows.begin(), rows.end());
+  std::sort(rs.begin(), rs.end());
+
+  auto& values = var_t.value();
+
+  ss << "ROWS: \n";
+  for (auto& id : rows) {
+    ss << id << " ";
+  }
+
+  ss << "\n ROWS SORT:\n";
+  for (auto& id : rs) {
+    ss << id << " ";
+  }
+
+  ss << "\n ROWS: " << rs.size() << " VALUES: " << values.numel() << "\n";
+
+  ss << "\nVALUES: \n";
+
+  const auto* data = values.data<float>();
+  const auto dim = values.numel() / rs.size();
+
+  std::vector<int64_t> print_r{570, 342789, 499868, 999497};
+
+  for (int64_t i = 0; i < rows.size(); i++) {
+    if (std::find(print_r.begin(), print_r.end(), rows[i]) == print_r.end()) {
+      continue;
+    }
+
+    ss << "row: " << rows[i] << " val: ";
+    for (int x = 0; x < dim; x++) {
+      ss << data[i * dim + x] << " ";
+    }
+    ss << "\n";
+  }
+
+  ss << "\n------------------------------------------------\n";
+
+  return ss.str();
+}
+
 namespace scatter = paddle::operators::math::scatter;
+
+static inline float GetAttrFromTensor(const framework::Tensor* tensor) {
+  const float* tensor_data = tensor->data<float>();
+  framework::Tensor cpu_tensor;
+  if (platform::is_gpu_place(tensor->place())) {
+    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    tensor_data = cpu_tensor.data<float>();
+  }
+  return tensor_data[0];
+}
 
 class AdamOp : public framework::OperatorWithKernel {
  public:
@@ -358,7 +418,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
                    "The Var(%s)'s type should be LoDTensor, "
                    "but the received is %s",
-                   ctx.Inputs("Param").front(),
+                   ctx.InputNames("Param").front(),
                    framework::ToTypeName(param_var->Type()));
 
     using paddle::framework::LoDTensor;
@@ -367,8 +427,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
     int64_t min_row_size_to_use_multithread =
         ctx.Attr<int64_t>("min_row_size_to_use_multithread");
     bool lazy_mode = ctx.Attr<bool>("lazy_mode");
-    T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
-    T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
     T epsilon = static_cast<T>(ctx.Attr<float>("epsilon"));
     auto& param = Ref(ctx.Input<LoDTensor>("Param"), "Must set Param");
     // auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
@@ -389,6 +447,17 @@ class AdamOpKernel : public framework::OpKernel<T> {
         Ref(ctx.Output<LoDTensor>("Moment1Out"), "Must set Moment1Out");
     auto& mom2_out =
         Ref(ctx.Output<LoDTensor>("Moment2Out"), "Must set Moment1Out");
+
+    T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
+    if (ctx.HasInput("Beta1Tensor")) {
+      auto* beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
+      beta1 = static_cast<T>(GetAttrFromTensor(beta1_tensor));
+    }
+    T beta2 = static_cast<T>(ctx.Attr<float>("beta2"));
+    if (ctx.HasInput("Beta2Tensor")) {
+      auto* beta2_tensor = ctx.Input<framework::Tensor>("Beta2Tensor");
+      beta2 = static_cast<T>(GetAttrFromTensor(beta2_tensor));
+    }
 
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
@@ -449,6 +518,9 @@ class AdamOpKernel : public framework::OpKernel<T> {
                    &tmp_grad_merge, true);
         grad_merge_ptr = &tmp_grad_merge;
       }
+
+      const std::string var_name("selected_at_adam");
+      VLOG(1) << GetTensorDetails(*grad_merge_ptr, var_name);
 
       auto& grad_merge = *grad_merge_ptr;
       auto& grad_tensor = grad_merge.value();

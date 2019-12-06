@@ -93,6 +93,21 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
+Executor::~Executor() {
+#ifdef PADDLE_WITH_MKLDNN
+  // Clear mkl-dnn cache, unless explicitly
+  // (as set in constructor) marked not to do so
+  // this is needed to have mkl-dnn unit tests working
+  if (platform::is_cpu_place(place_)) {
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::MKLDNNDeviceContext* dev_ctx =
+        (platform::MKLDNNDeviceContext*)pool.Get(place_);
+    dev_ctx->ResetBlobMap();
+    platform::set_cur_paddle_data_layout(paddle::framework::DataLayout::kNCHW);
+  }
+#endif
+}
+
 void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
   // TODO(typhoonzero): complete message will need to use real trainer_id,
@@ -105,13 +120,12 @@ void Executor::Close() {
 
 void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
                                int block_id) {
+  VLOG(3) << "Creating Variables for block " << block_id;
   auto& global_block = pdesc.Block(block_id);
-
   const Scope* ancestor_scope = scope;
   while (ancestor_scope->parent()) {
     ancestor_scope = ancestor_scope->parent();
   }
-
   if (ancestor_scope != scope) {
     for (auto& var : global_block.AllVars()) {
       if (var->Name() == framework::kEmptyVarName) {
@@ -171,6 +185,9 @@ void Executor::RunFromDataset(std::shared_ptr<TrainerBase> trainer) {
   // training and finalize training
   VLOG(3) << "Trainer starts to run";
   trainer->Run();
+}
+
+void Executor::ReleaseTrainer(std::shared_ptr<TrainerBase> trainer) {
   VLOG(3) << "Trainer going to finalize";
   trainer->Finalize();
 }
@@ -178,11 +195,12 @@ void Executor::RunFromDataset(std::shared_ptr<TrainerBase> trainer) {
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars,
                    const std::vector<std::string>& skip_ref_cnt_vars,
-                   bool force_disable_gc) {
+                   bool force_disable_gc, bool keep_kid_scopes) {
   platform::RecordBlock b(block_id);
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
-  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
+  RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars,
+                     keep_kid_scopes);
 }
 
 // Check whether the block already has feed operators and feed_holder.
@@ -271,12 +289,6 @@ static bool has_fetch_operators(
   }
 
   return fetch_count > 0;
-}
-
-std::unique_ptr<ExecutorPrepareContext> Executor::PrepareCtxCache(
-    const ProgramDesc& program, int block_id,
-    const std::vector<std::string>& skip_ref_cnt_vars, bool force_disable_gc) {
-  return Prepare(program, block_id, skip_ref_cnt_vars, force_disable_gc);
 }
 
 void Executor::Run(const ProgramDesc& program, Scope* scope,
@@ -453,6 +465,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       // the sub scopes it created should not be dropped immediately, because
       // while_grad_op will use some variables created during while_op run, so
       // we need to keep the kids and wait for the outer executor to drop them.
+
       scope->DropKids();
     }
   }

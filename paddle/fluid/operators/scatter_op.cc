@@ -48,8 +48,9 @@ class ScatterOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<Tensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -71,9 +72,9 @@ class ScatterGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        ctx.Input<Tensor>(framework::GradVarName("Out"))->type(),
-        ctx.device_context());
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
   }
 };
 
@@ -106,20 +107,22 @@ $$
   }
 };
 
-class ScatterGradDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ScatterGradMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
     op->SetType("scatter_grad");
-    op->SetInput("Ids", Input("Ids"));
-    op->SetInput("Updates", Input("Updates"));
-    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
-    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(framework::GradVarName("Updates"), InputGrad("Updates"));
-    op->SetAttrMap(Attrs());
+    op->SetInput("Ids", this->Input("Ids"));
+    op->SetInput("Updates", this->Input("Updates"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Updates"),
+                  this->InputGrad("Updates"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -127,13 +130,21 @@ class ScatterGradDescMaker : public framework::SingleGradOpDescMaker {
 DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ScatterGradNoNeedBufferVarsInference,
                                       "Updates");
 
+DECLARE_INPLACE_OP_INFERER(ScatterInplaceInferer, {"X", "Out"});
+DECLARE_INPLACE_OP_INFERER(ScatterGradInplaceInferer,
+                           {framework::GradVarName("Out"),
+                            framework::GradVarName("X")});
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(scatter, ops::ScatterOp, ops::ScatterOpMaker,
-                  ops::ScatterGradDescMaker);
+                  ops::ScatterGradMaker<paddle::framework::OpDesc>,
+                  ops::ScatterGradMaker<paddle::imperative::OpBase>,
+                  ops::ScatterInplaceInferer);
 REGISTER_OPERATOR(scatter_grad, ops::ScatterGradOp,
-                  ops::ScatterGradNoNeedBufferVarsInference);
+                  ops::ScatterGradNoNeedBufferVarsInference,
+                  ops::ScatterGradInplaceInferer);
 REGISTER_OP_CPU_KERNEL(scatter, ops::ScatterOpKernel<float>);
 REGISTER_OP_CPU_KERNEL(scatter_grad, ops::ScatterGradientOpKernel<float>);

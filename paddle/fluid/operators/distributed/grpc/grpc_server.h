@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
@@ -67,7 +68,7 @@ class AsyncGRPCServer final : public RPCServer {
   std::mutex cq_mutex_;
   volatile bool is_shut_down_ = false;
 
-  GrpcService::AsyncService service_;
+  std::unique_ptr<GrpcService::AsyncService> service_;
   std::unique_ptr<::grpc::Server> server_;
 
   // condition of the sub program

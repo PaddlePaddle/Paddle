@@ -20,10 +20,18 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-static const int CUDA_NUM_THREADS = 1024;
-static const int CUDA_MAX_NUM_BLOCKS = 65535;
-
 using Tensor = framework::Tensor;
+
+#define CUDA_NUM_THREADS 1024
+
+// CUDA: grid stride looping
+#define CUDA_KERNEL_LOOP(i, n)                                 \
+  for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
+       i += blockDim.x * gridDim.x)
+
+inline static int PADDLE_GET_BLOCKS(const int N) {
+  return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
+}
 
 template <typename DeviceContext, typename T>
 class CUDAPReluKernel : public framework::OpKernel<T> {
@@ -59,71 +67,47 @@ class CUDAPReluKernel : public framework::OpKernel<T> {
   }
 };
 
-namespace prelu {
-struct ElementWiseMode {};
-struct ChannelMode {};
-struct ScalarMode {};
-} /* namespace prelu */
-
-template <typename T, typename M>
-struct AlphaFunctor {
-  HOSTDEVICE inline T operator()(const T* alpha, size_t channel,
-                                 size_t spatial_size, size_t idx) const {}
-};
+enum PRELU_MODE { Element, Channel, Scalar };
 
 template <typename T>
-struct AlphaFunctor<T, prelu::ElementWiseMode> {
-  HOSTDEVICE inline T operator()(const T* alpha, size_t channel,
-                                 size_t spatial_size, size_t idx) const {
-    return alpha[blockIdx.x * spatial_size + idx];
-  }
-};
-
-template <typename T>
-struct AlphaFunctor<T, prelu::ChannelMode> {
-  HOSTDEVICE inline T operator()(const T* alpha, size_t channel,
-                                 size_t spatial_size, size_t idx) const {
-    return alpha[blockIdx.x % channel];
-  }
-};
-
-template <typename T>
-struct AlphaFunctor<T, prelu::ScalarMode> {
-  HOSTDEVICE inline T operator()(const T* alpha, size_t channel,
-                                 size_t spatial_size, size_t idx) const {
-    return alpha[0];
-  }
-};
-
-template <typename T, typename M>
-__global__ void PReluGradElementWiseKernel(const T* x_ptr, const T* y_ptr,
-                                           const T* alpha_ptr, const T* dy_ptr,
-                                           T* dx_ptr, T* dalpha_ptr,
-                                           size_t channel,
-                                           size_t spatial_size) {
-  size_t offset = blockIdx.x * spatial_size;
-  AlphaFunctor<T, M> alpha_func;
-
-  for (size_t i = threadIdx.x; i < spatial_size; i += blockDim.x) {
-    T y = y_ptr[offset + i];
-    T x = x_ptr[offset + i];
-    T dy = dy_ptr[offset + i];
-    T alpha = alpha_func(alpha_ptr, channel, spatial_size, i);
-    if (dx_ptr != nullptr) dx_ptr[offset + i] = (y > 0) ? dy : alpha * dy;
-    if (dalpha_ptr != nullptr) dalpha_ptr[offset + i] = (x > 0) ? 0 : x * dy;
+__global__ void PReluOpGradKernel(const T* x_ptr, const T* alpha_ptr,
+                                  const T* dy_ptr, T* dx_ptr, T* dalpha_ptr,
+                                  size_t channel_num, size_t plane_size,
+                                  size_t spatial_size, size_t numel,
+                                  PRELU_MODE mode) {
+  size_t index;
+  CUDA_KERNEL_LOOP(index, numel) {
+    T scale;
+    if (mode == Element) {
+      size_t element_index = index % spatial_size;
+      scale = alpha_ptr[element_index];
+    } else if (mode == Channel) {
+      size_t temp = index / plane_size;
+      size_t channel_index = temp % channel_num;
+      scale = alpha_ptr[channel_index];
+    } else {
+      scale = alpha_ptr[0];
+    }
+    T x = x_ptr[index];
+    T dy = dy_ptr[index];
+    if (dx_ptr != nullptr) dx_ptr[index] = (x > 0) ? dy : scale * dy;
+    if (dalpha_ptr != nullptr) dalpha_ptr[index] = (x > 0) ? 0 : x * dy;
   }
 }
 
-template <typename T, typename M>
-class PreluGradElementwiseFunctor {
+template <typename T>
+class PreluOpGradFunctor {
  public:
-  void operator()(cudaStream_t stream, const T* x, const T* y, const T* alpha,
-                  const T* dy, T* dx, T* dalpha, std::vector<int> input_shape) {
-    size_t unroll = input_shape[0] * input_shape[1];
-    size_t spatial_size = input_shape[2] * input_shape[3];
-    CHECK_LT(unroll, CUDA_MAX_NUM_BLOCKS);
-    PReluGradElementWiseKernel<T, M><<<unroll, CUDA_NUM_THREADS, 0, stream>>>(
-        x, y, alpha, dy, dx, dalpha, input_shape[1], spatial_size);
+  void operator()(cudaStream_t stream, const T* x, const T* alpha, const T* dy,
+                  T* dx, T* dalpha, std::vector<int> input_shape,
+                  PRELU_MODE mode) {
+    size_t plane_size = input_shape[2] * input_shape[3];
+    size_t spatial_size = plane_size * input_shape[1];
+    size_t numel = spatial_size * input_shape[0];
+    PReluOpGradKernel<
+        T><<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
+        x, alpha, dy, dx, dalpha, input_shape[1], plane_size, spatial_size,
+        numel, mode);
   }
 };
 
@@ -137,14 +121,12 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
-    auto* y = context.Input<Tensor>("Out");
     auto* alpha = context.Input<Tensor>("Alpha");
     auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* dalpha = context.Output<Tensor>(framework::GradVarName("Alpha"));
 
     const T* x_ptr = x->data<T>();
-    const T* y_ptr = y->data<T>();
     const T* alpha_ptr = alpha->data<T>();
     const T* dy_ptr = dy->data<T>();
     T* dx_ptr = dx ? dx->mutable_data<T>(context.GetPlace()) : nullptr;
@@ -162,7 +144,7 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
 
     T* dalpha_tmp_ptr;
     Tensor dalpha_tmp;
-    if (mode == "element" || dalpha_ptr == nullptr) {
+    if (dalpha_ptr == nullptr) {
       dalpha_tmp_ptr = dalpha_ptr;
     } else {
       auto& dev_ctx = context.template device_context<DeviceContext>();
@@ -170,25 +152,24 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       dalpha_tmp_ptr = dalpha_tmp.mutable_data<T>(context.GetPlace());
     }
 
+    PRELU_MODE m;
     if (mode == "element") {
-      PreluGradElementwiseFunctor<T, prelu::ElementWiseMode> prelu_grad;
-      prelu_grad(stream, x_ptr, y_ptr, alpha_ptr, dy_ptr, dx_ptr,
-                 dalpha_tmp_ptr, input_shape);
+      m = Element;
     } else if (mode == "channel") {
-      PreluGradElementwiseFunctor<T, prelu::ChannelMode> prelu_grad;
-      prelu_grad(stream, x_ptr, y_ptr, alpha_ptr, dy_ptr, dx_ptr,
-                 dalpha_tmp_ptr, input_shape);
+      m = Channel;
     } else {
-      PreluGradElementwiseFunctor<T, prelu::ScalarMode> prelu_grad;
-      prelu_grad(stream, x_ptr, y_ptr, alpha_ptr, dy_ptr, dx_ptr,
-                 dalpha_tmp_ptr, input_shape);
+      m = Scalar;
     }
+    PreluOpGradFunctor<T> prelu_grad;
+    prelu_grad(stream, x_ptr, alpha_ptr, dy_ptr, dx_ptr, dalpha_tmp_ptr,
+               input_shape, m);
 
-    if (mode == "element" || dalpha_tmp_ptr == nullptr) return;
+    if (dalpha_tmp_ptr == nullptr) return;
 
     std::vector<int> reduce_dims;
     for (size_t i = 0; i < input_shape.size(); i++) {
       if (mode == "channel" && i == 1) continue;
+      if (mode == "element" && i != 0) continue;
       reduce_dims.push_back(i);
     }
 

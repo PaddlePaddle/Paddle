@@ -165,6 +165,8 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
           << FLAGS_communicator_send_wait_times;
   VLOG(0) << "communicator_max_merge_var_num: "
           << FLAGS_communicator_max_merge_var_num;
+  VLOG(0) << "communicator_is_sgd_optimizer: "
+          << FLAGS_communicator_is_sgd_optimizer;
 
   if (send_varname_to_ctx.size() == 0) {
     VLOG(0) << "nothing need to be send, will not start send_thread";
@@ -204,8 +206,15 @@ void AsyncCommunicator::InitImpl(const paddle::framework::ProgramDesc &program,
       auto height_section =
           boost::get<std::vector<int64_t>>(op->GetNullableAttr("sections"));
       auto trainer_id = boost::get<int>(op->GetNullableAttr("trainer_id"));
+      auto merge_add = boost::get<bool>(op->GetNullableAttr("merge_add"));
+      if (!merge_add) {
+        merge_add = FLAGS_communicator_is_sgd_optimizer;
+      }
+      auto use_send_handler =
+          boost::get<bool>(op->GetNullableAttr("use_send_handler"));
       send_varname_to_ctx[send_var_name] = operators::distributed::RpcContext(
-          send_var_name, send_varnames, epmap, height_section, trainer_id);
+          send_var_name, send_varnames, epmap, height_section, trainer_id,
+          merge_add, use_send_handler);
       VLOG(3) << "find and init an send op: "
               << send_varname_to_ctx[send_var_name];
     } else if (op->Type() == "recv") {
@@ -259,8 +268,8 @@ void AsyncCommunicator::SendThread() {
         auto send_task = [this, &var_name, &var_queue] {
           VLOG(3) << var_name << " merge and send";
           std::vector<std::shared_ptr<Variable>> vars;
-          size_t merged_var_num = 0;
-          size_t wait_times = 0;
+          int merged_var_num = 0;
+          int wait_times = 0;
           while (merged_var_num < FLAGS_communicator_max_merge_var_num) {
             if (var_queue->Size() == 0) {
               VLOG(3) << "wait_times -> " << wait_times;
@@ -282,17 +291,20 @@ void AsyncCommunicator::SendThread() {
             }
           }
           auto before_merge = GetCurrentUS();
-          MergeVars(var_name, vars, send_scope_.get());
 
-          auto var_str =
-              operators::GetTensorDetails(*(send_scope_.get()), var_name);
-          VLOG(1) << var_str;
-
+          auto &ctx = send_varname_to_ctx_.at(var_name);
+          if (ctx.use_send_handler) {
+            MergeVars<float>(var_name, vars, send_scope_.get(), ctx.merge_add);
+          } else {
+            MergeVars<int64_t>(var_name, vars, send_scope_.get(),
+                               ctx.merge_add);
+          }
           auto after_merge = GetCurrentUS();
           VLOG(3) << "merge " << merged_var_num << " " << var_name
                   << " use time " << after_merge - before_merge;
 
           auto send_functor = distributed::ParameterSend<float>();
+
           auto &ctx = send_varname_to_ctx_.at(var_name);
           send_functor(ctx, *send_scope_, true, 1);
 
@@ -321,7 +333,7 @@ void AsyncCommunicator::SendThread() {
 void AsyncCommunicator::RecvThread() {
   VLOG(3) << "RecvThread start!";
   while (running_) {
-    auto grad_num = grad_num_.load();
+    int grad_num = grad_num_.load();
     if (grad_num > FLAGS_communicator_min_send_grad_num_before_recv) {
       VLOG(1) << "current grad num " << grad_num;
       RecvAll();
@@ -477,6 +489,7 @@ void HalfAsyncCommunicator::ConsumeThread() {
             }
           }
           auto before_merge = GetCurrentUS();
+
           MergeVars(var_name, vars, send_scope_.get());
 
           auto var_str =
@@ -766,7 +779,7 @@ void GeoSgdCommunicator::Send(const std::vector<std::string> &sparse_var_names,
     int element_number = var_tensor.numel();
     int *var_mutable_data = var_tensor.mutable_data<int>(var_tensor.place());
     // insert ids which has not been record
-    for (size_t j = 0; j < element_number; j++) {
+    for (int j = 0; j < element_number; j++) {
       auto ep_idx = GetSectionIndex(var_mutable_data[j],
                                     absolute_section_[sparse_var_tables[i]]);
       ids_table->at(sparse_var_tables[i])[ep_idx].insert(var_mutable_data[j]);
@@ -787,7 +800,7 @@ void GeoSgdCommunicator::SendThread() {
     std::vector<std::future<void>> task_futures;
     task_futures.reserve(send_varname_to_ctx_.size());
 
-    size_t wait_times = 0;
+    int wait_times = 0;
     while (ids_send_vec_.size() < geo_need_push_nums_) {
       VLOG(4) << "ids_send_vec_ Size: " << ids_send_vec_.size();
       if (need_push_queue_->Size() > 0) {
@@ -975,7 +988,7 @@ void GeoSgdCommunicator::SendUpdateSparseVars(
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
   auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
   float avg = 1 / static_cast<float>(trainer_nums_);
-  for (int y = 0; y < new_rows.size(); y++) {
+  for (size_t y = 0; y < new_rows.size(); y++) {
     auto ids = new_rows[y];
 
     float *x_val = x_value + ids * row_numel;
@@ -1104,7 +1117,7 @@ void GeoSgdCommunicator::RecvUpdateSparseVars(
 
   auto cpu_ctx = paddle::platform::CPUDeviceContext();
   auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, float>(cpu_ctx);
-  for (int y = 0; y < new_rows.size(); y++) {
+  for (size_t y = 0; y < new_rows.size(); y++) {
     std::vector<float> row_delta(row_numel, 0);
 
     auto ids = new_rows[y];
@@ -1165,8 +1178,9 @@ void GeoSgdCommunicator::RpcSend(const std::string &origin_var_name,
   auto &cpu_ctx_send = *pool.Get(platform::CPUPlace());
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
-  rpc_client->AsyncSendVar(endpoint, cpu_ctx_send, *delta_scope_.get(),
-                           splited_var_name);
+  auto handle = rpc_client->AsyncSendVar(endpoint, cpu_ctx_send,
+                                         *delta_scope_.get(), splited_var_name);
+  handle->Wait();
 }
 
 void GeoSgdCommunicator::RpcRecv(const std::string &var_name,
@@ -1179,8 +1193,10 @@ void GeoSgdCommunicator::RpcRecv(const std::string &var_name,
   distributed::RPCClient *rpc_client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>(train_id);
   pserver_scope_->Var(splited_var_name);
-  rpc_client->AsyncGetVar(endpoint, cpu_ctx_recv, *pserver_scope_.get(),
-                          splited_var_name, splited_var_name, splited_var_name);
+  auto handle = rpc_client->AsyncGetVar(endpoint, cpu_ctx_recv,
+                                        *pserver_scope_.get(), splited_var_name,
+                                        splited_var_name, splited_var_name);
+  handle->Wait();
 }
 
 void GeoSgdCommunicator::Recv() {}

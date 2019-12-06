@@ -27,6 +27,28 @@ __all__ = [
 ]
 
 
+def _switch_to_static_graph_(func):
+    def __impl__(*args, **kwargs):
+        with framework._dygraph_guard(None):
+            return func(*args, **kwargs)
+
+    return __impl__
+
+
+switch_to_static_graph = wrap_decorator(_switch_to_static_graph_)
+
+
+@signature_safe_contextmanager
+def program_desc_tracing_guard(enable):
+    tracer = framework._dygraph_tracer()
+    if tracer:
+        original_val = tracer._enable_program_desc_tracing
+        tracer._enable_program_desc_tracing = enable
+    yield
+    if tracer:
+        tracer._enable_program_desc_tracing = original_val
+
+
 # This function should be removed in V1.6, because it can easily lead to cyclic dependencies.
 def enabled():
     # Internal use only
@@ -88,10 +110,11 @@ no_grad.__doc__ = _no_grad_.__doc__
 @signature_safe_contextmanager
 def guard(place=None):
     """
-    This context will create a dygraph context for dygraph to run
+    This context will create a dygraph context for dygraph to run, using python ``with`` statement.
 
-    Args:
-        place(fluid.CPUPlace|fluid.CUDAPlace|None): Place to run
+    Parameters:
+        place(fluid.CPUPlace or fluid.CUDAPlace, optional): Place to execute dygraph. 
+            If None, the running place will be determined according to the way of paddle compilation. Default: None
 
     return:
         None
@@ -115,12 +138,14 @@ def guard(place=None):
     train = framework.Program()
     startup = framework.Program()
     tracer = Tracer()
+    VarBase = core.VarBase
 
     if place is None:
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
+    tracer._expected_place = place
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
@@ -148,7 +173,7 @@ def _print_debug_msg(limit=5, is_test=False):
 
 
 @framework.dygraph_only
-def to_variable(value, block=None, name=None):
+def to_variable(value, block=None, name=None, zero_copy=None):
     """
     The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 
@@ -156,6 +181,7 @@ def to_variable(value, block=None, name=None):
         value(ndarray): The numpy\.ndarray object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
         block(fluid.Block, optional): Which block this variable will be in. Default: None.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
+        zero_copy(bool, optional): Whether to share memory with the input numpy array. This parameter only works with CPUPlace and will be set to True when it is None. Default: None.
 
     Returns:
         Variable: ``Tensor`` created from the specified numpy\.ndarray object, data type and shape is the same as ``value`` .
@@ -167,31 +193,34 @@ def to_variable(value, block=None, name=None):
         import numpy as np
         import paddle.fluid as fluid
 
-        with fluid.dygraph.guard():
+        with fluid.dygraph.guard(fluid.CPUPlace()):
             x = np.ones([2, 2], np.float32)
+            y = fluid.dygraph.to_variable(x, zero_copy=False)
+            x[0][0] = -1
+            y[0][0].numpy()  # array([1.], dtype=float32)
             y = fluid.dygraph.to_variable(x)
+            x[0][0] = 0
+            y[0][0].numpy()  # array([0.], dtype=float32)
 
     """
     if isinstance(value, np.ndarray):
         assert framework.in_dygraph_mode(
         ), "to_variable could only be called in dygraph mode"
-
-        if not block:
-            block = framework.default_main_program().current_block()
-        py_var = framework.Variable(
-            block,
-            type=core.VarDesc.VarType.LOD_TENSOR,
+        if isinstance(framework._current_expected_place(),
+                      framework.core.CPUPlace):
+            if zero_copy is None:
+                zero_copy = True
+        else:
+            assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
+            zero_copy = False
+        py_var = core.VarBase(
+            value=value,
             name=name,
-            shape=value.shape,
-            dtype=value.dtype,
-            stop_gradient=True)
-        var = py_var._ivar.value()
-        tensor = var.get_tensor()
-        if value.dtype == np.float16:
-            value = value.view(np.uint16)
-        tensor.set(value, framework._current_expected_place())
+            persistable=False,
+            place=framework._current_expected_place(),
+            zero_copy=zero_copy)
         return py_var
-    elif isinstance(value, framework.Variable):
+    elif isinstance(value, (core.VarBase, framework.Variable)):
         return value
     else:
         raise TypeError(

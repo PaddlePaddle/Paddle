@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <numeric>
 #include <vector>
 #include "paddle/fluid/inference/capi/c_api.h"
@@ -23,23 +24,81 @@ using paddle::ConvertToPaddleDType;
 using paddle::ConvertToPDDataType;
 using paddle::ConvertToACPrecision;
 
-extern "C" {
+namespace {
+#define _DataTypeHelper_(CALLBACK, CPP_TYPE, PD_TYPE) \
+  CALLBACK(CPP_TYPE, PD_DataType::PD_TYPE);
 
+#define _DataType_(CALLBACK)                     \
+  _DataTypeHelper_(CALLBACK, float, PD_FLOAT32); \
+  _DataTypeHelper_(CALLBACK, int32_t, PD_INT32); \
+  _DataTypeHelper_(CALLBACK, int64_t, PD_INT64); \
+  _DataTypeHelper_(CALLBACK, uint8_t, PD_UINT8);
+
+template <typename Visitor>
+inline void VisitDataType(PD_DataType type, Visitor visitor) {
+#define VisitDataTypeCallback(CPP_TYPE, PD_TYPE) \
+  do {                                           \
+    if (type == PD_TYPE) {                       \
+      visitor.template apply<CPP_TYPE>();        \
+      return;                                    \
+    }                                            \
+  } while (0)
+
+  _DataType_(VisitDataTypeCallback);
+#undef VisitDataTypeCallback
+  PADDLE_THROW_ERROR("Unsupported data type. ");
+}
+
+struct PD_ZeroCopyFunctor {
+  PD_ZeroCopyData* output_i;
+  paddle::ZeroCopyTensor* output_t;
+
+  PD_ZeroCopyFunctor(PD_ZeroCopyData* output_i_,
+                     paddle::ZeroCopyTensor* output_t_)
+      : output_i(output_i_), output_t(output_t_) {}
+
+  template <typename OutT>
+  void apply() {
+    std::vector<OutT> out_data;
+    int out_num =
+        std::accumulate(output_i->shape, output_i->shape + output_i->shape_size,
+                        1, std::multiplies<int>());
+    out_data.resize(out_num);
+    output_t->copy_to_cpu(out_data.data());
+    output_i->data = reinterpret_cast<void*>(malloc(out_num * sizeof(OutT)));
+    memmove(static_cast<OutT*>(output_i->data), out_data.data(),
+            out_num * sizeof(OutT));
+  }
+};
+
+}  // namespace
+
+extern "C" {
 bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
-                     int in_size, PD_Tensor* output_data, int** out_size,
+                     int in_size, PD_Tensor** output_data, int* out_size,
                      int batch_size) {
-  auto predictor = paddle::CreatePaddlePredictor(config->config);
+  PADDLE_ENFORCE_NOT_NULL(config);
+  VLOG(3) << "Predoctor: PD_PredictorRun. ";
+  static std::map<std::string, std::unique_ptr<paddle::PaddlePredictor>>
+      predictors;
+  if (!predictors.count(config->config.model_dir())) {
+    predictors[config->config.model_dir()] =
+        paddle::CreatePaddlePredictor(config->config);
+  }
+  auto& predictor = predictors[config->config.model_dir()];
   std::vector<paddle::PaddleTensor> in;
   for (int i = 0; i < in_size; ++i) {
     in.emplace_back(inputs->tensor);
   }
   std::vector<paddle::PaddleTensor> out;
+  VLOG(3) << "Run predictor in CAPI encapsulation. ";
   if (predictor->Run(in, &out, batch_size)) {
     int osize = out.size();
+    *output_data = new PD_Tensor[osize];
     for (int i = 0; i < osize; ++i) {
-      output_data[i].tensor = out[i];
+      output_data[i]->tensor = out[i];
     }
-    *out_size = &osize;
+    *out_size = osize;
     return true;
   }
   return false;
@@ -47,9 +106,17 @@ bool PD_PredictorRun(const PD_AnalysisConfig* config, PD_Tensor* inputs,
 
 bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
                              PD_ZeroCopyData* inputs, int in_size,
-                             PD_ZeroCopyData* output, int** out_size) {
-  auto predictor = paddle::CreatePaddlePredictor(config->config);
+                             PD_ZeroCopyData** output, int* out_size) {
+  PADDLE_ENFORCE_NOT_NULL(config);
+  static std::map<std::string, std::unique_ptr<paddle::PaddlePredictor>>
+      predictors;
+  if (!predictors.count(config->config.model_dir())) {
+    predictors[config->config.model_dir()] =
+        paddle::CreatePaddlePredictor(config->config);
+  }
+  auto& predictor = predictors[config->config.model_dir()];
   auto input_names = predictor->GetInputNames();
+  VLOG(3) << "The inputs' size is " << input_names.size();
   PADDLE_ENFORCE_EQ(
       input_names.size(), in_size,
       "The number of input and the number of model's input must match. ");
@@ -77,59 +144,27 @@ bool PD_PredictorZeroCopyRun(const PD_AnalysisConfig* config,
         break;
     }
   }
+  VLOG(3) << "Run ZeroCopyRun() in CAPI encapsulation. ";
   CHECK(predictor->ZeroCopyRun());
   auto output_names = predictor->GetOutputNames();
   int osize = output_names.size();
-  *out_size = &osize;
-  output = new PD_ZeroCopyData[osize];
-  for (int i = 0; i < osize; ++i) {
-    LOG(INFO) << 1;
-    output[i].name = new char[output_names[i].length() + 1];
-    snprintf(output[i].name, output_names[i].length() + 1, "%s",
+  *out_size = osize;
+  *output = new PD_ZeroCopyData[osize];
+  VLOG(3) << "The output size is " << osize;
+  for (int i = 0; i < *out_size; ++i) {
+    auto& output_i = (*output)[i];
+    output_i.name = new char[output_names[i].length() + 1];
+    snprintf(output_i.name, output_names[i].length() + 1, "%s",
              output_names[i].c_str());
     auto output_t = predictor->GetOutputTensor(output_names[i]);
-    output[i].dtype = ConvertToPDDataType(output_t->type());
+    output_i.dtype = ConvertToPDDataType(output_t->type());
     std::vector<int> output_shape = output_t->shape();
-    output[i].shape = new int[output_shape.size()];
-    output[i].shape = output_shape.data();
-    output[i].shape_size = output_shape.size();
-    switch (output[i].dtype) {
-      case PD_FLOAT32: {
-        std::vector<float> out_data;
-        int out_num = std::accumulate(output_shape.begin(), output_shape.end(),
-                                      1, std::multiplies<int>());
-        out_data.resize(out_num);
-        output_t->copy_to_cpu(out_data.data());
-        output[i].data = static_cast<void*>(out_data.data());
-      } break;
-      case PD_INT32: {
-        std::vector<int32_t> out_data;
-        int out_num = std::accumulate(output_shape.begin(), output_shape.end(),
-                                      1, std::multiplies<int>());
-        out_data.resize(out_num);
-        output_t->copy_to_cpu(out_data.data());
-        output[i].data = static_cast<void*>(out_data.data());
-      } break;
-      case PD_INT64: {
-        std::vector<int64_t> out_data;
-        int out_num = std::accumulate(output_shape.begin(), output_shape.end(),
-                                      1, std::multiplies<int>());
-        out_data.resize(out_num);
-        output_t->copy_to_cpu(out_data.data());
-        output[i].data = static_cast<void*>(out_data.data());
-      } break;
-      case PD_UINT8: {
-        std::vector<uint8_t> out_data;
-        int out_num = std::accumulate(output_shape.begin(), output_shape.end(),
-                                      1, std::multiplies<int>());
-        out_data.resize(out_num);
-        output_t->copy_to_cpu(out_data.data());
-        output[i].data = static_cast<void*>(out_data.data());
-      } break;
-      default:
-        CHECK(false) << "Unsupport data type.";
-        break;
-    }
+    output_i.shape = new int[output_shape.size()];
+    memmove(output_i.shape, output_shape.data(),
+            output_shape.size() * sizeof(int));
+    output_i.shape_size = output_shape.size();
+    VisitDataType(output_i.dtype,
+                  PD_ZeroCopyFunctor(&output_i, std::move(output_t.get())));
   }
   return true;
 }

@@ -432,26 +432,19 @@ class CoalesceGradTensorPass : public ir::Pass {
                             details::ParamsAndGrads *params_grads) const {
     std::vector<ir::Node *> topo_nodes = ir::TopologySortOperations(graph);
     for (auto &node : topo_nodes) {
-      try {
-        bool is_bk_op =
-            static_cast<bool>(boost::get<int>(node->Op()->GetAttr(
-                                  OpProtoAndCheckerMaker::OpRoleAttrName())) &
-                              static_cast<int>(OpRole::kBackward));
-        if (!is_bk_op) continue;
-        // Currently, we assume that once gradient is generated, it can be
-        // broadcast, and each gradient is only broadcast once.
-        auto backward_vars =
-            boost::get<std::vector<std::string>>(node->Op()->GetNullableAttr(
-                OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-        PADDLE_ENFORCE_EQ(backward_vars.size() % 2, static_cast<size_t>(0));
-        for (size_t i = 0; i < backward_vars.size(); i += 2) {
-          VLOG(10) << "Trainable parameter: " << backward_vars[i]
-                   << ", gradient: " << backward_vars[i + 1];
+      auto &op_desc = *(node->Op());
 
-          params_grads->emplace_back(std::make_pair(
-              backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
-        }
-      } catch (boost::bad_get e) {
+      bool is_bk_op = details::IsOpRole(op_desc, OpRole::kBackward);
+      if (!is_bk_op) continue;
+      // Currently, we assume that once gradient is generated, it can be
+      // broadcast, and each gradient is only broadcast once.
+      auto backward_vars = details::GetOpRoleVarsOrEmpty(op_desc);
+      for (size_t i = 0; i < backward_vars.size(); i += 2) {
+        VLOG(10) << "Trainable parameter: " << backward_vars[i]
+                 << ", gradient: " << backward_vars[i + 1];
+
+        params_grads->emplace_back(std::make_pair(
+            backward_vars[i] /*param*/, backward_vars[i + 1] /*grad*/));
       }
     }
   }

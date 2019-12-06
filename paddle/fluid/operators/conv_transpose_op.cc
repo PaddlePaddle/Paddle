@@ -46,33 +46,52 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   int groups = ctx->Attrs().Get<int>("groups");
   std::string padding_algorithm =
       ctx->Attrs().Get<std::string>("padding_algorithm");
-  const DataLayout data_layout = framework::StringToDataLayout(
-      ctx->Attrs().Get<std::string>("data_format"));
+  const std::string data_layout_str =
+      ctx->Attrs().Get<std::string>("data_format");
+  const DataLayout data_layout =
+      this->IsMKLDNNType() ? DataLayout::kNCHW
+                           : framework::StringToDataLayout(data_layout_str);
 
   PADDLE_ENFORCE_EQ(in_dims.size() == 4 || in_dims.size() == 5, true,
-                    "ConvTransposeOp intput should be 4-D or 5-D tensor.");
-  PADDLE_ENFORCE_EQ(in_dims.size(), filter_dims.size(),
-                    "ConvTransposeOp input dimension and filter dimension "
-                    "should be the same.");
+                    "ShapeError: input of Op(conv_transpose) should be 4-D or "
+                    "5-D Tensor. But received: %u-D Tensor, "
+                    "the shape of input is [%s]",
+                    in_dims.size(), in_dims);
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(), filter_dims.size(),
+      "ShapeError: the input's dimension size and filter's dimension size of "
+      "Op (conv_transpose) should be equal. But received: the shape of input "
+      "is [%s], the dimension size of input is [%d], the shape of filter is "
+      "[%s],  the dimension size of filter is [%d]. ",
+      in_dims, in_dims.size(), filter_dims, filter_dims.size());
+  int in_sub_stride_size = in_dims.size() - strides.size();
   PADDLE_ENFORCE_EQ(
       in_dims.size() - strides.size(), 2U,
-      "ConvTransposeOp input dimension and strides dimension should "
-      "be consistent.");
+      "ShapeError: the input's dimension size minus Attr(stride)'s size must "
+      "be euqal to 2 for Op(conv_transpose). But received: [%d], the "
+      "input's dimension size is [%d], the shape of input "
+      "is [%s], the Attr(stride)'s size is [%d].",
+      in_sub_stride_size, in_dims.size(), in_dims, strides.size());
   if (output_size.size())
-    PADDLE_ENFORCE_EQ(output_size.size(), strides.size(),
-                      "ConvTransposeOp output_size dimension and strides "
-                      "dimension should be the same.");
+    PADDLE_ENFORCE_EQ(
+        output_size.size(), strides.size(),
+        "The Attr(output_size) and Attr(stride) of Op(conv_transpose) "
+        "should be the same.");
 
   const int64_t C =
-      (data_layout == DataLayout::kNCHW ? in_dims[1]
+      (data_layout != DataLayout::kNHWC ? in_dims[1]
                                         : in_dims[in_dims.size() - 1]);
   PADDLE_ENFORCE_EQ(
       C, filter_dims[0],
-      "The number of input channels of Op(ConvTransposeOp) should "
-      "be equal to the number of filter's channels.");
+      "ShapeError: The number of input channels should be equal to filter "
+      "channels for Op(conv_transpose). But received: the input's channels is "
+      "[%d], the shape of input is [%s], the filter's channels is [%d], the "
+      "shape of filter is [%s]. The data_format is %s."
+      "The error may come from wrong data_format setting.",
+      C, in_dims, filter_dims[0], filter_dims, data_layout_str);
 
   framework::DDim in_data_dims;
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout != DataLayout::kNHWC) {
     in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
   } else {
     in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
@@ -84,10 +103,10 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                            in_data_dims, strides, ksize);
 
   std::vector<int64_t> output_shape({in_dims[0]});
-  if (data_layout == DataLayout::kNCHW) {
+  if (data_layout != DataLayout::kNHWC) {
     output_shape.push_back(filter_dims[1] * groups);
   }
-  const int offset = (data_layout == DataLayout::kNCHW ? 2 : 1);
+  const int offset = (data_layout != DataLayout::kNHWC ? 2 : 1);
   for (size_t i = 0; i < strides.size(); ++i) {
     auto filter_extent = dilations[i] * (filter_dims[i + 2] - 1) + 1;
     auto infer_shape = (in_dims[i + offset] - 1) * strides[i] -
@@ -132,8 +151,35 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
   }
 #endif
 
-  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                 ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+      layout_, library_);
+}
+
+framework::OpKernelType ConvTransposeOp::GetKernelTypeForVar(
+    const std::string& var_name, const Tensor& tensor,
+    const framework::OpKernelType& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if ((var_name == "Input") &&
+      (expected_kernel_type.data_layout_ == framework::DataLayout::kMKLDNN) &&
+      (tensor.layout() != framework::DataLayout::kMKLDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_format = ar.Get<std::string>("data_format");
+    auto dl = framework::StringToDataLayout(data_format);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != framework::DataLayout::kAnyLayout) {
+      return framework::OpKernelType(
+          expected_kernel_type.data_type_, tensor.place(),
+          framework::StringToDataLayout(data_format));
+    }
+  }
+#endif
+  return framework::OpKernelType(expected_kernel_type.data_type_,
+                                 tensor.place(), tensor.layout());
 }
 
 void Conv2DTransposeOpMaker::Make() {
@@ -222,7 +268,7 @@ void Conv2DTransposeOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardward. This size should be carefully setted.")
-      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
 
@@ -323,7 +369,7 @@ void Conv3DTransposeOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardward. This size should be carefully setted.")
-      .SetDefault(platform::kDefaultConvWorkspaceSizeLimitMB);
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
   AddComment(R"DOC(
 Convolution3D Transpose Operator.
 
@@ -384,28 +430,30 @@ framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
   }
 
   framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-  return framework::OpKernelType(ctx.Input<Tensor>("Input")->type(),
-                                 ctx.GetPlace(), layout_, library_);
+  return framework::OpKernelType(
+      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
+      layout_, library_);
 }
 
-class ConvTransposeGradOpDescMaker : public framework::SingleGradOpDescMaker {
+template <typename T>
+class ConvTransposeGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
-  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
-  std::unique_ptr<framework::OpDesc> Apply() const override {
-    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
-    op->SetType(ForwardOp().Type() + "_grad");
-    op->SetInput("Input", Input("Input"));
-    op->SetInput("Filter", Input("Filter"));
-    op->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
-    op->SetOutput(framework::GradVarName("Filter"), InputGrad("Filter"));
-    if (ForwardOp().Inputs().count("Bias") > 0) {
-      op->SetInput("Bias", Input("Bias"));
-      op->SetOutput(framework::GradVarName("Bias"), InputGrad("Bias"));
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType(this->ForwardOpType() + "_grad");
+    op->SetInput("Input", this->Input("Input"));
+    op->SetInput("Filter", this->Input("Filter"));
+    op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
+    op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
+    if (this->HasInput("Bias")) {
+      op->SetInput("Bias", this->Input("Bias"));
+      op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     }
-    op->SetInput(framework::GradVarName("Output"), OutputGrad("Output"));
-    op->SetAttrMap(Attrs());
+    op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
+    op->SetAttrMap(this->Attrs());
     return op;
   }
 };
@@ -418,7 +466,8 @@ namespace ops = paddle::operators;
 // conv2d_transpose
 REGISTER_OPERATOR(conv2d_transpose, ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
-                  ops::ConvTransposeGradOpDescMaker);
+                  ops::ConvTransposeGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv2d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
@@ -434,7 +483,8 @@ REGISTER_OP_CPU_KERNEL(
 // conv3d_transpose
 REGISTER_OPERATOR(conv3d_transpose, ops::ConvTransposeOp,
                   ops::Conv3DTransposeOpMaker,
-                  ops::ConvTransposeGradOpDescMaker);
+                  ops::ConvTransposeGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv3d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
@@ -450,7 +500,8 @@ REGISTER_OP_CPU_KERNEL(
 // depthwise conv2d_transpose
 REGISTER_OPERATOR(depthwise_conv2d_transpose, ops::ConvTransposeOp,
                   ops::Conv2DTransposeOpMaker,
-                  ops::ConvTransposeGradOpDescMaker);
+                  ops::ConvTransposeGradOpMaker<paddle::framework::OpDesc>,
+                  ops::ConvTransposeGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(depthwise_conv2d_transpose_grad, ops::ConvTransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(

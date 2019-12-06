@@ -42,6 +42,9 @@ def global_scope():
     Get the global/default scope instance. There are a lot of APIs use
     :code:`global_scope` as its default value, e.g., :code:`Executor.run`
 
+    Returns:
+        Scope: The global/default scope instance.
+
     Examples:
         .. code-block:: python
 
@@ -50,9 +53,6 @@ def global_scope():
 
           fluid.global_scope().var("data").get_tensor().set(numpy.ones((2, 2)), fluid.CPUPlace())
           numpy.array(fluid.global_scope().find_var("data").get_tensor())
-
-    Returns:
-        Scope: The global/default scope instance.
     """
     return g_scope
 
@@ -395,23 +395,28 @@ def _as_lodtensor(data, place):
 
 
 class FetchHandler(object):
-    def __init__(self, fetch_target_names, period_secs=60, return_np=True):
-        self.fetch_target_names = fetch_target_names
+    def __init__(self, var_dict=None, period_secs=60):
+        assert var_dict != None
+        self.var_dict = var_dict
         self.period_secs = period_secs
-        self.return_np = return_np
 
-    def handler(self, fetch_target_vars):
-        return
+    def handler(self, res_dict):
+        for key in res_dict:
+            if type(res_dict[key]) is np.ndarray:
+                sys.stdout.write("{}[0]: {} ".format(key, res_dict[key][0]))
+        sys.stdout.write("\n")
 
     @staticmethod
     def help():
         print("""
-class FetchHandlerExamlpe(FetchHandler):
-    def handler(self, fetch_target_vars):
-        b_auc = fetch_target_vars[0]
-        g_auc = fetch_target_vars[1]
-                        
-        print("b_auc: {}, g_auc: {} at time: {}".format(b_auc, g_auc, time.ctime()))
+class FetchHandlerExample(FetchHandler):
+    def handler(self, res_dict):
+        print(res_dict["auc"])
+        print("auc: {}, {}".format(res_dict["auc"], time.ctime()))
+
+auc = Variable()
+var_dict = {"auc": auc}
+handler = FetchHandlerExample(var_dict=var_dict)
 """)
 
 
@@ -489,9 +494,6 @@ class Executor(object):
         self._default_executor = core.Executor(p)
         self._closed = False
 
-    def _get_var_cache(self, program_cache_key):
-        return self.var_caches.get(program_cache_key, None)
-
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
 
@@ -509,9 +511,6 @@ class Executor(object):
 
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
-
-    def _add_var_cache(self, var_cache_key, var):
-        self.var_caches[var_cache_key] = var
 
     def _add_feed_fetch_ops(self, program, feed, fetch_list, feed_var_name,
                             fetch_var_name):
@@ -853,7 +852,6 @@ class Executor(object):
             cached_program = self._get_program_cache(cache_key)
             cached_ctx = self._get_ctx_cache(cache_key)
             cached_scope = self._get_scope_cache(cache_key)
-            cached_var = self._get_var_cache(cache_key)
             if cached_program is None:
                 cached_program = self._add_feed_fetch_ops(
                     program=program,
@@ -863,23 +861,21 @@ class Executor(object):
                     fetch_var_name=fetch_var_name)
                 self._add_program_cache(cache_key, cached_program)
                 fetch_list_str = list(map(_to_name_str, fetch_list))
-                cached_ctx = self._default_executor.prepare_ctx_cache(
+                cached_ctx = self._default_executor.prepare(
                     cached_program.desc, 0, fetch_list_str, False)
-                cached_var = self._default_executor.create_variables(
-                    cached_program.desc, scope, 0)
                 # currently, we cache program, vars, sub_scope here
                 # we suppose that in a life cycle of training, a user
                 # will not create many programs. So, here the basic
                 # rule of caching is to cache all unseen (program, var, scope)
                 # when a user use use_program_cache.
                 cached_scope = scope.new_scope()
+                self._default_executor.create_variables(cached_program.desc,
+                                                        cached_scope, 0)
                 self._add_ctx_cache(cache_key, cached_ctx)
-                self._add_var_cache(cache_key, cached_var)
                 self._add_scope_cache(cache_key, cached_scope)
             program = cached_program
             ctx = cached_ctx
             scope = cached_scope
-            var = cached_var
         else:
             program = self._add_feed_fetch_ops(
                 program=program,
@@ -893,8 +889,8 @@ class Executor(object):
             self._default_executor.run(program.desc, scope, 0, True, True,
                                        fetch_var_name)
         else:
-            self._default_executor.run_cached_prepared_ctx(ctx, scope, False,
-                                                           False, False)
+            self._default_executor.run_prepared_ctx(ctx, scope, False, False,
+                                                    False)
         arr = scope.find_var(fetch_var_name).get_lod_tensor_array()
         tensors = arr._move_to_list()
         if return_numpy:
@@ -997,45 +993,39 @@ class Executor(object):
 
         dataset._prepare_to_run()
 
-        if fetch_handler is not None:
-            fetch_instance = fetch_handler
-        elif fetch_handler is None and fetch_list is not None:
-
-            class FH(FetchHandler):
-                def handler(self, fetch_target_vars):
-                    for i in range(len(fetch_target_vars)):
-                        print("{}: \n {}\n".format(fetch_info[i],
-                                                   fetch_target_vars[i]))
-
-            fetch_target_names = [var.name for var in fetch_list]
-            fetch_instance = FH(fetch_target_names,
-                                period_secs=print_period,
-                                return_np=False)
-        else:
-            fetch_instance = FetchHandler([])
-
         scope, trainer = self._prepare_trainer(
             program=program,
             dataset=dataset,
             scope=scope,
             thread=thread,
-            debug=debug)
+            debug=debug,
+            fetch_list=fetch_list,
+            fetch_info=fetch_info,
+            print_period=print_period)
 
         trainer._set_infer(is_infer)
         trainer._gen_trainer_desc()
 
         self._dump_debug_info(program=program, trainer=trainer)
+        dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
         trainer_instance = self._default_executor.init_for_dataset(
             program.desc, trainer._desc(), scope, dataset.dataset)
 
-        scope0 = trainer_instance.get_worker_scope(0)
+        if fetch_handler is not None:
+            scope0 = trainer_instance.get_worker_scope(0)
+            fetch_monitor = FetchHandlerMonitor(scope0, fetch_handler)
+            fetch_monitor.start()
+            self._default_executor.run_from_dataset(trainer_instance)
+            fetch_monitor.stop()
+            self._default_executor.release_trainer(trainer_instance)
+        else:
+            self._default_executor.run_from_dataset(trainer_instance)
+            self._default_executor.release_trainer(trainer_instance)
 
-        fetch_monitor = FetchHandlerMonitor(scope0, fetch_instance)
-        fetch_monitor.start()
-        self._default_executor.run_from_dataset(trainer_instance)
-        fetch_monitor.stop()
+        dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
+
         return None
 
     def infer_from_dataset(self,

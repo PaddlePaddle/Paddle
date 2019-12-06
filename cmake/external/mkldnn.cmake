@@ -12,24 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-IF(NOT ${WITH_MKLDNN})
-  return()
-ENDIF(NOT ${WITH_MKLDNN})
-
 INCLUDE(ExternalProject)
 
 SET(MKLDNN_PROJECT        "extern_mkldnn")
-SET(MKLDNN_SOURCES_DIR    ${THIRD_PARTY_PATH}/mkldnn)
+SET(MKLDNN_PREFIX_DIR    ${THIRD_PARTY_PATH}/mkldnn)
 SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
-
-IF(APPLE)
-    MESSAGE(WARNING
-        "Mac is not supported with MKLDNN in Paddle yet."
-        "Force WITH_MKLDNN=OFF")
-    SET(WITH_MKLDNN OFF CACHE STRING "Disable MKLDNN in MacOS" FORCE)
-    return()
-ENDIF()
+SET(MKLDNN_REPOSITORY     https://github.com/intel/mkl-dnn.git)
+SET(MKLDNN_TAG            aef88b7c233f48f8b945da310f1b973da31ad033)
 
 # Introduce variables:
 # * CMAKE_INSTALL_LIBDIR
@@ -61,28 +51,33 @@ ELSE()
     SET(MKLDNN_CXXFLAG "${CMAKE_CXX_FLAGS} /EHsc")
 ENDIF(NOT WIN32)
 
+cache_third_party(${MKLDNN_PROJECT}
+    REPOSITORY    ${MKLDNN_REPOSITORY}
+    TAG           ${MKLDNN_TAG})
+
 ExternalProject_Add(
     ${MKLDNN_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
+    "${MKLDNN_DOWNLOAD_CMD}"
     DEPENDS             ${MKLDNN_DEPENDS}
-    GIT_REPOSITORY      "https://github.com/intel/mkl-dnn.git"
-    GIT_TAG             "aef88b7c233f48f8b945da310f1b973da31ad033"
-    PREFIX              ${MKLDNN_SOURCES_DIR}
+    PREFIX              ${MKLDNN_PREFIX_DIR}
+    SOURCE_DIR          ${MKLDNN_SOURCE_DIR}
     UPDATE_COMMAND      ""
     CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-    CMAKE_ARGS          -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-    CMAKE_ARGS          -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
-    CMAKE_ARGS          -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
-    CMAKE_ARGS          -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
-    CMAKE_ARGS          -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
-    CMAKE_ARGS          -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
-    CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
-    CMAKE_ARGS          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-    CMAKE_ARGS          -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-    CMAKE_ARGS          -DMKLROOT=${MKLML_ROOT}
-    CMAKE_ARGS          -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
-    CMAKE_ARGS          -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
-    CMAKE_ARGS          -DWITH_TEST=OFF -DWITH_EXAMPLE=OFF
+                        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                        -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+                        -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
+                        -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                        -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+                        -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
+                        -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
+                        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+                        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                        -DMKLROOT=${MKLML_ROOT}
+                        -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
+                        -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}
+                        -DWITH_TEST=OFF -DWITH_EXAMPLE=OFF
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${MKLDNN_INSTALL_DIR}
                         -DMKLROOT:PATH=${MKLML_ROOT}
 )
@@ -112,9 +107,6 @@ if(WIN32)
     SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/bin/mkldnn.dll)
 else(WIN32)
     SET(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libmkldnn.so.0)
-    ADD_CUSTOM_COMMAND(OUTPUT ${MKLDNN_SHARED_LIB}
-            COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB}
-            DEPENDS mkldnn shared_mkldnn)
+    ADD_CUSTOM_COMMAND(TARGET ${MKLDNN_PROJECT} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB})
 endif(WIN32)
-ADD_CUSTOM_TARGET(mkldnn_shared_lib ALL DEPENDS ${MKLDNN_SHARED_LIB})
-ADD_DEPENDENCIES(mkldnn_shared_lib ${MKLDNN_PROJECT} mkldnn)

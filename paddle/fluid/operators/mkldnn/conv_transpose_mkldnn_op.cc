@@ -16,6 +16,7 @@
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/operators/conv_op.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -74,6 +75,18 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     int groups = ctx.Attr<int>("groups");
+    std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
+
+    auto input_dims = input->dims();
+    auto data_dims = framework::slice_ddim(input_dims, 2, input_dims.size());
+    auto filter_dims = filter->dims();
+    auto filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+
+    auto ksize = framework::vectorize<int>(filter_data_dims);
+
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             data_dims, strides, ksize);
 
     PADDLE_ENFORCE(
         dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
@@ -127,9 +140,9 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto dst_tz = paddle::framework::vectorize<int>(output->dims());
 
     // Get unique name for storing MKLDNN primitives
+
     const std::string key =
-        platform::CreateKey(src_tz, weights_tz, strides, paddings, dilations,
-                            groups, ctx.op().Output("Output"));
+        platform::CreateKey(src_tz, ctx.OutputName("Output"));
 
     std::vector<mkldnn::primitive> pipeline;
 
@@ -143,9 +156,7 @@ class ConvTransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
      * ('any') which lets a primitive (convolution in this case) choose
      * the memory format preferred for best performance
      */
-    std::string data_format = ctx.Attr<std::string>("data_format");
-    auto chosen_memory_format =
-        platform::data_format_to_memory_format(data_format);
+    auto chosen_memory_format = MKLDNNMemoryFormat::any;
     std::string fuse_activation = ctx.Attr<std::string>("fuse_activation");
     float fuse_alpha = ctx.Attr<float>("fuse_alpha");
     float fuse_beta = ctx.Attr<float>("fuse_beta");

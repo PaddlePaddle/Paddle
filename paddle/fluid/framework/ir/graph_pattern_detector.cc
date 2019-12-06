@@ -77,7 +77,8 @@ PDNode *PDPattern::RetrieveNode(const std::string &id) const {
 void PDPattern::AddEdge(PDNode *a, PDNode *b) {
   PADDLE_ENFORCE(a);
   PADDLE_ENFORCE(b);
-  PADDLE_ENFORCE(a != b, "can't connect to the same nodes.");
+  PADDLE_ENFORCE_NE(a, b, platform::errors::PermissionDenied(
+                              "Cannot connect the same node in the graph."));
   edges_.emplace_back(a, b);
 }
 
@@ -93,8 +94,7 @@ void GraphPatternDetector::operator()(Graph *graph,
   ValidateByNodeRole(&subgraphs);
 
   if (subgraphs.empty()) return;
-  PrettyLogEndl(Style::detail(), "---  detected %d subgraphs",
-                subgraphs.size());
+  LOG(INFO) << "---  detected " << subgraphs.size() << " subgraphs";
   int id = 0;
   for (auto &g : subgraphs) {
     VLOG(3) << "optimizing #" << id++ << " subgraph";
@@ -666,10 +666,11 @@ bool VarLinksFromOp(Node *node, const std::string &op_type) {
 }
 
 PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
+                                     const std::string &conv_type,
                                      bool with_eltwise_add) {
   // Create Operators
-  conv_input->assert_is_op_input("conv2d", "Input");
-  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  conv_input->assert_is_op_input(conv_type, "Input");
+  auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op(conv_type);
 
   PDNode *eltwise_op = nullptr;
   if (with_eltwise_add) {
@@ -683,11 +684,11 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   auto *conv_weight_var = pattern->NewNode(conv_weight_repr())
                               ->AsInput()
                               ->assert_is_persistable_var()
-                              ->assert_is_op_input("conv2d", "Filter");
+                              ->assert_is_op_input(conv_type, "Filter");
 
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
                            ->AsIntermediate()
-                           ->assert_is_only_output_of_op("conv2d");
+                           ->assert_is_only_output_of_op(conv_type);
 
   PDNode *eltwise_y_in_var = nullptr;
   PDNode *eltwise_out_var = nullptr;
@@ -904,15 +905,17 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
 
   auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
   // Create variables
+  // Input
+  auto *input_var = pattern->NewNode(input_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("fc", "Input");
   // Filter
   auto *fc_weight_var = pattern->NewNode(weights_repr())
                             ->AsInput()
-                            ->assert_is_persistable_var()
                             ->assert_is_op_input("fc", "W");
   // Bias
   auto *fc_bias_var = pattern->NewNode(bias_repr())
                           ->AsInput()
-                          ->assert_is_persistable_var()
                           ->assert_is_op_input("fc", "Bias");
   // Output
   auto *fc_out_var = pattern->NewNode(output_repr())
@@ -920,7 +923,8 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
                          ->assert_is_op_output("fc", "Out")
                          ->assert_is_only_output_of_op("fc");
 
-  fc_op->LinksFrom({x, fc_weight_var, fc_bias_var}).LinksTo({fc_out_var});
+  fc_op->LinksFrom({input_var, fc_weight_var, fc_bias_var})
+      .LinksTo({fc_out_var});
   return fc_out_var;
 }
 
@@ -1141,6 +1145,27 @@ PDNode *patterns::Conv::operator()() {
 
   conv_op->LinksFrom({input_var, filter_var}).LinksTo({output_var});
   return output_var;
+}
+
+PDNode *patterns::Transpose::operator()() {
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+
+  auto transpose_op =
+      pattern->NewNode(transpose_op_repr())->assert_is_op("transpose2");
+
+  auto transpose_in = pattern->NewNode(transpose_in_repr())
+                          ->AsInput()
+                          ->assert_is_op_input("transpose2");
+  auto transpose_out = pattern->NewNode(transpose_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("transpose2", "Out");
+
+  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  prev_op->LinksTo({transpose_in});
+  transpose_op->LinksFrom({transpose_in}).LinksTo({transpose_out});
+  next_op->LinksFrom({transpose_out});
+  return transpose_out;
 }
 
 PDNode *patterns::ConvResidual::operator()(bool with_residual_data) {

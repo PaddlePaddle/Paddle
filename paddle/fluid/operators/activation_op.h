@@ -41,12 +41,6 @@ enum ActBwdOpFwdDeps {
   kNoDeps = 0x00,  // Do not need any forward input/output
   kDepX = 0x01,    // Only need forward input X
   kDepOut = 0x02,  // Only need forward output Out
-
-  // Never add kDepXOut, because Out can be always calculated
-  // by forward input X in backward part.
-  // FIXME(zjl): but in MKLDNN abs, X and Out are all needed...
-  // Developers should not rely on this enum value!
-  kDepXOut = 0x03
 };
 
 /* The following operator can be used to process SelectedRows, because the
@@ -62,11 +56,11 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
   auto out_var = context.OutputVar("Out");
   PADDLE_ENFORCE(x_var != nullptr,
                  "Cannot get input Variable X, variable name = %s",
-                 context.op().Input("X"));
+                 context.InputName("X"));
   PADDLE_ENFORCE(out_var != nullptr,
                  "Cannot get output Variable Out, variable name = %s",
-                 context.op().Output("Out"));
-  if (CanBeUsedBySelectedRows.count(context.op().Type())) {
+                 context.OutputName("Out"));
+  if (CanBeUsedBySelectedRows.count(context.Type())) {
     *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
     *Out = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
         out_var);
@@ -77,7 +71,7 @@ inline void ExtractActivationTensor(const framework::ExecutionContext& context,
 
   PADDLE_ENFORCE(*Out != nullptr,
                  "Cannot get output tensor Out, variable name = %s",
-                 context.op().Output("Out"));
+                 context.OutputName("Out"));
 }
 
 template <ActBwdOpFwdDeps kDepValue>
@@ -93,18 +87,18 @@ inline void ExtractActivationGradTensor(
     out_var = context.InputVar("Out");
     PADDLE_ENFORCE(out_var != nullptr,
                    "Cannot get input Variable Out, variable name = %s",
-                   context.op().Input("Out"));
+                   context.InputName("Out"));
   }
   PADDLE_ENFORCE(out_grad_var != nullptr,
                  "Cannot get input Variable %s, variable name = %s",
                  framework::GradVarName("Out"),
-                 context.op().Input(framework::GradVarName("Out")));
+                 context.InputName(framework::GradVarName("Out")));
   PADDLE_ENFORCE(x_grad_var != nullptr,
                  "Cannot get output Variable %s, variable name = %s",
                  framework::GradVarName("X"),
-                 context.op().Output(framework::GradVarName("X")));
+                 context.OutputName(framework::GradVarName("X")));
 
-  if (CanBeUsedBySelectedRows.count(context.op().Type())) {
+  if (CanBeUsedBySelectedRows.count(context.Type())) {
     *dOut = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(
         *out_grad_var);
     *dX = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
@@ -132,20 +126,20 @@ inline void ExtractActivationGradTensor(
   PADDLE_ENFORCE(*dX != nullptr,
                  "Cannot get output tensor %s, variable name = %s",
                  framework::GradVarName("X"),
-                 context.op().Output(framework::GradVarName("X")));
+                 context.OutputName(framework::GradVarName("X")));
 
   if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
     auto x_var = context.InputVar("X");
     PADDLE_ENFORCE(x_var != nullptr,
                    "Cannot get input tensor X, variable name = %s",
-                   context.op().Input("X"));
-    if (CanBeUsedBySelectedRows.count(context.op().Type())) {
+                   context.InputName("X"));
+    if (CanBeUsedBySelectedRows.count(context.Type())) {
       *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
     } else {
       *X = context.Input<framework::Tensor>("X");
     }
   } else {
-    VLOG(10) << " Inplace activation of Op : " << context.op().Type();
+    VLOG(10) << " Inplace activation of Op : " << context.Type();
     *X = *dX;
   }
 }
@@ -210,14 +204,6 @@ struct BaseActivationFunctor {
   using AttrPair = std::vector<std::pair<const char*, float*>>;
 
   AttrPair GetAttrs() { return AttrPair(); }
-
-  /* NOTE(*): Output reuse X memory if X is not dependented by its Gradient.
-     For example, sigmoid op's gradient didn't involve x, so its output can
-     reuse
-     input memory. But abs op's gradient use x, it can not be inplaced.
-     gradient did use x.
-   */
-  bool Inplace() const { return false; }
 };
 
 // sigmoid(x) = 1 / (1 + exp(-x))
@@ -348,10 +334,8 @@ struct GeluFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// gelu_grad(x) = dout * (0.5 * (1 + erf(x / sqrt(2))) + 0.5 * 2 / sqrt(pie) /
-// sqrt(2) * x * exp (-0.5 * sqrt(x)))
-// gelu_grad(x) = dout * (0.5 + 0.5 * erf(x * M_SQRT1_2) + (0.5 * M_2_SQRTPI *
-// M_SQRT1_2) * x * exp (-0.5 * sqrt(x)))
+// gelu_grad(x) = dout * (0.5 * (1 + erf(x / sqrt(2))) + 0.5 * 2 / sqrt(pi) /
+// sqrt(2) * x * exp (-0.5 * x^2))
 template <typename T>
 struct GeluGradFunctor : BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
@@ -361,42 +345,35 @@ struct GeluGradFunctor : BaseActivationFunctor<T> {
     !defined(__OSX__) && !defined(PADDLE_WITH_CUDA)
     auto x_data = x.data();
     auto dx_data = dx.data();
+    auto dout_data = dout.data();
     int n = std::min(x.size(), dx.size());
 
-    std::memset(dx_data, 0, n * sizeof(T));
-
-    // First(dx_data) = erf(x * M_SQRT1_2)
-    math::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, dx_data, 1);
-    math::CBlas<T>::VMERF(n, dx_data, dx_data, VML_LA);
-
-    // Second = 0.5 * M_2_SQRTPI * M_SQRT1_2 * x * exp (-0.5 * sqrt(x))
+    auto first = static_cast<T*>(std::malloc(n * sizeof(T)));
+    std::memset(first, 0, n * sizeof(T));
     auto second = static_cast<T*>(std::malloc(n * sizeof(T)));
     std::memset(second, 0, n * sizeof(T));
 
-    math::CBlas<T>::VSQUARE(n, x_data, second);
+    // first = (0.5 * (1 + erf(x / sqrt(2))))
+    math::CBlas<T>::AXPY(n, static_cast<T>(M_SQRT1_2), x_data, 1, first, 1);
+    math::CBlas<T>::VMERF(n, first, first, VML_LA);
     for (int i = 0; i < n; i++) {
-      second[i] *= static_cast<T>(-0.5);
+      first[i] += static_cast<T>(1);
     }
+    math::CBlas<T>::SCAL(n, static_cast<T>(0.5), first, 1);
+
+    // second = (0.5 * 2/sqrt(pi) * 1/sqrt(2) * x * exp(-0.5 * x^2))
+    math::CBlas<T>::VSQUARE(n, x_data, second);
+    math::CBlas<T>::SCAL(n, -static_cast<T>(0.5), second, 1);
     math::CBlas<T>::VEXP(n, second, second);
     math::CBlas<T>::VMUL(n, x_data, second, second);
-    T tmp = static_cast<T>(0.5) * static_cast<T>(M_SQRT1_2) *
-            static_cast<T>(M_2_SQRTPI);
-    for (int i = 0; i < n; i++) {
-      second[i] *= tmp;
-    }
+    math::CBlas<T>::SCAL(n, static_cast<T>(0.5 * M_2_SQRTPI * M_SQRT1_2),
+                         second, 1);
 
-    // Sum = 0.5 * First + Second
-    math::CBlas<T>::AXPY(n, static_cast<T>(0.5), dx_data, 1, second, 1);
+    // dx = dout * (first + second);
+    math::CBlas<T>::VADD(n, first, second, first);
+    math::CBlas<T>::VMUL(n, dout_data, first, dx_data);
 
-    // 0.5 + Sum
-    for (int i = 0; i < n; i++) {
-      second[i] += static_cast<T>(0.5);
-    }
-
-    // * dout
-    auto dout_data = dout.data();
-    math::CBlas<T>::VMUL(n, dout_data, second, dx_data);
-
+    std::free(first);
     std::free(second);
 #else
     auto first = static_cast<T>(0.5) *
@@ -786,7 +763,7 @@ struct AbsGradFunctor : public BaseActivationFunctor<T> {
     dx.device(d) = dout * x.sign();
   }
 
-  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepXOut; }
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepX; }
 };
 
 // reciprocal(x) = 1 / x
@@ -1290,8 +1267,8 @@ inline void ExtractActivationDoubleGradTensor(
   auto ddo_var = ctx.OutputVar("DDOut");
   PADDLE_ENFORCE(ddx_var != nullptr,
                  "Cannot get input Variable Out, variable name = %s",
-                 ctx.op().Input("DDX"));
-  if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
+                 ctx.InputName("DDX"));
+  if (CanBeUsedBySelectedRows.count(ctx.Type())) {
     *ddX = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*ddx_var);
     if (ddo_var) {
       *ddOut = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
@@ -1305,15 +1282,15 @@ inline void ExtractActivationDoubleGradTensor(
   }
   PADDLE_ENFORCE(*ddX != nullptr,
                  "Cannot get output tensor DDX, variable name = %s",
-                 ctx.op().Output("DDX"));
+                 ctx.OutputName("DDX"));
 
   if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
     auto x_var = ctx.InputVar("X");
     PADDLE_ENFORCE(x_var != nullptr,
                    "Cannot get input Variable Out, variable name = %s",
-                   ctx.op().Input("X"));
+                   ctx.InputName("X"));
     auto dx_var = ctx.OutputVar("DX");
-    if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
+    if (CanBeUsedBySelectedRows.count(ctx.Type())) {
       *X = paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_var);
       if (dx_var) {
         *dX = paddle::framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(
@@ -1326,16 +1303,16 @@ inline void ExtractActivationDoubleGradTensor(
       }
     }
   } else {
-    VLOG(10) << "Inplace activation of Op: " << ctx.op().Type();
+    VLOG(10) << "Inplace activation of Op: " << ctx.Type();
     *X = *ddX;
   }
   if (static_cast<int>(kDepValue) & static_cast<int>(kDepOut)) {
     auto out_var = ctx.InputVar("Out");
     PADDLE_ENFORCE(out_var != nullptr,
                    "Cannot get input tensor Out, variable name = %s",
-                   ctx.op().Input("Out"));
+                   ctx.InputName("Out"));
     auto dout_var = ctx.OutputVar("DOut");
-    if (CanBeUsedBySelectedRows.count(ctx.op().Type())) {
+    if (CanBeUsedBySelectedRows.count(ctx.Type())) {
       *Out =
           paddle::framework::GetLoDTensorOrSelectedRowsValueFromVar(*out_var);
       if (dout_var) {
@@ -1350,7 +1327,7 @@ inline void ExtractActivationDoubleGradTensor(
       }
     }
   } else {
-    VLOG(10) << "Inplace activation of Op: " << ctx.op().Type();
+    VLOG(10) << "Inplace activation of Op: " << ctx.Type();
     *Out = *ddX;
   }
 }
@@ -1488,20 +1465,20 @@ inline void ExtractDoubleGradTensorWithInputDOut(
   auto ddo_var = ctx.OutputVar("DDOut");
   PADDLE_ENFORCE(ddx_var != nullptr,
                  "Cannot get input Variable Out, variable name = %s",
-                 ctx.op().Input("DDX"));
+                 ctx.InputName("DDX"));
   *ddX = ctx.Input<framework::Tensor>("DDX");
   if (ddo_var) {
     *ddOut = ctx.Output<framework::Tensor>("DDOut");
   }
   PADDLE_ENFORCE(*ddX != nullptr,
                  "Cannot get output tensor DDX, variable name = %s",
-                 ctx.op().Output("DDX"));
+                 ctx.OutputName("DDX"));
 
   // extract x(input), dx(output)
   auto x_var = ctx.InputVar("X");
   PADDLE_ENFORCE(x_var != nullptr,
                  "Cannot get input Variable Out, variable name = %s",
-                 ctx.op().Input("X"));
+                 ctx.InputName("X"));
   auto dx_var = ctx.OutputVar("DX");
   *X = ctx.Input<framework::Tensor>("X");
   if (dx_var) {
@@ -1554,20 +1531,20 @@ class SqrtDoubleGradKernel
     auto ddo_var = ctx.OutputVar("DDOut");
     PADDLE_ENFORCE(ddx_var != nullptr,
                    "Cannot get input Variable DDX, variable name = %s",
-                   ctx.op().Input("DDX"));
+                   ctx.InputName("DDX"));
     ddX = ctx.Input<framework::Tensor>("DDX");
     if (ddo_var) {
       ddOut = ctx.Output<framework::Tensor>("DDOut");
     }
     PADDLE_ENFORCE(ddX != nullptr,
                    "Cannot get input Variable DDX, variable name = %s",
-                   ctx.op().Input("DDX"));
+                   ctx.InputName("DDX"));
 
     // extract out(input), dout(output)
     auto out_var = ctx.InputVar("Out");
     PADDLE_ENFORCE(out_var != nullptr,
                    "Cannot get input Variable Out, variable name = %s",
-                   ctx.op().Input("Out"));
+                   ctx.InputName("Out"));
     auto dout_var = ctx.OutputVar("DOut");
     Out = ctx.Input<framework::Tensor>("Out");
     if (dout_var) {
@@ -1578,7 +1555,7 @@ class SqrtDoubleGradKernel
     auto dx_var = ctx.InputVar("DX");
     PADDLE_ENFORCE(dx_var != nullptr,
                    "Cannot get input Variable DX, variable name = %s",
-                   ctx.op().Input("DX"));
+                   ctx.InputName("DX"));
     if (dx_var) {
       dX = ctx.Input<framework::Tensor>("DX");
     }

@@ -34,6 +34,8 @@ from .proto import framework_pb2
 
 from . import core
 from . import unique_name
+import paddle.version as fluid_version
+import warnings
 
 __all__ = [
     'Program',
@@ -48,6 +50,7 @@ __all__ = [
     'is_compiled_with_cuda',
     'Variable',
     'load_op_library',
+    'require_version',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -58,6 +61,113 @@ CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
 
 _dygraph_tracer_ = None
 _dygraph_current_expected_place_ = None
+
+
+def require_version(min_version, max_version=None):
+    """
+        Check if the installed version of PaddlePaddle is in [min_version, max_version],
+        if the installed version is lower than ``min_version`` or higher than ``max_version``,
+        an exception will be thrown, NO returns if the installed version is satisfied.
+
+        Args:
+            min_version (str): the minimum version required (like '1.4.0').
+            max_version (str, optional): the max version required (like '1.6.0'), default is None,
+                meaning any version equal or higher than ``min_version`` is acceptable.
+
+        Returns:
+            None.
+
+        Raises:
+            TypeError: if the type of ``min_version`` is not str.
+            TypeError: if the type of ``max_version`` is not str or type(None).
+            ValueError: if the value of ``min_version`` is not in version format.
+            ValueError: if the value of ``max_version`` is not in version format or None.
+            Exception: if the installed version is lower than ``min_version`` or higher than ``max_version``.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                # any version >= 0.1.0 is acceptable.
+                fluid.require_version('0.1.0')
+
+                # if 0.1.0 <= version <= 10.0.0, it is acceptable.
+                fluid.require_version(min_version='0.1.0', max_version='10.0.0')
+        """
+    if not isinstance(min_version, str):
+        raise TypeError(
+            "The type of 'min_version' in require_version must be str, but received %s."
+            % (type(min_version)))
+
+    if not isinstance(max_version, (str, type(None))):
+        raise TypeError(
+            "The type of 'max_version' in require_version must be str or type(None), but received %s."
+            % (type(max_version)))
+
+    check_format = re.match(r'\d+(\.\d+){0,3}', min_version)
+    if check_format is None or check_format.group() != min_version:
+        raise ValueError(
+            "The value of 'min_version' in require_version must be in format '\\d+(\\.\\d+){0,3}', "
+            "like '1.5.2.0', but received %s" % min_version)
+
+    if max_version is not None:
+        check_format = re.match(r'\d+(\.\d+){0,3}', max_version)
+        if check_format is None or check_format.group() != max_version:
+            raise ValueError(
+                "The value of 'max_version' in require_version must be in format '\\d+(\\.\\d+){0,3}', "
+                "like '1.5.2.0', but received %s" % max_version)
+
+    version_installed = [
+        fluid_version.major, fluid_version.minor, fluid_version.patch,
+        fluid_version.rc
+    ]
+    zero_version = ['0', '0', '0', '0']
+
+    def version_cmp(ver_a, ver_b):
+        for i in six.moves.range(len(ver_a)):
+            if int(ver_a[i]) > int(ver_b[i]):
+                return 1
+            elif int(ver_a[i]) < int(ver_b[i]):
+                return -1
+        return 0
+
+    if version_cmp(version_installed, zero_version) == 0:
+        if max_version is not None:
+            warnings.warn(
+                "PaddlePaddle version in [%s, %s] required, but %s installed. "
+                "Maybe you are using a develop version, "
+                "please make sure the version is good with your code." %
+                (min_version, max_version, fluid_version.full_version))
+        else:
+            warnings.warn(
+                "PaddlePaddle version %s or higher is required, but %s installed, "
+                "Maybe you are using a develop version, "
+                "please make sure the version is good with your code." %
+                (min_version, fluid_version.full_version))
+        return
+
+    min_version_split = min_version.split('.')
+    min_version_to_check = min_version_split + zero_version[len(
+        min_version_split):]
+
+    if max_version is not None:
+        max_version_split = max_version.split('.')
+        max_version_to_check = max_version_split + zero_version[len(
+            max_version_split):]
+
+        if version_cmp(version_installed,
+                       max_version_to_check) > 0 or version_cmp(
+                           version_installed, min_version_to_check) < 0:
+            raise Exception(
+                "VersionError: PaddlePaddle version in [%s, %s] required, but %s installed."
+                % (min_version, max_version, fluid_version.full_version))
+    else:
+        if version_cmp(version_installed, min_version_to_check) < 0:
+            raise Exception(
+                "VersionError: PaddlePaddle version %s or higher is required, but %s installed, "
+                "please upgrade your PaddlePaddle to %s or other higher version."
+                % (min_version, fluid_version.full_version, min_version))
 
 
 def in_dygraph_mode():
@@ -148,19 +258,6 @@ def is_compiled_with_cuda():
             support_gpu = fluid.is_compiled_with_cuda()
     """
     return core.is_compiled_with_cuda()
-
-
-def _var_base_to_np(var_base):
-    """
-    convert VarBase tp numpy
-    
-    Args:
-        var_base(VarBase) : the VarBase to convert
-    Returns (np.ndarray): the np.ndarray contain the value of VarBase
-
-    """
-    var = var_base._copy_to(core.CPUPlace(), True)
-    return np.array(var.value().get_tensor())
 
 
 def cuda_places(device_ids=None):
@@ -263,8 +360,8 @@ def cuda_pinned_places(device_count=None):
     assert core.is_compiled_with_cuda(), \
         "Not compiled with CUDA"
     if device_count is None:
-        device_count = _cpu_num()
-    return [core.cuda_pinned_places()] * device_count
+        device_count = len(_cuda_ids())
+    return [core.CUDAPinnedPlace()] * device_count
 
 
 class NameScope(object):
@@ -448,6 +545,241 @@ def _debug_string_(proto, throw_on_error=True):
     return proto.__str__()
 
 
+def _varbase_creator(type=core.VarDesc.VarType.LOD_TENSOR,
+                     name=None,
+                     shape=None,
+                     dtype=None,
+                     persistable=None,
+                     **kwargs):
+
+    if dtype is not None:
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+
+    return core.VarBase(dtype if dtype else core.VarDesc.VarType.FP32,
+                        list(shape) if shape else [], name, type
+                        if type else core.VarDesc.VarType.LOD_TENSOR, True
+                        if persistable else False)
+
+
+class VariableMetaClass(type):
+    @classmethod
+    def __instancecheck__(cls, instance):
+        t = type(instance)
+        if in_dygraph_mode():
+
+            return issubclass(t, core.VarBase)
+        else:
+            return issubclass(t, Variable)
+
+
+class ParameterMetaClass(VariableMetaClass):
+    @classmethod
+    def __instancecheck__(cls, instance):
+        t = type(instance)
+        if in_dygraph_mode():
+            return issubclass(t, ParamBase)
+        else:
+            return issubclass(t, Parameter)
+
+
+def _getitem_impl_(var, item):
+    """
+    Slice the variable.
+
+    Args:
+        item(int/slice/tuple) : the index.
+
+    Returns:
+        Sliced variable
+    """
+
+    if not isinstance(item, tuple):
+        item = [item]
+
+    decrease_axis = []
+    slice_axis = []
+    slice_start = []
+    slice_end = []
+    slice_step = []
+    use_strided_slice = False
+    reverse_axis = []
+
+    def fill_constant(shape, value, force_cpu=False, out=None):
+        var.block.append_op(
+            type='fill_constant',
+            inputs={},
+            outputs={'Out': [out]},
+            attrs={
+                'shape': shape,
+                'dtype': out.dtype,
+                'value': float(value),
+                'force_cpu': force_cpu
+            },
+            stop_gradient=True)
+        out.stop_gradient = True
+        return out
+
+    for dim, slice_item in enumerate(item):
+        if isinstance(slice_item, slice):
+            start = slice_item.start
+            end = slice_item.stop
+            step = slice_item.step
+
+            if start is None and end is None and step is None:
+                continue
+
+            if step is None:
+                step = 1
+
+            if start is None and end is None:
+                assert (step == -1)
+                reverse_axis.append(dim)
+                continue
+
+            if start is None:
+                start = 0
+
+            if end is None:
+                end = 10000000
+
+            if step != 1:
+                use_strided_slice = True
+
+            slice_axis.append(dim)
+            slice_start.append(start)
+            slice_end.append(end)
+            slice_step.append(step)
+        else:
+            decrease_axis.append(dim)
+            slice_axis.append(dim)
+            slice_start.append(slice_item)
+            slice_step.append(1)
+            if isinstance(slice_item, Variable):
+                temp_1 = var.block.create_var(dtype='int32')
+                fill_constant([1], 1, force_cpu=True, out=temp_1)
+                temp_end = var.block.create_var(dtype='int32')
+                var.block.append_op(
+                    type='elementwise_add',
+                    inputs={'X': slice_item,
+                            'Y': temp_1},
+                    outputs={'Out': temp_end},
+                    attrs={'axis': -1})
+                slice_end.append(temp_end)
+            else:
+                slice_end.append(slice_item + 1
+                                 if slice_item != -1 else 10000000)
+
+    def contain_var(one_list):
+        for ele in one_list:
+            if isinstance(ele, Variable):
+                return True
+        return False
+
+    def get_new_list_tensor(old_list):
+        new_list_tensor = []
+        for dim in old_list:
+            if isinstance(dim, Variable):
+                dim.stop_gradient = True
+                new_list_tensor.append(dim)
+            else:
+                assert (isinstance(dim, int))
+                temp_out = var.block.create_var(dtype='int32')
+                fill_constant([1], dim, force_cpu=True, out=temp_out)
+                new_list_tensor.append(temp_out)
+        return new_list_tensor
+
+    inputs = {'Input': [var]}
+    attrs = {
+        'axes': slice_axis,
+        'starts': [],
+        'ends': [],
+        'decrease_axis': decrease_axis
+    }
+    if (use_strided_slice == True):
+        attrs['strides'] = []
+    infer_flags = list(1 for i in range(len(slice_axis)))
+    # starts
+    if not contain_var(slice_start):
+        attrs['starts'] = slice_start
+    else:
+        inputs['StartsTensorList'] = get_new_list_tensor(slice_start)
+        for i, dim in enumerate(slice_start):
+            if isinstance(dim, Variable):
+                attrs['starts'].append(-1)
+                infer_flags[i] = -1
+            else:
+                attrs['starts'].append(dim)
+    # ends
+    if not contain_var(slice_end):
+        attrs['ends'] = slice_end
+    else:
+        inputs['EndsTensorList'] = get_new_list_tensor(slice_end)
+        for i, dim in enumerate(slice_end):
+            if isinstance(dim, Variable):
+                attrs['ends'].append(-1)
+                infer_flags[i] = -1
+            else:
+                attrs['ends'].append(dim)
+    # strides
+    if use_strided_slice == True:
+        if not contain_var(slice_step):
+            attrs['strides'] = slice_step
+        else:
+            inputs['StridesTensorList'] = get_new_list_tensor(slice_step)
+            for i, dim in enumerate(slice_step):
+                if isinstance(dim, Variable):
+                    attrs['strides'].append(-1)
+                    infer_flags[i] = -1
+                else:
+                    attrs['strides'].append(dim)
+    # infer_flags
+    attrs['infer_flags'] = infer_flags
+
+    out = var
+    if use_strided_slice == False and len(slice_axis) > 0:
+        # append slice_op here
+        slice_out_var = var.block.create_var(
+            name=unique_name.generate_with_ignorable_key(var.name + "_slice"),
+            dtype=var.dtype)
+
+        var.block.append_op(
+            type="slice",
+            inputs=inputs,
+            outputs={'Out': [slice_out_var]},
+            attrs=attrs)
+
+        out = slice_out_var
+    elif use_strided_slice == True and len(slice_axis) > 0:
+        strided_slice_out_var = var.block.create_var(
+            name=unique_name.generate_with_ignorable_key(var.name +
+                                                         "_strided_slice"),
+            dtype=var.dtype)
+        var.block.append_op(
+            type="strided_slice",
+            inputs=inputs,
+            outputs={'Out': [strided_slice_out_var]},
+            attrs=attrs)
+
+        out = strided_slice_out_var
+
+    if len(reverse_axis) > 0:
+        reverse_out_var = var.block.create_var(
+            name=unique_name.generate_with_ignorable_key(var.name +
+                                                         "_slice_reverse"),
+            dtype=var.dtype)
+        var.block.append_op(
+            type="reverse",
+            inputs={'X': out},
+            outputs={'Out': [reverse_out_var]},
+            attrs={'axis': reverse_axis})
+
+        out = reverse_out_var
+
+    return out
+
+
+@six.add_metaclass(VariableMetaClass)
 class Variable(object):
     """
     **Notes**:
@@ -516,100 +848,83 @@ class Variable(object):
 
         self.belong_to_optimizer = belong_to_optimizer
 
-        if in_dygraph_mode():
-            # record vars in tracer rather than blocks
-            self._ivar = kwargs.get("ivar", None)
-            self.stop_gradient_ = kwargs.get("stop_gradient", True)
-            if not self._ivar:
-                self._ivar = core.VarBase(
-                    name, type
-                    if type else core.VarDesc.VarType.LOD_TENSOR, dtype
-                    if dtype else core.VarDesc.VarType.FP32,
-                    list(shape) if shape else [], True
-                    if persistable else False)
-            if persistable:
-                _dygraph_tracer().trace_var(name, self)
-            self.op = None
-        else:
-            self.error_clip = error_clip
+        self.error_clip = error_clip
 
-            is_new_var = False
-            name = cpt.to_text(name)
-            self.desc = self.block.desc.find_var(cpt.to_bytes(name))
+        is_new_var = False
+        name = cpt.to_text(name)
+        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
 
-            if self.desc is None:
-                self.desc = self.block.desc.var(cpt.to_bytes(name))
-                is_new_var = True
+        if self.desc is None:
+            self.desc = self.block.desc.var(cpt.to_bytes(name))
+            is_new_var = True
 
+        if is_new_var:
+            self.desc.set_type(type)
+        elif self.desc.type() != type:
+            raise ValueError("Variable {0} has been created before. The "
+                             "previous type is {1}; the new type is {2}. They"
+                             " are not matched".format(self.name,
+                                                       self.desc.type(), type))
+
+        if shape is not None:
             if is_new_var:
-                self.desc.set_type(type)
-            elif self.desc.type() != type:
-                raise ValueError(
-                    "Variable {0} has been created before. The "
-                    "previous type is {1}; the new type is {2}. They"
-                    " are not matched".format(self.name, self.desc.type(),
-                                              type))
+                self.desc.set_shape(shape)
+            else:
+                old_shape = self.shape
+                shape = tuple(shape)
+                if shape != old_shape:
+                    raise ValueError(
+                        "Variable {0} has been created before. the previous "
+                        "shape is {1}; the new shape is {2}. They are not "
+                        "matched.".format(self.name, old_shape, shape))
+        if dtype is not None:
+            if is_new_var:
+                self.desc.set_dtype(dtype)
+            else:
+                old_dtype = self.dtype
+                if dtype != old_dtype:
+                    raise ValueError("Variable {0} has been created before. "
+                                     "The previous data type is {1}; the new "
+                                     "data type is {2}. They are not "
+                                     "matched.".format(self.name, old_dtype,
+                                                       dtype))
 
-            if shape is not None:
-                if is_new_var:
-                    self.desc.set_shape(shape)
-                else:
-                    old_shape = self.shape
-                    shape = tuple(shape)
-                    if shape != old_shape:
-                        raise ValueError(
-                            "Variable {0} has been created before. the previous "
-                            "shape is {1}; the new shape is {2}. They are not "
-                            "matched.".format(self.name, old_shape, shape))
-            if dtype is not None:
-                if is_new_var:
-                    self.desc.set_dtype(dtype)
-                else:
-                    old_dtype = self.dtype
-                    if dtype != old_dtype:
-                        raise ValueError(
-                            "Variable {0} has been created before. "
-                            "The previous data type is {1}; the new "
-                            "data type is {2}. They are not "
-                            "matched.".format(self.name, old_dtype, dtype))
+        if lod_level is not None:
+            if is_new_var:
+                self.desc.set_lod_level(lod_level)
+            else:
+                if lod_level != self.lod_level:
+                    raise ValueError("Variable {0} has been created before. "
+                                     "The previous lod_level is {1}; the new "
+                                     "lod_level is {2}. They are not "
+                                     "matched".format(self.name, self.lod_level,
+                                                      lod_level))
+        if persistable is not None:
+            if is_new_var:
+                self.desc.set_persistable(persistable)
+            else:
+                if persistable != self.persistable:
+                    raise ValueError(
+                        "Variable {0} has been created before."
+                        "The previous persistable is {1}; the new "
+                        "persistable is {2}. They are not matched".format(
+                            self.name, self.persistable, persistable))
 
-            if lod_level is not None:
-                if is_new_var:
-                    self.desc.set_lod_level(lod_level)
-                else:
-                    if lod_level != self.lod_level:
-                        raise ValueError(
-                            "Variable {0} has been created before. "
-                            "The previous lod_level is {1}; the new "
-                            "lod_level is {2}. They are not "
-                            "matched".format(self.name, self.lod_level,
-                                             lod_level))
-            if persistable is not None:
-                if is_new_var:
-                    self.desc.set_persistable(persistable)
-                else:
-                    if persistable != self.persistable:
-                        raise ValueError(
-                            "Variable {0} has been created before."
-                            "The previous persistable is {1}; the new "
-                            "persistable is {2}. They are not matched".format(
-                                self.name, self.persistable, persistable))
+        if need_check_feed and is_new_var:
+            self.desc.set_need_check_feed(need_check_feed)
 
-            if need_check_feed and is_new_var:
-                self.desc.set_need_check_feed(need_check_feed)
+        if capacity is not None:
+            if is_new_var:
+                self.desc.set_capacity(capacity)
+            else:
+                # TODO(abhinavarora) : Compare with set capacity once,
+                # get_capacity is implemented
+                pass
 
-            if capacity is not None:
-                if is_new_var:
-                    self.desc.set_capacity(capacity)
-                else:
-                    # TODO(abhinavarora) : Compare with set capacity once,
-                    # get_capacity is implemented
-                    pass
-
-            self.block.vars[name] = self
-            self.op = None
-            self._stop_gradient = stop_gradient
-            self.is_data = is_data
+        self.block.vars[name] = self
+        self.op = None
+        self._stop_gradient = stop_gradient
+        self.is_data = is_data
 
     @dygraph_only
     def detach(self):
@@ -639,16 +954,7 @@ class Variable(object):
                     y = x.detach()
 
         """
-        if in_dygraph_mode():
-            new_var = self._cloneVar()
-            self.block.append_op(
-                type="assign",
-                inputs={'X': [self]},
-                outputs={'Out': [new_var]},
-                stop_gradient=True)
-            return new_var
-        else:
-            raise AttributeError("static graph model DO NOT supprt detach")
+        pass
 
     @dygraph_only
     def numpy(self):
@@ -680,12 +986,7 @@ class Variable(object):
                     print(x.numpy())
 
         """
-
-        if not self._ivar.value().get_tensor()._is_initialized():
-            raise ValueError("%s is Empty, Please check if it has no data in" %
-                             self.name)
-        new_ivar = self._ivar._copy_to(core.CPUPlace(), True)
-        return np.array(new_ivar.value().get_tensor())
+        pass
 
     @dygraph_only
     def set_value(self, value):
@@ -716,25 +1017,7 @@ class Variable(object):
                     out = fc(t)  # call with different weight
 
         """
-        assert isinstance(value, (Variable, np.ndarray, core.VarBase)), \
-                "Variable set_value function, arguments type only support Variable, numpy, VarBase"
-
-        value_np = value
-        if isinstance(value, Variable):
-            value_np = value.numpy()
-        elif isinstance(value, core.VarBase):
-            value_np = _var_base_to_np(value)
-        self_tensor = self._ivar.value().get_tensor()
-
-        self_tensor_np = np.array(self_tensor)
-
-        assert self_tensor_np.shape == value_np.shape,  \
-                                      "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format( self._ivar.name, self_tensor_np.shape, value_np.shape)
-
-        assert self_tensor_np.dtype == value_np.dtype,  \
-                                      "Variable dtype not match, Variable [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format( self._ivar.name, self_tensor_np.dtype, value_np.dtype)
-
-        self_tensor.set(value_np, _current_expected_place())
+        pass
 
     @dygraph_only
     def backward(self, backward_strategy=None):
@@ -772,16 +1055,7 @@ class Variable(object):
                     loss2.backward(backward_strategy)
 
         """
-        if in_dygraph_mode():
-            from .dygraph import BackwardStrategy
-            if backward_strategy is None:
-                backward_strategy = BackwardStrategy()
-                backward_strategy.sort_sum_gradient = False
-
-            self._ivar._run_backward(backward_strategy, _dygraph_tracer())
-        else:
-            raise ValueError(
-                "Variable.backward() is only avaliable in DyGraph mode")
+        pass
 
     @dygraph_only
     def gradient(self):
@@ -792,7 +1066,7 @@ class Variable(object):
         Get the Gradient of Current Variable
 
         Returns:
-            ndarray: Numpy value of the gradient of current Variable
+            ndarray or tuple of ndarray: if Variable's type is LoDTensor, return numpy value of the gradient of current Variable, if Variable's type is SelectedRows, return tuple of ndarray, first element of tuple is numpy value of the gradient of current Variable, second element of tuple is numpy value of the rows of current Variable.
 
         Examples:
             .. code-block:: python
@@ -815,16 +1089,7 @@ class Variable(object):
                     print(loss2.gradient())
 
         """
-        if self._ivar._grad_ivar() is None:
-            raise ValueError("%s has no grad, Please set Variable.stop_gradient=False, or " \
-                             "check if this is the first and only variable need grad, if so, please set its pre-Variable's " \
-                             "stop_gradient=False, to make sure it has gradient " % self.name)
-        if not self._ivar._grad_ivar().value().get_tensor()._is_initialized():
-            raise ValueError(
-                "%s's Grad is Empty, Please check if it has no data in" %
-                self.name)
-        new_ivar = self._ivar._grad_ivar()._copy_to(core.CPUPlace(), True)
-        return np.array(new_ivar.value().get_tensor())
+        pass
 
     @dygraph_only
     def clear_gradient(self):
@@ -861,7 +1126,7 @@ class Variable(object):
                     print("After clear {}".format(loss2.gradient()))
 
         """
-        self._ivar._clear_gradient()
+        pass
 
     def __str__(self):
         return self.to_string(True)
@@ -894,14 +1159,7 @@ class Variable(object):
                 print(new_variable.to_string(True, True))
         """
         if in_dygraph_mode():
-            # TODO(panyx0718): add more dygraph debug info.
-            tensor = self._ivar.value().get_tensor()
-            if tensor._is_initialized():
-                return 'name %s, dtype: %s shape: %s %s' % (
-                    self.name, self.dtype, self.shape, str(tensor))
-            else:
-                return 'name %s, shape: %s, not inited' % (self.name,
-                                                           self.shape)
+            return
 
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
@@ -950,14 +1208,14 @@ class Variable(object):
                 assert (out1.gradient() == 0).all()
         """
         if in_dygraph_mode():
-            return self._ivar.stop_gradient
+            pass
         else:
             return self._stop_gradient
 
     @stop_gradient.setter
     def stop_gradient(self, s):
         if in_dygraph_mode():
-            self._ivar.stop_gradient = s
+            pass
         else:
             self._stop_gradient = s
 
@@ -985,7 +1243,7 @@ class Variable(object):
             print("persistable of current Var is: {}".format(new_variable.persistable))
         """
         if in_dygraph_mode():
-            return self._ivar.persistable
+            pass
         else:
             return self.desc.persistable()
 
@@ -1017,14 +1275,34 @@ class Variable(object):
             print("name of current Var is: {}".format(new_variable.name))
         """
         if in_dygraph_mode():
-            return self._ivar.name
+            pass
         else:
             return cpt.to_text(self.desc.name())
+
+    @property
+    def grad_name(self):
+        """
+        Indicating name of the gradient Variable of current Variable.
+
+        **Notes: This is a read-only property. It simply returns name of
+          gradient Variable from a naming convention but doesn't guarantee
+          the gradient exists.**
+       
+        Examples:
+          .. code-block:: python
+
+          import paddle.fluid as fluid
+
+          x = fluid.data(name="x", shape=[-1, 23, 48], dtype='float32')
+          print(x.grad_name) # output is "x@GRAD"
+
+        """
+        return self.name + "@GRAD"
 
     @name.setter
     def name(self, new_name):
         if in_dygraph_mode():
-            self._ivar.name = new_name
+            pass
         else:
             self.desc.set_name(new_name)
 
@@ -1049,7 +1327,7 @@ class Variable(object):
         """
         # convert to tuple, make it as same as numpy API.
         if in_dygraph_mode():
-            return self._ivar.shape
+            pass
         else:
             return tuple(self.desc.shape())
 
@@ -1072,7 +1350,7 @@ class Variable(object):
             print("Dtype of current Var is: {}".format(new_variable.dtype))
         """
         if in_dygraph_mode():
-            return self._ivar.dtype
+            pass
         else:
             return self.desc.dtype()
 
@@ -1124,7 +1402,7 @@ class Variable(object):
             print("Type of current Var is: {}".format(new_variable.type))
         """
         if in_dygraph_mode():
-            return self._ivar.type
+            pass
         else:
             return self.desc.type()
 
@@ -1139,6 +1417,35 @@ class Variable(object):
             None
         """
         self.error_clip = error_clip
+
+    def _set_info(self, key, value):
+        """
+        Set key-value information for this variable.
+
+        Args:
+            key(str): Key for this information.
+            value(object): The value associated to the key.
+
+        Returns: 
+            None
+        """
+        if not hasattr(self, "_info"):
+            self._info = {}
+        self._info[key] = value
+
+    def _get_info(self, key):
+        """
+        Get the information of this variable corresponding to key.
+
+        Args:
+            key(str): Key for this information.
+
+        Returns: 
+            object
+        """
+        if hasattr(self, "_info") and key in self._info:
+            return self._info[key]
+        return None
 
     def _slice_indices(self, slice, length):
         """
@@ -1287,167 +1594,7 @@ class Variable(object):
             raise IndexError("Valid index accept int or slice or tuple")
 
     def __getitem__(self, item):
-        """
-        Slice the variable.
-
-        Args:
-            item(int/slice/tuple) : the index.
-
-        Returns:
-            Sliced variable
-        """
-
-        if not isinstance(item, tuple):
-            item = [item]
-
-        decrease_axis = []
-        slice_axis = []
-        slice_start = []
-        slice_end = []
-        reverse_axis = []
-
-        def fill_constant(shape, dtype, value, force_cpu=False, out=None):
-            self.block.append_op(
-                type='fill_constant',
-                inputs={},
-                outputs={'Out': [out]},
-                attrs={
-                    'shape': shape,
-                    'dtype': out.dtype,
-                    'value': float(value),
-                    'force_cpu': force_cpu or force_init_on_cpu()
-                },
-                stop_gradient=True)
-            out.stop_gradient = True
-            return out
-
-        for dim, slice_item in enumerate(item):
-            if isinstance(slice_item, slice):
-                start = slice_item.start
-                end = slice_item.stop
-                step = slice_item.step if slice_item.step else 1
-
-                assert (step == 1 or step == -1)
-
-                if step == -1:
-                    reverse_axis.append(dim)
-                    assert (start is None and end is None)
-
-                if start is None and end is None:
-                    continue
-
-                if start is None:
-                    start = 0
-
-                if end is None:
-                    end = 10000000
-
-                slice_axis.append(dim)
-                slice_start.append(start)
-                slice_end.append(end)
-            else:
-                decrease_axis.append(dim)
-                slice_axis.append(dim)
-                slice_start.append(slice_item)
-                if isinstance(slice_item, Variable):
-                    temp_1 = self.block.create_var(dtype='int32')
-                    fill_constant([1], 'int32', 1, force_cpu=True, out=temp_1)
-                    temp_end = self.block.create_var(dtype='int32')
-                    self.block.append_op(
-                        type='elementwise_add',
-                        inputs={'X': slice_item,
-                                'Y': temp_1},
-                        outputs={'Out': temp_end},
-                        attrs={'axis': -1})
-                    slice_end.append(temp_end)
-                else:
-                    slice_end.append(slice_item + 1
-                                     if slice_item != -1 else 10000000)
-
-        def contain_var(one_list):
-            for ele in one_list:
-                if isinstance(ele, Variable):
-                    return True
-            return False
-
-        def get_new_list_tensor(old_list):
-            new_list_tensor = []
-            for dim in old_list:
-                if isinstance(dim, Variable):
-                    dim.stop_gradient = True
-                    new_list_tensor.append(dim)
-                else:
-                    assert (isinstance(dim, int))
-                    temp_out = self.block.create_var(dtype='int32')
-                    fill_constant(
-                        [1], 'int32', dim, force_cpu=True, out=temp_out)
-                    new_list_tensor.append(temp_out)
-            return new_list_tensor
-
-        inputs = {'Input': [self]}
-        attrs = {
-            'axes': slice_axis,
-            'starts': [],
-            'ends': [],
-            'decrease_axis': decrease_axis
-        }
-        infer_flags = list(1 for i in range(len(slice_axis)))
-
-        # starts
-        if not contain_var(slice_start):
-            attrs['starts'] = slice_start
-        else:
-            inputs['StartsTensorList'] = get_new_list_tensor(slice_start)
-            for i, dim in enumerate(slice_start):
-                if isinstance(dim, Variable):
-                    attrs['starts'].append(-1)
-                    infer_flags[i] = -1
-                else:
-                    attrs['starts'].append(dim)
-        # ends
-        if not contain_var(slice_end):
-            attrs['ends'] = slice_end
-        else:
-            inputs['EndsTensorList'] = get_new_list_tensor(slice_end)
-            for i, dim in enumerate(slice_end):
-                if isinstance(dim, Variable):
-                    attrs['ends'].append(-1)
-                    infer_flags[i] = -1
-                else:
-                    attrs['ends'].append(dim)
-        # infer_flags
-        attrs['infer_flags'] = infer_flags
-
-        out = self
-        if len(slice_axis) > 0:
-            # append slice_op here
-            slice_out_var = self.block.create_var(
-                name=unique_name.generate_with_ignorable_key(self.name +
-                                                             "_slice"),
-                dtype=self.dtype)
-
-            self.block.append_op(
-                type="slice",
-                inputs=inputs,
-                outputs={'Out': [slice_out_var]},
-                attrs=attrs)
-
-            out = slice_out_var
-
-        if len(reverse_axis) > 0:
-            reverse_out_var = self.block.create_var(
-                name=unique_name.generate_with_ignorable_key(self.name +
-                                                             "_slice_reverse"),
-                dtype=self.dtype)
-            self.block.append_op(
-                type="reverse",
-                inputs={'X': out},
-                outputs={'Out': [reverse_out_var]},
-                attrs={'axis': reverse_axis})
-
-            out = reverse_out_var
-
-        return out
+        return _getitem_impl_(self, item)
 
 
 def get_all_op_protos():
@@ -1646,9 +1793,12 @@ class Operator(object):
                             elif isinstance(arg, Variable):
                                 in_arg_names.append(cpt.to_text(arg.name))
                             else:
-                                raise ValueError(
-                                    "not suprt args type , should be[ string_type, binary_type, Varibale]"
-                                )
+                                raise TypeError(
+                                    "The type of '%s' in operator %s should be "
+                                    "one of [basestring(), str, Varibale] in python2, "
+                                    "or one of [str, bytes, Variable] in python3."
+                                    "but received : " % (in_proto.name, type),
+                                    arg)
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
@@ -2152,9 +2302,12 @@ class Block(object):
                 if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
-        var = Variable(block=self, *args, **kwargs)
-        if 'initializer' in kwargs:
-            kwargs['initializer'](var, self)
+        if not in_dygraph_mode():
+            var = Variable(block=self, *args, **kwargs)
+            if 'initializer' in kwargs:
+                kwargs['initializer'](var, self)
+        else:
+            var = _varbase_creator(*args, **kwargs)
         return var
 
     def has_var(self, name):
@@ -2201,18 +2354,31 @@ class Block(object):
         # NOTE: v is destroyed by C++ after calling _rename_var.
         d = self.desc.find_var(cpt.to_bytes(new_name))
         if var_type == "Parameter":
-            var = Parameter(
-                self,
-                d.shape(),
-                d.dtype(),
-                type=orig_var_type,
-                name=new_name,
-                stop_gradient=stop_gradient,
-                trainable=trainable,
-                optimize_attr=optimize_attr,
-                regularizer=regularizer,
-                gradient_clip_attr=gradient_clip_attr,
-                error_clip=error_clip)
+            if not in_dygraph_mode():
+                var = Parameter(
+                    self,
+                    d.shape(),
+                    d.dtype(),
+                    type=orig_var_type,
+                    name=new_name,
+                    stop_gradient=stop_gradient,
+                    trainable=trainable,
+                    optimize_attr=optimize_attr,
+                    regularizer=regularizer,
+                    gradient_clip_attr=gradient_clip_attr,
+                    error_clip=error_clip)
+            else:
+                var = ParamBase(
+                    d.shape(),
+                    d.dtype(),
+                    type=orig_var_type,
+                    name=new_name,
+                    stop_gradient=stop_gradient,
+                    trainable=trainable,
+                    optimize_attr=optimize_attr,
+                    regularizer=regularizer,
+                    gradient_clip_attr=gradient_clip_attr,
+                    error_clip=error_clip)
         elif var_type == "Variable":
             var = Variable(
                 self,
@@ -2235,7 +2401,11 @@ class Block(object):
 
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
-        param = Parameter(global_block, *args, **kwargs)
+        param = None
+        if not in_dygraph_mode():
+            param = Parameter(global_block, *args, **kwargs)
+        else:
+            param = ParamBase(*args, **kwargs)
         if 'initializer' in kwargs:
 
             def _is_inited_by(block, var):
@@ -2474,19 +2644,34 @@ class Block(object):
                 raise ValueError("_copy_param_info_from should be invoked with "
                                  "same topology")
             assert isinstance(v, Variable)
-            new_p = Parameter(
-                block=self,
-                shape=v.shape,
-                dtype=v.dtype,
-                type=v.type,
-                lod_level=v.lod_level,
-                stop_gradient=p.stop_gradient,
-                trainable=p.trainable,
-                optimize_attr=p.optimize_attr,
-                regularizer=p.regularizer,
-                gradient_clip_attr=p.gradient_clip_attr,
-                error_clip=p.error_clip,
-                name=v.name)
+            new_p = None
+            if not in_dygraph_mode():
+                new_p = Parameter(
+                    block=self,
+                    shape=v.shape,
+                    dtype=v.dtype,
+                    type=v.type,
+                    lod_level=v.lod_level,
+                    stop_gradient=p.stop_gradient,
+                    trainable=p.trainable,
+                    optimize_attr=p.optimize_attr,
+                    regularizer=p.regularizer,
+                    gradient_clip_attr=p.gradient_clip_attr,
+                    error_clip=p.error_clip,
+                    name=v.name)
+            else:
+                new_p = ParamBase(
+                    shape=v.shape,
+                    dtype=v.dtype,
+                    type=v.type,
+                    lod_level=v.lod_level,
+                    stop_gradient=p.stop_gradient,
+                    trainable=p.trainable,
+                    optimize_attr=p.optimize_attr,
+                    regularizer=p.regularizer,
+                    gradient_clip_attr=p.gradient_clip_attr,
+                    error_clip=p.error_clip,
+                    name=v.name)
             self.vars[new_p.name] = new_p
 
     def _clone_variable(self, var, force_persistable=True):
@@ -4290,6 +4475,7 @@ class Program(object):
                 yield each_var
 
 
+@six.add_metaclass(ParameterMetaClass)
 class Parameter(Variable):
     """
     Parameter is derived from Variable. A parameter is a persistable
@@ -4385,6 +4571,111 @@ class Parameter(Variable):
     __repr__ = __str__
 
 
+class ParamBase(core.VarBase):
+    """
+    ParamBase is derived from VarBase( Which is the Variable in Dygraph Mode ). A ParamBase is a persistable
+    VarBase, and will be updated by optimizers after each iteration.
+    The training of a neural network is essentially the updating of
+    its ParamBase.
+
+    Relative to a general Variable, a ParamBase has several its own
+    member variables:
+
+    Args:
+        trainable(bool): True if the ParamBase need to be updated after
+            iterations.
+        optimize_attr(map): ParamBase attributes related with optimizing.
+            Currently, it only contains 'learning_rate'.
+            Default: {'learning_rate': 1.0}
+        regularizer(WeightDecayRegularizer): The Regularizer which will
+            be applied on the ParamBase. Default: None
+        gradient_clip_attr(BaseGradientClipAttr): The gradint clip strategy
+            which will be applied on the ParamBase. Default: None
+        do_model_average(bool): True if the model average strategy will
+            be applied on this ParamBase.
+    """
+
+    @dygraph_only
+    def __init__(self, shape, dtype, **kwargs):
+        if shape is None:
+            raise ValueError("The shape of Parameter should not be None")
+        if dtype is None:
+            raise ValueError("The dtype of Parameter should not be None")
+
+        if len(shape) == 0:
+            raise ValueError(
+                "The dimensions of shape for Parameter must be greater than 0")
+
+        for each in shape:
+            if each < 0:
+                raise ValueError(
+                    "Each dimension of shape for Parameter must be greater than 0, but received %s"
+                    % list(shape))
+
+        if dtype is not None:
+            if not isinstance(dtype, core.VarDesc.VarType):
+                dtype = convert_np_dtype_to_dtype_(dtype)
+
+        name = kwargs.get('name', unique_name.generate('_param_base'))
+
+        super(ParamBase, self).__init__(dtype
+                                        if dtype else core.VarDesc.VarType.FP32,
+                                        list(shape) if shape else [], name,
+                                        core.VarDesc.VarType.LOD_TENSOR, True)
+
+        self.trainable = kwargs.get('trainable', True)
+
+        self.optimize_attr = kwargs.get('optimize_attr', {'learning_rate': 1.0})
+
+        self.regularizer = kwargs.get('regularizer', None)
+
+        self.gradient_clip_attr = kwargs.get('gradient_clip_attr', None)
+
+        self.do_model_average = kwargs.get('do_model_average', None)
+
+        self.is_distributed = False
+
+        #self.block = default_main_program().global_block()
+
+        _dygraph_tracer().trace_var(name, self)
+
+    def __str__(self):
+        return self.to_string(True)
+
+    def to_string(self, throw_on_error, with_details=False):
+        """
+        To debug string.
+
+        Args:
+            throw_on_error(bool): raise exception when self is not initialized
+                when throw_on_error is True
+            with_details(bool): more details about variables and parameters
+                (e.g. trainable, optimize_attr, ...) will be printed when with_details is True
+
+        Returns(str): The debug string.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                prog = fluid.default_main_program()
+                rlt = fluid.layers.data("fake_data", shape=[1,1], dtype='float32')
+                debug_str = prog.to_string(throw_on_error=True, with_details=False)
+                print(debug_str)
+        """
+        assert isinstance(throw_on_error, bool) and isinstance(with_details,
+                                                               bool)
+        tensor = self.value().get_tensor()
+        if tensor._is_initialized():
+            return 'name %s, dtype: %s shape: %s %s' % (self.name, self.dtype,
+                                                        self.shape, str(tensor))
+        else:
+            return 'name %s, shape: %s, not inited' % (self.name, self.shape)
+
+    __repr__ = __str__
+
+
 # program is a global instance.
 _main_program_ = Program()
 _startup_program_ = Program()
@@ -4426,27 +4717,29 @@ def default_startup_program():
 
 def default_main_program():
     """
-    Get default/global main program. The main program is used for training or
-    testing.
+    This API can be used to get ``default main program`` which store the 
+    descriptions of ``op`` and ``variable``.
+    
+    For example ``z = fluid.layers.elementwise_add(x, y)`` will create a new ``elementwise_add`` 
+    ``op`` and a new ``z`` ``variable``, and they will be recorded in ``default main program`` 
 
-    All layer function in :code:`fluid.layers` will append operators and
-    variables to the :code:`default_main_program`.
-
-    The :code:`default_main_program` is the default program in a lot of APIs.
-    For example, the :code:`Executor.run()` will execute the
+    The ``default_main_program`` is the default value for ``Program`` parameter in 
+    a lot of ``fluid`` APIs. For example, the :code:`Executor.run()` will execute the
     :code:`default_main_program` when the program is not specified.
 
+    If you want to replace the ``default main program``, you can use :ref:`api_fluid_program_guard`
+    
     Returns:
-        Program: main program
+        :ref:`api_fluid_Program`: a ``Program`` which holding the descriptions of ops and variables in the network.
 
     Examples:
         ..  code-block:: python
 
             import paddle.fluid as fluid
-            
+
             # Sample Network:
-            data = fluid.layers.data(name='image', shape=[3, 224, 224], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            data = fluid.data(name='image', shape=[None, 3, 224, 224], dtype='float32')
+            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
             
             conv1 = fluid.layers.conv2d(data, 4, 5, 1, act=None)
             bn1 = fluid.layers.batch_norm(conv1, act='relu')
@@ -4466,8 +4759,12 @@ def default_main_program():
                 regularization=fluid.regularizer.L2Decay(1e-4))
             opt.minimize(loss)
             
+            #print the number of blocks in the program, 1 in this case
             print(fluid.default_main_program().num_blocks)
+
+            #print the description of variable 'image'
             print(fluid.default_main_program().blocks[0].var('image'))
+
     """
     return _main_program_
 
@@ -4510,6 +4807,13 @@ def program_guard(main_program, startup_program=None):
     Layer functions in the Python `"with"` block will append operators and
     variables to the new main programs.
 
+    Args:
+        main_program(Program): New main program inside `"with"` statement.
+        startup_program(Program, optional): New startup program inside `"with"` 
+            statement. :code:`None` means not changing startup program, 
+            default_startup_program is still used.
+            Default: None.
+
     Examples:
        .. code-block:: python
        
@@ -4518,7 +4822,7 @@ def program_guard(main_program, startup_program=None):
          main_program = fluid.Program()
          startup_program = fluid.Program()
          with fluid.program_guard(main_program, startup_program):
-             data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
+             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
              hidden = fluid.layers.fc(input=data, size=10, act='relu')
 
     Notes: The temporary :code:`Program` can be used if the user does not need
@@ -4532,12 +4836,8 @@ def program_guard(main_program, startup_program=None):
          main_program = fluid.Program()
          # does not care about startup program. Just pass a temporary value.
          with fluid.program_guard(main_program, fluid.Program()):
-             data = fluid.layers.data(name='image', shape=[784, 784], dtype='float32')
-
-    Args:
-        main_program(Program): New main program inside `"with"` statement.
-        startup_program(Program): New startup program inside `"with"` statement.
-            None means not changing startup program.
+             data = fluid.data(name='image', shape=[None, 784, 784], dtype='float32')
+    
     """
     if not isinstance(main_program, Program):
         raise TypeError("main_program should be Program")
@@ -4577,9 +4877,11 @@ def _dygraph_guard(tracer):
     global _dygraph_tracer_
     tmp_trace = _dygraph_tracer_
     _dygraph_tracer_ = tracer
+    core._switch_tracer(tracer)
 
     yield
 
+    core._switch_tracer(tmp_trace)
     _dygraph_tracer_ = tmp_trace
 
 

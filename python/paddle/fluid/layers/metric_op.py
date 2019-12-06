@@ -23,6 +23,7 @@ from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
 from . import nn
+from ..data_feeder import check_type_and_dtype
 
 __all__ = ['accuracy', 'auc']
 
@@ -71,6 +72,8 @@ def accuracy(input, label, k=1, correct=None, total=None):
             #[array([0.6666667], dtype=float32)]
     """
     helper = LayerHelper("accuracy", **locals())
+    check_type_and_dtype(input, 'input', Variable,
+                         ['float16', 'float32', 'float64'], 'accuracy')
     topk_out, topk_indices = nn.topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")
     if correct is None:
@@ -164,25 +167,31 @@ def auc(input,
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
 
     # for batch auc
+    # we create slide_step+1 buckets, the first slide_steps buckets store 
+    # historical batch-level values, and the last bucket stores the sum values of 
+    # previous slide_step buckets.
+    # The index of bucket that the newest batch will use is determined by batch_id mod slide_steps,
+    # and batch_id is store in the last posision of following variable
     batch_stat_pos = helper.create_global_variable(
         persistable=True,
         dtype='int64',
-        shape=[slide_steps, num_thresholds + 1])
+        shape=[(1 + slide_steps) * (num_thresholds + 1) + 1])
     batch_stat_neg = helper.create_global_variable(
         persistable=True,
         dtype='int64',
-        shape=[slide_steps, num_thresholds + 1])
+        shape=[(1 + slide_steps) * (num_thresholds + 1) + 1])
 
     # for global auc
+    # Needn't maintain the batch id
     stat_pos = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
+        persistable=True, dtype='int64', shape=[num_thresholds + 1])
     stat_neg = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
+        persistable=True, dtype='int64', shape=[num_thresholds + 1])
 
     for var in [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg]:
         helper.set_variable_initializer(
             var, Constant(
-                value=0.0, force_cpu=True))
+                value=0.0, force_cpu=False))
 
     # Batch AUC
     helper.append_op(

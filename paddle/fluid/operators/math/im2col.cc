@@ -74,11 +74,11 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
     PADDLE_ENFORCE_EQ(col.dims().size(), 5,
                       "The dimension of col should be 5.");
     int im_channels =
-        (data_layout == DataLayout::kNCHW ? im->dims()[0] : im->dims()[2]);
+        (data_layout != DataLayout::kNHWC ? im->dims()[0] : im->dims()[2]);
     int im_height =
-        (data_layout == DataLayout::kNCHW ? im->dims()[1] : im->dims()[0]);
+        (data_layout != DataLayout::kNHWC ? im->dims()[1] : im->dims()[0]);
     int im_width =
-        (data_layout == DataLayout::kNCHW ? im->dims()[2] : im->dims()[1]);
+        (data_layout != DataLayout::kNHWC ? im->dims()[2] : im->dims()[1]);
     int filter_height = col.dims()[1];
     int filter_width = col.dims()[2];
     int col_height = col.dims()[3];
@@ -115,7 +115,7 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
           if ((im_row_idx) >= 0 && (im_row_idx) < im_height &&
               (im_col_idx) >= 0 && (im_col_idx) < im_width) {
             int im_offset;
-            if (data_layout == DataLayout::kNCHW) {
+            if (data_layout != DataLayout::kNHWC) {
               im_offset =
                   (c_im * im_height + im_row_idx) * im_width + im_col_idx;
             } else {
