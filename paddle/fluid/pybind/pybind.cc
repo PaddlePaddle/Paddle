@@ -1074,7 +1074,7 @@ All parameter, weight, gradient are variables in Paddle.
                      std::vector<float>, std::vector<std::string>, bool,
                      std::vector<bool>, BlockDesc *, int64_t,
                      std::vector<BlockDesc *>, std::vector<int64_t>>;
-  m.def("no_need_buffer_slots",
+  m.def("_no_need_buffer_slots",
         [](const std::string op_type,
            const std::map<std::string, std::vector<std::string>> &inputs,
            const std::map<std::string, std::vector<std::string>> &outputs,
