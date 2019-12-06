@@ -46,8 +46,9 @@ class SGDOp : public framework::OperatorWithKernel {
           param_dim, ctx->GetInputDim("Grad"),
           platform::errors::InvalidArgument(
               "SGD Operator's input Param and Grad dimensions do not match. "
-              "The Param shape is [%s], but the Grad shape is [%s].",
-              param_dim, ctx->GetInputDim("Grad")));
+              "The Param %s shape is [%s], but the Grad %s shape is [%s].",
+              ctx->Inputs("Param")[0], param_dim, ctx->Inputs("Grad")[0],
+              ctx->GetInputDim("Grad")));
     }
     ctx->SetOutputDim("ParamOut", param_dim);
   }
