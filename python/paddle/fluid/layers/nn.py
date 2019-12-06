@@ -454,10 +454,12 @@ def hash_embedding(input,
     """
 
     warnings.warn("""
-        Please ensure that you have already knows all about this layer contrib.layers.embedding.
+    
+        Please ensure that you have already knows all about this layer fluid.layers.hash_embedding.
         1. this layer will create embedding parameter with VarType.SELECTED_ROWS.
         2. embedding parameter's input  must be int64, the ID range is [0, int64.MAX]
         3. the shape[0] means maximum id number you can hold in embedding parameter.
+        
         """)
 
     helper = LayerHelper('embedding', **locals())
