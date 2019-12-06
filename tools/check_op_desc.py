@@ -153,13 +153,12 @@ def compare_op_desc(origin_op_desc, new_op_desc):
         new_attrs = new_info.get(ATTRS, {})
         attrs_error, attrs_diff = diff_attr(origin_attrs, new_attrs)
 
-        if ins_error or outs_error or attrs_error:
-            if ins_error:
-                error_message.setdefault(op_type, {})[INPUTS] = ins_diff
-            if outs_error:
-                error_message.setdefault(op_type, {})[OUTPUTS] = outs_diff
-            if attrs_error:
-                error_message.setdefault(op_type, {})[ATTRS] = attrs_diff
+        if ins_error:
+            error_message.setdefault(op_type, {})[INPUTS] = ins_diff
+        if outs_error:
+            error_message.setdefault(op_type, {})[OUTPUTS] = outs_diff
+        if attrs_error:
+            error_message.setdefault(op_type, {})[ATTRS] = attrs_diff
 
     return error_message
 
@@ -173,50 +172,64 @@ def print_error_message(error_message):
         # 1. print inputs error message
         Inputs_error = error_message.get(op_name, {}).get(INPUTS, {})
         for name in Inputs_error.get(ADD, {}):
-            print("The added Input '{}' is not dispensable.".format(name))
+            print(" * The added Input '{}' is not dispensable.".format(name))
 
         for name in Inputs_error.get(DELETE, {}):
-            print("The Input '{}' is deleted.".format(name))
+            print(" * The Input '{}' is deleted.".format(name))
 
         for name in Inputs_error.get(CHANGE, {}):
             changed_args = Inputs_error.get(CHANGE, {}).get(name, {})
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    "The arg '{}' of Input '{}' is changed: from '{}' to '{}'.".
+                    " * The arg '{}' of Input '{}' is changed: from '{}' to '{}'.".
                     format(arg, name, ori_value, new_value))
 
         # 2. print outputs error message
         Outputs_error = error_message.get(op_name, {}).get(OUTPUTS, {})
         for name in Outputs_error.get(ADD, {}):
-            print("The added Output '{}' is not dispensable.".format(name))
+            print(" * The added Output '{}' is not dispensable.".format(name))
 
         for name in Outputs_error.get(DELETE, {}):
-            print("The Output '{}' is deleted.".format(name))
+            print(" * The Output '{}' is deleted.".format(name))
 
         for name in Outputs_error.get(CHANGE, {}):
             changed_args = Outputs_error.get(CHANGE, {}).get(name, {})
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    "The arg '{}' of Output '{}' is changed: from '{}' to '{}'.".
+                    " * The arg '{}' of Output '{}' is changed: from '{}' to '{}'.".
                     format(arg, name, ori_value, new_value))
 
         # 3. print attrs error message
         attrs_error = error_message.get(op_name, {}).get(ATTRS, {})
         for name in attrs_error.get(ADD, {}):
-            print("The added attr '{}' doesn't set default value.".format(name))
+            print(" * The added attr '{}' doesn't set default value.".format(
+                name))
 
         for name in attrs_error.get(DELETE, {}):
-            print("The attr '{}' is deleted.".format(name))
+            print(" * The attr '{}' is deleted.".format(name))
 
         for name in attrs_error.get(CHANGE, {}):
             changed_args = attrs_error.get(CHANGE, {}).get(name, {})
             for arg in changed_args:
                 ori_value, new_value = changed_args.get(arg)
                 print(
-                    "The arg '{}' of attr '{}' is changed: from '{}' to '{}'.".
+                    " * The arg '{}' of attr '{}' is changed: from '{}' to '{}'.".
                     format(arg, name, ori_value, new_value))
+    print("-" * 30)
+
+
+def print_repeat_process():
+    print(
+        "Tips:"
+        " If you want to repeat the process, please follow these steps:\n"
+        "\t1. Compile and install paddle from develop branch \n"
+        "\t2. Run: python tools/print_op_desc.py  > OP_DESC_DEV.spec \n"
+        "\t3. Compile and install paddle from PR branch \n"
+        "\t4. Run: python tools/print_op_desc.py  > OP_DESC_PR.spec \n"
+        "\t5. Run: python tools/check_op_desc.py OP_DESC_DEV.spec OP_DESC_PR.spec"
+    )
 
 
 if len(sys.argv) == 3:
@@ -233,6 +246,6 @@ if len(sys.argv) == 3:
     error_message = compare_op_desc(origin_op_desc, new_op_desc)
     if error:
         print_error_message(error_message)
-
+        print_repeat_process()
 else:
     print("Usage: python check_op_desc.py OP_DESC_DEV.spec OP_DESC_PR.spec")
