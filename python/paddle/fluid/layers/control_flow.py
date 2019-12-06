@@ -1760,24 +1760,30 @@ def cond(pred, true_fn=None, false_fn=None, name=None):
     list of tensors.
     
     Note: 
-        The tuples or lists in ``true_fn`` and ``false_fn`` must have same
-        shape because of dataflow model of PaddlePaddle while the tensors in the
-        tuples or the lists can have different shapes.
+        The tuples or lists returned by ``true_fn`` and ``false_fn`` must have
+        same shape because of dataflow model of PaddlePaddle while the tensors
+        in the tuples or the lists can have different shapes.
 
     Args:
         pred(Variable): A boolean tensor whose numel should be 1. The boolean
             value determines whether to return the result of ``true_fn`` or
-            ``false_fn``
-        true_fn(callable): A callable to be performed if ``pred`` is true
-        false_fn(callable): A callable to be performed if ``pred`` is false
+            ``false_fn`` .
+        true_fn(callable, optional): A callable to be performed if ``pred`` is
+            true.
+        false_fn(callable, optional): A callable to be performed if ``pred`` is
+            false.
         name(str, optional): The default value is ``None``. Normally users
              don't have to set this parameter. For more information, please
-             refer to :ref:`api_guide_Name`.
+             refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Variable|list(Variable)|tuple(Variable): returns ``true_fn()`` if the
+        predicate ``pred`` is true else ``false_fn()`` .
 
     Raises:
         TypeError: if ``true_fn`` or ``false_fn`` is not callable.
-        ValueError: if ``true_fn`` and ``false_fn`` doesn't return the same
-            nest structure of tensors.
+        ValueError: if ``true_fn`` and ``false_fn`` don't return the same nest
+            structure of tensors.
 
     Examples:
         .. code-block:: python
