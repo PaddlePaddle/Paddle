@@ -147,6 +147,7 @@ class ProgramStats(object):
             if op.desc.type() != "dropout":
                 op_idx += 1
                 continue
+            # add a seed op so that the two dropout op can generate same output
             op_unique_name = unique_name.generate("seed")
             var_unique_name = unique_name.generate_with_ignorable_key(".".join(
                 [op_unique_name, 'tmp']))
@@ -164,23 +165,12 @@ class ProgramStats(object):
                 outputs={'Out': [added_var]},
                 attrs={'seed': seed})
             self.ops.insert(op_idx, added_op)
-            op.desc.set_type("dropout_with_seed")
+            # modify dropout op desc so that it accept a seed var as input
             op.desc.set_input("Seed", [var_unique_name])
             op.desc.remove_attr("fix_seed")
             op.desc.remove_attr("seed")
             self.block._sync_with_cpp()
-            #self.block._insert_op(op_idx, added_op)
             op_idx += 2
-            #dtype=dtype,
-            #type=core.VarDesc.VarType.LOD_TENSOR,
-            #persistable=False,
-            #stop_gradient=stop_gradient) 
-
-        #for op in self.ops:
-
-        #print([op for op in self.ops if op.desc.type() == "dropout"])
-
-        #print("dropout in ops")
 
 
 def _pretty_op_desc_(op_desc, prefix):
@@ -660,9 +650,6 @@ def _append_backward_ops_with_checkpoints_(
     program_stat.modify_forward_desc_for_recompute()
     program_stat.build_stats()
 
-    #with open("main_program.txt", 'w') as f:
-    #    f.write(str(block.program)) 
-    #exit()
     # 1) find ops between checkpoints, i.e. recompute_segments
     checkpoints_name = program_stat.sort_checkpoints(checkpoints_name)
     segments = []
