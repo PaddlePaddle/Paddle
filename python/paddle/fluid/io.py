@@ -896,6 +896,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
             offset = param.offset
 
             if is_slice:
+                idx = main_program._endpoints.index(main_program._ps_endpoint)
                 slice = load_block.create_var(
                     name=slice_var.name,
                     type=slice_var.type,
@@ -910,7 +911,7 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                         outputs={'Out': [slice]},
                         attrs={
                             'file_path':
-                            os.path.join(dirname, "__slice__", slice.name)
+                            os.path.join(dirname, "__slice__", "{}.slice.{}".format(slice_var.name, idx))
                         })
                 else:
                     load_block.append_op(
