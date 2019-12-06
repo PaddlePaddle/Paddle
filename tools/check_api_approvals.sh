@@ -146,6 +146,16 @@ if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     fi
 fi
 
+OP_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH |grep -oE ".+_op..*" || true`
+if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    CHECK_SHAREDATAWITH=`git diff -U0 --diff-filter=AM upstream/$BRANCH |grep "+" |grep -oE "ShareDataWith[(]" || true`
+    CHECK_SHAREBUFFERWITH=`git diff -U0 --diff-filter=AM upstream/$BRANCH |grep "+" |grep -oE "ShareBufferWith[(]" || true`
+    if [ "${CHECK_SHAREDATAWITH}" != "" ] || [ "${CHECK_SHAREBUFFERWITH}" != "" ]; then
+        echo_line="Using ShareDataWith or ShareBufferWith is not recommended. You must have one RD's (sneaxiy(Recommend) or luotao1 or lanxianghit) approval to use these methods"
+        check_approval 1 6836917 32832641 47554610
+    fi
+fi
+
 HAS_INPLACE_TESTS=`git diff -U0 upstream/$BRANCH |grep "+" |grep -E "inplace_atol[[:space:]]*=.*" || true`
 if [ "${HAS_INPLACE_TESTS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="The calculation results of setting inplace enabled and disabled must be equal, that is, it's not recommended to set inplace_atol.\n If you do need to use inplace_atol, you must have one RD (XiaoguangHu01, lanxianghit, phlrain, luotao1) approval for the usage of inplace_atol.\nThe corresponding lines are as follows:\n${HAS_INPLACE_TESTS}\n"
