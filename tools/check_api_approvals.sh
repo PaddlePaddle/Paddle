@@ -159,15 +159,15 @@ if [ "${HAS_INPLACE_TESTS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
 fi
 
 INVALID_SEQUENCE_OP_UNITTEST=""
-git diff --name-only --diff-filter=A upstream/$BRANCH | grep -oE ".*/unittests/.*sequence.*[.]py" | while read -r line ; do
-  SEQUENCE_OP_UNITTEST_GET_BATCH_SIZE_1_FUNC_CNT=`git diff -U0 --diff-filter=A upstream/$BRANCH -- ${line} | grep "+" | grep -coE ".*self.get_sequence_batch_size_1_input[(].*" || true`
-  if [ ${SEQUENCE_OP_UNITTEST_GET_BATCH_SIZE_1_FUNC_CNT} -eq 0 ]; then
-    INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${line}\n"
-  fi
-done
-if [ "${INVALID_SEQUENCE_OP_UNITTEST}" != "" ]; then
-  echo_line="It is required that the LoDTensor in sequence related OP unittests must be obtained by self.get_sequence_batch_size_1_input() function to cover the case of batch size = 1. If it is a mismatch, please specify songyouwei (Recommend) or luotao1 review and approve.\nPlease check the following unittest files:\n${INVALID_SEQUENCE_OP_UNITTEST}"
-  check_approval 1 2573291 6836917
+while read -r line ; do
+    SEQUENCE_OP_UNITTEST_GET_BATCH_SIZE_1_FUNC_CNT=`git diff -U0 --diff-filter=A upstream/$BRANCH -- ${line} | grep "+" | grep -coE ".*self.get_sequence_batch_size_1_input[(].*" || true`
+    if [ ${SEQUENCE_OP_UNITTEST_GET_BATCH_SIZE_1_FUNC_CNT} -eq 0 ]; then
+        INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${line}\n"
+    fi
+done < <(git diff --name-only --diff-filter=A upstream/$BRANCH | grep -oE ".*/unittests/.*sequence.*[.]py")
+if [ "${INVALID_SEQUENCE_OP_UNITTEST}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="It is required that the LoDTensor in sequence related OP unittests must be obtained by self.get_sequence_batch_size_1_input() function to cover the case of batch size = 1. If it is a mismatch, please specify songyouwei (Recommend) or luotao1 review and approve.\nPlease check the following unittest files:\n${INVALID_SEQUENCE_OP_UNITTEST}"
+    check_approval 1 2573291 6836917
 fi
 
 if [ -n "${echo_list}" ];then
