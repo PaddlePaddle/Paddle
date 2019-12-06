@@ -160,8 +160,8 @@ fi
 
 INVALID_SEQUENCE_OP_UNITTEST=""
 while read -r line ; do
-    SEQUENCE_OP_UNITTEST_GET_BATCH_SIZE_1_FUNC_CNT=`git diff -U0 --diff-filter=A upstream/$BRANCH -- ${line} | grep "+" | grep -coE ".*self.get_sequence_batch_size_1_input[(].*" || true`
-    if [ ${SEQUENCE_OP_UNITTEST_GET_BATCH_SIZE_1_FUNC_CNT} -eq 0 ]; then
+    SEQUENCE_OP_UNITTEST_GET_BATCH_SIZE_1_FUNC=`git diff -U0 --diff-filter=A upstream/$BRANCH -- ../../${line} | grep "+" | grep "self.get_sequence_batch_size_1_input(" || true`
+    if [ "${SEQUENCE_OP_UNITTEST_GET_BATCH_SIZE_1_FUNC}" == "" ]; then
         INVALID_SEQUENCE_OP_UNITTEST="${INVALID_SEQUENCE_OP_UNITTEST}${line}\n"
     fi
 done < <(git diff --name-only --diff-filter=A upstream/$BRANCH | grep -oE ".*/unittests/.*sequence.*[.]py")
