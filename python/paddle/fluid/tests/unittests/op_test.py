@@ -273,6 +273,26 @@ class OpTest(unittest.TestCase):
         else:
             return fluid.dygraph.base.to_variable(value)
 
+    def get_sequence_batch_size_1_input(self, lod=None, shape=None):
+        """Get LoD input data whose batch size is 1.
+        All sequence related OP unittests should call this function to contain the case of batch size = 1.
+
+        Args:
+            lod (list[list of int], optional): Length-based LoD, length of lod[0] should be 1. Default: [[13]].
+            shape (list, optional): Shape of input, shape[0] should be equals to lod[0][0]. Default: [13, 23].
+
+        Returns:
+            tuple (ndarray, lod) : LoD input data whose batch size is 1.
+        """
+        if lod is None:
+            lod = [[13]]
+        if shape is None:
+            shape = [13, 23]
+        assert len(lod[0]) == 1
+        assert lod[0][0] == shape[0]
+        x = np.random.uniform(0.1, 1, shape).astype('float32')
+        return (x, lod)
+
     def append_input_output_for_dygraph(self, op_proto, np_list, is_input,
                                         if_return_inputs_grad_dict, block):
         def create_var(np_value, name, is_input, if_return_inputs_grad_dict):
