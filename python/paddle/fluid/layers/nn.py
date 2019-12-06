@@ -9865,7 +9865,7 @@ def strided_slice(input, axes, starts, ends, strides):
             Given:
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 axes = [0, 1]
-                starts = [-1, 1000]
+                starts = [0, 1]
                 ends = [-1, 1000]
                 strides = [1, 3]
             Then:
