@@ -207,7 +207,7 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     distributed::RPCClient *rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
-    for (auto i = 0; i < slice_varnames.size(); i++) {
+    for (size_t i = 0; i < slice_varnames.size(); i++) {
       auto &varname = slice_varnames[i];
       auto *var = local_scope->Var(varname);
       auto *tensor = var->GetMutable<framework::LoDTensor>();
