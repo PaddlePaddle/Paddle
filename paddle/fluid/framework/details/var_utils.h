@@ -17,6 +17,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -24,10 +25,14 @@ namespace paddle {
 namespace framework {
 namespace details {
 // assert false when meets NAN or inf
-void EnforceNoNanOrInf(const std::string& op_type,
-                       const framework::Scope& scope,
-                       const std::string& var_name,
-                       const platform::Place& place);
+void CheckVarHasNanOrInf(const std::string& op_type,
+                         const framework::Scope& scope,
+                         const std::string& var_name,
+                         const platform::Place& place);
+
+void CheckOpHasNanOrInf(const framework::OperatorBase& op,
+                        const framework::Scope& scope,
+                        const platform::Place& place);
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
