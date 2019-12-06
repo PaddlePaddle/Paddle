@@ -1321,7 +1321,7 @@ class OpTest(OpTestBase):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         assert self.dtype in [np.float16, np.float32, np.float64]
         if self.dtype == np.float16 and \
-            self.dtype not in op_white_list.FP16_DTYPE_OP_LIST:
+            self.op_type not in op_white_list.FP16_DTYPE_OP_LIST:
             raise AssertionError("The dtype of this test should be float32 "
                                  "or float64. op: %s dtype: %s" %
                                  (self.op_type, self.dtype))
