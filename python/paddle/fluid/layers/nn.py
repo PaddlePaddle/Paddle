@@ -185,6 +185,7 @@ __all__ = [
     'uniform_random',
     'masked_select',
     'shuffle_batch',
+    'nce_sampler',
 ]
 
 
@@ -13717,4 +13718,78 @@ def shuffle_batch(x, shuffle_order=[]):
                  'ShuffleIdx': shuffle_idx},
         attrs={'ShuffleOrder': shuffle_order})
 
+    return out
+
+def nce_sampler(custom_dist, num_total_classes, num_neg_samples=10, seed=0, sample_batch_size=1):
+    helper = LayerHelper('nce_sampler', **locals())
+   
+    custom_dist_len = len(custom_dist)
+    alias_probs_ = [0] * custom_dist_len
+    alias_ = [0] * custom_dist_len
+    bigs = []
+    littles = []
+    for i in range(custom_dist_len):
+        normal_prob = custom_dist[i] * custom_dist_len
+        if normal_prob - 1.0 > 0:
+            bigs.append((i, normal_prob))
+        elif 1.0 - normal_prob > 0:
+            littles.append((i, normal_prob))
+        else:
+            alias_probs_[i] = normal_prob
+            alias_[i] = -1
+
+    while len(bigs) and len(littles):
+        big = bigs.pop(0)
+        little = littles.pop(0)
+
+        big_idx = big[0]
+        big_prob = big[1]
+
+        alias_probs_[little[0]] = little[1]
+        alias_[little[0]] = big_idx
+        big_left = big[1] + little[1] - 1
+        if big_left - 1.0 > 0:
+            bigs.append((big_idx, big_left))
+        elif 1.0 - big_left > 0:
+            littles.append((big_idx, big_left))
+        else:
+            alias_probs_[big_idx] = big_left
+            alias_[big_idx] = -1
+
+    if len(bigs):
+        big = bigs.pop(0)
+        alias_probs_[big[0]] = 1.0
+        alias_[big[0]] = -1
+    if len(littles):
+        little = littles.pop(0)
+        alias_probs_[little[0]] = 1.0
+        alias_[little[0]] = -1
+
+    def _init_by_numpy_array(numpy_array):
+        ret = helper.create_parameter(
+            attr=ParamAttr(),
+            shape=numpy_array.shape,
+            dtype=numpy_array.dtype,
+            default_initializer=NumpyArrayInitializer(numpy_array))
+        ret.stop_gradient = True
+        return ret
+
+    probs_tensor = _init_by_numpy_array(
+        np.array(custom_dist).astype('float32'))
+    alias_tensor = _init_by_numpy_array(
+        np.array(alias_).astype('int32'))
+    alias_probs_tensor = _init_by_numpy_array(
+        np.array(alias_probs_).astype('float32'))
+ 
+    out = helper.create_variable_for_type_inference(core.VarDesc.VarType.INT64)
+    helper.append_op(
+        type='nce_sampler',
+        inputs={'CustomDistProbs': probs_tensor,
+                'CustomDistAlias': alias_tensor,
+                'CustomDistAliasProbs': alias_probs_tensor},
+        outputs={'Out': out},
+        attrs={'num_total_classes': int(num_total_classes),
+               'num_neg_samples': int(num_neg_samples),
+               'sample_batch_size': int(sample_batch_size),
+               'seed': seed})
     return out
