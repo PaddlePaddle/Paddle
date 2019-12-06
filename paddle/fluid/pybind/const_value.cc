@@ -59,14 +59,14 @@ void BindConstValue(pybind11::module* m) {
       framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName);
 #if defined(PADDLE_WITH_DGC)
   auto dgc = m->def_submodule("dgc");
-  dgc.def("kDGCUName", [] { return framework::details::g_dgc_u; });
-  dgc.def("kDGCVName", [] { return framework::details::g_dgc_v; });
   dgc.def("kDGCKName", [] { return framework::details::g_dgc_k; });
   dgc.def("kDGCEncodedName", [] { return framework::details::g_dgc_encoded; });
+  dgc.def("kDGCGatherName", [] { return framework::details::g_dgc_gather; });
   dgc.def("kDGCCounterName",
           [] { return framework::details::g_dgc_counter_name; });
   dgc.def("kDGCRampUpBeginStepName",
           [] { return framework::details::g_dgc_rampup_begin_step; });
+  dgc.def("kDGCNRanksName", [] { return framework::details::g_dgc_nranks; });
 #endif
 }
 

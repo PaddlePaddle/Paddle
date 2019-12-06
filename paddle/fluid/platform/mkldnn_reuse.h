@@ -502,7 +502,7 @@ class LRNMKLDNNHandler
   std::shared_ptr<mkldnn::memory> AcquireWorkspaceMemory(
       framework::Tensor* workspace) {
     T* ptr = workspace->mutable_data<T>(
-        this->place_, this->fwd_pd_->dst_primitive_desc().get_size());
+        this->place_, this->fwd_pd_->workspace_primitive_desc().get_size());
     return this->AcquireMemoryFromPrimitive(
         this->fwd_pd_->workspace_primitive_desc(), ptr, "@wrk_mem_p");
   }
@@ -633,6 +633,7 @@ class PoolingMKLDNNHandler : public MKLDNNHandlerT<T, mkldnn::pooling_forward,
   }
 };
 
+template <typename T>
 class TransposeMKLDNNHandler : public MKLDNNHandler {
  public:
   TransposeMKLDNNHandler(std::vector<int>& dims,  // NOLINT
@@ -655,9 +656,10 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
       for (size_t i = 0; i < logical_axis_.size(); ++i) {
         logical_axis_[i] = i;
       }
-      auto src_md = fmt != MKLDNNMemoryFormat::nchw
+
+      auto src_md = fmt != mkldnn::memory::format::nchw
                         ? platform::MKLDNNMemDesc(
-                              dims_, platform::MKLDNNGetDataType<float>(), fmt)
+                              dims_, platform::MKLDNNGetDataType<T>(), fmt)
                         : Axis2MemoryDesc(dims_, logical_axis_);
       mem_p = std::make_shared<mkldnn::memory>(
           mkldnn::memory::primitive_desc{src_md, engine_}, ptr);
@@ -677,12 +679,12 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
       auto dst_mdp = mkldnn::memory::primitive_desc{
           Axis2MemoryDesc(dims_, axis_), engine_};
 
-      auto dst_data = output->mutable_data<float>(place, dst_mdp.get_size());
+      auto dst_data = output->mutable_data<T>(place, dst_mdp.get_size());
 
       mem_p = std::make_shared<mkldnn::memory>(dst_mdp, dst_data);
       dev_ctx_.SetBlob(local_key, mem_p);
     } else {
-      auto dst_data = output->mutable_data<float>(place);
+      auto dst_data = output->mutable_data<T>(place);
       mem_p->set_data_handle(dst_data);
     }
     return mem_p;
@@ -703,9 +705,9 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
   }
 
  protected:
-  mkldnn_memory_desc_t Axis2MemoryDesc(std::vector<int>& nchw_tz,  // NOLINT
-                                       std::vector<int>& axis      // NOLINT
-                                       ) {
+  mkldnn_memory_desc_t Axis2MemoryDesc(
+      const std::vector<int>& nchw_tz,  // NOLINT
+      const std::vector<int>& axis) {
     mkldnn_memory_desc_t mem_fmt;
 
     mem_fmt.primitive_kind = mkldnn_memory;
@@ -714,7 +716,12 @@ class TransposeMKLDNNHandler : public MKLDNNHandler {
       mem_fmt.dims[i] = nchw_tz[i];  // logical dimensions (nchw format,
       // regardless physical layout)
     }
-    mem_fmt.data_type = mkldnn_f32;
+    if (platform::MKLDNNGetDataType<T>() == mkldnn::memory::data_type::s8)
+      mem_fmt.data_type = mkldnn_s8;
+    else if (platform::MKLDNNGetDataType<T>() == mkldnn::memory::data_type::u8)
+      mem_fmt.data_type = mkldnn_u8;
+    else
+      mem_fmt.data_type = mkldnn_f32;
     mem_fmt.format = mkldnn_blocked;
 
     unsigned int total_stride = 1;

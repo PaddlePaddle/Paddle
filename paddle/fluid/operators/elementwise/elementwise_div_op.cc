@@ -76,6 +76,7 @@ class ElementwiseDivGradOpMaker : public framework::SingleGradOpMaker<T> {
   std::unique_ptr<T> Apply() const override {
     std::unique_ptr<T> op(new T());
     op->SetType("elementwise_div_grad");
+    op->SetInput("X", this->Input("X"));
     op->SetInput("Y", this->Input("Y"));
     op->SetInput("Out", this->Output("Out"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
@@ -127,7 +128,7 @@ REGISTER_OPERATOR(
     ops::ElementwiseDivDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_div_grad_grad, ops::ElementwiseDivOpDoubleGrad,
-                  ops::ElementwiseDivDoubleGradOpInplace);
+                  ops::ElementwiseDoubleGradOpInplace);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_div,

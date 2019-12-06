@@ -44,33 +44,46 @@ class LayerHelperBase(object):
     def startup_program(self):
         return default_startup_program()
 
-    def to_variable(self, value, block=None):
-        """convert value to variable
+    def to_variable(self, value, name=None):
+        """
+        The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 
-            Args:
-                value: value to be convert
-                block: the block of the variable
+        Parameters:
+            value(ndarray): The numpy\.ndarray object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
+            block(fluid.Block, optional): Which block this variable will be in. Default: None.
+            name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
 
-        Return Variable construct from value
+        Returns:
+            Variable: ``Tensor`` created from the specified numpy\.ndarray object, data type and shape is the same as ``value`` .
+
+        Examples:
+
+         .. code-block:: python
+
+            import numpy as np
+            import paddle.fluid as fluid
+
+            with fluid.dygraph.guard():
+                x = np.ones([2, 2], np.float32)
+                y = fluid.dygraph.to_variable(x)
+
         """
         if isinstance(value, np.ndarray):
             assert in_dygraph_mode(
             ), "to_variable could only be called in dygraph mode"
-
-            if not block:
-                block = default_main_program().current_block()
-            py_var = Variable(
-                block,
-                type=core.VarDesc.VarType.LOD_TENSOR,
-                name=None,
-                shape=value.shape,
-                dtype=value.dtype)
-            var = py_var._ivar.value()
-            tensor = var.get_tensor()
-            tensor.set(value, _current_expected_place())
+            py_var = core.VarBase(
+                value=value,
+                name=name,
+                persistable=False,
+                place=_current_expected_place(),
+                zero_copy=False)
             return py_var
-        elif isinstance(value, Variable):
+        elif isinstance(value, (core.VarBase, Variable)):
             return value
+        else:
+            raise TypeError(
+                "to_variable only accepts 'ndarray' or 'Variable' or 'VarBase' as value's input"
+            )
 
     def _create_weight_normalize(self, attr, shape, dtype):
         from .layers import elementwise_mul, elementwise_div, reshape
@@ -386,7 +399,7 @@ class LayerHelperBase(object):
         """
         assert isinstance(var, Variable)
         if in_dygraph_mode():
-            initializer(var, var.block)
+            initializer(var, self.main_program.global_block())
         else:
             self.startup_program.global_block().create_var(
                 name=var.name,

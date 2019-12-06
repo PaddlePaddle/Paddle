@@ -24,7 +24,8 @@ from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid import Conv2D, Pool2D, BatchNorm, FC
 from paddle.fluid.dygraph.base import to_variable
 from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper
+from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
+from paddle.fluid.dygraph.jit import TracedLayer
 
 batch_size = 8
 train_parameters = {
@@ -227,6 +228,8 @@ class TestDygraphResnet(unittest.TestCase):
         batch_size = train_parameters["batch_size"]
         batch_num = 10
 
+        traced_layer = None
+
         with fluid.dygraph.guard():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
@@ -250,7 +253,8 @@ class TestDygraphResnet(unittest.TestCase):
             for param in resnet.parameters():
                 dy_param_init_value[param.name] = param.numpy()
 
-            helper = DyGraphProgramDescTracerTestHelper(resnet, self)
+            helper = DyGraphProgramDescTracerTestHelper(self)
+            program = None
 
             for batch_id, data in enumerate(batch_py_reader()):
                 if batch_id >= batch_num:
@@ -260,13 +264,28 @@ class TestDygraphResnet(unittest.TestCase):
                 label = data[1]
                 label.stop_gradient = True
 
+                out = None
                 if batch_id % 5 == 0:
-                    out, out_static = helper.run(img,
-                                                 feed_names=['image'],
-                                                 fetch_names=['logits'])
-                    helper.assertEachVar(out, out_static)
+                    out, traced_layer = TracedLayer.trace(resnet, img)
+                    if program is not None:
+                        self.assertTrue(
+                            is_equal_program(program, traced_layer.program))
+
+                    traced_layer.save_inference_model(
+                        './infer_imperative_resnet')
+
+                    program = traced_layer.program
                 else:
                     out = resnet(img)
+
+                if traced_layer is not None:
+                    resnet.eval()
+                    traced_layer._switch(is_test=True)
+                    out_dygraph = resnet([img])
+                    out_static = traced_layer([img])
+                    traced_layer._switch(is_test=False)
+                    helper.assertEachVar(out_dygraph, out_static)
+                    resnet.train()
 
                 loss = fluid.layers.cross_entropy(input=out, label=label)
                 avg_loss = fluid.layers.mean(x=loss)
@@ -283,7 +302,7 @@ class TestDygraphResnet(unittest.TestCase):
                 dy_grad_value = {}
                 for param in resnet.parameters():
                     if param.trainable:
-                        np_array = np.array(param._ivar._grad_ivar().value()
+                        np_array = np.array(param._grad_ivar().value()
                                             .get_tensor())
                         dy_grad_value[param.name + core.grad_var_suffix(
                         )] = np_array
@@ -345,6 +364,9 @@ class TestDygraphResnet(unittest.TestCase):
                     [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
                 y_data = np.array([x[1] for x in data]).astype('int64').reshape(
                     [batch_size, 1])
+
+                if traced_layer is not None:
+                    traced_layer([static_x_data])
 
                 fetch_list = [avg_loss.name]
                 fetch_list.extend(static_param_name_list)

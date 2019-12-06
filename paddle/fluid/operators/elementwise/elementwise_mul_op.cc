@@ -117,7 +117,7 @@ class ElementwiseMulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseOp,
+REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseMulOp,
                   ops::ElementwiseMulOpMaker, ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
                   ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>);
@@ -127,7 +127,7 @@ REGISTER_OPERATOR(
     ops::ElementwiseMulDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad,
-                  ops::ElementwiseMulDoubleGradOpInplace);
+                  ops::ElementwiseDoubleGradOpInplace);
 
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,

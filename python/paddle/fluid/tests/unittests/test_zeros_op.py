@@ -24,14 +24,13 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
 
-class TestZerosOpError(OpTest):
+class TestZerosOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input dtype of zeros_op must be bool, float16, float32, float64, int32, int64.
-            x1 = fluid.layers.data(name='x1', shape=[4], dtype="int8")
-            self.assertRaises(TypeError, fluid.layers.zeros, x1)
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="uint8")
-            self.assertRaises(TypeError, fluid.layers.zeros, x2)
+            shape = [4]
+            dtype = "int8"
+            self.assertRaises(TypeError, fluid.layers.zeros, shape, dtype)
 
 
 if __name__ == "__main__":

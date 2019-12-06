@@ -26,8 +26,8 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
     const Tensor *new_data_tensor) {
   if (new_data_tensor->type() == framework::proto::VarType::INT64) {
     auto *new_data = new_data_tensor->data<int64_t>();
+    framework::Tensor cpu_starts_tensor;
     if (platform::is_gpu_place(new_data_tensor->place())) {
-      framework::Tensor cpu_starts_tensor;
       TensorCopySync(*new_data_tensor, platform::CPUPlace(),
                      &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int64_t>();
@@ -38,13 +38,13 @@ inline std::vector<int64_t> GetNewDataFromShapeTensor(
   } else if (new_data_tensor->type() == framework::proto::VarType::INT32) {
     auto *new_data = new_data_tensor->data<int32_t>();
     std::vector<int64_t> vec_new_data;
+    framework::Tensor cpu_starts_tensor;
     if (platform::is_gpu_place(new_data_tensor->place())) {
-      framework::Tensor cpu_starts_tensor;
       TensorCopySync(*new_data_tensor, platform::CPUPlace(),
                      &cpu_starts_tensor);
       new_data = cpu_starts_tensor.data<int32_t>();
     }
-    for (size_t i = 0; i < new_data_tensor->numel(); ++i) {
+    for (int i = 0; i < new_data_tensor->numel(); ++i) {
       vec_new_data.push_back(static_cast<int64_t>(*(new_data + i)));
     }
     return vec_new_data;

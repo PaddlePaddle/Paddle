@@ -21,6 +21,7 @@ from .layer_function_generator import generate_layer_fn
 from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
 from ..framework import Variable
+from .loss import softmax_with_cross_entropy
 from . import tensor
 from . import nn
 from . import ops
@@ -1540,7 +1541,7 @@ def ssd_loss(location,
     target_label = tensor.cast(x=target_label, dtype='int64')
     target_label = __reshape_to_2d(target_label)
     target_label.stop_gradient = True
-    conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
+    conf_loss = softmax_with_cross_entropy(confidence, target_label)
     # 3. Mining hard examples
     actual_shape = nn.slice(conf_shape, axes=[0], starts=[0], ends=[2])
     actual_shape.stop_gradient = True
@@ -1594,7 +1595,7 @@ def ssd_loss(location,
     target_label = __reshape_to_2d(target_label)
     target_label = tensor.cast(x=target_label, dtype='int64')
 
-    conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
+    conf_loss = softmax_with_cross_entropy(confidence, target_label)
     target_conf_weight = __reshape_to_2d(target_conf_weight)
     conf_loss = conf_loss * target_conf_weight
 
@@ -1859,12 +1860,12 @@ def density_prior_box(input,
 
             #declarative mode
 
-	    import paddle.fluid as fluid
-	    import numpy as np
+            import paddle.fluid as fluid
+            import numpy as np
 
-	    input = fluid.data(name="input", shape=[None,3,6,9])
-	    image = fluid.data(name="image", shape=[None,3,9,12])
-	    box, var = fluid.layers.density_prior_box(
+            input = fluid.data(name="input", shape=[None,3,6,9])
+            image = fluid.data(name="image", shape=[None,3,9,12])
+            box, var = fluid.layers.density_prior_box(
                  input=input,
                  image=image,
                  densities=[4, 2, 1],
@@ -1874,44 +1875,44 @@ def density_prior_box(input,
                  flatten_to_2d=True)
 
             place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
  
-	    # prepare a batch of data
-	    input_data = np.random.rand(1,3,6,9).astype("float32")
-	    image_data = np.random.rand(1,3,9,12).astype("float32")
- 
-	    box_out, var_out = exe.run(
-	        fluid.default_main_program(),
+            # prepare a batch of data
+            input_data = np.random.rand(1,3,6,9).astype("float32")
+            image_data = np.random.rand(1,3,9,12).astype("float32")
+
+            box_out, var_out = exe.run(
+                fluid.default_main_program(),
                 feed={"input":input_data,
-	              "image":image_data},
+                      "image":image_data},
                 fetch_list=[box,var],
                 return_numpy=True)
- 
-	    print(mask_out.shape)
-	    # (1134, 4)
-            print(z_out.shape)
-	    # (1134, 4)
+
+            # print(box_out.shape)
+            # (1134, 4)
+            # print(var_out.shape)
+            # (1134, 4)
 
 
-	    #imperative mode
-	    import paddle.fluid.dygraph as dg
+            #imperative mode
+            import paddle.fluid.dygraph as dg
 
-	    with dg.guard(place) as g:
-    		input = dg.to_variable(input_data)
-    		image = dg.to_variable(image_data)
-    		box, var = fluid.layers.density_prior_box(
-		    input=input,
-		    image=image,
-		    densities=[4, 2, 1],
-		    fixed_sizes=[32.0, 64.0, 128.0],
-		    fixed_ratios=[1.],
-		    clip=True)
+            with dg.guard(place) as g:
+                input = dg.to_variable(input_data)
+                image = dg.to_variable(image_data)
+                box, var = fluid.layers.density_prior_box(
+                    input=input,
+                    image=image,
+                    densities=[4, 2, 1],
+                    fixed_sizes=[32.0, 64.0, 128.0],
+                    fixed_ratios=[1.],
+                    clip=True)
 
-    		print(box.shape)
-		# [6L, 9L, 21L, 4L]
-		print(var.shape)
-		# [6L, 9L, 21L, 4L]
+                # print(box.shape)
+                # [6L, 9L, 21L, 4L]
+                # print(var.shape)
+                # [6L, 9L, 21L, 4L]
 
     """
     helper = LayerHelper("density_prior_box", **locals())
