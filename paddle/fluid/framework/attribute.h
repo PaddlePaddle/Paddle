@@ -296,7 +296,15 @@ class TypedAttrChecker {
     return *this;
   }
 
-  void operator()(AttributeMap* attr_map) const {
+  void operator()(AttributeMap* attr_map,
+                  bool get_default_value_only = false) const {
+    if (get_default_value_only) {
+      if (!default_value_setter_.empty()) {
+        attr_map->emplace(attr_name_, default_value_setter_[0]());
+      }
+      return;
+    }
+
     auto it = attr_map->find(attr_name_);
     if (it == attr_map->end()) {
       // user do not set this attr
@@ -321,7 +329,7 @@ class TypedAttrChecker {
 
 // check whether op's all attributes fit their own limits
 class OpAttrChecker {
-  typedef std::function<void(AttributeMap*)> AttrChecker;
+  typedef std::function<void(AttributeMap*, bool)> AttrChecker;
 
  public:
   template <typename T>
@@ -333,8 +341,16 @@ class OpAttrChecker {
 
   void Check(AttributeMap* attr_map) const {
     for (const auto& checker : attr_checkers_) {
-      checker(attr_map);
+      checker(attr_map, false);
     }
+  }
+
+  AttributeMap GetAttrsDefaultValuesMap() const {
+    AttributeMap default_values_map;
+    for (const auto& checker : attr_checkers_) {
+      checker(&default_values_map, true);
+    }
+    return default_values_map;
   }
 
  private:
