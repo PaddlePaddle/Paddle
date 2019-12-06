@@ -553,3 +553,92 @@ class NoamDecay(LearningRateDecay):
         b = self.create_lr_var((self.warmup_steps**-1.5) * self.step_num)
         lr_value = (self.d_model**-0.5) * layers.elementwise_min(a, b)
         return lr_value
+
+
+class LinearLrWarmup(LearningRateDecay):
+    """
+    This operator use the linear learning rate warm up strategy to adjust the learning rate preliminarily before the normal learning rate scheduling.
+    For more information, please refer to `Bag of Tricks for Image Classification with Convolutional Neural Networks <https://arxiv.org/abs/1812.01187>`_
+    
+    When global_step < warmup_steps, learning rate is updated as:
+    
+    .. code-block:: text
+    
+            linear_step = end_lr - start_lr
+            lr = start_lr + linear_step * (global_step / warmup_steps)
+    
+    where start_lr is the initial learning rate, and end_lr is the final learning rate;
+    
+    When global_step >= warmup_steps, learning rate is updated as:
+    
+    .. code-block:: text
+    
+            lr = learning_rate
+    
+    where lr is the learning_rate after warm-up.
+    
+    Args:
+        learning_rate (Variable|float): Learning_rate after warm-up, it could be 1D-Tensor or single value with the data type of float32.
+        warmup_steps (int): Steps for warm up.
+        start_lr (float): Initial learning rate of warm up.
+        end_lr (float): Final learning rate of warm up.
+        begin(int, optional): The begin step. The initial value of global_step described above. The default value is 0.
+        step(int, optional): The step size used to calculate the new global_step in the description above.
+            The defalult value is 1.
+        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
+            'float32', 'float64'. The default value is 'float32'.
+    
+    Returns:
+        Variable: Warm-up learning rate with the same data type as learning_rate.
+    
+    
+    Examples:
+    
+    .. code-block:: python
+    
+        import paddle.fluid as fluid
+    
+        learning_rate = 0.1 
+        warmup_steps = 50
+        start_lr = 1. / 3.
+        end_lr = 0.1
+
+        with fluid.dygraph.guard(): 
+            lr_decay = fluid.dygraph.LinearLrWarmup( learning_rate, warmup_steps, start_lr, end_lr)
+    
+       
+    """
+
+    def __init__(self,
+                 learning_rate,
+                 warmup_steps,
+                 start_lr,
+                 end_lr,
+                 begin=1,
+                 step=1,
+                 dtype='float32'):
+        super(LinearLrWarmup, self).__init__(begin, step, dtype)
+        type_check = isinstance(learning_rate, float) or isinstance(
+            learning_rate, int) or isinstance(learning_rate, LearningRateDecay)
+        if not type_check:
+            raise TypeError(
+                "the type of learning_rate should be [int, float or LearningRateDecay], the current type is {}".
+                format(learning_rate))
+        self.learning_rate = learning_rate
+        self.warmup_steps = warmup_steps
+        assert (end_lr > start_lr,
+                "end_lr {} MUST GREATER than start_lr {}".format(end_lr,
+                                                                 start_lr))
+        self.lr_ratio_before_warmup = (
+            float(end_lr) - float(start_lr)) / float(warmup_steps)
+
+    def step(self):
+        base_lr = self.learning_rate
+        if isinstance(self.learning_rate, LearningRateDecay):
+            base_lr = base_lr()
+
+        from .. import layers
+        if self.step_num < self.warmup_steps:
+            return self.lr_ratio_before_warmup * self.step_num
+        else:
+            return base_lr

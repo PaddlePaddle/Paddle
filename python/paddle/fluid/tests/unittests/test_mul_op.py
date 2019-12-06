@@ -51,7 +51,7 @@ class TestMulOp(OpTest):
             ['X'], 'Out', max_relative_error=0.5, no_grad_set=set('Y'))
 
 
-class TestMulOpError(OpTest):
+class TestMulOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of mul_op must be Variable.

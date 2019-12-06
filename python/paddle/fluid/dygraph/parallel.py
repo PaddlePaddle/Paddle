@@ -219,12 +219,8 @@ class DataParallel(layers.Layer):
         grad_vars = []
         for param in self._layers.parameters():
             # NOTE(zcd): The grad_ivar maybe no generated.
-            if param.trainable and param._ivar._grad_ivar():
-                g_var = framework.Variable(
-                    block=self._helper.main_program.current_block(),
-                    name=param._ivar._grad_name(),
-                    stop_gradient=True,
-                    ivar=param._ivar._grad_ivar())
+            if param.trainable and param._grad_ivar():
+                g_var = param._grad_ivar()
                 grad_vars.append(g_var)
                 assert g_var not in grad_var_set
                 grad_var_set.add(g_var)

@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant, zeros, cast
+from .tensor import concat, assign, fill_constant, zeros
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -67,7 +67,7 @@ __all__ = [
     'py_func', 'psroi_pool', 'prroi_pool', 'pixel_shuffle', 'fsp_matrix',
     'continuous_value_model', 'where', 'sign', 'deformable_conv', 'unfold',
     'deformable_roi_pooling', 'filter_by_instag', 'shard_index', 'hard_swish',
-    'gather_tree', 'uniform_random', 'masked_select', 'hash_embedding'
+    'gather_tree', 'uniform_random', 'hash_embedding'
 ]
 
 
@@ -2539,6 +2539,13 @@ def batch_norm(input,
     check_type_and_dtype(input, 'input', Variable,
                          ['float16', 'float32', 'float64'], 'batch_norm')
     dtype = helper.input_dtype()
+
+    has_reserve_space = False
+    if data_layout == 'NHWC':
+        flag = os.environ.get('FLAGS_cudnn_batchnorm_spatial_persistent')
+        if flag is not None and flag.lower() in ['true', '1']:
+            has_reserve_space = True
+
     # use fp32 for bn parameter
     if dtype == core.VarDesc.VarType.FP16:
         dtype = core.VarDesc.VarType.FP32
@@ -2593,6 +2600,11 @@ def batch_norm(input,
     saved_variance = helper.create_variable_for_type_inference(
         dtype=dtype, stop_gradient=True)
 
+    reserve_space = None
+    if has_reserve_space:
+        reserve_space = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.FP16, stop_gradient=True)
+
     batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
         dtype)
 
@@ -2615,17 +2627,19 @@ def batch_norm(input,
         inputs['MomemtumTensor'] = momentum
     else:
         attrs['momentum'] = momentum
+
+    outputs = {
+        "Y": batch_norm_out,
+        "MeanOut": mean_out,
+        "VarianceOut": variance_out,
+        "SavedMean": saved_mean,
+        "SavedVariance": saved_variance
+    }
+    if reserve_space is not None:
+        outputs["ReserveSpace"] = reserve_space
+
     helper.append_op(
-        type="batch_norm",
-        inputs=inputs,
-        outputs={
-            "Y": batch_norm_out,
-            "MeanOut": mean_out,
-            "VarianceOut": variance_out,
-            "SavedMean": saved_mean,
-            "SavedVariance": saved_variance
-        },
-        attrs=attrs)
+        type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
 
     return helper.append_activation(batch_norm_out)
 
@@ -8696,7 +8710,7 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode == 'channel':
         alpha_shape = [1, x.shape[1], 1, 1]
     elif mode == 'element':
-        alpha_shape = x.shape[1:]
+        alpha_shape = [1, x.shape[1], x.shape[2], x.shape[3]]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,
@@ -9868,7 +9882,7 @@ def strided_slice(input, axes, starts, ends, strides):
             Given:
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 axes = [0, 1]
-                starts = [-1, 1000]
+                starts = [0, 1]
                 ends = [-1, 1000]
                 strides = [1, 3]
             Then:
@@ -10202,7 +10216,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             import numpy as np
 
             inputs = fluid.layers.data(name="x", shape=[2, 3], dtype='float32')
-            scale = fluid.layers.data(name="scale", shape=[1], dtype='float32'
+            scale = fluid.layers.data(name="scale", shape=[1], dtype='float32',
                                       append_batch_size=False)
             output = fluid.layers.scale(inputs, scale = scale, bias = 1.0)
 
@@ -12748,7 +12762,7 @@ def unique_with_counts(x, dtype='int32'):
     This OP return a unique tensor for `x` , and count tensor that the count of unqiue result in raw input, \
     and an index tensor pointing to this unique tensor. 
 
-    **NOTICE**: This op just be supported in device of CPU, and support the variable type of Tensor only.
+    **NOTICE**: This op support the variable type of Tensor only.
 
     Args:
         x(Variable): A 1-D input tensor with input shape of :math:`[N]` , the input data type is float32, float64, int32, int64.
@@ -13622,63 +13636,3 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
         outputs={"Out": out})
 
     return helper.append_activation(out)
-
-
-def masked_select(input, mask):
-    """
-    This OP selects elements of the input tensor according to the mask tensor.
-    The shapes of the mask tensor don't have to match shapes of input tensor, but they must be broadcastable, and the result is a new 1-D tensor.
-
-    NOTE: The meaning of broadcastable is consistent with expand_as.
-
-    Parameters:
-
-        input(Variable): The input tensor, the data type should be int32, float32, float64.
-        mask(Variable): The boolean mask tensor, the data type should be bool.
-
-    Returns:
-        Variable: masked select tensor, its data type is same as the input.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            mask_shape = [4,1]
-            shape = [4,4]
-            data = np.random.random(mask_shape).astype("float32")
-            input_data = np.random.randint(5,size=shape).astype("float32")
-            mask_data = data > 0.5
-
-            # print(input_data)
-            # [[0.38972723 0.36218056 0.7892614  0.50122297]
-            #  [0.14408113 0.85540855 0.30984417 0.7577004 ]
-            #  [0.97263193 0.5248062  0.07655851 0.75549215]
-            #  [0.26214206 0.32359877 0.6314582  0.2128865 ]]
-
-            # print(mask_data)
-            # [[ True]
-            #  [ True]
-            #  [False]
-            #  [ True]]
-
-            input = fluid.data(name="input",shape=[4,4],dtype="float32")
-            mask = fluid.data(name="mask",shape=[4,1],dtype="bool")
-            result = fluid.layers.masked_select(input=input, mask=mask)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            start = fluid.default_startup_program()
-            main = fluid.default_main_program()
-            exe.run(start)
-            masked_select_result= exe.run(main, feed={'input':input_data, 'mask':mask_data}, fetch_list=[result])
-            # print(masked_select_result)
-            # [0.38972723 0.36218056 0.7892614  0.50122297 0.14408113 0.85540855
-            #   0.30984417 0.7577004  0.26214206 0.32359877 0.6314582  0.2128865 ]
-
-    """
-    mask_cast = cast(x=mask, dtype=input.dtype)
-    mask_expand = expand_as(x=mask_cast, target_tensor=input)
-    mask_expand_cast_back_bool = cast(x=mask_expand, dtype="bool")
-    select = where(mask_expand_cast_back_bool)
-    result = gather_nd(input, select)
-    return result
