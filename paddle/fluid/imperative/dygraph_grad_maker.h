@@ -107,6 +107,12 @@ class GradOpBaseMakerBase {
     return it != var_base_map_in_.end();
   }
 
+  bool HasOutput(const std::string name) const {
+    auto it = var_base_map_out_.find(name);
+
+    return it != var_base_map_out_.end();
+  }
+
  private:
   std::vector<std::shared_ptr<VarBase>> GetVarBaseList(const std::string& name,
                                                        bool is_grad,
@@ -125,11 +131,12 @@ class GradOpBaseMakerBase {
                                   "VarBase grad of OP [%s] should not be null",
                                   fw_op_base_->Type());
           auto grad_var_base_tmp = var_base_temp->GradVarBase();
-          auto* tensor = grad_var_base_tmp->MutableVar()
-                             ->GetMutable<framework::LoDTensor>();
-          tensor->Resize(
-              var_base_temp->Var().Get<framework::LoDTensor>().dims());
-
+          if (!is_input) {
+            auto* tensor = grad_var_base_tmp->MutableVar()
+                               ->GetMutable<framework::LoDTensor>();
+            tensor->Resize(
+                var_base_temp->Var().Get<framework::LoDTensor>().dims());
+          }
           vec_temp.emplace_back(grad_var_base_tmp);
         } else {
           vec_temp.emplace_back(var_base_temp);

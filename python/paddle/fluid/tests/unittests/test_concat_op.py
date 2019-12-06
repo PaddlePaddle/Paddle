@@ -150,7 +150,7 @@ create_test_fp16(TestConcatOp4)
 create_test_fp16(TestConcatOp5)
 
 
-class TestConcatOpError(OpTest):
+class TestConcatOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of concat_op should be list.
@@ -177,7 +177,7 @@ class TestConcatOpError(OpTest):
             self.assertRaises(TypeError, test_axis_type)
 
 
-class TestConcatAPI(OpTest):
+class TestConcatAPI(unittest.TestCase):
     def test_api(self):
         x_1 = fluid.data(shape=[None, 1, 4, 5], dtype='int32', name='x_1')
         fluid.layers.concat([x_1, x_1], 0)

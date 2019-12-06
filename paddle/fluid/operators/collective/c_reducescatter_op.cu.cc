@@ -36,6 +36,11 @@ class CReduceScatterOpCUDAKernel : public framework::OpKernel<T> {
     int nranks = comm->nranks();
 
     auto out_dims = in->dims();
+    PADDLE_ENFORCE_EQ(out_dims[0] % nranks, 0,
+                      platform::errors::InvalidArgument(
+                          "The input tensor X's "
+                          "dim[0] (%d) should be divisible by nranks(%d)",
+                          out_dims[0], nranks));
     out_dims[0] = out_dims[0] / nranks;
     out->mutable_data<T>(out_dims, place);
 

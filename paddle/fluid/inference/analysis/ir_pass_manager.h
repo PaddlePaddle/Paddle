@@ -56,6 +56,7 @@ class IRPassManager final {
 
   std::unique_ptr<Graph> graph_;
   std::vector<std::unique_ptr<framework::ir::Pass>> passes_;
+  bool disable_logs_{false};
 };
 
 }  // namespace analysis
