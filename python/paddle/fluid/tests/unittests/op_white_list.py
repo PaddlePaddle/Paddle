@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FP16_DTYPE_OP_LIST = [
+CHECK_FP16_OP_LIST = [
     'concat', 'pad', 'elementwise_mul', 'elementwise_div',
     'softmax_with_cross_entropy'
 ]
 
-CHECK_GRAD_FP64_OPS_WHITE_LIST = []
+CHECK_GRAD_FP64_OP_WHITE_LIST = []
+
+CHECK_GRAD_FP16_OP_WHITE_LIST = []
