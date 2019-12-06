@@ -184,9 +184,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             exe.train_from_dataset(
                 program=fleet.main_program,
                 dataset=dataset,
-                fetch_handler=FH([self.avg_cost.name],
-                                 period_secs=2,
-                                 return_np=True),
+                fetch_handler=FH([self.avg_cost.name], period_secs=2),
                 debug=False)
             pass_time = time.time() - pass_start
 
