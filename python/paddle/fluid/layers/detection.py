@@ -1023,6 +1023,7 @@ def yolo_box(x,
              class_num,
              conf_thresh,
              downsample_ratio,
+             clip_bbox=True,
              name=None):
     """
     ${comment}
@@ -1034,6 +1035,7 @@ def yolo_box(x,
         class_num (int): ${class_num_comment}
         conf_thresh (float): ${conf_thresh_comment}
         downsample_ratio (int): ${downsample_ratio_comment}
+        clip_bbox (bool): ${clip_bbox_comment}
         name (string): The default value is None.  Normally there is no need 
                        for user to set this property.  For more information, 
                        please refer to :ref:`api_guide_Name`
@@ -1048,6 +1050,7 @@ def yolo_box(x,
         TypeError: Attr anchors of yolo box must be list or tuple
         TypeError: Attr class_num of yolo box must be an integer
         TypeError: Attr conf_thresh of yolo box must be a float number
+        TypeError: Attr clip_bbox of yolo box must be a boolean
 
     Examples:
 
@@ -1071,7 +1074,9 @@ def yolo_box(x,
     if not isinstance(class_num, int):
         raise TypeError("Attr class_num of yolo_box must be an integer")
     if not isinstance(conf_thresh, float):
-        raise TypeError("Attr ignore_thresh of yolo_box must be a float number")
+        raise TypeError("Attr conf_thresh of yolo_box must be a float number")
+    if not isinstance(clip_bbox, bool):
+        raise TypeError("Attr clip_bbox of yolo_box must be a boolean")
 
     boxes = helper.create_variable_for_type_inference(dtype=x.dtype)
     scores = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1081,6 +1086,7 @@ def yolo_box(x,
         "class_num": class_num,
         "conf_thresh": conf_thresh,
         "downsample_ratio": downsample_ratio,
+        "clip_bbox": clip_bbox,
     }
 
     helper.append_op(
