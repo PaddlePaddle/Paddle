@@ -1074,7 +1074,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](const std::string op_type,
            const std::map<std::string, std::vector<std::string>> &inputs,
            const std::map<std::string, std::vector<std::string>> &outputs,
-           const framework::AttributeMap &attr) {
+           const framework::AttributeMap &attrs) {
           auto infer_func = framework::OpInfoMap::Instance()
                                 .Get(op_type)
                                 .NoNeedBufferVarsInferer();
