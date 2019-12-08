@@ -1070,7 +1070,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("has_infer_inplace", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
   });
-  m.def("_no_need_buffer_slots",
+  m.def("infer_no_need_buffer_slots",
         [](const std::string op_type,
            const std::map<std::string, std::vector<std::string>> &inputs,
            const std::map<std::string, std::vector<std::string>> &outputs,
