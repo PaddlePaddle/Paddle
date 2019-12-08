@@ -1668,7 +1668,9 @@ class AdamOptimizer(Optimizer):
         outputs = {
             "ParamOut": param_and_grad[0],
             "Moment1Out": moment1,
-            "Moment2Out": moment2
+            "Moment2Out": moment2,
+            "Beta1PowOut" : beta1_pow_acc,
+            "Beta2PowOut" : beta2_pow_acc,
         }
         attrs = {
             "epsilon": self._epsilon,
@@ -1697,6 +1699,9 @@ class AdamOptimizer(Optimizer):
     def _finish_update(self, block, param_and_grads):
         """Update Beta1 and Beta2 Power accumulators
         """
+
+        pass 
+        '''
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
         for param, grad in param_and_grads:
@@ -1733,6 +1738,7 @@ class AdamOptimizer(Optimizer):
                     outputs={"Out": beta2_pow_acc},
                     attrs=attrs,
                     stop_gradient=True)
+        '''
 
 
 class AdamaxOptimizer(Optimizer):
