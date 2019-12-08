@@ -505,8 +505,6 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
                          std::to_string(fraction_of_gpu_memory);
       flags.push_back(flag);
-      // use auto growth strategy here.
-      flags.push_back("--allocator_strategy=auto_growth");
       flags.push_back("--cudnn_deterministic=True");
       VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
