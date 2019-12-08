@@ -40,8 +40,7 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
 
   if (enable_int8) {
 #if IS_TRT_VERSION_GE(5000)
-    CHECK(op_desc.HasAttr("Input_scale"));
-    float in_scale = boost::get<float>(op_desc.GetAttr("Input_scale"));
+    float in_scale = boost::get<float>(op_desc.GetAttr("input_scale"));
     auto weight_scale =
         boost::get<std::vector<float>>(op_desc.GetAttr("weight_scale"));
     weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t,
@@ -89,6 +88,13 @@ void ConvertConv2d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   layer->setName((name + " (Output: " + output_name + ")").c_str());
   layer->getOutput(0)->setName(output_name.c_str());
   engine->SetITensor(output_name, layer->getOutput(0));
+
+#if IS_TRT_VERSION_GE(5000)
+  if (enable_int8) {
+    float output_scale = boost::get<float>(op_desc.GetAttr("out_scale"));
+    engine->SetTensorDynamicRange(layer->getOutput(0), output_scale);
+  }
+#endif
 
   if (test_mode) {
     engine->DeclareOutput(output_name);
