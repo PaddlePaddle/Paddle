@@ -188,7 +188,6 @@ struct AdamFunctor<T, CPUAdam> {
     
     *beta1_pow_out_ = beta1_pow * beta1_;
     *beta2_pow_out_ = beta2_pow * beta2_;
-
   }
 };
 
