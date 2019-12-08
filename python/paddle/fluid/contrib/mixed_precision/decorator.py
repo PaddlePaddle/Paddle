@@ -51,8 +51,7 @@ class OptimizerWithMixedPrecision(object):
     """
 
     def __init__(self, optimizer, amp_lists, init_loss_scaling,
-                 use_dynamic_loss_scaling, incr_every_n_steps,
-                 decr_every_n_nan_or_inf, incr_ratio, decr_ratio):
+                 use_dynamic_loss_scaling, incr_every_n_steps, multiplier):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
         self._param_grads = None
@@ -69,18 +68,9 @@ class OptimizerWithMixedPrecision(object):
         if self._use_dynamic_loss_scaling:
             self._incr_every_n_steps = layers.fill_constant(
                 shape=[1], dtype='int32', value=incr_every_n_steps)
-            self._decr_every_n_nan_or_inf = layers.fill_constant(
-                shape=[1], dtype='int32', value=decr_every_n_nan_or_inf)
-            self._incr_ratio = incr_ratio
-            self._decr_ratio = decr_ratio
+            self._multiplier = multiplier
             self._num_good_steps = layers.create_global_var(
                 name=unique_name.generate("num_good_steps"),
-                shape=[1],
-                value=0,
-                dtype='int32',
-                persistable=True)
-            self._num_bad_steps = layers.create_global_var(
-                name=unique_name.generate("num_bad_steps"),
                 shape=[1],
                 value=0,
                 dtype='int32',
@@ -167,10 +157,8 @@ class OptimizerWithMixedPrecision(object):
             is_overall_finite = layers.isfinite(all_grads_sum)
 
             update_loss_scaling(is_overall_finite, self._loss_scaling,
-                                self._num_good_steps, self._num_bad_steps,
-                                self._incr_every_n_steps,
-                                self._decr_every_n_nan_or_inf, self._incr_ratio,
-                                self._decr_ratio)
+                                self._num_good_steps, self._incr_every_n_steps,
+                                self._multiplier)
 
             # apply_gradient append all ops in global block, thus we shouldn't
             # apply gradient in the switch branch.
@@ -217,11 +205,9 @@ class OptimizerWithMixedPrecision(object):
 
 def decorate(optimizer,
              amp_lists=None,
-             init_loss_scaling=1.0,
-             incr_every_n_steps=1000,
-             decr_every_n_nan_or_inf=2,
-             incr_ratio=2.0,
-             decr_ratio=0.8,
+             init_loss_scaling=2**15,
+             incr_every_n_steps=2000,
+             multiplier=2.0,
              use_dynamic_loss_scaling=True):
     """ 
     Decorate the given optimizer to adapt to the mixed-precision training.
@@ -232,12 +218,7 @@ def decorate(optimizer,
         init_loss_scaling(float): The initial loss scaling factor.
         incr_every_n_steps(int): Increases loss scaling every n consecutive 
                                  steps with finite gradients.
-        decr_every_n_nan_or_inf(int): Decreases loss scaling every n 
-                                      accumulated steps with nan or 
-                                      inf gradients.
-        incr_ratio(float): The multiplier to use when increasing the loss 
-                           scaling.
-        decr_ratio(float): The less-than-one-multiplier to use when decreasing 
+        multiplier(float): The multiplier to use when increasing or decreasing
                            the loss scaling.
         use_dynamic_loss_scaling(bool): Whether to use dynamic loss scaling.
 
@@ -261,6 +242,6 @@ def decorate(optimizer,
         amp_lists = AutoMixedPrecisionLists()
     mp_optimizer = OptimizerWithMixedPrecision(
         optimizer, amp_lists, init_loss_scaling, use_dynamic_loss_scaling,
-        incr_every_n_steps, decr_every_n_nan_or_inf, incr_ratio, decr_ratio)
+        incr_every_n_steps, multiplier)
 
     return mp_optimizer
