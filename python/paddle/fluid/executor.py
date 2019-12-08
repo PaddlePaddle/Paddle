@@ -986,7 +986,9 @@ class Executor(object):
         if dataset is None:
             raise RuntimeError("dataset is need and should be initialized")
 
-        if program._pipeline_opt:
+        if program._pipeline_opt is not None and program._pipeline_opt[
+                "sync_steps"] != -1:
+            # hack for paddlebox: sync_steps(-1) denotes paddlebox
             thread = self._adjust_pipeline_resource(program._pipeline_opt,
                                                     dataset, thread)
 
