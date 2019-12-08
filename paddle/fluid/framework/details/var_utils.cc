@@ -18,21 +18,87 @@
 #include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/selected_rows.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-const std::unordered_set<std::string> op_nan_inf_white_list = {
+/* In op_proto_maker.h
+ * framework::OpRole::kForward      = 0x0000,
+ * framework::OpRole::kBackward     = 0x0001,
+ * framework::OpRole::kOptimize     = 0x0002,
+ * framework::OpRole::kRPC          = 0x0004,
+ * framework::OpRole::kDist         = 0x0008,
+ * framework::OpRole::kLRSched      = 0x0010,
+ * framework::OpRole::kLoss         = 0x0100,
+ * framework::OpRole::kNotSpecified = 0x1000,
+ */
+static const int FORWARD = 0x10000;
+static const std::unordered_map<std::string, int> role_str2int = {
+    {"forward", FORWARD}, /* kForward=0, can't filter */
+    {"backward", static_cast<int>(framework::OpRole::kBackward)},
+    {"optimize", static_cast<int>(framework::OpRole::kOptimize)},
+    {"rpc", static_cast<int>(framework::OpRole::kRPC)},
+    {"dist", static_cast<int>(framework::OpRole::kDist)},
+    {"lrsched", static_cast<int>(framework::OpRole::kLRSched)},
+    {"loss", static_cast<int>(framework::OpRole::kLoss)},
+    {"default", static_cast<int>(framework::OpRole::kNotSpecified)},
+};
+static int op_role_nan_inf_white_list = 0;
+
+static std::unordered_set<std::string> op_type_nan_inf_white_list = {
     "coalesce_tensor", /* This Op will alloc tensor, and may not init space */
 };
 
-const std::unordered_map<std::string, std::vector<std::string>>
+static std::unordered_map<std::string, std::vector<std::string>>
     op_var_nan_inf_white_list = {
         /* encoded & gather var consist of idx&val, can't judge directly */
         {"dgc", {"__dgc_encoded__", "__dgc_gather__"}},
 };
+
+static std::once_flag white_list_init_flag;
+
+static void InitWhiteListFormEnv() {
+  // export PADDLE_INF_NAN_SKIP_OP="op0,op1,op2"
+  // export PADDLE_INF_NAN_SKIP_ROLE="role1,role2,role3"
+  // export PADDLE_INF_NAN_SKIP_VAR="op0:var0,op0:var1,op1:var0"
+  const char* op_type_skip = std::getenv("PADDLE_INF_NAN_SKIP_OP");
+  const char* op_role_skip = std::getenv("PADDLE_INF_NAN_SKIP_ROLE");
+  const char* op_var_skip = std::getenv("PADDLE_INF_NAN_SKIP_VAR");
+
+  if (op_type_skip != NULL) {
+    std::stringstream ss(op_type_skip);
+    std::string op_type;
+    while (std::getline(ss, op_type, ',')) {
+      op_type_nan_inf_white_list.emplace(op_type);
+    }
+  }
+
+  if (op_role_skip != NULL) {
+    std::stringstream ss(op_role_skip);
+    std::string op_role;
+    while (std::getline(ss, op_role, ',')) {
+      PADDLE_ENFORCE_EQ(role_str2int.find(op_role) != role_str2int.end(), true,
+                        "Skip role must be one of ...");
+      op_role_nan_inf_white_list |= role_str2int.at(op_role);
+    }
+  }
+
+  if (op_var_skip != NULL) {
+    std::stringstream ss(op_var_skip);
+    std::string op_var;
+    while (std::getline(ss, op_var, ',')) {
+      auto pos = op_var.find(":");
+      PADDLE_ENFORCE_EQ(pos != std::string::npos, true);
+      std::string op = op_var.substr(0, pos);
+      std::string var = op_var.substr(pos + 1);
+
+      op_var_nan_inf_white_list[op].emplace_back(var);
+    }
+  }
+}
 
 template <typename T>
 static void PrintNanInf(const T* value, const size_t numel, int print_num,
@@ -79,7 +145,7 @@ static void CheckNanInf(const T* value, const size_t numel, int print_num,
 // openmp4.0 not need to specialization fp16
 #elif defined _OPENMP
 template <>
-static void CheckNanInf<paddle::platform::float16>(
+void CheckNanInf<paddle::platform::float16>(
     const paddle::platform::float16* value, const size_t numel, int print_num,
     const std::string& op_type, const std::string& var_name) {
   float sum = 0.0f;
@@ -151,10 +217,27 @@ void CheckVarHasNanOrInf(const std::string& op_type,
   tensor_check<platform::CPUDeviceContext>(op_type, var_name, *tensor, place);
 }
 
+bool IsSkipOp(const framework::OperatorBase& op) {
+  if (op_type_nan_inf_white_list.count(op.Type()) != 0) return true;
+
+  int op_role = op.template Attr<int>(
+      framework::OpProtoAndCheckerMaker::OpRoleAttrName());
+
+  // kForward=0, can't filter
+  if (op_role == static_cast<int>(framework::OpRole::kForward)) {
+    op_role = FORWARD;
+  }
+  if (op_role_nan_inf_white_list & op_role) return true;
+
+  return false;
+}
+
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
                         const framework::Scope& exec_scope,
                         const platform::Place& place) {
-  if (op_nan_inf_white_list.count(op.Type()) != 0) return;
+  std::call_once(white_list_init_flag, InitWhiteListFormEnv);
+
+  if (IsSkipOp(op)) return;
 
   if (op_var_nan_inf_white_list.count(op.Type()) == 0) {
     // NOTE. vname may destruct in the end of this func.
