@@ -65,6 +65,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
@@ -1069,16 +1070,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("has_infer_inplace", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
   });
-  using Attribute =
-      boost::variant<boost::blank, int, float, std::string, std::vector<int>,
-                     std::vector<float>, std::vector<std::string>, bool,
-                     std::vector<bool>, BlockDesc *, int64_t,
-                     std::vector<BlockDesc *>, std::vector<int64_t>>;
   m.def("_no_need_buffer_slots",
         [](const std::string op_type,
            const std::map<std::string, std::vector<std::string>> &inputs,
            const std::map<std::string, std::vector<std::string>> &outputs,
-           const std::unordered_map<std::string, Attribute> &attrs) {
+           const framework::AttributeMap &attr) {
           auto infer_func = framework::OpInfoMap::Instance()
                                 .Get(op_type)
                                 .NoNeedBufferVarsInferer();
