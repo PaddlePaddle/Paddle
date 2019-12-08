@@ -70,11 +70,13 @@ struct AdamFunctor<T, GPUAdam> {
   const T* grad_;
   const T* param_;
   T* param_out_;
+  T* beta1_pow_out_;
+  T* beta2_pow_out_;
 
   AdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
               const T* beta2_pow, const T* mom1, T* mom1_out, const T* mom2,
               T* mom2_out, const T* lr, const T* grad, const T* param,
-              T* param_out)
+              T* param_out, T* beta1_pow_out, T* beta2_pow_out)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -87,7 +89,9 @@ struct AdamFunctor<T, GPUAdam> {
         lr_(lr),
         grad_(grad),
         param_(param),
-        param_out_(param_out) {}
+        param_out_(param_out),
+        beta1_pow_out_(beta1_pow_out),
+        beta2_pow_out_(beta2_pow_out){}
 
   inline HOSTDEVICE void operator()(size_t i) const {
     // Merge all memory access together.
@@ -110,6 +114,8 @@ struct AdamFunctor<T, GPUAdam> {
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
     param_out_[i] = p;
+    *beta1_pow_out_ = beta1_pow * beta1_;
+    *beta2_pow_out_ = beta2_pow * beta2_;
   }
 };
 
@@ -129,11 +135,13 @@ struct AdamFunctor<T, CPUAdam> {
   const T* grad_;
   const T* param_;
   T* param_out_;
+  T* beta1_pow_out_;
+  T* beta2_pow_out_;
 
   AdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
               const T* beta2_pow, const T* mom1, T* mom1_out, const T* mom2,
               T* mom2_out, const T* lr, const T* grad, const T* param,
-              T* param_out)
+              T* param_out, T* beta1_pow_out, T* beat2_pow_out )
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -146,7 +154,9 @@ struct AdamFunctor<T, CPUAdam> {
         lr_(lr),
         grad_(grad),
         param_(param),
-        param_out_(param_out) {}
+        param_out_(param_out),
+        beta1_pow_out_( beta1_pow_out ),
+        beta2_pow_out_( beat2_pow_out ){}
 
   void operator()(size_t numel) const {
     Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> g{
@@ -175,6 +185,9 @@ struct AdamFunctor<T, CPUAdam> {
     moment1_out = beta1_ * mom1 + (1 - beta1_) * g;
     moment2_out = beta2_ * mom2 + (1 - beta2_) * g * g;
     param_out = param - lr * (moment1_out / (moment2_out.sqrt() + epsilon_));
+    
+    *beta1_pow_out_ = beta1_pow * beta1_;
+    *beta2_pow_out_ = beta2_pow * beta2_;
   }
 };
 
@@ -197,6 +210,8 @@ struct SparseAdamFunctor<T, GPUAdam> {
   const T* grad_;
   const T* param_;
   T* param_out_;
+  T* beta1_pow_out_;
+  T* beta2_pow_out_;
 
   const int64_t* rows_;
   int64_t row_numel_;
@@ -206,7 +221,8 @@ struct SparseAdamFunctor<T, GPUAdam> {
   SparseAdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
                     const T* beta2_pow, const T* mom1, T* mom1_out,
                     const T* mom2, T* mom2_out, const T* lr, const T* grad,
-                    const T* param, T* param_out, const int64_t* rows,
+                    const T* param, T* param_out, T* beta1_pow_out, 
+                    T* beta2_pow_out, const int64_t* rows,
                     int64_t row_numel, int64_t row_count, bool lazy_mode)
       : beta1_(beta1),
         beta2_(beta2),
@@ -221,6 +237,8 @@ struct SparseAdamFunctor<T, GPUAdam> {
         grad_(grad),
         param_(param),
         param_out_(param_out),
+        beta1_pow_out_(beta1_pow_out),
+        beta2_pow_out_(beta2_pow_out),
         rows_(rows),
         row_numel_(row_numel),
         row_count_(row_count),
@@ -246,6 +264,9 @@ struct SparseAdamFunctor<T, GPUAdam> {
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
     param_out_[i] = p;
+
+    *beta1_pow_out_ = beta1_pow * beta1_;
+    *beta2_pow_out_ = beta2_pow * beta2_;
   }
 
   inline HOSTDEVICE void operator()(size_t i) const {
@@ -276,6 +297,8 @@ struct SparseAdamFunctor<T, CPUAdam> {
   const T* grad_;
   const T* param_;
   T* param_out_;
+  T* beta1_pow_out_;
+  T* beta2_pow_out_;
 
   const int64_t* rows_;
   int64_t row_numel_;
@@ -284,7 +307,8 @@ struct SparseAdamFunctor<T, CPUAdam> {
   SparseAdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
                     const T* beta2_pow, const T* mom1, T* mom1_out,
                     const T* mom2, T* mom2_out, const T* lr, const T* grad,
-                    const T* param, T* param_out, const int64_t* rows,
+                    const T* param, T* param_out, T* beta1_pow_out, 
+                    T* beta2_pow_out, const int64_t* rows,
                     int64_t row_numel, int64_t row_count, bool lazy_mode)
       : beta1_(beta1),
         beta2_(beta2),
@@ -299,6 +323,8 @@ struct SparseAdamFunctor<T, CPUAdam> {
         grad_(grad),
         param_(param),
         param_out_(param_out),
+        beta1_pow_out_(beta1_pow_out),
+        beta2_pow_out_(beta2_pow_out),
         rows_(rows),
         row_numel_(row_numel),
         row_count_(row_count) {}
@@ -323,6 +349,8 @@ struct SparseAdamFunctor<T, CPUAdam> {
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
     param_out_[i] = p;
+    *beta1_pow_out_ = beta1_pow * beta1_;
+    *beta2_pow_out_ = beta2_pow * beta2_; 
   }
 
   inline void operator()(size_t numel) const {
@@ -357,7 +385,9 @@ struct SparseAdamFunctor<T, CPUAdam> {
         }
       }
     }
+
   }
+
 };
 
 template <typename DeviceContext, typename T>
@@ -397,7 +427,10 @@ class AdamOpKernel : public framework::OpKernel<T> {
         Ref(ctx.Output<LoDTensor>("Moment1Out"), "Must set Moment1Out");
     auto& mom2_out =
         Ref(ctx.Output<LoDTensor>("Moment2Out"), "Must set Moment1Out");
-
+    auto& beta1_pow_out =
+        Ref(ctx.Output<LoDTensor>("Beta1PowOut"), "Must set Moment1Out");
+    auto& beta2_pow_out =
+        Ref(ctx.Output<LoDTensor>("Beta2PowOut"), "Must set Moment1Out");
     T beta1 = static_cast<T>(ctx.Attr<float>("beta1"));
     if (ctx.HasInput("Beta1Tensor")) {
       auto* beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");
@@ -421,7 +454,9 @@ class AdamOpKernel : public framework::OpKernel<T> {
             mom2_out.template mutable_data<T>(ctx.GetPlace()),
             lr.template data<T>(), grad.template data<T>(),
             param.template data<T>(),
-            param_out.template mutable_data<T>(ctx.GetPlace()));
+            param_out.template mutable_data<T>(ctx.GetPlace()),
+            beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
+            beta2_pow_out.template mutable_data<T>(ctx.GetPlace()));
         functor(param.numel());
       } else if (platform::is_gpu_place(ctx.GetPlace())) {
         AdamFunctor<T, GPUAdam> functor(
@@ -432,7 +467,9 @@ class AdamOpKernel : public framework::OpKernel<T> {
             mom2_out.template mutable_data<T>(ctx.GetPlace()),
             lr.template data<T>(), grad.template data<T>(),
             param.template data<T>(),
-            param_out.template mutable_data<T>(ctx.GetPlace()));
+            param_out.template mutable_data<T>(ctx.GetPlace()),
+            beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
+            beta2_pow_out.template mutable_data<T>(ctx.GetPlace()));
 
         platform::ForRange<DeviceContext> for_range(
             static_cast<const DeviceContext&>(ctx.device_context()),
@@ -483,7 +520,10 @@ class AdamOpKernel : public framework::OpKernel<T> {
             mom2.template data<T>(),
             mom2_out.template mutable_data<T>(ctx.GetPlace()),
             lr.template data<T>(), grad_data, param.template data<T>(),
-            param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
+            param_out.template mutable_data<T>(ctx.GetPlace()), 
+            beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
+            beta2_pow_out.template mutable_data<T>(ctx.GetPlace()),
+            rows, row_numel,
             grad_merge.rows().size(), lazy_mode);
         if (lazy_mode) {
           VLOG(3) << "run cpu lazy mode";
@@ -566,7 +606,10 @@ class AdamOpKernel : public framework::OpKernel<T> {
             mom2.template data<T>(),
             mom2_out.template mutable_data<T>(ctx.GetPlace()),
             lr.template data<T>(), grad_data, param.template data<T>(),
-            param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
+            param_out.template mutable_data<T>(ctx.GetPlace()), 
+            beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
+            beta2_pow_out.template mutable_data<T>(ctx.GetPlace()),
+            rows, row_numel,
             grad_merge.rows().size(), lazy_mode);
 
         // FIXME(minqiyang): remove BinarySearch in GPU later

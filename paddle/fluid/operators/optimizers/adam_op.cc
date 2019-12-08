@@ -93,10 +93,12 @@ void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       param_dims, ctx->GetInputDim("Moment2"),
       "Param and Moment2 input of AdamOp should have same dimension");
-
+    
   ctx->SetOutputDim("ParamOut", param_dims);
   ctx->SetOutputDim("Moment1Out", param_dims);
   ctx->SetOutputDim("Moment2Out", param_dims);
+  ctx->SetOutputDim("Beta1PowOut", beta1_pow_dims);
+  ctx->SetOutputDim("Beta2PowOut", beta2_pow_dims);
 }
 
 framework::OpKernelType AdamOp::GetExpectedKernelType(
@@ -130,6 +132,8 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("Moment1Out", "(Tensor) Output first moment");
     AddOutput("Moment2Out", "(Tensor) Output second moment");
+    AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator");
+    AddOutput("Beta2PowOut", "(Tensor) Output beta2 power accumulator");
 
     AddAttr<float>("beta1",
                    "(float, default 0.9) "
