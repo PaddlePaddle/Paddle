@@ -454,9 +454,6 @@ void GeoSgdCommunicator::InitImpl(
       vars_first_dimension_[var_name] += section;
     }
 
-    huge_var_list_[var_name] =
-        vars_first_dimension_[var_name] > 100000 ? true : false;
-
     send_var_nums_ += vars_names.size();
   }
 

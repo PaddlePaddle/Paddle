@@ -442,10 +442,6 @@ class GeoSgdCommunicator : public Communicator {
   // if var is sparse, using selected rows, bool=true
   std::unordered_map<std::string, bool> var_list_;
 
-  // if dense var is huge ,like PyramidHash Embedding, height_section > 100000,
-  // we calc & communication it using multi threads
-  std::unordered_map<std::string, bool> huge_var_list_;
-
   std::shared_ptr<BlockingQueue<std::shared_ptr<SparseIdsMap>>>
       need_push_queue_;
   std::vector<SparseIdsMap> ids_send_vec_;
