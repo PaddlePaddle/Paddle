@@ -86,6 +86,13 @@ class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
         self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
 
 
+class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
+    def test_check_output(self):
+        place = core.CPUPlace()
+        data_format = "NHWC"
+        self.check_with_place(place, data_format, self.dtype, [2, 4, 5, 3])
+
+
 class TestMKLDNNBatchNormOpWithReluInference(TestBatchNormOpInference):
     def init_kernel_type(self):
         self.use_mkldnn = True

@@ -233,6 +233,7 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
             predict = fluid.layers.fc(input=x, size=class_num, act='softmax')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
     """
+
     check_type_and_dtype(input, 'input', Variable,
                          ['float16', 'float32', 'float64'], 'cross_entropy')
     if not soft_label:
@@ -729,7 +730,6 @@ def nce(input,
         sampler = 1
     elif sampler == "custom_dist":
         assert custom_dist is not None
-        # assert isinstance(custom_dist, Variable)
 
         custom_dist_len = num_total_classes
         alias_probs_ = [0] * custom_dist_len

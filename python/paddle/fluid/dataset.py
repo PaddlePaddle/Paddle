@@ -772,7 +772,7 @@ class BoxPSDataset(InMemoryDataset):
         .. code-block:: python
 
           import paddle.fluid as fluid
-          dataset = fluid.DatasetFactory.create_dataset("BoxPSDataset")
+          dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
     """
 
     def __init__(self):
@@ -786,34 +786,72 @@ class BoxPSDataset(InMemoryDataset):
     def begin_pass(self):
         """
         Begin Pass
-        Notify BoxPS to begin next pass
-	"""
+        Notify BoxPS to load sparse parameters of next pass to GPU Memory 
+
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              dataset.begin_pass()
+        """
         self.boxps.begin_pass()
 
     def end_pass(self):
         """
         End Pass
-        Notify BoxPS to end current pass
-	"""
+        Notify BoxPS that current pass ended 
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              dataset.end_pass()
+        """
         self.boxps.end_pass()
 
     def wait_preload_done(self):
         """
         Wait async proload done
         Wait Until Feed Pass Done
-	"""
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.preload_into_memory()
+              dataset.wait_preload_done()
+        """
         self.boxps.wait_feed_pass_done()
 
     def load_into_memory(self):
         """
-	Load next pass into memory and notify boxps to fetch its emb from SSD
-	"""
+        Load next pass into memory and notify boxps to fetch its emb from SSD
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.load_into_memory()
+	    """
         self._prepare_to_run()
         self.boxps.load_into_memory()
 
     def preload_into_memory(self):
         """
-	begin async preload next pass while current pass may be training
-	"""
+        Begin async preload next pass while current pass may be training
+        Examples:
+            .. code-block:: python
+
+              import paddle.fluid as fluid
+              dataset = fluid.DatasetFactory().create_dataset("BoxPSDataset")
+              filelist = ["a.txt", "b.txt"]
+              dataset.set_filelist(filelist)
+              dataset.preload_into_memory()
+        """
         self._prepare_to_run()
         self.boxps.preload_into_memory()
