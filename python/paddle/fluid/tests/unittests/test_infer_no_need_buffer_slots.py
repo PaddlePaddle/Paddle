@@ -38,6 +38,7 @@ class TestInferNoNeedBufferSlots(unittest.TestCase):
             loss = self.net()
             sgd = fluid.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)
+
         block = program.global_block()
         for idx, op in enumerate(block.ops):
             op_desc = op.desc
