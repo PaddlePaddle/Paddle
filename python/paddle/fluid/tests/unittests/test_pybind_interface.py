@@ -22,7 +22,19 @@ class TestPybindInference(unittest.TestCase):
 
     # call get_op_attrs_default_value for c++ coverage rate
     def test_get_op_attrs_default_value(self):
-        core.get_op_attrs_default_value(cpt.to_bytes("fc"))
+        core.get_op_attrs_default_value(cpt.to_bytes("fill_constant"))
+
+        # the default values of Op 'fill_constant'
+        #
+        # {"str_value": "",
+        #  "force_cpu": false,
+        #  "value": 1.0,
+        #  "op_role_var": [],
+        #  "shape": [],
+        #  "op_namescope": "",
+        #  "test_attr_1": 1.0,
+        #  "op_callstack": [],
+        #  "op_role": 4096}
 
 
 if __name__ == '__main__':

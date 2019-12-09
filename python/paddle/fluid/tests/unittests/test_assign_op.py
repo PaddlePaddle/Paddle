@@ -37,7 +37,7 @@ class TestAssignOp(op_test.OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestAssignOpError(op_test.OpTest):
+class TestAssignOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The type of input must be Variable or numpy.ndarray.
