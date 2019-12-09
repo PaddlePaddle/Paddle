@@ -483,8 +483,8 @@ void DownpourWorker::CopyDenseTable() {
       VLOG(3) << "dense pull after copy, table=" << dest_table;
       pull_dense_status.resize(0);
       fleet_ptr->PullDenseVarsAsync(*root_scope_, dest_table,
-                                     dense_value_names_[dest_table],
-                                     &pull_dense_status);
+                                    dense_value_names_[dest_table],
+                                    &pull_dense_status);
       for (auto& t : pull_dense_status) {
         t.wait();
         auto status = t.get();
@@ -609,9 +609,9 @@ void DownpourWorker::TrainFilesWithProfiler() {
         }
       }
       timeline.Start();
-      fleet_ptr->PullSparseVarsSync(
-          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-          &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
+      fleet_ptr->PullSparseVarsSync(*thread_scope_, tid, sparse_key_names_[tid],
+                                    &features_[tid], &feature_values_[tid],
+                                    table.fea_dim(), sparse_value_names_[tid]);
       timeline.Pause();
       pull_sparse_time += timeline.ElapsedSec();
       total_time += timeline.ElapsedSec();
@@ -856,9 +856,9 @@ void DownpourWorker::TrainFiles() {
           break;
         }
       }
-      fleet_ptr->PullSparseVarsSync(
-          *thread_scope_, tid, sparse_key_names_[tid], &features_[tid],
-          &feature_values_[tid], table.fea_dim(), sparse_value_names_[tid]);
+      fleet_ptr->PullSparseVarsSync(*thread_scope_, tid, sparse_key_names_[tid],
+                                    &features_[tid], &feature_values_[tid],
+                                    table.fea_dim(), sparse_value_names_[tid]);
       CollectLabelInfo(i);
       FillSparseValue(i);
       auto nid_iter = std::find(sparse_value_names_[tid].begin(),
