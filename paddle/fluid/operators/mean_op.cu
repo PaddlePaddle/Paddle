@@ -28,6 +28,14 @@ struct DivideFunctor {
   T n_inv;
 };
 
+template <typename T>
+__global__ void MeanRunKernel(const T in_data, T* out_data, int N) {
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  for (; idx < N; idx += blockDim.x * gridDim.x) {
+    out_data[idx] = in_data / (static_cast<T>(N));
+  }
+}
+
 template <typename DeviceContext, typename T>
 class MeanCUDAKernel : public framework::OpKernel<T> {
  public:
@@ -54,6 +62,26 @@ class MeanCUDAKernel : public framework::OpKernel<T> {
         context.GetPlace());
     cub::DeviceReduce::Sum(temp_storage, temp_storage_bytes, trans_x, out_data,
                            size_prob, stream);
+  }
+};
+
+template <typename DeviceContext, typename T>
+class MeanCUDAGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto OG = context.Input<Tensor>(framework::GradVarName("Out"));
+    PADDLE_ENFORCE(OG->numel() == 1, "Mean Gradient should be scalar");
+    auto IG = context.Output<Tensor>(framework::GradVarName("X"));
+    IG->mutable_data<T>(context.GetPlace());
+
+    T in_data = OG[0];
+    auto size_prob = IG->numel();
+    auto out_data = IG->data<T>();
+    int threads = 512;
+    int grid = (size_prob + threads - 1) / threads;
+    auto stream = context.cuda_device_context().stream();
+    MeanRunKernel<T><<<grid, threads, 0, stream>>>(in_data, out_data,
+                                                   size_prob);
   }
 };
 }  // namespace operators

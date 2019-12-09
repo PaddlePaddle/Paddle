@@ -40,6 +40,24 @@ class TestMeanOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
+class TestMeanOpLarger(OpTest):
+    def setUp(self):
+        self.op_type = "mean"
+        self.dtype = np.float32
+        self.init_dtype_type()
+        self.inputs = {'X': np.random.random((100, 100)).astype(self.dtype)}
+        self.outputs = {'Out': np.mean(self.inputs["X"])}
+
+    def init_dtype_type(self):
+        pass
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_checkout_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestMeanOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
