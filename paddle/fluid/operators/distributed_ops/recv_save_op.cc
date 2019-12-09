@@ -191,8 +191,7 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     SerializeTensorHeaderToStream(fout, data_type,
                                   framework::make_ddim(origin_shape));
 
-    // framework::Scope &local_scope = ctx.scope().NewScope();
-    std::unique_ptr<framework::Scope> local_scope = ctx.scope().NewTmpScope();
+    framework::Scope &local_scope = context.scope().NewScope();
 
     auto trainer_id = ctx.Attr<int>("trainer_id");
 
@@ -204,7 +203,7 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
 
     for (size_t i = 0; i < slice_varnames.size(); i++) {
       auto &varname = slice_varnames[i];
-      auto *var = local_scope->Var(varname);
+      auto *var = local_scope.Var(varname);
       auto *tensor = var->GetMutable<framework::LoDTensor>();
 
       auto slice_string =
@@ -219,19 +218,20 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
 
       distributed::VarHandlePtr ret;
 
-      ret = rpc_client->AsyncGetVarNoBarrier(endpoints[i], device_ctx,
-                                             *local_scope.get(),
-                                             remote_varnames[i], varname);
+      ret = rpc_client->AsyncGetVarNoBarrier(
+          endpoints[i], device_ctx, local_scope, remote_varnames[i], varname);
 
       PADDLE_ENFORCE_NE(ret->Wait(), 0U, "internal error in RPCClient");
 
       auto &c_tensor = var->Get<framework::LoDTensor>();
 
       SerializeTensorAppendToStream(fout, c_tensor);
-      local_scope->EraseVars({varname});
+      local_scope.EraseVars({varname});
     }
+
     fout.close();
-    local_scope.release();
+
+    context.scope().DeleteScope(&local_scope);
   }
 };
 
