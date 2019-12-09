@@ -59,9 +59,12 @@ class Conv2DFusionOpMaker : public Conv2DOpMaker {
   }
 };
 
-class Conv2DFusionOpInferShape : public framework::InferShapeBase {
+class Conv2DFusionOp : public operators::ConvOp {
  public:
-  void operator()(framework::InferShapeContext* ctx) const override {
+  using operators::ConvOp::ConvOp;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("Input"), true,
                       "Input(Input) of ConvOp should not be null.");
     PADDLE_ENFORCE_EQ(ctx->HasInput("Filter"), true,
@@ -175,7 +178,7 @@ class Conv2DFusionOpInferShape : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    conv2d_fusion, ops::ConvOp, ops::Conv2DFusionOpMaker,
-    ops::Conv2DFusionOpInferShape, ops::ConvOpInferVarType,
+    conv2d_fusion, ops::Conv2DFusionOp, ops::Conv2DFusionOpMaker,
+    ops::ConvOpInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

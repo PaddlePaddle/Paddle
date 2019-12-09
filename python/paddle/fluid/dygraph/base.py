@@ -138,6 +138,7 @@ def guard(place=None):
     train = framework.Program()
     startup = framework.Program()
     tracer = Tracer()
+    VarBase = core.VarBase
 
     if place is None:
         if core.is_compiled_with_cuda():
@@ -171,6 +172,7 @@ def _print_debug_msg(limit=5, is_test=False):
         return unique_name_size, tracer_var_size, alive_cpp_var_size
 
 
+# TODO(zhiqiu): Param 'block' should be deprecated, since block is meaningless in dygraph 
 @framework.dygraph_only
 def to_variable(value, block=None, name=None, zero_copy=None):
     """
@@ -205,28 +207,21 @@ def to_variable(value, block=None, name=None, zero_copy=None):
     if isinstance(value, np.ndarray):
         assert framework.in_dygraph_mode(
         ), "to_variable could only be called in dygraph mode"
-
-        if not block:
-            block = framework.default_main_program().current_block()
-        py_var = framework.Variable(
-            block,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            name=name,
-            shape=value.shape,
-            dtype=value.dtype,
-            stop_gradient=True)
-        var = py_var._ivar.value()
-        tensor = var.get_tensor()
         if isinstance(framework._current_expected_place(),
                       framework.core.CPUPlace):
             if zero_copy is None:
                 zero_copy = True
-            tensor.set(value, framework._current_expected_place(), zero_copy)
         else:
             assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
-            tensor.set(value, framework._current_expected_place(), False)
+            zero_copy = False
+        py_var = core.VarBase(
+            value=value,
+            place=framework._current_expected_place(),
+            persistable=False,
+            zero_copy=zero_copy,
+            name=name if name else '')
         return py_var
-    elif isinstance(value, framework.Variable):
+    elif isinstance(value, (core.VarBase, framework.Variable)):
         return value
     else:
         raise TypeError(

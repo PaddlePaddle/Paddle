@@ -294,9 +294,9 @@ void _concatCompute(const std::vector<paddle::framework::Tensor> &ins,
   }
 }
 
-void _getSliceinfo(const framework::Tensor &self, py::object obj,
-                   const int64_t dim, int64_t *pstart, int64_t *pstop,
-                   int64_t *pstep, int64_t *pslicelength) {
+inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
+                          const int64_t dim, int64_t *pstart, int64_t *pstop,
+                          int64_t *pstep, int64_t *pslicelength) {
   auto &start = *pstart;
   auto &stop = *pstop;
   auto &step = *pstep;
@@ -486,7 +486,8 @@ inline framework::Tensor *PySliceTensor(const framework::Tensor &self,
   }
 }
 
-inline py::array TensorToPyArray(const framework::Tensor &tensor) {
+inline py::array TensorToPyArray(const framework::Tensor &tensor,
+                                 bool need_deep_copy = false) {
   if (!tensor.IsInitialized()) {
     return py::array();
   }
@@ -510,9 +511,26 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor) {
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(tensor.type());
 
   if (!is_gpu_tensor) {
-    return py::array(py::buffer_info(
-        const_cast<void *>(tensor_buf_ptr), sizeof_dtype, py_dtype_str,
-        static_cast<size_t>(tensor.dims().size()), py_dims, py_strides));
+    if (!need_deep_copy) {
+      return py::array(py::buffer_info(
+          const_cast<void *>(tensor_buf_ptr), sizeof_dtype, py_dtype_str,
+          static_cast<size_t>(tensor.dims().size()), py_dims, py_strides));
+    } else {
+      py::array py_arr(py::dtype(py_dtype_str.c_str()), py_dims, py_strides);
+      PADDLE_ENFORCE_EQ(py_arr.writeable(), true,
+                        platform::errors::InvalidArgument(
+                            "PyArray must be writable, otherwise memory leak "
+                            "or double free would occur"));
+      PADDLE_ENFORCE_EQ(py_arr.owndata(), true,
+                        platform::errors::InvalidArgument(
+                            "PyArray must own data, otherwise memory leak "
+                            "or double free would occur"));
+      platform::CPUPlace place;
+      size_t copy_bytes = sizeof_dtype * numel;
+      paddle::memory::Copy(place, py_arr.mutable_data(), place, tensor_buf_ptr,
+                           copy_bytes);
+      return py_arr;
+    }
   }
 
 #ifdef PADDLE_WITH_CUDA
