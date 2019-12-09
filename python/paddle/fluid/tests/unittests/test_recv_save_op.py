@@ -19,6 +19,7 @@ import signal
 import time
 import shutil
 import unittest
+
 from multiprocessing import Process
 
 import numpy as np
@@ -68,7 +69,7 @@ class TestListenAndServOp(unittest.TestCase):
         self.ps_timeout = 5
 
     def _start_pserver(self, pserver_id, pserver_func):
-        p = Process(target=pserver_func, args=(pserver_id,))
+        p = Process(target=pserver_func, args=(pserver_id, ))
         p.daemon = True
         p.start()
         return p
@@ -182,26 +183,29 @@ class TestListenAndServOp(unittest.TestCase):
 
         vars_overview = VarsDistributed()
 
-        orig_var = VarStruct(name=var_name,
-                             type=fluid.core.VarDesc.VarType.LOD_TENSOR,
-                             shape=[10, 8],
-                             dtype="float32",
-                             lod_level=0,
-                             persistable=True)
+        orig_var = VarStruct(
+            name=var_name,
+            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            shape=[10, 8],
+            dtype="float32",
+            lod_level=0,
+            persistable=True)
 
-        slice_0_var = VarStruct(name=var_name,
-                                type=fluid.core.VarDesc.VarType.LOD_TENSOR,
-                                shape=[5, 8],
-                                dtype="float32",
-                                lod_level=0,
-                                persistable=True)
+        slice_0_var = VarStruct(
+            name=var_name,
+            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            shape=[5, 8],
+            dtype="float32",
+            lod_level=0,
+            persistable=True)
 
-        slice_1_var = VarStruct(name=var_name,
-                                type=fluid.core.VarDesc.VarType.LOD_TENSOR,
-                                shape=[5, 8],
-                                dtype="float32",
-                                lod_level=0,
-                                persistable=True)
+        slice_1_var = VarStruct(
+            name=var_name,
+            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            shape=[5, 8],
+            dtype="float32",
+            lod_level=0,
+            persistable=True)
 
         vars_overview.add_distributed_var(
             origin_var=orig_var,
@@ -209,7 +213,8 @@ class TestListenAndServOp(unittest.TestCase):
             block_id=0,
             offset=0,
             is_slice=True,
-            vtype="RemotePrefetch", endpoint="{}:{}".format("127.0.0.1", port0))
+            vtype="RemotePrefetch",
+            endpoint="{}:{}".format("127.0.0.1", port0))
 
         vars_overview.add_distributed_var(
             origin_var=orig_var,
@@ -217,7 +222,8 @@ class TestListenAndServOp(unittest.TestCase):
             block_id=1,
             offset=40,
             is_slice=True,
-            vtype="RemotePrefetch", endpoint="{}:{}".format("127.0.0.1", port1))
+            vtype="RemotePrefetch",
+            endpoint="{}:{}".format("127.0.0.1", port1))
 
         program = Program()
         program._is_distributed = True
@@ -242,7 +248,8 @@ class TestListenAndServOp(unittest.TestCase):
         param_name = "table"
 
         for place in places:
-            self._save_by_io_persistables(place, port0, port1, param_dir, param_name)
+            self._save_by_io_persistables(place, port0, port1, param_dir,
+                                          param_name)
 
         # raise SIGTERM to pserver
         os.kill(p0.pid, signal.SIGINT)
