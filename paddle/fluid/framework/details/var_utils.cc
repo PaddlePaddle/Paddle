@@ -81,7 +81,11 @@ static void InitWhiteListFormEnv() {
     std::string op_role;
     while (std::getline(ss, op_role, ',')) {
       PADDLE_ENFORCE_EQ(role_str2int.find(op_role) != role_str2int.end(), true,
-                        "Skip role must be one of ...");
+                        platform::errors::InvalidArgument(
+                            "Skip role must be one of "
+                            "{forward,backward,optimize,rpc,dist,lrsched,loss,"
+                            "default}, instead of %s",
+                            op_role));
       op_role_nan_inf_white_list |= role_str2int.at(op_role);
     }
   }
@@ -91,7 +95,10 @@ static void InitWhiteListFormEnv() {
     std::string op_var;
     while (std::getline(ss, op_var, ',')) {
       auto pos = op_var.find(":");
-      PADDLE_ENFORCE_EQ(pos != std::string::npos, true);
+      PADDLE_ENFORCE_EQ(
+          pos != std::string::npos, true,
+          platform::errors::InvalidArgument(
+              "Skip var format must be op:var, instead of %s", op_var));
       std::string op = op_var.substr(0, pos);
       std::string var = op_var.substr(pos + 1);
 
@@ -111,8 +118,9 @@ static void PrintNanInf(const T* value, const size_t numel, int print_num,
   }
   bool has_nan_inf = true;
   PADDLE_ENFORCE_EQ(has_nan_inf, false,
-                    "===ERROR: in [op=%s] [tensor=%s] find nan or inf===",
-                    op_type, var_name);
+                    platform::errors::PreconditionNotMet(
+                        "===ERROR: in [op=%s] [tensor=%s] find nan or inf===",
+                        op_type, var_name));
 }
 
 // openmp 4.0, reduction with fp16
@@ -184,7 +192,9 @@ void CheckVarHasNanOrInf(const std::string& op_type,
                          const std::string& var_name,
                          const platform::Place& place) {
   auto* var = scope.FindVar(var_name);
-  PADDLE_ENFORCE_NOT_NULL(var, "can't find var:%s", var_name);
+  PADDLE_ENFORCE_NOT_NULL(
+      var, platform::errors::NotFound("In op=%s, can't find var:%s", op_type,
+                                      var_name));
 
   const Tensor* tensor{nullptr};
   if (var->IsType<framework::LoDTensor>()) {
@@ -209,7 +219,9 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     tensor_check<platform::CUDADeviceContext>(op_type, var_name, *tensor,
                                               place);
 #else
-    PADDLE_THROW("PaddlePaddle should compile with GPU.");
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",
+        var_name));
 #endif
     return;
   }

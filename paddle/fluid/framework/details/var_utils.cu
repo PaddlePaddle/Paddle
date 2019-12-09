@@ -31,7 +31,9 @@ static std::once_flag init_multi_gpu_op_var_map_flag;
 
 void InitMultiGPUOpVarMap() {
   int dev_count = platform::GetCUDADeviceCount();
-  PADDLE_ENFORCE_GT(dev_count, 0, "cuda device must > 0");
+  PADDLE_ENFORCE_GT(dev_count, 0,
+                    platform::errors::NotFound(
+                        "cuda device must > 0, now dev_count=%d", dev_count));
 
   // https://stackoverflow.com/questions/16465633/how-can-i-use-something-like-stdvectorstdmutex
   std::vector<std::unordered_map<std::string, memory::AllocationPtr>> tmp_multi(
@@ -111,9 +113,10 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
   auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
       platform::DeviceContextPool::Instance().Get(tensor_.place()));
   int dev_id = boost::get<platform::CUDAPlace>(tensor_.place()).device;
-  PADDLE_ENFORCE_EQ((dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex.size()),
-                    true, "GPU dev_id must >=0 and < dev_count=%d",
-                    multi_op_var2gpu_str_mutex.size());
+  PADDLE_ENFORCE_EQ(
+      (dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex.size()), true,
+      platform::errors::OutOfRange("GPU dev_id must >=0 and < dev_count=%d",
+                                   multi_op_var2gpu_str_mutex.size()));
 
   std::string op_var = "[op=" + op_type_ + "] [tensor=" + var_name_ + "]";
   char* gpu_str_ptr = NULL;
@@ -131,14 +134,24 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
       op_var2gpu_str.emplace(op_var, std::move(gpu_str_tensor));
 
       auto iter = op_var2gpu_str.find(op_var);
-      PADDLE_ENFORCE_EQ(iter != op_var2gpu_str.end(), true);
+      PADDLE_ENFORCE_EQ(iter != op_var2gpu_str.end(), true,
+                        platform::errors::PreconditionNotMet(
+                            "op_var=%s should successed insert into "
+                            "op_var2gpu_str, but now failed",
+                            op_var));
 
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaMemcpyAsync(gpu_str_ptr, iter->first.c_str(), op_var.length() + 1,
-                          cudaMemcpyHostToDevice, dev_ctx->stream()));
+                          cudaMemcpyHostToDevice, dev_ctx->stream()),
+          platform::errors::External(
+              "Async cudaMemcpy op_var info to gpu failed."));
     } else {  // get
       auto iter = op_var2gpu_str.find(op_var);
-      PADDLE_ENFORCE_EQ(iter != op_var2gpu_str.end(), true);
+      PADDLE_ENFORCE_EQ(iter != op_var2gpu_str.end(), true,
+                        platform::errors::PreconditionNotMet(
+                            "op_var=%s should be in the op_var2gpu_str, but "
+                            "now can't find it",
+                            op_var));
       gpu_str_ptr = reinterpret_cast<char*>(iter->second->ptr());
     }
   }
