@@ -83,7 +83,7 @@ function cmake_base() {
             fi
         elif [ "$1" == "cp35-cp35m" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.5" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/:/usr/local/gcc-8.2/lib64
                 export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/python3
@@ -95,7 +95,7 @@ function cmake_base() {
             fi
         elif [ "$1" == "cp36-cp36m" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.6" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/:/usr/local/gcc-8.2/lib64
                 export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.6/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.6/bin/python3
@@ -107,7 +107,7 @@ function cmake_base() {
             fi
         elif [ "$1" == "cp37-cp37m" ]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
-                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/:/usr/local/gcc-8.2/lib64
                 export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
