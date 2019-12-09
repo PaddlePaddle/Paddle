@@ -903,14 +903,17 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                     dtype=slice_var.dtype,
                     persistable=True)
 
+                idx = main_program._endpoints.index(main_program._ps_endpoint)
+
                 if origin_var.type == core.varDesc.VarType.SELECTED_ROWS:
                     load_block.append_op(
                         type='load',
                         inputs={},
                         outputs={'Out': [slice]},
                         attrs={
-                            'file_path':
-                            os.path.join(dirname, "__slice__", slice.name)
+                            'file_path': os.path.join(dirname, "__slice__",
+                                                      "{}.slice.{}".format(
+                                                          slice_var.name, idx))
                         })
                 else:
                     load_block.append_op(
