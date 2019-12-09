@@ -69,7 +69,7 @@ class TestVariable(unittest.TestCase):
 
     def test_relu(self):
         with fluid.dygraph.guard():
-            a = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+            a = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             x = fluid.dygraph.to_variable(a)
 
             res1 = layers.relu(x)
@@ -101,7 +101,7 @@ class TestVariable(unittest.TestCase):
     def test_traced_layer(self):
         with fluid.dygraph.guard():
             layer = TestTracedLayer("test_traced_layer")
-            a = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+            a = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
             x = fluid.dygraph.to_variable(a)
             res_dygraph, static_layer = TracedLayer.trace(
                 layer, inputs=[x])  # dygraph out
