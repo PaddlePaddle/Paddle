@@ -500,7 +500,8 @@ class HDFSClient(object):
                local_path,
                multi_processes=5,
                overwrite=False,
-               retry_times=5):
+               retry_times=5,
+               async_upload=False):
         """
         Upload files to HDFS using multi process.
 
@@ -520,11 +521,12 @@ class HDFSClient(object):
                 put_commands = ["-put", data, hdfs_path_single]
                 returncode, output, errors = self.__run_hdfs_cmd(put_commands,
                                                                  retry_times)
-
                 if returncode:
                     _logger.error("Put local path: {} to HDFS path: {} failed".
                                   format(data, hdfs_path_single))
                     return False
+                _logger.info("Finish upload datas {} to {}".format(
+                    data, hdfs_path_single))
             return True
 
         def get_local_files(path):
@@ -568,14 +570,18 @@ class HDFSClient(object):
                     hdfs_path,
                     process_datas, ))
             procs.append(p)
-            p.start()
 
-        # complete the processes
-        for proc in procs:
-            proc.join()
-
-        _logger.info("Finish upload datas from {} to {}".format(local_path,
-                                                                hdfs_path))
+        if not async_upload:
+            # complete the processes
+            for proc in procs:
+                proc.start()
+                proc.join()
+            _logger.info("Finish upload datas from {} to {}".format(local_path,
+                                                                    hdfs_path))
+        else:
+            map(multiprocessing.Process.start, procs)
+            _logger.info("Uploading ... from {} to {}".format(local_path,
+                                                              hdfs_path))
 
     def upload_dir(self, dest_dir, local_dir, overwrite=False):
         """
