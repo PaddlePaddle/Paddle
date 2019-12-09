@@ -70,7 +70,46 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetInput("X", inputs);
     op->SetOutput("Out", outputs);
     op->SetAttr("use_quantizer", use_quantizer);
+  } else if (type == "dequantize") {
+    op->SetInput("Input", {inputs[0]});
+    op->SetOutput("Output", {outputs[0]});
+    op->SetAttr("Scale", 1.0f);
   }
+}
+
+void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
+                      const char* var_name) {
+  auto x = scope->Var(var_name);
+  auto tensor = x->GetMutable<LoDTensor>();
+  tensor->mutable_data(place, proto::VarType::FP32, 1);
+}
+
+void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
+                 const std::initializer_list<std::string> variable_names,
+                 int* original_nodes_num, int* current_nodes_num) {
+  auto place = paddle::platform::CPUPlace();
+  NaiveExecutor exe{place};
+  Scope scope;
+  exe.CreateVariables(prog, 0, true, &scope);
+  auto* scales = new VarQuantScale();
+  for (auto& v : variable_names) {
+    InitTensorHolder(&scope, place, v.c_str());
+    LoDTensor tensor;
+    tensor.Resize({1});
+    auto* ptr = tensor.mutable_data<double>(place);
+    ptr[0] = 2.0;
+
+    (*scales)[v] = std::make_pair(false, std::move(tensor));
+  }
+
+  (*graph)->SetNotOwned(kParamScopeAttr, &scope);
+  std::unique_ptr<Pass> pass =
+      PassRegistry::Instance().Get("cpu_quantize_pass");
+  pass->Set("quant_var_scales", scales);
+
+  *original_nodes_num = (*graph)->Nodes().size();
+  (*graph).reset(pass->Apply((*graph).release()));
+  *current_nodes_num = (*graph)->Nodes().size();
 }
 
 namespace {
@@ -111,41 +150,6 @@ ProgramDesc BuildProgramDesc(bool use_mkldnn, bool use_quantizer) {
         use_quantizer);
 
   return prog;
-}
-
-void InitTensorHolder(Scope* scope, const paddle::platform::Place& place,
-                      const char* var_name) {
-  auto x = scope->Var(var_name);
-  auto tensor = x->GetMutable<LoDTensor>();
-  tensor->mutable_data(place, proto::VarType::FP32, 1);
-}
-
-void PreparePass(std::unique_ptr<ir::Graph>* graph, const ProgramDesc& prog,
-                 const std::initializer_list<std::string> variable_names,
-                 int* original_nodes_num, int* current_nodes_num) {
-  auto place = paddle::platform::CPUPlace();
-  NaiveExecutor exe{place};
-  Scope scope;
-  exe.CreateVariables(prog, 0, true, &scope);
-  auto* scales = new VarQuantScale();
-  for (auto& v : variable_names) {
-    InitTensorHolder(&scope, place, v.c_str());
-    LoDTensor tensor;
-    tensor.Resize({1});
-    auto* ptr = tensor.mutable_data<double>(place);
-    ptr[0] = 2.0;
-
-    (*scales)[v] = std::make_pair(false, std::move(tensor));
-  }
-
-  (*graph)->SetNotOwned(kParamScopeAttr, &scope);
-  std::unique_ptr<Pass> pass =
-      PassRegistry::Instance().Get("cpu_quantize_pass");
-  pass->Set("quant_var_scales", scales);
-
-  *original_nodes_num = (*graph)->Nodes().size();
-  (*graph).reset(pass->Apply((*graph).release()));
-  *current_nodes_num = (*graph)->Nodes().size();
 }
 
 void MainTest(const ProgramDesc& prog, int conv_count, int pool_count,
@@ -217,9 +221,6 @@ TEST(CpuQuantizePass, do_not_quantize) {
            1.0f);
 }
 
-}  // namespace
-
-namespace {
 static const std::initializer_list<std::string> variable_names_concat = {
     "a1", "b1", "a2", "b2", "c", "d"};
 
@@ -283,9 +284,7 @@ TEST(CpuQuantizePass, concat) {
   MainTestConcat(BuildProgramDescConcat(), pool_count, concat_count,
                  quant_count, dequant_count, added_nodes_count);
 }
-}  // namespace
 
-namespace {
 static const std::initializer_list<std::string> variable_names_transpose = {
     "a", "w1", "b", "c", "w2", "d", "e", "f"};
 
@@ -365,35 +364,25 @@ TEST(CpuQuantizePass, transpose) {
   int quant_count = 4;
   int dequant_count = 4;
   // 4 Quant + 4 IN + 4 DeQuant + 4 OUT
-  int added_nodes_count = 16;
+  int added_nodes_count = 4 + 4 + 4 + 4;
   MainTestTranspose(BuildProgramDescTranspose(), conv_count, transpose_count,
                     quant_count, dequant_count, added_nodes_count, 2.0f * 127);
 }
-}  // namespace
 
-namespace {
 static const std::initializer_list<std::string> variable_names_reshape = {
     "a", "w1", "b", "c", "d", "e", "f"};
 
-// a->Transpose->b
+// a->Dequantize->b
 // b->Reshape->c
-// c->Transpose->d
-// d->Reshape->e
-// e->Dropout->f
+// c->Dropout->d
 ProgramDesc BuildProgramDescReshape() {
   ProgramDesc prog;
   for (auto& v : variable_names_transpose) {
-    auto* var = prog.MutableBlock(0)->Var(v);
-    if (v.find("w") == 0) {
-      var->SetPersistable(true);
-    }
+    prog.MutableBlock(0)->Var(v);
   }
-
-  SetOp(&prog, "conv2d", "Conv1", {"a", "w1"}, {"b"}, true, true);
-  SetOp(&prog, "reshape2", "Reshape1", {"b"}, {"c"}, true, true);
-  SetOp(&prog, "transpose2", "Transpose2", {"c"}, {"d"}, true, true);
-  SetOp(&prog, "reshape2", "Reshape2", {"d"}, {"e"}, true, true);
-  SetOp(&prog, "dropout", "Dropout", {"e"}, {"f"}, true, false);
+  SetOp(&prog, "dequantize", "Dequantize1", {"a"}, {"b"}, true);
+  SetOp(&prog, "reshape2", "Reshape2", {"b"}, {"c"}, true, true);
+  SetOp(&prog, "dropout", "Dropout", {"c"}, {"d"}, true, false);
 
   return prog;
 }
@@ -415,18 +404,19 @@ ProgramDesc BuildProgramDescReshapeBetweenNonQuantizedOp() {
 }
 
 void MainTestReshape(const ProgramDesc& prog, int transpose_count,
-                     int reshape_count, int conv_count, int quant_count,
-                     int dequant_count, int added_nodes_count, float scale) {
+                     int reshape_count, int quant_count, int dequant_count,
+                     int added_nodes_count, float scale) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
   int original_nodes_num, current_nodes_num;
   PreparePass(&graph, prog, variable_names_reshape, &original_nodes_num,
               &current_nodes_num);
 
+  float quant_scale = 1.0f;
+  float dequant_scale = 1.0f;
   int quantize_nodes_count = 0;
   int dequantize_nodes_count = 0;
   int transpose_nodes_count = 0;
   int reshape_nodes_count = 0;
-  int conv_nodes_count = 0;
   for (auto* node : graph->Nodes()) {
     if (node->IsOp()) {
       auto* op = node->Op();
@@ -434,39 +424,41 @@ void MainTestReshape(const ProgramDesc& prog, int transpose_count,
         transpose_nodes_count++;
       } else if (op->Type() == "reshape2") {
         reshape_nodes_count++;
-      } else if (op->Type() == "conv2d") {
-        conv_nodes_count++;
       } else if (op->Type() == "quantize") {
         quantize_nodes_count++;
+        quant_scale = boost::get<float>(op->GetAttr("Scale"));
+        EXPECT_EQ(quant_scale, scale) << "Scale for node '" + op->Type() + "'.";
       } else if (op->Type() == "dequantize") {
         dequantize_nodes_count++;
+        auto op_name = op->GetAttrIfExists<std::string>("name");
+        std::cout << op_name << " \n";
+        if (op_name != "Dequantize1") {
+          dequant_scale = boost::get<float>(op->GetAttr("Scale"));
+          EXPECT_EQ(dequant_scale, scale)
+              << "Scale for node '" + op->Type() + "'.";
+        }
       }
     }
   }
   EXPECT_EQ(transpose_nodes_count, transpose_count);
   EXPECT_EQ(reshape_nodes_count, reshape_count);
-  EXPECT_EQ(conv_nodes_count, conv_count);
   EXPECT_EQ(quantize_nodes_count, quant_count);
   EXPECT_EQ(dequantize_nodes_count, dequant_count);
   EXPECT_EQ(original_nodes_num + added_nodes_count, current_nodes_num);
 }
 
 TEST(CpuQuantizePass, reshape) {
-  // a1->Quant->a2->Conv2d->b1->Dequant->b2
-  // b2->Quant->b3->Reshape1->c1->Dequant->c2
-  // c2->Quant->c3->Transpose2->d1->Dequant->d2
-  // d2->Quant->d3->Reshape2->e1->Dequant->e2
-  // e2->Dropout->f
-  int reshape_count = 2;
-  int transpose_count = 1;
-  int conv_count = 1;
-  int quant_count = 4;
-  int dequant_count = 4;
-  // 4 Quant + 4 IN + 4 DeQuant + 4 OUT
-  int added_nodes_count = 16;
+  // a->Dequantize->b
+  // b2->Quant->b3->Reshape2->c1->Dequant->c2
+  // c2->Dropout->d
+  int reshape_count = 1;
+  int transpose_count = 0;
+  int quant_count = 1;
+  int dequant_count = 2;
+  // 1 Quant + 1 IN + 1 DeQuant + 1 OUT
+  int added_nodes_count = 4;
   MainTestReshape(BuildProgramDescReshape(), transpose_count, reshape_count,
-                  conv_count, quant_count, dequant_count, added_nodes_count,
-                  2.0f * 127);
+                  quant_count, dequant_count, added_nodes_count, 2.0f * 127);
 }
 
 TEST(CpuQuantizePass, reshapeBetweenNonQuantizedOp) {
@@ -475,14 +467,13 @@ TEST(CpuQuantizePass, reshapeBetweenNonQuantizedOp) {
   // c->Dropout->d
   int reshape_count = 1;
   int transpose_count = 1;
-  int conv_count = 0;
   int quant_count = 0;
   int dequant_count = 0;
   // 0 Quant + 0 IN + 0 DeQuant + 0 OUT
   int added_nodes_count = 0;
   MainTestReshape(BuildProgramDescReshapeBetweenNonQuantizedOp(),
-                  transpose_count, reshape_count, conv_count, quant_count,
-                  dequant_count, added_nodes_count, 2.0f * 127);
+                  transpose_count, reshape_count, quant_count, dequant_count,
+                  added_nodes_count, 2.0f * 127);
 }
 }  // namespace
 
