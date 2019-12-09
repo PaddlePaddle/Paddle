@@ -619,9 +619,9 @@ void GeoSgdCommunicator::SendThread() {
                 send_threadpool_->enqueue(std::move(send_task)));
           }
         }
-        for (auto &task_f : task_futures) {
-          task_f.wait();
-        }
+      }
+      for (auto &task_f : task_futures) {
+        task_f.wait();
       }
       ids_send_vec_.clear();
     }
@@ -638,7 +638,6 @@ std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
   auto origin_var_name = DeltaVarToVar(var_name);
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   std::unordered_set<int64_t> ids_set;
-  VLOG(3) << "/: " << ids_send_vec.size();
   for (auto ids_map : ids_send_vec) {
     for (auto id : ids_map[origin_var_name][splited_var_index]) {
       ids_set.insert(id);
