@@ -191,7 +191,7 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     SerializeTensorHeaderToStream(fout, data_type,
                                   framework::make_ddim(origin_shape));
 
-    framework::Scope &local_scope = context.scope().NewScope();
+    framework::Scope &local_scope = ctx.scope().NewScope();
 
     auto trainer_id = ctx.Attr<int>("trainer_id");
 
@@ -230,8 +230,7 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     }
 
     fout.close();
-
-    context.scope().DeleteScope(&local_scope);
+    ctx.scope().DeleteScope(&local_scope);
   }
 };
 
