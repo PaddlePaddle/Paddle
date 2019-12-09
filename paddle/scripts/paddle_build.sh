@@ -506,6 +506,57 @@ function generate_api_spec() {
     deactivate
 }
 
+function check_change_of_unittest() {
+    fetch_upstream_develop_if_not_exist
+    cur_branch=`git branch | grep \* | cut -d ' ' -f2` 
+    git checkout -b develop_base_pr upstream/$BRANCH
+    cmake_gen $1
+    generate_unittest_spec "DEV"
+    git checkout $cur_branch
+    git branch -D develop_base_pr
+    rm -rf ${PADDLE_ROOT}/build
+    cmake_gen $1
+    generate_unittest_spec "PR"
+
+    # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244
+    approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+    tests_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
+    if [ "$test_spec_diff" != "" ]; then
+        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 46782768 6836917 43953930 47554610`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "****************"
+            echo -e "You must have one RD (luotao1 or XiaoguangHu01 or phlrain or lanxianghit or zhouwei25) approval for the deletion of unit tests.\n"
+            echo "There are one approved errors."
+            echo "****************"
+            exit 1
+        fi
+    fi
+    ENABLE_MAKE_CLEAN="OFF"
+}
+
+function generate_unittest_spec() {
+    spec_kind=$1
+    if [ "$spec_kind" == "DEV" ]; then
+        cat <<EOF
+        ============================================================
+        Complete cmake first time to get number of unit tests in develop.
+        ============================================================
+EOF
+    elif [ "$spec_kind" == "PR" ]; then
+        cat <<EOF
+        ============================================================
+        Complete cmake second time to get number of unit tests in this PR.
+        ============================================================
+EOF
+    else
+        echo "Not supported $1"
+        exit 1
+    fi
+    spec_path=${PADDLE_ROOT}/paddle/fluid/UNITTEST_${spec_kind}.spec 
+    ctest -N | awk -F ':' '{print $2}' | sed '/^$/d' | sed '$d' > ${spec_path}
+}
+
 
 function assert_api_spec_approvals() {
     /bin/bash ${PADDLE_ROOT}/tools/check_api_approvals.sh
@@ -1108,6 +1159,11 @@ function main() {
         ;;
       maccheck)
         cmake_gen ${PYTHON_ABI:-""}
+        build_mac
+        run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        ;;
+      maccheck_py35)
+        check_change_of_unittest ${PYTHON_ABI:-""}
         build_mac
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
