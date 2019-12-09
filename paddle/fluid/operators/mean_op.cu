@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "cub/cub.cuh"
 #include "paddle/fluid/operators/mean_op.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -20,7 +21,8 @@ namespace operators {
 
 template <typename T>
 struct DivideFunctor {
-  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
+  HOSTDEVICE explicit inline DivideFunctor(int n)
+      : n_inv(static_cast<T>(1.0 / n)) {}
 
   HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
 
@@ -54,14 +56,19 @@ class MeanCUDAKernel : public framework::OpKernel<T> {
         in_data, transformer);
     size_t temp_storage_bytes = 0;
 
-    cub::DeviceReduce::Sum(nullptr, temp_storage_bytes, trans_x, out_data,
-                           size_prob, stream);
+    auto err = cub::DeviceReduce::Sum(nullptr, temp_storage_bytes, trans_x,
+                                      out_data, size_prob, stream);
+    PADDLE_ENFORCE_CUDA_SUCCESS(err,
+                                "MeanOP failed to get reduce workspace size",
+                                cudaGetErrorString(err));
     framework::Tensor tmp;
     auto* temp_storage = tmp.mutable_data<uint8_t>(
         framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
         context.GetPlace());
-    cub::DeviceReduce::Sum(temp_storage, temp_storage_bytes, trans_x, out_data,
-                           size_prob, stream);
+    err = cub::DeviceReduce::Sum(temp_storage, temp_storage_bytes, trans_x,
+                                 out_data, size_prob, stream);
+    PADDLE_ENFORCE_CUDA_SUCCESS(err, "MeanOP failed to run reduce computation",
+                                cudaGetErrorString(err));
   }
 };
 
@@ -70,7 +77,7 @@ class MeanCUDAGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto OG = context.Input<Tensor>(framework::GradVarName("Out"));
-    PADDLE_ENFORCE(OG->numel() == 1, "Mean Gradient should be scalar");
+    PADDLE_ENFORCE_EQ(OG->numel(), 1, "Mean Gradient should be scalar");
     auto IG = context.Output<Tensor>(framework::GradVarName("X"));
     IG->mutable_data<T>(context.GetPlace());
 
