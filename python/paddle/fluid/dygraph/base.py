@@ -172,6 +172,7 @@ def _print_debug_msg(limit=5, is_test=False):
         return unique_name_size, tracer_var_size, alive_cpp_var_size
 
 
+# TODO(zhiqiu): Param 'block' should be deprecated, since block is meaningless in dygraph 
 @framework.dygraph_only
 def to_variable(value, block=None, name=None, zero_copy=None):
     """
@@ -215,10 +216,10 @@ def to_variable(value, block=None, name=None, zero_copy=None):
             zero_copy = False
         py_var = core.VarBase(
             value=value,
-            name=name,
-            persistable=False,
             place=framework._current_expected_place(),
-            zero_copy=zero_copy)
+            persistable=False,
+            zero_copy=zero_copy,
+            name=name if name else '')
         return py_var
     elif isinstance(value, (core.VarBase, framework.Variable)):
         return value

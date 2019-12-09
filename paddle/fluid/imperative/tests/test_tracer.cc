@@ -280,8 +280,8 @@ TEST(test_tracer, test_unique_name_generator) {
   imperative::Tracer tracer;
   auto fc_1 = tracer.GenerateUniqueName("fc");
   auto fc_2 = tracer.GenerateUniqueName("fc");
-  ASSERT_STREQ("fc_1", fc_1.c_str());
-  ASSERT_STREQ("fc_2", fc_2.c_str());
+  ASSERT_STREQ("fc_0", fc_1.c_str());
+  ASSERT_STREQ("fc_1", fc_2.c_str());
 }
 
 TEST(test_tracer, test_current_tracer) {
