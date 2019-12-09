@@ -559,7 +559,7 @@ void GeoSgdCommunicator::SendThread() {
 
   while (running_) {
     std::vector<std::future<void>> task_futures;
-    task_futures.reserve(send_varname_to_ctx_.size());
+    task_futures.reserve(send_var_nums_);
 
     int wait_times = 0;
     while (ids_send_vec_.size() < geo_need_push_nums_) {
@@ -593,6 +593,7 @@ void GeoSgdCommunicator::SendThread() {
           for (auto &splited_var_name : iter.second.splited_var_names) {
             auto send_task = [this, &var_name, &splited_var_name] {
               auto before_run_geo = GetCurrentUS();
+              VLOG(3) << "ids_send_vec_ size: " << ids_send_vec_.size();
               auto ids_set =
                   SparseIdsMerge(ids_send_vec_, var_name, splited_var_name);
               SendUpdateSparseVars(var_name, splited_var_name, ids_set);
@@ -637,7 +638,7 @@ std::unordered_set<int64_t> GeoSgdCommunicator::SparseIdsMerge(
   auto origin_var_name = DeltaVarToVar(var_name);
   auto splited_var_index = GetSplitedVarIndex(var_name, splited_var_name);
   std::unordered_set<int64_t> ids_set;
-
+  VLOG(3) << "Sparse id merge ids_send_vec size: " << ids_send_vec.size();
   for (auto ids_map : ids_send_vec) {
     for (auto id : ids_map[origin_var_name][splited_var_index]) {
       ids_set.insert(id);
