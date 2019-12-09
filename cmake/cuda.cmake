@@ -54,7 +54,7 @@ function(detect_installed_gpus out_variable)
       set(CUDA_gpu_detect_output ${nvcc_out} CACHE INTERNAL "Returned GPU architetures from detect_installed_gpus tool" FORCE)
     endif()
   endif()
-
+  
   if(NOT CUDA_gpu_detect_output)
     message(STATUS "Automatic GPU detection failed. Building for all known architectures.")
     set(${out_variable} ${paddle_known_gpu_archs} PARENT_SCOPE)

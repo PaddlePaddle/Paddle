@@ -2,13 +2,11 @@ cmake_minimum_required(VERSION 3.0)
 project(cpp_inference_demo CXX C)
 option(WITH_MKL        "Compile demo with MKL/OpenBlas support, default use MKL."       ON)
 option(WITH_GPU        "Compile demo with GPU/CPU, default use CPU."                    OFF)
-option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
 option(USE_TENSORRT "Compile demo with TensorRT."   OFF)
-if(NOT WITH_STATIC_LIB)
-  add_definitions("-DPADDLE_WITH_SHARED_LIB")
-endif()
 
-macro(safe_set_static_flag)
+add_definitions("-DPADDLE_WITH_SHARED_LIB")
+
+macro(safe_set_static_flag) 
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
         CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
@@ -123,9 +121,8 @@ else()
   endif()
 endif()
 
-# Note: libpaddle_inference_api.so/a must put before libpaddle_fluid.so/a
-if(WITH_STATIC_LIB)
-  set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
+if(WIN32)
+  set(DEPS ${PADDLE_LIB}/paddle/lib/paddle_fluid${CMAKE_STATIC_LIBRARY_SUFFIX})
 else()
   set(DEPS ${PADDLE_LIB}/paddle/lib/libpaddle_fluid${CMAKE_SHARED_LIBRARY_SUFFIX})
 endif()
