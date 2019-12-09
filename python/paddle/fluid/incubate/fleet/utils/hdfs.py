@@ -511,6 +511,7 @@ class HDFSClient(object):
             multi_processes(int|5): the upload data process at the same time, default=5
             overwrite(bool|False): will overwrite file on HDFS or not
             retry_times(int): upload file max retry time.
+            async_upload(bool|False):using async thread to upload files
 
         Returns:
             None
