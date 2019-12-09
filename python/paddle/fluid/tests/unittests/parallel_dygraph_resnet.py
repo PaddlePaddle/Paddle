@@ -25,13 +25,19 @@ import pickle
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, BatchNorm, FC
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, LayerNorm, FC, LayerNorm
 from paddle.fluid.dygraph.base import to_variable
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+"""
+Note(chenweihang): In distributed unittest framework, the single card batch data 
+  will be splitd on average and then used for 2 card training, so the BatchNorm 
+  will introduce diff. To Verify correctness, replace BatchNorm with LayerNorm.
+"""
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+# Original Version is ConvBNLayer
+class ConvLNLayer(fluid.dygraph.Layer):
     def __init__(self,
                  name_scope,
                  num_channels,
@@ -40,7 +46,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
                  stride=1,
                  groups=1,
                  act=None):
-        super(ConvBNLayer, self).__init__(name_scope)
+        super(ConvLNLayer, self).__init__(name_scope)
 
         self._conv = Conv2D(
             self.full_name(),
@@ -52,11 +58,11 @@ class ConvBNLayer(fluid.dygraph.Layer):
             act=None,
             bias_attr=False)
 
-        self._batch_norm = BatchNorm(self.full_name(), num_filters, act=act)
+        self._layer_norm = LayerNorm(self.full_name(), num_filters, act=act)
 
     def forward(self, inputs):
         y = self._conv(inputs)
-        y = self._batch_norm(y)
+        y = self._layer_norm(y)
 
         return y
 
@@ -70,20 +76,20 @@ class BottleneckBlock(fluid.dygraph.Layer):
                  shortcut=True):
         super(BottleneckBlock, self).__init__(name_scope)
 
-        self.conv0 = ConvBNLayer(
+        self.conv0 = ConvLNLayer(
             self.full_name(),
             num_channels=num_channels,
             num_filters=num_filters,
             filter_size=1,
             act='relu')
-        self.conv1 = ConvBNLayer(
+        self.conv1 = ConvLNLayer(
             self.full_name(),
             num_channels=num_filters,
             num_filters=num_filters,
             filter_size=3,
             stride=stride,
             act='relu')
-        self.conv2 = ConvBNLayer(
+        self.conv2 = ConvLNLayer(
             self.full_name(),
             num_channels=num_filters,
             num_filters=num_filters * 4,
@@ -91,7 +97,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
             act=None)
 
         if not shortcut:
-            self.short = ConvBNLayer(
+            self.short = ConvLNLayer(
                 self.full_name(),
                 num_channels=num_channels,
                 num_filters=num_filters * 4,
@@ -135,7 +141,7 @@ class ResNet(fluid.dygraph.Layer):
             depth = [3, 8, 36, 3]
         num_filters = [64, 128, 256, 512]
 
-        self.conv = ConvBNLayer(
+        self.conv = ConvLNLayer(
             self.full_name(),
             num_channels=3,
             num_filters=64,

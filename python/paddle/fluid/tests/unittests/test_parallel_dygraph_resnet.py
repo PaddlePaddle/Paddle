@@ -33,7 +33,7 @@ class TestParallelDygraphResNet(TestDistBase):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "parallel_dygraph_resnet.py",
-                delta=0.1,
+                delta=1e-4,
                 check_error_log=True,
                 log_name=flag_name)
 
