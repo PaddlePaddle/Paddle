@@ -368,37 +368,21 @@ class InstallHeaders(Command):
 
 # we redirect setuptools log for non-windows
 if sys.platform != 'win32':
-    f_log = open('${SETUP_LOG_FILE}', 'w')
-    origin_stdout = sys.stdout
-    sys.stdout = f_log
-
-    setup(name='${PACKAGE_NAME}',
-        version='${PADDLE_VERSION}',
-        description='Parallel Distributed Deep Learning',
-        install_requires=setup_requires,
-        packages=packages,
-        ext_modules=ext_modules,
-        package_data=package_data,
-        package_dir=package_dir,
-        scripts=paddle_bins,
-        distclass=BinaryDistribution,
-        headers=headers,
-        cmdclass={
-            'install_headers': InstallHeaders,
-            'install': InstallCommand,
-        }
-    )
-
-    f_log = sys.stdout
-    sys.stdout = origin_stdout
-    f_log.close()
-
-    # As there are a lot of files in purelib which causes many logs,
-    # we don't print them on the screen, and you can open `setup.py.log` 
-    # for the full logs.
-    if os.path.exists('${SETUP_LOG_FILE}'):
-        os.system('grep -v "purelib" ${SETUP_LOG_FILE}')
+    @contextmanager
+    def redirect_stdout():
+        f_log = open('${SETUP_LOG_FILE}', 'w')
+        origin_stdout = sys.stdout
+        sys.stdout = f_log
+        yield
+        f_log = sys.stdout
+        sys.stdout = origin_stdout
+        f_log.close()
 else:
+    @contextmanager
+    def redirect_stdout():
+        yield
+
+with redirect_stdout():
     setup(name='${PACKAGE_NAME}',
         version='${PADDLE_VERSION}',
         description='Parallel Distributed Deep Learning',
@@ -415,3 +399,9 @@ else:
             'install': InstallCommand,
         }
     )
+
+# As there are a lot of files in purelib which causes many logs,
+# we don't print them on the screen, and you can open `setup.py.log` 
+# for the full logs.
+if os.path.exists('${SETUP_LOG_FILE}'):
+    os.system('grep -v "purelib" ${SETUP_LOG_FILE}')
