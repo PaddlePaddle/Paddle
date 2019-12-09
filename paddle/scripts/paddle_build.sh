@@ -39,7 +39,8 @@ function print_usage() {
     ${BLUE}dockerfile${NONE}: generate paddle release dockerfile
     ${BLUE}fluid_inference_lib${NONE}: deploy fluid inference library
     ${BLUE}check_style${NONE}: run code style check
-    ${BLUE}cicheck${NONE}: run CI tasks
+    ${BLUE}cicheck${NONE}: run CI tasks on Linux
+    ${BLUE}maccheck${NONE}: run CI tasks on Mac
     "
 }
 
@@ -511,48 +512,58 @@ function generate_api_spec() {
     deactivate
 }
 
+function check_approvals_of_unittest() {
+    # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244
+    approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
+    check_times = $1
+    if [ $1 == 1 ]; then
+        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 46782768 6836917 43953930 47554610`
+        if [ "${APPROVALS}" == "TRUE" ]; then
+            echo "================"
+            echo -e "current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!\n"
+            echo "================"
+            exit 0
+        fi
+    elif [ $1 == 2 ]; then
+        unittest_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
+        if [ "$unittest_spec_diff" != "" ]; then
+            APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 46782768 6836917 43953930 47554610`
+            echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+            if [ "${APPROVALS}" == "FALSE" ]; then
+                echo "****************"
+                echo -e "You must have one RD (zhouwei25 (recommended) or luotao1 or XiaoguangHu01 or phlrain or lanxianghit) approval for the deletion of unit tests.\n"
+                echo "There are one approved errors."
+                echo "****************"
+                exit 1
+            fi
+        fi
+    fi
+}
+
 function check_change_of_unittest() {
+    generate_unittest_spec "PR"
+    rm -rf ${PADDLE_ROOT}/build
     fetch_upstream_develop_if_not_exist
-    cur_branch=`git branch | grep \* | cut -d ' ' -f2` 
     git checkout -b develop_base_pr upstream/$BRANCH
     cmake_gen $1
     generate_unittest_spec "DEV"
-    git checkout $cur_branch
     git branch -D develop_base_pr
-    rm -rf ${PADDLE_ROOT}/build
-    cmake_gen $1
-    generate_unittest_spec "PR"
-
-    # approval_user_list: XiaoguangHu01 46782768,luotao1 6836917,phlrain 43953930,lanxianghit 47554610, zhouwei25 52485244
-    approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
-    tests_spec_diff=`python ${PADDLE_ROOT}/tools/diff_unittest.py ${PADDLE_ROOT}/paddle/fluid/UNITTEST_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/UNITTEST_PR.spec`
-    if [ "$test_spec_diff" != "" ]; then
-        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 46782768 6836917 43953930 47554610`
-        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
-        if [ "${APPROVALS}" == "FALSE" ]; then
-            echo "****************"
-            echo -e "You must have one RD (luotao1 or XiaoguangHu01 or phlrain or lanxianghit or zhouwei25) approval for the deletion of unit tests.\n"
-            echo "There are one approved errors."
-            echo "****************"
-            exit 1
-        fi
-    fi
-    ENABLE_MAKE_CLEAN="OFF"
+    check_approvals_of_unittest 2
 }
 
 function generate_unittest_spec() {
     spec_kind=$1
     if [ "$spec_kind" == "DEV" ]; then
         cat <<EOF
-        ============================================================
-        Complete cmake first time to get number of unit tests in develop.
-        ============================================================
+        ============================================
+        Generate unit tests.spec of develop.
+        ============================================
 EOF
     elif [ "$spec_kind" == "PR" ]; then
         cat <<EOF
-        ============================================================
-        Complete cmake second time to get number of unit tests in this PR.
-        ============================================================
+        ============================================
+        Generate unit tests.spec of this PR.
+        ============================================
 EOF
     else
         echo "Not supported $1"
@@ -1075,7 +1086,6 @@ function example() {
     fi
 }
 
-
 function main() {
     local CMD=$1 
     local parallel_number=$2
@@ -1168,18 +1178,22 @@ function main() {
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
         ;;
       maccheck_py35)
-        check_change_of_unittest ${PYTHON_ABI:-""}
+        check_approvals_of_unittest 1
+        cmake_gen ${PYTHON_ABI:-""}
         build_mac
         run_mac_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       macbuild)
         cmake_gen ${PYTHON_ABI:-""}
         build_mac
         ;;
       cicheck_py35)
+        check_approvals_of_unittest 1
         cmake_gen ${PYTHON_ABI:-""}
         build ${parallel_number}
         parallel_test
+        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
