@@ -80,11 +80,14 @@ def _trace(layer,
 
 class TracedLayer(object):
     """
-    TracedLayer is a callable object which is converted from dygraph model. 
-    Inside TracedLayer, the dygraph model is converted into a static graph
-    model, and it would run the static graph model using 
-    :code:`Executor` and :code:`CompiledProgram` . The static graph model 
-    would share parameters with the dygraph model. 
+    TracedLayer is used to convert a dygraph model to a static graph model,
+    so that the model can be saved for online inference. Besides, the
+    converted static graph model can be optimized using static graph passes
+    to achieve better performance than the original dygraph model.
+
+    TracedLayer would run the static graph model using :code:`Executor`
+    and :code:`CompiledProgram` . The static graph model would share
+    parameters with the dygraph model.
     
     All TracedLayer objects should not be created by constructor and should 
     be created by static method :code:`TracedLayer.trace(layer, inputs)` .
@@ -160,9 +163,15 @@ class TracedLayer(object):
                     in_np = np.random.random([2, 3]).astype('float32')
                     in_var = to_variable(in_np)
                     out_dygraph, static_layer = TracedLayer.trace(layer, inputs=[in_var])
+
+                    # run the static graph model using Executor inside
                     out_static_graph = static_layer([in_var])
+
                     print(len(out_static_graph)) # 1
                     print(out_static_graph[0].shape) # (2, 10)
+
+                    # save the static graph model for inference
+                    static_layer.save_inference_model(dirname='./saved_infer_model')
         """
         outs, prog, feed, fetch = _trace(layer, inputs)
         traced = TracedLayer(prog, layer.parameters(), feed, fetch)
