@@ -171,19 +171,29 @@ class OpTestBase(unittest.TestCase):
             self.dtype = data_type
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
+        def is_np_data(input):
+            return isinstance(input, (np.ndarray, np.generic))
+
         def infer_dtype(numpy_dict, dtype_set):
             assert isinstance(
                 numpy_dict,
                 dict), "self.inputs, self.outputs must be numpy_dict"
             for _, var_value in six.iteritems(numpy_dict):
-                if isinstance(var_value, (np.ndarray, np.generic)):
+                if is_np_data(var_value):
                     dtype_set.add(var_value.dtype)
                 elif isinstance(var_value, (list, tuple)):
-                    # the case of self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
+                    # self.inputs = {'X': (x, x_lod)}
+                    # self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
+                    # self.inputs = {'X': [("x1", (x1, [x1_lod1])), ("x2", (x2, [x2_.lod2]))] }
                     for sub_val_value in var_value:
-                        if len(sub_val_value) > 1 and isinstance(
-                                sub_val_value[1], (np.ndarray, np.generic)):
+                        if is_np_data(sub_val_value):
+                            dtype_set.add(sub_val_value.dtype)
+                        elif len(sub_val_value) > 1 and is_np_data(
+                                sub_val_value[1]):
                             dtype_set.add(sub_val_value[1].dtype)
+                        elif len(sub_val_value) > 1 and isinstance(sub_val_value[1], (list, tuple)) \
+                            and is_np_data(sub_val_value[1][0]):
+                            dtype_set.add(sub_val_value[1][0].dtype)
 
         dtype_set = set()
         infer_dtype(inputs, dtype_set)
@@ -223,6 +233,7 @@ class OpTestBase(unittest.TestCase):
         return feed_map
 
     def _append_ops(self, block):
+        self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -361,6 +372,7 @@ class OpTestBase(unittest.TestCase):
             return var_dict
 
     def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
+        self.__class__.op_type = self.op_type  # for ci check, please not delete it for now
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
@@ -1286,7 +1298,7 @@ class OpTestFp16(OpTestBase):
                      check_dygraph=True,
                      inplace_atol=None,
                      check_compile_vs_runtime=False):
-        OpTest.op_type = self.op_type
+        self.__class__.op_type = self.op_type
         OpTestBase.check_output(self, atol, no_check_set, equal_nan,
                                 check_dygraph, inplace_atol,
                                 check_compile_vs_runtime)
@@ -1303,8 +1315,8 @@ class OpTestFp16(OpTestBase):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         assert self.dtype == np.float16, "The dtype of this test should be float16."
 
-        OpTest.op_type = self.op_type
-        OpTest.exist_check_grad = True
+        self.__class__.op_type = self.op_type
+        self.__class__.exist_check_grad = True
 
         OpTestBase.check_grad(self, inputs_to_check, output_names, no_grad_set,
                               numeric_grad_delta, in_place, max_relative_error,
@@ -1316,10 +1328,11 @@ class OpTestFp16(OpTestBase):
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
-        if not hasattr(OpTest, "exist_check_grad") \
-            and OpTest.op_type not in op_white_list.CHECK_GRAD_FP16_OP_WHITE_LIST:
+        if cls.__name__ not in op_white_list.NO_NEED_FP16_CHECK_GRAD_CASES \
+            and not hasattr(cls, "exist_check_grad") \
+            and cls.op_type not in op_white_list.NO_FP16_CHECK_GRAD_OP_LIST:
             raise AssertionError("This test of %s op needs check_grad." %
-                                 OpTest.op_type)
+                                 cls.op_type)
 
 
 class OpTest(OpTestBase):
@@ -1330,7 +1343,7 @@ class OpTest(OpTestBase):
                      check_dygraph=True,
                      inplace_atol=None,
                      check_compile_vs_runtime=False):
-        OpTest.op_type = self.op_type
+        self.__class__.op_type = self.op_type
         OpTestBase.check_output(self, atol, no_check_set, equal_nan,
                                 check_dygraph, inplace_atol,
                                 check_compile_vs_runtime)
@@ -1348,14 +1361,14 @@ class OpTest(OpTestBase):
         assert self.dtype in [np.float16, np.float32, np.float64], \
             "self.dtype = %s." % self.dtype
         if self.dtype == np.float16 and \
-            self.op_type not in op_white_list.CHECK_FP16_OP_LIST:
+            self.op_type not in op_white_list.FP16_CHECK_OP_LIST:
             raise AssertionError("The dtype of this test should be float32 "
                                  "or float64. op: %s dtype: %s." %
                                  (self.op_type, self.dtype))
 
-        OpTest.op_type = self.op_type
+        self.__class__.op_type = self.op_type
         if self.dtype == np.float64:
-            OpTest.exist_fp64_check_grad = True
+            self.__class__.exist_fp64_check_grad = True
 
         OpTestBase.check_grad(self, inputs_to_check, output_names, no_grad_set,
                               numeric_grad_delta, in_place, max_relative_error,
@@ -1367,8 +1380,8 @@ class OpTest(OpTestBase):
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
-        if not hasattr(OpTest, 'exist_fp64_check_grad') \
-            and OpTest.op_type not in op_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
-            and cls.__name__ not in op_white_list.NO_NEED_FP64_CHECK_GRAD_CASES:
+        if cls.__name__ not in op_white_list.NO_NEED_FP64_CHECK_GRAD_CASES \
+            and not hasattr(cls, 'exist_fp64_check_grad') \
+            and cls.op_type not in op_white_list.NO_FP64_CHECK_GRAD_OP_LIST:
             raise AssertionError("This test of %s op needs fp64 check_grad." %
-                                 OpTest.op_type)
+                                 cls.op_type)
