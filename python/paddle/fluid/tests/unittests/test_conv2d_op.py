@@ -153,7 +153,7 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
                 self.check_grad_with_place(
                     place, ['Input'],
                     'Output',
-                    max_relative_error=0.02,
+                    max_relative_error=0.01,
                     no_grad_set=set(['Filter']))
 
         def test_check_grad_no_input(self):
