@@ -245,7 +245,6 @@ if len(sys.argv) == 3:
     if error:
         print("-" * 30)
         print_error_message(error_message)
-        print_repeat_process()
         print("-" * 30)
 else:
     print("Usage: python check_op_desc.py OP_DESC_DEV.spec OP_DESC_PR.spec")
