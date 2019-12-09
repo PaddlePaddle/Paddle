@@ -54,13 +54,13 @@ We provide the results of accuracy and performance measured on Intel(R) Xeon(R) 
 
 |    Model     | FP32 Throughput(images/s) | INT8 Throughput(images/s) | Ratio(INT8/FP32) |
 |:------------:|:-------------------------:|:-------------------------:|:----------------:|
-|  GoogleNet   |           32.82           |           68.67           |       2.09       |
-| MobileNet-V1 |           75.11           |          224.55           |       2.99       |
-| MobileNet-V2 |           92.95           |          200.72           |       2.16       |
-|  ResNet-101  |           7.23            |           26.89           |       3.72       |
-|  ResNet-50   |           13.25           |           49.54           |       3.74       |
-|    VGG16     |           3.52            |           10.34           |       2.94       |
-|    VGG19     |           2.82            |           8.85            |       3.14       |
+|  GoogleNet   |           32.53           |           68.32           |       2.13       |
+| MobileNet-V1 |           73.98           |          224.91           |       3.04       |
+| MobileNet-V2 |           86.59           |          204.91           |       2.37       |
+|  ResNet-101  |           7.15            |           26.73           |       3.74       |
+|  ResNet-50   |           13.15           |           49.48           |       3.76       |
+|    VGG16     |           3.34            |           10.11           |       3.03       |
+|    VGG19     |           2.83            |           8.68            |       3.07       |
 
 * ## Prepare dataset
 
@@ -104,7 +104,7 @@ MODEL_NAME=googlenet, mobilenetv1, mobilenetv2, resnet101, resnet50, vgg16, vgg1
 
 |     Model     | FP32 Throughput(images/s) | INT8 Throughput(images/s) | Ratio(INT8/FP32) |
 |:-------------:|:-------------------------:|:-------------------------:|:----------------:|
-| Mobilenet-ssd |           39.19           |          117.69           |       3.00       |
+| Mobilenet-ssd |           37.94           |          114.94           |       3.03       |
 
 * ## Prepare dataset
 

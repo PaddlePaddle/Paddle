@@ -65,12 +65,12 @@ You can refer to the unit test in [test_quantization_mkldnn_pass.py](test_quanti
 
 |     Model    | FP32 Optimized Throughput (images/s) | INT8 QAT Throughput(images/s) | Ratio(INT8/FP32) |
 |:------------:|:------------------------------------:|:-----------------------------:|:----------------:| 
-| MobileNet-V1 |                 75.11                |             225.19            |       2.92       |
-| MobileNet-V2 |                 92.95                |             196.24            |       2.11       |
-|   ResNet101  |                 7.23                 |             26.37             |       3.65       |
-|   ResNet50   |                 13.25                |             48.61             |       3.67       |
-|     VGG16    |                 3.52                 |             10.27             |       2.92       |
-|     VGG19    |                 2.82                 |              8.83             |       3.13       |
+| MobileNet-V1 |                 73.98                |             227.73            |       3.08       |
+| MobileNet-V2 |                 86.59                |             206.74            |       2.39       |
+|   ResNet101  |                 7.15                 |             26.69             |       3.73       |
+|   ResNet50   |                 13.15                |             49.33             |       3.75       |
+|     VGG16    |                 3.34                 |             10.15             |       3.04       |
+|     VGG19    |                 2.83                 |              8.67             |       3.07       |
 
 Notes:
 
