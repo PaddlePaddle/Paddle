@@ -1286,7 +1286,7 @@ class OpTestFp16(OpTestBase):
                      check_dygraph=True,
                      inplace_atol=None,
                      check_compile_vs_runtime=False):
-        OpTestBase.op_type = self.op_type
+        OpTest.op_type = self.op_type
         OpTestBase.check_output(self, atol, no_check_set, equal_nan,
                                 check_dygraph, inplace_atol,
                                 check_compile_vs_runtime)
@@ -1303,8 +1303,8 @@ class OpTestFp16(OpTestBase):
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
         assert self.dtype == np.float16, "The dtype of this test should be float16."
 
-        OpTestBase.op_type = self.op_type
-        OpTestBase.exist_check_grad = True
+        OpTest.op_type = self.op_type
+        OpTest.exist_check_grad = True
 
         OpTestBase.check_grad(self, inputs_to_check, output_names, no_grad_set,
                               numeric_grad_delta, in_place, max_relative_error,
@@ -1316,10 +1316,10 @@ class OpTestFp16(OpTestBase):
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
-        if not hasattr(OpTestBase, "exist_check_grad") \
-            and OpTestBase.op_type not in op_white_list.CHECK_GRAD_FP16_OP_WHITE_LIST:
+        if not hasattr(OpTest, "exist_check_grad") \
+            and OpTest.op_type not in op_white_list.CHECK_GRAD_FP16_OP_WHITE_LIST:
             raise AssertionError("This test of %s op needs check_grad." %
-                                 OpTestBase.op_type)
+                                 OpTest.op_type)
 
 
 class OpTest(OpTestBase):
@@ -1330,7 +1330,7 @@ class OpTest(OpTestBase):
                      check_dygraph=True,
                      inplace_atol=None,
                      check_compile_vs_runtime=False):
-        OpTestBase.op_type = self.op_type
+        OpTest.op_type = self.op_type
         OpTestBase.check_output(self, atol, no_check_set, equal_nan,
                                 check_dygraph, inplace_atol,
                                 check_compile_vs_runtime)
@@ -1353,9 +1353,9 @@ class OpTest(OpTestBase):
                                  "or float64. op: %s dtype: %s." %
                                  (self.op_type, self.dtype))
 
-        OpTestBase.op_type = self.op_type
+        OpTest.op_type = self.op_type
         if self.dtype == np.float64:
-            OpTestBase.exist_fp64_check_grad = True
+            OpTest.exist_fp64_check_grad = True
 
         OpTestBase.check_grad(self, inputs_to_check, output_names, no_grad_set,
                               numeric_grad_delta, in_place, max_relative_error,
@@ -1367,7 +1367,8 @@ class OpTest(OpTestBase):
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
-        if not hasattr(OpTestBase, 'exist_fp64_check_grad') \
-            and OpTestBase.op_type not in op_white_list.CHECK_GRAD_FP64_OP_WHITE_LIST:
+        if not hasattr(OpTest, 'exist_fp64_check_grad') \
+            and OpTest.op_type not in op_white_list.NO_FP64_CHECK_GRAD_OP_LIST \
+            and cls.__name__ not in op_white_list.NO_NEED_FP64_CHECK_GRAD_CASES:
             raise AssertionError("This test of %s op needs fp64 check_grad." %
-                                 OpTestBase.op_type)
+                                 OpTest.op_type)

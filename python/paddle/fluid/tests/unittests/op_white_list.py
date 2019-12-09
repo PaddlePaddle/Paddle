@@ -17,7 +17,7 @@ CHECK_FP16_OP_LIST = [
     'softmax_with_cross_entropy'
 ]
 
-CHECK_GRAD_FP64_OP_WHITE_LIST = [
+NO_FP64_CHECK_GRAD_OP_LIST = [
     'abs', 'accuracy', 'acos', 'adadelta', 'adagrad', 'adam', 'adamax',
     'add_position_encoding', 'affine_grid', 'anchor_generator', 'arg_max',
     'arg_min', 'argsort', 'asin', 'assign_value', 'atan', 'attention_lstm',
@@ -83,5 +83,7 @@ CHECK_GRAD_FP64_OP_WHITE_LIST = [
     'unpool', 'unsqueeze', 'unsqueeze2', 'unstack', 'var_conv_2d', 'warpctc',
     'where', 'yolo_box'
 ]
+
+NO_NEED_FP64_CHECK_GRAD_CASES = []
 
 CHECK_GRAD_FP16_OP_WHITE_LIST = []
