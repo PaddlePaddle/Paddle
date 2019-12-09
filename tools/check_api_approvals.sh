@@ -158,6 +158,32 @@ if [ "${HAS_INPLACE_TESTS}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     check_approval 1 46782768 47554610 43953930 6836917
 fi
 
+NEW_OP_TEST_ADDED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE "test_.*.\.py" || true`
+if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    CHECK_OUTPUT=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep "self\.check_output(a*t*o*l*=*[0-9][0-9e]*[-.]*[0-9]*"|grep "+" || true`
+    CHECK_OUTPUT_WITH_PLACE=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A5 "self\.check_output_with_place" |grep "atol="|grep "+" || true`
+    CHECK_OUTPUT_WITH_PLACE_NUM=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A2 "self\.check_output_with_place" |grep "[a-z]*, [0-9e]*"|grep "+" || true`
+    CHECK_GRAD=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A2 "self\.check_grad"|grep "max_relative_error=" |grep "+" || true`
+    CHECK_GRAD_PLACE=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A5 "self\.check_grad_with_place"|grep "max_relative_error=" |grep "+" || true`
+    CHECK_GRAD_CHECK_EPS=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A2 "\.double_grad_check"|grep "eps=" |grep "+" || true`
+    CHECK_GRAD_CHECK_ATOL=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A2 "\.double_grad_check"|grep "atol=" |grep "+" || true`
+    CHECK_GRAD_CHECK_RTOL=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A2 "\.double_grad_check"|grep "rtol=" |grep "+" || true` 
+    if [ "${CHECK_OUTPUT}" != "" ] || [ "${CHECK_OUTPUT_WITH_PLACE}" != "" ] || [ "${CHECK_OUTPUT_WITH_PLACE_NUM}" != "" ]; then
+        echo_line="If you check the accuracy of outputs (function check_output or check_output_with_place)in op test file, please use the default precision parameters of 'atol'. If you don't use the default value, you must have one RD ( luotao1 or lanxianghit or phlrain or Xreki) approval for the usage of other values.\n"
+        check_approval 1 6836917 47554610 12538138
+    fi
+    if [ "${CHECK_GRAD}" != "" ] || [ "${CHECK_GRAD_PLACE}" != "" ]; then
+        echo_line="If you check the accuracy of grad outputs (function check_grad or check_grad_with_place) in op test file, please use the default precision parameters of 'max_relative_error'. If you don't use the default value, you must have one RD ( luotao1 or lanxianghit or phlrain or Xreki) approval for the usage of other values.\n"
+        check_approval 1 6836917 47554610 12538138
+    fi
+    if [ "${CHECK_GRAD_CHECK_ATOL}" != "" ] || [ "${CHECK_GRAD_CHECK_EPS}" != "" ] || [ "${CHECK_GRAD_CHECK_RTOL}" != "" ]; then
+        echo_line="If you check the accuracy of grad outputs (function grad_check or double_grad_check) in op test file, please use the default precision parameters of 'ato, rtol, eps'. If you don't use the default value, you must have one RD ( luotao1 or lanxianghit or phlrain or Xreki) approval for the usage of other values.\n"
+        check_approval 1 6836917 47554610 12538138
+    fi
+
+fi
+
+
 if [ -n "${echo_list}" ];then
   echo "****************"
   echo -e "${echo_list[@]}"
