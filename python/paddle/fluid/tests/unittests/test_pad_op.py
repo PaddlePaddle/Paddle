@@ -17,6 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
 
 
 class TestPadOp(OpTest):
@@ -75,6 +76,8 @@ class TestCase3(TestPadOp):
 
 
 def create_test_fp16(parent):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
     class TestPadFp16(parent):
         def get_dtype(self):
             return np.float16
