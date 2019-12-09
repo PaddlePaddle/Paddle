@@ -3455,9 +3455,14 @@ class PipelineOptimizer(object):
         self._optimizer.minimize(loss, startup_program, parameter_list,
                                  no_grad_set)
         program = loss.block.program
-        program_list = self._split_program(program, self._cut_list)
-        for p in program_list:
-            self._create_vars(p["program"].block(0), program)
+        if len(self._cut_list) == 0:
+            program_list = []
+            ptmp = {"program": program, "input_set": set(), "output_set": set()}
+            program_list.append(ptmp)
+        else:
+            program_list = self._split_program(program, self._cut_list)
+            for p in program_list:
+                self._create_vars(p["program"].block(0), program)
         whole_parameters = [e.name for e in program.block(0).all_parameters()]
         param_need_sync = []
         for i, section_p in enumerate(program_list):
