@@ -22,13 +22,18 @@ import six
 import pickle
 
 import paddle
-import paddle.dataset.wmt16 as wmt16
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.dygraph import Embedding, LayerNorm, FC, to_variable, Layer, guard
 from paddle.fluid.dygraph.learning_rate_scheduler import LearningRateDecay
 
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
+"""
+Note(chenweihang): To compare loss of single-card and multi-card 
+    in our dist test framework, two parameters need to be adjusted:
+  1. set the dropout rate to 0.
+  2. set the weights for Transformer.forward to constant.
+"""
 
 
 class TrainTaskConfig(object):
@@ -89,13 +94,13 @@ class ModelHyperParams(object):
     # number of sub-layers to be stacked in the encoder and decoder.
     n_layer = 6
     # dropout rates of different modules.
-    prepostprocess_dropout = 0.1
-    attention_dropout = 0.1
-    relu_dropout = 0.1
+    prepostprocess_dropout = 0  # original 0.1
+    attention_dropout = 0  # original 0.1
+    relu_dropout = 0  # origianl 0.1
     # to process before each sub-layer
     preprocess_cmd = "n"  # layer normalization
     # to process after each sub-layer
-    postprocess_cmd = "da"  # dropout + residual connection
+    postprocess_cmd = "a"  # original "da"  # dropout + residual connection
     # the flag indicating whether to share embedding and softmax weights.
     # vocabularies in source and target should be same for weight sharing.
     weight_sharing = False
@@ -1124,92 +1129,70 @@ class TransFormer(Layer):
         return finished_seq, finished_scores
 
 
-def pad_batch_data(insts,
-                   pad_idx,
-                   n_head,
-                   is_target=False,
-                   is_label=False,
-                   return_attn_bias=True,
-                   return_max_len=True,
-                   return_num_token=False):
-    """
-    Pad the instances to the max sequence length in batch, and generate the
-    corresponding position data and attention bias.
-    """
-    return_list = []
-    max_len = max(len(inst) for inst in insts)
-    # Any token included in dict can be used to pad, since the paddings' loss
-    # will be masked out by weights and make no effect on parameter gradients.
-    inst_data = np.array(
-        [inst + [pad_idx] * (max_len - len(inst)) for inst in insts])
-    return_list += [inst_data.astype("int64").reshape([-1, 1])]
-    if is_label:  # label weight
-        inst_weight = np.array([[1.] * len(inst) + [0.] * (max_len - len(inst))
-                                for inst in insts])
-        return_list += [inst_weight.astype("float32").reshape([-1, 1])]
-    else:  # position data
-        inst_pos = np.array([
-            list(range(0, len(inst))) + [0] * (max_len - len(inst))
-            for inst in insts
-        ])
-        return_list += [inst_pos.astype("int64").reshape([-1, 1])]
-    if return_attn_bias:
-        if is_target:
-            # This is used to avoid attention on paddings and subsequent
-            # words.
-            slf_attn_bias_data = np.ones((inst_data.shape[0], max_len, max_len))
-            slf_attn_bias_data = np.triu(slf_attn_bias_data,
-                                         1).reshape([-1, 1, max_len, max_len])
-            slf_attn_bias_data = np.tile(slf_attn_bias_data,
-                                         [1, n_head, 1, 1]) * [-1e9]
-        else:
-            # This is used to avoid attention on paddings.
-            slf_attn_bias_data = np.array([[0] * len(inst) + [-1e9] *
-                                           (max_len - len(inst))
-                                           for inst in insts])
-            slf_attn_bias_data = np.tile(
-                slf_attn_bias_data.reshape([-1, 1, 1, max_len]),
-                [1, n_head, max_len, 1])
-        return_list += [slf_attn_bias_data.astype("float32")]
-    if return_max_len:
-        return_list += [max_len]
-    if return_num_token:
-        num_token = 0
-        for inst in insts:
-            num_token += len(inst)
-        return_list += [num_token]
-    return return_list if len(return_list) > 1 else return_list[0]
+# how many batches we use
+batch_num = 5
 
 
-def prepare_train_input(insts, src_pad_idx, trg_pad_idx, n_head):
-    """
-    inputs for training
-    """
-    src_word, src_pos, src_slf_attn_bias, src_max_len = pad_batch_data(
-        [inst[0] for inst in insts], src_pad_idx, n_head, is_target=False)
-    src_word = src_word.reshape(-1, src_max_len, 1)
-    src_pos = src_pos.reshape(-1, src_max_len, 1)
-    trg_word, trg_pos, trg_slf_attn_bias, trg_max_len = pad_batch_data(
-        [inst[1] for inst in insts], trg_pad_idx, n_head, is_target=True)
-    trg_word = trg_word.reshape(-1, trg_max_len, 1)
-    trg_pos = trg_pos.reshape(-1, trg_max_len, 1)
+def fake_data_reader():
+    def __reader__():
+        iteration = TrainTaskConfig.batch_size * batch_num
+        for _ in six.moves.range(iteration):
+            # random data
+            np.random.seed = 90
+            src_word_np = np.arange(1, seq_len + 1).reshape(
+                [seq_len, 1]).astype('int64')
+            src_pos_np = np.random.randint(
+                1, seq_len, size=(seq_len, 1), dtype='int64')
+            src_slf_attn_bias_np = np.random.randn(
+                ModelHyperParams.n_head, seq_len, seq_len).astype('float32')
 
-    trg_src_attn_bias = np.tile(src_slf_attn_bias[:, :, ::src_max_len, :],
-                                [1, 1, trg_max_len, 1]).astype("float32")
+            trg_word_np = np.arange(1, seq_len + 1).reshape(
+                [seq_len, 1]).astype('int64')
+            trg_pos_np = np.random.randint(
+                1, seq_len, size=(seq_len, 1), dtype='int64')
+            trg_slf_attn_bias_np = np.random.randn(
+                ModelHyperParams.n_head, seq_len, seq_len).astype('float32')
+            trg_src_attn_bias_np = np.random.randn(
+                ModelHyperParams.n_head, seq_len, seq_len).astype('float32')
 
-    lbl_word, lbl_weight, num_token = pad_batch_data(
-        [inst[2] for inst in insts],
-        trg_pad_idx,
-        n_head,
-        is_target=False,
-        is_label=True,
-        return_attn_bias=False,
-        return_max_len=False,
-        return_num_token=True)
+            lbl_word_np = np.random.randint(
+                1,
+                ModelHyperParams.src_vocab_size - 1,
+                size=(seq_len, 1),
+                dtype='int64')
+
+            # Note(chenweihang): weight will introduce diff, so use constant here
+            lbl_weight_np = np.ones((seq_len, 1)).astype('int64')
+
+            data_inputs = [
+                src_word_np, src_pos_np, src_slf_attn_bias_np, trg_word_np,
+                trg_pos_np, trg_slf_attn_bias_np, trg_src_attn_bias_np,
+                lbl_word_np, lbl_weight_np
+            ]
+
+            yield data_inputs
+
+    return __reader__
+
+
+def np_to_variable(data):
+    batch_size = len(data)
+    src_word_np = np.array([x[0] for x in data]).astype('int64')
+    src_pos_np = np.array([x[1] for x in data]).astype('int64')
+    src_slf_attn_bias_np = np.array([x[2] for x in data]).astype('float32')
+    trg_word_np = np.array([x[3] for x in data]).astype('int64')
+    trg_pos_np = np.array([x[4] for x in data]).astype('int64')
+    trg_slf_attn_bias_np = np.array([x[5] for x in data]).astype('float32')
+    trg_src_attn_bias_np = np.array([x[6] for x in data]).astype('float32')
+    lbl_word_np = np.array([x[7] for x in data]).astype('int64')
+    lbl_weight_np = np.array([x[8] for x in data]).astype('float32')
+
+    lbl_word_np = lbl_word_np.reshape(batch_size * seq_len, 1)
+    lbl_weight_np = lbl_weight_np.reshape(batch_size * seq_len, 1)
 
     data_inputs = [
-        src_word, src_pos, src_slf_attn_bias, trg_word, trg_pos,
-        trg_slf_attn_bias, trg_src_attn_bias, lbl_word, lbl_weight
+        src_word_np, src_pos_np, src_slf_attn_bias_np, trg_word_np, trg_pos_np,
+        trg_slf_attn_bias_np, trg_src_attn_bias_np, lbl_word_np, lbl_weight_np
     ]
 
     var_inputs = []
@@ -1242,10 +1225,8 @@ class TestTransformer(TestParallelDyGraphRunnerBase):
             ModelHyperParams.attention_dropout, ModelHyperParams.relu_dropout,
             ModelHyperParams.preprocess_cmd, ModelHyperParams.postprocess_cmd,
             ModelHyperParams.weight_sharing, TrainTaskConfig.label_smooth_eps)
-        train_reader = paddle.batch(
-            wmt16.train(ModelHyperParams.src_vocab_size,
-                        ModelHyperParams.trg_vocab_size),
-            TrainTaskConfig.batch_size)
+        train_reader = paddle.batch(fake_data_reader(),
+                                    TrainTaskConfig.batch_size)
         if naive_optimize:
             optimizer = fluid.optimizer.SGD(learning_rate=0.001)
         else:
@@ -1260,9 +1241,7 @@ class TestTransformer(TestParallelDyGraphRunnerBase):
         return model, train_reader, optimizer
 
     def run_one_loop(self, model, optimizer, batch):
-        enc_inputs, dec_inputs, label, weights = prepare_train_input(
-            batch, ModelHyperParams.eos_idx, ModelHyperParams.eos_idx,
-            ModelHyperParams.n_head)
+        enc_inputs, dec_inputs, label, weights = np_to_variable(batch)
 
         dy_sum_cost, dy_avg_cost, dy_predict, dy_token_num = model(
             enc_inputs, dec_inputs, label, weights)
