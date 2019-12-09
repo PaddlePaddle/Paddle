@@ -35,9 +35,12 @@ class SeqConcatOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-class SeqConcatShapeInferer : public framework::InferShapeBase {
+class SequenceConcatOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext *context) const override {
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInputs("X"),
                    "Input(X) of Sequence Concat Op should not be null.");
     PADDLE_ENFORCE(context->HasOutput("Out"),
@@ -117,8 +120,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(SeqConcatGradNoNeedBufferVarsInference,
 
 namespace op = paddle::operators;
 
-REGISTER_OPERATOR(sequence_concat, paddle::framework::OperatorWithKernel,
-                  op::SeqConcatOpMaker, op::SeqConcatShapeInferer,
+REGISTER_OPERATOR(sequence_concat, op::SequenceConcatOp, op::SeqConcatOpMaker,
                   op::SeqConcatGradOpMaker<paddle::framework::OpDesc>,
                   op::SeqConcatGradOpMaker<paddle::imperative::OpBase>);
 template <typename T>

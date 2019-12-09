@@ -33,7 +33,8 @@ __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
     'less_equal', 'greater_than', 'greater_equal', 'equal', 'not_equal',
     'array_read', 'array_length', 'cond', 'IfElse', 'DynamicRNN', 'StaticRNN',
-    'reorder_lod_tensor_by_rank', 'Print', 'is_empty', 'case', 'switch_case'
+    'reorder_lod_tensor_by_rank', 'Print', 'is_empty', 'case', 'switch_case',
+    'while_loop'
 ]
 
 
@@ -80,9 +81,11 @@ def select_input(inputs, mask):
     helper = LayerHelper('select_input', **locals())
     if isinstance(inputs, list) or isinstance(inputs, tuple):
         input_dtype = inputs[0].dtype
+        input_shape = inputs[0].shape
     else:
         input_dtype = inputs.dtype
-    out = helper.create_variable(dtype=input_dtype)
+        input_shape = inputs.shape
+    out = helper.create_variable(dtype=input_dtype, shape=input_shape)
     helper.append_op(
         type='select_input',
         inputs={'X': inputs,
@@ -916,6 +919,93 @@ class While(object):
                    "is_test": self.is_test})
 
 
+def while_loop(cond, body, loop_vars, name=None):
+    """
+    while_loop is one of the control flows. Repeats while_loop `body` until `cond` returns False.
+
+    Args:
+        cond(Callable): A callable returning a boolean tensor controlling whether to continue looping.
+        body(Callable): A callable returning a tuple or list of tensors of the same arity (length and structure)
+            and types as ``loops_vars`` .
+        loop_vars(list|tuple): A list or tuple of tensors that is passed to both ``cond`` and ``body`` .
+        name(str, optional): Normally there is no need for users to set this property. For more information, please
+            refer to :ref:`api_guide_Name`. Default is None.
+    
+    Returns:
+        A list or tuple of tensors which returned by ``body`` .
+    
+    Returen type:
+        list(Variable)|tuple(Variable).
+
+    Raises:
+        TypeError: If the type of ``cond`` is not callable.
+        TypeError: If the type of ``body`` is not callable.
+        TypeError: If the type of ``loop_vars`` is not list or tuple.
+        TypeError: If the type of ``cond`` returns is not Variable.
+        TypeError: If the type of ``cond`` returns is not a boolean variable.
+        TypeError: If the shape of ``cond`` returns is not equals 1.
+        ValueError: If the ``var_loops`` is empty.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            import paddle.fluid.layers as layers
+
+            def cond(i):
+                return layers.less_than(i, ten)
+
+            def body(i):
+                return layers.increment(x=i, value=1, in_place=True)
+
+            main_program = fluid.default_main_program()
+            startup_program = fluid.default_startup_program()
+
+            with fluid.program_guard(main_program, startup_program):
+                i = layers.fill_constant(shape=[1], dtype='int64', value=0)     # loop counter
+                ten = layers.fill_constant(shape=[1], dtype='int64', value=10)  # loop length
+                out = layers.while_loop(cond, body, [i])
+                
+                exe = fluid.Executor(fluid.CPUPlace())
+                res = exe.run(main_program, feed={}, fetch_list=out)
+                print(res) # [array([10])]
+    """
+    helper = LayerHelper('while_loop', **locals())
+
+    if not callable(cond):
+        raise TypeError("cond in while_loop should be callable")
+    if not callable(body):
+        raise TypeError("body in while_loop should be callable")
+    if not isinstance(loop_vars, (list, tuple)):
+        raise TypeError("loop_vars in while_loop should be a list or tuple")
+    if len(loop_vars) == 0:
+        raise ValueError("loop_vars in while_loop should not be empty")
+
+    pre_cond = cond(*loop_vars)
+    if not isinstance(pre_cond, Variable):
+        raise TypeError("cond in while_loop should return a variable")
+    if pre_cond.dtype != core.VarDesc.VarType.BOOL:
+        raise TypeError("cond in while_loop should return a boolean variable")
+    if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
+        raise TypeError(
+            "the shape of the variable returned by cond should be [],"
+            "but given shape as {0}.".format(list(pre_cond.shape)))
+
+    while_loop_block = While(pre_cond)
+    with while_loop_block.block():
+        output_vars = body(*loop_vars)
+        if len(loop_vars) == 1:
+            assign(output_vars, loop_vars[0])
+            now_cond = cond(output_vars)
+        else:
+            for i in range(len(output_vars)):
+                assign(output_vars[i], loop_vars[i])
+            now_cond = cond(*output_vars)
+        assign(now_cond, pre_cond)
+
+    return loop_vars
+
+
 def lod_rank_table(x, level=0):
     """
     LoD Rank Table Operator. Given an input variable **x** and a level number
@@ -1742,7 +1832,8 @@ def copy_var_to_parent_block(var, layer_helper):
     assert parent_idx >= 0, "Got wrong parent block index when assigning var to parent scope in control_flow"
     parent_block = prog.block(parent_idx)
 
-    parent_block_var = parent_block.create_var(dtype=var.dtype, type=var.type)
+    parent_block_var = parent_block.create_var(
+        dtype=var.dtype, shape=var.shape, type=var.type)
     assign(var, parent_block_var)
     return parent_block_var
 

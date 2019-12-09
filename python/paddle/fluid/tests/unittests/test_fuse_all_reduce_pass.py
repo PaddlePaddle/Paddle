@@ -30,7 +30,7 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
     def compare_fuse_all_reduce_ops(self,
                                     model,
                                     use_cuda,
-                                    init_feed_dicta=None,
+                                    init_feed_dict=None,
                                     get_data_from_feeder=None,
                                     optimizer=None,
                                     fuse_all_optimizer_ops=False):
@@ -38,8 +38,8 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
             return
 
         feed_dict_data = None
-        if init_feed_dicta is not None:
-            img, label = init_feed_dicta()
+        if init_feed_dict is not None:
+            img, label = init_feed_dict()
             feed_dict_data = {"image": img, "label": label}
 
         not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
@@ -76,7 +76,7 @@ class TestFuseAllReduceOps(TestFuseAllReduceOpsBase):
         self.compare_fuse_all_reduce_ops(
             model,
             use_cuda,
-            init_feed_dicta=init_data,
+            init_feed_dict=init_data,
             optimizer=self.optimizer,
             fuse_all_optimizer_ops=True)
 
@@ -94,7 +94,7 @@ class TestFuseAllReduceOpsAndOptiOps(TestFuseAllReduceOps):
         self.compare_fuse_all_reduce_ops(
             model,
             use_cuda,
-            init_feed_dicta=init_data,
+            init_feed_dict=init_data,
             optimizer=self.optimizer,
             fuse_all_optimizer_ops=True)
 

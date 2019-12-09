@@ -22,7 +22,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -43,6 +42,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/trainer.h"
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
@@ -65,6 +65,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
@@ -282,6 +283,30 @@ static void inline CreateVariableIfNotExit(
   return;
 }
 
+static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
+  std::set<std::string> ops;
+  for (auto &pair : framework::OpInfoMap::Instance().map()) {
+    bool has_static_grad_maker = (pair.second.grad_op_maker_ != nullptr);
+    bool has_dygraph_grad_maker =
+        (pair.second.dygraph_grad_op_maker_ != nullptr);
+    if (has_static_grad_maker ^ has_dygraph_grad_maker) {
+      bool has_kernel =
+          (framework::OperatorWithKernel::AllOpKernels().count(pair.first) > 0);
+      if (has_kernel) {
+        ops.insert(pair.first);
+      } else {
+        VLOG(5) << pair.first << " has no kernels, skip";
+      }
+    }
+  }
+  PADDLE_ENFORCE_EQ(ops.empty(), true,
+                    platform::errors::Unimplemented(
+                        "OperatorWithKernel [%s] have only static graph grad "
+                        "maker or have only dygraph grad maker, which is not "
+                        "allowed",
+                        string::join_strings(ops, ',')));
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -292,6 +317,8 @@ PYBIND11_MODULE(core_noavx, m) {
   paddle::platform::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
+
+  AssertStaticGraphAndDygraphGradMakerNoDiff();
 
   m.doc() = "C++ core of PaddlePaddle";
 
@@ -1041,6 +1068,19 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
+  m.def("get_op_attrs_default_value",
+        [](py::bytes byte_name) -> paddle::framework::AttributeMap {
+          std::string op_type = byte_name;
+          paddle::framework::AttributeMap res;
+          auto info = OpInfoMap::Instance().GetNullable(op_type);
+          if (info != nullptr) {
+            if (info->HasOpProtoAndChecker()) {
+              auto op_checker = info->Checker();
+              res = op_checker->GetAttrsDefaultValuesMap();
+            }
+          }
+          return res;
+        });
   m.def(
       "get_grad_op_desc", [](const OpDesc &op_desc,
                              const std::unordered_set<std::string> &no_grad_set,
