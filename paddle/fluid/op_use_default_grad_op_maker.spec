@@ -1,10 +1,7 @@
 cos_sim
 fsp
 gru
-lstm_unit
 match_matrix_tensor
-max_pool2d_with_index
-max_pool3d_with_index
 maxout
 pool2d
 pool3d
@@ -15,6 +12,5 @@ reshape
 rnn_memory_helper
 sequence_softmax
 spp
-tensor_array_to_tensor
 transpose
 unsqueeze
