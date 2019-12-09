@@ -24,22 +24,21 @@ class NCESamplerOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true);
-
     auto num_neg_samples = ctx->Attrs().Get<int>("num_neg_samples");
     auto sample_batch_size = ctx->Attrs().Get<int>("sample_batch_size");
 
-    std::vector<int64_t> sample_out_dims;
-    sample_out_dims.push_back(sample_batch_size);
-    sample_out_dims.push_back(num_neg_samples);
-    ctx->SetOutputDim("Out", framework::make_ddim(sample_out_dims));
+    if (ctx->HasOutput("Out")) {
+      std::vector<int64_t> sample_out_dims;
+      sample_out_dims.push_back(sample_batch_size);
+      sample_out_dims.push_back(num_neg_samples);
+      ctx->SetOutputDim("Out", framework::make_ddim(sample_out_dims));
+    }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "CustomDistProbs"),
+    return framework::OpKernelType(framework::proto::VarType::FP32,
         platform::CPUPlace());
   }
 };
@@ -71,6 +70,21 @@ class NCESamplerOpMaker : public framework::OpProtoAndCheckerMaker {
               "This tensor is output of forward kernel and used in backward "
               "kernel to compute grads.")
         .AsDispensable();
+    AddOutput("CustomDistProbsInit", 
+              "CustomDistProbsInit")
+        .AsDispensable();
+    AddOutput("CustomDistAliasInit",
+              "CustomDistAliasInit")
+        .AsDispensable();
+    AddOutput("CustomDistAliasProbsInit",
+              "CustomDistAliasProbsInit")
+        .AsDispensable();
+    AddAttr<std::string>("filename",
+                         "string, filename")
+        .SetDefault("");
+    AddAttr<bool>("init_flag",
+                  "init_flag")
+        .SetDefault(false);
     AddAttr<int>("sample_batch_size",
                  "(int) sample batch size")
         .SetDefault(1);
