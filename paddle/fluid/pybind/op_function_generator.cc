@@ -23,19 +23,8 @@
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
 
-const int BUFFER_SIZE = 4096;
-
-const char* INPUT_TYPE = R"(imperative::NameVarBaseMap)";
-const char* ARGS_TYPE = R"(framework::AttributeMap)";
-
-const char* OUT_VAR_NUM_TYPE = R"(std::map<std::string, size_t>)";
-const char* RETURN_TYPE = R"(imperative::NameVarBaseMap)";
-
-const char* OUTS_INITIALIZER =
-    R"({{"out": VarBase("mul_out")}, "XX": VarBase("mul_xx")}})";
-
 const char* OUT_INITIALIZER_TEMPLATE =
-    R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName())) } })";
+    R"({"%s", {std::shared_ptr<imperative::VarBase>(new imperative::VarBase(tracer->GenerateUniqueName()))}})";
 
 const char* OP_FUNCTION_TEMPLATE =
     R"([](const imperative::NameVarBaseMap& ins, const framework::AttributeMap& attrs, 
@@ -66,16 +55,7 @@ const char* OP_FUNCTION_TEMPLATE =
   py::arg("outs")=imperative::NameVarBaseMap(), 
   py::arg("out_nums")=std::map<std::string, size_t>())";
 
-const char* PYBIND_TEMPLATE = R"(%s.def("%s", %s);)";
-
-static std::string RefineName(std::string name) {
-  for (auto& e : name) {
-    if (e == '-' || e == '@') {
-      e = '_';
-    }
-  }
-  return name;
-}
+const char* PYBIND_ITEM_TEMPLATE = R"(  %s.def("%s", %s);)";
 
 static std::vector<std::string> GenerateOpFunctions(
     const std::string& module_name) {
@@ -95,10 +75,9 @@ static std::vector<std::string> GenerateOpFunctions(
 
     for (auto& output : op_proto->outputs()) {
       auto& out_name = output.name();
-      char out_initializer_buf[BUFFER_SIZE];
-      snprintf(out_initializer_buf, BUFFER_SIZE, OUT_INITIALIZER_TEMPLATE,
-               out_name.c_str(), op_type.c_str(), out_name.c_str());
-      outs_initializer += out_initializer_buf;
+      auto out_initializer_str =
+          paddle::string::Sprintf(OUT_INITIALIZER_TEMPLATE, out_name);
+      outs_initializer += out_initializer_str;
       outs_initializer += ",";
     }
     if (outs_initializer.back() == ',') {
@@ -107,18 +86,13 @@ static std::vector<std::string> GenerateOpFunctions(
     outs_initializer += "}";
 
     // generate op funtcion body
-    char op_function_buf[BUFFER_SIZE];
-    snprintf(op_function_buf, BUFFER_SIZE, OP_FUNCTION_TEMPLATE,
-             outs_initializer.c_str(), op_type.c_str());
+    auto op_function_str = paddle::string::Sprintf(OP_FUNCTION_TEMPLATE,
+                                                   outs_initializer, op_type);
 
-    // generate pybind line
-    char pybind_buf[BUFFER_SIZE];
-    snprintf(pybind_buf, BUFFER_SIZE, PYBIND_TEMPLATE, module_name.c_str(),
-             op_type.c_str(), op_function_buf);
-
-    std::string pybind_op_function = pybind_buf;
+    // generate pybind item
+    auto pybind_op_function = paddle::string::Sprintf(
+        PYBIND_ITEM_TEMPLATE, module_name.c_str(), op_type, op_function_str);
     pybind_op_function += "\n";
-
     op_function_list.emplace_back(std::move(pybind_op_function));
   }
 
@@ -131,7 +105,7 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  std::vector<std::string> headers{};
+  std::vector<std::string> headers{"\"paddle/fluid/imperative/tracer.h\""};
 
   std::ofstream out(argv[1], std::ios::out);
 
@@ -140,7 +114,7 @@ int main(int argc, char* argv[]) {
   for (auto& header : headers) {
     out << "#include  " + header + "\n";
   }
-  // out << UNIQUE_NAME_GENERATOR << "\n";
+
   out << "namespace py = pybind11;"
       << "\n";
   out << "namespace paddle {\n"
