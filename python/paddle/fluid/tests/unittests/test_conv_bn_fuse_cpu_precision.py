@@ -12,14 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os, shutil
-import operator
 import unittest
 import numpy as np
 import paddle.fluid as fluid
-from functools import reduce
 from paddle.fluid.core import PaddleTensor
-from paddle.fluid.core import PaddleDType
 from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import create_paddle_predictor
 
