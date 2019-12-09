@@ -467,6 +467,17 @@ TEST(CpuQuantizeSquashPass, fc_dequant_more_than_one_op_after_dequant) {
       BuildFcDequantFcProgramDesc(use_mkldnn, scale_out, scale), "fc", false);
 }
 
+// a->Conv1->c->Concat
+TEST(CpuQuantizeSquashPass, fc_dequant_only_one_output) {
+  auto scale_out = 1.0f;
+  auto scale = 1.2345f;
+  auto use_mkldnn = true;
+  // remove 2 nodes: Dequant1, c
+  auto remove_nodes = 2;
+  CountNodeTest(BuildFcDequantConcatProgramDesc(use_mkldnn, scale_out, scale),
+                remove_nodes);
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
