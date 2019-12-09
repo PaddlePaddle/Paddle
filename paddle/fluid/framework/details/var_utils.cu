@@ -23,8 +23,24 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static std::unordered_map<std::string, memory::AllocationPtr> op_var2gpu_str;
-static std::mutex op_var2gpu_str_mutex;
+static std::vector<std::unordered_map<std::string, memory::AllocationPtr>>
+    multi_op_var2gpu_str;
+static std::vector<std::mutex> multi_op_var2gpu_str_mutex;
+
+static std::once_flag init_multi_gpu_op_var_map_flag;
+
+void InitMultiGPUOpVarMap() {
+  int dev_count = platform::GetCUDADeviceCount();
+  PADDLE_ENFORCE_GT(dev_count, 0, "cuda device must > 0");
+
+  // https://stackoverflow.com/questions/16465633/how-can-i-use-something-like-stdvectorstdmutex
+  std::vector<std::unordered_map<std::string, memory::AllocationPtr>> tmp_multi(
+      dev_count);
+  std::vector<std::mutex> tmp_multi_mutex(dev_count);
+
+  multi_op_var2gpu_str.swap(tmp_multi);
+  multi_op_var2gpu_str_mutex.swap(tmp_multi_mutex);
+}
 
 template <typename T>
 __device__ __forceinline__ void PrintNanInfKernel(const T* value,
@@ -94,13 +110,20 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
 
   auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
       platform::DeviceContextPool::Instance().Get(tensor_.place()));
+  int dev_id = boost::get<platform::CUDAPlace>(tensor_.place()).device;
+  PADDLE_ENFORCE_EQ((dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex.size()),
+                    true, "GPU dev_id must >=0 and < dev_count=%d",
+                    multi_op_var2gpu_str_mutex.size());
 
   std::string op_var = "[op=" + op_type_ + "] [tensor=" + var_name_ + "]";
   char* gpu_str_ptr = NULL;
 
   {
+    auto& op_var2gpu_str_mutex = multi_op_var2gpu_str_mutex.at(dev_id);
+    auto& op_var2gpu_str = multi_op_var2gpu_str.at(dev_id);
+
     std::lock_guard<std::mutex> guard(op_var2gpu_str_mutex);
-    if (op_var2gpu_str.find(op_var) == op_var2gpu_str.end()) {
+    if (op_var2gpu_str.find(op_var) == op_var2gpu_str.end()) {  // insert
       auto gpu_str_tensor =
           paddle::memory::Alloc(*dev_ctx, op_var.length() + 1);
       gpu_str_ptr = reinterpret_cast<char*>(gpu_str_tensor->ptr());
@@ -113,7 +136,7 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
       PADDLE_ENFORCE_CUDA_SUCCESS(
           cudaMemcpyAsync(gpu_str_ptr, iter->first.c_str(), op_var.length() + 1,
                           cudaMemcpyHostToDevice, dev_ctx->stream()));
-    } else {
+    } else {  // get
       auto iter = op_var2gpu_str.find(op_var);
       PADDLE_ENFORCE_EQ(iter != op_var2gpu_str.end(), true);
       gpu_str_ptr = reinterpret_cast<char*>(iter->second->ptr());
@@ -131,6 +154,8 @@ void tensor_check<platform::CUDADeviceContext>(const std::string& op_type,
                                                const std::string& var_name,
                                                const framework::Tensor& tensor,
                                                const platform::Place& place) {
+  std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
+
   TensorCheckerVisitor<platform::CUDADeviceContext> vistor(op_type, var_name,
                                                            tensor, place);
   VisitDataType(tensor.type(), vistor);
