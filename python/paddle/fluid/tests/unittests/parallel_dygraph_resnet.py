@@ -242,7 +242,7 @@ class TestResNet(TestParallelDyGraphRunnerBase):
             batch_size, 1)
         img = to_variable(dy_x_data)
         label = to_variable(y_data)
-        label._stop_gradient = True
+        label.stop_gradient = True
         out = model(img)
         loss = fluid.layers.cross_entropy(input=out, label=label)
         avg_loss = fluid.layers.mean(x=loss)

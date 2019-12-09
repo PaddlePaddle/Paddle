@@ -1140,16 +1140,16 @@ def fake_data_reader():
             # random data
             np.random.seed = 90
             src_word_np = np.arange(1, seq_len + 1).reshape(
-                [seq_len, 1]).astype('int64')
+                [seq_len]).astype('int64')
             src_pos_np = np.random.randint(
-                1, seq_len, size=(seq_len, 1), dtype='int64')
+                1, seq_len, size=(seq_len), dtype='int64')
             src_slf_attn_bias_np = np.random.randn(
                 ModelHyperParams.n_head, seq_len, seq_len).astype('float32')
 
             trg_word_np = np.arange(1, seq_len + 1).reshape(
-                [seq_len, 1]).astype('int64')
+                [seq_len]).astype('int64')
             trg_pos_np = np.random.randint(
-                1, seq_len, size=(seq_len, 1), dtype='int64')
+                1, seq_len, size=(seq_len), dtype='int64')
             trg_slf_attn_bias_np = np.random.randn(
                 ModelHyperParams.n_head, seq_len, seq_len).astype('float32')
             trg_src_attn_bias_np = np.random.randn(
