@@ -262,6 +262,21 @@ class TestBatchNormOpInference(unittest.TestCase):
 
         batch_norm_op.run(scope, place)
 
+        # When op is called without Executor then
+        # MKL-DNN Tensor is returned. For NHWC data layout
+        # dims will be in NCHW order as it is MKL-DNN way
+        # of memory descripting. So we need to convert NCHW
+        # dims into NHWC.
+        if data_layout == "NHWC" and self.use_mkldnn == True:
+            # Create executor to have MKL-DNN cache 
+            # cleared after NHWC unit test
+            place = core.CPUPlace()
+            exe = fluid.Executor(place)
+            dims = y_tensor.shape()
+            c = dims.pop(1)
+            dims.append(c)
+            y_tensor._set_dims(dims)
+
         # check inference result
         self.__assert_close(
             y_tensor,

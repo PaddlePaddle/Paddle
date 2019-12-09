@@ -116,6 +116,8 @@ def lstm_naive(
     return output, pre_h, pre_c
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestCUDNNLstmOp(OpTest):
     def setUp(self):
         self.op_type = "cudnn_lstm"
@@ -172,23 +174,17 @@ class TestCUDNNLstmOp(OpTest):
 
     def test_output_with_place(self):
         # depend on the scope structure
-        if self.has_cuda():
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
 
     def test_grad_with_place(self):
         # depend on the scope structure
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                set(['Input', 'W', 'InitH', 'InitC']),
-                ['Out', 'last_h', 'last_c'],
-                max_relative_error=0.02,
-                check_dygraph=False)
-
-    def has_cuda(self):
-        return core.is_compiled_with_cuda()
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            set(['Input', 'W', 'InitH', 'InitC']), ['Out', 'last_h', 'last_c'],
+            max_relative_error=0.02,
+            check_dygraph=False)
 
 
 if __name__ == '__main__':

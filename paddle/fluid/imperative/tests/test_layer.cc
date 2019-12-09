@@ -158,7 +158,7 @@ TEST(test_layer, test_varbase_basic) {
   vin->MutableVar()->GetMutable<framework::LoDTensor>()->mutable_data<float>(
       place);
   std::shared_ptr<imperative::VarBase> vout(vin->NewVarBase(place, false));
-  ASSERT_EQ(vout->Name(), "Itmp0");
+  ASSERT_EQ(vout->Name(), "vin0");
 
   std::shared_ptr<imperative::VarBase> vin_with_grad(
       new imperative::VarBase(true, "vin"));
