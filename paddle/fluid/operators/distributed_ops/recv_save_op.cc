@@ -108,11 +108,6 @@ This operator will serialize and write LoDTensor variable to file on disk.
   }
 };
 
-class RecvSaveOpShapeInference : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext *ctx) const override {}
-};
-
 template <typename DeviceContext, typename T>
 class RecvSaveOpKernel : public framework::OpKernel<T> {
  private:
@@ -245,8 +240,7 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(recv_save, ops::RecvSaveOp, ops::RecvSaveOpProtoMaker,
-                  ops::RecvSaveOpShapeInference);
+REGISTER_OPERATOR(recv_save, ops::RecvSaveOp, ops::RecvSaveOpProtoMaker);
 
 REGISTER_OP_CPU_KERNEL(
     recv_save, ops::RecvSaveOpKernel<paddle::platform::CPUDeviceContext, float>,
