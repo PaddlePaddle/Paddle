@@ -220,9 +220,14 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
      * ('any') which lets a primitive (convolution in this case) choose
      * the memory format preferred for best performance
      */
+    // TODO(jczaja): This is workaround to make grad op UT's numerical
+    // gradient computation proper as this op is called directly without
+    // fetch op following it , so numercial grad is computed (in python)
+    // using block formats which will give wrong results
     std::string data_format = ctx.Attr<std::string>("data_format");
     auto chosen_memory_format =
-        platform::data_format_to_memory_format(data_format);
+        is_test ? MKLDNNMemoryFormat::any
+                : platform::data_format_to_memory_format(data_format);
 
     weights_format = MKLDNNMemoryFormat::any;
     // Check the format for user's special output
@@ -519,9 +524,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       * ('any') which lets a primitive (convolution in this case) choose
       * the memory format preferred for best performance
       */
-      std::string data_format = ctx.Attr<std::string>("data_format");
-      auto chosen_memory_format =
-          platform::data_format_to_memory_format(data_format);
+      auto chosen_memory_format = MKLDNNMemoryFormat::any;
 
       std::vector<int> bias_tz;
 
@@ -772,6 +775,11 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
      * ('any') which lets a primitive (conv backward in this case) choose
      * the memory format preferred for best performance
      */
+
+    // TODO(jczaja): Once GRAD NHWC is working then format 'any'
+    // should be used exclusively. But till forward pass enforce
+    // NCHW for training we need to have NCHW here as well
+    // to avoid performance degradation in relu_grad and pool2d_grad
     std::string data_format = ctx.Attr<std::string>("data_format");
     auto chosen_memory_format =
         platform::data_format_to_memory_format(data_format);

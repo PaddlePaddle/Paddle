@@ -484,7 +484,7 @@ class TestBilinearInterp_attr_tensor_Case3(TestBilinearInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
-class TestBilinearInterpOpAPI(OpTest):
+class TestBilinearInterpOpAPI(unittest.TestCase):
     def test_case(self):
         x = fluid.data(name="x", shape=[2, 3, 6, 6], dtype="float32")
 

@@ -20,10 +20,12 @@ import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from op_test import OpTest
+from op_test import OpTest, _set_use_system_allocator
 from paddle.fluid.framework import grad_var_name
 import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
+
+_set_use_system_allocator(True)
 
 
 def _reference_testing(x, scale, offset, mean, var, epsilon, data_format):
@@ -259,6 +261,21 @@ class TestBatchNormOpInference(unittest.TestCase):
             epsilon=epsilon)
 
         batch_norm_op.run(scope, place)
+
+        # When op is called without Executor then
+        # MKL-DNN Tensor is returned. For NHWC data layout
+        # dims will be in NCHW order as it is MKL-DNN way
+        # of memory descripting. So we need to convert NCHW
+        # dims into NHWC.
+        if data_layout == "NHWC" and self.use_mkldnn == True:
+            # Create executor to have MKL-DNN cache 
+            # cleared after NHWC unit test
+            place = core.CPUPlace()
+            exe = fluid.Executor(place)
+            dims = y_tensor.shape()
+            c = dims.pop(1)
+            dims.append(c)
+            y_tensor._set_dims(dims)
 
         # check inference result
         self.__assert_close(

@@ -51,6 +51,12 @@ class Engine {
     grad_ops_[op] = std::move(op_shared);
   }
 
+  const std::unordered_set<VarBase*>& GradVars() const { return grad_vars_; }
+
+  const std::unordered_map<OpBase*, std::shared_ptr<OpBase>>& GradOps() const {
+    return grad_ops_;
+  }
+
   void InsertGradVar(VarBase* grad) { grad_vars_.emplace(grad); }
 
   bool IsGrad(VarBase* var) { return grad_vars_.count(var) > 0; }

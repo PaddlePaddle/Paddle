@@ -38,6 +38,8 @@ class FillConstantBatchSizeLikeOpMaker : public BatchSizeLikeOpMaker {
         .SetDefault(framework::proto::VarType::FP32);
     AddAttr<float>("value", "default 0. The value to be filled")
         .SetDefault(0.0f);
+    AddAttr<std::string>("str_value", "default empty. The value to be filled")
+        .SetDefault("");
     AddAttr<bool>("force_cpu",
                   "(bool, default false) Force fill output variable to cpu "
                   "memory. Otherwise, fill output variable to the running "
