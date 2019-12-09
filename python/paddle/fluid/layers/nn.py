@@ -13737,9 +13737,9 @@ def nce_sampler(custom_dist,
         helper.append_op(
             type='nce_sampler',
             inputs={
-                'CustomDistProbs': probs_tensor,
-                'CustomDistAlias': alias_tensor,
-                'CustomDistAliasProbs': alias_probs_tensor
+                'CustomDistProbs': None,
+                'CustomDistAlias': None,
+                'CustomDistAliasProbs': None
             },
             outputs={'Out': out},
             attrs={
