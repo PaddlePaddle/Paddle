@@ -151,7 +151,7 @@ using Tensor = paddle::framework::Tensor;
 template <typename KernelTuple, typename PlaceType>
 void BenchKernelMatMul() {
   using T = typename KernelTuple::data_type;
-  for (int m : {1, 2, 128}) {
+  for (int m : {1, 2, 30, 128}) {
     for (int n : TestMatmul()) {
       for (int k : TestMatmul()) {
         Tensor a, b, c;
@@ -178,14 +178,22 @@ void BenchKernelMatMul() {
           T* Y1_data = Y1.mutable_data<T>(PlaceType());
           const int NN = n + 4;
           const int KK = k + 4;
+          auto start_X = paddle::platform::PosixInNsec() * 1e-3;
 #pragma omp parallel for
           for (int i = 0; i < m; i++) {
             memcpy(X1_data + i * KK, a_data + i * k, k * sizeof(a_data[0]));
           }
+          auto end_X = paddle::platform::PosixInNsec() * 1e-3;
+          auto sum_X = end_X - start_X;
+          LOG(INFO) << "mem copy X " << sum_X;
+          auto start_W = paddle::platform::PosixInNsec() * 1e-3;
 #pragma omp parallel for
           for (int i = 0; i < k; i++) {
             memcpy(W1_data + i * NN, b_data + i * n, n * sizeof(b_data[0]));
           }
+          auto end_W = paddle::platform::PosixInNsec() * 1e-3;
+          auto sum_W = end_W - start_W;
+          LOG(INFO) << "mem copy W " << sum_W;
           for (int i = 0; i < FLAGS_burning; ++i) {
             blas.GEMM(false, false, m, m, k, static_cast<T>(1.0), X1_data, KK,
                       W1_data, NN, static_cast<T>(0.0), Y1_data, NN);
