@@ -294,9 +294,9 @@ void _concatCompute(const std::vector<paddle::framework::Tensor> &ins,
   }
 }
 
-void _getSliceinfo(const framework::Tensor &self, py::object obj,
-                   const int64_t dim, int64_t *pstart, int64_t *pstop,
-                   int64_t *pstep, int64_t *pslicelength) {
+inline void _getSliceinfo(const framework::Tensor &self, py::object obj,
+                          const int64_t dim, int64_t *pstart, int64_t *pstop,
+                          int64_t *pstep, int64_t *pslicelength) {
   auto &start = *pstart;
   auto &stop = *pstop;
   auto &step = *pstep;
