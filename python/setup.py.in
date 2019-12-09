@@ -370,11 +370,13 @@ class InstallHeaders(Command):
 if sys.platform != 'win32':
     @contextmanager
     def redirect_stdout():
-        with open('${SETUP_LOG_FILE}', 'w') as f:
-            origin_stdout = sys.stdout
-            sys.stdout = f
-            yield
-            sys.stdout = origin_stdout
+        f_log = open('${SETUP_LOG_FILE}', 'w')
+        origin_stdout = sys.stdout
+        sys.stdout = f_log
+        yield
+        f_log = sys.stdout
+        sys.stdout = origin_stdout
+        f_log.close()
 else:
     @contextmanager
     def redirect_stdout():
