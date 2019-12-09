@@ -49,6 +49,7 @@ class FCPrimitiveFactory {
     RecomputeOutputDims(ctx, input, weights, output);
     // If primitive has already been created and cached, don't create new one,
     // but update input and output data pointers and return it.
+
     if (fc_) {
       UpdateDataPointers(ctx, output, input);
       this->Execute();
@@ -58,6 +59,7 @@ class FCPrimitiveFactory {
     // input_dims[0] *= input_dims[1];
     // input_dims[1] = 1;
     // 128 x 1 x 768
+
     auto src_desc = CreateMemDescriptor<T_in>(input_dims, input->format());
     input_dims = framework::vectorize(input->dims());
     input_ = CreateMemory<T_in>(src_desc, input);
@@ -69,10 +71,11 @@ class FCPrimitiveFactory {
 
     auto w_dims = framework::vectorize(weights->dims());
 
-    auto dst_dims = framework::vectorize(input->dims());
+    auto dst_dims = framework::vectorize(output->dims());
 
-    memory::desc weights_desc = src_desc;      // haczek
-    memory::desc usr_weights_desc = src_desc;  // haczek
+    memory::desc weights_desc = weights_->get_desc();      // haczek
+    memory::desc usr_weights_desc = weights_->get_desc();  // haczek
+    weights_desc.data.data_type = (mkldnn_data_type_t)memory::data_type::s8;
     if (src_desc.data.ndims == 3) {
       // 768 x 1 x 768
       std::vector<int64_t> dims = {w_dims[1], 1, w_dims[0]};
@@ -83,7 +86,7 @@ class FCPrimitiveFactory {
       input_dims[0] *= input_dims[1];
       input_dims[1] = 1;
       // 128 x 1 x 768
-      src_desc = CreateMemDescriptor<T_in>(input_dims, input->format());
+      src_desc = CreateMemDescriptor<T_in>(input_dims, MKLDNNMemoryFormat::nwc);
       input_dims = framework::vectorize(input->dims());
       dst_dims = {input_dims[0] * input_dims[1], w_dims[1]};
     } else if (src_desc.data.ndims == 4) {
@@ -172,13 +175,16 @@ class FCPrimitiveFactory {
     // call to CreateFcPrimitive method.
     if (out->format() == MKLDNNMemoryFormat::undef) {
       MKLDNNMemoryFormat format;
-      if (std::is_same<T_w, int8_t>::value)
-        format = MKLDNNMemoryFormat::nhwc;
-      else
+      auto data_type = input_->get_desc().data.data_type;
+      if (data_type == mkldnn_f32)
         format = MKLDNNMemoryFormat::nchw;
+      else
+        format = MKLDNNMemoryFormat::nhwc;
 
-      out->set_format(platform::MKLDNNFormatForSize(
-          framework::vectorize<int>(out->dims()).size(), format));
+      MKLDNNMemoryFormat selected = platform::MKLDNNFormatForSize(
+          framework::vectorize<int>(out->dims()).size(), format);
+
+      out->set_format(selected);
     }
   }
 
@@ -478,13 +484,16 @@ class FCPrimitiveFactory {
     memory dst_mem(dst_desc, engine_, to_void_cast<T_out>(output_data));
 
     MKLDNNMemoryFormat format;
-    if (std::is_same<T_w, int8_t>::value)
-      format = MKLDNNMemoryFormat::nhwc;
-    else
+    auto data_type = input_->get_desc().data.data_type;
+    if (data_type == mkldnn_f32)
       format = MKLDNNMemoryFormat::nchw;
+    else
+      format = MKLDNNMemoryFormat::nhwc;
 
-    output->set_format(platform::MKLDNNFormatForSize(
-        framework::vectorize<int>(output->dims()).size(), format));
+    MKLDNNMemoryFormat selected = platform::MKLDNNFormatForSize(
+        framework::vectorize<int>(output->dims()).size(), format);
+
+    output->set_format(selected);
     return dst_mem;
   }
 
