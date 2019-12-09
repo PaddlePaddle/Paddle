@@ -4314,10 +4314,10 @@ def split(input, num_or_sections, dim=-1, name=None):
     if isinstance(num_or_sections, int):
         assert num_or_sections > 1, 'num_or_sections must be more than 1.'
         if isinstance(dim, int) and input_shape[dim] > 0:
-            assert input_shape[dim] % num_or_sections ==0, \
+            assert input_shape[dim] % num_or_sections == 0, \
                 "The input's size along the split dimension " \
                 "must be evenly divisible by Attr(num_or_sections). " \
-                "But %d is not evenly divisible by %d. " % (num_or_sections,input_shape[dim])
+                "But %d is not evenly divisible by %d. " % (num_or_sections, input_shape[dim])
         num = num_or_sections
     else:
         if isinstance(dim, int) and input_shape[dim] > 0:
@@ -4516,10 +4516,10 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         if transpose_y:
             y_shape[-2], y_shape[-1] = y_shape[-1], y_shape[-2]
         if x_shape[-1] != y_shape[-2]:
-            assert (x_shape[-1] == -1) or (y_shape[-2] == -1),                         \
-                "After performing an optional transpose, Input X's width should be "   \
-                "equal to Y's width for multiplication "                               \
-                "prerequisites. But received X's shape: %s, Y's shape: %s\n" %         \
+            assert (x_shape[-1] == -1) or (y_shape[-2] == -1), \
+                "After performing an optional transpose, Input X's width should be " \
+                "equal to Y's width for multiplication " \
+                "prerequisites. But received X's shape: %s, Y's shape: %s\n" % \
                 (x_shape, y_shape)
 
         if len(y_shape) > 2 and len(x_shape) > 2:
@@ -11380,7 +11380,7 @@ def space_to_depth(x, blocksize, name=None):
 
     if name is None:
         out = helper.create_variable_for_type_inference(
-            dtype=x.dtype)  #fix create
+            dtype=x.dtype)  # fix create
     else:
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
@@ -13076,7 +13076,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     helper = LayerHelper("unfold", **locals())
 
     assert len(x.shape) == 4, \
-            "input should be the format of [N, C, H, W]"
+        "input should be the format of [N, C, H, W]"
 
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
@@ -13669,6 +13669,7 @@ def masked_select(input, mask):
     result = gather_nd(input, select)
     return result
 
+
 @templatedoc()
 def shuffle_batch(x, shuffle_order=[]):
     """
@@ -13720,76 +13721,129 @@ def shuffle_batch(x, shuffle_order=[]):
 
     return out
 
-def nce_sampler(custom_dist, num_total_classes, num_neg_samples=10, seed=0, sample_batch_size=1):
+
+def nce_sampler(custom_dist,
+                num_total_classes,
+                num_neg_samples=10,
+                seed=0,
+                sample_batch_size=1,
+                sampler="uniform"):
     helper = LayerHelper('nce_sampler', **locals())
-   
-    custom_dist_len = len(custom_dist)
-    alias_probs_ = [0] * custom_dist_len
-    alias_ = [0] * custom_dist_len
-    bigs = []
-    littles = []
-    for i in range(custom_dist_len):
-        normal_prob = custom_dist[i] * custom_dist_len
-        if normal_prob - 1.0 > 0:
-            bigs.append((i, normal_prob))
-        elif 1.0 - normal_prob > 0:
-            littles.append((i, normal_prob))
-        else:
-            alias_probs_[i] = normal_prob
-            alias_[i] = -1
 
-    while len(bigs) and len(littles):
-        big = bigs.pop(0)
-        little = littles.pop(0)
-
-        big_idx = big[0]
-        big_prob = big[1]
-
-        alias_probs_[little[0]] = little[1]
-        alias_[little[0]] = big_idx
-        big_left = big[1] + little[1] - 1
-        if big_left - 1.0 > 0:
-            bigs.append((big_idx, big_left))
-        elif 1.0 - big_left > 0:
-            littles.append((big_idx, big_left))
-        else:
-            alias_probs_[big_idx] = big_left
-            alias_[big_idx] = -1
-
-    if len(bigs):
-        big = bigs.pop(0)
-        alias_probs_[big[0]] = 1.0
-        alias_[big[0]] = -1
-    if len(littles):
-        little = littles.pop(0)
-        alias_probs_[little[0]] = 1.0
-        alias_[little[0]] = -1
-
-    def _init_by_numpy_array(numpy_array):
-        ret = helper.create_parameter(
-            attr=ParamAttr(),
-            shape=numpy_array.shape,
-            dtype=numpy_array.dtype,
-            default_initializer=NumpyArrayInitializer(numpy_array))
-        ret.stop_gradient = True
-        return ret
-
-    probs_tensor = _init_by_numpy_array(
-        np.array(custom_dist).astype('float32'))
-    alias_tensor = _init_by_numpy_array(
-        np.array(alias_).astype('int32'))
-    alias_probs_tensor = _init_by_numpy_array(
-        np.array(alias_probs_).astype('float32'))
- 
-    out = helper.create_variable_for_type_inference(core.VarDesc.VarType.INT64)
-    helper.append_op(
-        type='nce_sampler',
-        inputs={'CustomDistProbs': probs_tensor,
+    if sampler == "uniform":
+        sampler = 0
+        out = helper.create_variable_for_type_inference(
+            core.VarDesc.VarType.INT64)
+        helper.append_op(
+            type='nce_sampler',
+            inputs={
+                'CustomDistProbs': probs_tensor,
                 'CustomDistAlias': alias_tensor,
-                'CustomDistAliasProbs': alias_probs_tensor},
-        outputs={'Out': out},
-        attrs={'num_total_classes': int(num_total_classes),
-               'num_neg_samples': int(num_neg_samples),
-               'sample_batch_size': int(sample_batch_size),
-               'seed': seed})
+                'CustomDistAliasProbs': alias_probs_tensor
+            },
+            outputs={'Out': out},
+            attrs={
+                'num_total_classes': int(num_total_classes),
+                'num_neg_samples': int(num_neg_samples),
+                'sample_batch_size': int(sample_batch_size),
+                'sampler': sampler,
+                'seed': seed
+            })
+    elif sampler == "log_uniform":
+        sampler = 1
+        out = helper.create_variable_for_type_inference(
+            core.VarDesc.VarType.INT64)
+        helper.append_op(
+            type='nce_sampler',
+            inputs={
+                'CustomDistProbs': None,
+                'CustomDistAlias': None,
+                'CustomDistAliasProbs': None
+            },
+            outputs={'Out': out},
+            attrs={
+                'num_total_classes': int(num_total_classes),
+                'num_neg_samples': int(num_neg_samples),
+                'sample_batch_size': int(sample_batch_size),
+                'sampler': sampler,
+                'seed': seed
+            })
+    elif sampler == "custom_dist":
+        custom_dist_len = len(custom_dist)
+        alias_probs_ = [0] * custom_dist_len
+        alias_ = [0] * custom_dist_len
+        bigs = []
+        littles = []
+        for i in range(custom_dist_len):
+            normal_prob = custom_dist[i] * custom_dist_len
+            if normal_prob - 1.0 > 0:
+                bigs.append((i, normal_prob))
+            elif 1.0 - normal_prob > 0:
+                littles.append((i, normal_prob))
+            else:
+                alias_probs_[i] = normal_prob
+                alias_[i] = -1
+
+        while len(bigs) and len(littles):
+            big = bigs.pop(0)
+            little = littles.pop(0)
+
+            big_idx = big[0]
+            big_prob = big[1]
+
+            alias_probs_[little[0]] = little[1]
+            alias_[little[0]] = big_idx
+            big_left = big[1] + little[1] - 1
+            if big_left - 1.0 > 0:
+                bigs.append((big_idx, big_left))
+            elif 1.0 - big_left > 0:
+                littles.append((big_idx, big_left))
+            else:
+                alias_probs_[big_idx] = big_left
+                alias_[big_idx] = -1
+
+        if len(bigs):
+            big = bigs.pop(0)
+            alias_probs_[big[0]] = 1.0
+            alias_[big[0]] = -1
+        if len(littles):
+            little = littles.pop(0)
+            alias_probs_[little[0]] = 1.0
+            alias_[little[0]] = -1
+
+        def _init_by_numpy_array(numpy_array):
+            ret = helper.create_parameter(
+                attr=ParamAttr(),
+                shape=numpy_array.shape,
+                dtype=numpy_array.dtype,
+                default_initializer=NumpyArrayInitializer(numpy_array))
+            ret.stop_gradient = True
+            return ret
+
+        probs_tensor = _init_by_numpy_array(
+            np.array(custom_dist).astype('float32'))
+        alias_tensor = _init_by_numpy_array(np.array(alias_).astype('int32'))
+        alias_probs_tensor = _init_by_numpy_array(
+            np.array(alias_probs_).astype('float32'))
+
+        out = helper.create_variable_for_type_inference(
+            core.VarDesc.VarType.INT64)
+        helper.append_op(
+            type='nce_sampler',
+            inputs={
+                'CustomDistProbs': probs_tensor,
+                'CustomDistAlias': alias_tensor,
+                'CustomDistAliasProbs': alias_probs_tensor
+            },
+            outputs={'Out': out},
+            attrs={
+                'num_total_classes': int(num_total_classes),
+                'num_neg_samples': int(num_neg_samples),
+                'sample_batch_size': int(sample_batch_size),
+                'sampler': sampler,
+                'seed': seed
+            })
+    else:
+        raise Exception("Unsupported sampler type.")
+
     return out

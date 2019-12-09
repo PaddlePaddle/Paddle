@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/nce_sampler_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/sampler.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/operators/nce_sampler_op.h"
 
 namespace paddle {
 namespace operators {
@@ -39,8 +39,8 @@ class NCESamplerOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "CustomDistProbs"),
-        platform::CPUPlace());
+        framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
+        ctx.GetPlace());
   }
 };
 
@@ -71,9 +71,7 @@ class NCESamplerOpMaker : public framework::OpProtoAndCheckerMaker {
               "This tensor is output of forward kernel and used in backward "
               "kernel to compute grads.")
         .AsDispensable();
-    AddAttr<int>("sample_batch_size",
-                 "(int) sample batch size")
-        .SetDefault(1);
+    AddAttr<int>("sample_batch_size", "(int) sample batch size").SetDefault(1);
     AddAttr<int>("seed",
                  "(int) The seed used in sampler. If it is 0, "
                  "the sampler will generate a seed randomly.")
@@ -83,11 +81,18 @@ class NCESamplerOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("num_neg_samples",
                  "The number of negative classes. The default value is 10.")
         .SetDefault(10);
+    AddAttr<int>("dtype",
+                 "(int, default 5 (FP32)) "
+                 "Output data type")
+        .SetDefault(framework::proto::VarType::FP32);
+    AddAttr<int>("sampler",
+                 "(int) Which sampler to be used to sample negative class."
+                 "0: Uniform; 1: LogUniform; 2: CostumDist.");
     AddComment(R"DOC("Negative Sampler")DOC");
   }
 };
 
-} // namespace operators
+}  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
@@ -96,5 +101,6 @@ REGISTER_OPERATOR(
     nce_sampler, ops::NCESamplerOp, ops::NCESamplerOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(nce_sampler, ops::NCESamplerKernel<paddle::platform::CPUPlace, float>,
+REGISTER_OP_CPU_KERNEL(
+    nce_sampler, ops::NCESamplerKernel<paddle::platform::CPUPlace, float>,
     ops::NCESamplerKernel<paddle::platform::CPUPlace, double>);
