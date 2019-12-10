@@ -13743,7 +13743,7 @@ def nce_sampler(dict_path, num_total_classes, num_neg_samples=10, seed=0, sample
         inputs={'CustomDistProbs': probs_tensor,
                 'CustomDistAlias': alias_tensor,
                 'CustomDistAliasProbs': alias_probs_tensor},
-        outputs={'Out': out
+        outputs={'Out': out,
                  'CustomDistProbsInit': probs_tensor,
                  'CustomDistAliasInit': alias_tensor,
                  'CustomDistAliasProbsInit': alias_probs_tensor},
