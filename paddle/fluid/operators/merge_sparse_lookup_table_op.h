@@ -33,7 +33,6 @@ class MergeSparseLookupTableKernel : public framework::OpKernel<T> {
     int64_t width = 0;
     PADDLE_ENFORCE_GT(inputs.size(), 0);
 
-    height = inputs[0]->height();
     width = inputs[0]->value().dims()[1];
 
     for (auto& in : inputs) {
