@@ -179,7 +179,9 @@ void BenchKernelMatMul() {
           const int NN = n + 4;
           const int KK = k + 4;
           auto start_X = paddle::platform::PosixInNsec() * 1e-3;
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
+#endif
           for (int i = 0; i < m; i++) {
             memcpy(X1_data + i * KK, a_data + i * k, k * sizeof(a_data[0]));
           }
@@ -187,7 +189,9 @@ void BenchKernelMatMul() {
           auto sum_X = end_X - start_X;
           LOG(INFO) << "mem copy X " << sum_X;
           auto start_W = paddle::platform::PosixInNsec() * 1e-3;
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
+#endif
           for (int i = 0; i < k; i++) {
             memcpy(W1_data + i * NN, b_data + i * n, n * sizeof(b_data[0]));
           }
