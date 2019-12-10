@@ -45,6 +45,7 @@ class TestNanInf(unittest.TestCase):
         print(err)
 
         assert returncode == 0
+        assert (out + err).find('find nan or inf') != -1
 
 
 class TestNanInfEnv(TestNanInf):

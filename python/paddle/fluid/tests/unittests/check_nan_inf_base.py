@@ -20,6 +20,7 @@ import time
 import numpy as np
 
 os.environ["FLAGS_check_nan_inf"] = "1"
+os.environ["GLOG_vmodule"] = "nan_inf_utils_detail=10"
 
 import paddle.fluid.core as core
 import paddle
@@ -30,35 +31,42 @@ np.random.seed(0)
 
 
 def generator(nan_inf="nan"):
-    for i in range(50):
-        curr_train_x = np.random.randint(5, size=(5, 3)).astype("float32")
-        if i >= 20:
+    batch_size = 5
+    for i in range(5):
+        curr_train_x = np.random.randint(
+            batch_size, size=(batch_size, 3)).astype("float32")
+        if i >= 2:
             nan_inf = np.nan if nan_inf == "nan" else np.inf
-            curr_train_x = np.ones(shape=(5, 3)).astype("float32") * nan_inf
+            curr_train_x = np.ones(shape=(batch_size,
+                                          3)).astype("float32") * nan_inf
         res = []
-        for i in range(5):
-            x = curr_train_x[i]
-            y = x[0] + 2 * x[1] + 3 * x[2]
+        for i in range(batch_size):
+            y = i % 3
             res.append([y])
-        y_true = np.array(res).astype('float32')
-        yield [curr_train_x, y_true]
+        y_label = np.array(res).astype('int64')
+        yield [curr_train_x, y_label]
 
 
 def net():
     x = fluid.layers.data(name="x", shape=[3], dtype='float32')
-    y = fluid.layers.data(name="y", shape=[1], dtype='float32')
+    y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+    zero = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+    y = y + zero
+
     hidden = x
 
     for i in range(2):
-        hidden = fluid.layers.fc(input=hidden, size=6, act="sigmoid")
+        hidden = fluid.layers.fc(input=hidden, size=400, act="sigmoid")
 
-    y_predict = fluid.layers.fc(input=hidden, size=1, act=None)
-    cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+    hidden = fluid.layers.fc(input=hidden, size=3, act=None)
+    cost, y_predict = fluid.layers.softmax_with_cross_entropy(
+        hidden, y, return_softmax=True)
+    acc_top1 = fluid.layers.accuracy(input=y_predict, label=y, k=1)
     avg_cost = fluid.layers.mean(cost)
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.05)
     sgd_optimizer.minimize(avg_cost)
-    return y_predict, avg_cost
+    return y_predict, avg_cost, acc_top1
 
 
 def check(use_cuda, nan_inf="nan"):
@@ -68,21 +76,22 @@ def check(use_cuda, nan_inf="nan"):
 
     with fluid.scope_guard(scope):
         with fluid.program_guard(main, startup):
-            y_predict, avg_cost = net()
+            y_predict, avg_cost, acc_top1 = net()
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(startup)
 
             step = 0.0
-            for train_data, y_true in generator(nan_inf):
-                outs = exe.run(main,
-                               feed={'x': train_data,
-                                     'y': y_true},
-                               fetch_list=[y_predict.name, avg_cost.name])
+            for train_data, y_label in generator(nan_inf):
+                outs = exe.run(
+                    main,
+                    feed={'x': train_data,
+                          'y': y_label},
+                    fetch_list=[y_predict.name, avg_cost.name, acc_top1.name])
                 step += 1
-                if step % 10 == 0:
-                    print('iter={:.0f},cost={}'.format(step, outs[1][0]))
+                print('iter={:.0f},cost={},acc1={}'.format(step, outs[1][0],
+                                                           outs[2][0]))
 
 
 if __name__ == '__main__':
@@ -91,9 +100,11 @@ if __name__ == '__main__':
             check(use_cuda=True)
             assert False
         except Exception as e:
+            print(e)
             assert type(e) == core.EnforceNotMet
     try:
         check(use_cuda=False)
         assert False
     except Exception as e:
+        print(e)
         assert type(e) == core.EnforceNotMet
