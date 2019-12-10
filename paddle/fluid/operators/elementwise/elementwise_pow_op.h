@@ -12,16 +12,58 @@ limitations under the License. */
 #pragma once
 
 #include <cmath>
+#include <type_traits>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct PowFunctor {
+namespace details {
+
+// Only valid if T is an integral type.
+template <class T,
+          class = typename std::enable_if<std::is_integral<T>::value>::type>
+static inline HOSTDEVICE T ipow(T base, T exp) {
+  if (exp < 0) {
+    // Note(zhiqiu): In some library, like numpy and pytorch,
+    // integers to negative integer powers are not allowed.
+    // Since a^b = 1/(a^(-b)) when b < 0, it will truncate to 0.
+    // Return 0, for specialization to avoiding infinite loop.
+    return 0;
+  }
+
+  T result = 1;
+  while (exp) {
+    if (exp & 1) {
+      result *= base;
+    }
+    exp >>= 1;
+    base *= base;
+  }
+
+  return result;
+}
+
+template <typename T, bool kIsIntegral = false>
+struct PowFunctorImpl {
   inline HOSTDEVICE T operator()(T a, T b) const { return std::pow(a, b); }
 };
+
+template <typename T>
+struct PowFunctorImpl<T, true> {
+  inline HOSTDEVICE T operator()(T a, T b) const {
+#ifdef __CUDA_ARCH__
+    return ipow(a, b);
+#else
+    return std::pow(a, b);
+#endif
+  }
+};
+}  // namespace details
+
+template <typename T>
+using PowFunctor = details::PowFunctorImpl<T, std::is_integral<T>::value>;
 
 template <typename DeviceContext, typename T>
 class ElementwisePowKernel : public framework::OpKernel<T> {

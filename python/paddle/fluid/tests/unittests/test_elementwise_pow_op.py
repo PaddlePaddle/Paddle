@@ -34,6 +34,16 @@ class TestElementwisePowOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
 
+class TestElementwisePowOp(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_pow"
+        self.inputs = {'X': np.asarray([1, 2, 3]), 'Y': np.asarray([1, 1, 1])}
+        self.outputs = {'Out': np.power(self.inputs['X'], self.inputs['Y'])}
+
+    def test_check_output(self):
+        self.check_output()
+
+
 class TestElementwisePowOp_scalar(TestElementwisePowOp):
     def setUp(self):
         self.op_type = "elementwise_pow"
