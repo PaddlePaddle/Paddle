@@ -788,8 +788,9 @@ int32_t FleetWrapper::CopyTableByFeasign(
 #endif
 }
 
-void FleetWrapper::FutureWait(::std::future<int32_t>& fut) {
-#if defined PADDLE_WITH_PSLIB && defined PADDLE_WITH_TESTING && defined PADDLE_WITH_COVERAGE
+inline void FleetWrapper::FutureWait(::std::future<int32_t>& fut) {
+#if defined PADDLE_WITH_PSLIB && defined PADDLE_WITH_TESTING && \
+    defined PADDLE_WITH_COVERAGE
   VLOG(0) << "future do not wait when WITH_PSLIB=ON && WITH_TESTING=ON "
           << "&& WITH_COVERAGE=ON";
 #else
@@ -797,8 +798,9 @@ void FleetWrapper::FutureWait(::std::future<int32_t>& fut) {
 #endif
 }
 
-int32_t FleetWrapper::FutureGet(::std::future<int32_t>& fut) {
-#if defined PADDLE_WITH_PSLIB && defined PADDLE_WITH_TESTING && defined PADDLE_WITH_COVERAGE
+inline int32_t FleetWrapper::FutureGet(::std::future<int32_t>& fut) {
+#if defined PADDLE_WITH_PSLIB && defined PADDLE_WITH_TESTING && \
+    defined PADDLE_WITH_COVERAGE
   VLOG(0) << "future do not get when WITH_PSLIB=ON && WITH_TESTING=ON "
           << "&& WITH_COVERAGE=ON";
   return 0;
