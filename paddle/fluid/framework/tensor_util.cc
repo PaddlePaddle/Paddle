@@ -460,7 +460,13 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
                       const size_t& seek, const std::vector<int64_t>& shape) {
   uint32_t version;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
-  PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+
+  PADDLE_ENFORCE_EQ(
+      version, 0U,
+      platform::errors::InvalidArgument(
+          "tensor version %u is not supported, Only version 0 is supported",
+          version));
+
   proto::VarType::TensorDesc desc;
   {  // int32_t size
     // proto buffer
@@ -506,7 +512,11 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
                       const platform::DeviceContext& dev_ctx) {
   uint32_t version;
   is.read(reinterpret_cast<char*>(&version), sizeof(version));
-  PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+  PADDLE_ENFORCE_EQ(
+      version, 0U,
+      platform::errors::InvalidArgument(
+          "tensor version %u is not supported, Only version 0 is supported",
+          version));
   proto::VarType::TensorDesc desc;
   {  // int32_t size
      // proto buffer

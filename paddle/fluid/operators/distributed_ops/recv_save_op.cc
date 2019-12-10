@@ -194,8 +194,9 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
 
     // it to save an output stream.
     std::ofstream fout(filename, std::ios::binary);
-    PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true, "Cannot open %s to write",
-                      filename);
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(fout), true,
+        platform::errors::NotFound("Cannot open %s to write", filename));
 
     SerializeVersionToStream(fout);
     SerializeTensorHeaderToStream(fout, data_type,
