@@ -99,6 +99,27 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
   }
 }
 
+void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
+                     const NameVarBaseMap& outs,
+                     framework::AttributeMap attrs) {
+  VLOG(1) << "Trace Op: " << type;
+  size_t op_id = GenerateUniqueId();
+  auto op =
+      OpBase::Create(op_id, type, ins, outs, std::move(attrs), expected_place_);
+  op->Run(ins, outs);
+
+  if (enable_program_desc_tracing_) {
+    VLOG(5) << "Trace op " << type << " into ProgramDesc";
+    program_desc_tracer_->InsertOp(type, ins, outs, op->Attrs());
+  }
+
+  if (ComputeRequiredGrad(ins, outs, no_grad_)) {
+    TraceBackward(op, ins, outs);
+  } else {
+    VLOG(3) << "No Grad to track for Op: " << type;
+  }
+}
+
 bool Tracer::ComputeRequiredGrad(const NameVarBaseMap& ins,
                                  const NameVarBaseMap& outs,
                                  bool trace_backward) {
