@@ -910,8 +910,9 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
                         inputs={},
                         outputs={'Out': [slice]},
                         attrs={
-                            'file_path':
-                            os.path.join(dirname, "__slice__", "{}.slice.{}".format(slice_var.name, idx))
+                            'file_path': os.path.join(dirname, "__slice__",
+                                                      "{}.slice.{}".format(
+                                                          slice_var.name, idx))
                         })
                 else:
                     load_block.append_op(
