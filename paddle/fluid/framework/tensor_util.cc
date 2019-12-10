@@ -431,7 +431,8 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
         size -= size_to_write;
       }
 #else
-      PADDLE_THROW("CUDAPlace is not supported when not compiled with CUDA");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CUDAPlace is not supported when not compiled with CUDA"));
 #endif
     } else {
       os.write(static_cast<const char*>(data_ptr),
@@ -497,7 +498,8 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
 #else
-      PADDLE_THROW("CUDAPlace is not supported when not compiled with CUDA");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CUDAPlace is not supported when not compiled with CUDA"));
 #endif
     } else {
       framework::VisitDataType(
@@ -547,7 +549,8 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
 #else
-      PADDLE_THROW("CUDAPlace is not supported when not compiled with CUDA");
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "CUDAPlace is not supported when not compiled with CUDA"));
 #endif
     } else {
       framework::VisitDataType(
