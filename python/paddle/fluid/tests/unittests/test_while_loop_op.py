@@ -22,6 +22,7 @@ import paddle.fluid.layers as layers
 import paddle.fluid.framework as framework
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
+from paddle.fluid.backward import append_backward
 
 
 class TestApiWhileLoop(unittest.TestCase):
@@ -40,7 +41,8 @@ class TestApiWhileLoop(unittest.TestCase):
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
             out = layers.while_loop(cond, body, (i, ))
 
-        place = fluid.CPUPlace()
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
         res = exe.run(main_program, fetch_list=out)
         self.assertTrue(
@@ -67,7 +69,8 @@ class TestApiWhileLoop(unittest.TestCase):
             data = np.random.rand(10).astype('float32')
             data_one = np.ones(10).astype('float32')
 
-        place = fluid.CPUPlace()
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
         res = exe.run(main_program, feed={'mem': data}, fetch_list=out)
         for i in range(10):
@@ -110,24 +113,144 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
             loop_len2 = layers.fill_constant(shape=[1], dtype='int64', value=3)
             ones = layers.fill_constant(shape=[3, 3], dtype='float32', value=1)
 
-            res = layers.while_loop(external_cond, external_body,
+            out = layers.while_loop(external_cond, external_body,
                                     [i, j, init, sums])
 
             data = np.random.rand(3, 3).astype('float32')
             data_sums = np.zeros([3, 3]).astype('float32')
 
-        place = fluid.CPUPlace()
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
-        ret = exe.run(main_program,
+        res = exe.run(main_program,
                       feed={'init': data,
                             'sums': data_sums},
-                      fetch_list=res)
+                      fetch_list=out)
         for i in range(3):
             data = np.add(data, 1)
             data_sums = np.add(data, data_sums)
         for j in range(2):
             data_sums = np.add(data, data_sums)
-        self.assertTrue(np.allclose(np.asarray(ret[3]), data_sums))
+        self.assertTrue(np.allclose(np.asarray(res[3]), data_sums))
+
+
+class TestApiWhileLoop_Backward(unittest.TestCase):
+    def test_while_loop_backward(self):
+        def cond(i, x):
+            return layers.less_than(i, ten)
+
+        def body(i, x):
+            x = layers.elementwise_add(x=x, y=one)
+            i = layers.increment(i)
+            return [i, x]
+
+        program = fluid.Program()
+        with fluid.program_guard(program):
+            i = layers.fill_constant(shape=[1], dtype='int64', value=0)
+            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+            one = layers.fill_constant(shape=[1], dtype='float32', value=1)
+            x = layers.fill_constant(shape=[1], dtype='float32', value=0)
+            x.stop_gradient = False
+
+            out = layers.while_loop(cond, body, [i, x])
+            mean = layers.mean(out[1])
+            append_backward(mean)
+
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        feed_ten = np.asarray([10]).astype('float32')
+        res = exe.run(program, feed={}, fetch_list=[mean.name, mean.grad_name])
+        x_grad = np.ones(1).astype('float32')
+        self.assertTrue(np.allclose(np.asarray(res[0]), feed_ten))
+        self.assertTrue(np.allclose(np.asarray(res[1]), x_grad))
+
+
+class TestApiWhileLoop_NestedWithBackward(unittest.TestCase):
+    def test_nested_net_with_backward(self):
+        def cond_outside(i, x):
+            return layers.less_than(i, ten)
+
+        def body_outside(i, x):
+            def cond_inside(i, x):
+                return layers.less_than(i, five)
+
+            def body_inside(i, x):
+                x = layers.elementwise_add(x=x, y=one)
+                i = layers.increment(i)
+                return [i, x]
+
+            temp = layers.while_loop(cond_inside, body_inside, [i, x])
+            x = layers.elementwise_add(x=temp[1], y=two)
+            i = layers.increment(i)
+            return [i, x]
+
+        main_program = fluid.default_main_program()
+        startup_program = fluid.default_startup_program()
+
+        with fluid.program_guard(main_program, startup_program):
+            i = layers.fill_constant(shape=[1], dtype='int64', value=0)
+            ten = layers.fill_constant(shape=[1], dtype="int64", value=10)
+            five = layers.fill_constant(shape=[1], dtype="int64", value=5)
+            two = layers.fill_constant(shape=[1], dtype="float32", value=2)
+            one = layers.fill_constant(shape=[1], dtype="float32", value=1)
+            x = layers.fill_constant(shape=[1], dtype="float32", value=1)
+            x.stop_gradient = False
+            out = layers.while_loop(cond_outside, body_outside, [i, x])
+
+            mean = layers.mean(out[1])
+            append_backward(mean)
+
+            exe = fluid.Executor(fluid.CUDAPlace(0))
+            res = exe.run(main_program,
+                          feed={},
+                          fetch_list=[mean.name, mean.grad_name])
+
+            data = np.asarray([16]).astype("float32")
+            data_grad = np.ones(1).astype("int32")
+            self.assertTrue(np.allclose(np.asarray(res[0]), data))
+            self.assertTrue(np.allclose(np.asarray(res[1]), data_grad))
+
+
+class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
+    def test_with_(self):
+        def cond(i):
+            return layers.less_than(i, ten)
+
+        def body(i):
+            def fn_1():
+                data_add_three = layers.elementwise_add(x=i, y=three)
+                return data_add_three
+
+            def fn_2():
+                data_mul_data = layers.elementwise_mul(x=i, y=i)
+                return data_mul_data
+
+            def fn_3():
+                data_add_one = layers.elementwise_add(x=i, y=one)
+                return data_add_one
+
+            return layers.switch_case(
+                branch_index=i, branch_fns={2: fn_1,
+                                            5: fn_2}, default=fn_3)
+
+        main_program = fluid.default_main_program()
+        startup_program = fluid.default_startup_program()
+        with fluid.program_guard(main_program, startup_program):
+            i = layers.fill_constant(shape=[1], dtype='int64', value=1)
+            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+            three = layers.fill_constant(shape=[1], dtype='int64', value=3)
+            one = layers.fill_constant(shape=[1], dtype='int64', value=1)
+            out = layers.while_loop(cond, body, [i])
+
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        res = exe.run(main_program, fetch_list=out)
+
+        data = np.asarray([25]).astype('int64')
+        self.assertTrue(np.allclose(np.asarray(res[0]), data))
 
 
 class TestApiWhileLoop_Error(unittest.TestCase):
