@@ -173,6 +173,7 @@ __all__ = [
     'pixel_shuffle',
     'fsp_matrix',
     'continuous_value_model',
+    'shuffle_batch',
     'where',
     'sign',
     'deformable_conv',
@@ -12622,6 +12623,72 @@ def continuous_value_model(input, cvm, use_cvm=True):
                 'CVM': [cvm]},
         outputs={'Y': [out]},
         attrs={"use_cvm": use_cvm})
+    return out
+
+
+@templatedoc()
+def shuffle_batch(x, seed=None):
+    """
+    This layer shuffle input tensor.
+
+    The number of elements in input tensor is the product of input dims (except last dim). These elements will be shuffled randomly.
+
+    For Example:
+
+    .. code-block:: text
+
+      Input:
+        x.data = [[1, 2], [3, 4], [5, 6], [7, 8]]
+        x.dims = [4, 2]
+
+      Attrs:
+        seed = 2019
+
+      Output:
+        Out.data =[[7, 8], [1, 2], [3, 4], [5, 6]]
+        Out.dims = [4, 2]
+
+    Args:
+        x (Variable): The input variable. The input variable could be N-D tensor with type int, float32 or float64.
+        seed (None|int|Variable): The start up seed. If set, seed will be set as the start up seed of shuffle engine.
+                If not set(Default), start up seed will be generated randomly.
+
+    Returns:
+        Variables: The shuffed LoDTensor with the same shape and lod as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            import paddle.fluid as fluid
+            x = fluid.layers.data(name="x", shape=[-1, 4])
+            out = fluid.layers.shuffle_batch(x)
+    """
+    helper = LayerHelper('shuffle_batch', **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    shuffle_idx = helper.create_variable_for_type_inference(dtype=np.int64)
+    if seed is None and helper.main_program.random_seed != 0:
+        seed = helper.main_program.random_seed
+    if seed is None:
+        seed = np.random.randint(-65536, 65535)
+    op_attrs = {}
+    if isinstance(seed, int):
+        op_attrs["startup_seed"] = seed
+        seed = helper.create_variable(
+            name=unique_name.generate("shuffle_batch_seed"),
+            dtype="int64",
+            persistable=True)
+    elif not isinstance(seed, Variable):
+        raise ValueError("'seed' must be a Variable or an int.")
+    helper.append_op(
+        type='shuffle_batch',
+        inputs={'X': x,
+                'Seed': seed},
+        outputs={'Out': out,
+                 'ShuffleIdx': shuffle_idx,
+                 'SeedOut': seed},
+        attrs=op_attrs)
     return out
 
 
