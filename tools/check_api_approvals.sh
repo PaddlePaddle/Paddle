@@ -166,12 +166,15 @@ fi
 
 OP_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH |grep -oE ".+_op..*" || true`
 if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    CHECK_SHAREDATAWITH=`git diff -U0 --diff-filter=AM upstream/$BRANCH |grep "+" |grep -oE "ShareDataWith[(]" || true`
-    CHECK_SHAREBUFFERWITH=`git diff -U0 --diff-filter=AM upstream/$BRANCH |grep "+" |grep -oE "ShareBufferWith[(]" || true`
-    if [ "${CHECK_SHAREDATAWITH}" != "" ] || [ "${CHECK_SHAREBUFFERWITH}" != "" ]; then
-        echo_line="Using ShareDataWith or ShareBufferWith is not recommended. You must have one RD's (sneaxiy (Recommend) or luotao1 or lanxianghit) approval to use these methods"
-        check_approval 1 6836917 32832641 47554610
-    fi
+    for OP_FILE in ${OP_FILE_CHANGED};
+    do
+        CHECK_SHAREDATAWITH=`git diff -U0 ${OP_FILE} upstream/$BRANCH |grep "+" |grep -oE "ShareDataWith[(]" || true`
+        CHECK_SHAREBUFFERWITH=`git diff -U0 ${OP_FILE} upstream/$BRANCH |grep "+" |grep -oE "ShareBufferWith[(]" || true`
+        if [ "${CHECK_SHAREDATAWITH}" != "" ] || [ "${CHECK_SHAREBUFFERWITH}" != "" ]; then
+            echo_line="Using ShareDataWith or ShareBufferWith in ${OP_FILE} is not recommended. You must have one RD's (zhhsplendid (Recommend), sneaxiy or luotao1 or lanxianghit) approval to use these methods"
+            check_approval 1 6836917 32832641 47554610 7913861
+        fi
+    done
 fi
 
 if [ -n "${echo_list}" ];then

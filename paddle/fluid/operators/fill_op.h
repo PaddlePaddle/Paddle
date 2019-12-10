@@ -59,6 +59,7 @@ class FillKernel : public framework::OpKernel<T> {
 
     if (force_cpu || platform::is_cpu_place(ctx.GetPlace())) {
       tensor.ShareDataWith(out);
+      tensor.ShareDataWith(out);
     } else {
       // Always make tensor in CPU memory.
       tensor.Resize(out.dims());
