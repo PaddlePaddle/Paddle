@@ -161,7 +161,7 @@ void FleetWrapper::PullSparseVarsSync(
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
-    size_t len = tensor->numel();
+    int len = tensor->numel();
 
     // skip slots which do not have embedding
     const std::string& emb_name = var_emb_names[var_index];
@@ -257,8 +257,9 @@ void FleetWrapper::PushDenseParamSync(
   }
   auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(
       regions.data(), regions.size(), table_id);
-  push_status.wait();
-  auto status = push_status.get();
+  push_status->wait();
+  auto status = push_status->get();
+  VLOG(0) << "status " << status;
   CHECK(status == 0) << "push dense param failed, status[" << status << "]";
 #endif
 }
@@ -350,7 +351,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
     }
-    size_t len = tensor->numel();
+    int len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     int slot = 0;
     if (dump_slot) {
@@ -413,7 +414,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
     }
-    size_t len = tensor->numel();
+    int len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     for (auto id_idx = 0u; id_idx < len; ++id_idx) {
       if (ids[id_idx] == 0) {
@@ -684,8 +685,8 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
   }
   auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(
       regions.data(), regions.size(), table_id);
-  push_status.wait();
-  auto status = push_status.get();
+  push_status->wait();
+  auto status = push_status->get();
   if (status != 0) {
     LOG(FATAL) << "push shrink dense param failed, status[" << status << "]";
     sleep(sleep_seconds_before_fail_exit_);
