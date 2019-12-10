@@ -132,12 +132,12 @@ endfunction(find_fluid_thirdparties)
 
 function(create_static_lib TARGET_NAME)
   set(libs ${ARGN})
+  list(REMOVE_DUPLICATES libs)
   if(WIN32)
     set(dummy_index 1)
     set(dummy_offset 1)
     # the dummy target would be consisted of limit size libraries
     set(dummy_limit 60)
-    list(REMOVE_DUPLICATES libs)
     list(LENGTH libs libs_len)
     foreach(lib ${libs})
       list(APPEND dummy_list ${lib})
@@ -150,7 +150,7 @@ function(create_static_lib TARGET_NAME)
       endif()
       MATH(EXPR dummy_offset "${dummy_offset}+1")
     endforeach()
-    merge_static_libs(lib${TARGET_NAME} ${${TARGET_NAME}_dummy_list})
+    merge_static_libs(${TARGET_NAME} ${${TARGET_NAME}_dummy_list})
   else()
     merge_static_libs(${TARGET_NAME} ${libs})
   endif()
@@ -252,6 +252,7 @@ function(merge_static_libs TARGET_NAME)
       # Get the file names of the libraries to be merged
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
     endforeach()
+    message("================${libfiles}")
     # msvc will put libarary in directory of "/Release/xxxlib" by default
     #       COMMAND cmake -E remove "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD

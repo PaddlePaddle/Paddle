@@ -54,11 +54,11 @@ endif()
 
 if(WITH_STATIC_LIB)
   # Create static inference library if needed
-  create_static_lib(paddle_fluid ${fluid_modules} paddle_fluid_api)
+  create_static_lib(paddle_fluid ${fluid_modules} paddle_fluid_api analysis_predictor)
   if(NOT APPLE)
     # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
     set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.sym")
-    set_target_properties(libpaddle_fluid PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+    set_target_properties(paddle_fluid PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
   endif()
 endif()
 
@@ -74,7 +74,7 @@ set(SHARED_INFERENCE_SRCS
 
 # Create shared inference library defaultly
 cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-          DEPS ${fluid_modules} paddle_fluid_api)
+          DEPS ${fluid_modules} paddle_fluid_api analysis_predictor)
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_fluid_shared ${os_dependency_modules})
