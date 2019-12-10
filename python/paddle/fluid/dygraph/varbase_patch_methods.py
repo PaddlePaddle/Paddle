@@ -18,7 +18,7 @@ from . import BackwardStrategy
 from ..framework import Variable, _getitem_impl_
 from .. import unique_name
 import numpy as np
-from math_op_patch import monkey_patch_math_varbase
+from .math_op_patch import monkey_patch_math_varbase
 
 
 def monkey_patch_varbase():

@@ -59,27 +59,6 @@ def monkey_patch_math_varbase():
     def create_scalar(value, dtype):
         return create_tensor(value, dtype, shape=[1])
 
-    @no_grad
-    def create_tensor_with_batchsize(ref_var, value, dtype):
-        assert isinstance(ref_var, Variable)
-        value = float(value)
-        batch_dim = -1
-        for i, d in enumerate(ref_var.shape):
-            if d < 0:
-                batch_dim = i
-                break
-        assert batch_dim != -1
-        inputs = {'Input': [ref_var]}
-        attrs = {
-            'shape': ref_var.shape,
-            'value': value,
-            'input_dim_idx': batch_dim,
-            'output_dim_idx': batch_dim
-        }
-        outs = core.ops.fill_constant_batch_size_like(inputs, attrs)
-        outs['Out'][0].stop_gradient = True
-        return outs['Out'][0]
-
     def astype(self, dtype):
         """
         **Notes**:
@@ -161,17 +140,8 @@ def monkey_patch_math_varbase():
 
             if not isinstance(other_var, core.VarBase):
                 if reverse:
-                    has_batch_size = False
-                    for elem in self.shape:
-                        if elem < 0:
-                            has_batch_size = True
-                            break
-                    if not has_batch_size:
-                        other_var = create_tensor(
-                            other_var, dtype=lhs_dtype, shape=self.shape)
-                    else:
-                        other_var = create_tensor_with_batchsize(
-                            self, other_var, lhs_dtype)
+                    other_var = create_tensor(
+                        other_var, dtype=lhs_dtype, shape=self.shape)
                 else:
                     # add fill_op 
                     other_var = create_scalar(value=other_var, dtype=lhs_dtype)
@@ -185,8 +155,6 @@ def monkey_patch_math_varbase():
                 other_var = tmp
 
             axis = -1
-            if other_var.shape[0] == -1:
-                axis = 0
             assert len(self.shape) >= len(other_var.shape), (
                 "The rank of the first argument of an binary operator cannot "
                 "be smaller than the rank of its second argument: %s vs %s" %

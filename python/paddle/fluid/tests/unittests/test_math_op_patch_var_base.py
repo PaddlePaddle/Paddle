@@ -22,7 +22,7 @@ import numpy as np
 
 class TestMathOpPatchesVarBase(unittest.TestCase):
     def setUp(self):
-        self.shape = [512, 768]
+        self.shape = [10, 10]
         self.dtype = np.float32
 
     def test_add(self):
@@ -69,8 +69,33 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a + b
             self.assertTrue(np.array_equal(res.numpy(), a_np + b))
 
+    def test_sub_scalar(self):
+        a_np = np.random.random(self.shape).astype(self.dtype)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            b = 0.1
+            res = a - b
+            self.assertTrue(np.array_equal(res.numpy(), a_np - b))
+
+    def test_mul_scalar(self):
+        a_np = np.random.random(self.shape).astype(self.dtype)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            b = 0.1
+            res = a * b
+            self.assertTrue(np.array_equal(res.numpy(), a_np * b))
+
+    # div_scalar, not equal
+    def test_div_scalar(self):
+        a_np = np.random.random(self.shape).astype(self.dtype)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            b = 0.1
+            res = a / b
+            self.assertTrue(np.allclose(res.numpy(), a_np / b))
+
     # pow of float type, not equal
-    def test_pow1(self):
+    def test_pow(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         b_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
