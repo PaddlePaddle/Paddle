@@ -74,11 +74,11 @@ void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
                     "Learning rate should have 1 dimension");
   auto beta1_pow_dims = ctx->GetInputDim("Beta1Pow");
-  PADDLE_ENFORCE_EQ(framework::product(beta1_pow_dims), 1,
-                    "Beta1 power accumulator should have 1 dimension");
+  //PADDLE_ENFORCE_EQ(framework::product(beta1_pow_dims), 1,
+  //                  "Beta1 power accumulator should have 1 dimension");
   auto beta2_pow_dims = ctx->GetInputDim("Beta2Pow");
-  PADDLE_ENFORCE_EQ(framework::product(beta2_pow_dims), 1,
-                    "Beta2 power accumulator should have 1 dimension");
+  //PADDLE_ENFORCE_EQ(framework::product(beta2_pow_dims), 1,
+  //                  "Beta2 power accumulator should have 1 dimension");
 
   auto param_dims = ctx->GetInputDim("Param");
   if (ctx->GetInputsVarType("Grad")[0] ==

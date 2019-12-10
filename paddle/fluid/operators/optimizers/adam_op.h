@@ -72,11 +72,13 @@ struct AdamFunctor<T, GPUAdam> {
   T* param_out_;
   T* beta1_pow_out_;
   T* beta2_pow_out_;
+  size_t beta_pow_numel_;
 
   AdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
               const T* beta2_pow, const T* mom1, T* mom1_out, const T* mom2,
               T* mom2_out, const T* lr, const T* grad, const T* param,
-              T* param_out, T* beta1_pow_out, T* beta2_pow_out)
+              T* param_out, T* beta1_pow_out, T* beta2_pow_out,
+              size_t beta_pow_numel )
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -91,7 +93,8 @@ struct AdamFunctor<T, GPUAdam> {
         param_(param),
         param_out_(param_out),
         beta1_pow_out_(beta1_pow_out),
-        beta2_pow_out_(beta2_pow_out){}
+        beta2_pow_out_(beta2_pow_out),
+        beta_pow_numel_(beta_pow_numel){}
 
   inline HOSTDEVICE void operator()(size_t i) const {
     // Merge all memory access together.
@@ -114,8 +117,12 @@ struct AdamFunctor<T, GPUAdam> {
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
     param_out_[i] = p;
-    *beta1_pow_out_ = beta1_pow * beta1_;
-    *beta2_pow_out_ = beta2_pow * beta2_;
+    
+    if ( i == 0 )
+    {
+        *beta1_pow_out_ = beta1_pow * beta1_;
+        *beta2_pow_out_ = beta2_pow * beta2_;
+    }
   }
 };
 
@@ -137,11 +144,13 @@ struct AdamFunctor<T, CPUAdam> {
   T* param_out_;
   T* beta1_pow_out_;
   T* beta2_pow_out_;
+  size_t beta_pow_numel_;
 
   AdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
               const T* beta2_pow, const T* mom1, T* mom1_out, const T* mom2,
               T* mom2_out, const T* lr, const T* grad, const T* param,
-              T* param_out, T* beta1_pow_out, T* beat2_pow_out )
+              T* param_out, T* beta1_pow_out, T* beat2_pow_out,
+              size_t beta_pow_numel )
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -156,7 +165,8 @@ struct AdamFunctor<T, CPUAdam> {
         param_(param),
         param_out_(param_out),
         beta1_pow_out_( beta1_pow_out ),
-        beta2_pow_out_( beat2_pow_out ){}
+        beta2_pow_out_( beat2_pow_out ),
+        beta_pow_numel_(beta_pow_numel){}
 
   void operator()(size_t numel) const {
     Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> g{
@@ -186,8 +196,11 @@ struct AdamFunctor<T, CPUAdam> {
     moment2_out = beta2_ * mom2 + (1 - beta2_) * g * g;
     param_out = param - lr * (moment1_out / (moment2_out.sqrt() + epsilon_));
     
-    *beta1_pow_out_ = beta1_pow * beta1_;
-    *beta2_pow_out_ = beta2_pow * beta2_;
+    for ( size_t i = 0; i < beta_pow_numel_; ++i )
+    {
+        beta1_pow_out_[i] = beta1_pow_[i] * beta1_;
+        beta2_pow_out_[i] = beta2_pow_[i] * beta2_;
+    }
   }
 };
 
@@ -243,7 +256,10 @@ struct SparseAdamFunctor<T, GPUAdam> {
         row_numel_(row_numel),
         row_count_(row_count),
         lazy_mode_(lazy_mode) {}
-
+  inline HOSTDEVICE void beta_pow_update() const{
+    *beta1_pow_out_ = *beta1_pow_ * beta1_;
+    *beta2_pow_out_ = *beta2_pow_ * beta2_;
+  }
   inline HOSTDEVICE void adam_update(size_t i, T g) const {
     // The following code is the same as dense
     T mom1 = moment1_[i];
@@ -264,9 +280,6 @@ struct SparseAdamFunctor<T, GPUAdam> {
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
     param_out_[i] = p;
-
-    *beta1_pow_out_ = beta1_pow * beta1_;
-    *beta2_pow_out_ = beta2_pow * beta2_;
   }
 
   inline HOSTDEVICE void operator()(size_t i) const {
@@ -277,6 +290,11 @@ struct SparseAdamFunctor<T, GPUAdam> {
     } else {
       T g = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_] : 0;
       adam_update(i, g);
+    }
+
+    if ( i == 0 )
+    {
+        beta_pow_update();
     }
   }
 };
@@ -329,6 +347,10 @@ struct SparseAdamFunctor<T, CPUAdam> {
         row_numel_(row_numel),
         row_count_(row_count) {}
 
+  inline HOSTDEVICE void beta_pow_update() const{
+    *beta1_pow_out_ = *beta1_pow_ * beta1_;
+    *beta2_pow_out_ = *beta2_pow_ * beta2_;
+  }
   inline HOSTDEVICE void adam_update(size_t i, T g) const {
     // The following code is the same as dense
     T mom1 = moment1_[i];
@@ -349,8 +371,6 @@ struct SparseAdamFunctor<T, CPUAdam> {
     moment1_out_[i] = mom1;
     moment2_out_[i] = mom2;
     param_out_[i] = p;
-    *beta1_pow_out_ = beta1_pow * beta1_;
-    *beta2_pow_out_ = beta2_pow * beta2_; 
   }
 
   inline void operator()(size_t numel) const {
@@ -386,6 +406,7 @@ struct SparseAdamFunctor<T, CPUAdam> {
       }
     }
 
+    beta_pow_update();
   }
 
 };
@@ -456,7 +477,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
             param.template data<T>(),
             param_out.template mutable_data<T>(ctx.GetPlace()),
             beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
-            beta2_pow_out.template mutable_data<T>(ctx.GetPlace()));
+            beta2_pow_out.template mutable_data<T>(ctx.GetPlace()),
+            beta2_pow.numel() );
         functor(param.numel());
       } else if (platform::is_gpu_place(ctx.GetPlace())) {
         AdamFunctor<T, GPUAdam> functor(
@@ -469,8 +491,9 @@ class AdamOpKernel : public framework::OpKernel<T> {
             param.template data<T>(),
             param_out.template mutable_data<T>(ctx.GetPlace()),
             beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
-            beta2_pow_out.template mutable_data<T>(ctx.GetPlace()));
-
+            beta2_pow_out.template mutable_data<T>(ctx.GetPlace()),
+            beta2_pow.numel() );
+        //LOG(ERROR) << "beta2 numel " <<   beta2_pow.numel() << "\t" << param.numel();
         platform::ForRange<DeviceContext> for_range(
             static_cast<const DeviceContext&>(ctx.device_context()),
             param.numel());
@@ -535,6 +558,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
               functor.adam_update(i, grad_data[row_index * row_numel + offset]);
             }
           }
+          functor.beta_pow_update();
         }
 #ifndef _WIN32
         else if (FLAGS_inner_op_parallelism > 1 &&  // NOLINT
@@ -593,6 +617,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
                 }));
           }
           for (size_t i = 0; i < fs.size(); ++i) fs[i].wait();
+          functor.beta_pow_update();
         }
 #endif          // !_WIN32
         else {  // NOLINT

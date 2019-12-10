@@ -416,6 +416,7 @@ void FuseOptimizerOpPass::FuseVarsToContinuousSpace(
       result->Get<details::ProgramDescs>(details::kProgramDescs).back();
   auto *global_block = program_desc.MutableBlock(0);
   for (auto &var_name : aux_var_names) {
+    LOG(ERROR) << "var name " << var_name;
     AppendCoalesceTensorOp(aux_var_map.at(var_name), aux_var_map.at(var_name),
                            fused_vars_name.at(var_name), dtype, global_block,
                            true);
