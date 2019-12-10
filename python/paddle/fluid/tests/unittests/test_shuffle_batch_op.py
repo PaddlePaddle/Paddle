@@ -48,7 +48,10 @@ class TestShuffleBatchOp(OpTest):
         self.check_output_customized(self.verify_output)
 
     def verify_output(self, outs):
-        out = np.array(outs[2])
+        for elem in outs:
+            if elem.shape == self.outputs['Out'].shape:
+                out = elem
+                break
         is_equal = [np.all(out == res) for res in self.possible_res]
         self.assertIn(True, is_equal)
 

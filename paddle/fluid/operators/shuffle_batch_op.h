@@ -73,7 +73,7 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
     shuffleidx->Resize(framework::make_ddim({(int64_t)idx_vec.size()}));
     auto *shuffleidx_data =
         shuffleidx->mutable_data<int64_t>(context.GetPlace());
-    for (auto i = 0; i < idx_vec.size(); i++) {
+    for (size_t i = 0; i < idx_vec.size(); i++) {
       shuffleidx_data[i] = idx_vec[i];
     }
     // copy data according to idx_vec
@@ -104,7 +104,7 @@ class ShuffleBatchGradKernel : public framework::OpKernel<T> {
 
     std::vector<int> idx_vec_grad(elem_size);
     auto *shuffleidx_data = shuffleidx->data<int64_t>();
-    for (auto i = 0; i < idx_vec_grad.size(); i++) {
+    for (size_t i = 0; i < idx_vec_grad.size(); i++) {
       idx_vec_grad[shuffleidx_data[i]] = i;
     }
 

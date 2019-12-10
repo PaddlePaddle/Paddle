@@ -24,15 +24,21 @@ class ShuffleBatchOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true, "Input(X) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasInput("Seed"), true,
-                      "Input(Seed) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      "Output(Out) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("ShuffleIdx"), true,
-                      "Output(ShuffleIdx) should not be null.");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("SeedOut"), true,
-                      "Output(SeedOut) should not be null.");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("X"), true,
+        platform::errors::NotFound("Input(X) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("Seed"), true,
+        platform::errors::NotFound("Input(Seed) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("Out"), true,
+        platform::errors::NotFound("Output(Out) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("ShuffleIdx"), true,
+        platform::errors::NotFound("Output(ShuffleIdx) should not be null."));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput("SeedOut"), true,
+        platform::errors::NotFound("Output(SeedOut) should not be null."));
 
     ctx->ShareDim("X", "Out");
     ctx->ShareLoD("X", "Out");
@@ -80,19 +86,21 @@ class ShuffleBatchOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("ShuffleIdx"), true,
-                      "Input(ShuffleIdx) should not be null");
-    PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
-                      "Grad Input(Out) should not be null)");
-    PADDLE_ENFORCE_EQ(ctx->HasOutput(framework::GradVarName("X")), true,
-                      "Grad Output(X) should not be null");
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput("ShuffleIdx"), true,
+        platform::errors::NotFound("Input(ShuffleIdx) should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasInput(framework::GradVarName("Out")), true,
+        platform::errors::NotFound("Grad Input(Out) should not be null"));
+    PADDLE_ENFORCE_EQ(
+        ctx->HasOutput(framework::GradVarName("X")), true,
+        platform::errors::NotFound("Grad Output(X) should not be null"));
 
     ctx->ShareDim(framework::GradVarName("Out"), framework::GradVarName("X"));
     ctx->ShareLoD(framework::GradVarName("Out"), framework::GradVarName("X"));
   }
 
  protected:
- public:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
