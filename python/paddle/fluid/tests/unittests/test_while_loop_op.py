@@ -41,6 +41,7 @@ class TestApiWhileLoop(unittest.TestCase):
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
             out = layers.while_loop(cond, body, (i, ))
 
+#place = fluid.CPUPlace()
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -69,6 +70,7 @@ class TestApiWhileLoop(unittest.TestCase):
             data = np.random.rand(10).astype('float32')
             data_one = np.ones(10).astype('float32')
 
+        #place = fluid.CPUPlace()
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -119,6 +121,7 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
             data = np.random.rand(3, 3).astype('float32')
             data_sums = np.zeros([3, 3]).astype('float32')
 
+        #place = fluid.CPUPlace()
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -156,6 +159,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             mean = layers.mean(out[1])
             append_backward(mean)
 
+        #place = fluid.CPUPlace()
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -202,7 +206,10 @@ class TestApiWhileLoop_NestedWithBackward(unittest.TestCase):
             mean = layers.mean(out[1])
             append_backward(mean)
 
-            exe = fluid.Executor(fluid.CUDAPlace(0))
+            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+            ) else fluid.CPUPlace()
+            #place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
             res = exe.run(main_program,
                           feed={},
                           fetch_list=[mean.name, mean.grad_name])
@@ -244,6 +251,7 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
             one = layers.fill_constant(shape=[1], dtype='int64', value=1)
             out = layers.while_loop(cond, body, [i])
 
+        #place = fluid.CPUPlace()
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
