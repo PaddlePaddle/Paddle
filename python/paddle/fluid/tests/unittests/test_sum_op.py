@@ -144,6 +144,7 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
         self.height = 10
         self.row_numel = 12
         self.rows = [0, 1, 2, 2, 4, 5, 6]
+        self.dtype = np.float32
 
     def check_with_place(self, place, inplace):
         scope = core.Scope()
