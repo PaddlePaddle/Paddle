@@ -58,9 +58,10 @@ void PullDenseWorker::Initialize(const TrainerDesc& param) {
 }
 
 void PullDenseWorker::Wait(std::vector<::std::future<int32_t>>* status_vec) {
+  auto fleet_ptr = FleetWrapper::GetInstance();
   for (auto& t : *status_vec) {
-    t.wait();
-    auto status = t.get();
+    fleet_ptr->FutureWait(t);
+    auto status = fleet_ptr->FutureGet(t);
     if (status != 0) {
       LOG(WARNING) << "Current Pull Dense Thread Failed Times"
                    << ++pull_dense_fail_times_;

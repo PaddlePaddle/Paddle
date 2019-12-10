@@ -218,6 +218,10 @@ class FleetWrapper {
   // this performs better than rand_r, especially large data
   std::default_random_engine& LocalRandomEngine();
 
+  inline void FutureWait(::std::future<int32_t>& fut);
+
+  inline int32_t FutureGet(::std::future<int32_t>& fut);
+
 #ifdef PADDLE_WITH_PSLIB
   static std::shared_ptr<paddle::distributed::PSlib> pslib_ptr_;
 #endif

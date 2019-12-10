@@ -189,8 +189,8 @@ void FleetWrapper::PullSparseVarsSync(
       pull_result_ptr.data(), table_id, fea_keys->data(), fea_keys->size());
   pull_sparse_status.push_back(std::move(status));
   for (auto& t : pull_sparse_status) {
-    t.wait();
-    auto status = t.get();
+    FutureWait(t);
+    auto status = FutureGet(t);
     if (status != 0) {
       LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
       sleep(sleep_seconds_before_fail_exit_);
@@ -237,7 +237,7 @@ void FleetWrapper::PullDenseVarsSync(
   }
   auto status =
       pslib_ptr_->_worker_ptr->pull_dense(regions.data(), regions.size(), tid);
-  status.wait();
+  FutureWait(status);
 #endif
 }
 
@@ -257,8 +257,8 @@ void FleetWrapper::PushDenseParamSync(
   }
   auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(
       regions.data(), regions.size(), table_id);
-  push_status.wait();
-  auto status = push_status.get();
+  FutureWait(push_status);
+  auto status = FutureGet(push_status);
   CHECK(status == 0) << "push dense param failed, status[" << status << "]";
 #endif
 }
@@ -535,8 +535,8 @@ void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
 #ifdef PADDLE_WITH_PSLIB
   auto ret =
       pslib_ptr_->_worker_ptr->load(table_id, path, std::to_string(mode));
-  ret.wait();
-  if (ret.get() != 0) {
+  FutureWait(ret);
+  if (FutureGet(ret) != 0) {
     LOG(ERROR) << "load model of table id: " << table_id
                << ", from path: " << path << " failed";
   }
@@ -548,8 +548,8 @@ void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
 void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->save(path, std::to_string(mode));
-  ret.wait();
-  int32_t feasign_cnt = ret.get();
+  FutureWait(ret);
+  int32_t feasign_cnt = FutureGet(ret);
   if (feasign_cnt == -1) {
     LOG(ERROR) << "save model failed";
     sleep(sleep_seconds_before_fail_exit_);
@@ -563,8 +563,8 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
 void FleetWrapper::PrintTableStat(const uint64_t table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->print_table_stat(table_id);
-  ret.wait();
-  int32_t err_code = ret.get();
+  FutureWait(ret);
+  int32_t err_code = FutureGet(ret);
   if (err_code == -1) {
     LOG(ERROR) << "print table stat failed";
   }
@@ -577,9 +577,9 @@ double FleetWrapper::GetCacheThreshold(int table_id) {
 #ifdef PADDLE_WITH_PSLIB
   double cache_threshold = 0.0;
   auto ret = pslib_ptr_->_worker_ptr->flush();
-  ret.wait();
+  FutureWait(ret);
   ret = pslib_ptr_->_worker_ptr->get_cache_threshold(table_id, cache_threshold);
-  ret.wait();
+  FutureWait(ret);
   if (cache_threshold < 0) {
     LOG(ERROR) << "get cache threshold failed";
     sleep(sleep_seconds_before_fail_exit_);
@@ -597,8 +597,8 @@ void FleetWrapper::CacheShuffle(int table_id, const std::string& path,
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->cache_shuffle(
       0, path, std::to_string(mode), std::to_string(cache_threshold));
-  ret.wait();
-  int32_t feasign_cnt = ret.get();
+  FutureWait(ret);
+  int32_t feasign_cnt = FutureGet(ret);
   if (feasign_cnt == -1) {
     LOG(ERROR) << "cache shuffle failed";
     sleep(sleep_seconds_before_fail_exit_);
@@ -614,8 +614,8 @@ int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
 #ifdef PADDLE_WITH_PSLIB
   auto ret =
       pslib_ptr_->_worker_ptr->save_cache(table_id, path, std::to_string(mode));
-  ret.wait();
-  int32_t feasign_cnt = ret.get();
+  FutureWait(ret);
+  int32_t feasign_cnt = FutureGet(ret);
   if (feasign_cnt == -1) {
     LOG(ERROR) << "table save cache failed";
     sleep(sleep_seconds_before_fail_exit_);
@@ -631,7 +631,7 @@ int32_t FleetWrapper::SaveCache(int table_id, const std::string& path,
 void FleetWrapper::ShrinkSparseTable(int table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->shrink(table_id);
-  ret.wait();
+  FutureWait(ret);
 #else
   VLOG(0) << "FleetWrapper::ShrinkSparseTable does nothing when no pslib";
 #endif
@@ -640,7 +640,7 @@ void FleetWrapper::ShrinkSparseTable(int table_id) {
 void FleetWrapper::ClearModel() {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->clear();
-  ret.wait();
+  FutureWait(ret);
 #else
   VLOG(0) << "FleetWrapper::ClearModel does nothing when no pslib";
 #endif
@@ -684,8 +684,8 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
   }
   auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(
       regions.data(), regions.size(), table_id);
-  push_status.wait();
-  auto status = push_status.get();
+  FutureWait(push_status);
+  auto status = FutureGet(push_status);
   if (status != 0) {
     LOG(FATAL) << "push shrink dense param failed, status[" << status << "]";
     sleep(sleep_seconds_before_fail_exit_);
@@ -699,7 +699,7 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
 void FleetWrapper::ClientFlush() {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->flush();
-  ret.wait();
+  FutureWait(ret);
 #else
   VLOG(0) << "FleetWrapper::ServerFlush does nothing when no pslib";
 #endif
@@ -754,8 +754,8 @@ int32_t FleetWrapper::CopyTable(const uint64_t src_table_id,
                                 const uint64_t dest_table_id) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->copy_table(src_table_id, dest_table_id);
-  ret.wait();
-  int32_t feasign_cnt = ret.get();
+  FutureWait(ret);
+  int32_t feasign_cnt = FutureGet(ret);
   if (feasign_cnt == -1) {
     LOG(ERROR) << "copy table failed";
     sleep(sleep_seconds_before_fail_exit_);
@@ -774,8 +774,8 @@ int32_t FleetWrapper::CopyTableByFeasign(
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->copy_table_by_feasign(
       src_table_id, dest_table_id, feasign_list.data(), feasign_list.size());
-  ret.wait();
-  int32_t feasign_cnt = ret.get();
+  FutureWait(ret);
+  int32_t feasign_cnt = FutureGet(ret);
   if (feasign_cnt == -1) {
     LOG(ERROR) << "copy table by feasign failed";
     sleep(sleep_seconds_before_fail_exit_);
@@ -785,6 +785,25 @@ int32_t FleetWrapper::CopyTableByFeasign(
 #else
   VLOG(0) << "FleetWrapper::CopyTableByFeasign does nothing when no pslib";
   return 0;
+#endif
+}
+
+void FleetWrapper::FutureWait(::std::future<int32_t>& fut) {
+#if defined PADDLE_WITH_PSLIB && defined PADDLE_WITH_TESTING && defined PADDLE_WITH_COVERAGE
+  VLOG(0) << "future do not wait when WITH_PSLIB=ON && WITH_TESTING=ON "
+          << "&& WITH_COVERAGE=ON";
+#else
+  fut.wait();
+#endif
+}
+
+int32_t FleetWrapper::FutureGet(::std::future<int32_t>& fut) {
+#if defined PADDLE_WITH_PSLIB && defined PADDLE_WITH_TESTING && defined PADDLE_WITH_COVERAGE
+  VLOG(0) << "future do not get when WITH_PSLIB=ON && WITH_TESTING=ON "
+          << "&& WITH_COVERAGE=ON";
+  return 0;
+#else
+  return fut.get();
 #endif
 }
 
