@@ -17,4 +17,4 @@ pyyaml
 decorator
 prettytable
 objgraph
-ssl
+ssl ; python_version>"2.3.4" and python_version<"2.6"
