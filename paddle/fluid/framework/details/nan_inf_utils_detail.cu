@@ -24,13 +24,22 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-static std::vector<std::unordered_map<std::string, memory::AllocationPtr>>
-    multi_op_var2gpu_str;
-static std::vector<std::mutex> multi_op_var2gpu_str_mutex;
-
 static std::once_flag init_multi_gpu_op_var_map_flag;
 
-void InitMultiGPUOpVarMap() {
+// lazy init
+static std::vector<std::unordered_map<std::string, memory::AllocationPtr>>&
+multi_op_var2gpu_str() {
+  static std::vector<std::unordered_map<std::string, memory::AllocationPtr>>
+      _multi_op_var2gpu_str;
+  return _multi_op_var2gpu_str;
+}
+
+static std::vector<std::mutex>& multi_op_var2gpu_str_mutex() {
+  static std::vector<std::mutex> _multi_op_var2gpu_str_mutex;
+  return _multi_op_var2gpu_str_mutex;
+}
+
+static void InitMultiGPUOpVarMap() {
   int dev_count = platform::GetCUDADeviceCount();
   PADDLE_ENFORCE_GT(dev_count, 0,
                     platform::errors::NotFound(
@@ -41,8 +50,8 @@ void InitMultiGPUOpVarMap() {
       dev_count);
   std::vector<std::mutex> tmp_multi_mutex(dev_count);
 
-  multi_op_var2gpu_str.swap(tmp_multi);
-  multi_op_var2gpu_str_mutex.swap(tmp_multi_mutex);
+  multi_op_var2gpu_str().swap(tmp_multi);
+  multi_op_var2gpu_str_mutex().swap(tmp_multi_mutex);
 }
 
 template <typename T>
@@ -115,16 +124,16 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
       platform::DeviceContextPool::Instance().Get(tensor_.place()));
   int dev_id = boost::get<platform::CUDAPlace>(tensor_.place()).device;
   PADDLE_ENFORCE_EQ(
-      (dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex.size()), true,
+      (dev_id >= 0 && dev_id < multi_op_var2gpu_str_mutex().size()), true,
       platform::errors::OutOfRange("GPU dev_id must >=0 and < dev_count=%d",
-                                   multi_op_var2gpu_str_mutex.size()));
+                                   multi_op_var2gpu_str_mutex().size()));
 
   std::string op_var = "[op=" + op_type_ + "] [tensor=" + var_name_ + "]";
   char* gpu_str_ptr = NULL;
 
   {
-    auto& op_var2gpu_str_mutex = multi_op_var2gpu_str_mutex.at(dev_id);
-    auto& op_var2gpu_str = multi_op_var2gpu_str.at(dev_id);
+    auto& op_var2gpu_str_mutex = multi_op_var2gpu_str_mutex().at(dev_id);
+    auto& op_var2gpu_str = multi_op_var2gpu_str().at(dev_id);
 
     std::lock_guard<std::mutex> guard(op_var2gpu_str_mutex);
     if (op_var2gpu_str.find(op_var) == op_var2gpu_str.end()) {  // insert

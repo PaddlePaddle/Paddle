@@ -27,40 +27,53 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-/* In op_proto_maker.h
- * framework::OpRole::kForward      = 0x0000,
- * framework::OpRole::kBackward     = 0x0001,
- * framework::OpRole::kOptimize     = 0x0002,
- * framework::OpRole::kRPC          = 0x0004,
- * framework::OpRole::kDist         = 0x0008,
- * framework::OpRole::kLRSched      = 0x0010,
- * framework::OpRole::kLoss         = 0x0100,
- * framework::OpRole::kNotSpecified = 0x1000,
- */
-static const int FORWARD = 0x10000;
-static const std::unordered_map<std::string, int> role_str2int = {
-    {"forward", FORWARD}, /* kForward=0, can't filter */
-    {"backward", static_cast<int>(framework::OpRole::kBackward)},
-    {"optimize", static_cast<int>(framework::OpRole::kOptimize)},
-    {"rpc", static_cast<int>(framework::OpRole::kRPC)},
-    {"dist", static_cast<int>(framework::OpRole::kDist)},
-    {"lrsched", static_cast<int>(framework::OpRole::kLRSched)},
-    {"loss", static_cast<int>(framework::OpRole::kLoss)},
-    {"default", static_cast<int>(framework::OpRole::kNotSpecified)},
-};
+static std::once_flag white_list_init_flag;
+
 static int op_role_nan_inf_white_list = 0;
 
-static std::unordered_set<std::string> op_type_nan_inf_white_list = {
-    "coalesce_tensor", /* This Op will alloc tensor, and may not init space */
-};
+static constexpr int FORWARD = 0x10000;
 
-static std::unordered_map<std::string, std::vector<std::string>>
-    op_var_nan_inf_white_list = {
-        /* encoded & gather var consist of idx&val, can't judge directly */
-        {"dgc", {"__dgc_encoded__", "__dgc_gather__"}},
-};
+// lazy init
+static const std::unordered_map<std::string, int>& role_str2int() {
+  /* In op_proto_maker.h
+   * framework::OpRole::kForward      = 0x0000,
+   * framework::OpRole::kBackward     = 0x0001,
+   * framework::OpRole::kOptimize     = 0x0002,
+   * framework::OpRole::kRPC          = 0x0004,
+   * framework::OpRole::kDist         = 0x0008,
+   * framework::OpRole::kLRSched      = 0x0010,
+   * framework::OpRole::kLoss         = 0x0100,
+   * framework::OpRole::kNotSpecified = 0x1000,
+   */
+  static const std::unordered_map<std::string, int> _role_str2int = {
+      {"forward", FORWARD}, /* kForward=0, can't filter */
+      {"backward", static_cast<int>(framework::OpRole::kBackward)},
+      {"optimize", static_cast<int>(framework::OpRole::kOptimize)},
+      {"rpc", static_cast<int>(framework::OpRole::kRPC)},
+      {"dist", static_cast<int>(framework::OpRole::kDist)},
+      {"lrsched", static_cast<int>(framework::OpRole::kLRSched)},
+      {"loss", static_cast<int>(framework::OpRole::kLoss)},
+      {"default", static_cast<int>(framework::OpRole::kNotSpecified)},
+  };
+  return _role_str2int;
+}
 
-static std::once_flag white_list_init_flag;
+static std::unordered_set<std::string>& op_type_nan_inf_white_list() {
+  static std::unordered_set<std::string> _op_type_nan_inf_white_list = {
+      "coalesce_tensor", /* This Op will alloc tensor, and may not init space */
+  };
+  return _op_type_nan_inf_white_list;
+}
+
+static std::unordered_map<std::string, std::vector<std::string>>&
+op_var_nan_inf_white_list() {
+  static std::unordered_map<std::string, std::vector<std::string>>
+      _op_var_nan_inf_white_list = {
+          /* encoded & gather var consist of idx&val, can't judge directly */
+          {"dgc", {"__dgc_encoded__", "__dgc_gather__"}},
+      };
+  return _op_var_nan_inf_white_list;
+}
 
 static void InitWhiteListFormEnv() {
   // export PADDLE_INF_NAN_SKIP_OP="op0,op1,op2"
@@ -74,7 +87,7 @@ static void InitWhiteListFormEnv() {
     std::stringstream ss(op_type_skip);
     std::string op_type;
     while (std::getline(ss, op_type, ',')) {
-      op_type_nan_inf_white_list.emplace(op_type);
+      op_type_nan_inf_white_list().emplace(op_type);
     }
   }
 
@@ -82,13 +95,14 @@ static void InitWhiteListFormEnv() {
     std::stringstream ss(op_role_skip);
     std::string op_role;
     while (std::getline(ss, op_role, ',')) {
-      PADDLE_ENFORCE_EQ(role_str2int.find(op_role) != role_str2int.end(), true,
+      PADDLE_ENFORCE_EQ(role_str2int().find(op_role) != role_str2int().end(),
+                        true,
                         platform::errors::InvalidArgument(
                             "Skip role must be one of "
                             "{forward,backward,optimize,rpc,dist,lrsched,loss,"
                             "default}, instead of %s",
                             op_role));
-      op_role_nan_inf_white_list |= role_str2int.at(op_role);
+      op_role_nan_inf_white_list |= role_str2int().at(op_role);
     }
   }
 
@@ -104,7 +118,7 @@ static void InitWhiteListFormEnv() {
       std::string op = op_var.substr(0, pos);
       std::string var = op_var.substr(pos + 1);
 
-      op_var_nan_inf_white_list[op].emplace_back(var);
+      op_var_nan_inf_white_list()[op].emplace_back(var);
     }
   }
 }
@@ -250,7 +264,7 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 }
 
 bool IsSkipOp(const framework::OperatorBase& op) {
-  if (op_type_nan_inf_white_list.count(op.Type()) != 0) return true;
+  if (op_type_nan_inf_white_list().count(op.Type()) != 0) return true;
 
   int op_role = op.template Attr<int>(
       framework::OpProtoAndCheckerMaker::OpRoleAttrName());
@@ -271,7 +285,7 @@ void CheckOpHasNanOrInf(const framework::OperatorBase& op,
 
   if (IsSkipOp(op)) return;
 
-  if (op_var_nan_inf_white_list.count(op.Type()) == 0) {
+  if (op_var_nan_inf_white_list().count(op.Type()) == 0) {
     // NOTE. vname may destruct in the end of this func.
     for (auto& vname : op.OutputVars(true)) {
       auto* var = exec_scope.FindVar(vname);
@@ -281,7 +295,7 @@ void CheckOpHasNanOrInf(const framework::OperatorBase& op,
   } else {
     for (auto& vname : op.OutputVars(true)) {
       bool need_check = true;
-      for (auto& white_vname : op_var_nan_inf_white_list.at(op.Type())) {
+      for (auto& white_vname : op_var_nan_inf_white_list().at(op.Type())) {
         if (vname.find(white_vname) != std::string::npos) {
           need_check = false;
           break;

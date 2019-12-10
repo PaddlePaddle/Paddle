@@ -20,8 +20,8 @@ import sys
 import time
 import numpy as np
 
-os.environ["FLAGS_check_nan_inf"] = "1"
-os.environ["GLOG_vmodule"] = "nan_inf_utils_detail=10"
+os.environ["FLAGS_check_nan_inf"] = str("1")
+os.environ["GLOG_vmodule"] = str("nan_inf_utils_detail=10")
 
 import paddle.fluid.core as core
 import paddle
@@ -37,9 +37,8 @@ def generator(nan_inf="nan"):
         curr_train_x = np.random.randint(
             batch_size, size=(batch_size, 3)).astype("float32")
         if i >= 2:
-            nan_inf = np.nan if nan_inf == "nan" else np.inf
-            curr_train_x = np.ones(shape=(batch_size,
-                                          3)).astype("float32") * nan_inf
+            curr_train_x[0, :] = np.nan
+            curr_train_x[-1, :] = np.inf
         res = []
         for i in range(batch_size):
             y = i % 3
@@ -51,7 +50,13 @@ def generator(nan_inf="nan"):
 def net():
     x = fluid.layers.data(name="x", shape=[3], dtype='float32')
     y = fluid.layers.data(name="y", shape=[1], dtype='int64')
+
+    # test int64 value
     zero = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
+
+    # test float16 value
+    fp16_zero = fluid.layers.cast(zero, dtype='float16')
+
     y = y + zero
 
     hidden = x
