@@ -23,11 +23,7 @@ class SeedOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    // std::vector<int> dim_vec {1};
-    const framework::DDim& dims = framework::DDim({1});
-    ctx->SetOutputDim("Out", dims);
-    // ctx->ShareLoD("X", /*->*/ "Out");
-    // LodLevel=0
+    ctx->SetOutputDim("Out", {1});
   }
 
  protected:

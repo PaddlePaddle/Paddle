@@ -30,7 +30,6 @@ class CPUSeedKernel : public framework::OpKernel<T> {
     // NOTE: fixed seed should only be used in unittest or for debug.
     // Guarantee to use random seed in training.
     std::random_device rnd;
-    std::minstd_rand engine;
     int seed;
     if (user_seed != 0) {
       seed = user_seed;
