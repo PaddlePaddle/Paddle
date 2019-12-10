@@ -278,10 +278,10 @@ class LayerHelperBase(object):
                          attr,
                          shape,
                          dtype,
-                         type=core.VarDesc.VarType.LOD_TENSOR,
                          is_bias=False,
                          default_initializer=None,
-                         stop_gradient=False):
+                         stop_gradient=False,
+                         type=core.VarDesc.VarType.LOD_TENSOR):
         """Create parameters for this layers.
 
            Args:
