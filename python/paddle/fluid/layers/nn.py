@@ -13740,8 +13740,11 @@ def nce_sampler(dict_path, num_total_classes, num_neg_samples=10, seed=0, sample
     block = default_startup_program().global_block()
     block.append_op(
         type='nce_sampler',
-        inputs={},
-        outputs={'CustomDistProbsInit': probs_tensor,
+        inputs={'CustomDistProbs': probs_tensor,
+                'CustomDistAlias': alias_tensor,
+                'CustomDistAliasProbs': alias_probs_tensor},
+        outputs={'Out': out
+                 'CustomDistProbsInit': probs_tensor,
                  'CustomDistAliasInit': alias_tensor,
                  'CustomDistAliasProbsInit': alias_probs_tensor},
         attrs={'init_flag': True,
@@ -13757,6 +13760,9 @@ def nce_sampler(dict_path, num_total_classes, num_neg_samples=10, seed=0, sample
                 'CustomDistAlias': alias_tensor,
                 'CustomDistAliasProbs': alias_probs_tensor},
         outputs={'Out': out,
+                 'CustomDistProbsInit': probs_tensor,
+                 'CustomDistAliasInit': alias_tensor,
+                 'CustomDistAliasProbsInit': alias_probs_tensor},
         attrs={'init_flag': False,
                'filename': dict_path,
                'num_total_classes': int(num_total_classes),
