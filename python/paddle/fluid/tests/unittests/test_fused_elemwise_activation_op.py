@@ -325,29 +325,11 @@ for mode in {0, 1}:
             'functor_list': ["scale", "elementwise_add"],
             'save_intermediate_out': save_intermediate_out,
         })
-        create_test_class(
-            'scale_add_fp16' + suffix,
-            scale_add_func, {
-                'scale': scale,
-                'functor_list': ["scale", "elementwise_add"],
-                'save_intermediate_out': save_intermediate_out,
-            },
-            dtype=np.float16,
-            grad_chek=False)
         create_test_class('add_scale' + suffix, add_scale_func, {
             'scale': scale,
             'functor_list': ["elementwise_add", "scale"],
             'save_intermediate_out': save_intermediate_out,
         })
-        create_test_class(
-            'add_scale_fp16' + suffix,
-            add_scale_func, {
-                'scale': scale,
-                'functor_list': ["elementwise_add", "scale"],
-                'save_intermediate_out': save_intermediate_out,
-            },
-            dtype=np.float16,
-            grad_chek=False)
         create_test_class('add_relu' + suffix, add_relu_func, {
             'functor_list': ["elementwise_add", "relu"],
             'save_intermediate_out': save_intermediate_out,
@@ -356,36 +338,56 @@ for mode in {0, 1}:
             'functor_list': ["relu", "elementwise_add"],
             'save_intermediate_out': save_intermediate_out,
         })
-        create_test_class(
-            'add_relu_fp16' + suffix,
-            add_relu_func, {
-                'functor_list': ["elementwise_add", "relu"],
-                'save_intermediate_out': save_intermediate_out,
-            },
-            dtype=np.float16,
-            grad_chek=False)
-        create_test_class(
-            'relu_add_fp16' + suffix,
-            relu_add_func, {
-                'functor_list': ["relu", "elementwise_add"],
-                'save_intermediate_out': save_intermediate_out,
-            },
-            dtype=np.float16,
-            grad_chek=False)
         create_test_class('mul_scale' + suffix, mul_scale_func, {
             'scale': scale,
             'functor_list': ["elementwise_mul", "scale"],
             'save_intermediate_out': save_intermediate_out,
         })
-        create_test_class(
-            'mul_scale' + suffix,
-            mul_scale_func, {
-                'scale': scale,
-                'functor_list': ["elementwise_mul", "scale"],
-                'save_intermediate_out': save_intermediate_out,
-            },
-            dtype=np.float16,
-            grad_chek=False)
+        if core.is_compiled_with_cuda():
+            create_test_class(
+                'scale_add_fp16' + suffix,
+                scale_add_func, {
+                    'scale': scale,
+                    'functor_list': ["scale", "elementwise_add"],
+                    'save_intermediate_out': save_intermediate_out,
+                },
+                dtype=np.float16,
+                grad_chek=False)
+            create_test_class(
+                'add_scale_fp16' + suffix,
+                add_scale_func, {
+                    'scale': scale,
+                    'functor_list': ["elementwise_add", "scale"],
+                    'save_intermediate_out': save_intermediate_out,
+                },
+                dtype=np.float16,
+                grad_chek=False)
+
+            create_test_class(
+                'add_relu_fp16' + suffix,
+                add_relu_func, {
+                    'functor_list': ["elementwise_add", "relu"],
+                    'save_intermediate_out': save_intermediate_out,
+                },
+                dtype=np.float16,
+                grad_chek=False)
+            create_test_class(
+                'relu_add_fp16' + suffix,
+                relu_add_func, {
+                    'functor_list': ["relu", "elementwise_add"],
+                    'save_intermediate_out': save_intermediate_out,
+                },
+                dtype=np.float16,
+                grad_chek=False)
+            create_test_class(
+                'mul_scale_fp16' + suffix,
+                mul_scale_func, {
+                    'scale': scale,
+                    'functor_list': ["elementwise_mul", "scale"],
+                    'save_intermediate_out': save_intermediate_out,
+                },
+                dtype=np.float16,
+                grad_chek=False)
 
 if __name__ == '__main__':
     unittest.main()

@@ -80,7 +80,7 @@ class TestCase4(TestTransposeOp):
         self.axis = (4, 2, 3, 1, 0, 5)
 
 
-class TestTransposeOpError(OpTest):
+class TestTransposeOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='float32')
