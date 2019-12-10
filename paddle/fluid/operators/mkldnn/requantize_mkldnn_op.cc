@@ -43,8 +43,8 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     const auto& engine = dev_ctx.GetEngine();
 
     std::vector<primitive> pipeline;
-    auto src_tz = paddle::framework::vectorize<int>(input->dims());
-    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
+    auto src_tz = paddle::framework::vectorize<int64_t>(input->dims());
+    auto dst_tz = paddle::framework::vectorize<int64_t>(output->dims());
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
     mkldnn::memory::data_type dst_dt = src_dt;
@@ -60,23 +60,21 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     attri.set_output_scales(mask, {scale_shift});
 
     auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, src_fmt);
-    auto src_pd = mkldnn::memory::primitive_desc(src_md, engine);
-    auto src_memory =
-        std::make_shared<mkldnn::memory>(src_pd, to_void_cast<T>(input_data));
-    std::shared_ptr<primitive::at> src_memory_p =
-        std::shared_ptr<primitive::at>(new primitive::at(*src_memory));
+    auto src_memory = std::make_shared<mkldnn::memory>(
+        src_md, engine, to_void_cast<T>(input_data));
 
     auto dst_md = platform::MKLDNNMemDesc({dst_tz}, dst_dt, dst_fmt);
-    auto dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
-    auto dst_memory = mkldnn::memory(dst_pd, to_void_cast<T>(output_data));
+    auto dst_memory =
+        mkldnn::memory(dst_md, engine, to_void_cast<T>(output_data));
 
     auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
-        new reorder::primitive_desc(src_pd, dst_pd, attri));
+        new reorder::primitive_desc(*src_memory, dst_memory, attri));
 
-    auto reorder_p = std::shared_ptr<reorder>(
-        new reorder(*reorder_pd, *src_memory_p, dst_memory));
-    pipeline.push_back(*reorder_p);
-    stream(stream::kind::eager).submit(pipeline).wait();
+    auto reorder_p = std::shared_ptr<reorder>(new reorder(*reorder_pd));
+
+    mkldnn::stream astream(engine);
+    reorder_p->execute(astream, *src_memory, dst_memory);
+    astream.wait();
 
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(dst_memory));
