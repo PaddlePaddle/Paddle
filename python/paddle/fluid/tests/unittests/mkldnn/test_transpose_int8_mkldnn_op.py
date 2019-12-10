@@ -17,11 +17,11 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTestInt8
 from mkldnn_op_test import format_reorder
 
 
-class TestTransposeOp(OpTest):
+class TestTransposeOp(OpTestInt8):
     def setUp(self):
         self.init_op_type()
         self.initTestCase()

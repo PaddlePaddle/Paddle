@@ -17,13 +17,13 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTestInt8
 '''
  test case for s8 * s8
 '''
 
 
-class TestMKLDNNMulOpS8S8(OpTest):
+class TestMKLDNNMulOpS8S8(OpTestInt8):
     def setUp(self):
         self.op_type = "mul"
         self.init_kernel_type()

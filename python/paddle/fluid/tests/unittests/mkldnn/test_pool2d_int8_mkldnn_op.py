@@ -19,19 +19,44 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTestInt8
 from paddle.fluid.tests.unittests.test_pool2d_op import TestPool2D_Op, avg_pool2D_forward_naive, max_pool2D_forward_naive
 
 
-class TestPool2dMKLDNNInt8_Op(TestPool2D_Op):
-    def init_kernel_type(self):
-        self.use_mkldnn = True
-
-    def init_data_type(self):
-        self.dtype = np.int8
-
+class TestPool2dMKLDNNInt8_Op(OpTestInt8):
     def setUp(self):
-        TestPool2D_Op.setUp(self)
+        self.op_type = "pool2d"
+        self.use_cudnn = False
+        self.init_kernel_type()
+        self.use_mkldnn = False
+        self.init_data_type()
+        self.init_test_case()
+        self.padding_algorithm = "EXPLICIT"
+        self.init_paddings()
+        self.init_global_pool()
+        self.init_kernel_type()
+        self.init_pool_type()
+        self.init_ceil_mode()
+        self.init_exclusive()
+        self.init_adaptive()
+        self.init_data_format()
+        self.init_shape()
+
+        self.attrs = {
+            'strides': self.strides,
+            'paddings': self.paddings,
+            'ksize': self.ksize,
+            'pooling_type': self.pool_type,
+            'global_pooling': self.global_pool,
+            'use_cudnn': self.use_cudnn,
+            'use_mkldnn': self.use_mkldnn,
+            'ceil_mode': self.ceil_mode,
+            'data_format': self.data_format,
+            'exclusive': self.exclusive,
+            'adaptive': self.adaptive,
+            "padding_algorithm": self.padding_algorithm,
+        }
+
         assert self.dtype in [np.int8, np.uint8
                               ], 'Dtype should be int8 or uint8'
         input = np.random.randint(0, 100, self.shape).astype(self.dtype)
@@ -39,16 +64,52 @@ class TestPool2dMKLDNNInt8_Op(TestPool2D_Op):
             input, self.ksize, self.strides, self.paddings, self.global_pool,
             self.ceil_mode, self.exclusive, self.adaptive,
             self.dtype)).astype(self.dtype)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
+        self.inputs = {'X': OpTestInt8.np_dtype_to_fluid_dtype(input)}
         self.outputs = {'Out': output}
+
+    def has_cudnn(self):
+        return core.is_compiled_with_cuda() and self.use_cudnn
+
+    def init_data_format(self):
+        self.data_format = "NCHW"
+
+    def init_shape(self):
+        self.shape = [2, 3, 5, 5]
+
+    def init_test_case(self):
+        self.ksize = [3, 3]
+        self.strides = [1, 1]
+
+    def init_paddings(self):
+        self.paddings = [0, 0]
+        self.padding_algorithm = "EXPLICIT"
+
+    def init_pool_type(self):
+        self.pool_type = "avg"
+        self.pool2D_forward_naive = avg_pool2D_forward_naive
+
+    def init_global_pool(self):
+        self.global_pool = True
+
+    def init_ceil_mode(self):
+        self.ceil_mode = False
+
+    def init_exclusive(self):
+        self.exclusive = True
+
+    def init_adaptive(self):
+        self.adaptive = False
+
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+    def init_data_type(self):
+        self.dtype = np.int8
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output_with_place(
             core.CPUPlace(), atol=1e-5, check_dygraph=False)
-
-    def test_check_grad(self):
-        pass
 
 
 class TestCase1Avg(TestPool2dMKLDNNInt8_Op):

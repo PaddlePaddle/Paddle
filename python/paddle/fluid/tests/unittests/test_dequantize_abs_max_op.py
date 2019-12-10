@@ -17,7 +17,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import math
-from op_test import OpTest
+from op_test import OpTestInt8
 
 
 def quantize_max_abs(x, max_range):
@@ -31,7 +31,7 @@ def dequantize_max_abs(x, scale, max_range):
     return y
 
 
-class TestDequantizeMaxAbsOp(OpTest):
+class TestDequantizeMaxAbsOp(OpTestInt8):
     def set_args(self):
         self.num_bits = 8
         self.max_range = math.pow(2, self.num_bits - 1) - 1

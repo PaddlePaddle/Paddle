@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, OpTestInt8
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.compat as cpt
@@ -182,7 +182,7 @@ class TestEmbedOpError(unittest.TestCase):
             fluid.layers.embedding(input=input3, size=(10, 64), dtype='float16')
 
 
-class TestLookupTableOpInt8(OpTest):
+class TestLookupTableOpInt8(OpTestInt8):
     def setUp(self):
         self.op_type = "lookup_table"
         table = np.random.randint(
@@ -201,7 +201,7 @@ class TestLookupTableOpInt8(OpTest):
         pass
 
 
-class TestLookupTableOpWithTensorIdsInt8(OpTest):
+class TestLookupTableOpWithTensorIdsInt8(OpTestInt8):
     def setUp(self):
         self.op_type = "lookup_table"
         table = np.random.randint(

@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from op_test import OpTest, OpTestInt8
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 
@@ -319,7 +319,7 @@ class TestTrilinearInterpDatalayout(TestTrilinearInterpOp):
         self.data_layout = "NDHWC"
 
 
-class TestTrilinearInterpOpUint8(OpTest):
+class TestTrilinearInterpOpUint8(OpTestInt8):
     def setUp(self):
         self.out_size = None
         self.actual_shape = None

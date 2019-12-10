@@ -16,10 +16,10 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTestInt8
 
 
-class TestConcatOp(OpTest):
+class TestConcatOp(OpTestInt8):
     def setUp(self):
         self.op_type = "concat"
         self.use_mkldnn = True

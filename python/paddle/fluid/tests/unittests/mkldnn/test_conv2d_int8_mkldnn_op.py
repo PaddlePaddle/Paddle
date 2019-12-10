@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
-from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive, TestConv2dOp
+from paddle.fluid.tests.unittests.op_test import OpTestInt8
+from paddle.fluid.tests.unittests.test_conv2d_op import conv2d_forward_naive
 
 
 def conv2d_forward_refer(input, filter, group, conv_param):
@@ -28,16 +28,17 @@ def conv2d_forward_refer(input, filter, group, conv_param):
     return out
 
 
-class TestConv2dInt8Op(TestConv2dOp):
+class TestConv2dInt8Op(OpTestInt8):
     def setUp(self):
         self.op_type = "conv2d"
         self.use_cudnn = False
         self.exhaustive_search = False
         self.use_cuda = False
-        self.use_mkldnn = False
+        self.fuse_relu_before_depthwise_conv = False
         self.data_format = "NCHW"
         self.weighttype = np.float32
         self.use_mkldnn = True
+        self.init_kernel_type()
         self.init_group()
         self.init_dilation()
         self.init_test_case()
@@ -120,11 +121,11 @@ class TestConv2dInt8Op(TestConv2dOp):
 
         self.inputs = {
             'Input':
-            OpTest.np_dtype_to_fluid_dtype(input.astype(self.srctype)),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+            OpTestInt8.np_dtype_to_fluid_dtype(input.astype(self.srctype)),
+            'Filter': OpTestInt8.np_dtype_to_fluid_dtype(filter)
         }
         if self.fuse_residual:
-            self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
+            self.inputs['ResidualData'] = OpTestInt8.np_dtype_to_fluid_dtype(
                 input_residual)
 
         self.attrs = {
@@ -150,18 +151,11 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.check_output_with_place(
             core.CPUPlace(), atol=0, check_dygraph=False)
 
-    def test_check_grad(self):
-        pass
-
-    def test_check_grad_no_filter(self):
-        pass
-
-    def test_check_grad_no_input(self):
-        pass
-
     def init_test_case(self):
-        TestConv2dOp.init_test_case(self)
+        self.pad = [0, 0]
+        self.stride = [1, 1]
         self.input_size = [1, 1, 5, 5]  # NCHW
+        assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
         self.input_residual_size = [1, 2, 3, 3]
         self.filter_size = [2, f_c, 3, 3]
@@ -169,6 +163,15 @@ class TestConv2dInt8Op(TestConv2dOp):
         self.scale_out = 0.5
         self.scale_weights = [10.0]
         self.scale_in_eltwise = 0.6
+
+    def init_kernel_type(self):
+        pass
+
+    def init_dilation(self):
+        self.dilations = [1, 1]
+
+    def init_group(self):
+        self.groups = 1
 
     def init_data_type(self):
         self.srctype = np.uint8
