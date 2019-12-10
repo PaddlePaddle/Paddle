@@ -149,8 +149,8 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
                                      const framework::Tensor &tensor) const {
     uint64_t size = tensor.numel() * framework::SizeOfType(tensor.type());
     auto *data_ptr = tensor.data<void>();
-    PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
-                   "Index overflow when writing tensor");
+    PADDLE_ENFORCE_LT(size, std::numeric_limits<std::streamsize>::max(),
+                      "Index overflow when writing tensor");
     os.write(static_cast<const char *>(data_ptr),
              static_cast<std::streamsize>(size));
   }
@@ -163,8 +163,9 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     auto overwrite = ctx.Attr<bool>("overwrite");
 
     if (FileExists(filename) && !overwrite) {
-      PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
-                   filename, overwrite);
+      PADDLE_THROW_ERROR(
+          "%s is existed, cannot save to it when overwrite=false", filename,
+          overwrite);
     }
 
     MkDirRecursively(DirName(filename).c_str());
@@ -176,16 +177,20 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
         ctx.Attr<std::vector<std::string>>("remote_varnames");
     auto endpoints = ctx.Attr<std::vector<std::string>>("endpoints");
 
-    PADDLE_ENFORCE_EQ(slice_shapes.size(), slice_varnames.size());
-    PADDLE_ENFORCE_EQ(slice_shapes.size(), endpoints.size());
+    PADDLE_ENFORCE_EQ(
+        slice_shapes.size(), slice_varnames.size(),
+        "Attr len(slice_shapes) must be equal to len(slice_varnames)");
+
+    PADDLE_ENFORCE_EQ(slice_shapes.size(), endpoints.size(),
+                      "Attr len(slice_shapes) must be equal to len(endpoints)");
 
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
 
     // it to save an output stream.
     std::ofstream fout(filename, std::ios::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
-                   filename);
+    PADDLE_ENFORCE_EQ(static_cast<bool>(fout), true, "Cannot open %s to write",
+                      filename);
 
     SerializeVersionToStream(fout);
     SerializeTensorHeaderToStream(fout, data_type,
