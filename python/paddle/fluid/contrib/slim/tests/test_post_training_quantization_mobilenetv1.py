@@ -136,7 +136,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         if not os.path.exists("./data/ILSVRC2012"):
             cmd = 'rm -rf {0} && ln -s {1} {0}'.format("data",
                                                        self.data_cache_folder)
-        os.system(cmd)
+            os.system(cmd)
 
         self.batch_size = 1 if os.environ.get('DATASET') == 'full' else 50
         self.sample_iterations = 50 if os.environ.get(
