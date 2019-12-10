@@ -33,6 +33,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
+from check_shape_whitelist import need_to_fix_check_shape_op_list
 
 
 def _set_use_system_allocator(value=None):
@@ -154,7 +155,6 @@ class OpTest(unittest.TestCase):
         cls.call_once = False
         cls.dtype = "float32"
         cls.outputs = {}
-        cls.check_shape_times = 0
         cls.op_type = None
 
         np.random.seed(123)
@@ -167,13 +167,15 @@ class OpTest(unittest.TestCase):
         """Restore random seeds"""
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
+
         _set_use_system_allocator(cls._use_system_allocator)
 
-        if hasattr(get_numeric_gradient, 'check_shape_time'
-                   ) and get_numeric_gradient.check_shape_time == 0:
+        if hasattr(
+                get_numeric_gradient, 'check_shape_time'
+        ) and get_numeric_gradient.check_shape_time == 0 and OpTest.op_type not in need_to_fix_check_shape_op_list:
             raise AssertionError(
                 "At least one input's shape should be large than 100 for " +
-                OpTest.op_type + " Op.")
+                cls.op_type + " Op.")
 
     def try_call_once(self, data_type):
         if not self.call_once:
@@ -225,7 +227,6 @@ class OpTest(unittest.TestCase):
         return feed_map
 
     def _append_ops(self, block):
-        OpTest.op_type = self.op_type
         op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
         "infer datatype from inputs and outputs for this test case"
         self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
@@ -364,7 +365,6 @@ class OpTest(unittest.TestCase):
             return var_dict
 
     def _calc_dygraph_output(self, place, parallel=False, no_check_set=None):
-        OpTest.op_type = self.op_type
         with fluid.dygraph.base.guard(place=place):
             block = fluid.default_main_program().global_block()
 
@@ -1081,6 +1081,7 @@ class OpTest(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               check_dygraph=True):
+        OpTest.op_type = self.op_type
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
