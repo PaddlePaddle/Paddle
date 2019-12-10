@@ -212,8 +212,9 @@ void BindReader(py::module *module) {
       .def("read_next_var_list",
            [](MultiDeviceFeedReader &self) {
              auto result_list = self.ReadNextList();
-             std::vector<framework::LoDTensor> tensor_list = result_list[0];
+             auto &tensor_list = result_list[0];
              std::vector<std::shared_ptr<imperative::VarBase>> var_list;
+             var_list.reserve(tensor_list.size());
              auto func = [](framework::LoDTensor &lod_tensor) {
                std::string act_name =
                    imperative::GetCurrentTracer()->GenerateUniqueName(
@@ -224,10 +225,10 @@ void BindReader(py::module *module) {
                new_var->SetDataType(lod_tensor.type());
                auto *tensor =
                    new_var->MutableVar()->GetMutable<framework::LoDTensor>();
-               tensor->ShareDataWith(lod_tensor);
+               *tensor = std::move(lod_tensor);
                return new_var;
              };
-             for (auto tensor : tensor_list) {
+             for (auto &tensor : tensor_list) {
                var_list.emplace_back(func(tensor));
              }
              return var_list;
