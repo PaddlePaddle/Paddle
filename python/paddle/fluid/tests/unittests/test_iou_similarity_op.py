@@ -50,7 +50,7 @@ class TestIOUSimilarityOp(OpTest):
                 sim_score = inter_area / union_area
                 self.output[row, col] = sim_score
         self.inputs = {'X': self.boxes1, 'Y': self.boxes2}
-
+        self.attrs = {"box_normalized": False}
         self.outputs = {'Out': self.output}
 
 
@@ -64,6 +64,7 @@ class TestIOUSimilarityOpWithLoD(TestIOUSimilarityOp):
         self.output_lod = [[1, 1]]
 
         self.inputs = {'X': (self.boxes1, self.boxes1_lod), 'Y': self.boxes2}
+        self.attrs = {"box_normalized": False}
         self.outputs = {'Out': (self.output, self.output_lod)}
 
 

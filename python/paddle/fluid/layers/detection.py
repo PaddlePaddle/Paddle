@@ -653,14 +653,15 @@ def detection_output(loc,
 
 
 @templatedoc()
-def iou_similarity(x, y, name=None):
+def iou_similarity(x, y, box_normalized=False, name=None):
     """
     ${comment}
 
     Args:
         x (Variable): ${x_comment}.The data type is float32 or float64.
         y (Variable): ${y_comment}.The data type is float32 or float64.
-
+        box_normalized(bool): Whether treat the priorbox as a noramlized box.
+            Set true by default.
     Returns:
         Variable: ${out_comment}.The data type is same with x.
 
@@ -700,7 +701,7 @@ def iou_similarity(x, y, name=None):
         type="iou_similarity",
         inputs={"X": x,
                 "Y": y},
-        attrs={},
+        attrs={"box_normalized": box_normalized},
         outputs={"Out": out})
     return out
 
