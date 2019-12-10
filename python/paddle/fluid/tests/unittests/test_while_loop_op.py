@@ -41,7 +41,6 @@ class TestApiWhileLoop(unittest.TestCase):
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
             out = layers.while_loop(cond, body, (i, ))
 
-#place = fluid.CPUPlace()
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -70,7 +69,6 @@ class TestApiWhileLoop(unittest.TestCase):
             data = np.random.rand(10).astype('float32')
             data_one = np.ones(10).astype('float32')
 
-        #place = fluid.CPUPlace()
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -121,7 +119,6 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
             data = np.random.rand(3, 3).astype('float32')
             data_sums = np.zeros([3, 3]).astype('float32')
 
-        #place = fluid.CPUPlace()
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -159,15 +156,14 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             mean = layers.mean(out[1])
             append_backward(mean)
 
-        #place = fluid.CPUPlace()
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
 
-        feed_ten = np.asarray([10]).astype('float32')
+        feed_x = np.asarray([10]).astype('float32')
         res = exe.run(program, feed={}, fetch_list=[mean.name, mean.grad_name])
         x_grad = np.ones(1).astype('float32')
-        self.assertTrue(np.allclose(np.asarray(res[0]), feed_ten))
+        self.assertTrue(np.allclose(np.asarray(res[0]), feed_x))
         self.assertTrue(np.allclose(np.asarray(res[1]), x_grad))
 
 
@@ -206,18 +202,17 @@ class TestApiWhileLoop_NestedWithBackward(unittest.TestCase):
             mean = layers.mean(out[1])
             append_backward(mean)
 
-            place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
-            #place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            res = exe.run(main_program,
-                          feed={},
-                          fetch_list=[mean.name, mean.grad_name])
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        res = exe.run(main_program,
+                      feed={},
+                      fetch_list=[mean.name, mean.grad_name])
 
-            data = np.asarray([16]).astype("float32")
-            data_grad = np.ones(1).astype("int32")
-            self.assertTrue(np.allclose(np.asarray(res[0]), data))
-            self.assertTrue(np.allclose(np.asarray(res[1]), data_grad))
+        feed_x = np.asarray([16]).astype("float32")
+        x_grad = np.ones(1).astype("int32")
+        self.assertTrue(np.allclose(np.asarray(res[0]), feed_x))
+        self.assertTrue(np.allclose(np.asarray(res[1]), x_grad))
 
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
@@ -251,7 +246,6 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
             one = layers.fill_constant(shape=[1], dtype='int64', value=1)
             out = layers.while_loop(cond, body, [i])
 
-        #place = fluid.CPUPlace()
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
