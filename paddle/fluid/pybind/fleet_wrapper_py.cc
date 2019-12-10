@@ -55,6 +55,7 @@ void BindFleetWrapper(py::module* m) {
       .def("load_model", &framework::FleetWrapper::LoadModel)
       .def("clear_model", &framework::FleetWrapper::ClearModel)
       .def("stop_server", &framework::FleetWrapper::StopServer)
+      .def("finalize_worker", &framework::FleetWrapper::FinalizeWorker)
       .def("gather_servers", &framework::FleetWrapper::GatherServers)
       .def("gather_clients", &framework::FleetWrapper::GatherClients)
       .def("get_clients_info", &framework::FleetWrapper::GetClientsInfo)
@@ -62,6 +63,7 @@ void BindFleetWrapper(py::module* m) {
            &framework::FleetWrapper::CreateClient2ClientConnection)
       .def("shrink_sparse_table", &framework::FleetWrapper::ShrinkSparseTable)
       .def("shrink_dense_table", &framework::FleetWrapper::ShrinkDenseTable)
+      .def("print_table_stat", &framework::FleetWrapper::PrintTableStat)
       .def("client_flush", &framework::FleetWrapper::ClientFlush)
       .def("load_from_paddle_model",
            &framework::FleetWrapper::LoadFromPaddleModel)

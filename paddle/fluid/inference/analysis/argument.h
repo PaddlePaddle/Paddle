@@ -149,6 +149,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(analysis_passes, AnalysisPasses,
                       std::vector<std::string>);
 
+  // whether to mute all logs in inference.
+  DECL_ARGUMENT_FIELD(disable_logs, DisableLogs, bool);
+
   // Pass a set of op types to enable its mkldnn kernel
   DECL_ARGUMENT_FIELD(mkldnn_enabled_op_types, MKLDNNEnabledOpTypes,
                       std::unordered_set<std::string>);

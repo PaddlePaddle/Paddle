@@ -84,9 +84,9 @@ class DistributedLookupTableKernel : public framework::OpKernel<T> {
     auto ids_vars = context.MultiInputVar("Ids");
     auto emb_vars = context.MultiOutput<framework::Tensor>("Embeddings");
 
-    auto id_names = context.Inputs("Ids");
-    auto embedding_name = context.Inputs("W").front();
-    auto out_names = context.Outputs("Outputs");
+    auto id_names = context.InputNames("Ids");
+    auto embedding_name = context.InputNames("W").front();
+    auto out_names = context.OutputNames("Outputs");
 
     auto lookup_tables = context.Attr<std::vector<std::string>>("table_names");
     auto height_sections =

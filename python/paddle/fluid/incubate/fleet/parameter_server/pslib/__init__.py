@@ -182,6 +182,10 @@ class PSLib(Fleet):
             destroyed when stop() is called.
         """
         self._role_maker._barrier_worker()
+        # all worker should be finalize first
+        if self._role_maker.is_worker():
+            self._fleet_ptr.finalize_worker()
+        self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.stop_server()
         self._role_maker._barrier_worker()
@@ -232,7 +236,26 @@ class PSLib(Fleet):
               fleet.save_inference_model(dirname="hdfs:/my/path")
 
         """
-        self._fleet_ptr.save_model(dirname)
+        self._fleet_ptr.save_model(dirname, 0)
+
+    def print_table_stat(self, table_id):
+        """
+        print stat info of table_id,
+        format: tableid, feasign size, mf size
+
+        Args:
+            table_id(int): the id of table
+
+        Example:
+            .. code-block:: python
+
+              fleet.print_table_stat(0)
+
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.print_table_stat(table_id)
+        self._role_maker._barrier_worker()
 
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """

@@ -28,6 +28,9 @@ from itertools import chain
 
 import nltk
 from nltk.corpus import movie_reviews
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+from functools import cmp_to_key
 
 import paddle.dataset.common
 
@@ -68,7 +71,7 @@ def get_word_dict():
             for words in movie_reviews.words(field):
                 word_freq_dict[words] += 1
     words_sort_list = list(six.iteritems(word_freq_dict))
-    words_sort_list.sort(cmp=lambda a, b: b[1] - a[1])
+    words_sort_list.sort(key=cmp_to_key(lambda a, b: b[1] - a[1]))
     for index, word in enumerate(words_sort_list):
         words_freq_sorted.append((word[0], index))
     return words_freq_sorted

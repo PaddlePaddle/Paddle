@@ -517,6 +517,7 @@ struct FCMKLDNN : public PatternBase {
   // declare operator node's name
   PATTERN_DECL_NODE(fc);
   // declare variable node's name
+  PATTERN_DECL_NODE(input);
   PATTERN_DECL_NODE(weights);
   PATTERN_DECL_NODE(bias);
   PATTERN_DECL_NODE(output);

@@ -70,7 +70,7 @@ class TestSqueezeOp3(TestSqueezeOp):
         self.new_shape = (3, 5, 1, 4)
 
 
-class TestSqueezeOpError(OpTest):
+class TestSqueezeOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of softmax_op must be Variable.

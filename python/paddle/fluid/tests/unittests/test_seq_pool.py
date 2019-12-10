@@ -77,7 +77,7 @@ class TestSeqAvgPool(OpTest):
             self.outputs = {'Out': (out, [self.set_lod()[0]])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         # Remove MaxIndex after check_grad is refined.
@@ -85,7 +85,7 @@ class TestSeqAvgPool(OpTest):
         if isinstance(out, tuple): out = out[0]
         self.outputs['MaxIndex'] = \
             np.zeros(out.shape).astype('int32')
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_dygraph=False)
 
 
 class TestSeqAvgPoolLen0(TestSeqAvgPool):
@@ -298,7 +298,8 @@ class TestSeqSqrtPool2D(TestSeqAvgPool2D):
             out = out[0]
         self.outputs['MaxIndex'] = \
             np.zeros(out.shape).astype('int32')
-        self.check_grad(["X"], "Out", max_relative_error=0.06)
+        self.check_grad(
+            ["X"], "Out", max_relative_error=0.06, check_dygraph=False)
 
 
 class TestSeqSqrtPool2DLen0(TestSeqSqrtPool2D):

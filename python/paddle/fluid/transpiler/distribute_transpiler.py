@@ -370,10 +370,11 @@ class DistributeTranspiler(object):
             endpoints = trainers.split(",")
         elif isinstance(trainers, list):
             endpoints = trainers
-        else:
+        elif collective_mode != "single_process_multi_thread":
             raise ValueError('invalid trainers config: ' + str(trainers))
 
-        if len(endpoints) == 1:
+        if len(endpoints
+               ) == 1 and collective_mode != "single_process_multi_thread":
             raise ValueError('invalid trainer number in distributed: 1')
 
         if startup_program is None:
@@ -387,6 +388,8 @@ class DistributeTranspiler(object):
             transpiler = collective.GradAllReduce(self.config.nccl_comm_num)
         elif collective_mode == 'local_sgd':
             transpiler = collective.LocalSGD(self.config.nccl_comm_num)
+        elif collective_mode == "single_process_multi_thread":
+            transpiler = collective.SingleProcessMultiThread()
         else:
             raise ValueError('invalid collective_mode: %s' % collective_mode)
 
@@ -1440,7 +1443,10 @@ class DistributeTranspiler(object):
                             param_name, endpoint)
                         break
                 for key in opt_op.input_names:
-                    if key in ["Param", "Grad", "LearningRate"]:
+                    if key in [
+                            "Param", "Grad", "LearningRate", "Beta1Tensor",
+                            "Beta2Tensor"
+                    ]:
                         continue
                     origin_var = self.origin_program.global_block().vars[
                         opt_op.input(key)[0]]
@@ -2204,7 +2210,10 @@ class DistributeTranspiler(object):
 
         for key in opt_op.input_names:
             new_shape = None
-            if key in ["Param", "Grad", "LearningRate"]:
+            if key in [
+                    "Param", "Grad", "LearningRate", "Beta1Tensor",
+                    "Beta2Tensor"
+            ]:
                 continue
             var = self.origin_program.global_block().vars[opt_op.input(key)[0]]
             param_var = new_inputs["Param"]

@@ -359,7 +359,7 @@ create_test_class(TestCrossEntropyOp7RemoveLastDim,
                   "TestCrossEntropyF16Op7RemoveLastDim")
 
 
-class TestCrossEntropyOpError(OpTest):
+class TestCrossEntropyOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
 

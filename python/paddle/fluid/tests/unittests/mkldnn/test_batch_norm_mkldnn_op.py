@@ -19,10 +19,12 @@ import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
 from paddle.fluid.framework import grad_var_name
 from paddle.fluid.tests.unittests.test_batch_norm_op import TestBatchNormOpInference, TestBatchNormOpTraining, _reference_training, _reference_grad
 from mkldnn_op_test import check_if_mkldnn_batchnorm_primitives_exist_in_bwd
+
+_set_use_system_allocator(True)
 
 
 class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
@@ -82,6 +84,13 @@ class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
         place = core.CPUPlace()
         data_format = "NCHW"
         self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
+
+
+class TestMKLDNNBatchNormOpInference_NHWC(TestMKLDNNBatchNormOpInference):
+    def test_check_output(self):
+        place = core.CPUPlace()
+        data_format = "NHWC"
+        self.check_with_place(place, data_format, self.dtype, [2, 4, 5, 3])
 
 
 class TestMKLDNNBatchNormOpWithReluInference(TestBatchNormOpInference):

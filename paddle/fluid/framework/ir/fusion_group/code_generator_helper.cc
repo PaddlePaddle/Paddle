@@ -33,8 +33,9 @@ static T StringTo(const std::string& str) {
   return value;
 }
 
-std::string OperationExpression::GetRHS(size_t i) {
-  auto rhs = OperationMap::Instance().Get(op_).exprs[i];
+std::string OperationExpression::GetRHS(std::unordered_set<int>* used,
+                                        size_t i) const {
+  auto rhs = OperationMap::Instance().Get(op_type_).exprs[i];
   for (size_t i = 0; i < rhs.size(); i++) {
     size_t pos = i;
     if (rhs[pos] == '$' && rhs[pos + 1] == '{') {
@@ -47,29 +48,33 @@ std::string OperationExpression::GetRHS(size_t i) {
       PADDLE_ENFORCE_LT(index, input_ids_.size(),
                         "Only %d inputs are provided, but need %d.",
                         input_ids_.size(), index + 1);
-      rhs.replace(pos, length + 3, VarName(input_ids_[index]) + R"([idx])");
+      PADDLE_ENFORCE_GE(input_ids_[index], 0,
+                        "Input id should be no less than 0.");
+      rhs.replace(pos, length + 3, TmpName(input_ids_[index]));
+      used->insert(input_ids_[index]);
     }
   }
   return rhs;
 }
 
-std::string OperationExpression::GetLHS(size_t i) {
+std::string OperationExpression::GetLHS(size_t i) const {
   std::stringstream ret;
-  ret << VarName(output_ids_[i]) << R"([idx])";
+  ret << TmpName(output_ids_[i]);
   return ret.str();
 }
 
-bool OperationExpression::IsSupport() {
-  return OperationMap::Instance().Has(op_);
+bool OperationExpression::IsSupport() const {
+  return OperationMap::Instance().Has(op_type_);
 }
 
 // we Traverse the graph and get the group , all input id and output id is
 // unique for the node which belong the group
-std::string OperationExpression::GetExpression() {
+std::string OperationExpression::GetExpression(
+    std::string dtype, std::unordered_set<int>* used) const {
   std::stringstream ret;
   if (IsSupport()) {
     for (size_t i = 0; i < output_ids_.size(); ++i) {
-      ret << GetLHS(i) << " = " << GetRHS(i) << ";";
+      ret << dtype << " " << GetLHS(i) << " = " << GetRHS(used, i) << ";";
     }
   }
 
