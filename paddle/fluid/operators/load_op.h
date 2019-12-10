@@ -68,9 +68,10 @@ class LoadOpKernel : public framework::OpKernel<T> {
     auto seek = ctx.Attr<int64_t>("seek");
 
     if (seek != -1) {
-      PADDLE_ENFORCE_GE(seek, 0);
+      PADDLE_ENFORCE_GE(seek, 0,
+                        platform::errors::InvalidArgument(
+                            "seek witn tensor must great than or equal to 0"));
       auto shape = ctx.Attr<std::vector<int64_t>>("shape");
-
       DeserializeFromStream(fin, tensor, dev_ctx, seek, shape);
     } else {
       DeserializeFromStream(fin, tensor, dev_ctx);

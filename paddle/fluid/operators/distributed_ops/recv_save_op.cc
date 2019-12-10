@@ -108,11 +108,6 @@ This operator will serialize and write LoDTensor variable to file on disk.
   }
 };
 
-class RecvSaveOpShapeInference : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext *ctx) const override {}
-};
-
 template <typename DeviceContext, typename T>
 class RecvSaveOpKernel : public framework::OpKernel<T> {
  private:
@@ -154,8 +149,10 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
                                      const framework::Tensor &tensor) const {
     uint64_t size = tensor.numel() * framework::SizeOfType(tensor.type());
     auto *data_ptr = tensor.data<void>();
-    PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
-                   "Index overflow when writing tensor");
+
+    PADDLE_ENFORCE_LT(size, std::numeric_limits<std::streamsize>::max(),
+                      platform::errors::ResourceExhausted(
+                          "tensor size %d overflow when writing tensor", size));
     os.write(static_cast<const char *>(data_ptr),
              static_cast<std::streamsize>(size));
   }
@@ -168,8 +165,9 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     auto overwrite = ctx.Attr<bool>("overwrite");
 
     if (FileExists(filename) && !overwrite) {
-      PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
-                   filename, overwrite);
+      PADDLE_THROW_ERROR(
+          "%s is existed, cannot save to it when overwrite=false", filename,
+          overwrite);
     }
 
     MkDirRecursively(DirName(filename).c_str());
@@ -181,23 +179,30 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
         ctx.Attr<std::vector<std::string>>("remote_varnames");
     auto endpoints = ctx.Attr<std::vector<std::string>>("endpoints");
 
-    PADDLE_ENFORCE_EQ(slice_shapes.size(), slice_varnames.size());
-    PADDLE_ENFORCE_EQ(slice_shapes.size(), endpoints.size());
+    PADDLE_ENFORCE_EQ(slice_shapes.size(), slice_varnames.size(),
+                      platform::errors::InvalidArgument(
+                          "Expected attr len(slice_shapes) must be equal to "
+                          "len(slice_varnames)"));
+
+    PADDLE_ENFORCE_EQ(
+        slice_shapes.size(), endpoints.size(),
+        platform::errors::InvalidArgument(
+            "Expected attr len(slice_shapes) must be equal to len(endpoints)"));
 
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
 
     // it to save an output stream.
     std::ofstream fout(filename, std::ios::binary);
-    PADDLE_ENFORCE(static_cast<bool>(fout), "Cannot open %s to write",
-                   filename);
+    PADDLE_ENFORCE_EQ(
+        static_cast<bool>(fout), true,
+        platform::errors::NotFound("Cannot open %s to write", filename));
 
     SerializeVersionToStream(fout);
     SerializeTensorHeaderToStream(fout, data_type,
                                   framework::make_ddim(origin_shape));
 
-    // framework::Scope &local_scope = ctx.scope().NewScope();
-    std::unique_ptr<framework::Scope> local_scope = ctx.scope().NewTmpScope();
+    framework::Scope &local_scope = ctx.scope().NewScope();
 
     auto trainer_id = ctx.Attr<int>("trainer_id");
 
@@ -207,9 +212,9 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     distributed::RPCClient *rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
 
-    for (auto i = 0; i < slice_varnames.size(); i++) {
+    for (size_t i = 0; i < slice_varnames.size(); i++) {
       auto &varname = slice_varnames[i];
-      auto *var = local_scope->Var(varname);
+      auto *var = local_scope.Var(varname);
       auto *tensor = var->GetMutable<framework::LoDTensor>();
 
       auto slice_string =
@@ -224,19 +229,22 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
 
       distributed::VarHandlePtr ret;
 
-      ret = rpc_client->AsyncGetVarNoBarrier(endpoints[i], device_ctx,
-                                             *local_scope.get(),
-                                             remote_varnames[i], varname);
+      ret = rpc_client->AsyncGetVarNoBarrier(
+          endpoints[i], device_ctx, local_scope, remote_varnames[i], varname);
 
-      PADDLE_ENFORCE_NE(ret->Wait(), 0U, "internal error in RPCClient");
+      PADDLE_ENFORCE_NE(
+          ret->Wait(), 0U,
+          platform::errors::ExecutionTimeout(
+              "rpc error when communication with %s", endpoints[i]));
 
       auto &c_tensor = var->Get<framework::LoDTensor>();
 
       SerializeTensorAppendToStream(fout, c_tensor);
-      local_scope->EraseVars({varname});
+      local_scope.EraseVars({varname});
     }
+
     fout.close();
-    local_scope.release();
+    ctx.scope().DeleteScope(&local_scope);
   }
 };
 
@@ -245,8 +253,7 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(recv_save, ops::RecvSaveOp, ops::RecvSaveOpProtoMaker,
-                  ops::RecvSaveOpShapeInference);
+REGISTER_OPERATOR(recv_save, ops::RecvSaveOp, ops::RecvSaveOpProtoMaker);
 
 REGISTER_OP_CPU_KERNEL(
     recv_save, ops::RecvSaveOpKernel<paddle::platform::CPUDeviceContext, float>,
