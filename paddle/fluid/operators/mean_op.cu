@@ -79,8 +79,9 @@ class MeanCUDAGradKernel : public framework::OpKernel<T> {
     auto OG = context.Input<Tensor>(framework::GradVarName("Out"));
     PADDLE_ENFORCE_EQ(
         OG->numel(), 1,
-        "Mean Gradient Input Tensor len should be 1. But received %d",
-        OG->numel());
+        platform::errors::InvalidArgument(
+            "Mean Gradient Input Tensor len should be 1. But received %d",
+            OG->numel()));
     auto IG = context.Output<Tensor>(framework::GradVarName("X"));
     IG->mutable_data<T>(context.GetPlace());
 
