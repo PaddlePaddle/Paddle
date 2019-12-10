@@ -1,4 +1,5 @@
 #!/bin/bash
+# test
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
