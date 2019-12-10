@@ -2307,8 +2307,8 @@ class Conv2DTranspose(layers.Layer):
     filter, and dilations, strides, paddings. Input and output
     are in NCHW format. Where N is batch size, C is the number of feature map,
     H is the height of the feature map, and W is the width of the feature map.
-    Filter's shape is [MCHW] , where M is the number of output feature map,
-    C is the number of input feature map, H is the height of the filter,
+    Filter's shape is [MCHW] , where M is the number of input feature map,
+    C is the number of output feature map, H is the height of the filter,
     and W is the width of the filter. If the groups is greater than 1,
     C will equal the number of input feature map divided by the groups.
     If bias attribution and activation type are provided, bias is added to

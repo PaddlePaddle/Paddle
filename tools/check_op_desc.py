@@ -164,9 +164,8 @@ def compare_op_desc(origin_op_desc, new_op_desc):
 
 
 def print_error_message(error_message):
-    print("Op desc error is:")
+    print("Op desc error for the changes of Inputs/Outputs/Attrs of OPs:\n")
     for op_name in error_message:
-        print("-" * 30)
         print("For OP '{}':".format(op_name))
 
         # 1. print inputs error message
@@ -217,7 +216,6 @@ def print_error_message(error_message):
                 print(
                     " * The arg '{}' of attr '{}' is changed: from '{}' to '{}'.".
                     format(arg, name, ori_value, new_value))
-    print("-" * 30)
 
 
 def print_repeat_process():
@@ -245,7 +243,8 @@ if len(sys.argv) == 3:
 
     error_message = compare_op_desc(origin_op_desc, new_op_desc)
     if error:
+        print("-" * 30)
         print_error_message(error_message)
-        print_repeat_process()
+        print("-" * 30)
 else:
     print("Usage: python check_op_desc.py OP_DESC_DEV.spec OP_DESC_PR.spec")

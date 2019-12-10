@@ -114,7 +114,7 @@ class Generator(object):
             ['X'], 'Out', max_relative_error=1e-3, no_grad_set=set('Y'))
 
 
-class TestMatmulOpError(OpTest):
+class TestMatmulOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The inputs type of matmul_op must be Variable.
@@ -173,7 +173,7 @@ def api_test(dim_x, dim_y, trans_x, trans_y):
         dim_x, dim_y, trans_x, trans_y))
     shape_x, shape_y = generate_compatible_shapes(dim_x, dim_y, trans_x,
                                                   trans_y)
-    globals()[test_name] = type(test_name, (OpTest, ), {
+    globals()[test_name] = type(test_name, (unittest.TestCase, ), {
         'shape_X': shape_x,
         'shape_Y': shape_y,
         'transpose_X': trans_x,
