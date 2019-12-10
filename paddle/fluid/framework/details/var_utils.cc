@@ -111,12 +111,29 @@ template <typename T>
 static void PrintNanInf(const T* value, const size_t numel, int print_num,
                         const std::string& op_type,
                         const std::string& var_name) {
-  // CPU print all value
+  size_t nan_count, inf_count, num_count;
+  nan_count = inf_count = num_count = 0;
+
+  // CPU print num value
   for (size_t i = 0; i < numel; ++i) {
-    printf("index:%lu value:%f\n", static_cast<uint64_t>(i),
-           static_cast<float>(value[i]));
+    size_t count = 0;
+    if (std::isnan(value[i])) {
+      count = nan_count++;
+    } else if (std::isinf(value[i])) {
+      count = inf_count++;
+    } else {
+      count = num_count++;
+    }
+
+    if (count < static_cast<size_t>(print_num)) {
+      printf("numel:%lu index:%lu value:%f\n", static_cast<uint64_t>(numel),
+             static_cast<uint64_t>(i), static_cast<float>(value[i]));
+    }
   }
   bool has_nan_inf = true;
+  printf("In cpu, there has %lu,%lu,%lu nan,inf,num\n",
+         static_cast<uint64_t>(nan_count), static_cast<uint64_t>(inf_count),
+         static_cast<uint64_t>(num_count));
   PADDLE_ENFORCE_EQ(has_nan_inf, false,
                     platform::errors::PreconditionNotMet(
                         "===ERROR: in [op=%s] [tensor=%s] find nan or inf===",
@@ -172,6 +189,7 @@ template <>
 template <typename T>
 void TensorCheckerVisitor<platform::CPUDeviceContext>::apply(
     typename std::enable_if<std::is_floating_point<T>::value>::type*) const {
+  // use env strategy control in future, -1=print_all.
   int print_num = 3;
   CheckNanInf(tensor_.data<T>(), tensor_.numel(), print_num, op_type_,
               var_name_);
