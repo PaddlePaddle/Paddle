@@ -18,8 +18,7 @@ if(APPLE)
 endif(APPLE)
 
 set(inference_deps ${analysis_deps}
-  paddle_inference_api paddle_fluid_api
-  analysis pass naive_executor
+  paddle_inference_api analysis naive_executor
   ${GLOB_PASS_LIB})
 
 if(WITH_GPU AND TENSORRT_FOUND)

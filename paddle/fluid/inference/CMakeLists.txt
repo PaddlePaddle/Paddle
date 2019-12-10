@@ -17,12 +17,10 @@ if(WITH_TESTING)
   include(tests/test.cmake) # some generic cmake funtion for inference
 endif()
 
-set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor data_feed_proto)
-
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
     SRCS io.cc
-    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
+    DEPS paddle_framework ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 
 # analysis and tensorrt must be added before creating static library,
 # otherwise, there would be undefined reference to them in static library.
@@ -39,9 +37,6 @@ endif()
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(cuda_modules GLOBAL PROPERTY CUDA_MODULES)
 
-# paddle_fluid exclude inference api interface
-cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api)
-
 add_subdirectory(api)
 add_subdirectory(capi)
 
@@ -57,10 +52,14 @@ if(NOT ON_INFER)
   return()
 endif()
 
-if(NOT APPLE)
-  # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
-  set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.sym")
-  set_target_properties(paddle_fluid PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+if(WITH_STATIC_LIB)
+  # Create static inference library if needed
+  create_static_lib(paddle_fluid ${fluid_modules} paddle_fluid_api)
+  if(NOT APPLE)
+    # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
+    set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.sym")
+    set_target_properties(libpaddle_fluid PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+  endif()
 endif()
 
 if(ANAKIN_FOUND)
@@ -73,9 +72,9 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/dataset_factory.cc
     ${ANAKIN_SHARED_INFERENCE_SRCS})
 
-# Create shared library
+# Create shared inference library defaultly
 cc_library(paddle_fluid_shared SHARED SRCS ${SHARED_INFERENCE_SRCS}
-          DEPS ${fluid_modules} paddle_fluid_api analysis_predictor)
+          DEPS ${fluid_modules} paddle_fluid_api)
 
 get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
 target_link_libraries(paddle_fluid_shared ${os_dependency_modules})

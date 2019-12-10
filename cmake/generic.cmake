@@ -130,6 +130,137 @@ function(find_fluid_thirdparties TARGET_NAME)
   endif()
 endfunction(find_fluid_thirdparties)
 
+function(create_static_lib TARGET_NAME)
+  set(libs ${ARGN})
+  if(WIN32)
+    set(dummy_index 1)
+    set(dummy_offset 1)
+    # the dummy target would be consisted of limit size libraries
+    set(dummy_limit 60)
+    list(REMOVE_DUPLICATES libs)
+    list(LENGTH libs libs_len)
+    foreach(lib ${libs})
+      list(APPEND dummy_list ${lib})
+      list(LENGTH dummy_list listlen)
+      if ((${listlen} GREATER ${dummy_limit}) OR (${dummy_offset} EQUAL ${libs_len}))
+        merge_static_libs(${TARGET_NAME}_dummy_${dummy_index} ${dummy_list})
+        set(dummy_list)
+        list(APPEND ${TARGET_NAME}_dummy_list ${TARGET_NAME}_dummy_${dummy_index})
+        MATH(EXPR dummy_index "${dummy_index}+1")
+      endif()
+      MATH(EXPR dummy_offset "${dummy_offset}+1")
+    endforeach()
+    merge_static_libs(lib${TARGET_NAME} ${${TARGET_NAME}_dummy_list})
+  else()
+    merge_static_libs(${TARGET_NAME} ${libs})
+  endif()
+endfunction()
+
+function(merge_static_libs TARGET_NAME)
+  set(libs ${ARGN})
+  list(REMOVE_DUPLICATES libs)
+
+  # Get all propagation dependencies from the merged libraries
+  foreach(lib ${libs})
+    list(APPEND libs_deps ${${lib}_LIB_DEPENDS})
+  endforeach()
+  if(libs_deps)
+    list(REMOVE_DUPLICATES libs_deps)
+  endif()
+
+  # To produce a library we need at least one source file.
+  # It is created by add_custom_command below and will helps
+  # also help to track dependencies.
+  set(target_SRCS ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_dummy.c)
+
+  if(APPLE) # Use OSX's libtool to merge archives
+    # Make the generated dummy source file depended on all static input
+    # libs. If input lib changes,the source file is touched
+    # which causes the desired effect (relink).
+    add_custom_command(OUTPUT ${target_SRCS}
+      COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
+      DEPENDS ${libs})
+
+    # Generate dummy staic lib
+    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
+    add_library(${TARGET_NAME} STATIC ${target_SRCS})
+    target_link_libraries(${TARGET_NAME} ${libs_deps})
+
+    foreach(lib ${libs})
+      # Get the file names of the libraries to be merged
+      set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
+    endforeach()
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
+      COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles}
+      )
+  endif(APPLE)
+  if(LINUX) # general UNIX: use "ar" to extract objects and re-add to a common lib
+    set(target_DIR ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.dir)
+
+    foreach(lib ${libs})
+      set(objlistfile ${target_DIR}/${lib}.objlist) # list of objects in the input library
+      set(objdir ${target_DIR}/${lib}.objdir)
+
+      add_custom_command(OUTPUT ${objdir}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${objdir}
+        DEPENDS ${lib})
+
+      add_custom_command(OUTPUT ${objlistfile}
+        COMMAND ${CMAKE_AR} -x "$<TARGET_FILE:${lib}>"
+        COMMAND ${CMAKE_AR} -t "$<TARGET_FILE:${lib}>" > ${objlistfile}
+        DEPENDS ${lib} ${objdir}
+        WORKING_DIRECTORY ${objdir})
+
+      list(APPEND target_OBJS "${objlistfile}")
+    endforeach()
+
+    # Make the generated dummy source file depended on all static input
+    # libs. If input lib changes,the source file is touched
+    # which causes the desired effect (relink).
+    add_custom_command(OUTPUT ${target_SRCS}
+      COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
+      DEPENDS ${libs} ${target_OBJS})
+
+    # Generate dummy staic lib
+    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
+    add_library(${TARGET_NAME} STATIC ${target_SRCS})
+    target_link_libraries(${TARGET_NAME} ${libs_deps})
+
+    # Get the file name of the generated library
+    set(target_LIBNAME "$<TARGET_FILE:${TARGET_NAME}>")
+
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMAND ${CMAKE_AR} crs ${target_LIBNAME} `find ${target_DIR} -name '*.o'`
+        COMMAND ${CMAKE_RANLIB} ${target_LIBNAME}
+        WORKING_DIRECTORY ${target_DIR})
+  endif(LINUX)
+  if(WIN32) # windows do not support gcc/nvcc combined compiling. Use msvc lib.exe to merge libs.
+    # Make the generated dummy source file depended on all static input
+    # libs. If input lib changes,the source file is touched
+    # which causes the desired effect (relink).
+    add_custom_command(OUTPUT ${target_SRCS}
+      COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
+      DEPENDS ${libs})
+
+    # Generate dummy staic lib
+    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
+    add_library(${TARGET_NAME} STATIC ${target_SRCS})
+    target_link_libraries(${TARGET_NAME} ${libs_deps})
+
+    foreach(lib ${libs})
+      # Get the file names of the libraries to be merged
+      set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
+    endforeach()
+    # msvc will put libarary in directory of "/Release/xxxlib" by default
+    #       COMMAND cmake -E remove "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND cmake -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}"
+      COMMAND lib /OUT:${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib${TARGET_NAME}.lib ${libfiles}
+      )
+  endif(WIN32)
+endfunction(merge_static_libs)
+
 function(cc_library TARGET_NAME)
   set(options STATIC static SHARED shared INTERFACE interface)
   set(oneValueArgs "")
@@ -198,7 +329,6 @@ function(cc_library TARGET_NAME)
       file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
       add_library(${TARGET_NAME} STATIC ${target_SRCS})
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
-      add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
     else()
       message(FATAL_ERROR "Please specify source files or libraries in cc_library(${TARGET_NAME} ...).")
     endif()
