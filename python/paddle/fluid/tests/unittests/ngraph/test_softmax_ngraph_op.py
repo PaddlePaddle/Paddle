@@ -13,9 +13,8 @@
 # limitations under the License.
 
 from __future__ import print_function
-import unittest, sys
-sys.path.append("../")
-from test_softmax_op import TestSoftmaxOp, TestSoftmaxOp2, TestSoftmaxOp3, TestSoftmaxOp4, TestSoftmaxOp5
+import unittest
+from paddle.fluid.tests.unittests.test_softmax_op import TestSoftmaxOp, TestSoftmaxOp2, TestSoftmaxOp3, TestSoftmaxOp4, TestSoftmaxOp5
 
 if __name__ == "__main__":
     unittest.main()
