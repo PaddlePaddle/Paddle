@@ -257,9 +257,8 @@ void FleetWrapper::PushDenseParamSync(
   }
   auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(
       regions.data(), regions.size(), table_id);
-  push_status->wait();
-  auto status = push_status->get();
-  VLOG(0) << "status " << status;
+  push_status.wait();
+  auto status = push_status.get();
   CHECK(status == 0) << "push dense param failed, status[" << status << "]";
 #endif
 }
@@ -685,8 +684,8 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
   }
   auto push_status = pslib_ptr_->_worker_ptr->push_dense_param(
       regions.data(), regions.size(), table_id);
-  push_status->wait();
-  auto status = push_status->get();
+  push_status.wait();
+  auto status = push_status.get();
   if (status != 0) {
     LOG(FATAL) << "push shrink dense param failed, status[" << status << "]";
     sleep(sleep_seconds_before_fail_exit_);
