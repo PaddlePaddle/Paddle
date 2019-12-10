@@ -56,7 +56,7 @@ class ProgramStats(object):
     def get_reserved_vars(self):
         var_name = []
         for op in self.ops:
-            if op.desc.type() == "dropout":
+            if op.desc.type() == "seed":
                 var_name.extend(op.desc.output_arg_names())
         return var_name
 
@@ -135,6 +135,42 @@ class ProgramStats(object):
                     (name, max(self.var_op_deps[name]["var_as_output_ops"])))
         sorted_checkpoints = sorted(sorted_checkpoints, key=lambda x: x[1])
         return [x[0] for x in sorted_checkpoints]
+
+    def modify_forward_desc_for_recompute(self):
+        op_types = [op.desc.type() for op in self.ops]
+        if "dropout" not in op_types:
+            return
+
+        op_idx = 0
+        while (op_idx < len(self.ops)):
+            op = self.ops[op_idx]
+            if op.desc.type() != "dropout":
+                op_idx += 1
+                continue
+            # add a seed op so that the two dropout op can generate same output
+            op_unique_name = unique_name.generate("seed")
+            var_unique_name = unique_name.generate_with_ignorable_key(".".join(
+                [op_unique_name, 'tmp']))
+            added_var = self.block.create_var(
+                name=var_unique_name,
+                dtype='int32',
+                type=core.VarDesc.VarType.LOD_TENSOR,
+                persistable=False,
+                stop_gradient=False)
+            seed = 0 if op.attr("fix_seed") is False else int(op.attr("seed"))
+            added_op = self.block._insert_op(
+                index=op.idx,
+                type='seed',
+                inputs={},
+                outputs={'Out': [added_var]},
+                attrs={'seed': seed})
+            self.ops.insert(op_idx, added_op)
+            # modify dropout op desc so that it accept a seed var as input
+            op.desc.set_input("Seed", [var_unique_name])
+            op.desc.remove_attr("fix_seed")
+            op.desc.remove_attr("seed")
+            self.block._sync_with_cpp()
+            op_idx += 2
 
 
 def _pretty_op_desc_(op_desc, prefix):
@@ -589,6 +625,7 @@ def _append_backward_ops_with_checkpoints_(
         checkpoints: variables that a user defined as checkpoint for forward recomputation
 
     Algorithms:
+        0) deal with forward recomputing program descs
         1) find ops between checkpoints, i.e. recompute_segments
         2) go through all forward ops and induct all variables that will be hold in memory
             a. variables that are used across segments will be held in memory
@@ -609,10 +646,12 @@ def _append_backward_ops_with_checkpoints_(
     checkpoints_name = list(set(checkpoints_name))
     local_block = block.program._create_block()
     buffer_block = block.program._create_block()
+    # 0) deal with forward recomputing program descs  
+    program_stat = ProgramStats(block, ops)
+    program_stat.modify_forward_desc_for_recompute()
+    program_stat.build_stats()
 
     # 1) find ops between checkpoints, i.e. recompute_segments
-    program_stat = ProgramStats(block, ops)
-    program_stat.build_stats()
     checkpoints_name = program_stat.sort_checkpoints(checkpoints_name)
     segments = []
 
