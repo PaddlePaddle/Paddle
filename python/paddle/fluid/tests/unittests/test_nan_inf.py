@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import unicode_literals
 from __future__ import print_function
 
 import unittest
@@ -45,7 +46,8 @@ class TestNanInf(unittest.TestCase):
         print(err)
 
         assert returncode == 0
-        assert (out + err).find('find nan or inf') != -1
+        # in python3, type(out+err) is 'bytes', need use encode
+        assert (out + err).find('find nan or inf'.encode()) != -1
 
 
 class TestNanInfEnv(TestNanInf):
