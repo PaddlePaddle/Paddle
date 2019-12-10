@@ -1,5 +1,5 @@
 #!/bin/bash
-# test
+# test py35 gcc8
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
