@@ -48,7 +48,6 @@ Seed Operator.
 }  // namespace operators
 }  // namespace paddle
 
-// No grad op
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     seed, ops::SeedOp, ops::SeedOpMaker,
