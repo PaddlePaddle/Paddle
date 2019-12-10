@@ -171,7 +171,7 @@ else(WIN32)
 endif(WIN32)
 
 copy(inference_lib_dist
-        SRCS  ${src_dir}/inference/api/paddle_*.h  ${paddle_fluid_lib}
+        SRCS  ${src_dir}/inference/api/paddle_*.h ${paddle_fluid_lib}
         DSTS  ${FLUID_INFERENCE_INSTALL_DIR}/paddle/include ${FLUID_INFERENCE_INSTALL_DIR}/paddle/lib)
 
 # CAPI inference library for only inference

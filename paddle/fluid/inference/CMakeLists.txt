@@ -70,6 +70,10 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_set.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed_factory.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/dataset_factory.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc 
+    ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc	    
+    ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
     ${ANAKIN_SHARED_INFERENCE_SRCS})
 
 # Create shared inference library defaultly
