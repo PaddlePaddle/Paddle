@@ -48,7 +48,7 @@ class TestSumOp(OpTest):
         pass
 
 
-class TestSelectedRowsSumOp(OpTest):
+class TestSelectedRowsSumOp(unittest.TestCase):
     def setUp(self):
         self.height = 10
         self.row_numel = 12

@@ -150,6 +150,9 @@ class TestDropoutOp9(OpTest):
         self.check_output()
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or not core.op_support_gpu("dropout"),
+    "core is not compiled with CUDA or core is not support dropout")
 class TestFP16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"
@@ -171,10 +174,12 @@ class TestFP16DropoutOp(OpTest):
         self.fix_seed = True
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda() and core.op_support_gpu("dropout"):
-            self.check_output_with_place(core.CUDAPlace(0), atol=1e-3)
+        self.check_output_with_place(core.CUDAPlace(0), atol=1e-3)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or not core.op_support_gpu("dropout"),
+    "core is not compiled with CUDA or core is not support dropout")
 class TestFP16DropoutOp2(TestFP16DropoutOp):
     def init_test_case(self):
         self.input_size = [32, 64, 3]
