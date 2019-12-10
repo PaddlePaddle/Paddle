@@ -15,9 +15,10 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, unique_name, in_dygraph_mode, default_main_program
-from .layer_function_generator import OpProtoHolder
+from ..framework import Variable, unique_name, convert_np_dtype_to_dtype_
+from ..layers.layer_function_generator import OpProtoHolder
 from ..initializer import force_init_on_cpu
+from . import to_variable, no_grad
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -28,9 +29,11 @@ _supported_int_dtype_ = [
 ]
 
 
-def monkey_patch_variable():
-    def unique_tmp_name():
-        return unique_name.generate("tmp")
+def monkey_patch_math_varbase():
+    """
+    Similar to monkey_patch_variable.
+    The difference is, in dygraph mode, use auto-generated op functions for better performance.
+    """
 
     def safe_get_dtype(var):
         try:
@@ -39,59 +42,43 @@ def monkey_patch_variable():
             raise ValueError("Cannot get data type from %s", var.name)
         return dtype
 
-    def current_block(var):
-        if in_dygraph_mode():
-            return default_main_program().global_block()
-        return var.block.program.current_block()
-
-    def create_new_tmp_var(block, dtype):
-        tmp_name = unique_tmp_name()
-        return block.create_var(name=tmp_name, dtype=dtype)
-
-    def create_tensor(block, value, dtype, shape):
+    @no_grad
+    def create_tensor(value, dtype, shape):
         value = float(value)
-        var = create_new_tmp_var(block, dtype)
-        block.append_op(
-            type="fill_constant",
-            outputs={'Out': [var]},
-            attrs={
-                'dtype': var.dtype,
-                'shape': shape,
-                'value': value,
-                'force_cpu': force_init_on_cpu()
-            },
-            stop_gradient=True)
-        var.stop_gradient = True
-        return var
+        inputs = {}
+        attrs = {
+            'dtype': dtype,
+            'shape': shape,
+            'value': value,
+            'force_cpu': False
+        }
+        outs = core.ops.fill_constant(inputs, attrs)
+        outs['Out'][0].stop_gradient = True
+        return outs['Out'][0]
 
-    def create_scalar(block, value, dtype):
-        return create_tensor(block, value, dtype, shape=[1])
+    def create_scalar(value, dtype):
+        return create_tensor(value, dtype, shape=[1])
 
+    @no_grad
     def create_tensor_with_batchsize(ref_var, value, dtype):
         assert isinstance(ref_var, Variable)
         value = float(value)
-        block = current_block(ref_var)
-        var = create_new_tmp_var(block, dtype)
         batch_dim = -1
         for i, d in enumerate(ref_var.shape):
             if d < 0:
                 batch_dim = i
                 break
         assert batch_dim != -1
-        block.append_op(
-            type='fill_constant_batch_size_like',
-            outputs={'Out': [var]},
-            inputs={'Input': [ref_var]},
-            attrs={
-                'shape': ref_var.shape,
-                'value': value,
-                'input_dim_idx': batch_dim,
-                'output_dim_idx': batch_dim
-            },
-            stop_gradient=True)
-
-        var.stop_gradient = True
-        return var
+        inputs = {'Input': [ref_var]}
+        attrs = {
+            'shape': ref_var.shape,
+            'value': value,
+            'input_dim_idx': batch_dim,
+            'output_dim_idx': batch_dim
+        }
+        outs = core.ops.fill_constant_batch_size_like(inputs, attrs)
+        outs['Out'][0].stop_gradient = True
+        return outs['Out'][0]
 
     def astype(self, dtype):
         """
@@ -110,21 +97,6 @@ def monkey_patch_variable():
             Variable: Variable with new dtype
 
         Examples:
-            In Static Graph Mode:
-
-            .. code-block:: python
-
-                import paddle.fluid as fluid
-
-                startup_prog = fluid.Program()
-                main_prog = fluid.Program()
-                with fluid.program_guard(startup_prog, main_prog):
-                    original_variable = fluid.data(name = "new_variable", shape=[2,2], dtype='float32')
-                    new_variable = original_variable.astype('int64')
-                    print("new var's dtype is: {}".format(new_variable.dtype))
-
-            In Dygraph Mode:
-
             .. code-block:: python
 
                 import paddle.fluid as fluid
@@ -138,26 +110,19 @@ def monkey_patch_variable():
                     print("new var's dtype is: {}, numpy dtype is {}".format(new_variable.dtype, new_variable.numpy().dtype))
 
         """
-        block = current_block(self)
-        out = create_new_tmp_var(block, dtype)
-        block.append_op(
-            type="cast",
-            inputs={"X": [self]},
-            outputs={"Out": [out]},
-            attrs={"in_dtype": self.dtype,
-                   "out_dtype": out.dtype})
-        return out
+        inputs = {'X': [self]}
+        attrs = {
+            "in_dtype": self.dtype,
+            "out_dtype": convert_np_dtype_to_dtype_(dtype)
+        }
+        outs = core.ops.cast(inputs, attrs)
+        return outs['Out'][0]
 
     def _scalar_elementwise_op_(var, scale, bias):
-        block = current_block(var)
-        out = create_new_tmp_var(block, var.dtype)
-        block.append_op(
-            type="scale",
-            inputs={"X": [var]},
-            outputs={"Out": [out]},
-            attrs={"scale": scale,
-                   "bias": bias})
-        return out
+        inputs = {'X': [var]}
+        attrs = {"scale": scale, "bias": bias}
+        outs = core.ops.scale(inputs, attrs)
+        return outs['Out'][0]
 
     def _scalar_elementwise_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
@@ -194,7 +159,7 @@ def monkey_patch_variable():
 
             lhs_dtype = safe_get_dtype(self)
 
-            if not isinstance(other_var, Variable):
+            if not isinstance(other_var, core.VarBase):
                 if reverse:
                     has_batch_size = False
                     for elem in self.shape:
@@ -203,17 +168,13 @@ def monkey_patch_variable():
                             break
                     if not has_batch_size:
                         other_var = create_tensor(
-                            current_block(self),
-                            other_var,
-                            dtype=lhs_dtype,
-                            shape=self.shape)
+                            other_var, dtype=lhs_dtype, shape=self.shape)
                     else:
                         other_var = create_tensor_with_batchsize(
                             self, other_var, lhs_dtype)
                 else:
-                    # add fill_op to current_block
-                    other_var = create_scalar(
-                        current_block(self), value=other_var, dtype=lhs_dtype)
+                    # add fill_op 
+                    other_var = create_scalar(value=other_var, dtype=lhs_dtype)
 
             rhs_dtype = safe_get_dtype(other_var)
             if lhs_dtype != rhs_dtype:
@@ -223,15 +184,19 @@ def monkey_patch_variable():
                 self = other_var
                 other_var = tmp
 
-            out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
+            axis = -1
+            if other_var.shape[0] == -1:
+                axis = 0
+            assert len(self.shape) >= len(other_var.shape), (
+                "The rank of the first argument of an binary operator cannot "
+                "be smaller than the rank of its second argument: %s vs %s" %
+                (len(self.shape), len(other_var.shape)))
 
-            current_block(self).append_op(
-                type=op_type,
-                inputs={'X': [self],
-                        'Y': [other_var]},
-                outputs={'Out': out},
-                attrs={'axis': -1})
-            return out
+            op = getattr(core.ops, op_type)
+            inputs = {'X': [self], 'Y': [other_var]}
+            attrs = {'axis': axis}
+            outs = op(inputs, attrs)
+            return outs['Out'][0]
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
@@ -272,8 +237,9 @@ def monkey_patch_variable():
         ("__le__", "less_equal", False, None),
         ("__gt__", "greater_than", False, None),
         ("__ge__", "greater_equal", False, None)):
-        setattr(Variable, method_name,
+
+        setattr(core.VarBase, method_name,
                 _elemwise_method_creator_(method_name, op_type, reverse,
                                           scalar_method))
 
-    Variable.astype = astype
+    core.VarBase.astype = astype

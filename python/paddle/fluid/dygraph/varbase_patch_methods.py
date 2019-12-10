@@ -18,6 +18,7 @@ from . import BackwardStrategy
 from ..framework import Variable, _getitem_impl_
 from .. import unique_name
 import numpy as np
+from math_op_patch import monkey_patch_math_varbase
 
 
 def monkey_patch_varbase():
@@ -214,3 +215,6 @@ def monkey_patch_varbase():
                                 ("__str__", __str__), ("to_string", to_string),
                                 ("__getitem__", __getitem__)):
         setattr(core.VarBase, method_name, method)
+
+    # patch math methods for varbase
+    monkey_patch_math_varbase()
