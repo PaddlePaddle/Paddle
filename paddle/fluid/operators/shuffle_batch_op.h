@@ -50,13 +50,13 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
     auto *shuffleidx = context.Output<LoDTensor>("ShuffleIdx");
     auto *seed_out = context.Output<LoDTensor>("SeedOut");
 
-    size_t x_embed_size = x->dims()[x->dims().size() - 1];
-    size_t elem_size = 1;
-    for (size_t i = 0; i < x->dims().size() - 1; i++) elem_size *= x->dims()[i];
+    auto x_embed_size = x->dims()[x->dims().size() - 1];
+    auto elem_size = 1;
+    for (auto i = 0; i < x->dims().size() - 1; i++) elem_size *= x->dims()[i];
 
     std::vector<int64_t> idx_vec;  // record shuffled order
     idx_vec.reserve(elem_size);
-    for (size_t i = 0; i < elem_size; i++) {
+    for (auto i = 0; i < elem_size; i++) {
       idx_vec.push_back(i);
     }
     int64_t seed_int = 0;
@@ -73,13 +73,13 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
     shuffleidx->Resize(framework::make_ddim({(int64_t)idx_vec.size()}));
     auto *shuffleidx_data =
         shuffleidx->mutable_data<int64_t>(context.GetPlace());
-    for (size_t i = 0; i < idx_vec.size(); i++) {
+    for (auto i = 0; i < idx_vec.size(); i++) {
       shuffleidx_data[i] = idx_vec[i];
     }
     // copy data according to idx_vec
     auto *x_data = x->data<T>();
     auto *out_data = out->mutable_data<T>(context.GetPlace());
-    for (size_t i = 0; i < elem_size; i++) {
+    for (auto i = 0; i < elem_size; i++) {
       memcpy(out_data + idx_vec[i] * x_embed_size, x_data + i * x_embed_size,
              x_embed_size * sizeof(T));
     }
@@ -97,21 +97,21 @@ class ShuffleBatchGradKernel : public framework::OpKernel<T> {
     auto *shuffleidx = context.Input<LoDTensor>("ShuffleIdx");
     auto *x_grad = context.Output<LoDTensor>(framework::GradVarName("X"));
 
-    size_t embed_size = out_grad->dims()[out_grad->dims().size() - 1];
-    size_t elem_size = 1;
-    for (size_t i = 0; i < out_grad->dims().size() - 1; i++)
+    auto embed_size = out_grad->dims()[out_grad->dims().size() - 1];
+    auto elem_size = 1;
+    for (auto i = 0; i < out_grad->dims().size() - 1; i++)
       elem_size *= out_grad->dims()[i];
 
-    std::vector<size_t> idx_vec_grad(elem_size);
+    std::vector<int> idx_vec_grad(elem_size);
     auto *shuffleidx_data = shuffleidx->data<int64_t>();
-    for (size_t i = 0; i < idx_vec_grad.size(); i++) {
+    for (auto i = 0; i < idx_vec_grad.size(); i++) {
       idx_vec_grad[shuffleidx_data[i]] = i;
     }
 
     // copy data according to idx_vec_grad
     auto *out_grad_data = out_grad->data<T>();
     auto *x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
-    for (size_t i = 0; i < elem_size; i++) {
+    for (auto i = 0; i < elem_size; i++) {
       memcpy(x_grad_data + idx_vec_grad[i] * embed_size,
              out_grad_data + i * embed_size, embed_size * sizeof(T));
     }

@@ -49,7 +49,7 @@ class TestShuffleBatchOp(OpTest):
 
     def verify_output(self, outs):
         out = np.array(outs[2])
-        is_equal = [(out == res).all() for res in self.possible_res]
+        is_equal = [np.all(out == res) for res in self.possible_res]
         self.assertIn(True, is_equal)
 
     def test_check_grad(self):
