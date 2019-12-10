@@ -187,11 +187,14 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   framework::Variable* var = scope.FindVar(persistable_var_name);
 
   PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), true,
-                    "prefetch can only support LodTensor only");
+                    platform::errors::InvalidArgument(
+                        "prefetch can only support LodTensor only"));
 
   vec_dim_1 = var->Get<framework::LoDTensor>().dims()[1];
 
-  PADDLE_ENFORCE_GT(vec_dim_1, 0, "lookup table var's dim must gather than 0");
+  PADDLE_ENFORCE_GT(vec_dim_1, 0,
+                    platform::errors::InvalidArgument(
+                        "lookup table var's dim must gather than 0"));
 
   const auto place =
       scope.FindVar(id_var_names[0])->Get<framework::LoDTensor>().place();

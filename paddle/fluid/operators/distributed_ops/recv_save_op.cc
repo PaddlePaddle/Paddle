@@ -149,8 +149,10 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
                                      const framework::Tensor &tensor) const {
     uint64_t size = tensor.numel() * framework::SizeOfType(tensor.type());
     auto *data_ptr = tensor.data<void>();
+
     PADDLE_ENFORCE_LT(size, std::numeric_limits<std::streamsize>::max(),
-                      "Index overflow when writing tensor");
+                      platform::errors::ResourceExhausted(
+                          "tensor size %d overflow when writing tensor", size));
     os.write(static_cast<const char *>(data_ptr),
              static_cast<std::streamsize>(size));
   }
@@ -177,12 +179,15 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
         ctx.Attr<std::vector<std::string>>("remote_varnames");
     auto endpoints = ctx.Attr<std::vector<std::string>>("endpoints");
 
-    PADDLE_ENFORCE_EQ(
-        slice_shapes.size(), slice_varnames.size(),
-        "Attr len(slice_shapes) must be equal to len(slice_varnames)");
+    PADDLE_ENFORCE_EQ(slice_shapes.size(), slice_varnames.size(),
+                      platform::errors::InvalidArgument(
+                          "Expected attr len(slice_shapes) must be equal to "
+                          "len(slice_varnames)"));
 
-    PADDLE_ENFORCE_EQ(slice_shapes.size(), endpoints.size(),
-                      "Attr len(slice_shapes) must be equal to len(endpoints)");
+    PADDLE_ENFORCE_EQ(
+        slice_shapes.size(), endpoints.size(),
+        platform::errors::InvalidArgument(
+            "Expected attr len(slice_shapes) must be equal to len(endpoints)"));
 
     auto data_type =
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype"));
@@ -226,7 +231,10 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
       ret = rpc_client->AsyncGetVarNoBarrier(
           endpoints[i], device_ctx, local_scope, remote_varnames[i], varname);
 
-      PADDLE_ENFORCE_NE(ret->Wait(), 0U, "internal error in RPCClient");
+      PADDLE_ENFORCE_NE(
+          ret->Wait(), 0U,
+          platform::errors::ExecutionTimeout(
+              "rpc error when communication with %s", endpoints[i]));
 
       auto &c_tensor = var->Get<framework::LoDTensor>();
 

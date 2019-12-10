@@ -252,8 +252,13 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     uint32_t version;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
     PADDLE_ENFORCE_EQ(framework::IsTensorVersionSupported(version), true,
-                      "tensor version %u is not supported.", version);
-    PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+                      platform::errors::InvalidArgument(
+                          "tensor version %u is not supported.", version));
+    PADDLE_ENFORCE_EQ(
+        version, 0U,
+        platform::errors::InvalidArgument(
+            "tensor version %u is not supported, Only version 0 is supported",
+            version));
   }
   {
     // the 2st field, LoD information
@@ -273,8 +278,13 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     uint32_t version;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
     PADDLE_ENFORCE_EQ(framework::IsTensorVersionSupported(version), true,
-                      "tensor version %u is not supported.", version);
-    PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
+                      platform::errors::InvalidArgument(
+                          "tensor version %u is not supported.", version));
+    PADDLE_ENFORCE_EQ(
+        version, 0U,
+        platform::errors::InvalidArgument(
+            "tensor version %u is not supported, Only version 0 is supported",
+            version));
   }
   {
     // the 2st field, LoD information

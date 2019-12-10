@@ -342,8 +342,9 @@ bool LoadTensorFromDisk(
       std::unique_ptr<char[]> buf(new char[size]);
       fin.read(reinterpret_cast<char*>(buf.get()), size);
       CheckInStreamState(fin, sizeof(size));
-      PADDLE_ENFORCE(desc.ParseFromArray(buf.get(), size),
-                     "Cannot parse tensor desc");
+      PADDLE_ENFORCE_EQ(
+          desc.ParseFromArray(buf.get(), size), true,
+          platform::errors::InvalidArgument("Cannot parse tensor desc"));
     }
 
     {  // read tensor

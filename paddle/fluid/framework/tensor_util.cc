@@ -409,7 +409,8 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
 
     auto* data_ptr = tensor.data<void>();
     PADDLE_ENFORCE_LT(size, std::numeric_limits<std::streamsize>::max(),
-                      "Index overflow when writing tensor");
+                      platform::errors::ResourceExhausted(
+                          "tensor size %d overflow when writing tensor", size));
     if (platform::is_gpu_place(tensor.place())) {
 #ifdef PADDLE_WITH_CUDA
       constexpr size_t kBufSize = 1024 * 1024 * 64;  // 64MB
@@ -430,7 +431,7 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
         size -= size_to_write;
       }
 #else
-      PADDLE_THROW_ERROR("Unexpected branch");
+      PADDLE_THROW("CUDAPlace is not supported when not compiled with CUDA");
 #endif
     } else {
       os.write(static_cast<const char*>(data_ptr),
@@ -467,8 +468,9 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
     std::unique_ptr<char[]> buf(new char[size]);
     is.read(reinterpret_cast<char*>(buf.get()), size);
-    PADDLE_ENFORCE_EQ(desc.ParseFromArray(buf.get(), size), true,
-                      "Cannot parse tensor desc");
+    PADDLE_ENFORCE_EQ(
+        desc.ParseFromArray(buf.get(), size), true,
+        platform::errors::InvalidArgument("Cannot parse tensor desc"));
   }
   {  // read tensor
     tensor->Resize(framework::make_ddim(shape));
@@ -489,7 +491,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
 #else
-      PADDLE_THROW_ERROR("Unexpected branch");
+      PADDLE_THROW("CUDAPlace is not supported when not compiled with CUDA");
 #endif
     } else {
       framework::VisitDataType(
@@ -512,8 +514,9 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     is.read(reinterpret_cast<char*>(&size), sizeof(size));
     std::unique_ptr<char[]> buf(new char[size]);
     is.read(reinterpret_cast<char*>(buf.get()), size);
-    PADDLE_ENFORCE_EQ(desc.ParseFromArray(buf.get(), size), true,
-                      "Cannot parse tensor desc");
+    PADDLE_ENFORCE_EQ(
+        desc.ParseFromArray(buf.get(), size), true,
+        platform::errors::InvalidArgument("Cannot parse tensor desc"));
   }
   {  // read tensor
     std::vector<int64_t> dims;
@@ -534,7 +537,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
 #else
-      PADDLE_THROW_ERROR("Unexpected branch");
+      PADDLE_THROW("CUDAPlace is not supported when not compiled with CUDA");
 #endif
     } else {
       framework::VisitDataType(
