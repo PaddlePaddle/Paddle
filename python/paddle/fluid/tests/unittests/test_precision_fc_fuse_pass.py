@@ -21,8 +21,8 @@ from paddle.fluid.core import PaddleDType
 from paddle.fluid.core import create_paddle_predictor
 
 
-class TestSeqconvEltaddReluPass(unittest.TestCase):
-    def test_conv_eltadd_pass_cpu_precision(self):
+class TestFcFusePass(unittest.TestCase):
+    def test_fc_fuse_pass_cpu_precision(self):
         x = fluid.data(name='x', shape=[-1, 3, 10, 10])
 
         weight_param1 = fluid.ParamAttr(
@@ -63,7 +63,7 @@ class TestSeqconvEltaddReluPass(unittest.TestCase):
                 np.array(fw_output[0]).ravel(), output_data.ravel(),
                 rtol=1e-05))
 
-    def test_conv_eltadd_pass_gpu_precision(self):
+    def test_fc_fuse_pass_gpu_precision(self):
         x = fluid.data(name='x', shape=[-1, 3, 10, 10])
 
         weight_param1 = fluid.ParamAttr(

@@ -21,11 +21,11 @@ from paddle.fluid.core import PaddleDType
 from paddle.fluid.core import create_paddle_predictor
 
 
-class TestSeqconvEltaddReluPass(unittest.TestCase):
+class TestConvEltadd2ActFusePass(unittest.TestCase):
     '''This pass only enabled on gpu now. 
     '''
 
-    def test_conv_eltadd_pass_gpu_precision(self):
+    def test_conv_eltadd2_pass_fuse_precision(self):
         x = fluid.data(name='x', shape=[-1, 3, 100, 100])
         y = fluid.data(name='y', shape=[-1, 3, 100, 100])
         w_param1 = fluid.ParamAttr(

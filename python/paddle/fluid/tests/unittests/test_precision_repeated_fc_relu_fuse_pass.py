@@ -21,11 +21,11 @@ from paddle.fluid.core import PaddleDType
 from paddle.fluid.core import create_paddle_predictor
 
 
-class TestSeqconvEltaddReluPass(unittest.TestCase):
+class TestRepeatedFcReluFusePass(unittest.TestCase):
     '''This pass only enabled on cpu
     '''
 
-    def test_conv_eltadd_pass_cpu_precision(self):
+    def test_repeated_fc_relu_fuse_pass_cpu_precision(self):
         x = fluid.data(name='x', shape=[10, 10])
 
         weight_param1 = fluid.ParamAttr(
