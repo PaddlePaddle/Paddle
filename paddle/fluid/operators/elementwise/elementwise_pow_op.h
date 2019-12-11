@@ -23,14 +23,15 @@ template <typename T>
 struct PowFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const {
 #ifdef __CUDA_ARCH__
+    // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
+    // it will return a float number like 2.99... , which floor to 2
+    // when cast to int by default and it is wrong.
+    // Use llrint to cast it to the nearest integer, which is 3.
     if (std::is_integral<T>::value) {
       return std::llrint(std::pow(a, b));
-    } else {
-      return std::pow(a, b);
     }
-#else
-    return std::pow(a, b);
 #endif
+    return std::pow(a, b);
   }
 };
 
@@ -55,11 +56,6 @@ class ElementwisePowKernel : public framework::OpKernel<T> {
 template <typename T>
 struct PowGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-#ifdef __CUDA_ARCH__
-    if (std::is_integral<T>::value) {
-      return std::llrint(dout * y * std::pow(x, y - 1));
-    }
-#endif
     return dout * y * std::pow(x, y - 1);
   }
 };
@@ -67,14 +63,9 @@ struct PowGradDX {
 template <typename T>
 struct PowGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-#ifdef __CUDA_ARCH__
-    if (std::is_integral<T>::value) {
-      return std::llrint(dout * std::log(x) * std::pow(x, y));
-    }
-#endif
     return dout * std::log(x) * std::pow(x, y);
   }
-};  // namespace operators
+};
 
 template <typename DeviceContext, typename T>
 class ElementwisePowGradKernel : public ElemwiseGradKernel<T> {
