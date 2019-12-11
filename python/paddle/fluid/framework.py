@@ -1833,7 +1833,7 @@ class Operator(object):
                         continue
                     out_args = outputs[out_proto.name]
                     if not isinstance(out_args, list):
-                        in_args = [in_args]
+                        out_args = [out_args]
                     if not out_proto.duplicable and len(out_args) > 1:
                         raise ValueError(
                             "Output %s expects only one output, but %d are given."

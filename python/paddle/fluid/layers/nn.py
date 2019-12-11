@@ -12278,15 +12278,19 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
     helper = LayerHelper('py_func', **locals())
     if x is None:
         x = []
-    elif isinstance(x, (Variable, tuple)):
+    elif isinstance(x, Variable):
         x = [x]
+    elif isinstance(x, tuple):
+        x = list(x)
     elif not isinstance(x, (list, tuple, Variable)):
         raise TypeError('Input must be Variable/list(Variable)/tuple(Variable)')
 
     if out is None:
         out_list = []
-    elif isinstance(out, (Variable, tuple)):
+    elif isinstance(out, Variable):
         out_list = [out]
+    elif isinstance(out, tuple):
+        out_list = list(out)
     elif not isinstance(x, (list, tuple, Variable)):
         raise TypeError(
             'Output must be Variable/list(Variable)/tuple(Variable)')
