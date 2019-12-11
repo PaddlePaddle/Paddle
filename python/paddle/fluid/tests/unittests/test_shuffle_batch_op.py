@@ -36,11 +36,11 @@ class TestShuffleBatchOp(OpTest):
         self.possible_res = [
             np.array([np.arange(100), np.arange(100)]).astype(self.dtype),
         ]
-        self.inputs = {'X': x, 'Seed': np.array([1])}
+        self.inputs = {'X': x, 'Seed': np.array([1]).astype('int64')}
         self.outputs = {
             'Out': out,
-            'ShuffleIdx': np.array([1, 0]),
-            'SeedOut': np.array([1])
+            'ShuffleIdx': np.array([1, 0]).astype('int64'),
+            'SeedOut': np.array([1]).astype('int64')
         }
         self.attrs = {'startup_seed': 1}
 

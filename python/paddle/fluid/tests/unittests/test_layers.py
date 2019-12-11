@@ -2801,8 +2801,12 @@ class TestBook(LayerTest):
         with self.static_graph():
             x = layers.data(
                 name='X', shape=[4, 50], dtype='float32', lod_level=0)
-            out = layers.shuffle_batch(x)
-            return (out)
+            out1 = layers.shuffle_batch(x)
+            default_main_program().random_seed = 1000
+            out2 = layers.shuffle_batch(x)
+            self.assertIsNotNone(out1)
+            self.assertIsNotNone(out2)
+            return (out1)
 
     def test_roi_pool(self):
         # TODO(minqiyang): dygraph do not support lod now
