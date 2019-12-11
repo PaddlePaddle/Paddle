@@ -26,7 +26,7 @@ class TestScaleOp(OpTest):
         self.op_type = "scale"
         self.dtype = np.float32
         self.init_dtype_type()
-        self.inputs = {'X': np.random.random((10, 10)).astype(self.dtype)}
+        self.inputs = {'X': np.random.random((10, 12)).astype(self.dtype)}
         self.attrs = {'scale': -2.3}
         self.outputs = {
             'Out': self.inputs['X'] * self.dtype(self.attrs['scale'])
@@ -49,7 +49,7 @@ class TestScaleOpScaleVariable(OpTest):
         self.init_dtype_type()
         self.scale = -2.3
         self.inputs = {
-            'X': np.random.random((10, 10)).astype(self.dtype),
+            'X': np.random.random((10, 12)).astype(self.dtype),
             'ScaleTensor': np.array([self.scale]).astype('float32')
         }
         self.attrs = {}

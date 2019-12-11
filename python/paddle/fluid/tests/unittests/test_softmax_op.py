@@ -33,7 +33,7 @@ def stable_softmax(x):
 
 class TestSoftmaxOp(OpTest):
     def get_x_shape(self):
-        return [10, 10]
+        return [10, 12]
 
     def get_axis(self):
         return -1

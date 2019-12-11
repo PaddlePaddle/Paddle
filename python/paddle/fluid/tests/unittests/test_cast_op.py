@@ -24,7 +24,7 @@ from paddle.fluid import compiler, Program, program_guard
 
 class TestCastOp1(op_test.OpTest):
     def setUp(self):
-        ipt = np.random.random(size=[10, 10])
+        ipt = np.random.random(size=[10, 12])
         self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.astype('float64')}
         self.attrs = {
@@ -42,7 +42,7 @@ class TestCastOp1(op_test.OpTest):
 
 class TestCastOp2(op_test.OpTest):
     def setUp(self):
-        ipt = np.random.random(size=[10, 10])
+        ipt = np.random.random(size=[10, 12])
         self.inputs = {'X': ipt.astype('float16')}
         self.outputs = {'Out': ipt.astype('float32')}
         self.attrs = {
@@ -57,7 +57,7 @@ class TestCastOp2(op_test.OpTest):
 
 class TestCastOp3(op_test.OpTest):
     def setUp(self):
-        ipt = np.random.random(size=[10, 10])
+        ipt = np.random.random(size=[10, 12])
         self.inputs = {'X': ipt.astype('float32')}
         self.outputs = {'Out': ipt.astype('float16')}
         self.attrs = {
