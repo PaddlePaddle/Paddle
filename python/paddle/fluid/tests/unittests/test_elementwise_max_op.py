@@ -58,9 +58,9 @@ class TestElementwiseMaxOp_scalar(TestElementwiseOp):
 class TestElementwiseMaxOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
-        x = np.random.random((110, )).astype("float32")
-        sgn = np.random.choice([-1, 1], (110, )).astype("float32")
-        y = x + sgn * np.random.uniform(0.1, 1, (110, )).astype("float32")
+        x = np.random.random((100, )).astype("float32")
+        sgn = np.random.choice([-1, 1], (100, )).astype("float32")
+        y = x + sgn * np.random.uniform(0.1, 1, (100, )).astype("float32")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 

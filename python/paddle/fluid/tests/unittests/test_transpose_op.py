@@ -52,7 +52,7 @@ class TestTransposeOp(OpTest):
 
 class TestCase0(TestTransposeOp):
     def initTestCase(self):
-        self.shape = (101, )
+        self.shape = (100, )
         self.axis = (0, )
 
 
