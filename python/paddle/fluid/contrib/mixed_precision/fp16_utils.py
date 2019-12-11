@@ -20,7 +20,7 @@ from ... import layers
 
 def _rename_arg(op, old_name, new_name):
     """
-    If an op has old_name input and output, rename these input 
+    If an op has old_name input and output, rename these input
     args new_name.
 
     Args:
@@ -33,6 +33,30 @@ def _rename_arg(op, old_name, new_name):
         op_desc = op_desc[0]
     op_desc._rename_input(old_name, new_name)
     op_desc._rename_output(old_name, new_name)
+
+
+def _change_optimize_ops_order(block):
+    """
+    put optimize_role ops(cast) behind the backward_role ops
+    to speed up in Executor.
+
+    Args:
+        block: The global_block of main program. eg: block = main_prog.global_block()
+    """
+    OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+    for idx, op in reversed(list(enumerate(block.ops))):
+        if op.attr('op_role') & int(OPTIMIZE):
+
+            block.append_op(
+                type=op.type,
+                inputs=dict(
+                    zip(op.input_names,
+                        [block.var(name) for name in op.input_arg_names])),
+                outputs=dict(
+                    zip(op.output_names,
+                        [block.var(name) for name in op.output_arg_names])),
+                attrs=op.all_attrs())
+            block._remove_op(idx)
 
 
 def _dtype_to_str(dtype):
@@ -155,19 +179,19 @@ def _is_in_black_varnames(op, amp_lists):
 
 def rewrite_program(main_prog, amp_lists):
     """
-    Traverse all ops in current block and insert cast op according to 
+    Traverse all ops in current block and insert cast op according to
     which set current op belongs to.
 
     1. When an op belongs to the black list, add it to black set
     2. When an op belongs to the white list, add it to white set
-    3. When an op belongs to the gray list. If one 
-       of its inputs is the output of black set op or black list op, 
-       add it to black set. If all of its previous ops are not black 
-       op and one of its inputs is the output of white set op or 
+    3. When an op belongs to the gray list. If one
+       of its inputs is the output of black set op or black list op,
+       add it to black set. If all of its previous ops are not black
+       op and one of its inputs is the output of white set op or
        white list op, add it to white set.
     4. When an op isn't in the lists, add it to black op set.
-    5. Add necessary cast ops to make sure that black set op will be 
-       computed in fp32 mode, while white set op will be computed in 
+    5. Add necessary cast ops to make sure that black set op will be
+       computed in fp32 mode, while white set op will be computed in
        fp16 mode.
 
     Args:
@@ -279,33 +303,35 @@ def update_role_var_grad(main_prog, params_grads):
             # operation after gradients transfer.
             op._set_attr('op_role', OPTIMIZE)
 
+    _change_optimize_ops_order(block)
+
 
 def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
                         num_bad_steps, incr_every_n_steps,
                         decr_every_n_nan_or_inf, incr_ratio, decr_ratio):
     """
-    Update loss scaling according to overall gradients. If all gradients is 
-    finite after incr_every_n_steps, loss scaling will increase by incr_ratio. 
+    Update loss scaling according to overall gradients. If all gradients is
+    finite after incr_every_n_steps, loss scaling will increase by incr_ratio.
     Otherwise, loss scaling will decrease by decr_ratio after
     decr_every_n_nan_or_inf steps and each step some gradients are infinite.
 
     Args:
-        is_overall_finite (Variable): A boolean variable indicates whether 
+        is_overall_finite (Variable): A boolean variable indicates whether
                                      all gradients are finite.
         prev_loss_scaling (Variable): Previous loss scaling.
-        num_good_steps (Variable): A variable accumulates good steps in which 
+        num_good_steps (Variable): A variable accumulates good steps in which
                                    all gradients are finite.
-        num_bad_steps (Variable): A variable accumulates bad steps in which 
+        num_bad_steps (Variable): A variable accumulates bad steps in which
                                   some gradients are infinite.
-        incr_every_n_steps (Variable): A variable represents increasing loss 
-                                       scaling every n consecutive steps with 
+        incr_every_n_steps (Variable): A variable represents increasing loss
+                                       scaling every n consecutive steps with
                                        finite gradients.
-        decr_every_n_nan_or_inf (Variable): A variable represents decreasing 
-                                            loss scaling every n accumulated 
+        decr_every_n_nan_or_inf (Variable): A variable represents decreasing
+                                            loss scaling every n accumulated
                                             steps with nan or inf gradients.
-        incr_ratio(float): The multiplier to use when increasing the loss 
+        incr_ratio(float): The multiplier to use when increasing the loss
                            scaling.
-        decr_ratio(float): The less-than-one-multiplier to use when decreasing 
+        decr_ratio(float): The less-than-one-multiplier to use when decreasing
                            loss scaling.
     """
     zero_steps = layers.fill_constant(shape=[1], dtype='int32', value=0)
