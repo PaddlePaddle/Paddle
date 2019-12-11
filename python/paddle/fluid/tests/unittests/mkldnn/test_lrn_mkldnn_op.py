@@ -27,7 +27,7 @@ class TestLRNMKLDNNOp(TestLRNOp):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(atol=0.002, check_dygraph=False)
+        self.check_output(atol=0.001, check_dygraph=False)
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
