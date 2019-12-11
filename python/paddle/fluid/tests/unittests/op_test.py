@@ -33,7 +33,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
-
+from check_white_list import compile_vs_runtime_white_list
 
 def _set_use_system_allocator(value=None):
     USE_SYSTEM_ALLOCATOR_FLAG = "FLAGS_use_system_allocator"
@@ -1012,7 +1012,8 @@ class OpTest(unittest.TestCase):
                 outs, dygraph_outs, fetch_list = res
             else:
                 outs, fetch_list = res
-            if check_compile_vs_runtime:
+            if check_compile_vs_runtime and (
+                    self.op_type not in compile_vs_runtime_white_list):
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker):
