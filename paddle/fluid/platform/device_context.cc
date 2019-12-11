@@ -324,16 +324,10 @@ void CUDADeviceContext::Wait() const {
   }
 #endif
 
-  if (cudaSuccess != e_sync) {
-    LOG(FATAL) << "cudaStreamSynchronize " << cudaGetErrorString(e_sync)
-               << " errno: " << e_sync;
-  }
-
-  cudaError_t e_get = cudaGetLastError();
-  if (cudaSuccess != e_get) {
-    LOG(FATAL) << "cudaGetLastError  " << cudaGetErrorString(e_get)
-               << " errno: " << e_get;
-  }
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      e_sync, platform::errors::Fatal(
+                  "cudaStreamSynchronize raises error: %s, errono: %d",
+                  cudaGetErrorString(e_sync), static_cast<int>(e_sync)));
 }
 
 int CUDADeviceContext::GetComputeCapability() const {
@@ -382,7 +376,9 @@ Place CUDAPinnedDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_MKLDNN
 MKLDNNDeviceContext::MKLDNNDeviceContext(CPUPlace place)
-    : CPUDeviceContext(place), engine_(mkldnn::engine::cpu, 0), p_blobmap_() {
+    : CPUDeviceContext(place),
+      engine_(mkldnn::engine::kind::cpu, 0),
+      p_blobmap_() {
   p_blobmap_.reset(new BlobMap());
   p_mutex_.reset(new std::mutex());
 }

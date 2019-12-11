@@ -76,13 +76,6 @@ function(inference_analysis_api_test_with_fake_data_run TARGET_NAME test_binary 
              --disable_mkldnn_fc=${disable_fc}) 
 endfunction()
 
-function(inference_analysis_api_test_with_refer_result target install_dir filename)
-    inference_analysis_test(${target} SRCS ${filename}
-        EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-        ARGS --infer_model=${install_dir}/model --infer_data=${install_dir}/data.txt
-             --refer_result=${install_dir}/result.txt)
-endfunction()
-
 function(inference_analysis_api_qat_test_run TARGET_NAME test_binary fp32_model_dir int8_model_dir data_path)
     inference_analysis_test_run(${TARGET_NAME}
     COMMAND ${test_binary}
@@ -157,6 +150,14 @@ download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_model.tar.gz" "Ernie_data.tx
 download_result(${ERNIE_INSTALL_DIR} "Ernie_result.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_ernie ${ERNIE_INSTALL_DIR} analyzer_ernie_tester.cc)
 
+#Ernie large
+set(ERNIE_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/Ernie_Large")
+download_model_and_data(${ERNIE_INSTALL_DIR} "Ernie_large_model.tar.gz" "Ernie_large_data.txt.tar.gz" "Ernie_large_result.txt.tar.gz")
+download_result(${ERNIE_INSTALL_DIR} "Ernie_large_result.txt.tar.gz")
+inference_analysis_test(test_analyzer_ernie_large SRCS analyzer_ernie_tester.cc
+    EXTRA_DEPS ${INFERENCE_EXTRA_DEPS} benchmark
+    ARGS --infer_model=${ERNIE_INSTALL_DIR}/model --infer_data=${ERNIE_INSTALL_DIR}/data.txt --refer_result=${ERNIE_INSTALL_DIR}/result.txt --ernie_large=true)
+
 # text_classification
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classification")
 download_model_and_data(${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz" "text_classification_data.txt.tar.gz")
@@ -180,14 +181,14 @@ set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
 if (NOT EXISTS ${OCR_INSTALL_DIR})
     inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Focr.tar.gz")
 endif()
-inference_analysis_api_test_with_refer_result(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
+inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
 
 # mobilenet with transpose op
 set(MOBILENET_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/mobilenet")
 if (NOT EXISTS ${MOBILENET_INSTALL_DIR})
     inference_download_and_uncompress(${MOBILENET_INSTALL_DIR} "http://paddlemodels.bj.bcebos.com/" "inference-vis-demos%2Fmobilenet.tar.gz")
 endif()
-inference_analysis_api_test_with_refer_result(test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc)
+inference_analysis_api_test(test_analyzer_mobilenet_transpose ${MOBILENET_INSTALL_DIR} analyzer_vis_tester.cc)
 
 ### Image classification tests with fake data
 set(IMG_CLASS_TEST_APP "test_analyzer_image_classification")
@@ -247,19 +248,22 @@ if(WITH_MKLDNN)
   inference_analysis_api_int8_test_run(test_analyzer_int8_mobilenetv2 ${INT8_IMG_CLASS_TEST_APP} ${INT8_MOBILENETV2_MODEL_DIR} ${IMAGENET_DATA_PATH})
  
   # resnet101 int8
-  set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
-  download_int8_data(${INT8_RESNET101_MODEL_DIR} "Res101_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_resnet101 ${INT8_IMG_CLASS_TEST_APP} ${INT8_RESNET101_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  # TODO(grygielski) Enable after MKL-DNN 1.0 merge
+#   set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
+#   download_int8_data(${INT8_RESNET101_MODEL_DIR} "Res101_int8_model.tar.gz" )
+#   inference_analysis_api_int8_test_run(test_analyzer_int8_resnet101 ${INT8_IMG_CLASS_TEST_APP} ${INT8_RESNET101_MODEL_DIR} ${IMAGENET_DATA_PATH})
  
   # vgg16 int8
-  set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
-  download_int8_data(${INT8_VGG16_MODEL_DIR} "VGG16_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  # TODO(grygielski) Enable after MKL-DNN 1.0 merge
+#   set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
+#   download_int8_data(${INT8_VGG16_MODEL_DIR} "VGG16_int8_model.tar.gz" )
+#   inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
  
   # vgg19 int8
-  set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
-  download_int8_data(${INT8_VGG19_MODEL_DIR} "VGG19_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_vgg19 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG19_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  # TODO(grygielski) Enable after MKL-DNN 1.0 merge
+#   set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
+#   download_int8_data(${INT8_VGG19_MODEL_DIR} "VGG19_int8_model.tar.gz" )
+#   inference_analysis_api_int8_test_run(test_analyzer_int8_vgg19 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG19_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
   # googlenet int8
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")

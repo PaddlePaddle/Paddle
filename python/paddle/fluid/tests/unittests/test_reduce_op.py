@@ -414,7 +414,7 @@ class Test1DReduceWithAxes1(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestReduceSumOpError(OpTest):
+class TestReduceSumOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of reduce_sum_op must be Variable.
@@ -426,7 +426,7 @@ class TestReduceSumOpError(OpTest):
             self.assertRaises(TypeError, fluid.layers.reduce_sum, x2)
 
 
-class TestReduceMeanOpError(OpTest):
+class TestReduceMeanOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of reduce_mean_op must be Variable.

@@ -28,7 +28,7 @@ from ..framework import Variable, OpProtoHolder, in_dygraph_mode
 from ..dygraph import base
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
-from .tensor import concat, assign, fill_constant, zeros, cast
+from .tensor import concat, assign, fill_constant, zeros
 from . import utils
 from .. import unique_name
 from functools import reduce
@@ -183,7 +183,6 @@ __all__ = [
     'hard_swish',
     'gather_tree',
     'uniform_random',
-    'masked_select',
 ]
 
 
@@ -8694,7 +8693,7 @@ def prelu(x, mode, param_attr=None, name=None):
     if mode == 'channel':
         alpha_shape = [1, x.shape[1], 1, 1]
     elif mode == 'element':
-        alpha_shape = x.shape[1:]
+        alpha_shape = [1, x.shape[1], x.shape[2], x.shape[3]]
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=helper.param_attr,
@@ -9866,7 +9865,7 @@ def strided_slice(input, axes, starts, ends, strides):
             Given:
                 data = [ [1, 2, 3, 4], [5, 6, 7, 8], ]
                 axes = [0, 1]
-                starts = [-1, 1000]
+                starts = [0, 1]
                 ends = [-1, 1000]
                 strides = [1, 3]
             Then:
@@ -10200,7 +10199,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
             import numpy as np
 
             inputs = fluid.layers.data(name="x", shape=[2, 3], dtype='float32')
-            scale = fluid.layers.data(name="scale", shape=[1], dtype='float32'
+            scale = fluid.layers.data(name="scale", shape=[1], dtype='float32',
                                       append_batch_size=False)
             output = fluid.layers.scale(inputs, scale = scale, bias = 1.0)
 
@@ -13620,63 +13619,3 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0):
         outputs={"Out": out})
 
     return helper.append_activation(out)
-
-
-def masked_select(input, mask):
-    """
-    This OP selects elements of the input tensor according to the mask tensor.
-    The shapes of the mask tensor don't have to match shapes of input tensor, but they must be broadcastable, and the result is a new 1-D tensor.
-
-    NOTE: The meaning of broadcastable is consistent with expand_as.
-
-    Parameters:
-
-        input(Variable): The input tensor, the data type should be int32, float32, float64.
-        mask(Variable): The boolean mask tensor, the data type should be bool.
-
-    Returns:
-        Variable: masked select tensor, its data type is same as the input.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            import numpy as np
-            mask_shape = [4,1]
-            shape = [4,4]
-            data = np.random.random(mask_shape).astype("float32")
-            input_data = np.random.randint(5,size=shape).astype("float32")
-            mask_data = data > 0.5
-
-            # print(input_data)
-            # [[0.38972723 0.36218056 0.7892614  0.50122297]
-            #  [0.14408113 0.85540855 0.30984417 0.7577004 ]
-            #  [0.97263193 0.5248062  0.07655851 0.75549215]
-            #  [0.26214206 0.32359877 0.6314582  0.2128865 ]]
-
-            # print(mask_data)
-            # [[ True]
-            #  [ True]
-            #  [False]
-            #  [ True]]
-
-            input = fluid.data(name="input",shape=[4,4],dtype="float32")
-            mask = fluid.data(name="mask",shape=[4,1],dtype="bool")
-            result = fluid.layers.masked_select(input=input, mask=mask)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            start = fluid.default_startup_program()
-            main = fluid.default_main_program()
-            exe.run(start)
-            masked_select_result= exe.run(main, feed={'input':input_data, 'mask':mask_data}, fetch_list=[result])
-            # print(masked_select_result)
-            # [0.38972723 0.36218056 0.7892614  0.50122297 0.14408113 0.85540855
-            #   0.30984417 0.7577004  0.26214206 0.32359877 0.6314582  0.2128865 ]
-
-    """
-    mask_cast = cast(x=mask, dtype=input.dtype)
-    mask_expand = expand_as(x=mask_cast, target_tensor=input)
-    mask_expand_cast_back_bool = cast(x=mask_expand, dtype="bool")
-    select = where(mask_expand_cast_back_bool)
-    result = gather_nd(input, select)
-    return result

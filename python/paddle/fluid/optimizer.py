@@ -32,7 +32,6 @@ from .layers import ops
 from .regularizer import append_regularization_ops
 from .dygraph import base as imperative_base
 from .dygraph.learning_rate_scheduler import LearningRateDecay
-from .framework import _var_base_to_np
 from paddle.fluid import core
 from paddle.fluid.layers import tensor
 from functools import reduce
@@ -122,7 +121,13 @@ class Optimizer(object):
                 state_dict[var_tmp.name] = var_tmp
         # global step if use lr decay
         if isinstance(self._learning_rate, LearningRateDecay):
-            var_temp = Variable(None, name='global_step', dtype='int32')
+            var_tmp = None
+            if not framework.in_dygraph_mode():
+                var_temp = Variable(None, name='global_step', dtype='int32')
+            else:
+                var_temp = framework._varbase_creator(
+                    None, name='global_step', dtype='int32')
+
             tensor.fill_constant(
                 [1], "int32", self._learning_rate.step_num, out=var_temp)
 
@@ -164,7 +169,7 @@ class Optimizer(object):
             global_step = state_dict['global_step']
 
             if isinstance(global_step, core.VarBase):
-                step_np = global_step._copy_to(core.CPUPlace(), True)
+                step_np = global_step
                 step_np = np.array(step_np.value().get_tensor())
                 assert step_np.shape == (1,),  \
                         "global step shape is (1,), the shape is {}".format( step_np.shape )
@@ -189,7 +194,7 @@ class Optimizer(object):
             for para_name, var_tmp in v.items():
                 assert var_tmp.name in state_dict, \
                         "optimizer variable {} not found".format( var_tmp.name )
-                var = var_tmp._ivar.value()
+                var = var_tmp.value()
                 tensor = var.get_tensor()
                 model_np = np.array(tensor)
 
@@ -198,7 +203,7 @@ class Optimizer(object):
                 if isinstance(load_para, Variable):
                     load_para_np = load_para.numpy()
                 elif isinstance(load_para, core.VarBase):
-                    load_para_np = _var_base_to_np(load_para)
+                    load_para_np = load_para.numpy()
                 elif isinstance(load_para, np.ndarray):
                     load_para_np = load_para
                 else:
@@ -515,7 +520,11 @@ class Optimizer(object):
         Examples:
             See examples in ``apply_gradients``.
         """
-        no_grad_set = self._get_no_grad_set(loss, no_grad_set)
+        act_no_grad_set = None
+        if not framework.in_dygraph_mode():
+            act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
+        else:
+            pass
 
         self._dtype = loss.dtype
         if framework.in_dygraph_mode():
@@ -528,13 +537,9 @@ class Optimizer(object):
             for param in parameters:
                 if not param.trainable:
                     continue
-                if param._ivar._grad_ivar() is not None:
+                if param._grad_ivar() is not None:
                     # create gradient variable
-                    grad_var = Variable(
-                        block=loss.block,
-                        name=param._ivar._grad_name(),
-                        stop_gradient=True,
-                        ivar=param._ivar._grad_ivar())
+                    grad_var = param._grad_ivar()
                     params_grads.append((param, grad_var))
         else:
             if callbacks is None:
@@ -548,7 +553,7 @@ class Optimizer(object):
                     loss.shape)
             with program_guard(program, startup_program):
                 params_grads = append_backward(loss, parameter_list,
-                                               no_grad_set, callbacks)
+                                               act_no_grad_set, callbacks)
                 # Note: since we can't use all_reduce_op now,
                 #  dgc_op should be the last op of one grad.
                 self._append_dgc_ops(params_grads)
@@ -947,6 +952,7 @@ class DGCMomentumOptimizer(Optimizer):
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
 
+        assert rampup_begin_step >= 0, "rampup_begin_step must >= 0"
         self._rampup_begin_step = rampup_begin_step
         self._rampup_step = rampup_step
         self._sparsity = sparsity
@@ -963,8 +969,7 @@ class DGCMomentumOptimizer(Optimizer):
 
             self._local_grad_clip_norm = local_grad_clip_norm
             self._num_trainers = num_trainers
-            self._clip_norm = local_grad_clip_norm / (num_trainers *
-                                                      num_trainers)
+            self._clip_norm = local_grad_clip_norm * (num_trainers**-0.5)
 
         self._get_dgc_regularization_param()
 
@@ -1549,7 +1554,7 @@ class AdamOptimizer(Optimizer):
                 avg_cost = fluid.layers.mean(cost)
 
                 # define beta decay variable
-                def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate)
+                def get_decayed_betas(beta1_init, beta2_init, decay_steps, decay_rate):
                     global_step = lr_scheduler._decay_step_counter()
 
                     beta1 = fluid.layers.create_global_var(
@@ -1578,7 +1583,7 @@ class AdamOptimizer(Optimizer):
                 beta1, beta2 = get_decayed_betas(0.9, 0.99, 1e5, 0.9)
                 adam_optimizer = fluid.optimizer.AdamOptimizer(
                                                     learning_rate=0.01,
-                                                    beta1=beta1
+                                                    beta1=beta1,
                                                     beta2=beta2)
                 adam_optimizer.minimize(avg_cost)
 
@@ -1628,14 +1633,12 @@ class AdamOptimizer(Optimizer):
             self._add_accumulator(
                 name=self._beta1_pow_acc_str,
                 param=p,
-                dtype='float32',
                 fill_value=0.9 if isinstance(self._beta1, Variable) \
                         else self._beta1,
                 shape=[1])
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
-                dtype='float32',
                 fill_value=0.999 if isinstance(self._beta2, Variable) \
                         else self._beta2,
                 shape=[1])
@@ -1835,7 +1838,6 @@ class AdamaxOptimizer(Optimizer):
             self._add_accumulator(
                 name=self._beta1_pow_acc_str,
                 param=p,
-                dtype='float32',
                 fill_value=self._beta1,
                 shape=[1])
 
@@ -3453,9 +3455,14 @@ class PipelineOptimizer(object):
         self._optimizer.minimize(loss, startup_program, parameter_list,
                                  no_grad_set)
         program = loss.block.program
-        program_list = self._split_program(program, self._cut_list)
-        for p in program_list:
-            self._create_vars(p["program"].block(0), program)
+        if len(self._cut_list) == 0:
+            program_list = []
+            ptmp = {"program": program, "input_set": set(), "output_set": set()}
+            program_list.append(ptmp)
+        else:
+            program_list = self._split_program(program, self._cut_list)
+            for p in program_list:
+                self._create_vars(p["program"].block(0), program)
         whole_parameters = [e.name for e in program.block(0).all_parameters()]
         param_need_sync = []
         for i, section_p in enumerate(program_list):

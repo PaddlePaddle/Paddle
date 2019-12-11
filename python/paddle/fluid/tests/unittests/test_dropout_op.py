@@ -150,6 +150,27 @@ class TestDropoutOp9(OpTest):
         self.check_output()
 
 
+class TestDropoutOpWithSeed(OpTest):
+    def setUp(self):
+        self.op_type = "dropout"
+        self.inputs = {
+            "X": np.random.random((32, 64)).astype("float32"),
+            "Seed": np.asarray(
+                [125], dtype="int32")
+        }
+        self.attrs = {'dropout_prob': 0.0, }
+        self.outputs = {
+            'Out': self.inputs['X'],
+            'Mask': np.ones((32, 64)).astype('uint8')
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.05)
+
+
 class TestFP16DropoutOp(OpTest):
     def setUp(self):
         self.op_type = "dropout"

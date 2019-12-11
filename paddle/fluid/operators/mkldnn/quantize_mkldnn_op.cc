@@ -42,8 +42,8 @@ class QuantOpKernel : public framework::OpKernel<T> {
     const auto& engine = dev_ctx.GetEngine();
 
     std::vector<primitive> pipeline;
-    auto src_tz = paddle::framework::vectorize<int>(input->dims());
-    auto dst_tz = paddle::framework::vectorize<int>(output->dims());
+    auto src_tz = paddle::framework::vectorize<int64_t>(input->dims());
+    auto dst_tz = paddle::framework::vectorize<int64_t>(output->dims());
 
     const T* input_data = input->data<T>();
 
@@ -66,24 +66,20 @@ class QuantOpKernel : public framework::OpKernel<T> {
 
       auto src_md = platform::MKLDNNMemDesc({src_tz}, memory::data_type::f32,
                                             input->format());
-      auto src_pd = mkldnn::memory::primitive_desc(src_md, engine);
-      src_memory =
-          std::make_shared<mkldnn::memory>(src_pd, to_void_cast<T>(input_data));
-      std::shared_ptr<primitive::at> src_memory_p =
-          std::shared_ptr<primitive::at>(new primitive::at(*src_memory));
+      src_memory = std::make_shared<mkldnn::memory>(
+          src_md, engine, to_void_cast<T>(input_data));
 
-      std::shared_ptr<mkldnn::memory::primitive_desc> dst_pd;
+      std::shared_ptr<mkldnn::memory::desc> dst_md;
       if (is_negative) {
         platform::SetDstMemoryQuantized<int8_t>(ctx, output, dst_tz, engine,
-                                                dst_pd, dst_memory);
+                                                dst_md, dst_memory);
       } else {
         platform::SetDstMemoryQuantized<uint8_t>(ctx, output, dst_tz, engine,
-                                                 dst_pd, dst_memory);
+                                                 dst_md, dst_memory);
       }
       auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
-          new reorder::primitive_desc(src_pd, *dst_pd, attri));
-      reorder_p = std::shared_ptr<reorder>(
-          new reorder(*reorder_pd, *src_memory_p, *dst_memory));
+          new reorder::primitive_desc(*src_memory, *dst_memory, attri));
+      reorder_p = std::shared_ptr<reorder>(new reorder(*reorder_pd));
 
       dev_ctx.SetBlob(key_prim, reorder_p);
       dev_ctx.SetBlob(key_src_mem, src_memory);
@@ -103,8 +99,10 @@ class QuantOpKernel : public framework::OpKernel<T> {
       }
     }
 
-    pipeline.push_back(*reorder_p);
-    stream(stream::kind::eager).submit(pipeline).wait();
+    mkldnn::stream astream(engine);
+    reorder_p->execute(astream, *src_memory, *dst_memory);
+    astream.wait();
+
     output->set_layout(DataLayout::kMKLDNN);
     output->set_format(GetMKLDNNFormat(*dst_memory));
   }

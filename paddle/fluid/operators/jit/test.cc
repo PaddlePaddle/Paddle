@@ -1141,13 +1141,13 @@ TEST(JITKernel_helper, attr) {
       << jit::to_string(jit::kVScal) << jit::to_string(jit::kSgd)
       << jit::to_string(jit::kVSigmoid) << jit::to_string(jit::kVSquare)
       << jit::to_string(jit::kVSub) << jit::to_string(jit::kVTanh);
-  EXPECT_EQ(out.str().size(), 234);
+  EXPECT_EQ(out.str().size(), 234UL);
 
   // SeqPoolTypes
   out.str("");
   out << jit::to_string(jit::kSum) << jit::to_string(jit::kAvg)
       << jit::to_string(jit::kSqrt);
-  EXPECT_EQ(out.str().size(), 13);
+  EXPECT_EQ(out.str().size(), 13UL);
 
   EXPECT_EQ(jit::to_kerneltype("relu"), jit::kVRelu);
   EXPECT_EQ(jit::to_kerneltype("Identity"), jit::kVIdentity);
@@ -1157,27 +1157,27 @@ TEST(JITKernel_helper, attr) {
 
   out.str("");
   out << jit::lstm_attr_t(8, jit::kVIdentity, jit::kVSigmoid, jit::kVTanh);
-  EXPECT_EQ(out.str().size(), 89);
+  EXPECT_EQ(out.str().size(), 89UL);
 
   out.str("");
   out << jit::gru_attr_t(8, jit::kVIdentity, jit::kVSigmoid);
-  EXPECT_EQ(out.str().size(), 52);
+  EXPECT_EQ(out.str().size(), 52UL);
 
   out.str("");
   out << jit::seq_pool_attr_t(8, jit::SeqPoolType::kSum);
-  EXPECT_EQ(out.str().size(), 44);
+  EXPECT_EQ(out.str().size(), 44UL);
 
   out.str("");
   out << jit::emb_seq_pool_attr_t(1, 2, 3, 4, 5, jit::SeqPoolType::kAvg);
-  EXPECT_EQ(out.str().size(), 93);
+  EXPECT_EQ(out.str().size(), 93UL);
 
   out.str("");
   out << jit::sgd_attr_t(1, 2, 3, 4, 5);
-  EXPECT_EQ(out.str().size(), 81);
+  EXPECT_EQ(out.str().size(), 81UL);
 
   out.str("");
   out << jit::matmul_attr_t(1, 2, 3);
-  EXPECT_EQ(out.str().size(), 14);
+  EXPECT_EQ(out.str().size(), 14UL);
 }
 
 // test keys
