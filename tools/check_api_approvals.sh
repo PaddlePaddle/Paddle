@@ -169,12 +169,12 @@ if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     for OP_FILE in ${OP_FILE_CHANGED};
     do
         echo ${OP_FILE}
-        CHECK_SHARE_DATA_WITH=`git diff -U0 ${OP_FILE} upstream/$BRANCH |grep "+" |grep -oE "ShareDataWith[(]" || true`
-        CHECK_SHARE_BUFFER_WITH=`git diff -U0 ${OP_FILE} upstream/$BRANCH |grep "+" |grep -oE "ShareBufferWith[(]" || true`
+        CHECK_SHARE_DATA_WITH=`git diff -U0 ${PADDLE_ROOT}/${OP_FILE} upstream/$BRANCH |grep "+" |grep -oE "ShareDataWith[(]" || true`
+        CHECK_SHARE_BUFFER_WITH=`git diff -U0 ${PADDLE_ROOT}/${OP_FILE} upstream/$BRANCH |grep "+" |grep -oE "ShareBufferWith[(]" || true`
         echo ${CHECK_SHARE_DATA_WITH}
-	echo ${CHECK_SHARE_BUFFER_WITH}
-	if [ "${CHECK_SHARE_DATA_WITH}" != "" ] || [ "${CHECK_SHARE_BUFFER_WITH}" != "" ]; then
-            echo_line="Using ShareDataWith or ShareBufferWith in ${OP_FILE} is not recommended. You must have one RD's (zhhsplendid (Recommend), sneaxiy or luotao1 or lanxianghit) approval to use these methods"
+        echo ${CHECK_SHARE_BUFFER_WITH}
+        if [ "${CHECK_SHARE_DATA_WITH}" != "" ] || [ "${CHECK_SHARE_BUFFER_WITH}" != "" ]; then
+            echo_line="Using ShareDataWith or ShareBufferWith in ${OP_FILE} is not recommended. You must have one RD's (zhhsplendid (Recommend), sneaxiy or luotao1 or lanxianghit) approval to use these methods. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/ShareDataWith-is-prohibited-in-internal-OP."
             check_approval 1 6836917 32832641 47554610 7913861
         fi
     done
