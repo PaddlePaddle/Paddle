@@ -155,11 +155,6 @@ def monkey_patch_math_varbase():
                 other_var = tmp
 
             axis = -1
-            assert len(self.shape) >= len(other_var.shape), (
-                "The rank of the first argument of an binary operator cannot "
-                "be smaller than the rank of its second argument: %s vs %s" %
-                (len(self.shape), len(other_var.shape)))
-
             op = getattr(core.ops, op_type)
             inputs = {'X': [self], 'Y': [other_var]}
             attrs = {'axis': axis}
