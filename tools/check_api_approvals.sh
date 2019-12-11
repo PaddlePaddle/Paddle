@@ -169,7 +169,7 @@ if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     CHECK_GRAD_CHECK_RTOL=`git diff -U5 --diff-filter=AMR upstream/$BRANCH |grep -A2 "checker\.double_grad_check"|grep "rtol=" |grep "+" || true` 
     CHECK_WHOLE=$CHECK_OUTPUT$CHECK_OUTPUT_WITH_PLACE$CHECK_GRAD$CHECK_GRAD_PLACE$CHECK_GRAD_CHECK_ATOL$CHECK_GRAD_CHECK_EPS$CHECK_GRAD_CHECK_RTOL
     if [ "${CHECK_WHOLE}" != "" ] ; then
-        echo_line="Please use the default precision parameters of 'atol, rtol, eps, max_relative_error'. The error line is ${CHECK_WHOLE}. The detailed information is in the link: https://github.com/PaddlePaddle/Paddle/wiki/OP-test-accuracy-requirements. If you don't use the default value, you must have one RD (Xreki (Recommend), luotao1, lanxianghit or phlrain) approval for the usage of other values.\n"
+        echo_line="Please use the default precision parameters of 'atol, rtol, eps, max_relative_error'. The error line is '${CHECK_WHOLE}'. If you don't use the default value, you must have one RD (Xreki (Recommend), luotao1, lanxianghit or phlrain) approval for the usage of other values. The detailed information is in the link: https://github.com/PaddlePaddle/Paddle/wiki/OP-test-accuracy-requirements.\n"
         check_approval 1 6836917 47554610 12538138 43953930
     fi
 fi
