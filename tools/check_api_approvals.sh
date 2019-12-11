@@ -169,8 +169,8 @@ if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     for OP_FILE in ${OP_FILE_CHANGED};
     do
         echo ${OP_FILE}
-        CHECK_SHARE_DATA_WITH=`git diff -U0 /paddle/${OP_FILE} upstream/$BRANCH |grep "+" |grep -oE "ShareDataWith[(]" || true`
-        CHECK_SHARE_BUFFER_WITH=`git diff -U0 /paddle/${OP_FILE} upstream/$BRANCH |grep "+" |grep -oE "ShareBufferWith[(]" || true`
+        CHECK_SHARE_DATA_WITH=`git diff -U0 upstream/$BRANCH /paddle/${OP_FILE} |grep "+" |grep -oE "ShareDataWith[(]" || true`
+        CHECK_SHARE_BUFFER_WITH=`git diff -U0 upstream/$BRANCH /paddle/${OP_FILE} |grep "+" |grep -oE "ShareBufferWith[(]" || true`
         echo ${CHECK_SHARE_DATA_WITH}
         echo ${CHECK_SHARE_BUFFER_WITH}
         if [ "${CHECK_SHARE_DATA_WITH}" != "" ] || [ "${CHECK_SHARE_BUFFER_WITH}" != "" ]; then
