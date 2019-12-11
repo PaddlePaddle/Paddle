@@ -86,15 +86,25 @@ void FleetWrapper::InitWorker(const std::string& dist_desc,
 
 void FleetWrapper::StopServer() {
 #ifdef PADDLE_WITH_PSLIB
+#ifdef PADDLE_WITH_TESTING
+  VLOG(0) << "FleetWrapper::StopServer does nothing when "
+          << "PADDLE_WITH_TESTING=ON";
+#else
   VLOG(3) << "Going to stop server";
   pslib_ptr_->stop_server();
+#endif
 #endif
 }
 
 void FleetWrapper::FinalizeWorker() {
 #ifdef PADDLE_WITH_PSLIB
+#ifdef PADDLE_WITH_TESTING
+  VLOG(0) << "FleetWrapper::FinalizeWorker does nothing when "
+          << "PADDLE_WITH_TESTING=ON";
+#else
   VLOG(3) << "Going to finalize worker";
   pslib_ptr_->finalize_worker();
+#endif
 #endif
 }
 
@@ -698,10 +708,14 @@ void FleetWrapper::ShrinkDenseTable(int table_id, Scope* scope,
 
 void FleetWrapper::ClientFlush() {
 #ifdef PADDLE_WITH_PSLIB
+#ifdef PADDLE_WITH_TESTING
+  VLOG(0) << "FleetWrapper::ClientFlush does nothing when "
+          << "PADDLE_WITH_TESTING=ON";
   auto ret = pslib_ptr_->_worker_ptr->flush();
   FutureWait(ret);
 #else
-  VLOG(0) << "FleetWrapper::ServerFlush does nothing when no pslib";
+  VLOG(0) << "FleetWrapper::ClientFlush does nothing when no pslib";
+#endif
 #endif
 }
 
@@ -788,7 +802,7 @@ int32_t FleetWrapper::CopyTableByFeasign(
 #endif
 }
 
-void FleetWrapper::FutureWait(::std::future<int32_t>& fut) {
+void FleetWrapper::FutureWait(::std::future<int32_t>& fut) {  // NOLINT
 #if defined PADDLE_WITH_PSLIB && defined PADDLE_WITH_TESTING
   VLOG(0) << "future do not wait when WITH_PSLIB=ON && WITH_TESTING=ON";
 #else
@@ -796,7 +810,7 @@ void FleetWrapper::FutureWait(::std::future<int32_t>& fut) {
 #endif
 }
 
-int32_t FleetWrapper::FutureGet(::std::future<int32_t>& fut) {
+int32_t FleetWrapper::FutureGet(::std::future<int32_t>& fut) {  // NOLINT
 #if defined PADDLE_WITH_PSLIB && defined PADDLE_WITH_TESTING
   VLOG(0) << "future do not get when WITH_PSLIB=ON && WITH_TESTING=ON";
   return 0;
