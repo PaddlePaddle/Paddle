@@ -26,6 +26,8 @@ from paddle.fluid.log_helper import get_logger
 from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
 from . import hdfs
 from .hdfs import *
+import uuid
+import tempfile
 
 __all__ = ["FleetUtil"]
 
@@ -1439,6 +1441,14 @@ class FleetUtil(object):
             auc, bucket_error, mae, rmse, return_actual_ctr, predicted_ctr,
             copc, mean_predict_qvalue, int(total_ins_num)
         ]
+
+    def generate_random_path(self):
+        rets = ""
+        while True:
+            rets = os.path.join(tempfile.gettempdir(), str(uuid.uuid4()))
+            if not os.path.exists(rets):
+                break
+        return rets
 
     def print_global_metrics(self,
                              scope=fluid.global_scope(),

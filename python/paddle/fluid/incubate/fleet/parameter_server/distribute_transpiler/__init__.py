@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import warnings
+from paddle.fluid import core
 """
 Convert the fluid program to distributed data-parallelism programs.
 """
@@ -33,6 +34,8 @@ from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
 from paddle.fluid.incubate.fleet.base.fleet_base import Mode
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
+from paddle.fluid.incubate.fleet.base.fleet_base import HDFS_PREFIX
+from paddle.fluid.incubate.fleet.utils.fleet_util import FleetUtil
 
 
 class DistributedTranspiler(Fleet):
@@ -100,10 +103,24 @@ class DistributedTranspiler(Fleet):
         self._executor.run(self.startup_program)
 
         if model_dir:
+            _hadoop_model_dir_ = False
+            if model_dir.startswith(HDFS_PREFIX):
+                _hadoop_model_dir_ = True
+                if not self._hdfs_client_trainer.is_dir(model_dir[len(
+                        HDFS_PREFIX):]):
+                    raise ValueError("There is no hadoop directory named '%s'",
+                                     model_dir[len(HDFS_PREFIX):])
+                fleet_util_instance = FleetUtil()
+                tmp_path = fleet_util_instance.generate_random_path()
+                model_dir = model_dir[len(HDFS_PREFIX):]
+                self._hdfs_client_trainer.download(model_dir, tmp_path)
+                model_dir = tmp_path
             if not os.path.isdir(model_dir):
                 raise ValueError("There is no directory named '%s'", model_dir)
 
             io.load_persistables(self._executor, model_dir, self.main_program)
+            if _hadoop_model_dir_:
+                os.system('rm -rf ' + model_dir)
 
     def run_server(self):
         """
@@ -180,6 +197,20 @@ class DistributedTranspiler(Fleet):
                 "in fleet.save_inference_model() function, executor must be as Executor type"
             )
 
+        hdfs_dirname = None
+        if dirname.startswith(HDFS_PREFIX):
+            hdfs_dirname = dirname
+            fleet_util_instance = FleetUtil()
+            dirname = fleet_util_instance.generate_random_path()
+            if not self._hdfs_client_trainer.is_exist(hdfs_dirname[len(
+                    HDFS_PREFIX):]):
+                self._hdfs_client_trainer.makedirs(hdfs_dirname[len(
+                    HDFS_PREFIX):])
+            elif self._hdfs_client_trainer.is_file(hdfs_dirname[len(
+                    HDFS_PREFIX):]):
+                raise ValueError("%s exists, and is not a directory" %
+                                 hdfs_dirname[len(HDFS_PREFIX):])
+
         if main_program is not None:
             if isinstance(main_program, CompiledProgram):
                 raise TypeError(
@@ -190,7 +221,7 @@ class DistributedTranspiler(Fleet):
                                     export_for_deployment)
         else:
             io.save_inference_model(dirname, feeded_var_names, target_vars,
-                                    executor, self._origin_program, None, None,
+                                    executor, self.main_program, None, None,
                                     export_for_deployment, True)
 
             model_basename = "__model__"
@@ -201,7 +232,219 @@ class DistributedTranspiler(Fleet):
 
             program = Program.parse_from_string(program_desc_str)
             program._copy_dist_param_info_from(self.main_program)
-            self.save_persistables(executor, dirname, program)
+            if hdfs_dirname:
+                self.save_persistables(executor, hdfs_dirname, program)
+            else:
+                self.save_persistables(executor, dirname, program)
+        if hdfs_dirname:
+            self._hdfs_client_trainer.upload(hdfs_dirname[len(HDFS_PREFIX):],
+                                             dirname)
+            os.system('rm -rf ' + dirname)
+
+    def _save_distributed_persistables(self, executor, dirname, main_program):
+        """
+        save_persistables for distributed training.
+        the method will do things listed below:
+        1.save part of persistable variables on trainer.
+        2.receive "remote prefetch variables" from parameter servers and merge them.
+        3.save "distributed lookup table" on parameter servers.
+        4.receive "optimizer variables" from parameter servers and merge them.
+        Args:
+            executor(Executor): The executor to run for saving parameters.
+            dirname(str): The saving directory path.
+            main_program(Program): The program whose parameters will be
+                                saved. the main_program must be the trainer_program
+                                get after transpiler.
+        Returns:
+            None
+        Examples:
+            .. code-block:: python
+                import paddle.fluid as fluid
+                exe = fluid.Executor(fluid.CPUPlace())
+                param_path = "./my_paddle_model"
+                t = distribute_transpiler.DistributeTranspiler()
+                t.transpile(...)
+                train_program = t.get_trainer_program()
+                _save_distributed_persistables(executor=exe, dirname=param_path, main_program=train_program)
+        """
+
+        def __save_remote_params(executor, dirname, remote_params_map):
+            """
+            recive params on pserver through rpc.
+            if the params are be sliced, will concat them to one, then save it.
+            """
+            if not remote_params_map:
+                return
+
+            prog = Program()
+            block = prog.global_block()
+
+            # recv optimize vars from pserver
+            for name, remote_params in remote_params_map.items():
+                origin_var = None
+                is_slice = False
+                slice_vars = [0] * len(remote_params)
+                slice_var_names = [""] * len(remote_params)
+                endpoints = [""] * len(remote_params)
+
+                for idx, optimizer in enumerate(remote_params):
+                    origin = optimizer.origin
+                    slice = optimizer.slice
+                    is_slice = optimizer.is_slice
+                    block_id = optimizer.block_id
+                    endpoint = optimizer.endpoint
+
+                    if idx == 0:
+                        origin_var = block.create_var(
+                            name=origin.name,
+                            type=origin.type,
+                            shape=origin.shape,
+                            dtype=origin.dtype,
+                            persistable=True)
+
+                    slice_var = block.create_var(
+                        name="{}.slice.{}".format(slice.name, idx),
+                        type=slice.type,
+                        shape=slice.shape,
+                        dtype=slice.dtype,
+                        persistable=True)
+
+                    index = block_id if is_slice else idx
+                    slice_vars[index] = slice_var
+                    slice_var_names[index] = slice.name
+                    endpoints[index] = endpoint
+
+                if is_slice:
+                    block.append_op(
+                        type='recv',
+                        inputs={"X": []},
+                        outputs={"Out": slice_vars},
+                        attrs={
+                            "epmap": endpoints,
+                            "with_barrier": False,
+                            "varnames": slice_var_names,
+                            "sync_mode": True
+                        })
+                    block.append_op(
+                        type='concat',
+                        inputs={'X': slice_vars},
+                        outputs={'Out': origin_var},
+                        attrs={})
+                else:
+                    block.append_op(
+                        type='recv',
+                        inputs={"X": []},
+                        outputs={"Out": [origin_var]},
+                        attrs={
+                            "epmap": endpoints[:1],
+                            "with_barrier": False,
+                            "varnames": slice_var_names,
+                            "sync_mode": True
+                        })
+                block.append_op(
+                    type='save',
+                    inputs={'X': [origin_var]},
+                    outputs={},
+                    attrs={
+                        'file_path': os.path.join(dirname, origin_var.name)
+                    })
+                block.append_op(type='delete_var', inputs={'X': slice_vars})
+            executor.run(prog)
+
+        def __save_distributed_lookup_tables(
+                executor, dirname, distributed_lookup_table, endpoints):
+            """
+            because the distributed lookup table may too huge to merge and save at one place,
+            it will be saved at parameter server independent respectively.
+            the save directory is dirname/"__lookup_table__".
+            """
+            prog = Program()
+            block = prog.global_block()
+
+            # if there is lookup table, the trainer 0 will notify all pserver to save.
+            lookup_table_filename = os.path.join(dirname, "__lookup_table__")
+            attrs = {}
+            attrs['epmap'] = endpoints
+            attrs['dir'] = lookup_table_filename
+            attrs['lookup_table'] = distributed_lookup_table
+            block.append_op(
+                type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
+            executor.run(prog)
+
+        def __exclude_vars(exclude_var_names=[]):
+            def is_valid(var):
+                if var.name in exclude_var_names:
+                    return False
+                if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
+                            var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+                            var.desc.type() == core.VarDesc.VarType.READER:
+                    return False
+                return var.persistable
+
+            return is_valid
+
+        if not isinstance(main_program, Program):
+            raise TypeError("'main_program' should be an instance of Program.")
+
+        if not main_program._is_distributed:
+            raise ValueError(
+                "'_save_distributed_persistables' just be designed for distributed training."
+            )
+
+        hdfs_dirname = None
+        if dirname.startswith(HDFS_PREFIX):
+            hdfs_dirname = dirname
+            fleet_util_instance = FleetUtil()
+            dirname = fleet_util_instance.generate_random_path()
+            if not self._hdfs_client_trainer.is_exist(hdfs_dirname[len(
+                    HDFS_PREFIX):]):
+                self._hdfs_client_trainer.makedirs(hdfs_dirname[len(
+                    HDFS_PREFIX):])
+            elif self._hdfs_client_trainer.is_file(hdfs_dirname[len(
+                    HDFS_PREFIX):]):
+                raise ValueError("%s exists, and is not a directory" %
+                                 hdfs_dirname[len(HDFS_PREFIX):])
+
+        remote_params_map = main_program._parameters_on_pservers.get_distributed_vars_by_vtypes(
+            ["Optimizer", "RemotePrefetch"], groupby=True)
+
+        exclude_var_names = []
+        if remote_params_map:
+            exclude_var_names.extend(remote_params_map.keys())
+
+        if main_program._distributed_lookup_table:
+            if isinstance(main_program._distributed_lookup_table, list):
+                exclude_var_names.extend(main_program._distributed_lookup_table)
+            else:
+                exclude_var_names.append(main_program._distributed_lookup_table)
+
+        local_vars = list(
+            filter(
+                __exclude_vars(exclude_var_names), main_program.list_vars()))
+        io.save_vars(
+            executor,
+            main_program=main_program,
+            dirname=dirname,
+            vars=local_vars)
+
+        if main_program._is_chief:
+            if remote_params_map:
+                __save_remote_params(executor, dirname, remote_params_map)
+            if main_program._distributed_lookup_table:
+                if hdfs_dirname:
+                    __save_distributed_lookup_tables(
+                        executor, hdfs_dirname,
+                        main_program._distributed_lookup_table,
+                        main_program._endpoints)
+                else:
+                    __save_distributed_lookup_tables(
+                        executor, dirname,
+                        main_program._distributed_lookup_table,
+                        main_program._endpoints)
+        if hdfs_dirname:
+            self._hdfs_client_trainer.upload(hdfs_dirname[len(HDFS_PREFIX):],
+                                             dirname)
+            os.system('rm -rf ' + dirname)
 
     def save_persistables(self, executor, dirname, main_program=None):
         """
@@ -235,8 +478,7 @@ class DistributedTranspiler(Fleet):
         if not main_program._is_distributed:
             raise ValueError(
                 "main_program is for local, may not use fleet.save_persistables")
-
-        io.save_persistables(executor, dirname, main_program, None)
+        self._save_distributed_persistables(executor, dirname, main_program)
 
     def _transpile(self, config):
         if not isinstance(config, DistributeTranspilerConfig):
@@ -245,6 +487,7 @@ class DistributedTranspiler(Fleet):
 
         if not config.sync_mode:
             config.runtime_split_send_recv = True
+        config.pserver_hadoop_configs = self._hdfs_server_config
 
         # _origin_program is a deep copy for default_main_program, for inference
         self._origin_program = default_main_program().clone(for_test=False)

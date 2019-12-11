@@ -30,9 +30,30 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+inline std::string randomString(
+    unsigned int l = 15,
+    std::string charIndex =
+        "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890") {
+  unsigned int seed = time(NULL);
+  srand(seed);
+  unsigned int length = rand() % l + 1;  // NOLINT
+
+  unsigned int ri[15];
+  for (unsigned int i = 0; i < length; ++i)
+    ri[i] = rand() % charIndex.length();  // NOLINT
+
+  std::string rs = "";
+  for (unsigned int i = 0; i < length; ++i) rs += charIndex[ri[i]];
+
+  return rs;
+}
+
 // define LOOKUP_TABLE_PATH for checkpoint notify to save lookup table variables
 // to directory specified.
 constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
+constexpr char LOOKUP_TABLE_TMP_PATH[] = "kLookupTableTmpPath";
+constexpr char HADOOP_PATH_PREFIX[] = "hdfs:";
 template <typename DeviceContext, typename T>
 class SaveOpKernel : public framework::OpKernel<T> {
  public:
@@ -112,8 +133,27 @@ class SaveOpKernel : public framework::OpKernel<T> {
     if (out_put_var != nullptr) {
       auto *lt_var = out_put_var->GetMutable<std::string>();
       if (lt_var->length() > 0) {
-        VLOG(4) << "SaveSelectedRows output var name: " << *lt_var;
         filename = *lt_var;
+        std::string hdfs_prefix(HADOOP_PATH_PREFIX);
+        if (filename.find(hdfs_prefix) == 0) {
+          lt_var->clear();
+          lt_var->append(filename.substr(hdfs_prefix.length()));
+          std::string random_path_name;
+          do {
+            random_path_name = "/tmp/";
+            random_path_name += randomString();
+            random_path_name += "__LOOKUP_TABLE__";
+          } while (PathExists(random_path_name));
+          MkDirRecursively(random_path_name.c_str());
+          random_path_name += filename.substr(filename.rfind('/'));
+          filename = random_path_name;
+          auto *tmp_path_var = ctx.scope()
+                                   .FindVar(LOOKUP_TABLE_TMP_PATH)
+                                   ->GetMutable<std::string>();
+          tmp_path_var->clear();
+          tmp_path_var->append(random_path_name);
+        }
+        VLOG(4) << "SaveSelectedRows output var name: " << filename;
       }
     }
 

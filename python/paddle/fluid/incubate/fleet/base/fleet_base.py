@@ -23,7 +23,10 @@ from paddle.fluid.optimizer import SGD
 from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
-from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecision
+from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
+from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecison
+
+HDFS_PREFIX = 'hdfs:'
 
 
 class Mode:
@@ -53,6 +56,8 @@ class Fleet(object):
         self._optimizer = None
         self._role_maker = None
         self._executor = None
+        self._hdfs_client_trainer = None
+        self._hdfs_server_config = None
 
     def is_first_worker(self):
         """
@@ -181,7 +186,10 @@ class Fleet(object):
 
         return trainer_files[trainer_id]
 
-    def init(self, role_maker=None):
+    def init(self,
+             role_maker=None,
+             hdfs_client_trainer=None,
+             hdfs_server_config=None):
         """
         should be called only once in user's python scripts,
         init() will initialize RoleMaker which is used for identifying
@@ -198,6 +206,16 @@ class Fleet(object):
         if role_maker and not isinstance(role_maker, RoleMakerBase):
             raise TypeError("role_maker must be an instance of RoleMakerBase")
 
+        if hdfs_client_trainer and not isinstance(hdfs_client_trainer,
+                                                  HDFSClient):
+            raise ValueError(
+                "hdfs_client_trainer must be an instance of HDFSClient")
+
+        if hdfs_server_config and not isinstance(hdfs_server_config, dict):
+            raise ValueError("hdfs_server_config must be an instance of dict")
+
+        self._hdfs_client_trainer = hdfs_client_trainer
+        self._hdfs_server_config = hdfs_server_config
         self._role_maker = role_maker
         self._role_maker.generate_role()
         self._is_initialized = True

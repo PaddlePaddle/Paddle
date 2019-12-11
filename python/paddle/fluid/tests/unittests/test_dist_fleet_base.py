@@ -139,6 +139,7 @@ class TestFleetBase(unittest.TestCase):
                 self._find_free_port(), self._find_free_port())
 
         self._python_interp = sys.executable
+        self.hadoop_path = None
         self._geo_sgd = False
         self._geo_sgd_need_push_nums = 5
         self._setup_config()
@@ -212,6 +213,10 @@ class TestFleetBase(unittest.TestCase):
         if self._sync_mode:
             tr_cmd += " --sync_mode"
             ps_cmd += " --sync_mode"
+
+        if self.hadoop_path:
+            tr_cmd += ' --hadoop_path {}'.format(self.hadoop_path)
+            ps_cmd += ' --hadoop_path {}'.format(self.hadoop_path)
 
         if self._geo_sgd:
             tr_cmd += " --geo_sgd_mode {0} --geo_sgd_need_push_nums {1}".format(
@@ -302,10 +307,12 @@ def runtime_main(test_class):
     parser.add_argument('--current_id', type=int, required=False, default=0)
     parser.add_argument('--trainers', type=int, required=False, default=1)
     parser.add_argument('--sync_mode', action='store_true')
+    parser.add_argument('--hadoop_path', type=str, required=False, default="")
     parser.add_argument(
         '--geo_sgd_mode', type=bool, required=False, default=False)
     parser.add_argument(
         '--geo_sgd_need_push_nums', type=int, required=False, default=2)
+
     args = parser.parse_args()
 
     model = test_class()
