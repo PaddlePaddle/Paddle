@@ -66,46 +66,49 @@ class TestFcFusePass(unittest.TestCase):
         os.removedirs("./tmp/")
 
     def test_fc_fuse_pass_gpu_precision(self):
-        x = fluid.data(name='x', shape=[-1, 3, 10, 10])
+        if fluid.is_compiled_with_cuda():
+            x = fluid.data(name='x', shape=[-1, 3, 10, 10])
 
-        weight_param1 = fluid.ParamAttr(
-            name='fc_weight1',
-            initializer=fluid.initializer.NormalInitializer())
-        bias_param1 = fluid.ParamAttr(
-            name='fc_bias1', initializer=fluid.initializer.NormalInitializer())
-        fc1_res = fluid.layers.fc(x,
-                                  size=100,
-                                  act='relu',
-                                  param_attr=weight_param1,
-                                  bias_attr=bias_param1)
+            weight_param1 = fluid.ParamAttr(
+                name='fc_weight1',
+                initializer=fluid.initializer.NormalInitializer())
+            bias_param1 = fluid.ParamAttr(
+                name='fc_bias1',
+                initializer=fluid.initializer.NormalInitializer())
+            fc1_res = fluid.layers.fc(x,
+                                      size=100,
+                                      act='relu',
+                                      param_attr=weight_param1,
+                                      bias_attr=bias_param1)
 
-        place = fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        np_x = np.array([float(i % 255 / 255) for i in range(300)]).reshape(
-            [1, 3, 10, 10]).astype('float32')
-        fw_output = exe.run(feed={"x": np_x}, fetch_list=[fc1_res])
-        path = "./tmp/inference_model"
-        fluid.io.save_inference_model(
-            dirname=path,
-            feeded_var_names=['x'],
-            target_vars=[fc1_res],
-            executor=exe)
-        config = AnalysisConfig(path)
-        config.enable_use_gpu(100, 0)
-        predictor = create_paddle_predictor(config)
-        data = np.array([float(i % 255 / 255) for i in range(300)]).reshape(
-            [1, 3, 10, 10]).astype('float32')
-        inputs = PaddleTensor(data)
-        outputs = predictor.run([inputs])
-        output = outputs[0]
-        output_data = output.as_ndarray()
-        self.assertEqual(output_data.shape, np.array(fw_output[0]).shape)
-        self.assertTrue(
-            np.allclose(
-                np.array(fw_output[0]).ravel(), output_data.ravel(),
-                rtol=1e-05))
-        os.removedirs("./tmp/")
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            np_x = np.array([float(i % 255 / 255) for i in range(300)]).reshape(
+                [1, 3, 10, 10]).astype('float32')
+            fw_output = exe.run(feed={"x": np_x}, fetch_list=[fc1_res])
+            path = "./tmp/inference_model"
+            fluid.io.save_inference_model(
+                dirname=path,
+                feeded_var_names=['x'],
+                target_vars=[fc1_res],
+                executor=exe)
+            config = AnalysisConfig(path)
+            config.enable_use_gpu(100, 0)
+            predictor = create_paddle_predictor(config)
+            data = np.array([float(i % 255 / 255) for i in range(300)]).reshape(
+                [1, 3, 10, 10]).astype('float32')
+            inputs = PaddleTensor(data)
+            outputs = predictor.run([inputs])
+            output = outputs[0]
+            output_data = output.as_ndarray()
+            self.assertEqual(output_data.shape, np.array(fw_output[0]).shape)
+            self.assertTrue(
+                np.allclose(
+                    np.array(fw_output[0]).ravel(),
+                    output_data.ravel(),
+                    rtol=1e-05))
+            os.removedirs("./tmp/")
 
 
 if __name__ == '__main__':

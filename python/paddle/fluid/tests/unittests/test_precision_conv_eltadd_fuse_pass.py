@@ -27,38 +27,40 @@ class TestConvEltaddFusePass(unittest.TestCase):
     '''
 
     def test_conv_eltadd_fuse_pass_precision(self):
-        x = fluid.data(name='x', shape=[-1, 3, 100, 100])
-        conv_res = fluid.layers.conv2d(
-            x, num_filters=3, filter_size=3, act=None)
-        place = fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        np_x = np.array([i % 255 for i in range(30000)]).reshape(
-            [1, 3, 100, 100]).astype('float32')
-        fw_output = exe.run(feed={"x": np_x}, fetch_list=[conv_res])
-        print(fw_output[0])
-        path = "./tmp/inference_model"
-        fluid.io.save_inference_model(
-            dirname=path,
-            feeded_var_names=['x'],
-            target_vars=[conv_res],
-            executor=exe)
-        config = AnalysisConfig(path)
-        config.enable_use_gpu(100, 0)
-        predictor = create_paddle_predictor(config)
-        data = np.array([i % 255 for i in range(30000)]).reshape(
-            [1, 3, 100, 100]).astype('float32')
-        inputs = PaddleTensor(data)
-        outputs = predictor.run([inputs])
-        output = outputs[0]
-        output_data = output.as_ndarray()
-        print(output_data)
-        self.assertEqual(output_data.shape, np.array(fw_output[0]).shape)
-        self.assertTrue(
-            np.allclose(
-                np.array(fw_output[0]).ravel(), output_data.ravel(),
-                rtol=1e-05))
-        os.removedirs("./tmp/")
+        if fluid.is_compiled_with_cuda():
+            x = fluid.data(name='x', shape=[-1, 3, 100, 100])
+            conv_res = fluid.layers.conv2d(
+                x, num_filters=3, filter_size=3, act=None)
+            place = fluid.CUDAPlace(0)
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            np_x = np.array([i % 255 for i in range(30000)]).reshape(
+                [1, 3, 100, 100]).astype('float32')
+            fw_output = exe.run(feed={"x": np_x}, fetch_list=[conv_res])
+            print(fw_output[0])
+            path = "./tmp/inference_model"
+            fluid.io.save_inference_model(
+                dirname=path,
+                feeded_var_names=['x'],
+                target_vars=[conv_res],
+                executor=exe)
+            config = AnalysisConfig(path)
+            config.enable_use_gpu(100, 0)
+            predictor = create_paddle_predictor(config)
+            data = np.array([i % 255 for i in range(30000)]).reshape(
+                [1, 3, 100, 100]).astype('float32')
+            inputs = PaddleTensor(data)
+            outputs = predictor.run([inputs])
+            output = outputs[0]
+            output_data = output.as_ndarray()
+            print(output_data)
+            self.assertEqual(output_data.shape, np.array(fw_output[0]).shape)
+            self.assertTrue(
+                np.allclose(
+                    np.array(fw_output[0]).ravel(),
+                    output_data.ravel(),
+                    rtol=1e-05))
+            os.removedirs("./tmp/")
 
 
 if __name__ == '__main__':
