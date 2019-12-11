@@ -19,51 +19,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-namespace details {
-
-// Only valid if T is an integral type.
-template <class T,
-          class = typename std::enable_if<std::is_integral<T>::value>::type>
-static inline HOSTDEVICE T ipow(T base, T exp) {
-  if (exp < 0) {
-    // Note(zhiqiu): In some library, like numpy and pytorch,
-    // integers to negative integer powers are not allowed.
-    // Since a^b = 1/(a^(-b)) when b < 0, it will truncate to 0.
-    // Return 0, for specialization to avoiding infinite loop.
-    return 0;
-  }
-
-  T result = 1;
-  while (exp) {
-    if (exp & 1) {
-      result *= base;
-    }
-    exp >>= 1;
-    base *= base;
-  }
-
-  return result;
-}
-
-template <typename T, bool kIsIntegral = false>
-struct PowFunctorImpl {
-  inline HOSTDEVICE T operator()(T a, T b) const { return std::pow(a, b); }
-};
-
 template <typename T>
-struct PowFunctorImpl<T, true> {
+struct PowFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const {
 #ifdef __CUDA_ARCH__
-    return ipow(a, b);
+    if (std::is_integral<T>::value) {
+      return std::llrint(std::pow(a, b));
+    } else {
+      return std::pow(a, b);
+    }
 #else
     return std::pow(a, b);
 #endif
   }
 };
-}  // namespace details
-
-template <typename T>
-using PowFunctor = details::PowFunctorImpl<T, std::is_integral<T>::value>;
 
 template <typename DeviceContext, typename T>
 class ElementwisePowKernel : public framework::OpKernel<T> {
@@ -86,14 +55,30 @@ class ElementwisePowKernel : public framework::OpKernel<T> {
 template <typename T>
 struct PowGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+#ifdef __CUDA_ARCH__
+    if (std::is_integral<T>::value) {
+      std::llrint(dout * y * std::pow(x, y - 1));
+    } else {
+      return dout * y * std::pow(x, y - 1);
+    }
+#else
     return dout * y * std::pow(x, y - 1);
+#endif
   }
 };
 
 template <typename T>
 struct PowGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+#ifdef __CUDA_ARCH__
+    if (std::is_integral<T>::value) {
+      std::llrint(dout * std::log(x) * std::pow(x, y));
+    } else {
+      return dout * std::log(x) * std::pow(x, y);
+    }
+#else
     return dout * std::log(x) * std::pow(x, y);
+#endif
   }
 };
 
