@@ -55,7 +55,7 @@ class TestSumOp(BenchmarkSuite):
         you should set the correct output by hands.
         >>> self.outputs = {"Out": x0 + x1 + x2}
         """
-        self.check_output(atol=1)
+        self.check_output(atol=1e-8)
 
     def test_output_stability(self):
         # compare the cpu gpu output in high resolution.
