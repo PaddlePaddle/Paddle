@@ -12679,8 +12679,6 @@ def shuffle_batch(x, seed=None):
             name=unique_name.generate("shuffle_batch_seed"),
             dtype="int64",
             persistable=True)
-    if not isinstance(seed, (int, Variable)):
-        raise ValueError("'seed' must be a Variable or an int.")
     helper.append_op(
         type='shuffle_batch',
         inputs={'X': x,
