@@ -13,6 +13,8 @@
 # limitations under the License.
 
 need_to_fix_check_shape_op_list = [
+    ''
+    '''
     'elementwise_sub', 'gather', 'mean', 'pad2d', 'scatter',
     'sequence_expand_as', 'sequence_expand', 'sequence_pad', 'sequence_unpad',
     'sequence_scatter', 'squared_l2_distance', 'gather_nd', 'log_loss',
@@ -31,4 +33,5 @@ need_to_fix_check_shape_op_list = [
     'elementwise_min', 'abs', 'acos', 'warpctc', 'nearest_interp', 'data_norm',
     'match_matrix_tensor', 'var_conv_2d', 'fused_embedding_seq_pool',
     'increment', 'elementwise_mul'
+'''
 ]

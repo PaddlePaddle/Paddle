@@ -71,7 +71,7 @@ def get_numeric_gradient(place,
     tensor_size = product(tensor_to_check.shape())
     if not hasattr(get_numeric_gradient, 'check_shape_time'):
         get_numeric_gradient.check_shape_time = 0
-    if tensor_size > 100:
+    if tensor_size >= 100:
         get_numeric_gradient.check_shape_time += 1
     tensor_to_check_dtype = tensor_to_check._dtype()
     if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
@@ -155,7 +155,6 @@ class OpTest(unittest.TestCase):
         cls.call_once = False
         cls.dtype = "float32"
         cls.outputs = {}
-        cls.op_type = None
 
         np.random.seed(123)
         random.seed(124)
@@ -174,8 +173,8 @@ class OpTest(unittest.TestCase):
                 get_numeric_gradient, 'check_shape_time'
         ) and get_numeric_gradient.check_shape_time == 0 and OpTest.op_type not in need_to_fix_check_shape_op_list:
             raise AssertionError(
-                "At least one input's shape should be large than 100 for " +
-                cls.op_type + " Op.")
+                "At least one input's shape should be large than or equal to 100 for "
+                + OpTest.op_type + " Op.")
 
     def try_call_once(self, data_type):
         if not self.call_once:
