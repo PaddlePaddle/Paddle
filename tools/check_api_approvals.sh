@@ -168,7 +168,7 @@ OP_FILE_CHANGED=`git diff --name-only --diff-filter=AM upstream/$BRANCH |grep -o
 if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     for OP_FILE in ${OP_FILE_CHANGED};
     do
-        CHECK_OBJECT_FLAGS=`git diff -U0 upstream/$BRANCH ${OP_FILE} |grep "+" |grep -oE "ShareDataWith[(]|ShareBufferWith[(]" || true`
+        CHECK_OBJECT_FLAGS=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${OP_FILE} |grep "+" |grep -oE "ShareDataWith[(]|ShareBufferWith[(]" || true`
         if [ "${CHECK_OBJECT_FLAGS}" != "" ]; then
             ERROR_OP_FILES="${ERROR_OP_FILES}  ${OP_FILE}"
 	fi
