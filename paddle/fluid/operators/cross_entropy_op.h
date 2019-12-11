@@ -40,8 +40,6 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
     Tensor labels_2d, y_2d;
     if (label_dims.size() < rank) {
       labels_2d.ShareDataWith(*labels);
-      labels_2d.ShareBufferWith(*labels);
-      labels_2d.ShareDataWith(*labels);
       labels_2d.Resize({framework::product(label_dims), 1});
 
       y_2d.ShareDataWith(*y);
