@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/profiler.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/pybind/op_function.h"
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 
@@ -215,6 +216,8 @@ static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
 // Bind Methods
 void BindImperative(py::module *m_ptr) {
   auto &m = *m_ptr;
+
+  BindOpFunctions(&m);
 
   py::class_<imperative::detail::BackwardStrategy> backward_strategy(
       m, "BackwardStrategy", R"DOC(

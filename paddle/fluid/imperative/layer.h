@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #pragma once
-#include <pybind11/chrono.h>
-#include <pybind11/complex.h>
-#include <pybind11/functional.h>
-#include <pybind11/stl.h>
+// #include <pybind11/chrono.h>
+// #include <pybind11/complex.h>
+// #include <pybind11/functional.h>
+// #include <pybind11/stl.h>
+#include <pybind11/pybind11.h>
 #include <algorithm>
 #include <atomic>
 #include <cstdint>
@@ -39,11 +40,9 @@
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/flags.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/pybind/pybind_boost_headers.h"
-
-#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace imperative {
