@@ -1050,7 +1050,6 @@ def yolo_box(x,
         TypeError: Attr anchors of yolo box must be list or tuple
         TypeError: Attr class_num of yolo box must be an integer
         TypeError: Attr conf_thresh of yolo box must be a float number
-        TypeError: Attr clip_bbox of yolo box must be a boolean
 
     Examples:
 
@@ -1074,9 +1073,7 @@ def yolo_box(x,
     if not isinstance(class_num, int):
         raise TypeError("Attr class_num of yolo_box must be an integer")
     if not isinstance(conf_thresh, float):
-        raise TypeError("Attr conf_thresh of yolo_box must be a float number")
-    if not isinstance(clip_bbox, bool):
-        raise TypeError("Attr clip_bbox of yolo_box must be a boolean")
+        raise TypeError("Attr ignore_thresh of yolo_box must be a float number")
 
     boxes = helper.create_variable_for_type_inference(dtype=x.dtype)
     scores = helper.create_variable_for_type_inference(dtype=x.dtype)
