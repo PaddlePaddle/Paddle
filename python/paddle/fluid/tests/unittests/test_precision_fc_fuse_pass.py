@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import os
 import unittest
 import paddle.fluid as fluid
 from paddle.fluid.core import PaddleTensor
@@ -62,6 +63,7 @@ class TestFcFusePass(unittest.TestCase):
             np.allclose(
                 np.array(fw_output[0]).ravel(), output_data.ravel(),
                 rtol=1e-05))
+        os.removedirs("./tmp/")
 
     def test_fc_fuse_pass_gpu_precision(self):
         x = fluid.data(name='x', shape=[-1, 3, 10, 10])
@@ -103,6 +105,7 @@ class TestFcFusePass(unittest.TestCase):
             np.allclose(
                 np.array(fw_output[0]).ravel(), output_data.ravel(),
                 rtol=1e-05))
+        os.removedirs("./tmp/")
 
 
 if __name__ == '__main__':

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+import os
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.core import PaddleTensor
@@ -58,6 +59,7 @@ class TestConvBnFusePrecision(unittest.TestCase):
             np.allclose(
                 np.array(fw_output[0]).ravel(), output_data.ravel(),
                 atol=1e-04))
+        os.removedirs("./tmp/")
 
 
 if __name__ == '__main__':
