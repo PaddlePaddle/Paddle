@@ -53,10 +53,12 @@ class TestNanInf(unittest.TestCase):
 class TestNanInfEnv(TestNanInf):
     def setUp(self):
         super(TestNanInfEnv, self).setUp()
-        # In windows ci, some bug with env need use str
-        self.env["PADDLE_INF_NAN_SKIP_OP"] = str("mul")
-        self.env["PADDLE_INF_NAN_SKIP_ROLE"] = str("loss")
-        self.env["PADDLE_INF_NAN_SKIP_VAR"] = str("elementwise_add:fc_0.tmp_1")
+        # windows python have some bug with env, so need use str to pass ci
+        # otherwise, "TypeError: environment can only contain strings"
+        self.env[str("PADDLE_INF_NAN_SKIP_OP")] = str("mul")
+        self.env[str("PADDLE_INF_NAN_SKIP_ROLE")] = str("loss")
+        self.env[str("PADDLE_INF_NAN_SKIP_VAR")] = str(
+            "elementwise_add:fc_0.tmp_1")
 
 
 if __name__ == '__main__':

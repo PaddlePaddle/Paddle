@@ -20,8 +20,8 @@ import sys
 import time
 import numpy as np
 
-os.environ["FLAGS_check_nan_inf"] = str("1")
-os.environ["GLOG_vmodule"] = str("nan_inf_utils_detail=10")
+os.environ[str("FLAGS_check_nan_inf")] = str("1")
+os.environ[str("GLOG_vmodule")] = str("nan_inf_utils_detail=10")
 
 import paddle.fluid.core as core
 import paddle
@@ -31,7 +31,7 @@ import paddle.compat as cpt
 np.random.seed(0)
 
 
-def generator(nan_inf="nan"):
+def generator():
     batch_size = 5
     for i in range(5):
         curr_train_x = np.random.randint(
@@ -75,7 +75,7 @@ def net():
     return y_predict, avg_cost, acc_top1
 
 
-def check(use_cuda, nan_inf="nan"):
+def check(use_cuda):
     main = fluid.Program()
     startup = fluid.Program()
     scope = fluid.core.Scope()
@@ -89,7 +89,7 @@ def check(use_cuda, nan_inf="nan"):
             exe.run(startup)
 
             step = 0.0
-            for train_data, y_label in generator(nan_inf):
+            for train_data, y_label in generator():
                 outs = exe.run(
                     main,
                     feed={'x': train_data,

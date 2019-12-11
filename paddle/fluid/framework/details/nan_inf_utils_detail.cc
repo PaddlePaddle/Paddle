@@ -76,6 +76,12 @@ op_var_nan_inf_white_list() {
 }
 
 static void InitWhiteListFormEnv() {
+  // op_type_skip and op_var_skip may be NULL.
+  // So need init static value in there, prevent thread competition.
+  // NOTE. role_str2int needn't do this for it only used in this func.
+  op_type_nan_inf_white_list();
+  op_var_nan_inf_white_list();
+
   // export PADDLE_INF_NAN_SKIP_OP="op0,op1,op2"
   // export PADDLE_INF_NAN_SKIP_ROLE="role1,role2,role3"
   // export PADDLE_INF_NAN_SKIP_VAR="op0:var0,op0:var1,op1:var0"
