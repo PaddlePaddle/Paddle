@@ -22,7 +22,7 @@ from paddle.fluid.core import create_paddle_predictor
 
 
 class TestSeqconvEltaddReluPass(unittest.TestCase):
-    def test_seqconv_eltadd_relu_pass_precision(self):
+    def test_seqconv_eltadd_relu_pass_cpu_precision(self):
         x = fluid.data(name='x', shape=[None, 1], lod_level=1)
         w_param = fluid.ParamAttr(
             name='seq_weight',
@@ -36,7 +36,7 @@ class TestSeqconvEltaddReluPass(unittest.TestCase):
             filter_size=2,
             param_attr=w_param,
             bias_attr=b_param,
-            act=None)
+            act='relu')
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
@@ -84,7 +84,7 @@ class TestSeqconvEltaddReluPass(unittest.TestCase):
             filter_size=2,
             param_attr=w_param,
             bias_attr=b_param,
-            act=None)
+            act='relu')
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
