@@ -21,8 +21,7 @@ namespace paddle {
 namespace operators {
 
 // if you want to upload distributed lookup table on parameter server to hadoop,
-// this
-// variable stores the local temporary directory. Conversely, it's empty.
+// this variable stores the local temporary directory. Conversely, it's empty.
 constexpr char LOOKUP_TABLE_TMP_PATH[] = "kLookupTableTmpPath";
 class ShellOp : public framework::OperatorBase {
  public:
@@ -115,5 +114,8 @@ class ShellOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(shell, ops::ShellOp, paddle::framework::EmptyGradOpMaker,
-                  ops::ShellOpMaker, ops::ShellOpShapeInference);
+REGISTER_OPERATOR(
+    shell, ops::ShellOp, ops::ShellOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    ops::ShellOpShapeInference);
