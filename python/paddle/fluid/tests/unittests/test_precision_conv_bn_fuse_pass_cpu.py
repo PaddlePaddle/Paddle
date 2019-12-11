@@ -59,6 +59,10 @@ class TestConvBnFusePrecision(unittest.TestCase):
             np.allclose(
                 np.array(fw_output[0]).ravel(), output_data.ravel(),
                 atol=1e-04))
+        files = os.listdir(path)
+        for item in files:
+            f_path = os.path.join(path, item)
+            os.remove(f_path)
         os.removedirs("./tmp/")
 
 

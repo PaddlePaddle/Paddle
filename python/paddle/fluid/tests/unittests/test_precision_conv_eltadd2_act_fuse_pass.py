@@ -98,6 +98,10 @@ class TestConvEltadd2ActFusePass(unittest.TestCase):
                     np.array(fw_output[0]).ravel(),
                     output_data.ravel(),
                     rtol=1e-05))
+            files = os.listdir(path)
+            for item in files:
+                f_path = os.path.join(path, item)
+                os.remove(f_path)
             os.removedirs("./tmp/")
 
 
