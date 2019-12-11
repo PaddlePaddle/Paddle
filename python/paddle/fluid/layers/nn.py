@@ -12218,27 +12218,27 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
             function and the forward input ``x``. In ``func`` , it's suggested that we 
             actively convert LoDTensor into a numpy array, so that we can use Python and
             numpy API arbitrarily. If not, some operations of numpy may not be compatible.
-        x (Variable|list[Variale]): The input of the forward function ``func``. It can be
-            Variable or list[Variale], where Variable is LoDTensor or Tenosor. In addition,
-            Multiple Variable must be passed in the form of list[Variale].
-        out (Variable|list[Variale]): The output of the forward function ``func``, it can be
-            Variable|list[Variale], where Variable can be either LoDTensor or numpy array. 
-            Since Paddle cannot automatically infer the shape and type of ``out``, you must
-            create ``out`` in advance.
+        x (Variable|tuple(Variale)|list[Variale]): The input of the forward function ``func``. 
+            It can be Variable|tuple(Variale)|list[Variale], where Variable is LoDTensor or 
+            Tenosor. In addition, Multiple Variable should be passed in the form of tuple(Variale)
+            or list[Variale].
+        out (Variable|tuple(Variale)|list[Variale]): The output of the forward function ``func``, 
+            it can be Variable|tuple(Variale)|list[Variale], where Variable can be either LoDTensor
+            or numpy array. Since Paddle cannot automatically infer the shape and type of ``out``, 
+            you must create ``out`` in advance.
         backward_func (callable, optional): The backward function of the registered OP. 
             Its default value is None, which means there is no reverse calculation. If 
             it is not None, ``backward_func`` is called to calculate the gradient of 
             ``x`` when the network is at backward runtime.
         skip_vars_in_backward_input (Variable, optional): It's used to limit the input 
-            variable list of ``backward_func``, and it can be single Variable, tuple[Variable]
-            or list[Variable]. It must belong to either ``x`` or ``out``. The default 
-            value is None, which means that no variables need to be removed from ``x`` 
-            and ``out``. If it is not None, these variables will not be the input of 
-            ``backward_func``. This parameter is only useful when ``backward_func`` is 
-            not None.
+            variable list of ``backward_func``, and it can be Variable|tuple(Variale)|list[Variale]. 
+            It must belong to either ``x`` or ``out``. The default  value is None, which means 
+            that no variables need to be removed from ``x`` and ``out``. If it is not None, 
+            these variables will not be the input of ``backward_func``. This parameter is only 
+            useful when ``backward_func`` is not None.
     
     Returns: 
-        Variable|list[Variable]: The output ``out`` of the forward function ``func``.
+        Variable|tuple(Variale)|list[Variale]: The output ``out`` of the forward function ``func``.
 
     Examples:
         .. code-block:: python
@@ -12322,7 +12322,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
                 # Output of the forward function, name/dtype/shape must be specified
                 output = create_tmp_var('output','int32', [3,1])
 
-                # Multiple Variable must be passed in the form of list[Variale]
+                # Multiple Variable should be passed in the form of tuple(Variale) or list[Variale]
                 fluid.layers.py_func(func=element_wise_add, x=[x,y], out=output)
 
                 exe=fluid.Executor(fluid.CPUPlace())
@@ -12340,7 +12340,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
 
             # Reference output:
             # [[5, 9, 9]   + [[7, 8, 4]  =  [array([[12, 17, 13]
-               [7, 5, 2]]     [1, 3, 3]]            [8, 8, 5]], dtype=int32)]
+            #  [7, 5, 2]]     [1, 3, 3]]            [8, 8, 5]], dtype=int32)]
     """
     helper = LayerHelper('py_func', **locals())
     if x is None:
