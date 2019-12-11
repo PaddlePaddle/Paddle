@@ -49,22 +49,44 @@ if (WIN32)
     "${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h") 
     add_dependencies(op_function_cmd op_function_generator)
   if(WITH_MKL)
-  add_custom_target(copy_dll 
-        COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+  add_custom_target(copy_mkl 
         COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
         COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB_DEPS} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
         COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
         )
-  add_dependencies(copy_dll op_function_generator)
-  add_dependencies(op_function_cmd copy_dll)
   endif(WITH_MKL)
+  if(WITH_MKLDNN)
+    add_custom_target(copy_mkldnn
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+        )
+  endif(WITH_MKLDNN)
 else(WIN32)
   add_custom_target(op_function_cmd 
     COMMAND "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator" 
     "${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h") 
     add_dependencies(op_function_cmd op_function_generator)
+  if(WITH_MKL)
+  add_custom_target(copy_mkl
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+        )
+  endif(WITH_MKL)
+  if(WITH_MKLDNN)
+    add_custom_target(copy_mkldnn
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}
+        )
+  endif(WITH_MKLDNN)
 endif(WIN32)
 
+if(WITH_MKL)
+add_dependencies(copy_mkl op_function_generator)
+add_dependencies(op_function_cmd copy_mkl)
+endif(WITH_MKL)
+
+if(WITH_MKLDNN)
+add_dependencies(copy_mkldnn op_function_generator)
+add_dependencies(op_function_cmd copy_mkldnn)  
+endif(WITH_MKLDNN)
 
 if(WITH_PYTHON)
   if(WITH_AMD_GPU)
