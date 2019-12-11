@@ -46,7 +46,6 @@ class TestSeqconvEltaddReluPass(unittest.TestCase):
         fw_output = exe.run(feed={"x": in_data},
                             fetch_list=[seqconv_res],
                             return_numpy=False)
-        print(np.array(fw_output[0]))
         path = "./tmp/inference_model"
         fluid.io.save_inference_model(
             dirname=path,
@@ -65,7 +64,6 @@ class TestSeqconvEltaddReluPass(unittest.TestCase):
         outputs = predictor.run([inputs])
         output = outputs[0]
         output_data = output.as_ndarray()
-        print(output_data)
         self.assertEqual(output_data.shape, np.array(fw_output[0]).shape)
         self.assertTrue(
             np.allclose(
@@ -96,7 +94,6 @@ class TestSeqconvEltaddReluPass(unittest.TestCase):
         fw_output = exe.run(feed={"x": in_data},
                             fetch_list=[seqconv_res],
                             return_numpy=False)
-        print(np.array(fw_output[0]))
         path = "./tmp/inference_model"
         fluid.io.save_inference_model(
             dirname=path,
@@ -115,7 +112,6 @@ class TestSeqconvEltaddReluPass(unittest.TestCase):
         outputs = predictor.run([inputs])
         output = outputs[0]
         output_data = output.as_ndarray()
-        print(output_data)
         self.assertEqual(output_data.shape, np.array(fw_output[0]).shape)
         self.assertTrue(
             np.allclose(
