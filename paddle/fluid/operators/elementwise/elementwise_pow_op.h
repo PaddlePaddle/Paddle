@@ -57,13 +57,10 @@ struct PowGradDX {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
 #ifdef __CUDA_ARCH__
     if (std::is_integral<T>::value) {
-      std::llrint(dout * y * std::pow(x, y - 1));
-    } else {
-      return dout * y * std::pow(x, y - 1);
+      return std::llrint(dout * y * std::pow(x, y - 1));
     }
-#else
-    return dout * y * std::pow(x, y - 1);
 #endif
+    return dout * y * std::pow(x, y - 1);
   }
 };
 
@@ -72,15 +69,12 @@ struct PowGradDY {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
 #ifdef __CUDA_ARCH__
     if (std::is_integral<T>::value) {
-      std::llrint(dout * std::log(x) * std::pow(x, y));
-    } else {
-      return dout * std::log(x) * std::pow(x, y);
+      return std::llrint(dout * std::log(x) * std::pow(x, y));
     }
-#else
-    return dout * std::log(x) * std::pow(x, y);
 #endif
+    return dout * std::log(x) * std::pow(x, y);
   }
-};
+};  // namespace operators
 
 template <typename DeviceContext, typename T>
 class ElementwisePowGradKernel : public ElemwiseGradKernel<T> {
