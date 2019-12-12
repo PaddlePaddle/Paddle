@@ -181,9 +181,9 @@ class OpTestBase(unittest.TestCase):
             # the inputs are as follows:
             # case 1: inputs = {'X': x}
             # case 2: inputs = {'X': (x, x_lod)}
-            # case 3: for inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
+            # case 3: inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
             # case 4: inputs = {'X': [("x1", (x1, [x1_lod1])), ("x2", (x2, [x2_.lod2]))]}
-            # TODO infer dtype from inputs maybe obtain wrong type.
+            # TODO(juncaipeng) infer dtype from inputs maybe obtain wrong type.
             for _, var_value in six.iteritems(numpy_dict):
                 if is_np_data(var_value):  # case 1
                     dtype_set.add(var_value.dtype)
