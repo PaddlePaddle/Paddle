@@ -197,5 +197,38 @@ class TestConv2dOp_Valid_MKLDNN(TestConv2dOp_AsyPadding_MKLDNN):
         self.padding_algorithm = "VALID"
 
 
+class TestConv2dOp_Valid_NHWC_MKLDNN(TestConv2dOp_Valid_MKLDNN):
+    def init_data_format(self):
+        self.data_format = "NHWC"
+
+    def init_test_case_2(self):
+        N, C, H, W = self.input_size
+        self.input_size = [N, H, W, C]
+
+    #TODO(jczaja): Enable once GRAD op is adjusted
+    def test_check_grad(self):
+        pass
+
+    #TODO(jczaja): Enable once GRAD op is adjusted
+    def test_check_grad_no_filter(self):
+        pass
+
+    #TODO(jczaja): Enable once GRAD op is adjusted
+    def test_check_grad_no_input(self):
+        pass
+
+
+class TestConv2dOp_Same_NHWC_MKLDNN(TestConv2dOp_Valid_NHWC_MKLDNN):
+    def init_paddings(self):
+        self.pad = [0, 0]
+        self.padding_algorithm = "SAME"
+
+
+class TestConv2dOp_AsyPadding_NHWC_MKLDNN(TestConv2dOp_Valid_NHWC_MKLDNN):
+    def init_paddings(self):
+        self.pad = [0, 0, 1, 2]
+        self.padding_algorithm = "EXPLICIT"
+
+
 if __name__ == '__main__':
     unittest.main()

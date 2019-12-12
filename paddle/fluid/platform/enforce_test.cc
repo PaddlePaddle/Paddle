@@ -52,7 +52,7 @@ TEST(ENFORCE, FAILED) {
     PADDLE_ENFORCE(false);
   } catch (paddle::platform::EnforceNotMet& error) {
     caught_exception = true;
-    EXPECT_NE(std::string(error.what()).find("  at "), 0);
+    EXPECT_NE(std::string(error.what()).find("  at "), 0UL);
   }
   EXPECT_TRUE(caught_exception);
 }

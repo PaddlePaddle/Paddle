@@ -183,9 +183,18 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   PADDLE_ENFORCE_EQ(table_names.size(), endpoints.size(), "");
   PADDLE_ENFORCE_EQ(table_names.size(), height_sections.size(), "");
 
-  auto* reconstruct_var =
-      scope.FindVar(persistable_var_name)->GetMutable<framework::LoDTensor>();
-  const auto vec_dim_1 = reconstruct_var->dims()[1];
+  auto vec_dim_1 = 0;
+  framework::Variable* var = scope.FindVar(persistable_var_name);
+
+  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), true,
+                    platform::errors::InvalidArgument(
+                        "prefetch can only support LodTensor only"));
+
+  vec_dim_1 = var->Get<framework::LoDTensor>().dims()[1];
+
+  PADDLE_ENFORCE_GT(vec_dim_1, 0,
+                    platform::errors::InvalidArgument(
+                        "lookup table var's dim must gather than 0"));
 
   const auto place =
       scope.FindVar(id_var_names[0])->Get<framework::LoDTensor>().place();
@@ -215,7 +224,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   std::unordered_set<int64_t> s(ids_union.begin(), ids_union.end());
   ids_union.assign(s.begin(), s.end());
 
-  for (int i = 0; i < table_names.size(); i++) {
+  for (size_t i = 0; i < table_names.size(); i++) {
     tables.push_back(std::make_pair(table_names[i], endpoints[i]));
   }
 
@@ -230,7 +239,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
   }
 
   // copy vectors to out vars
-  for (int i = 0; i < out_var_names.size(); i++) {
+  for (size_t i = 0; i < out_var_names.size(); i++) {
     auto& ids = ids_group[i];
     auto* out_t =
         scope.FindVar(out_var_names[i])->GetMutable<framework::LoDTensor>();
@@ -240,7 +249,7 @@ void prefetchs(const std::vector<std::string>& id_var_names,
 
     auto* out_d = out_t->mutable_data<float>(place);
 
-    for (int idx = 0; idx < ids.size(); idx++) {
+    for (size_t idx = 0; idx < ids.size(); idx++) {
       const auto& id = ids[idx];
 
       if (padding_idx != distributed::kNoPadding && id == padding_idx) {
@@ -249,16 +258,6 @@ void prefetchs(const std::vector<std::string>& id_var_names,
         std::copy_n(recved_vec_map[id].begin(), vec_dim_1,
                     out_d + idx * vec_dim_1);
       }
-    }
-  }
-
-  if (backfill) {
-    VLOG(3) << "backfill persistable var's id with vecs";
-
-    auto* reconstruct_d = reconstruct_var->data<float>();
-    for (auto& id : ids_union) {
-      std::copy(recved_vec_map[id].begin(), recved_vec_map[id].end(),
-                reconstruct_d + id * vec_dim_1);
     }
   }
 }

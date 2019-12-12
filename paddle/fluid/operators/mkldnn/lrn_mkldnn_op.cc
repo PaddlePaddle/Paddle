@@ -49,21 +49,26 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const float k = ctx.Attr<float>("k");
     bool is_test = ctx.Attr<bool>("is_test");
 
-    auto dims = paddle::framework::vectorize<int>(x->dims());
+    auto dims = paddle::framework::vectorize<int64_t>(x->dims());
 
     platform::LRNMKLDNNHandler<T> handler(dims, n, alpha, beta, k, x->format(),
                                           is_test, dev_ctx, ctx.GetPlace(),
-                                          ctx.op().Output("Out"));
+                                          ctx.OutputName("Out"));
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto dst_memory = handler.AcquireDstMemory(out);
 
-    std::shared_ptr<mkldnn::memory> workspace_memory;
-    std::shared_ptr<mkldnn::lrn_forward> lrn_p;
-    if (is_test == false) {
-      workspace_memory = handler.AcquireWorkspaceMemory(mid);
-      lrn_p = handler.AcquireForwardPrimitive(*src_memory, *workspace_memory,
-                                              *dst_memory);
+    auto lrn_p = handler.AcquireForwardPrimitive();
+
+    auto workspace_memory = handler.AcquireWorkspaceMemory(mid);
+    mid->set_layout(framework::DataLayout::kMKLDNN);
+
+    mkldnn::stream astream(dev_ctx.GetEngine());
+    if (!workspace_memory->get_desc().is_zero()) {
+      mid->set_format(platform::GetMKLDNNFormat(*workspace_memory));
+      lrn_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
+                               {MKLDNN_ARG_DST, *dst_memory},
+                               {MKLDNN_ARG_WORKSPACE, *workspace_memory}});
     } else {
       // mid has to be allocated and filled
       // k to pass LRN unit tests
@@ -71,11 +76,12 @@ class LRNMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       mid->mutable_data<T>(ctx.GetPlace());
       auto e_mid = framework::EigenTensor<T, 4>::From(*mid);
       e_mid = e_mid.constant(k);
-      lrn_p = handler.AcquireForwardPrimitive(*src_memory, *dst_memory);
-    }
+      mid->set_format(platform::GetMKLDNNFormat(*dst_memory));
 
-    std::vector<mkldnn::primitive> pipeline = {*lrn_p};
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+      lrn_p->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
+                               {MKLDNN_ARG_DST, *dst_memory}});
+    }
+    astream.wait();
 
     out->set_layout(framework::DataLayout::kMKLDNN);
     out->set_format(platform::GetMKLDNNFormat(*dst_memory));
@@ -107,22 +113,25 @@ class LRNMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
 
-    auto dims = paddle::framework::vectorize<int>(x->dims());
+    auto dims = paddle::framework::vectorize<int64_t>(x->dims());
 
-    platform::LRNMKLDNNHandler<T> handler(
-        dims, n, alpha, beta, k, x->format(), out_grad->format(), dev_ctx,
-        ctx.GetPlace(), ctx.op().Input("Out"));
+    platform::LRNMKLDNNHandler<T> handler(dims, n, alpha, beta, k, x->format(),
+                                          out_grad->format(), dev_ctx,
+                                          ctx.GetPlace(), ctx.InputName("Out"));
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto workspace = handler.AcquireBackwardWorkspaceMemory(mid);
     auto diff_dst_memory = handler.AcquireDiffDstMemory(out_grad);
     auto diff_src_memory = handler.AcquireDiffSrcMemory(x_grad);
 
-    auto lrn_bwd = handler.AcquireBackwardPrimitive(
-        *src_memory, *diff_dst_memory, *workspace, *diff_src_memory);
+    auto lrn_bwd = handler.AcquireBackwardPrimitive();
 
-    std::vector<mkldnn::primitive> pipeline = {*lrn_bwd};
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+    mkldnn::stream astream(dev_ctx.GetEngine());
+    lrn_bwd->execute(astream, {{MKLDNN_ARG_SRC, *src_memory},
+                               {MKLDNN_ARG_DIFF_DST, *diff_dst_memory},
+                               {MKLDNN_ARG_DIFF_SRC, *diff_src_memory},
+                               {MKLDNN_ARG_WORKSPACE, *workspace}});
+    astream.wait();
 
     x_grad->set_layout(framework::DataLayout::kMKLDNN);
     x_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory));
