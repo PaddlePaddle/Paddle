@@ -21,7 +21,7 @@ import threading
 import paddle
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places
 from .executor import global_scope
-from .data_feeder import DataFeeder, BatchedTensorProvider, DygraphListTensorProvider
+from .data_feeder import DataFeeder, BatchedTensorProvider
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 import logging
@@ -545,11 +545,17 @@ class GeneratorLoader(DataLoaderBase):
 
     def set_sample_list_generator(self, reader, places=None):
         if in_dygraph_mode():
-            provider = DygraphListTensorProvider(reader, places)
 
             def __tensor_reader_impl__():
-                for slots in provider():
-                    yield slots[0]
+                for batch in reader():
+                    slots = []
+                    for items in batch:
+                        for i, item in enumerate(items):
+                            if len(slots) < len(items):
+                                slots.append([item])
+                            else:
+                                slots[i].append(item)
+                    yield slots
         else:
             with program_guard(Program(), Program()):
                 feeder = DataFeeder(
