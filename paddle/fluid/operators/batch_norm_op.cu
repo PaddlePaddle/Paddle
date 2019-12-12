@@ -46,6 +46,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    const bool fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
@@ -191,7 +192,14 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       if ((N * H * W * D) == 1) {
         // Only 1 element in normalization dimension,
         // skip the batch norm calculation, let y = x.
-        framework::TensorCopy(*x, ctx.GetPlace(), y);
+        if (fuse_with_relu) {
+          auto x_v = framework::EigenVector<T>::Flatten(*x);
+          auto y_v = framework::EigenVector<T>::Flatten(*y);
+          auto &dev = *dev_ctx.eigen_device();
+          y_v.device(dev) = x_v.cwiseMax(static_cast<T>(0));
+        } else {
+          framework::TensorCopy(*x, ctx.GetPlace(), y);
+        }
       } else {
         double this_factor = 1. - momentum;
 
@@ -199,6 +207,16 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 #if CUDNN_VERSION_MIN(7, 4, 1)
         if (compute_format == DataLayout::kNHWC) {
           called = true;
+          // for batch_norm fused with relu
+          cudnnBatchNormOps_t bnOps_ = fuse_with_relu
+                                           ? CUDNN_BATCHNORM_OPS_BN_ACTIVATION
+                                           : CUDNN_BATCHNORM_OPS_BN;
+          platform::ScopedActivationDescriptor scope_act_desc;
+          const std::string activation{"relu"};
+          cudnnActivationDescriptor_t activation_desc_ =
+              fuse_with_relu ? scope_act_desc.descriptor<T>(activation)
+                             : nullptr;
+
           size_t workspace_size = 0;
           size_t reserve_space_size = 0;
           void *reserve_space_ptr = nullptr;
@@ -219,12 +237,12 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                   cudnnGetBatchNormalizationForwardTrainingExWorkspaceSize(
                       /*handle=*/handle,
                       /*mode=*/mode_,
-                      /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
+                      /*bnOps=*/bnOps_,
                       /*xDesc=*/data_desc_,
                       /*zDesc=*/nullptr,
                       /*yDesc=*/data_desc_,
                       /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
-                      /*activationDesc=*/nullptr,
+                      /*activationDesc=*/activation_desc_,
                       /*sizeInBytes=*/&workspace_size));
 
           // -------------- cudnn batchnorm reserve space --------------
@@ -233,8 +251,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                   cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
                       /*handle=*/handle,
                       /*mode=*/mode_,
-                      /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
-                      /*activationDesc=*/nullptr,
+                      /*bnOps=*/bnOps_,
+                      /*activationDesc=*/activation_desc_,
                       /*xDesc=*/data_desc_,
                       /*sizeInBytes=*/&reserve_space_size));
 
@@ -244,11 +262,11 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
               ctx.GetPlace(), transformed_x.type(), workspace_size);
           CUDNN_ENFORCE(
               platform::dynload::cudnnBatchNormalizationForwardTrainingEx(
-                  handle, mode_, CUDNN_BATCHNORM_OPS_BN,
-                  CudnnDataType<T>::kOne(), CudnnDataType<T>::kZero(),
-                  data_desc_, transformed_x.template data<T>(), nullptr,
-                  nullptr, data_desc_, transformed_y.template data<T>(),
-                  bn_param_desc_, scale->template data<BatchNormParamType<T>>(),
+                  handle, mode_, bnOps_, CudnnDataType<T>::kOne(),
+                  CudnnDataType<T>::kZero(), data_desc_,
+                  transformed_x.template data<T>(), nullptr, nullptr,
+                  data_desc_, transformed_y.template data<T>(), bn_param_desc_,
+                  scale->template data<BatchNormParamType<T>>(),
                   bias->template data<BatchNormParamType<T>>(), this_factor,
                   mean_out->template mutable_data<BatchNormParamType<T>>(
                       ctx.GetPlace()),
@@ -259,8 +277,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                       ctx.GetPlace()),
                   saved_variance->template mutable_data<BatchNormParamType<T>>(
                       ctx.GetPlace()),
-                  nullptr, workspace_ptr, workspace_size, reserve_space_ptr,
-                  reserve_space_size));
+                  activation_desc_, workspace_ptr, workspace_size,
+                  reserve_space_ptr, reserve_space_size));
         }
 #endif
         if (!called) {
@@ -417,10 +435,12 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const std::string data_layout_str = ctx.Attr<std::string>("data_layout");
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    const bool fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
 
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const auto *x = ctx.Input<Tensor>("X");
+    const auto *y = ctx.Input<Tensor>("Y");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
 
@@ -496,7 +516,11 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 
     if (!use_global_stats) {
       if ((N * H * W * D) == 1) {
-        framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
+        if (fuse_with_relu) {
+          ReluGrad(*y, *d_y, d_x, dev_ctx);
+        } else {
+          framework::TensorCopy(*d_y, ctx.GetPlace(), d_x);
+        }
         math::SetConstant<platform::CUDADeviceContext, BatchNormParamType<T>>
             functor;
         functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
@@ -547,6 +571,16 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 #if CUDNN_VERSION_MIN(7, 4, 1)
         if (compute_format == DataLayout::kNHWC) {
           called = true;
+          // for batch_norm fused with relu
+          cudnnBatchNormOps_t bnOps_ = fuse_with_relu
+                                           ? CUDNN_BATCHNORM_OPS_BN_ACTIVATION
+                                           : CUDNN_BATCHNORM_OPS_BN;
+          platform::ScopedActivationDescriptor scope_act_desc;
+          const std::string activation{"relu"};
+          cudnnActivationDescriptor_t activation_desc_ =
+              fuse_with_relu ? scope_act_desc.descriptor<T>(activation)
+                             : nullptr;
+
           size_t workspace_size = 0;
           void *workspace_ptr = nullptr;
           Tensor workspace_tensor;
@@ -556,23 +590,22 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                             cudnnGetBatchNormalizationBackwardExWorkspaceSize(
                                 /*handle=*/dev_ctx.cudnn_handle(),
                                 /*mode=*/mode_,
-                                /*bnIps=*/CUDNN_BATCHNORM_OPS_BN,
+                                /*bnOps=*/bnOps_,
                                 /*xDesc=*/data_desc_,
                                 /*yDesc=*/data_desc_,
                                 /*dyDesc=*/data_desc_,
                                 /*dzDesc=*/nullptr,
                                 /*dxDesc=*/data_desc_,
                                 /*bnScaleBiasMeanVarDesc=*/bn_param_desc_,
-                                /*activationDesc=*/nullptr,
+                                /*activationDesc=*/activation_desc_,
                                 /*sizeInBytes=*/&workspace_size));
 
           workspace_ptr = workspace_tensor.mutable_data(
               ctx.GetPlace(), transformed_x.type(), workspace_size);
-
           CUDNN_ENFORCE(platform::dynload::cudnnBatchNormalizationBackwardEx(
               /*handle=*/dev_ctx.cudnn_handle(),
               /*mode=*/mode_,
-              /*bnOps=*/CUDNN_BATCHNORM_OPS_BN,
+              /*bnOps=*/bnOps_,
               /*alphaDataDiff=*/CudnnDataType<T>::kOne(),
               /*betaDataDiff=*/CudnnDataType<T>::kZero(),
               /*alphaParamDiff=*/CudnnDataType<T>::kOne(),
@@ -600,7 +633,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
               /*epsilon=*/epsilon,
               /*savedMean=*/saved_mean_data,
               /*savedInvVariance=*/saved_var_data,
-              /*activationDesc=*/nullptr,
+              /*activationDesc=*/activation_desc_,
               /*workspace=*/workspace_ptr,
               /*workSpaceSizeInBytes=*/workspace_size,
               /*reserveSpace=*/const_cast<T *>(
@@ -648,6 +681,10 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                 d_x->data<T>());
           }
         }
+
+        if (d_x && fuse_with_relu) {
+          ReluGrad(*y, *d_x, d_x, dev_ctx);
+        }
       }
 
       // clean when exit.
@@ -694,6 +731,16 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         }
       }
     }
+  }
+
+ private:
+  void ReluGrad(const Tensor &y, const Tensor &dy, Tensor *dx,
+                const platform::CUDADeviceContext &dev_ctx) const {
+    auto y_v = framework::EigenVector<T>::Flatten(y);
+    auto dx_v = framework::EigenVector<T>::Flatten(*dx);
+    auto dy_v = framework::EigenVector<T>::Flatten(dy);
+    auto &dev = *dev_ctx.eigen_device();
+    dx_v.device(dev) = dy_v * (y_v > static_cast<T>(0)).template cast<T>();
   }
 };
 

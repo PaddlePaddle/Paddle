@@ -435,6 +435,14 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_set_paddle_lib_path", &paddle::platform::dynload::SetPaddleLibPath);
 
+  m.def("_get_cudnn_version", []() -> size_t {
+#ifndef PADDLE_WITH_CUDA
+    return 0;
+#else
+  return paddle::platform::dynload::cudnnGetVersion();
+#endif
+  });
+
   BindImperative(&m);
 
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())

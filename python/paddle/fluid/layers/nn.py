@@ -2590,6 +2590,9 @@ def batch_norm(input,
 
     batch_norm_out = input if in_place else helper.create_variable_for_type_inference(
         dtype)
+    fuse_with_relu = (
+        (act == "relu") and (not (is_test or use_global_stats)) and
+        (core._get_cudnn_version() >= 7401) and (data_layout == 'NHWC'))
 
     inputs = {
         "X": input,
@@ -2603,7 +2606,7 @@ def batch_norm(input,
         "is_test": is_test,
         "data_layout": data_layout,
         "use_mkldnn": False,
-        "fuse_with_relu": False,
+        "fuse_with_relu": fuse_with_relu,
         "use_global_stats": use_global_stats
     }
     if isinstance(momentum, Variable):
@@ -2624,7 +2627,12 @@ def batch_norm(input,
     helper.append_op(
         type="batch_norm", inputs=inputs, outputs=outputs, attrs=attrs)
 
-    return helper.append_activation(batch_norm_out)
+    if fuse_with_relu:
+        out_var = batch_norm_out
+    else:
+        out_var = helper.append_activation(batch_norm_out)
+
+    return out_var
 
 
 def instance_norm(input,
