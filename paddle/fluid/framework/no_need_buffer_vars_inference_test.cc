@@ -48,5 +48,31 @@ TEST(test_no_need_buffer_vars_inference, test_dygraph) {
   ASSERT_TRUE(boost::get<bool>(ctx.GetAttr("is_test")));
 }
 
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(TestNoNeedBufferVarsInferer, "X1", "X2");
+
+TEST(test_no_need_buffer_vars_inference, test_nullptr_comparation) {
+  InferNoNeedBufferVarsFN infer_fn;
+  ASSERT_FALSE(static_cast<bool>(infer_fn));
+  ASSERT_TRUE(!infer_fn);
+  ASSERT_TRUE(infer_fn == nullptr);
+  ASSERT_TRUE(nullptr == infer_fn);
+  ASSERT_FALSE(infer_fn != nullptr);
+  ASSERT_FALSE(nullptr != infer_fn);
+
+  infer_fn.Reset(std::make_shared<TestNoNeedBufferVarsInferer>());
+  ASSERT_TRUE(static_cast<bool>(infer_fn));
+  ASSERT_FALSE(!infer_fn);
+  ASSERT_FALSE(infer_fn == nullptr);
+  ASSERT_FALSE(nullptr == infer_fn);
+  ASSERT_TRUE(infer_fn != nullptr);
+  ASSERT_TRUE(nullptr != infer_fn);
+
+  auto no_need_slots =
+      infer_fn(VariableNameMap{}, VariableNameMap{}, AttributeMap{});
+  ASSERT_EQ(no_need_slots.size(), 2UL);
+  ASSERT_EQ(no_need_slots.count("X1"), 1UL);
+  ASSERT_EQ(no_need_slots.count("X2"), 1UL);
+}
+
 }  // namespace framework
 }  // namespace paddle

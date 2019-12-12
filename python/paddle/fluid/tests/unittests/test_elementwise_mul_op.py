@@ -177,6 +177,8 @@ class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
         self.init_kernel_type()
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestElementwiseMulOpFp16(ElementwiseMulOp):
     def init_dtype(self):
         self.dtype = np.float16
@@ -220,7 +222,7 @@ class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
         self.init_kernel_type()
 
 
-class TestElementwiseMulOpError(OpTest):
+class TestElementwiseMulOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of elementwise_mul must be Variable.

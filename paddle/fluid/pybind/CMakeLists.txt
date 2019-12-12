@@ -1,6 +1,10 @@
 set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapper nccl_wrapper prune
   feed_fetch_method pass_builder parallel_executor profiler layer tracer engine scope_pool
-  analysis_predictor imperative_profiler nccl_context imperative_flag save_load_util dlpack_tensor)
+  analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context)
+
+if(NOT WIN32)
+  set(PYBIND_DEPS ${PYBIND_DEPS} nccl_context)
+endif(NOT WIN32)
 
 if(WITH_PYTHON)
   list(APPEND PYBIND_DEPS py_func_op)
@@ -15,6 +19,7 @@ set(PYBIND_SRCS
   exception.cc
   protobuf.cc
   const_value.cc
+  global_value_getter_setter.cc
   reader_py.cc
   fleet_wrapper_py.cc
   box_helper_py.cc
@@ -27,6 +32,39 @@ set(PYBIND_SRCS
 if (WITH_DISTRIBUTE)
   list(APPEND PYBIND_SRCS communicator_py.cc)
 endif()
+
+# generate op pybind functions automatically for dygraph.
+set(OP_FUNCTION_GENERETOR_DEPS pybind proto_desc executor layer tracer engine imperative_profiler imperative_flag)
+list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
+list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
+
+add_executable(op_function_generator op_function_generator.cc)
+target_link_libraries(op_function_generator ${OP_FUNCTION_GENERETOR_DEPS} )
+get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
+target_link_libraries(op_function_generator ${os_dependency_modules})
+
+if (WIN32)
+  add_custom_target(op_function_cmd 
+    COMMAND "${CMAKE_BINARY_DIR}/paddle/fluid/pybind/${CMAKE_BUILD_TYPE}/op_function_generator" 
+    "${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h") 
+    add_dependencies(op_function_cmd op_function_generator)
+  if(WITH_MKL)
+  add_custom_target(copy_dll 
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_LIB_DEPS} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+        COMMAND ${CMAKE_COMMAND} -E copy ${MKLML_SHARED_IOMP_LIB} ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}
+        )
+  add_dependencies(copy_dll op_function_generator)
+  add_dependencies(op_function_cmd copy_dll)
+  endif(WITH_MKL)
+else(WIN32)
+  add_custom_target(op_function_cmd 
+    COMMAND "${CMAKE_CURRENT_BINARY_DIR}/op_function_generator" 
+    "${CMAKE_SOURCE_DIR}/paddle/fluid/pybind/op_function_impl.h") 
+    add_dependencies(op_function_cmd op_function_generator)
+endif(WIN32)
+
 
 if(WITH_PYTHON)
   if(WITH_AMD_GPU)
@@ -46,5 +84,6 @@ if(WITH_PYTHON)
 
   get_property (os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
   target_link_libraries(paddle_pybind ${os_dependency_modules})
+  add_dependencies(paddle_pybind op_function_cmd) 
 
 endif(WITH_PYTHON)

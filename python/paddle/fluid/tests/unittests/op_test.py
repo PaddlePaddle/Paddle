@@ -35,6 +35,14 @@ from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
 
 
+def _set_use_system_allocator(value=None):
+    USE_SYSTEM_ALLOCATOR_FLAG = "FLAGS_use_system_allocator"
+    old_value = core.globals()[USE_SYSTEM_ALLOCATOR_FLAG]
+    value = old_value if value is None else value
+    core.globals()[USE_SYSTEM_ALLOCATOR_FLAG] = value
+    return old_value
+
+
 def randomize_probability(batch_size, class_num, dtype='float32'):
     prob = np.random.uniform(
         0.1, 1.0, size=(batch_size, class_num)).astype(dtype)
@@ -146,11 +154,15 @@ class OpTest(unittest.TestCase):
         np.random.seed(123)
         random.seed(124)
 
+        cls._use_system_allocator = _set_use_system_allocator(True)
+
     @classmethod
     def tearDownClass(cls):
         """Restore random seeds"""
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
+
+        _set_use_system_allocator(cls._use_system_allocator)
 
     def try_call_once(self, data_type):
         if not self.call_once:
@@ -256,7 +268,7 @@ class OpTest(unittest.TestCase):
             data = value[0]
             lod = value[1]
             v = fluid.dygraph.base.to_variable(value=data)
-            v._ivar.value().get_tensor().set_recursive_sequence_lengths(lod)
+            v.value().get_tensor().set_recursive_sequence_lengths(lod)
             return v
         else:
             return fluid.dygraph.base.to_variable(value)
@@ -277,7 +289,7 @@ class OpTest(unittest.TestCase):
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
                 if has_lod:
-                    v._ivar.value().get_tensor().set_recursive_sequence_lengths(
+                    v.value().get_tensor().set_recursive_sequence_lengths(
                         lod_temp)
             else:
                 v = block.create_var(
@@ -755,7 +767,7 @@ class OpTest(unittest.TestCase):
             else:
                 # TODO(zhiqiu): enhance inplace_grad test for ops (sum and activation) using mkldnn/ngraph
                 # skip op that use_mkldnn and use_ngraph currently
-                flags_use_mkldnn = fluid.core.get_flags_use_mkldnn()
+                flags_use_mkldnn = fluid.core.globals()["FLAGS_use_mkldnn"]
                 attrs_use_mkldnn = hasattr(
                     self,
                     'attrs') and bool(self.attrs.get('use_mkldnn', False))
@@ -765,7 +777,7 @@ class OpTest(unittest.TestCase):
                     )
                     continue
                 use_ngraph = fluid.core.is_compiled_with_ngraph(
-                ) and fluid.core.get_flags_use_ngraph()
+                ) and fluid.core.globals()["FLAGS_use_ngraph"]
                 if use_ngraph:
                     warnings.warn(
                         "check inplace_grad for ops using ngraph is not supported"
@@ -828,8 +840,8 @@ class OpTest(unittest.TestCase):
                     if check_dygraph:
                         imperative_actual = find_imperative_actual(
                             sub_out_name, dygraph_outs, place)
-                        imperative_actual_t = np.array(
-                            imperative_actual._ivar.value().get_tensor())
+                        imperative_actual_t = np.array(imperative_actual.value()
+                                                       .get_tensor())
                     idx = find_actual(sub_out_name, fetch_list)
                     actual = outs[idx]
                     actual_t = np.array(actual)
@@ -856,7 +868,7 @@ class OpTest(unittest.TestCase):
                             ") has different lod at " + str(place))
                         if check_dygraph:
                             self.assertListEqual(
-                                imperative_actual._ivar.value().get_tensor()
+                                imperative_actual.value().get_tensor()
                                 .recursive_sequence_lengths(), expect[1],
                                 "Output (" + out_name +
                                 ") has different lod at " + str(place) +
@@ -865,8 +877,8 @@ class OpTest(unittest.TestCase):
                 if check_dygraph:
                     imperative_actual = find_imperative_actual(
                         out_name, dygraph_outs, place)
-                    imperative_actual_t = np.array(
-                        imperative_actual._ivar.value().get_tensor())
+                    imperative_actual_t = np.array(imperative_actual.value()
+                                                   .get_tensor())
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
                 actual_t = np.array(actual)
@@ -901,7 +913,7 @@ class OpTest(unittest.TestCase):
                                          ") has different lod at " + str(place))
                     if check_dygraph:
                         self.assertListEqual(
-                            imperative_actual._ivar.value().get_tensor()
+                            imperative_actual.value().get_tensor()
                             .recursive_sequence_lengths(), expect[1],
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in dygraph mode")
@@ -977,7 +989,7 @@ class OpTest(unittest.TestCase):
         places = [fluid.CPUPlace()]
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
         use_ngraph = fluid.core.is_compiled_with_ngraph(
-        ) and fluid.core.get_flags_use_ngraph()
+        ) and fluid.core.globals()['FLAGS_use_ngraph']
         if use_ngraph:
             cpu_only = True
         if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type)\

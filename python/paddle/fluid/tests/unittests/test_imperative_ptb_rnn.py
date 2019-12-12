@@ -141,6 +141,7 @@ class PtbModel(fluid.Layer):
                  num_layers=2,
                  num_steps=20,
                  init_scale=0.1,
+                 is_sparse=False,
                  dropout=None):
         super(PtbModel, self).__init__(name_scope)
         self.hidden_size = hidden_size
@@ -160,7 +161,7 @@ class PtbModel(fluid.Layer):
             self.full_name(),
             size=[vocab_size, hidden_size],
             dtype='float32',
-            is_sparse=False,
+            is_sparse=is_sparse,
             param_attr=fluid.ParamAttr(
                 name='embedding_para',
                 initializer=fluid.initializer.UniformInitializer(
@@ -206,13 +207,16 @@ class PtbModel(fluid.Layer):
         loss = fluid.layers.reshape(loss, shape=[-1, self.num_steps])
         loss = fluid.layers.reduce_mean(loss, dim=[0])
         loss = fluid.layers.reduce_sum(loss)
-        loss.permissions = True
 
         return loss, last_hidden, last_cell
 
 
 class TestDygraphPtbRnn(unittest.TestCase):
-    def test_ptb_rnn_cpu_float32(self):
+    def test_ptb_rnn(self):
+        for is_sparse in [True, False]:
+            self.ptb_rnn_cpu_float32(is_sparse)
+
+    def ptb_rnn_cpu_float32(self, is_sparse):
         seed = 90
         hidden_size = 10
         vocab_size = 1000
@@ -221,7 +225,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
         init_scale = 0.1
         batch_size = 4
         batch_num = 200
-
         traced_layer = None
 
         with fluid.dygraph.guard():
@@ -234,7 +237,8 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 vocab_size=vocab_size,
                 num_layers=num_layers,
                 num_steps=num_steps,
-                init_scale=init_scale)
+                init_scale=init_scale,
+                is_sparse=is_sparse)
 
             sgd = SGDOptimizer(learning_rate=1e-3)
             dy_param_updated = dict()
@@ -249,7 +253,6 @@ class TestDygraphPtbRnn(unittest.TestCase):
             for i in range(batch_num):
                 x_data = np.arange(12).reshape(4, 3).astype('int64')
                 y_data = np.arange(1, 13).reshape(4, 3).astype('int64')
-                x_data = x_data.reshape((-1, num_steps, 1))
                 y_data = y_data.reshape((-1, 1))
                 init_hidden_data = np.zeros(
                     (num_layers, batch_size, hidden_size), dtype='float32')
@@ -301,13 +304,14 @@ class TestDygraphPtbRnn(unittest.TestCase):
                 vocab_size=vocab_size,
                 num_layers=num_layers,
                 num_steps=num_steps,
-                init_scale=init_scale)
+                init_scale=init_scale,
+                is_sparse=is_sparse)
 
             exe = fluid.Executor(fluid.CPUPlace(
             ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
             sgd = SGDOptimizer(learning_rate=1e-3)
             x = fluid.layers.data(
-                name="x", shape=[-1, num_steps, 1], dtype='int64')
+                name="x", shape=[-1, num_steps], dtype='int64')
             y = fluid.layers.data(name="y", shape=[-1, 1], dtype='float32')
             init_hidden = fluid.layers.data(
                 name="init_hidden", shape=[1], dtype='float32')

@@ -88,6 +88,13 @@ class ExpandAsGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(x_grad_name, x_dims);
     }
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
+                                       ctx, framework::GradVarName("Out")),
+                                   ctx.device_context());
+  }
 };
 
 template <typename T>
@@ -108,7 +115,7 @@ class ExpandAsGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-// DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ExpandGradNoNeedBufVarsInferer, "X");
+DECLARE_NO_NEED_BUFFER_VARS_INFERENCE(ExpandAsGradNoNeedBufVarsInferer, "X");
 
 }  // namespace operators
 }  // namespace paddle
@@ -117,7 +124,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(expand_as, ops::ExpandAsOp, ops::ExpandAsOpMaker,
                   ops::ExpandAsGradOpMaker<paddle::framework::OpDesc>,
                   ops::ExpandAsGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(expand_as_grad, ops::ExpandAsGradOp);
+REGISTER_OPERATOR(expand_as_grad, ops::ExpandAsGradOp,
+                  ops::ExpandAsGradNoNeedBufVarsInferer);
 REGISTER_OP_CPU_KERNEL(
     expand_as, ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ExpandAsKernel<paddle::platform::CPUDeviceContext, double>,

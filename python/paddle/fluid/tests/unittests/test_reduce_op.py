@@ -169,7 +169,7 @@ class TestAnyOpWithKeepDim(OpTest):
 class Test1DReduce(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random(20).astype("float64")}
+        self.inputs = {'X': np.random.random(120).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):
@@ -414,7 +414,7 @@ class Test1DReduceWithAxes1(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestReduceSumOpError(OpTest):
+class TestReduceSumOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of reduce_sum_op must be Variable.
@@ -426,7 +426,7 @@ class TestReduceSumOpError(OpTest):
             self.assertRaises(TypeError, fluid.layers.reduce_sum, x2)
 
 
-class TestReduceMeanOpError(OpTest):
+class TestReduceMeanOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of reduce_mean_op must be Variable.

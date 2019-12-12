@@ -321,7 +321,7 @@ void FleetWrapper::PullSparseVarsSync(
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
-    int len = tensor->numel();
+    size_t len = tensor->numel();
 
     // skip slots which do not have embedding
     const std::string& emb_name = var_emb_names[var_index];
@@ -510,7 +510,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
     }
-    int len = tensor->numel();
+    size_t len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     int slot = 0;
     if (dump_slot) {
@@ -573,7 +573,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
     }
-    int len = tensor->numel();
+    size_t len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     for (auto id_idx = 0u; id_idx < len; ++id_idx) {
       if (ids[id_idx] == 0) {
@@ -717,6 +717,19 @@ void FleetWrapper::SaveModel(const std::string& path, const int mode) {
   }
 #else
   VLOG(0) << "FleetWrapper::SaveModel does nothing when no pslib";
+#endif
+}
+
+void FleetWrapper::PrintTableStat(const uint64_t table_id) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret = pslib_ptr_->_worker_ptr->print_table_stat(table_id);
+  ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "print table stat failed";
+  }
+#else
+  VLOG(0) << "FleetWrapper::PrintTableStat does nothing when no pslib";
 #endif
 }
 
