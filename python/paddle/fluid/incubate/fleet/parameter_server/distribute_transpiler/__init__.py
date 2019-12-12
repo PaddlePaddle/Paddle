@@ -371,6 +371,21 @@ class DistributedTranspiler(Fleet):
                 type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
             executor.run(prog)
 
+        def __save_params_on_pserver(executor, dirname,
+                                     distributed_lookup_table, endpoints):
+            prog = Program()
+            block = prog.global_block()
+
+            # if there is lookup table, the trainer 0 will notify all pserver to save.
+            lookup_table_filename = os.path.join(dirname, "__lookup_table__")
+            attrs = {}
+            attrs['epmap'] = endpoints
+            attrs['dir'] = lookup_table_filename
+            attrs['lookup_table'] = distributed_lookup_table
+            block.append_op(
+                type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
+            executor.run(prog)
+
         def __exclude_vars(exclude_var_names=[]):
             def is_valid(var):
                 if var.name in exclude_var_names:

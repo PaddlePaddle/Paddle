@@ -1288,12 +1288,14 @@ class DistributeTranspiler(object):
             optimize_blocks.append(table_opt_block)
             lookup_table_var_name_to_block_id = self._create_prefetch_block(
                 pserver_index, pserver_program, table_opt_block)
-            checkpoint_block_id = self._create_checkpoint_save_block(
-                pserver_program, table_opt_block.idx, endpoint)
 
             pserver_program._distributed_lookup_table = self.table_name
             prefetch_var_name_to_block_id.extend(
                 lookup_table_var_name_to_block_id)
+
+        pre_block_idx = pserver_program.num_blocks - 1
+        checkpoint_block_id = self._create_checkpoint_save_block(
+            pserver_program, pre_block_idx, endpoint)
 
         if len(optimize_blocks) == 0:
             logging.warn("pserver [" + str(endpoint) +
@@ -1933,11 +1935,20 @@ class DistributeTranspiler(object):
             persistable=True,
             type=core.VarDesc.VarType.RAW)
 
+        vars = self.vars_overview.get_distributed_vars_by_ep(endpoint)
+
+        var_names = []
+        for var in vars:
+            var_names.append(var.slice.name)
+
+        if self.table_name is not None:
+            var_names.append(self.table_name)
+
         checkpoint_save_block = pserver_program._create_block(pre_block_idx)
         # this 'file_path' do not be used in save lookup table variable
         checkpoint_save_block.append_op(
             type='save',
-            inputs={'X': [self.table_name]},
+            inputs={'X': var_names},
             outputs={},
             attrs={'file_path': "none"})
 
