@@ -212,5 +212,10 @@ RUN mkdir /var/run/sshd
 RUN echo 'root:root' | chpasswd
 RUN sed -ri 's/^PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+
+RUN wget --no-check-certificate https://pslib.bj.bcebos.com/openmpi-1.4.5.tar.gz && tar -xzf openmpi-1.4.5.tar.gz && \
+    cd openmpi-1.4.5 && make all -j8 && make install -j8 && export LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH && \
+    cd .. && rm -rf openmpi-1.4.5.tar.gz && ldconfig && pip --no-cache-dir install mpi4py
+
 CMD source ~/.bashrc
 EXPOSE 22
