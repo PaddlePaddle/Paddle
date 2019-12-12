@@ -22,7 +22,7 @@ from op_test import OpTest
 class TestHingeLossOp(OpTest):
     def setUp(self):
         self.op_type = 'hinge_loss'
-        samples_num = 64
+        samples_num = 100
         logits = np.random.uniform(-10, 10, (samples_num, 1)).astype('float32')
         labels = np.random.randint(0, 2, (samples_num, 1)).astype('float32')
 
