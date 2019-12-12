@@ -19,67 +19,88 @@ import paddle.fluid as fluid
 import numpy as np
 
 
-class BackwardNet(object):
+class BackwardNet(unittest.TestCase):
+    """
+    Abstract Base Class.
+    All Net inherited this Class should implement two functions:
+        build_model: build net to test the logic of backward
+        init_data: fake input data to test all program.
+    """
+
     def __init__(self):
-        self.stop_gradient_grad_vars = []
-        self.no_grad_vars = []
-        self.params_names = []
+        self.stop_gradient_grad_vars = set()
+        self.no_grad_vars = set()
+        self.params_names = set()
         self.op_path = []
+        self.global_block_idx = 0
 
     def build_model(self):
+        """
+        Build net to test the logic of backward.
+        :return: loss
+        """
         raise NotImplementedError
 
     def init_data(self):
+        """
+        Fake input data to test all program.
+        :return: dict, {'var_name': var_data}
+        """
         raise NotImplementedError
 
     def check_backward(self, loss, main_program):
-        params_grads = self.check_params_grad(loss)
+        global_block_idx = self.global_block_idx
+        params_grads = self._check_params_grad(loss)
         # 1.1 get_stop_gradients
-        no_grad_dict = self.check_stop_gradient(main_program)
+        no_grad_dict = self._check_stop_gradient(main_program)
         # 1.2 find_op_path
-        op_path, block_no_grad_set = self.check_op_path(
-            main_program.block(0), [loss], [], no_grad_dict)
+        op_path, block_no_grad_set = self._check_op_path(
+            main_program.block(global_block_idx), [loss], [], no_grad_dict)
         # 1.3 _find_no_grad_vars
-        no_grad_vars = self.check_find_no_grad_vars(
-            main_program.block(0), op_path, [loss], block_no_grad_set)
+        no_grad_vars = self._check_find_no_grad_vars(
+            main_program.block(global_block_idx), op_path, [loss],
+            block_no_grad_set)
         # update no_grad_dict
         block_no_grad_set.update(no_grad_vars)
-        no_grad_dict[0].update(
+        no_grad_dict[global_block_idx].update(
             list(map(fluid.backward._append_grad_suffix_, block_no_grad_set)))
 
-    def check_params_grad(self, loss, parameter_list=None, no_grad_set=None):
+    def _check_params_grad(self, loss, parameter_list=None, no_grad_set=None):
         params_grads = fluid.backward.append_backward(loss, parameter_list,
                                                       no_grad_set)
-        params_names = set([var[0].name for var in params_grads])
-        assert len(params_names - set(self.params_names)) == 0
+        params_names = set(
+            [param_var.name for (param_var, grad_var) in params_grads])
+        self.assertSetEqual(params_names, self.params_names)
 
         return params_grads
 
-    def check_stop_gradient(self, program):
+    def _check_stop_gradient(self, program):
         no_grad_dict = fluid.backward._get_stop_gradients_(program)
         if no_grad_dict is not None and isinstance(no_grad_dict, dict):
-            assert len(no_grad_dict[0] - set(self.stop_gradient_grad_vars)) == 0
+            self.assertSetEqual(no_grad_dict[self.global_block_idx],
+                                self.stop_gradient_grad_vars)
 
         return no_grad_dict
 
-    def check_op_path(self, root_block, outputs, inputs=[], no_grad_dict=None):
+    def _check_op_path(self, root_block, outputs, inputs=[], no_grad_dict=None):
         if no_grad_dict is None or not isinstance(no_grad_dict, dict):
             block_no_grad_set = None
         else:
             block_no_grad_set = set(
-                map(fluid.backward._strip_grad_suffix_, no_grad_dict[0]))
+                map(fluid.backward._strip_grad_suffix_, no_grad_dict[
+                    self.global_block_idx]))
         op_path = fluid.backward._find_op_path_(root_block, outputs, inputs,
                                                 block_no_grad_set)
         op_types = [op.type for op in op_path]
-        assert op_types == self.op_path
+        self.assertListEqual(op_types, self.op_path)
 
         return op_path, block_no_grad_set
 
-    def check_find_no_grad_vars(self, root_block, op_path, targets,
-                                block_no_grad_set):
+    def _check_find_no_grad_vars(self, root_block, op_path, targets,
+                                 block_no_grad_set):
         no_grad_vars = fluid.backward._find_no_grad_vars(
             root_block, op_path, targets, block_no_grad_set)
-        assert len(no_grad_vars) == len(self.no_grad_vars)
+        self.assertSetEqual(no_grad_vars, self.no_grad_vars)
 
         return no_grad_vars
 
@@ -87,12 +108,12 @@ class BackwardNet(object):
 class SimpleNet(BackwardNet):
     def __init__(self):
         super(BackwardNet, self).__init__()
-        self.stop_gradient_grad_vars = [
+        self.stop_gradient_grad_vars = set([
             u'x_no_grad@GRAD', u'x2_no_grad@GRAD', u'x3_no_grad@GRAD',
             u'label_no_grad@GRAD'
-        ]
-        self.no_grad_vars = []
-        self.params_names = [u'w2v', u'fc_predict.b_0', u'fc_w']
+        ])
+        self.no_grad_vars = set()
+        self.params_names = set([u'w2v', u'fc_predict.b_0', u'fc_w'])
         self.op_path = [
             u'lookup_table_v2',
             u'lookup_table_v2',  # embedding
@@ -157,7 +178,7 @@ class SimpleNet(BackwardNet):
         return loss
 
 
-# NotImplemented
+# TODO(Aurelius84): add conditional network test
 class ConditionalNet(BackwardNet):
     def __init__(self):
         super(BackwardNet, self).__init__()
@@ -165,7 +186,8 @@ class ConditionalNet(BackwardNet):
 
 class TestBackward(unittest.TestCase):
     def check_backward(self, net):
-        place = fluid.CPUPlace()
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
 
         main = fluid.Program()
