@@ -153,15 +153,16 @@ class TestPSlib(unittest.TestCase):
                 exe.run(startup_program)
             fleet.init_worker()
             dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
-            dataset.set_batch_size(1)
+            dataset.set_batch_size(32)
             dataset.set_thread(3)
             dataset.set_filelist([
                 "test_fleet3_a.txt",
                 "test_fleet3_b.txt"
-            ] * 300)
+            ])
             dataset.set_pipe_command("cat")
             dataset.set_use_var(slots_vars)
             dataset.load_into_memory()
+            dataset.global_shuffle(fleet, 2)
 
             with fluid.scope_guard(scope):
                 exe.train_from_dataset(train_program, dataset, scope,\
