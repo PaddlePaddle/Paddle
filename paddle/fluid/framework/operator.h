@@ -488,9 +488,7 @@ class OperatorWithKernel : public OperatorBase {
                        });
   }
 
-  virtual void InferShape(InferShapeContext* ctx) const {
-    Info().infer_shape_(ctx);
-  }
+  virtual void InferShape(InferShapeContext* ctx) const = 0;
 
   void RuntimeInferShape(const Scope& scope, const platform::Place& place,
                          const RuntimeContext& ctx) const override;

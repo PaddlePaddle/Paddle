@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <type_traits>
 #include <typeindex>
+#include <vector>
 
 namespace paddle {
 namespace string {
