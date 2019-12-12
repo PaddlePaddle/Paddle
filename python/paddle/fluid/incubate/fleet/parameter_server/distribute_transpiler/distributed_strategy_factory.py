@@ -39,39 +39,45 @@ class ServerRuntimeConfig(object):
 class TrainerRuntimeConfig(object):
     def __init__(self):
         self._communicator_flags = dict()
-        self._communicator_flags['communicator_max_merge_var_num'] = int(
+        self._communicator_flags['max_merge_var_num'] = int(
             os.getenv("FLAGS_communicator_max_merge_var_num", "20"))
-        self._communicator_flags['communicator_send_queue_size'] = int(
+        self._communicator_flags['send_queue_size'] = int(
             os.getenv("FLAGS_communicator_send_queue_size", "20"))
-        self._communicator_flags['communicator_independent_recv_thread'] = bool(
+        self._communicator_flags['independent_recv_thread'] = bool(
             int(os.getenv("FLAGS_communicator_independent_recv_thread", "1")))
-        self._communicator_flags[
-            'communicator_min_send_grad_num_before_recv'] = int(
-                os.getenv("FLAGS_communicator_min_send_grad_num_before_recv",
-                          "20"))
-        self._communicator_flags['communicator_thread_pool_size'] = int(
+        self._communicator_flags['min_send_grad_num_before_recv'] = int(
+            os.getenv("FLAGS_communicator_min_send_grad_num_before_recv", "20"))
+        self._communicator_flags['thread_pool_size'] = int(
             os.getenv("FLAGS_communicator_thread_pool_size", "5"))
-        self._communicator_flags['communicator_send_wait_times'] = int(
+        self._communicator_flags['send_wait_times'] = int(
             os.getenv("FLAGS_communicator_send_wait_times", "5"))
-        self._communicator_flags['communicator_fake_rpc'] = bool(
-            int(os.getenv("FLAGS_communicator_fake_rpc", "0")))
-        self._communicator_flags['communicator_merge_sparse_grad'] = bool(
-            int(os.getenv("FLAGS_communicator_merge_sparse_grad", "1")))
-        self._communicator_flags['communicator_is_sgd_optimizer'] = bool(
-            int(os.getenv("communicator_is_sgd_optimizer", "1")))
+        self._communicator_flags['fake_rpc'] = int(
+            os.getenv("FLAGS_communicator_fake_rpc", "0"))
+        self._communicator_flags['merge_sparse_grad'] = int(
+            os.getenv("FLAGS_communicator_merge_sparse_grad", "1"))
+        self._communicator_flags['is_sgd_optimizer'] = int(
+            os.getenv("communicator_is_sgd_optimizer", "1"))
 
         self._rpc_deadline = int(os.getenv("FLAGS_rpc_deadline", "180000"))
         self._rpc_retry_times = int(os.getenv("FLAGS_rpc_retry_times", "3"))
 
     def __str__(self):
-        print_str = "communicator_max_merge_var_num: {}\n" % self._communicator_max_merge_var_num
-        print_str += "communicator_send_queue_size: {}\n" % self._communicator_send_queue_size
-        print_str += "communicator_independent_recv_thread: {}\n" % self._communicator_independent_recv_thread
-        print_str += "communicator_min_send_grad_num_before_recv: {}\n" % self._communicator_min_send_grad_num_before_recv
-        print_str += "communicator_thread_pool_size: {}\n" % self._communicator_thread_pool_size
-        print_str += "communicator_send_wait_times: {}\n" % self._communicator_send_wait_times
-        print_str += "communicator_fake_rpc: {}\n" % self._communicator_fake_rpc
-        print_str += "communicator_merge_sparse_grad: {}\n" % self._communicator_merge_sparse_grad
+        print_str = "communicator_max_merge_var_num: {}\n" % self._communicator_flags[
+            'max_merge_var_num']
+        print_str += "communicator_send_queue_size: {}\n" % self._communicator_flags[
+            'send_queue_size']
+        print_str += "communicator_independent_recv_thread: {}\n" % self._communicator_flags[
+            'independent_recv_thread']
+        print_str += "communicator_min_send_grad_num_before_recv: {}\n" % self._communicator_flags[
+            'min_send_grad_num_before_recv']
+        print_str += "communicator_thread_pool_size: {}\n" % self._communicator_flags[
+            'thread_pool_size']
+        print_str += "communicator_send_wait_times: {}\n" % self._communicator_flags[
+            'send_wait_times']
+        print_str += "communicator_fake_rpc: {}\n" % self._communicator_flags[
+            'fake_rpc']
+        print_str += "communicator_merge_sparse_grad: {}\n" % self._communicator_flags[
+            'merge_sparse_grad']
         print_str += "rpc_deadline: {}\n" % self._rpc_deadline
         print_str += "rpc_retry_times: {}" % self._rpc_retry_times
         return print_str
