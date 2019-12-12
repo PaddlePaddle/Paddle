@@ -35,30 +35,6 @@ def _rename_arg(op, old_name, new_name):
     op_desc._rename_output(old_name, new_name)
 
 
-def _change_optimize_ops_order(block):
-    """
-    put optimize_role ops(cast) behind the backward_role ops
-    to speed up in Executor.
-
-    Args:
-        block: The global_block of main program. eg: block = main_prog.global_block()
-    """
-    OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
-    for idx, op in reversed(list(enumerate(block.ops))):
-        if op.attr('op_role') & int(OPTIMIZE):
-
-            block.append_op(
-                type=op.type,
-                inputs=dict(
-                    zip(op.input_names,
-                        [block.var(name) for name in op.input_arg_names])),
-                outputs=dict(
-                    zip(op.output_names,
-                        [block.var(name) for name in op.output_arg_names])),
-                attrs=op.all_attrs())
-            block._remove_op(idx)
-
-
 def _dtype_to_str(dtype):
     """
     Convert specific variable type to its corresponding string.
@@ -137,6 +113,66 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                     if op.has_attr('out_dtype'):
                         op._set_attr('out_dtype', core.VarDesc.VarType.FP16)
     return num_cast_ops
+
+
+def check_next_input_backward_role_op(ops, idx, cur_op, var_name):
+    """
+    Check whether has op (backward_role) that inputs var_name 
+    variable behind cur_op.
+    If yes, it means _move_optimize_ops_back will cause errors
+    in program order. Therefore raise valueerror.
+    If no, return True to continue move in _move_optimize_ops_back.
+
+    Args:
+        ops (list): A list of ops.
+        id (int): index of cur_op in ops
+        cur_op (Operator): Current operator which has var_name variable.
+        var_name (string): Variable name.
+    """
+    BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
+    next_op = []
+    for i in range(idx + 1, len(ops)):
+        op = ops[i]
+        if op.attr('op_role') & int(BACKWARD):
+            for input_name in op.input_arg_names:
+                if input_name == var_name:
+                    next_op.append(op)
+    if next_op:
+        raise ValueError("There must be no next op that inputs {0} "
+                         "variable after {1} op (optimize_role)".format(
+                             var_name, cur_op.type))
+    return True
+
+
+def _move_optimize_ops_back(block):
+    """
+    put optimize_role ops(cast) behind the backward_role ops
+    to speed up in Executor.
+
+    Args:
+        block: The global_block of main program. eg: block = main_prog.global_block()
+    """
+    OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
+    optimize_ops = []
+    for idx, op in reversed(list(enumerate(block.ops))):
+        if op.attr('op_role') & int(OPTIMIZE):
+            for output_name in op.output_arg_names:
+                if check_next_input_backward_role_op(block.ops, idx, op,
+                                                     output_name):
+                    continue
+            optimize_ops.append([
+                op.type, dict(
+                    zip(op.input_names,
+                        [block.var(name) for name in op.input_arg_names])),
+                dict(
+                    zip(op.output_names,
+                        [block.var(name) for name in op.output_arg_names])),
+                op.all_attrs()
+            ])
+            block._remove_op(idx)
+    for op in reversed(optimize_ops):
+        assert len(op) == 4
+        block.append_op(type=op[0], inputs=op[1], outputs=op[2], attrs=op[3])
 
 
 def find_true_prev_op(ops, cur_op, var_name):
@@ -303,7 +339,7 @@ def update_role_var_grad(main_prog, params_grads):
             # operation after gradients transfer.
             op._set_attr('op_role', OPTIMIZE)
 
-    _change_optimize_ops_order(block)
+    _move_optimize_ops_back(block)
 
 
 def update_loss_scaling(is_overall_finite, prev_loss_scaling, num_good_steps,
