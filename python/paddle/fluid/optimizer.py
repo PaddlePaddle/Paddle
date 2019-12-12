@@ -409,6 +409,19 @@ class Optimizer(object):
 
         # Allways called under program_guard use global block as loss block
         global_block = framework.default_main_program().global_block()
+
+        # todo(): create optimize op considering control flow
+        # get target block
+        current_block = framework.default_main_program().current_block()
+        target_block = global_block
+        global_block_idx = global_block.idx  # 0
+        if current_block.idx != global_block_idx:
+            assert current_block.backward_block_idx != -1, \
+                "current_block is not global_block, but it doesn't have backward block"
+            target_block = framework.default_main_program().blocks[
+                current_block.backward_block_idx]
+        global_block = target_block
+        # start = len(target_block.ops)
         start = len(global_block.ops)
         self.helper = LayerHelper(self.__class__.__name__)
         self._create_accumulators(
