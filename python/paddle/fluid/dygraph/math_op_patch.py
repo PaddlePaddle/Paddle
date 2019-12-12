@@ -15,9 +15,8 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, unique_name, convert_np_dtype_to_dtype_
+from ..framework import Variable, convert_np_dtype_to_dtype_
 from ..layers.layer_function_generator import OpProtoHolder
-from ..initializer import force_init_on_cpu
 from . import to_variable, no_grad
 
 _supported_int_dtype_ = [
@@ -76,6 +75,21 @@ def monkey_patch_math_varbase():
             Variable: Variable with new dtype
 
         Examples:
+            In Static Graph Mode:
+
+            .. code-block:: python
+
+                import paddle.fluid as fluid
+
+                startup_prog = fluid.Program()
+                main_prog = fluid.Program()
+                with fluid.program_guard(startup_prog, main_prog):
+                    original_variable = fluid.data(name = "new_variable", shape=[2,2], dtype='float32')
+                    new_variable = original_variable.astype('int64')
+                    print("new var's dtype is: {}".format(new_variable.dtype))
+
+            In Dygraph Mode:
+
             .. code-block:: python
 
                 import paddle.fluid as fluid

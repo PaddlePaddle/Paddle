@@ -15,7 +15,7 @@
 from __future__ import print_function
 
 from .. import core
-from ..framework import Variable, unique_name, in_dygraph_mode, default_main_program
+from ..framework import Variable, unique_name
 from .layer_function_generator import OpProtoHolder
 from ..initializer import force_init_on_cpu
 
@@ -40,8 +40,6 @@ def monkey_patch_variable():
         return dtype
 
     def current_block(var):
-        if in_dygraph_mode():
-            return default_main_program().global_block()
         return var.block.program.current_block()
 
     def create_new_tmp_var(block, dtype):
