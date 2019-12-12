@@ -196,9 +196,8 @@ __global__ void softmax_kernel_with_eltadd(T *qk_buf_, const T *bias_qk_,
                                            const int head_num,
                                            const int seq_len,
                                            const unsigned mask) {
-  int seq_id = blockIdx.x % seq_len;
   int qk_offset = blockIdx.x * seq_len;
-  int bias_offset = blockIdx.x % (head_num * seq_len) * seq_len;
+  int bias_offset = (blockIdx.x % (batch_size * head_num * seq_len)) * seq_len;
 
   __shared__ float s_sum, s_max;
 
