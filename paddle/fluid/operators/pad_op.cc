@@ -147,6 +147,10 @@ REGISTER_OPERATOR(pad, ops::PadOp, ops::PadOpMaker,
                   ops::PadOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(pad_grad, ops::PadOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    pad, ops::PadKernel<paddle::platform::CPUDeviceContext, float>);
+    pad, ops::PadKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PadKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::PadKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::PadKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
-    pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>);
+    pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PadGradKernel<paddle::platform::CPUDeviceContext, double>);

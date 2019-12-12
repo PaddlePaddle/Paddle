@@ -240,4 +240,6 @@ class ArgsortOpCUDAKernel : public framework::OpKernel<T> {
 REGISTER_OP_CUDA_KERNEL(
     argsort, paddle::operators::ArgsortOpCUDAKernel<float>,
     paddle::operators::ArgsortOpCUDAKernel<double>,
+    paddle::operators::ArgsortOpCUDAKernel<int>,
+    paddle::operators::ArgsortOpCUDAKernel<int64_t>,
     paddle::operators::ArgsortOpCUDAKernel<paddle::platform::float16>);

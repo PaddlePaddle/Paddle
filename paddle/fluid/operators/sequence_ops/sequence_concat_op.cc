@@ -126,7 +126,7 @@ REGISTER_OPERATOR(sequence_concat, op::SequenceConcatOp, op::SeqConcatOpMaker,
 template <typename T>
 using Kernel = op::SeqConcatKernel<paddle::platform::CPUDeviceContext, T>;
 REGISTER_OP_CPU_KERNEL(sequence_concat, Kernel<float>, Kernel<double>,
-                       Kernel<int64_t>);
+                       Kernel<int>, Kernel<int64_t>);
 
 REGISTER_OPERATOR(sequence_concat_grad, op::SeqConcatGradOp,
                   op::SeqConcatGradNoNeedBufferVarsInference);
@@ -134,4 +134,5 @@ template <typename T>
 using GradKernel =
     op::SeqConcatGradKernel<paddle::platform::CPUDeviceContext, T>;
 REGISTER_OP_CPU_KERNEL(sequence_concat_grad, GradKernel<float>,
-                       GradKernel<double>, GradKernel<int64_t>);
+                       GradKernel<double>, GradKernel<int>,
+                       GradKernel<int64_t>);

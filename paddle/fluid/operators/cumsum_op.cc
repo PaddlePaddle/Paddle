@@ -81,4 +81,5 @@ REGISTER_OPERATOR(cumsum, ops::CumOp, ops::CumsumOpMaker,
                   ops::CumsumGradMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(cumsum, ops::CumKernel<CPU, ops::CumsumFunctor<float>>,
                        ops::CumKernel<CPU, ops::CumsumFunctor<double>>,
-                       ops::CumKernel<CPU, ops::CumsumFunctor<int>>);
+                       ops::CumKernel<CPU, ops::CumsumFunctor<int>>,
+                       ops::CumKernel<CPU, ops::CumsumFunctor<int64_t>>);

@@ -549,4 +549,6 @@ class TopkOpCUDAKernel : public framework::OpKernel<T> {
 REGISTER_OP_CUDA_KERNEL(
     top_k, paddle::operators::TopkOpCUDAKernel<float>,
     paddle::operators::TopkOpCUDAKernel<double>,
+    paddle::operators::TopkOpCUDAKernel<int>,
+    paddle::operators::TopkOpCUDAKernel<int64_t>,
     paddle::operators::TopkOpCUDAKernel<paddle::platform::float16>);

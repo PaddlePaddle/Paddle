@@ -187,9 +187,11 @@ REGISTER_OP_CPU_KERNEL(
     space_to_depth,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SpaceToDepthKernel<paddle::platform::CPUDeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     space_to_depth_grad,
     ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SpaceToDepthGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
