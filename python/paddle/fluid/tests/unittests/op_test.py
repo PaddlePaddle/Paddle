@@ -1286,8 +1286,19 @@ class OpTestBase(unittest.TestCase):
                 executor.run(prog, feed_dict, fetch_list, return_numpy=False)))
 
 
+'''
+The op test with int8 precision should inherit OpTestInt8.
+'''
+
+
 class OpTestInt8(OpTestBase):
     pass
+
+
+'''
+The op test with float16 precision should inherit OpTestFp16,
+which requires the test to call check_grad. 
+'''
 
 
 class OpTestFp16(OpTestBase):
@@ -1333,6 +1344,12 @@ class OpTestFp16(OpTestBase):
             and cls.op_type not in op_white_list.NO_FP16_CHECK_GRAD_OP_LIST:
             raise AssertionError("This test of %s op needs check_grad." %
                                  cls.op_type)
+
+
+'''
+The op test with float32/64 precision should inherit OpTestFp16,
+which requires the test to call check_grad with float64 precision. 
+'''
 
 
 class OpTest(OpTestBase):
