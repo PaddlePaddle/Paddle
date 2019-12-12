@@ -220,7 +220,7 @@ class TestNCECase1SelectedRows(unittest.TestCase):
         self.assertEqual(rets[0], rets[1])
 
 
-class TestNCE_OpError(OpTest):
+class TestNCE_OpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             input1 = fluid.create_lod_tensor(

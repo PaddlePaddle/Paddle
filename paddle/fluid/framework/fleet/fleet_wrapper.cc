@@ -161,7 +161,7 @@ void FleetWrapper::PullSparseVarsSync(
     LoDTensor* tensor = var->GetMutable<LoDTensor>();
     CHECK(tensor != nullptr) << "tensor of var " << name << " is null";
     int64_t* ids = tensor->data<int64_t>();
-    int len = tensor->numel();
+    size_t len = tensor->numel();
 
     // skip slots which do not have embedding
     const std::string& emb_name = var_emb_names[var_index];
@@ -350,7 +350,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
     }
-    int len = tensor->numel();
+    size_t len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     int slot = 0;
     if (dump_slot) {
@@ -413,7 +413,7 @@ void FleetWrapper::PushSparseVarsWithLabelAsync(
       LOG(ERROR) << "tensor of var[" << sparse_key_names[i] << "] is null";
       exit(-1);
     }
-    int len = tensor->numel();
+    size_t len = tensor->numel();
     int64_t* ids = tensor->data<int64_t>();
     for (auto id_idx = 0u; id_idx < len; ++id_idx) {
       if (ids[id_idx] == 0) {

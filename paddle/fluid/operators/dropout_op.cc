@@ -35,12 +35,23 @@ class DropoutOp : public framework::OperatorWithKernel {
     }
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+  }
 };
 
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "The input of dropout op.");
+    AddInput("Seed",
+             "The seed of dropout op, it has higher priority than the attr "
+             "fix_seed and seed")
+        .AsDispensable();
     AddOutput("Out", "The output of dropout op.");
     AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();
 

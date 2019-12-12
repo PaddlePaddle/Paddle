@@ -169,7 +169,7 @@ class TestAnyOpWithKeepDim(OpTest):
 class Test1DReduce(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
-        self.inputs = {'X': np.random.random(20).astype("float64")}
+        self.inputs = {'X': np.random.random(120).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
 
     def test_check_output(self):

@@ -110,7 +110,7 @@ def diff_attr(ori_attrs, new_attrs):
         attr_deleted_error_massage.append(attr_name)
 
     for attr_name in attrs_only_in_new:
-        if not new_attrs.get(attr_name).get(DEFAULT_VALUE):
+        if new_attrs.get(attr_name).get(DEFAULT_VALUE) == None:
             error, attr_error = True, True
             attr_added_error_massage.append(attr_name)
 
@@ -245,7 +245,6 @@ if len(sys.argv) == 3:
     if error:
         print("-" * 30)
         print_error_message(error_message)
-        print_repeat_process()
         print("-" * 30)
 else:
     print("Usage: python check_op_desc.py OP_DESC_DEV.spec OP_DESC_PR.spec")

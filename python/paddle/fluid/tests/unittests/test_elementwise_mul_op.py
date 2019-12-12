@@ -177,6 +177,8 @@ class TestElementwiseMulOp_broadcast_5(ElementwiseMulOp):
         self.init_kernel_type()
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestElementwiseMulOpFp16(ElementwiseMulOp):
     def init_dtype(self):
         self.dtype = np.float16
