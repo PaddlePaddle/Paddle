@@ -1935,22 +1935,24 @@ class DistributeTranspiler(object):
             persistable=True,
             type=core.VarDesc.VarType.RAW)
 
-        vars = self.vars_overview.get_distributed_vars_by_ep(endpoint)
-
-        var_names = []
-        for var in vars:
-            var_names.append(var.slice.name)
-
-        if self.table_name is not None:
-            var_names.append(self.table_name)
-
         checkpoint_save_block = pserver_program._create_block(pre_block_idx)
         # this 'file_path' do not be used in save lookup table variable
-        checkpoint_save_block.append_op(
-            type='save',
-            inputs={'X': var_names},
-            outputs={},
-            attrs={'file_path': "none"})
+
+        vars = self.vars_overview.get_distributed_vars_by_ep(endpoint)
+
+        for var in vars:
+            checkpoint_save_block.append_op(
+                type='save',
+                inputs={'X': [var.slice.name]},
+                outputs={},
+                attrs={'file_path': "none"})
+
+        if self.table_name is not None:
+            checkpoint_save_block.append_op(
+                type='save',
+                inputs={'X': [self.table_name]},
+                outputs={},
+                attrs={'file_path': "none"})
 
         hadoop_config = self.config.pserver_hadoop_configs
         if endpoint:

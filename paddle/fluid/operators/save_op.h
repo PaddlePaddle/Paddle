@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -27,33 +24,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace operators {
-
-inline std::string randomString(
-    unsigned int l = 15,
-    std::string charIndex =
-        "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890") {
-  unsigned int seed = time(NULL);
-  srand(seed);
-  unsigned int length = rand() % l + 1;  // NOLINT
-
-  unsigned int ri[15];
-  for (unsigned int i = 0; i < length; ++i)
-    ri[i] = rand() % charIndex.length();  // NOLINT
-
-  std::string rs = "";
-  for (unsigned int i = 0; i < length; ++i) rs += charIndex[ri[i]];
-
-  return rs;
-}
-
 // define LOOKUP_TABLE_PATH for checkpoint notify to save lookup table variables
 // to directory specified.
 constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
-constexpr char LOOKUP_TABLE_TMP_PATH[] = "kLookupTableTmpPath";
-constexpr char HADOOP_PATH_PREFIX[] = "hdfs:";
 template <typename DeviceContext, typename T>
 class SaveOpKernel : public framework::OpKernel<T> {
  public:
@@ -65,10 +42,35 @@ class SaveOpKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE(input_var != nullptr, "Cannot find variable %s for save_op",
                    iname);
 
+    auto file_path = ctx.Attr<std::string>("file_path");
+    auto overwrite = ctx.Attr<bool>("overwrite");
+
+    std::string filename = file_path;
+
+    framework::Variable *out_put_var = ctx.scope().FindVar(LOOKUP_TABLE_PATH);
+    if (out_put_var != nullptr) {
+      auto *lt_var = out_put_var->GetMutable<std::string>();
+      if (lt_var->length() > 0) {
+        filename = *lt_var;
+        filename = string::Sprintf("%s/%s", filename, iname);
+      }
+    }
+
+    VLOG(4) << "Save " << iname << " output file_path: " << filename;
+
+    if (FileExists(filename) && !overwrite) {
+      PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
+                   filename, overwrite);
+    }
+
+    VLOG(4) << "SaveSelectedRows get File name: " << filename;
+
+    MkDirRecursively(DirName(filename).c_str());
+
     if (input_var->IsType<framework::LoDTensor>()) {
-      SaveLodTensor(ctx, place, input_var);
+      SaveLodTensor(ctx, place, filename, input_var);
     } else if (input_var->IsType<framework::SelectedRows>()) {
-      SaveSelectedRows(ctx, place, input_var);
+      SaveSelectedRows(ctx, place, filename, input_var);
     } else {
       PADDLE_ENFORCE(
           false,
@@ -78,18 +80,8 @@ class SaveOpKernel : public framework::OpKernel<T> {
   }
 
   void SaveLodTensor(const framework::ExecutionContext &ctx,
-                     const platform::Place &place,
+                     const platform::Place &place, const std::string &filename,
                      const framework::Variable *var) const {
-    auto filename = ctx.Attr<std::string>("file_path");
-    auto overwrite = ctx.Attr<bool>("overwrite");
-
-    if (FileExists(filename) && !overwrite) {
-      PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
-                   filename, overwrite);
-    }
-
-    MkDirRecursively(DirName(filename).c_str());
-
     auto &tensor = var->Get<framework::LoDTensor>();
 
     // get device context from pool
@@ -122,50 +114,8 @@ class SaveOpKernel : public framework::OpKernel<T> {
 
   void SaveSelectedRows(const framework::ExecutionContext &ctx,
                         const platform::Place &place,
+                        const std::string &filename,
                         const framework::Variable *var) const {
-    auto file_path = ctx.Attr<std::string>("file_path");
-    auto overwrite = ctx.Attr<bool>("overwrite");
-
-    std::string filename = file_path;
-    VLOG(4) << "SaveSelectedRows output file_path: " << file_path;
-
-    framework::Variable *out_put_var = ctx.scope().FindVar(LOOKUP_TABLE_PATH);
-    if (out_put_var != nullptr) {
-      auto *lt_var = out_put_var->GetMutable<std::string>();
-      if (lt_var->length() > 0) {
-        filename = *lt_var;
-        std::string hdfs_prefix(HADOOP_PATH_PREFIX);
-        if (filename.find(hdfs_prefix) == 0) {
-          lt_var->clear();
-          lt_var->append(filename.substr(hdfs_prefix.length()));
-          std::string random_path_name;
-          do {
-            random_path_name = "/tmp/";
-            random_path_name += randomString();
-            random_path_name += "__LOOKUP_TABLE__";
-          } while (PathExists(random_path_name));
-          MkDirRecursively(random_path_name.c_str());
-          random_path_name += filename.substr(filename.rfind('/'));
-          filename = random_path_name;
-          auto *tmp_path_var = ctx.scope()
-                                   .FindVar(LOOKUP_TABLE_TMP_PATH)
-                                   ->GetMutable<std::string>();
-          tmp_path_var->clear();
-          tmp_path_var->append(random_path_name);
-        }
-        VLOG(4) << "SaveSelectedRows output var name: " << filename;
-      }
-    }
-
-    if (FileExists(filename) && !overwrite) {
-      PADDLE_THROW("%s is existed, cannot save to it when overwrite=false",
-                   filename, overwrite);
-    }
-
-    VLOG(4) << "SaveSelectedRows get File name: " << filename;
-
-    MkDirRecursively(DirName(filename).c_str());
-
     auto &selectedRows = var->Get<framework::SelectedRows>();
 
     // get device context from pool

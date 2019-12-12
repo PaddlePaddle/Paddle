@@ -42,10 +42,9 @@ class CheckpointNotifyOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(trainer_id);
     for (size_t i = 0; i < epmap.size(); i++) {
-      auto lookup_table_save_dir = string::Sprintf("%s/@%d", dir, i);
+      auto lookup_table_save_dir = string::Sprintf("%s/ps_%d", dir, i);
       rpc_client->AsyncCheckpointNotify(epmap[i], lookup_table_save_dir);
-      VLOG(3) << "checkpoint notify sending lookup table: " << lookup_table_name
-              << " and dir:" << dir << " to " << epmap[i];
+      VLOG(3) << "checkpoint notify sending dir:" << dir << " to " << epmap[i];
     }
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
   }
