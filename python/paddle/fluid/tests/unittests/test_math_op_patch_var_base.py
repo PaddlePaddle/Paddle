@@ -69,6 +69,14 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             res = a + b
             self.assertTrue(np.array_equal(res.numpy(), a_np + b))
 
+    def test_add_scalar_reverse(self):
+        a_np = np.random.random(self.shape).astype(self.dtype)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            b = 0.1
+            res = b + a
+            self.assertTrue(np.array_equal(res.numpy(), b + a_np))
+
     def test_sub_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
         with fluid.dygraph.guard():
@@ -76,6 +84,14 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             b = 0.1
             res = a - b
             self.assertTrue(np.array_equal(res.numpy(), a_np - b))
+
+    def test_sub_scalar_reverse(self):
+        a_np = np.random.random(self.shape).astype(self.dtype)
+        with fluid.dygraph.guard():
+            a = fluid.dygraph.to_variable(a_np)
+            b = 0.1
+            res = b - a
+            self.assertTrue(np.array_equal(res.numpy(), b - a_np))
 
     def test_mul_scalar(self):
         a_np = np.random.random(self.shape).astype(self.dtype)
