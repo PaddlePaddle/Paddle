@@ -39,23 +39,23 @@ class ServerRuntimeConfig(object):
 class TrainerRuntimeConfig(object):
     def __init__(self):
         self._communicator_flags = dict()
-        self._communicator_flags['max_merge_var_num'] = int(
+        self._communicator_flags["max_merge_var_num"] = int(
             os.getenv("FLAGS_communicator_max_merge_var_num", "20"))
-        self._communicator_flags['send_queue_size'] = int(
+        self._communicator_flags["send_queue_size"] = int(
             os.getenv("FLAGS_communicator_send_queue_size", "20"))
-        self._communicator_flags['independent_recv_thread'] = bool(
+        self._communicator_flags["independent_recv_thread"] = bool(
             int(os.getenv("FLAGS_communicator_independent_recv_thread", "1")))
-        self._communicator_flags['min_send_grad_num_before_recv'] = int(
+        self._communicator_flags["min_send_grad_num_before_recv"] = int(
             os.getenv("FLAGS_communicator_min_send_grad_num_before_recv", "20"))
-        self._communicator_flags['thread_pool_size'] = int(
+        self._communicator_flags["thread_pool_size"] = int(
             os.getenv("FLAGS_communicator_thread_pool_size", "5"))
-        self._communicator_flags['send_wait_times'] = int(
+        self._communicator_flags["send_wait_times"] = int(
             os.getenv("FLAGS_communicator_send_wait_times", "5"))
-        self._communicator_flags['fake_rpc'] = int(
+        self._communicator_flags["fake_rpc"] = int(
             os.getenv("FLAGS_communicator_fake_rpc", "0"))
-        self._communicator_flags['merge_sparse_grad'] = int(
+        self._communicator_flags["merge_sparse_grad"] = int(
             os.getenv("FLAGS_communicator_merge_sparse_grad", "1"))
-        self._communicator_flags['is_sgd_optimizer'] = int(
+        self._communicator_flags["is_sgd_optimizer"] = int(
             os.getenv("communicator_is_sgd_optimizer", "1"))
 
         self._rpc_deadline = int(os.getenv("FLAGS_rpc_deadline", "180000"))
@@ -63,21 +63,21 @@ class TrainerRuntimeConfig(object):
 
     def __str__(self):
         print_str = "communicator_max_merge_var_num: {}\n" % self._communicator_flags[
-            'max_merge_var_num']
+            "max_merge_var_num"]
         print_str += "communicator_send_queue_size: {}\n" % self._communicator_flags[
-            'send_queue_size']
+            "send_queue_size"]
         print_str += "communicator_independent_recv_thread: {}\n" % self._communicator_flags[
-            'independent_recv_thread']
+            "independent_recv_thread"]
         print_str += "communicator_min_send_grad_num_before_recv: {}\n" % self._communicator_flags[
-            'min_send_grad_num_before_recv']
+            "min_send_grad_num_before_recv"]
         print_str += "communicator_thread_pool_size: {}\n" % self._communicator_flags[
-            'thread_pool_size']
+            "thread_pool_size"]
         print_str += "communicator_send_wait_times: {}\n" % self._communicator_flags[
-            'send_wait_times']
+            "send_wait_times"]
         print_str += "communicator_fake_rpc: {}\n" % self._communicator_flags[
-            'fake_rpc']
+            "fake_rpc"]
         print_str += "communicator_merge_sparse_grad: {}\n" % self._communicator_flags[
-            'merge_sparse_grad']
+            "merge_sparse_grad"]
         print_str += "rpc_deadline: {}\n" % self._rpc_deadline
         print_str += "rpc_retry_times: {}" % self._rpc_retry_times
         return print_str
@@ -93,7 +93,7 @@ class DistributedStrategy(object):
         self.__server_runtime_config = ServerRuntimeConfig()
         self.__execute_strategy = fluid.ExecutionStrategy()
         self.__build_strategy = fluid.BuildStrategy()
-        num_threads = int(os.getenv("CPU_NUM", '1'))
+        num_threads = int(os.getenv("CPU_NUM", "1"))
         self.__execute_strategy.num_threads = num_threads
         if num_threads > 1:
             self.__build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
