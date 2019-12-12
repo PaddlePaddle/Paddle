@@ -12629,9 +12629,10 @@ def continuous_value_model(input, cvm, use_cvm=True):
 @templatedoc()
 def shuffle_batch(x, seed=None):
     """
-    This layer shuffle input tensor.
+    This layer shuffle input tensor :attr:`x` . Normally, :attr:`x` is 2-D LoDTensor.
 
-    The number of elements in input tensor is the product of input dims (except last dim). These elements will be shuffled randomly.
+    :attr:`x` is a LoDTensor to be shuffled with shape :math:`[N_1, N_2, ..., N_k, D]` . Note that the last dim of input will not be shuffled.
+    :math:`N_1 * N_2 * ... * N_k` numbers of elements with length :math:`D` will be shuffled randomly.
 
     For Example:
 
@@ -12649,12 +12650,12 @@ def shuffle_batch(x, seed=None):
         Out.dims = [4, 2]
 
     Args:
-        x (Variable): The input variable. The input variable could be N-D tensor with type int, float32 or float64.
+        x (Variable): The input variable. The input variable is a N-D LoDTensor with type int, float32 or float64.
         seed (None|int|Variable): The start up seed. If set, seed will be set as the start up seed of shuffle engine.
-                If not set(Default), start up seed will be generated randomly.
+                If not set(Default), start up seed of shuffle engine will be generated randomly.
 
     Returns:
-        Variables: The shuffed LoDTensor with the same shape and lod as input.
+        Variables: The shuffled LoDTensor with the same shape and lod as input.
 
     Examples:
 
