@@ -217,8 +217,6 @@ void CPUQuantizeSquashPass::FcDequantSquash(Graph* graph) const {
       fc_op->Op()->SetOutput("Out",
                              std::vector<std::string>({dequant_out->Name()}));
       IR_NODE_LINK_TO(fc_op, dequant_out);
-      fc_op->Op()->SetOutput("Out",
-                             std::vector<std::string>({dequant_out->Name()}));
       GraphSafeRemoveNodes(graph, {fc_out, dequant_op});
       found_fc_dequant_squash_count++;
     }

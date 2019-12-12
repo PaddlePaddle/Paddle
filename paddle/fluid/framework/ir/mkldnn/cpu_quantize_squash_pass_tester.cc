@@ -282,6 +282,23 @@ void CheckRequantScalesTest(const ProgramDesc& prog, float scale_in,
   }
 }
 
+// check requant_op scales
+void IsForceFp32OutputTest(const ProgramDesc& prog, std::string op_type,
+                           bool target_is_force_fp32_output) {
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
+
+  PrepareGraph(&graph, prog);
+  RegisterPass(&graph);
+
+  for (auto* node : graph->Nodes()) {
+    if (node->IsOp() && node->Op()->Type() == op_type) {
+      bool is_force_fp32_output =
+          boost::get<bool>(node->Op()->GetAttr("force_fp32_output"));
+      EXPECT_EQ(is_force_fp32_output, target_is_force_fp32_output);
+    }
+  }
+}
+
 // From Conv1->d->Dequant->e->Quant->f->Conv2
 // To Conv1->d->Conv2
 TEST(CpuQuantizeSquashPass, equal_scales) {
@@ -383,6 +400,9 @@ TEST(CpuQuantizeSquashPass, conv_dequant_only_one_output) {
   auto remove_nodes = 2;
   CountNodeTest(BuildConvDequantConcatProgramDesc(use_mkldnn, scale_out, scale),
                 remove_nodes);
+  IsForceFp32OutputTest(
+      BuildConvDequantConcatProgramDesc(use_mkldnn, scale_out, scale), "conv2d",
+      true);
 }
 
 TEST(CpuQuantizeSquashPass, conv_dequant_more_than_one_op_after_conv) {
@@ -396,9 +416,7 @@ TEST(CpuQuantizeSquashPass, conv_dequant_more_than_one_op_after_conv) {
 }
 
 // from
-// a->fc->b
-// b->Dequant1->c
-// c->Concat1->d
+// a->fc->b->Dequant1->c->Concat1->d
 // to
 // a->fc->c->Concat->d
 TEST(CpuQuantizeSquashPass, fc_dequant_only_one_output) {
@@ -409,6 +427,9 @@ TEST(CpuQuantizeSquashPass, fc_dequant_only_one_output) {
   auto remove_nodes = 2;
   CountNodeTest(BuildFcDequantConcatProgramDesc(use_mkldnn, scale_out, scale),
                 remove_nodes);
+  IsForceFp32OutputTest(
+      BuildFcDequantConcatProgramDesc(use_mkldnn, scale_out, scale), "fc",
+      true);
 }
 
 }  // namespace ir
