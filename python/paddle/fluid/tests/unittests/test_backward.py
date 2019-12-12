@@ -19,7 +19,7 @@ import paddle.fluid as fluid
 import numpy as np
 
 
-class BackwardNet(unittest.TestCase):
+class BackwardNet(object):
     """
     Abstract Base Class.
     All Net inherited this Class should implement two functions:
@@ -32,7 +32,6 @@ class BackwardNet(unittest.TestCase):
         self.no_grad_vars = set()
         self.params_names = set()
         self.op_path = []
-        self.global_block_idx = 0
 
     def build_model(self):
         """
@@ -48,7 +47,31 @@ class BackwardNet(unittest.TestCase):
         """
         raise NotImplementedError
 
-    def check_backward(self, loss, main_program):
+
+class TestBackward(unittest.TestCase):
+    """
+    All related TestClass should inherit this class,
+    and only implement test_backward function.
+    """
+
+    def _check_all(self, net):
+        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        main = fluid.Program()
+        startup = fluid.Program()
+
+        with fluid.program_guard(main, startup):
+            loss = net.build_model()
+            self._check_backward(loss, main)
+
+            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer.minimize(loss)
+            exe.run(startup)
+            exe.run(feed=net.init_data())
+
+    def _check_backward(self, loss, main_program):
         global_block_idx = self.global_block_idx
         params_grads = self._check_params_grad(loss)
         # 1.1 get_stop_gradients
@@ -70,7 +93,7 @@ class BackwardNet(unittest.TestCase):
                                                       no_grad_set)
         params_names = set(
             [param_var.name for (param_var, grad_var) in params_grads])
-        self.assertSetEqual(params_names, self.params_names)
+        self.assertSetEqual(params_names, self.net.params_names)
 
         return params_grads
 
@@ -78,7 +101,7 @@ class BackwardNet(unittest.TestCase):
         no_grad_dict = fluid.backward._get_stop_gradients_(program)
         if no_grad_dict is not None and isinstance(no_grad_dict, dict):
             self.assertSetEqual(no_grad_dict[self.global_block_idx],
-                                self.stop_gradient_grad_vars)
+                                self.net.stop_gradient_grad_vars)
 
         return no_grad_dict
 
@@ -92,7 +115,7 @@ class BackwardNet(unittest.TestCase):
         op_path = fluid.backward._find_op_path_(root_block, outputs, inputs,
                                                 block_no_grad_set)
         op_types = [op.type for op in op_path]
-        self.assertListEqual(op_types, self.op_path)
+        self.assertListEqual(op_types, self.net.op_path)
 
         return op_path, block_no_grad_set
 
@@ -100,7 +123,7 @@ class BackwardNet(unittest.TestCase):
                                  block_no_grad_set):
         no_grad_vars = fluid.backward._find_no_grad_vars(
             root_block, op_path, targets, block_no_grad_set)
-        self.assertSetEqual(no_grad_vars, self.no_grad_vars)
+        self.assertSetEqual(no_grad_vars, self.net.no_grad_vars)
 
         return no_grad_vars
 
@@ -178,33 +201,20 @@ class SimpleNet(BackwardNet):
         return loss
 
 
+class TestSimpleNet(TestBackward):
+    def test_backward(self):
+        """
+        Instantiate each NetClass to test backward.
+        """
+        self.global_block_idx = 0
+        self.net = SimpleNet()
+        self._check_all(self.net)
+
+
 # TODO(Aurelius84): add conditional network test
 class ConditionalNet(BackwardNet):
     def __init__(self):
         super(BackwardNet, self).__init__()
-
-
-class TestBackward(unittest.TestCase):
-    def check_backward(self, net):
-        place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-
-        main = fluid.Program()
-        startup = fluid.Program()
-
-        with fluid.program_guard(main, startup):
-            loss = net.build_model()
-            net.check_backward(loss, main)
-
-            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
-            optimizer.minimize(loss)
-            exe.run(startup)
-            exe.run(feed=net.init_data())
-
-    def test_backward(self):
-        simple_net = SimpleNet()
-        self.check_backward(simple_net)
 
 
 if __name__ == '__main__':
