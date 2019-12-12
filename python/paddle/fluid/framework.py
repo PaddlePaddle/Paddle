@@ -1796,7 +1796,10 @@ class Operator(object):
                     if found:
                         in_args = inputs[in_proto.name]
                         if not isinstance(in_args, list):
-                            in_args = [in_args]
+                            if isinstance(in_args, tuple):
+                                in_args = list(in_args)
+                            else:
+                                in_args = [in_args]
                         if not in_proto.duplicable and len(in_args) > 1:
                             raise ValueError(
                                 "Input %s expects only one input, but %d are given."
@@ -1814,8 +1817,8 @@ class Operator(object):
                                     "The type of '%s' in operator %s should be "
                                     "one of [basestring(), str, Varibale] in python2, "
                                     "or one of [str, bytes, Variable] in python3."
-                                    "but received : " % (in_proto.name, type),
-                                    arg)
+                                    "but received : %s" %
+                                    (in_proto.name, type, arg))
                         self.desc.set_input(in_proto.name, in_arg_names)
                     else:
                         self.desc.set_input(in_proto.name, [])
@@ -1833,7 +1836,10 @@ class Operator(object):
                         continue
                     out_args = outputs[out_proto.name]
                     if not isinstance(out_args, list):
-                        out_args = [out_args]
+                        if isinstance(out_args, tuple):
+                            out_args = list(out_args)
+                        else:
+                            out_args = [out_args]
                     if not out_proto.duplicable and len(out_args) > 1:
                         raise ValueError(
                             "Output %s expects only one output, but %d are given."
