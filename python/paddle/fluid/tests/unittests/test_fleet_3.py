@@ -130,19 +130,25 @@ class TestPSlib(unittest.TestCase):
             abserr.name, prob.name, q.name, pos.name, total.name]
 
         adam = fluid.optimizer.Adam(learning_rate=0.000005)
-        adam = fleet.distributed_optimizer(adam, strategy={
-            "use_cvm" : True,
-            "adjust_ins_weight" : adjust_ins_weight,
-            "scale_datanorm" : 1e-4,
-            "dump_slot": True,
-            "stat_var_names": thread_stat_var_names,
-            "dump_fields": ["click"],
-            "dump_fields_path": "./fleet_dump_fields_3",
-            "dump_param": ["fc_0.b_0"],
-            "check_nan_var_names": ["click"],
-            "copy_table": copy_table,
-            "embedding": { "sparse_shard_num": 1 },
-            "embedding1": { "sparse_shard_num": 1 }
+        adam = fleet.distributed_optimizer(
+            adam,
+            strategy={
+                "use_cvm" : True,
+                "adjust_ins_weight" : adjust_ins_weight,
+                "scale_datanorm" : 1e-4,
+                "dump_slot": True,
+                "stat_var_names": thread_stat_var_names,
+                "dump_fields": ["click"],
+                "dump_fields_path": "./fleet_dump_fields_3",
+                "dump_param": ["fc_0.b_0"],
+                "check_nan_var_names": ["click"],
+                "copy_table": copy_table,
+                "embedding": {
+                    "sparse_shard_num": 1
+                },
+                "embedding1": {
+                    "sparse_shard_num": 1
+                }
         })
         adam.minimize([avg_cost], [scope])
 
