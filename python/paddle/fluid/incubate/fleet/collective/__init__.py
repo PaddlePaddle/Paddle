@@ -37,11 +37,6 @@ class LambConfig(object):
         pass
 
 
-class DistFCConfig(object):
-    def __init__(self):
-        pass
-
-
 class Collective(Fleet):
     def __init__(self):
         super(Collective, self).__init__(Mode.COLLECTIVE)
@@ -139,9 +134,7 @@ class DistributedStrategy(fluid.BuildStrategy):
     def __init__(self):
         super(DistributedStrategy, self).__init__()
         self.use_local_sgd = False
-        self.use_dist_fc = False
 
-        self.dist_fc_config = None  # DistFCConfig
         self.mode = "nccl2"  # or collective
         self.collective_mode = None  # local_sgd or grad_allreduce
         self.nccl_comm_num = 1
@@ -228,16 +221,7 @@ class CollectiveOptimizer(DistributedOptimizer):
             self._check_condition(
                 "use_local_sgd",
                 use_dgc=main_program._enable_dgc,
-                use_dist_fc=strategy.use_dist_fc,
                 use_lamb=main_program._use_lamb)
-
-        if strategy.use_dist_fc:
-            self._check_condition(
-                "use_dist_fc",
-                use_dgc=main_program._enable_dgc,
-                use_local_sgd=strategy.use_local_sgd,
-                use_lamb=main_program._use_lamb)
-            assert strategy.dist_fc_config is not None, "DistributedStrategy.dist_fc_config should be set"
 
         if strategy._ut4grad_allreduce:
             strategy.mode = "collective"
