@@ -15,7 +15,7 @@
 # For op in FP16_CHECK_OP_LIST, the op test of fp16 precision should inherit OpTestFp16
 FP16_CHECK_OP_LIST = [
     'concat', 'pad', 'elementwise_mul', 'elementwise_div',
-    'softmax_with_cross_entropy', 'sum'
+    'softmax_with_cross_entropy', 'sum', 'mul'
 ]
 
 # For op in NO_FP64_CHECK_GRAD_OP_LIST, the op test 
@@ -25,10 +25,11 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'arg_min', 'argsort', 'asin', 'assign_value', 'atan', 'attention_lstm',
     'auc', 'bilinear_interp', 'bilinear_tensor_product', 'bipartite_match',
     'box_clip', 'box_coder', 'box_decoder_and_assign', 'brelu', 'cast', 'ceil',
-    'center_loss', 'chunk_eval', 'clip', 'clip_by_norm',
-    'collect_fpn_proposals', 'concat', 'conv2d', 'conv2d_transpose', 'conv3d',
-    'conv3d_transpose', 'conv_shift', 'cos', 'cos_sim', 'crf_decoding', 'crop',
-    'crop_tensor', 'cross_entropy2', 'ctc_align', 'cvm', 'data_norm',
+    'center_loss', 'chunk_eval', 'clip', 'clip_by_norm', 'coalesce_tensor',
+    'collect_fpn_proposals', 'concat', 'conv2d', 'conv2d_fusion',
+    'conv2d_transpose', 'conv3d', 'conv3d_transpose', 'conv_shift', 'cos',
+    'cos_sim', 'crf_decoding', 'crop', 'crop_tensor', 'cross_entropy',
+    'cross_entropy2', 'ctc_align', 'cudnn_lstm', 'cvm', 'data_norm',
     'decayed_adagrad', 'deformable_conv', 'deformable_conv_v1',
     'deformable_psroi_pooling', 'density_prior_box', 'depthwise_conv2d',
     'depthwise_conv2d_transpose', 'dequantize', 'dequantize_abs_max',
@@ -44,35 +45,36 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'fill', 'fill_any_like', 'fill_constant', 'fill_constant_batch_size_like',
     'fill_zeros_like', 'fill_zeros_like2', 'flatten', 'flatten2', 'floor',
     'ftrl', 'fused_elemwise_activation', 'fused_embedding_fc_lstm',
-    'fused_embedding_seq_pool', 'fusion_gru', 'fusion_lstm',
-    'fusion_repeated_fc_relu', 'fusion_seqconv_eltadd_relu',
+    'fused_embedding_seq_pool', 'fused_fc_elementwise_layernorm', 'fusion_gru',
+    'fusion_lstm', 'fusion_repeated_fc_relu', 'fusion_seqconv_eltadd_relu',
     'fusion_seqexpand_concat_fc', 'fusion_seqpool_concat',
-    'fusion_seqpool_cvm_concat', 'fusion_squared_mat_sub', 'gather',
-    'gather_nd', 'gather_tree', 'gaussian_random_batch_size_like', 'gelu',
-    'generate_mask_labels', 'generate_proposal_labels', 'generate_proposals',
-    'greater_equal', 'greater_than', 'grid_sampler', 'group_norm',
-    'hard_shrink', 'hard_sigmoid', 'hard_swish', 'hash', 'hierarchical_sigmoid',
-    'hinge_loss', 'huber_loss', 'im2sequence', 'iou_similarity', 'is_empty',
-    'isfinite', 'isinf', 'isnan', 'kldiv_loss', 'l1_norm', 'lamb',
-    'lars_momentum', 'leaky_relu', 'less_equal', 'less_than', 'linspace',
-    'locality_aware_nms', 'lod_reset', 'log', 'log_loss', 'logical_and',
-    'logical_not', 'logical_or', 'logical_xor', 'logsigmoid', 'lookup_table',
-    'lookup_table_v2', 'lrn', 'margin_rank_loss', 'match_matrix_tensor',
-    'matmul', 'max_pool2d_with_index', 'max_pool3d_with_index', 'maxout',
-    'mean', 'mean_iou', 'merge_ids', 'mine_hard_examples', 'minus',
+    'fusion_seqpool_cvm_concat', 'fusion_squared_mat_sub',
+    'fusion_transpose_flatten_concat', 'gather', 'gather_nd', 'gather_tree',
+    'gaussian_random_batch_size_like', 'gelu', 'generate_mask_labels',
+    'generate_proposal_labels', 'generate_proposals', 'greater_equal',
+    'greater_than', 'grid_sampler', 'group_norm', 'hard_shrink', 'hard_sigmoid',
+    'hard_swish', 'hash', 'hierarchical_sigmoid', 'hinge_loss', 'huber_loss',
+    'im2sequence', 'increment', 'iou_similarity', 'is_empty', 'isfinite',
+    'isinf', 'isnan', 'kldiv_loss', 'l1_norm', 'lamb', 'lars_momentum',
+    'leaky_relu', 'less_equal', 'less_than', 'linspace', 'locality_aware_nms',
+    'lod_reset', 'log', 'log_loss', 'logical_and', 'logical_not', 'logical_or',
+    'logical_xor', 'logsigmoid', 'lookup_table', 'lookup_table_v2', 'lrn',
+    'margin_rank_loss', 'match_matrix_tensor', 'matmul',
+    'max_pool2d_with_index', 'max_pool3d_with_index', 'maxout', 'mean',
+    'mean_iou', 'merge_ids', 'mine_hard_examples', 'minus',
     'modified_huber_loss', 'momentum', 'moving_average_abs_max_scale', 'mul',
-    'multiclass_nms', 'multiclass_nms2', 'multiplex', 'nce', 'nearest_interp',
-    'not_equal', 'one_hot', 'one_hot_v2', 'pad', 'pad2d', 'pad_constant_like',
-    'pixel_shuffle', 'polygon_box_transform', 'pool2d', 'pool3d',
-    'positive_negative_pair', 'pow', 'precision_recall', 'prelu', 'prior_box',
-    'proximal_adagrad', 'proximal_gd', 'prroi_pool', 'psroi_pool', 'quantize',
-    'random_crop', 'range', 'rank_loss', 'reciprocal', 'reduce_all',
+    'multiclass_nms', 'multiclass_nms2', 'multihead_matmul', 'multiplex', 'nce',
+    'nearest_interp', 'not_equal', 'one_hot', 'one_hot_v2', 'pad', 'pad2d',
+    'pad_constant_like', 'pixel_shuffle', 'polygon_box_transform', 'pool2d',
+    'pool3d', 'positive_negative_pair', 'pow', 'precision_recall', 'prelu',
+    'prior_box', 'proximal_adagrad', 'proximal_gd', 'prroi_pool', 'psroi_pool',
+    'quantize', 'random_crop', 'range', 'rank_loss', 'reciprocal', 'reduce_all',
     'reduce_any', 'reduce_max', 'reduce_min', 'ref_by_trainer_id', 'relu',
     'relu6', 'requantize', 'reshape2', 'retinanet_detection_output',
     'retinanet_target_assign', 'reverse', 'roi_align',
     'roi_perspective_transform', 'roi_pool', 'round', 'row_conv',
     'rpn_target_assign', 'rsqrt', 'sampling_id', 'scale', 'scatter',
-    'scatter_nd_add', 'selu', 'sequence_concat', 'sequence_conv',
+    'scatter_nd_add', 'seed', 'selu', 'sequence_concat', 'sequence_conv',
     'sequence_enumerate', 'sequence_erase', 'sequence_expand',
     'sequence_expand_as', 'sequence_mask', 'sequence_pad', 'sequence_pool',
     'sequence_reshape', 'sequence_reverse', 'sequence_scatter',
@@ -91,7 +93,7 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'var_conv_2d', 'warpctc', 'where', 'yolo_box', 'yolov3_loss'
 ]
 
-NO_NEED_FP64_CHECK_GRAD_CASES = []
+NO_NEED_FP64_CHECK_GRAD_CASES = ['TestFSPOp']
 
 NO_FP16_CHECK_GRAD_OP_LIST = []
 
