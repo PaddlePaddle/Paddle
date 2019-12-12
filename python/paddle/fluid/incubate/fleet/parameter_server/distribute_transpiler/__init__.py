@@ -371,17 +371,15 @@ class DistributedTranspiler(Fleet):
                 type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
             executor.run(prog)
 
-        def __save_params_on_pserver(executor, dirname,
-                                     distributed_lookup_table, endpoints):
+        def __save_params_on_pserver(executor, dirname, endpoints):
             prog = Program()
             block = prog.global_block()
 
             # if there is lookup table, the trainer 0 will notify all pserver to save.
-            lookup_table_filename = os.path.join(dirname, "__lookup_table__")
             attrs = {}
             attrs['epmap'] = endpoints
-            attrs['dir'] = lookup_table_filename
-            attrs['lookup_table'] = distributed_lookup_table
+            attrs['dir'] = dirname
+            attrs['lookup_table'] = ""
             block.append_op(
                 type='checkpoint_notify', inputs={}, outputs={}, attrs=attrs)
             executor.run(prog)
@@ -443,19 +441,7 @@ class DistributedTranspiler(Fleet):
             vars=local_vars)
 
         if main_program._is_chief:
-            if remote_params_map:
-                __save_remote_params(executor, dirname, remote_params_map)
-            if main_program._distributed_lookup_table:
-                if hdfs_dirname:
-                    __save_distributed_lookup_tables(
-                        executor, hdfs_dirname,
-                        main_program._distributed_lookup_table,
-                        main_program._endpoints)
-                else:
-                    __save_distributed_lookup_tables(
-                        executor, dirname,
-                        main_program._distributed_lookup_table,
-                        main_program._endpoints)
+            __save_params_on_pserver(executor, dirname, main_program._endpoints)
         if hdfs_dirname:
             self._hdfs_client_trainer.upload(hdfs_dirname[len(HDFS_PREFIX):],
                                              dirname)
