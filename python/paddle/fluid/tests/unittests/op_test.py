@@ -182,9 +182,10 @@ class OpTestBase(unittest.TestCase):
                 if is_np_data(var_value):
                     dtype_set.add(var_value.dtype)
                 elif isinstance(var_value, (list, tuple)):
-                    # self.inputs = {'X': (x, x_lod)}
-                    # self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
-                    # self.inputs = {'X': [("x1", (x1, [x1_lod1])), ("x2", (x2, [x2_.lod2]))] }
+                    # the inputs are as follows: 
+                    # inputs = {'X': (x, x_lod)}
+                    # inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
+                    # inputs = {'X': [("x1", (x1, [x1_lod1])), ("x2", (x2, [x2_.lod2]))] }
                     for sub_val_value in var_value:
                         if is_np_data(sub_val_value):
                             dtype_set.add(sub_val_value.dtype)
@@ -197,7 +198,6 @@ class OpTestBase(unittest.TestCase):
 
         dtype_set = set()
         infer_dtype(inputs, dtype_set)
-        # infer_dtype(outputs, dtype_set)
         dtype_list = [
             np.dtype(np.float64), np.dtype(np.float32), np.dtype(np.float16),
             np.dtype(np.int64), np.dtype(np.int32), np.dtype(np.int16),
@@ -1347,7 +1347,7 @@ class OpTestFp16(OpTestBase):
 
 
 '''
-The op test with float32/64 precision should inherit OpTestFp16,
+The op test with float32/64 precision should inherit OpTest,
 which requires the test to call check_grad with float64 precision. 
 '''
 
