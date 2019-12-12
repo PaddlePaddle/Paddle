@@ -39,6 +39,7 @@ from .details import wait_server_ready, VarsDistributed
 from .details import delete_ops
 from ..distribute_lookup_table import find_distributed_lookup_table
 from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var
+from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy_factory import DistributedStrategy, ServerRuntimeConfig
 
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
@@ -47,10 +48,19 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 
 class GeoSgdTranspiler(DistributeTranspiler):
     def __init__(self, config=None):
-        if config is not None:
-            self.config = config
-        else:
+        if config is None:
             self.config = DistributeTranspilerConfig()
+            self.server_config = ServerRuntimeConfig()
+        elif isinstance(config, DistributedStrategy):
+            self.config = config.get_program_config()
+            self.server_config = config.get_server_runtime_config()
+        elif isinstance(config, DistributeTranspilerConfig):
+            self.config = config
+            self.server_config = ServerRuntimeConfig()
+        else:
+            raise TypeError(
+                "In GeoSgdTranspiler, config must be an instance of DistributeTranspilerConfig or DistributedStrategy"
+            )
 
         if self.config.split_method is None:
             self.config.split_method = RoundRobin
@@ -241,7 +251,11 @@ class GeoSgdTranspiler(DistributeTranspiler):
             "Fanin": self.trainer_num,
             "sync_mode": self.sync_mode,
             "grad_to_block_id": param_to_block_id,
-            "sparse_grad_to_param": sparse_grad_to_param
+            "sparse_grad_to_param": sparse_grad_to_param,
+            "rpc_get_thread_num": self.server_config._rpc_get_thread_num,
+            "rpc_send_thread_num": self.server_config._rpc_send_thread_num,
+            "rpc_prefetch_thread_num":
+            self.server_config._rpc_prefetch_thread_num
         }
 
         # step5 append the listen_and_serv op

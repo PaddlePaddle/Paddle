@@ -174,8 +174,11 @@ using RpcCtxMap = std::unordered_map<std::string, RpcContext>;
 
 class Communicator {
  public:
-  Communicator() {}
+  Communicator();
+  explicit Communicator(const std::map<std::string, int>& env_flags);
   virtual ~Communicator() {}
+
+  virtual void SetEnvFlagsDefault();
 
   virtual void Start() = 0;
   virtual void Stop() = 0;
@@ -221,9 +224,10 @@ class Communicator {
 
   template <typename T>
   static Communicator* InitInstance(
-      const paddle::framework::ProgramDesc& program, Scope* recv_scope) {
+      const paddle::framework::ProgramDesc& program, Scope* recv_scope,
+      const std::map<std::string, std::string>& env_flags) {
     std::call_once(init_flag_, &Communicator::InitWithProgram<T>, program,
-                   recv_scope);
+                   recv_scope, std::ref(env_flags));
     return communicator_.get();
   }
 
@@ -232,10 +236,12 @@ class Communicator {
       const paddle::framework::ProgramDesc& program, Scope* training_scope,
       std::map<std::string, std::map<std::string, std::vector<std::string>>>&
           vars_info,
-      const int& trainers, const int& geo_need_push_nums) {
+      const int& trainers, const int& geo_need_push_nums,
+      const std::map<std::string, std::string>& env_flags) {
     std::call_once(init_flag_, &Communicator::InitWithTranspilerInfo<T>,
                    program, training_scope, std::ref(vars_info),
-                   std::ref(trainers), std::ref(geo_need_push_nums));
+                   std::ref(trainers), std::ref(geo_need_push_nums),
+                   std::ref(env_flags));
     return communicator_.get();
   }
 
@@ -253,9 +259,10 @@ class Communicator {
 
   template <typename T>
   static void InitWithProgram(const paddle::framework::ProgramDesc& program,
-                              Scope* recv_scope) {
+                              Scope* recv_scope,
+                              const std::map<std::string, int>& env_flags) {
     if (communicator_.get() == nullptr) {
-      communicator_.reset(new T());
+      communicator_.reset(new T(std::ref(env_flags)));
       communicator_->InitImpl(program, recv_scope);
     }
   }
@@ -265,9 +272,10 @@ class Communicator {
       const paddle::framework::ProgramDesc& program, Scope* training_scope,
       std::map<std::string, std::map<std::string, std::vector<std::string>>>&
           vars_info,
-      const int& trainers, const int& geo_need_push_nums) {
+      const int& trainers, const int& geo_need_push_nums,
+      const std::map<std::string, int>& env_flags) {
     if (communicator_.get() == nullptr) {
-      communicator_.reset(new T());
+      communicator_.reset(new T(std::ref(env_flags)));
       communicator_->InitImpl(program, training_scope, std::ref(vars_info),
                               std::ref(trainers), std::ref(geo_need_push_nums));
     }
@@ -277,6 +285,7 @@ class Communicator {
   bool running_ = false;
   static std::shared_ptr<Communicator> communicator_;
   static std::once_flag init_flag_;
+  std::unordered_map<std::string, int> env_flags_dict;
 };
 
 using SparseIdsMap =
@@ -284,7 +293,9 @@ using SparseIdsMap =
 
 class AsyncCommunicator : public Communicator {
  public:
-  AsyncCommunicator() {}
+  AsyncCommunicator() Communicator() {}
+  explicit AsyncCommunicator(const std::map<std::string, int>& env_flags)
+      : Communicator(env_flags) {}
   ~AsyncCommunicator();
   void Start() override;
   void Stop() override;
@@ -331,7 +342,9 @@ class AsyncCommunicator : public Communicator {
 
 class GeoSgdCommunicator : public Communicator {
  public:
-  GeoSgdCommunicator() {}
+  GeoSgdCommunicator() : Communicator() {}
+  explicit GeoSgdCommunicator(const std::map<std::string, int>& env_flags)
+      : Communicator(env_flags) {}
   ~GeoSgdCommunicator();
   void InitImpl(
       const paddle::framework::ProgramDesc& program, Scope* training_scope,

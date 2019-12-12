@@ -39,19 +39,23 @@ void BindCommunicator(py::module* m) {
   // Communicator is already used by nccl, change to DistCommunicator
   py::class_<Communicator, std::shared_ptr<Communicator>>(*m,
                                                           "DistCommunicator")
-      .def(py::init([](const ProgramDesc& program, Scope* param_scope) {
+      .def(py::init([](const ProgramDesc& program, Scope* param_scope,
+                       std::map<std::string, int>& env_flags) {
         VLOG(0) << "using communicator";
-        Communicator::InitInstance<AsyncCommunicator>(program, param_scope);
+        Communicator::InitInstance<AsyncCommunicator>(program, param_scope,
+                                                      env_flags);
         return Communicator::GetInstantcePtr();
       }))
       .def(py::init([](
           const ProgramDesc& program, Scope* training_scope,
           std::map<std::string,
                    std::map<std::string, std::vector<std::string>>>& vars_info,
-          int& trainers, int& geo_need_push_nums) {
+          int& trainers, int& geo_need_push_nums,
+          std::map<std::string, int>& env_flags) {
         VLOG(0) << "using geo sgd communicator";
         Communicator::InitInstance<GeoSgdCommunicator>(
-            program, training_scope, vars_info, trainers, geo_need_push_nums);
+            program, training_scope, vars_info, trainers, geo_need_push_nums,
+            env_flags);
         return Communicator::GetInstantcePtr();
       }))
       .def("stop", &Communicator::Stop)

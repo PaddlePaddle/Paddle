@@ -28,7 +28,8 @@ class Communicator(object):
                  program,
                  vars_info=None,
                  trainers=None,
-                 geo_sgd_need_push_nums=None):
+                 geo_sgd_need_push_nums=None,
+                 env_flags=None):
         """
         Communicator is used for async distribute training in distribute_transpiler mode.
         It's a wrapper of a cpp class Communicator and should be used inside fleet API.
@@ -56,14 +57,19 @@ class Communicator(object):
             if op.type == "recv":
                 op._set_attr('do_not_run', True)
         # Todo: Add check
+        if env_flags is None:
+            env_flags = {}
+
         if vars_info and trainers and geo_sgd_need_push_nums:
             # for geo sgd
             self.communicator_ = core.DistCommunicator(
                 program.desc,
-                global_scope(), vars_info, trainers, geo_sgd_need_push_nums)
+                global_scope(), vars_info, trainers, geo_sgd_need_push_nums,
+                env_flags)
         else:
             self.communicator_ = core.DistCommunicator(program.desc,
-                                                       global_scope())
+                                                       global_scope(),
+                                                       env_flags)
 
     def start(self):
         """

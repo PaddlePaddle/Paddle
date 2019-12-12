@@ -356,6 +356,10 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
+  auto rpc_get_thread_num = Attr<int>("rpc_get_thread_num");
+  auto rpc_send_thread_num = Attr<int>("rpc_send_thread_num");
+  auto rpc_prefetch_thread_num = Attr<int>("rpc_prefetch_thread_num");
+
   request_send_handler_.reset(
       new distributed::RequestSendHandler(sync_mode, dc_sgd));
   request_get_handler_.reset(
@@ -370,21 +374,18 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
       new distributed::RequestNotifyHandler(sync_mode, lr_decay_block_id));
 
   rpc_service_->RegisterRPC(distributed::kRequestSend,
-                            request_send_handler_.get(),
-                            FLAGS_rpc_send_thread_num);
+                            request_send_handler_.get(), rpc_send_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestGet,
-                            request_get_handler_.get(),
-                            FLAGS_rpc_get_thread_num);
+                            request_get_handler_.get(), rpc_get_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
                             request_prefetch_handler_.get(),
-                            FLAGS_rpc_prefetch_thread_num);
+                            rpc_prefetch_thread_num);
   rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
                             request_checkpoint_handler_.get());
   rpc_service_->RegisterRPC(distributed::kRequestGetNoBarrier,
                             request_get_no_barrier_handler_.get());
   rpc_service_->RegisterRPC(distributed::kRequestNotify,
-                            request_notify_handler_.get(),
-                            FLAGS_rpc_send_thread_num);
+                            request_notify_handler_.get(), rpc_send_thread_num);
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
@@ -542,6 +543,11 @@ class ListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(-1);
     AddAttr<int>(kLRDecayBlockId, "BolckID to run lr decay on pserer.")
         .SetDefault(-1);
+    AddAttr<int>("rpc_get_thread_num", "pserver get thread num.").SetDefault(1);
+    AddAttr<int>("rpc_send_thread_num", "pserver send thread num.")
+        .SetDefault(1);
+    AddAttr<int>("rpc_prefetch_thread_num", "pserver prefetch thread num.")
+        .SetDefault(1);
   }
 };
 
