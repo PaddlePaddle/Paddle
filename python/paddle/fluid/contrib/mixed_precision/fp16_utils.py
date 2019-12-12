@@ -115,32 +115,29 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     return num_cast_ops
 
 
-def check_next_input_backward_role_op(ops, idx, cur_op, var_name):
+def check_op_validation(ops, idx, cur_op):
     """
-    Check whether has op (backward_role) that inputs var_name 
-    variable behind cur_op.
+    Check whether has op (backward_role) that inputs variable in
+    cur_op's outputs behind cur_op.
     If yes, it means _move_optimize_ops_back will cause errors
     in program order. Therefore raise valueerror.
-    If no, return True to continue move in _move_optimize_ops_back.
+    If no, return True to continue moving in _move_optimize_ops_back.
 
     Args:
         ops (list): A list of ops.
-        id (int): index of cur_op in ops
+        idx (int): index of cur_op in ops
         cur_op (Operator): Current operator which has var_name variable.
-        var_name (string): Variable name.
+        var_name_list (list): output_arg_name list of cur_op.
     """
     BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
-    next_op = []
     for i in range(idx + 1, len(ops)):
         op = ops[i]
         if op.attr('op_role') & int(BACKWARD):
             for input_name in op.input_arg_names:
-                if input_name == var_name:
-                    next_op.append(op)
-    if next_op:
-        raise ValueError("There must be no next op that inputs {0} "
-                         "variable after {1} op (optimize_role)".format(
-                             var_name, cur_op.type))
+                if input_name in cur_op.output_arg_names:
+                    raise ValueError("There must be no next op that inputs {0} "
+                                     "variable after {1} op (optimize_role)".
+                                     format(var_name, cur_op.type))
     return True
 
 
@@ -156,20 +153,17 @@ def _move_optimize_ops_back(block):
     optimize_ops = []
     for idx, op in reversed(list(enumerate(block.ops))):
         if op.attr('op_role') & int(OPTIMIZE):
-            for output_name in op.output_arg_names:
-                if check_next_input_backward_role_op(block.ops, idx, op,
-                                                     output_name):
-                    continue
-            optimize_ops.append([
-                op.type, dict(
-                    zip(op.input_names,
-                        [block.var(name) for name in op.input_arg_names])),
-                dict(
-                    zip(op.output_names,
-                        [block.var(name) for name in op.output_arg_names])),
-                op.all_attrs()
-            ])
-            block._remove_op(idx)
+            if check_op_validation(block.ops, idx, op):
+                optimize_ops.append([
+                    op.type, dict(
+                        zip(op.input_names,
+                            [block.var(name) for name in op.input_arg_names])),
+                    dict(
+                        zip(op.output_names,
+                            [block.var(name) for name in op.output_arg_names])),
+                    op.all_attrs()
+                ])
+                block._remove_op(idx)
     for op in reversed(optimize_ops):
         assert len(op) == 4
         block.append_op(type=op[0], inputs=op[1], outputs=op[2], attrs=op[3])
