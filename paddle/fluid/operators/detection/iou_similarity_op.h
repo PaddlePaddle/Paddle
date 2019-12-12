@@ -36,6 +36,10 @@ inline HOSTDEVICE T IOUSimilarity(T xmin1, T ymin1, T xmax1, T ymax1, T xmin2,
   T inter_ymin = ymin1 > ymin2 ? ymin1 : ymin2;
   T inter_height = inter_ymax - inter_ymin;
   T inter_width = inter_xmax - inter_xmin;
+  if (normalized) {
+    inter_height = inter_height + 1;
+    inter_width = inter_width + 1;
+  }
   inter_height = inter_height > zero ? inter_height : zero;
   inter_width = inter_width > zero ? inter_width : zero;
   T inter_area = inter_width * inter_height;
