@@ -34,7 +34,7 @@ class TestPSlib(unittest.TestCase):
 
     def test_fleet3(self):
         """
-        Testcase for Fleet.
+        Testcase for Fleet, test dataset/trainer/worker/fleet.
         """
         try:
             import mpi4py
@@ -140,9 +140,9 @@ class TestPSlib(unittest.TestCase):
             "dump_fields_path": "./fleet_dump_fields_3",
             "dump_param": ["fc_0.b_0"],
             "check_nan_var_names": ["click"],
-            "copy_table" : copy_table,
-            "embedding" : { "sparse_shard_num": 1 },
-            "embedding1" : { "sparse_shard_num": 1 }
+            "copy_table": copy_table,
+            "embedding": { "sparse_shard_num": 1 },
+            "embedding1": { "sparse_shard_num": 1 }
         })
         adam.minimize([avg_cost], [scope])
 

@@ -34,7 +34,7 @@ class TestPSlib(unittest.TestCase):
 
     def test_fleet1(self):
         """
-        Testcase for Fleet.
+        Testcase for Fleet, test dataset/trainer/worker/fleet.
         """
         try:
             import mpi4py
@@ -54,7 +54,7 @@ class TestPSlib(unittest.TestCase):
             data += "1 1 1 1 1 0 1 5 2 3 4 4 6 6 6 6 1 5\n"
             data += "1 1 1 1 1 1 1 6 2 3 5 4 7 7 7 7 1 6\n"
             data += "1 1 1 1 1 0 1 7 2 3 6 4 8 8 8 8 1 7\n"
-            f.write(data) 
+            f.write(data)
 
         train_program = fluid.Program()
         startup_program = fluid.Program()
@@ -107,7 +107,7 @@ class TestPSlib(unittest.TestCase):
             sqrerr, abserr, prob, q, pos, total = \
                 fluid.contrib.layers.ctr_metric_bundle(similarity_norm, \
                 fluid.layers.cast(x=label, dtype='float32'))
-            
+
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         fleet.init(exe)
@@ -131,18 +131,18 @@ class TestPSlib(unittest.TestCase):
 
         adam = fluid.optimizer.Adam(learning_rate=0.000005)
         adam = fleet.distributed_optimizer(adam, strategy={
-            "use_cvm" : True,
-            "adjust_ins_weight" : adjust_ins_weight,
-            "scale_datanorm" : 1e-4,
+            "use_cvm": True,
+            "adjust_ins_weight": adjust_ins_weight,
+            "scale_datanorm": 1e-4,
             "dump_slot": True,
             "stat_var_names": thread_stat_var_names,
             "dump_fields": ["click"],
             "dump_fields_path": "./fleet_dump_fields",
             "dump_param": ["fc_0.b_0"],
             "check_nan_var_names": ["click"],
-            "copy_table" : copy_table,
-            "embedding" : { "sparse_shard_num": 1 },
-            "embedding1" : { "sparse_shard_num": 1 }
+            "copy_table": copy_table,
+            "embedding": { "sparse_shard_num": 1 },
+            "embedding1": { "sparse_shard_num": 1 }
         })
         adam.minimize([avg_cost], [scope])
 

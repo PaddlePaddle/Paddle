@@ -34,7 +34,7 @@ class TestPSlib(unittest.TestCase):
 
     def test_fleet2(self):
         """
-        Testcase for Fleet.
+        Testcase for Fleet, test dataset/trainer/worker/fleet.
         """
         try:
             import mpi4py
@@ -131,18 +131,18 @@ class TestPSlib(unittest.TestCase):
 
         adam = fluid.optimizer.Adam(learning_rate=0.000005)
         adam = fleet.distributed_optimizer(adam, strategy={
-            "use_cvm" : True,
-            "adjust_ins_weight" : adjust_ins_weight,
-            "scale_datanorm" : 1e-4,
+            "use_cvm": True,
+            "adjust_ins_weight": adjust_ins_weight,
+            "scale_datanorm": 1e-4,
             "dump_slot": True,
             "stat_var_names": thread_stat_var_names,
             "dump_fields": ["click"],
             "dump_fields_path": "./fleet_dump_fields_2",
             "dump_param": ["fc_0.b_0"],
             "check_nan_var_names": ["click"],
-            "copy_table" : copy_table,
-            "embedding" : { "sparse_shard_num": 1 },
-            "embedding1" : { "sparse_shard_num": 1 }
+            "copy_table": copy_table,
+            "embedding": { "sparse_shard_num": 1 },
+            "embedding1": { "sparse_shard_num": 1 }
         })
         adam.minimize([avg_cost], [scope])
 
