@@ -125,9 +125,8 @@ def check_op_validation(ops, idx, cur_op):
 
     Args:
         ops (list): A list of ops.
-        idx (int): index of cur_op in ops
-        cur_op (Operator): Current operator which has var_name variable.
-        var_name_list (list): output_arg_name list of cur_op.
+        idx (int): index of cur_op in ops.
+        cur_op (Operator): Current operator.
     """
     BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
     for i in range(idx + 1, len(ops)):
