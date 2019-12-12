@@ -33,7 +33,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
-import op_accuracy_white_list
+from white_list import op_accuracy_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -178,24 +178,28 @@ class OpTestBase(unittest.TestCase):
             assert isinstance(
                 numpy_dict,
                 dict), "self.inputs, self.outputs must be numpy_dict"
+            # the inputs are as follows:
+            # case 1: inputs = {'X': x}
+            # case 2: inputs = {'X': (x, x_lod)}
+            # case 3: for inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
+            # case 4: inputs = {'X': [("x1", (x1, [x1_lod1])), ("x2", (x2, [x2_.lod2]))]}
+            # TODO infer dtype from inputs maybe obtain wrong type.
             for _, var_value in six.iteritems(numpy_dict):
-                if is_np_data(var_value):
+                if is_np_data(var_value):  # case 1
                     dtype_set.add(var_value.dtype)
-                elif isinstance(var_value, (list, tuple)):
-                    # the inputs are as follows: 
-                    # inputs = {'X': (x, x_lod)}
-                    # inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
-                    # inputs = {'X': [("x1", (x1, [x1_lod1])), ("x2", (x2, [x2_.lod2]))] }
+                elif isinstance(var_value, (list, tuple)):  # case 2, 3, 4
                     for sub_val_value in var_value:
-                        if is_np_data(sub_val_value):
+                        if is_np_data(sub_val_value):  # case 2
                             dtype_set.add(sub_val_value.dtype)
                         elif len(sub_val_value) > 1 and is_np_data(
-                                sub_val_value[1]):
+                                sub_val_value[1]):  # case 3
                             dtype_set.add(sub_val_value[1].dtype)
                         elif len(sub_val_value) > 1 and isinstance(sub_val_value[1], (list, tuple)) \
-                            and is_np_data(sub_val_value[1][0]):
+                            and is_np_data(sub_val_value[1][0]): # case 4
                             dtype_set.add(sub_val_value[1][0].dtype)
 
+        # infer dtype from inputs, and dtype means the precision of the test
+        # collect dtype of all inputs
         dtype_set = set()
         infer_dtype(inputs, dtype_set)
         dtype_list = [
@@ -203,6 +207,7 @@ class OpTestBase(unittest.TestCase):
             np.dtype(np.int64), np.dtype(np.int32), np.dtype(np.int16),
             np.dtype(np.int8)
         ]
+        # check the dtype in dtype_list in order, select the first dtype that in dtype_set
         for dtype in dtype_list:
             if dtype in dtype_set:
                 self.dtype = dtype
