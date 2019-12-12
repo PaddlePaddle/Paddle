@@ -22,7 +22,7 @@ inline HOSTDEVICE T IOUSimilarity(T xmin1, T ymin1, T xmax1, T ymax1, T xmin2,
   constexpr T zero = static_cast<T>(0);
   T area1;
   T area2;
-  if (normalized) {
+  if (!normalized) {
     area1 = (ymax1 - ymin1 + 1) * (xmax1 - xmin1 + 1);
     area2 = (ymax2 - ymin2 + 1) * (xmax2 - xmin2 + 1);
   } else {
@@ -36,7 +36,7 @@ inline HOSTDEVICE T IOUSimilarity(T xmin1, T ymin1, T xmax1, T ymax1, T xmin2,
   T inter_ymin = ymin1 > ymin2 ? ymin1 : ymin2;
   T inter_height = inter_ymax - inter_ymin;
   T inter_width = inter_xmax - inter_xmin;
-  if (normalized) {
+  if (!normalized) {
     inter_height = inter_height + 1;
     inter_width = inter_width + 1;
   }

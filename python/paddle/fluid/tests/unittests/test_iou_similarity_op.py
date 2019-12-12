@@ -43,7 +43,7 @@ class TestIOUSimilarityOp(OpTest):
             for col in range(self.boxes2.shape[0]):
                 xmin1, ymin1, xmax1, ymax1 = self.boxes1[row]
                 xmin2, ymin2, xmax2, ymax2 = self.boxes2[col]
-                if self.box_normalized:
+                if not self.box_normalized:
                     area1 = (ymax1 - ymin1 + 1) * (xmax1 - xmin1 + 1)
                     area2 = (ymax2 - ymin2 + 1) * (xmax2 - xmin2 + 1)
                 else:
@@ -56,7 +56,7 @@ class TestIOUSimilarityOp(OpTest):
                 inter_ymin = max(ymin1, ymin2)
                 inter_height = inter_ymax - inter_ymin
                 inter_width = inter_xmax - inter_xmin
-                if self.box_normalized:
+                if not self.box_normalized:
                     inter_height += 1
                     inter_width += 1
                 inter_height = max(inter_height, 0)
