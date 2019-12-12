@@ -147,7 +147,7 @@ class TestHSigmoidOp(OpTest):
         self.op_type = "hierarchical_sigmoid"
         num_classes = 6
         feature_size = 8
-        batch_size = 4
+        batch_size = 15
         x = np.random.random((batch_size, feature_size)).astype("float32") * 2
         w = np.random.random(
             (num_classes - 1, feature_size)).astype("float32") * 2

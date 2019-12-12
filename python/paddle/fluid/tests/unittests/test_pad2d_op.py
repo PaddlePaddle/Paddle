@@ -56,7 +56,7 @@ class TestPad2dOp(OpTest):
         self.check_grad(['X'], 'Out', max_relative_error=0.006)
 
     def initTestCase(self):
-        self.shape = (2, 3, 4, 4)
+        self.shape = (2, 3, 4, 5)
         self.paddings = [0, 1, 2, 3]
         self.mode = "constant"
         self.data_format = "NCHW"
@@ -65,7 +65,7 @@ class TestPad2dOp(OpTest):
 
 class TestCase1(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 3, 4, 4)
+        self.shape = (2, 3, 4, 5)
         self.paddings = [0, 1, 2, 3]
         self.mode = "reflect"
         self.data_format = "NCHW"
@@ -73,7 +73,7 @@ class TestCase1(TestPad2dOp):
 
 class TestCase2(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 3, 4, 4)
+        self.shape = (2, 3, 4, 5)
         self.paddings = [0, 1, 2, 3]
         self.mode = "edge"
         self.data_format = "NCHW"
@@ -81,7 +81,7 @@ class TestCase2(TestPad2dOp):
 
 class TestCase3(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 4, 4, 2)
+        self.shape = (2, 4, 4, 4)
         self.paddings = [0, 1, 2, 3]
         self.mode = "reflect"
         self.data_format = "NHWC"
@@ -89,7 +89,7 @@ class TestCase3(TestPad2dOp):
 
 class TestCase4(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 4, 4, 2)
+        self.shape = (2, 4, 4, 4)
         self.paddings = [0, 1, 2, 3]
         self.mode = "edge"
         self.data_format = "NHWC"
@@ -97,7 +97,7 @@ class TestCase4(TestPad2dOp):
 
 class TestCase5(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 4, 4, 2)
+        self.shape = (2, 4, 4, 4)
         self.paddings = [0, 1, 2, 3]
         self.mode = "constant"
         self.pad_value = 1.2
@@ -106,7 +106,7 @@ class TestCase5(TestPad2dOp):
 
 class TestCase6(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 4, 4, 2)
+        self.shape = (2, 4, 4, 4)
         self.paddings = [0, 1, 2, 3]
         self.mode = "constant"
         self.pad_value = 1.2
@@ -116,7 +116,7 @@ class TestCase6(TestPad2dOp):
 
 class TestCase7(TestPad2dOp):
     def initTestCase(self):
-        self.shape = (2, 3, 4, 4)
+        self.shape = (2, 3, 4, 5)
         self.paddings = [0, 1, 2, 3]
         self.mode = "reflect"
         self.data_format = "NCHW"

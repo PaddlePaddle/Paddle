@@ -35,9 +35,9 @@ class TestReshapeOp(OpTest):
         }
 
     def init_data(self):
-        self.ori_shape = (2, 25)
-        self.new_shape = (5, 10)
-        self.infered_shape = (5, 10)
+        self.ori_shape = (2, 60)
+        self.new_shape = (12, 10)
+        self.infered_shape = (12, 10)
 
     def test_check_output(self):
 
@@ -49,7 +49,7 @@ class TestReshapeOp(OpTest):
 
 class TestReshapeOpDimInfer1(TestReshapeOp):
     def init_data(self):
-        self.ori_shape = (5, 10)
+        self.ori_shape = (5, 25)
         self.new_shape = (5, -1, 5)
         self.infered_shape = (5, -1, 5)
 
