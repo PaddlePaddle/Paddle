@@ -18,6 +18,7 @@ from paddle.fluid import core
 from paddle.fluid import framework
 from .tracer import Tracer
 import logging
+import warnings
 import objgraph
 
 __all__ = [
@@ -174,7 +175,7 @@ def _print_debug_msg(limit=5, is_test=False):
 
 # TODO(zhiqiu): Param 'block' should be deprecated, since block is meaningless in dygraph 
 @framework.dygraph_only
-def to_variable(value, block=None, name=None, zero_copy=None):
+def to_variable(value, block=None, name=None, zero_copy=False):
     """
     The API will create a ``Variable`` object from numpy\.ndarray or Variable object.
 
@@ -182,7 +183,7 @@ def to_variable(value, block=None, name=None, zero_copy=None):
         value(ndarray): The numpy\.ndarray object that needs to be converted, it can be multi-dimension, and the data type is one of numpy\.{float16, float32, float64, int16, int32, int64, uint8, uint16}.
         block(fluid.Block, optional): Which block this variable will be in. Default: None.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`
-        zero_copy(bool, optional): Whether to share memory with the input numpy array. This parameter only works with CPUPlace and will be set to True when it is None. Default: None.
+        zero_copy(bool, optional): Whether to share memory with the input. This parameter only works with CPUPlace when the input is a numpy array. Default: False.
 
     Returns:
         Variable: ``Tensor`` created from the specified numpy\.ndarray object, data type and shape is the same as ``value`` .
@@ -205,14 +206,9 @@ def to_variable(value, block=None, name=None, zero_copy=None):
 
     """
     if isinstance(value, np.ndarray):
-        assert framework.in_dygraph_mode(
-        ), "to_variable could only be called in dygraph mode"
-        if isinstance(framework._current_expected_place(),
-                      framework.core.CPUPlace):
-            if zero_copy is None:
-                zero_copy = True
-        else:
-            assert not zero_copy, "zero_copy mode can only be used with CPUPlace"
+        if zero_copy and not isinstance(framework._current_expected_place(),
+                                        framework.core.CPUPlace):
+            warnings.warn("zero_copy mode only works with CPUPlace")
             zero_copy = False
         py_var = core.VarBase(
             value=value,
@@ -222,6 +218,8 @@ def to_variable(value, block=None, name=None, zero_copy=None):
             name=name if name else '')
         return py_var
     elif isinstance(value, (core.VarBase, framework.Variable)):
+        if not zero_copy:
+            value = value.detach()
         return value
     else:
         raise TypeError(
