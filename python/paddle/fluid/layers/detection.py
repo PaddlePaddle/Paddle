@@ -653,7 +653,7 @@ def detection_output(loc,
 
 
 @templatedoc()
-def iou_similarity(x, y, box_normalized=False, name=None):
+def iou_similarity(x, y, box_normalized=True, name=None):
     """
     ${comment}
 
