@@ -529,8 +529,8 @@ void FleetWrapper::LoadFromPaddleModel(Scope& scope, const uint64_t table_id,
 void FleetWrapper::LoadModel(const std::string& path, const int mode) {
 #ifdef PADDLE_WITH_PSLIB
   auto ret = pslib_ptr_->_worker_ptr->load(path, std::to_string(mode));
-  ret.wait();
-  if (ret.get() != 0) {
+  FutureWait(ret);
+  if (FutureGet(ret) != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
     sleep(sleep_seconds_before_fail_exit_);
     exit(-1);
