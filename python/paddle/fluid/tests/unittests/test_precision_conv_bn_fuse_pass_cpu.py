@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import unittest
-import os
 import numpy as np
 import paddle.fluid as fluid
 from paddle.fluid.core import PaddleTensor
@@ -35,7 +34,7 @@ class TestConvBnFusePrecision(unittest.TestCase):
             [1, 3, 100, 100]).astype('float32')
         fw_output = exe.run(feed={"x": np_x}, fetch_list=[bn_res])
         # save the model
-        path = "./tmp/inference_model"
+        path = "./tmp/conv_bn_fuse"
         fluid.io.save_inference_model(
             dirname=path,
             feeded_var_names=['x'],
@@ -59,11 +58,6 @@ class TestConvBnFusePrecision(unittest.TestCase):
             np.allclose(
                 np.array(fw_output[0]).ravel(), output_data.ravel(),
                 atol=1e-04))
-        files = os.listdir(path)
-        for item in files:
-            f_path = os.path.join(path, item)
-            os.remove(f_path)
-        os.removedirs("./tmp/")
 
 
 if __name__ == '__main__':

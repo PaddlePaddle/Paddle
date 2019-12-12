@@ -47,7 +47,7 @@ class TestSeqconvEltaddReluFusePass(unittest.TestCase):
         fw_output = exe.run(feed={"x": in_data},
                             fetch_list=[seqconv_res],
                             return_numpy=False)
-        path = "./tmp/inference_model"
+        path = "./tmp/seqconv_eltadd_relu"
         fluid.io.save_inference_model(
             dirname=path,
             feeded_var_names=['x'],
@@ -70,11 +70,6 @@ class TestSeqconvEltaddReluFusePass(unittest.TestCase):
             np.allclose(
                 np.array(fw_output[0]).ravel(), output_data.ravel(),
                 rtol=1e-05))
-        files = os.listdir(path)
-        for item in files:
-            f_path = os.path.join(path, item)
-            os.remove(f_path)
-        os.removedirs("./tmp/")
 
     def test_seqconv_eltadd_relu_fuse_pass_gpu_precision(self):
         if fluid.is_compiled_with_cuda():
@@ -102,7 +97,7 @@ class TestSeqconvEltaddReluFusePass(unittest.TestCase):
             fw_output = exe.run(feed={"x": in_data},
                                 fetch_list=[seqconv_res],
                                 return_numpy=False)
-            path = "./tmp/inference_model"
+            path = "./tmp/seqconv_eltadd_relu"
             fluid.io.save_inference_model(
                 dirname=path,
                 feeded_var_names=['x'],
@@ -126,11 +121,6 @@ class TestSeqconvEltaddReluFusePass(unittest.TestCase):
                     np.array(fw_output[0]).ravel(),
                     output_data.ravel(),
                     rtol=1e-05))
-            files = os.listdir(path)
-            for item in files:
-                f_path = os.path.join(path, item)
-                os.remove(f_path)
-            os.removedirs("./tmp/")
 
 
 if __name__ == '__main__':

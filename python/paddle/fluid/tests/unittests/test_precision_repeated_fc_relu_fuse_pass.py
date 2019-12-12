@@ -54,7 +54,7 @@ class TestRepeatedFcReluFusePass(unittest.TestCase):
             [10, 10]).astype('float32')
         fw_output = exe.run(feed={"x": np_x}, fetch_list=[fc2_res])
         print(fw_output[0])
-        path = "./tmp/inference_model"
+        path = "./tmp/repeated_fc_relu"
         fluid.io.save_inference_model(
             dirname=path,
             feeded_var_names=['x'],
@@ -75,11 +75,6 @@ class TestRepeatedFcReluFusePass(unittest.TestCase):
             np.allclose(
                 np.array(fw_output[0]).ravel(), output_data.ravel(),
                 rtol=1e-05))
-        files = os.listdir(path)
-        for item in files:
-            f_path = os.path.join(path, item)
-            os.remove(f_path)
-        os.removedirs("./tmp/")
 
 
 if __name__ == '__main__':

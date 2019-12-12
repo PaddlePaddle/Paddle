@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-import os
 import unittest
 import paddle.fluid as fluid
 from paddle.fluid.core import PaddleTensor
@@ -38,7 +37,7 @@ class TestConvEltaddFusePass(unittest.TestCase):
                 [1, 3, 100, 100]).astype('float32')
             fw_output = exe.run(feed={"x": np_x}, fetch_list=[conv_res])
             print(fw_output[0])
-            path = "./tmp/inference_model"
+            path = "./tmp/conv_eltadd_fuse"
             fluid.io.save_inference_model(
                 dirname=path,
                 feeded_var_names=['x'],
@@ -60,11 +59,6 @@ class TestConvEltaddFusePass(unittest.TestCase):
                     np.array(fw_output[0]).ravel(),
                     output_data.ravel(),
                     rtol=1e-05))
-            files = os.listdir(path)
-            for item in files:
-                f_path = os.path.join(path, item)
-                os.remove(f_path)
-            os.removedirs("./tmp/")
 
 
 if __name__ == '__main__':
