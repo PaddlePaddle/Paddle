@@ -14,11 +14,15 @@
 
 # For op in FP16_CHECK_OP_LIST, the op test of fp16 precision should inherit OpTestFp16
 FP16_CHECK_OP_LIST = [
-    'concat', 'pad', 'elementwise_mul', 'elementwise_div',
-    'softmax_with_cross_entropy', 'sum', 'mul'
+    'abs', 'acos', 'asin', 'atan', 'brelu', 'concat', 'cos', 'elementwise_div',
+    'elementwise_mul', 'elu', 'exp', 'gelu', 'hard_shrink', 'hard_swish', 'log',
+    'logsigmoid', 'mean', 'mul', 'pad', 'pool2d', 'pow', 'reciprocal', 'relu',
+    'relu6', 'scale', 'sigmoid', 'sin', 'slice', 'soft_relu', 'softmax',
+    'softmax_with_cross_entropy', 'softshrink', 'softsign', 'sqrt', 'square',
+    'stanh', 'sum', 'swish', 'tanh', 'tanh_shrink', 'thresholded_relu'
 ]
 
-# For op in NO_FP64_CHECK_GRAD_OP_LIST, the op test 
+# For op in NO_FP64_CHECK_GRAD_OP_LIST, the op test requires check_grad with fp64 precision
 NO_FP64_CHECK_GRAD_OP_LIST = [
     'abs', 'accuracy', 'acos', 'adadelta', 'adagrad', 'adam', 'adamax',
     'add_position_encoding', 'affine_grid', 'anchor_generator', 'arg_max',
