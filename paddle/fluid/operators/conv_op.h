@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/fluid/operators/math/transform.h"
 #include "paddle/fluid/operators/math/vol2col.h"
 
 namespace paddle {
@@ -127,102 +128,6 @@ inline bool IsExpand(const std::vector<int64_t>& filter_dim,
   return !(filter_1 && strides_1 && padding_0 && dilation_1);
 }
 
-template <typename DeviceContext, typename T>
-inline void ResizeToChannelFirst(const framework::ExecutionContext& context,
-                                 const Tensor* input,
-                                 Tensor* transformed_input) {
-  int dim = input->dims().size() - 2;
-  if (dim == 3) {
-    // input
-    transformed_input->Resize(input->dims());
-
-    auto in_dims_vec = framework::vectorize(input->dims());
-    in_dims_vec[1] = input->dims()[4];
-    in_dims_vec[2] = input->dims()[1];
-    in_dims_vec[3] = input->dims()[2];
-    in_dims_vec[4] = input->dims()[3];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
-
-  } else if (dim == 2) {
-    // input
-    transformed_input->Resize(input->dims());
-
-    auto in_dims_vec = framework::vectorize(input->dims());
-    in_dims_vec[1] = input->dims()[3];
-    in_dims_vec[2] = input->dims()[1];
-    in_dims_vec[3] = input->dims()[2];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
-  }
-}
-
-template <typename DeviceContext, typename T>
-inline void ResizeToChannelLast(const framework::ExecutionContext& context,
-                                const Tensor* input,
-                                Tensor* transformed_input) {
-  int dim = input->dims().size() - 2;
-  if (dim == 3) {
-    // input
-    transformed_input->Resize(input->dims());
-
-    auto in_dims_vec = framework::vectorize(input->dims());
-    in_dims_vec[1] = input->dims()[2];
-    in_dims_vec[2] = input->dims()[3];
-    in_dims_vec[3] = input->dims()[4];
-    in_dims_vec[4] = input->dims()[1];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
-
-  } else if (dim == 2) {
-    // input
-    transformed_input->Resize(input->dims());
-
-    auto in_dims_vec = framework::vectorize(input->dims());
-    in_dims_vec[1] = input->dims()[2];
-    in_dims_vec[2] = input->dims()[3];
-    in_dims_vec[3] = input->dims()[1];
-    transformed_input->Resize(framework::make_ddim(in_dims_vec));
-    transformed_input->mutable_data<T>(context.GetPlace());
-  }
-}
-
-template <typename DeviceContext, typename T>
-inline void TransToChannelFirst(const framework::ExecutionContext& context,
-                                const Tensor* input,
-                                Tensor* transformed_input) {
-  int dim = input->dims().size() - 2;
-  if (dim == 3) {
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    std::vector<int> axis{0, 4, 1, 2, 3};
-    math::Transpose<DeviceContext, T, 5> trans5;
-    trans5(dev_ctx, *input, transformed_input, axis);
-
-  } else if (dim == 2) {
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    std::vector<int> axis{0, 3, 1, 2};
-    math::Transpose<DeviceContext, T, 4> trans4;
-    trans4(dev_ctx, *input, transformed_input, axis);
-  }
-}
-
-template <typename DeviceContext, typename T>
-inline void TransToChannelLast(const framework::ExecutionContext& context,
-                               const Tensor* input, Tensor* transformed_input) {
-  int dim = input->dims().size() - 2;
-  if (dim == 3) {
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    std::vector<int> axis{0, 2, 3, 4, 1};
-    math::Transpose<DeviceContext, T, 5> trans5;
-    trans5(dev_ctx, *input, transformed_input, axis);
-
-  } else if (dim == 2) {
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    std::vector<int> axis{0, 2, 3, 1};
-    math::Transpose<DeviceContext, T, 4> trans4;
-    trans4(dev_ctx, *input, transformed_input, axis);
-  }
-}
 // Define Op classes in .h file so that other conv
 // operator implementations can reuse the code.
 class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -309,12 +214,13 @@ class GemmConvKernel : public framework::OpKernel<T> {
     Tensor transformed_output(output->type());
 
     if (channel_last) {
-      ResizeToChannelFirst<DeviceContext, T>(context, input,
-                                             &transformed_input);
-      TransToChannelFirst<DeviceContext, T>(context, input, &transformed_input);
+      math::ResizeToChannelFirst<DeviceContext, T>(context, input,
+                                                   &transformed_input);
+      math::TransToChannelFirst<DeviceContext, T>(context, input,
+                                                  &transformed_input);
 
-      ResizeToChannelFirst<DeviceContext, T>(context, output,
-                                             &transformed_output);
+      math::ResizeToChannelFirst<DeviceContext, T>(context, output,
+                                                   &transformed_output);
 
     } else {
       transformed_input = *input;
@@ -434,8 +340,8 @@ class GemmConvKernel : public framework::OpKernel<T> {
       }
     }
     if (channel_last) {
-      TransToChannelLast<DeviceContext, T>(context, &transformed_output,
-                                           output);
+      math::TransToChannelLast<DeviceContext, T>(context, &transformed_output,
+                                                 output);
     }
   }
 };
@@ -472,14 +378,15 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
     Tensor transformed_output_grad(output_grad->type());
 
     if (channel_last) {
-      ResizeToChannelFirst<DeviceContext, T>(context, input,
-                                             &transformed_input);
-      TransToChannelFirst<DeviceContext, T>(context, input, &transformed_input);
+      math::ResizeToChannelFirst<DeviceContext, T>(context, input,
+                                                   &transformed_input);
+      math::TransToChannelFirst<DeviceContext, T>(context, input,
+                                                  &transformed_input);
 
-      ResizeToChannelFirst<DeviceContext, T>(context, output_grad,
-                                             &transformed_output_grad);
-      TransToChannelFirst<DeviceContext, T>(context, output_grad,
-                                            &transformed_output_grad);
+      math::ResizeToChannelFirst<DeviceContext, T>(context, output_grad,
+                                                   &transformed_output_grad);
+      math::TransToChannelFirst<DeviceContext, T>(context, output_grad,
+                                                  &transformed_output_grad);
     } else {
       transformed_input = *input;
       transformed_output_grad = *output_grad;
@@ -562,8 +469,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
       input_grad->mutable_data<T>(context.GetPlace());
       Tensor transformed_input_grad(input_grad->type());
       if (channel_last) {
-        ResizeToChannelFirst<DeviceContext, T>(context, input_grad,
-                                               &transformed_input_grad);
+        math::ResizeToChannelFirst<DeviceContext, T>(context, input_grad,
+                                                     &transformed_input_grad);
 
       } else {
         transformed_input_grad = *input_grad;
@@ -608,8 +515,8 @@ class GemmConvGradKernel : public framework::OpKernel<T> {
         }
       }
       if (channel_last) {
-        TransToChannelLast<DeviceContext, T>(context, &transformed_input_grad,
-                                             input_grad);
+        math::TransToChannelLast<DeviceContext, T>(
+            context, &transformed_input_grad, input_grad);
       }
     }
 
@@ -691,15 +598,16 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
     Tensor transformed_ddX(X->type());
 
     if (channel_last) {
-      ResizeToChannelFirst<DeviceContext, T>(ctx, X, &transformed_X);
-      TransToChannelFirst<DeviceContext, T>(ctx, X, &transformed_X);
+      math::ResizeToChannelFirst<DeviceContext, T>(ctx, X, &transformed_X);
+      math::TransToChannelFirst<DeviceContext, T>(ctx, X, &transformed_X);
 
-      ResizeToChannelFirst<DeviceContext, T>(ctx, dY, &transformed_dY);
-      TransToChannelFirst<DeviceContext, T>(ctx, dY, &transformed_dY);
+      math::ResizeToChannelFirst<DeviceContext, T>(ctx, dY, &transformed_dY);
+      math::TransToChannelFirst<DeviceContext, T>(ctx, dY, &transformed_dY);
 
       if (ddX) {
-        ResizeToChannelFirst<DeviceContext, T>(ctx, ddX, &transformed_ddX);
-        TransToChannelFirst<DeviceContext, T>(ctx, ddX, &transformed_ddX);
+        math::ResizeToChannelFirst<DeviceContext, T>(ctx, ddX,
+                                                     &transformed_ddX);
+        math::TransToChannelFirst<DeviceContext, T>(ctx, ddX, &transformed_ddX);
       }
     } else {
       transformed_X = *X;
@@ -776,7 +684,7 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
       Tensor transformed_dX(dX->type());
 
       if (channel_last) {
-        ResizeToChannelFirst<DeviceContext, T>(ctx, dX, &transformed_dX);
+        math::ResizeToChannelFirst<DeviceContext, T>(ctx, dX, &transformed_dX);
 
       } else {
         transformed_dX = *dX;
@@ -816,7 +724,7 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
         }
       }
       if (channel_last) {
-        TransToChannelLast<DeviceContext, T>(ctx, &transformed_dX, dX);
+        math::TransToChannelLast<DeviceContext, T>(ctx, &transformed_dX, dX);
       }
     }
 
@@ -866,7 +774,8 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
 
       Tensor transformed_ddY(ddY->type());
       if (channel_last) {
-        ResizeToChannelFirst<DeviceContext, T>(ctx, ddY, &transformed_ddY);
+        math::ResizeToChannelFirst<DeviceContext, T>(ctx, ddY,
+                                                     &transformed_ddY);
       } else {
         transformed_ddY = *ddY;
       }
@@ -929,7 +838,7 @@ class GemmConvDoubleGradKernel : public framework::OpKernel<T> {
         }
       }
       if (channel_last) {
-        TransToChannelLast<DeviceContext, T>(ctx, &transformed_ddY, ddY);
+        math::TransToChannelLast<DeviceContext, T>(ctx, &transformed_ddY, ddY);
       }
     }
   }
@@ -969,12 +878,13 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
     Tensor transformed_output(output->type());
 
     if (channel_last) {
-      ResizeToChannelFirst<DeviceContext, T>(context, input,
-                                             &transformed_input);
-      TransToChannelFirst<DeviceContext, T>(context, input, &transformed_input);
+      math::ResizeToChannelFirst<DeviceContext, T>(context, input,
+                                                   &transformed_input);
+      math::TransToChannelFirst<DeviceContext, T>(context, input,
+                                                  &transformed_input);
 
-      ResizeToChannelFirst<DeviceContext, T>(context, output,
-                                             &transformed_output);
+      math::ResizeToChannelFirst<DeviceContext, T>(context, output,
+                                                   &transformed_output);
 
     } else {
       transformed_input = *input;
@@ -1013,8 +923,8 @@ class DepthwiseConvKernel : public framework::OpKernel<T> {
                     dilations, &transformed_output);
     }
     if (channel_last) {
-      TransToChannelLast<DeviceContext, T>(context, &transformed_output,
-                                           output);
+      math::TransToChannelLast<DeviceContext, T>(context, &transformed_output,
+                                                 output);
     }
   }
 };
@@ -1049,14 +959,15 @@ class DepthwiseConvGradKernel : public framework::OpKernel<T> {
     Tensor transformed_output_grad(output_grad->type());
 
     if (channel_last) {
-      ResizeToChannelFirst<DeviceContext, T>(context, input,
-                                             &transformed_input);
-      TransToChannelFirst<DeviceContext, T>(context, input, &transformed_input);
+      math::ResizeToChannelFirst<DeviceContext, T>(context, input,
+                                                   &transformed_input);
+      math::TransToChannelFirst<DeviceContext, T>(context, input,
+                                                  &transformed_input);
 
-      ResizeToChannelFirst<DeviceContext, T>(context, output_grad,
-                                             &transformed_output_grad);
-      TransToChannelFirst<DeviceContext, T>(context, output_grad,
-                                            &transformed_output_grad);
+      math::ResizeToChannelFirst<DeviceContext, T>(context, output_grad,
+                                                   &transformed_output_grad);
+      math::TransToChannelFirst<DeviceContext, T>(context, output_grad,
+                                                  &transformed_output_grad);
 
     } else {
       transformed_input = *input;
@@ -1088,8 +999,8 @@ class DepthwiseConvGradKernel : public framework::OpKernel<T> {
       input_grad->mutable_data<T>(context.GetPlace());
       Tensor transformed_input_grad(input_grad->type());
       if (channel_last) {
-        ResizeToChannelFirst<DeviceContext, T>(context, input_grad,
-                                               &transformed_input_grad);
+        math::ResizeToChannelFirst<DeviceContext, T>(context, input_grad,
+                                                     &transformed_input_grad);
 
       } else {
         transformed_input_grad = *input_grad;
@@ -1111,8 +1022,8 @@ class DepthwiseConvGradKernel : public framework::OpKernel<T> {
                                dilations, &transformed_input_grad);
       }
       if (channel_last) {
-        TransToChannelLast<DeviceContext, T>(context, &transformed_input_grad,
-                                             input_grad);
+        math::TransToChannelLast<DeviceContext, T>(
+            context, &transformed_input_grad, input_grad);
       }
     }
 
