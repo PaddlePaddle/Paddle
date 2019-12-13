@@ -346,6 +346,8 @@ inline std::string GetHierarchicalInterNCCLVarName(size_t pos) {
 
 class NCCLCommunicator {
  public:
+  NCCLCommunicator() {}
+  virtual ~NCCLCommunicator() PADDLE_MAY_THROW {}
   NCCLContextMap *DefaultFlatCtx() const {
     auto &flat_rings = NCCLReference::Instance().flat_rings_;
     if (flat_rings.size() == 0) {
