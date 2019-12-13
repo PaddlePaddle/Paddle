@@ -689,6 +689,7 @@ std::unique_ptr<T> BatchNormGradMaker<T>::Apply() const {
   auto *op = new T();
   op->SetType(this->ForwardOpType() + "_grad");
   op->SetInput("X", this->Input("X"));
+  op->SetInput("Y", this->Output("Y"));
   op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 
   op->SetInput("Scale", this->Input("Scale"));

@@ -475,8 +475,9 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
             : DataLayout::kNCHW;
 
     Tensor transformed_x(x->type());
-    Tensor transformed_d_y(d_y->type());
+    Tensor transformed_y(y->type());
     Tensor transformed_d_x(d_x->type());
+    Tensor transformed_d_y(d_y->type());
     if (data_layout == DataLayout::kNHWC &&
         compute_format == DataLayout::kNCHW) {
       VLOG(3) << "Transform input tensor from NHWC to NCHW.";
@@ -484,6 +485,10 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                                                            &transformed_x);
       TransToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
                                                           &transformed_x);
+      ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, y,
+                                                           &transformed_y);
+      TransToChannelFirst<platform::CUDADeviceContext, T>(ctx, y,
+                                                          &transformed_y);
       ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, d_y,
                                                            &transformed_d_y);
       TransToChannelFirst<platform::CUDADeviceContext, T>(ctx, d_y,
@@ -492,6 +497,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                                                            &transformed_d_x);
     } else {
       transformed_x.ShareDataWith(*x);
+      transformed_y.ShareDataWith(*y);
       transformed_d_y.ShareDataWith(*d_y);
       transformed_d_x.ShareDataWith(*d_x);
     }
@@ -580,6 +586,10 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           cudnnActivationDescriptor_t activation_desc_ =
               fuse_with_relu ? scope_act_desc.descriptor<T>(activation)
                              : nullptr;
+          cudnnTensorDescriptor_t y_desc_ =
+              fuse_with_relu ? data_desc_ : nullptr;
+          T *y_data_ =
+              fuse_with_relu ? transformed_y.template data<T>() : nullptr;
 
           size_t workspace_size = 0;
           void *workspace_ptr = nullptr;
@@ -612,8 +622,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
               /*betaParamDiff=*/CudnnDataType<T>::kZero(),
               /*xDesc=*/data_desc_,
               /*xData=*/transformed_x.template data<T>(),
-              /*yDesc=*/nullptr,
-              /*yData=*/nullptr,
+              /*yDesc=*/y_desc_,
+              /*yData=*/y_data_,
               /*dyDesc=*/data_desc_,
               /*dyData=*/transformed_d_y.template data<T>(),
               /*dzDesc=*/nullptr,
