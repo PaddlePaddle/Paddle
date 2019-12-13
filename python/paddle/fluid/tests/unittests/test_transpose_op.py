@@ -46,19 +46,19 @@ class TestTransposeOp(OpTest):
         self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
-        self.shape = (3, 4)
+        self.shape = (3, 40)
         self.axis = (1, 0)
 
 
 class TestCase0(TestTransposeOp):
     def initTestCase(self):
-        self.shape = (3, )
+        self.shape = (100, )
         self.axis = (0, )
 
 
 class TestCase1(TestTransposeOp):
     def initTestCase(self):
-        self.shape = (3, 4, 5)
+        self.shape = (3, 4, 10)
         self.axis = (0, 2, 1)
 
 
@@ -80,7 +80,7 @@ class TestCase4(TestTransposeOp):
         self.axis = (4, 2, 3, 1, 0, 5)
 
 
-class TestTransposeOpError(OpTest):
+class TestTransposeOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[10, 5, 3], dtype='float32')

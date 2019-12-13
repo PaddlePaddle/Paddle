@@ -119,7 +119,7 @@ class TestDygraphResnetSortGradient(unittest.TestCase):
                 dy_grad_value = {}
                 for param in resnet.parameters():
                     if param.trainable:
-                        np_array = np.array(param._ivar._grad_ivar().value()
+                        np_array = np.array(param._grad_ivar().value()
                                             .get_tensor())
                         dy_grad_value[param.name + core.grad_var_suffix(
                         )] = np_array

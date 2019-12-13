@@ -148,7 +148,6 @@ set(COMMON_FLAGS
     -Wno-unused-parameter
     -Wno-unused-function
     -Wno-error=literal-suffix
-    -Wno-error=sign-compare
     -Wno-error=unused-local-typedefs
     -Wno-error=parentheses-equality # Warnings in pybind11
     -Wno-error=ignored-attributes  # Warnings in Eigen, gcc 6.3
@@ -167,7 +166,11 @@ if(NOT APPLE)
                 -Wno-error=cast-function-type # Warning in boost gcc 8.2
                 -Wno-error=parentheses # Warning in boost gcc 8.2
                 -Wno-error=catch-value # Warning in boost gcc 8.2
+                -Wno-error=nonnull-compare # Warning in boost gcc 8.2
+                -Wno-error=address # Warning in boost gcc 8.2
                 -Wno-ignored-qualifiers # Warning in boost gcc 8.2
+                -Wno-ignored-attributes # Warning in Eigen gcc 8.3 
+                -Wno-parentheses # Warning in Eigen gcc 8.3
                 )
     endif()
 endif(NOT APPLE)
@@ -179,13 +182,14 @@ set(GPU_COMMON_FLAGS
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
     -Wno-unused-function
-    -Wno-error=sign-compare
     -Wno-error=literal-suffix
     -Wno-error=unused-local-typedefs
     -Wno-error=unused-function  # Warnings in Numpy Header.
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+if (NOT WITH_NV_JETSON) 
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m64")
+endif()
 endif(NOT WIN32)
 
 if (APPLE)

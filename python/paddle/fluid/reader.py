@@ -21,7 +21,7 @@ import threading
 import paddle
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places
 from .executor import global_scope
-from .data_feeder import DataFeeder, BatchedTensorProvider, ListTensorProvider
+from .data_feeder import DataFeeder, BatchedTensorProvider, DygraphListTensorProvider
 from .layers.io import monkey_patch_reader_methods, _copy_reader_var_, double_buffer
 from .unique_name import UniqueNameGenerator
 import logging
@@ -331,7 +331,7 @@ class GeneratorLoader(DataLoaderBase):
             self._init_non_iterable()
 
     def _wait_thread_ends(self):
-        # Get self._thread first to prevent data race, because __thread_main__ 
+        # Get self._thread first to prevent data race, because __thread_main__
         # would set self._thread be None at the end
         thread = self._thread
         if thread is not None and self._iterable:
@@ -342,12 +342,21 @@ class GeneratorLoader(DataLoaderBase):
         self._wait_thread_ends()
         if in_dygraph_mode():
             self._var_names = []
+            self._shapes = []
+            self._dtypes = []
+            self._need_check_feed = []
         else:
             self._var_names = [v.name for v in self._feed_list]
+            self._shapes = [v.shape for v in self._feed_list]
+            self._dtypes = [v.dtype for v in self._feed_list]
+            self._need_check_feed = [
+                v.desc.need_check_feed() for v in self._feed_list
+            ]
         self._queue = core.init_lod_tensor_blocking_queue(core.Variable(),
                                                           self._capacity)
         self._reader = core.create_py_reader(
-            self.queue, self._var_names, self._places, self._use_double_buffer)
+            self.queue, self._var_names, self._shapes, self._dtypes,
+            self._need_check_feed, self._places, self._use_double_buffer)
 
     def _init_non_iterable(self):
         lod_levels = []
@@ -355,6 +364,7 @@ class GeneratorLoader(DataLoaderBase):
         shape_concat = []
         ranks = []
         shapes = []
+        need_check_feed = []
 
         for feed_data in self._feed_list:
             dtypes.append(feed_data.dtype)
@@ -362,6 +372,7 @@ class GeneratorLoader(DataLoaderBase):
             ranks.append(len(feed_data.shape))
             shapes.append(feed_data.shape)
             lod_levels.append(feed_data.lod_level)
+            need_check_feed.append(int(feed_data.desc.need_check_feed()))
 
         queue_name = data_loader_unique_name_generator(
             'lod_tensor_blocking_queue')
@@ -374,6 +385,7 @@ class GeneratorLoader(DataLoaderBase):
         startup_blk = default_startup_program().current_block()
         startup_var = startup_blk.create_var(name=reader_name)
 
+        dtype_int = [int(t) for t in dtypes]
         startup_blk.append_op(
             type='create_py_reader',
             inputs={'blocking_queue': [queue_name]},
@@ -381,6 +393,8 @@ class GeneratorLoader(DataLoaderBase):
             attrs={
                 'shape_concat': shape_concat,
                 'lod_levels': lod_levels,
+                'dtypes': dtype_int,
+                'need_check_feed': need_check_feed,
                 'ranks': ranks
             })
 
@@ -428,14 +442,13 @@ class GeneratorLoader(DataLoaderBase):
 
     def __next__(self):
         try:
-            if not in_dygraph_mode():
+            if in_dygraph_mode():
+                return self._reader.read_next_var_list()
+            else:
                 if self._return_list:
                     return self._reader.read_next_list()
                 else:
                     return self._reader.read_next()
-            else:
-                ret = self._reader.read_next_list()[0]
-                return [dygraph.base.to_variable(np.array(v)) for v in ret]
         except StopIteration:
             self._queue.close()
             self._reset()
@@ -503,7 +516,12 @@ class GeneratorLoader(DataLoaderBase):
                              drop_last=True,
                              places=None):
         assert batch_size > 0, "batch_size must be larger than 0"
-        if not in_dygraph_mode():
+        if in_dygraph_mode():
+            self.set_sample_list_generator(
+                paddle.batch(
+                    reader, batch_size=batch_size, drop_last=drop_last),
+                places=places)
+        else:
             has_lod = False
             for f in self._feed_list:
                 if f.lod_level != 0:
@@ -523,15 +541,16 @@ class GeneratorLoader(DataLoaderBase):
                     generator=reader,
                     drop_last=drop_last)
                 self.set_batch_generator(reader, places=places)
-        else:
-            self.set_sample_list_generator(
-                paddle.batch(
-                    reader, batch_size=batch_size, drop_last=drop_last),
-                places=places)
         return self
 
     def set_sample_list_generator(self, reader, places=None):
-        if not in_dygraph_mode():
+        if in_dygraph_mode():
+            provider = DygraphListTensorProvider(reader, places)
+
+            def __tensor_reader_impl__():
+                for slots in provider():
+                    yield slots[0]
+        else:
             with program_guard(Program(), Program()):
                 feeder = DataFeeder(
                     feed_list=self._feed_list, place=core.CPUPlace())
@@ -541,12 +560,6 @@ class GeneratorLoader(DataLoaderBase):
             def __tensor_reader_impl__():
                 for slots in paddle_reader():
                     yield [slots[var.name] for var in self._feed_list]
-        else:
-            provider = ListTensorProvider(reader, places)
-
-            def __tensor_reader_impl__():
-                for slots in provider():
-                    yield slots[0]
 
         self.set_batch_generator(__tensor_reader_impl__, places)
         return self
@@ -557,8 +570,8 @@ class GeneratorLoader(DataLoaderBase):
             assert places is not None, "Places cannot be None when DataLoader is iterable"
             self._places = _convert_places(places)
             if in_dygraph_mode():
-                assert len(self._places
-                           ) == 1, "Number of places must be 1 in dygraph mode"
+                assert len(self._places) == 1, \
+                    "Number of places must be 1 in dygraph mode"
         else:
             if places is not None:
                 logging.info(

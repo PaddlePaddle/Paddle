@@ -29,7 +29,7 @@ class TestVarConv2dOp(OpTest):
         self.op_type = "var_conv_2d"
 
     def set_data(self):
-        input_channel = 3
+        input_channel = 8
         output_channel = 2
         filter_size = [2, 3]
         stride = [1, 1]
@@ -172,10 +172,11 @@ class TestVarConv2dOp(OpTest):
         return col_res, col_res_lod
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.005)
+        self.check_grad(
+            ['X'], 'Out', max_relative_error=0.005, check_dygraph=False)
 
 
 class TestVarConv2dOpCase1(TestVarConv2dOp):

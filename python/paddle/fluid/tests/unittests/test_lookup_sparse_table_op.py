@@ -21,7 +21,7 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 
 
-class TestLookupSpraseTable(OpTest):
+class TestLookupSpraseTable(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
 

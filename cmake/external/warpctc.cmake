@@ -14,8 +14,11 @@
 
 INCLUDE(ExternalProject)
 
-SET(WARPCTC_SOURCES_DIR ${THIRD_PARTY_PATH}/warpctc)
+SET(WARPCTC_PREFIX_DIR ${THIRD_PARTY_PATH}/warpctc)
+SET(WARPCTC_SOURCE_DIR ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
+set(WARPCTC_REPOSITORY https://github.com/baidu-research/warp-ctc)
+set(WARPCTC_TAG        14858fef201244c983f5f965d2166379bf3f11a5)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -29,15 +32,27 @@ ELSE()
     SET(USE_OMP ON)
 ENDIF()
 
-# TODO: Use the official github address instead of private branch
-SET(WARPCTC_REPOSITORY "https://github.com/wopeizl/warp-ctc.git")
+cache_third_party(extern_warpctc
+    REPOSITORY   ${WARPCTC_REPOSITORY}
+    TAG          ${WARPCTC_TAG})
+
+if(WIN32)
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/warpctc native_src)
+    file(TO_NATIVE_PATH ${WARPCTC_SOURCE_DIR} native_dst)
+    set(WARPCTC_PATCH_COMMAND xcopy ${native_src} ${native_dst} /E/Y)
+else()
+    set(WARPCTC_PATCH_COMMAND cp -r ${PADDLE_SOURCE_DIR}/patches/warpctc ${THIRD_PARTY_PATH})
+endif()
 
 ExternalProject_Add(
     extern_warpctc
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY ${WARPCTC_REPOSITORY}
-    PREFIX          ${WARPCTC_SOURCES_DIR}
+    ${SHALLOW_CLONE}
+    "${WARPCTC_DOWNLOAD_CMD}"
+    PREFIX          ${WARPCTC_PREFIX_DIR}
+    SOURCE_DIR      ${WARPCTC_SOURCE_DIR}
     UPDATE_COMMAND  ""
+    PATCH_COMMAND   ${WARPCTC_PATCH_COMMAND}
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
@@ -71,7 +86,6 @@ ENDIF(WIN32)
 MESSAGE(STATUS "warp-ctc library: ${WARPCTC_LIBRARIES}")
 get_filename_component(WARPCTC_LIBRARY_PATH ${WARPCTC_LIBRARIES} DIRECTORY)
 INCLUDE_DIRECTORIES(${WARPCTC_INCLUDE_DIR}) # For warpctc code to include its headers.
-INCLUDE_DIRECTORIES(${THIRD_PARTY_PATH}/install) # For Paddle code to include warpctc headers.
 
 ADD_LIBRARY(warpctc SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET warpctc PROPERTY IMPORTED_LOCATION ${WARPCTC_LIBRARIES})

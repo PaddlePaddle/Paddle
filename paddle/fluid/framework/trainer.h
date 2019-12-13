@@ -105,7 +105,6 @@ class DistMultiTrainer : public MultiTrainer {
   bool need_dump_field_;
   std::string dump_fields_path_;
   std::string dump_converter_;
-  std::vector<std::string> dump_fields_;
   int mpi_rank_;
   int mpi_size_;
   int dump_file_num_;
@@ -160,7 +159,8 @@ class PipelineTrainer : public TrainerBase {
   std::vector<DataFeed*> readers_;
 
   void InitFirstScopeQueue(ScopeQueue* scope_queue, int pipeline_id,
-                           const ProgramDesc& main_program);
+                           const ProgramDesc& main_program,
+                           const Scope& root_scope);
   void CopyParameters(const Scope& root_scope, int pipeline_id);
   void construct_sync_functor();
 };

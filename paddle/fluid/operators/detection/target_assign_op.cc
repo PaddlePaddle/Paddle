@@ -57,8 +57,9 @@ class TargetAssignOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(ctx.Input<framework::LoDTensor>("X")->type(),
-                                   ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.device_context());
   }
 };
 
@@ -151,8 +152,10 @@ template struct NegTargetAssignFunctor<platform::CPUDeviceContext, float,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(target_assign, ops::TargetAssignOp, ops::TargetAssignOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+REGISTER_OPERATOR(
+    target_assign, ops::TargetAssignOp, ops::TargetAssignOpMaker,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OP_CPU_KERNEL(
     target_assign,
     ops::TargetAssignKernel<paddle::platform::CPUDeviceContext, int, float>,

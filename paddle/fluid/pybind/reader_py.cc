@@ -20,7 +20,10 @@
 #include <utility>
 #include <vector>
 #include "Python.h"
+#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
@@ -40,12 +43,19 @@ class MultiDeviceFeedReader {
   MultiDeviceFeedReader(
       const std::shared_ptr<operators::reader::LoDTensorBlockingQueue> &queue,
       const std::vector<std::string> &names,
+      const std::vector<std::vector<int>> &shapes,
+      const std::vector<framework::proto::VarType::Type> &dtypes,
+      const std::vector<bool> &need_check_feed,
       const std::vector<platform::Place> &dst_places, bool use_double_buffer)
       : queue_(queue),
         names_(names),
         pool_(new ::ThreadPool(dst_places.size())) {
+    std::vector<framework::DDim> dims;
+    for (auto &shape : shapes) {
+      dims.push_back(framework::make_ddim(shape));
+    }
     std::shared_ptr<framework::ReaderBase> reader(
-        new operators::reader::PyReader(queue));
+        new operators::reader::PyReader(queue, dims, dtypes, need_check_feed));
 
     readers_.reserve(dst_places.size());
     for (auto &p : dst_places) {
@@ -199,6 +209,31 @@ void BindReader(py::module *module) {
            py::call_guard<py::gil_scoped_release>())
       .def("read_next_list", &MultiDeviceFeedReader::ReadNextList,
            py::call_guard<py::gil_scoped_release>())
+      .def("read_next_var_list",
+           [](MultiDeviceFeedReader &self) {
+             auto result_list = self.ReadNextList();
+             auto &tensor_list = result_list[0];
+             std::vector<std::shared_ptr<imperative::VarBase>> var_list;
+             var_list.reserve(tensor_list.size());
+             auto func = [](framework::LoDTensor &lod_tensor) {
+               std::string act_name =
+                   imperative::GetCurrentTracer()->GenerateUniqueName(
+                       "generated_var");
+               auto new_var = std::make_shared<imperative::VarBase>(act_name);
+               new_var->SetPersistable(false);
+               new_var->SetType(framework::proto::VarType::LOD_TENSOR);
+               new_var->SetDataType(lod_tensor.type());
+               auto *tensor =
+                   new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+               *tensor = std::move(lod_tensor);
+               return new_var;
+             };
+             for (auto &tensor : tensor_list) {
+               var_list.emplace_back(func(tensor));
+             }
+             return var_list;
+           },
+           py::call_guard<py::gil_scoped_release>())
       .def("reset", &MultiDeviceFeedReader::Reset,
            py::call_guard<py::gil_scoped_release>());
 
@@ -206,9 +241,13 @@ void BindReader(py::module *module) {
         [](const std::shared_ptr<operators::reader::LoDTensorBlockingQueue>
                &queue,
            const std::vector<std::string> &names,
+           const std::vector<std::vector<int>> &shapes,
+           const std::vector<framework::proto::VarType::Type> &dtypes,
+           const std::vector<bool> &need_check_feed,
            const std::vector<platform::Place> &dst_places,
            bool use_double_buffer) {
-          return new MultiDeviceFeedReader(queue, names, dst_places,
+          return new MultiDeviceFeedReader(queue, names, shapes, dtypes,
+                                           need_check_feed, dst_places,
                                            use_double_buffer);
         },
         py::return_value_policy::take_ownership);

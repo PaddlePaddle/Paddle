@@ -42,6 +42,7 @@ struct OpInfo {
   InferShapeFN infer_shape_;
   InferInplaceOpFN infer_inplace_;
   InferNoNeedBufferVarsFN infer_no_need_buffer_vars_;
+  DygraphGradOpMakerFN dygraph_grad_op_maker_;
 
   // NOTE(zjl): this flag is added to check whether
   // the grad maker is the default one.
@@ -52,9 +53,12 @@ struct OpInfo {
   }
 
   const proto::OpProto& Proto() const {
-    PADDLE_ENFORCE_NOT_NULL(proto_, "Operator's Proto has not been registered");
-    PADDLE_ENFORCE(proto_->IsInitialized(),
-                   "Operator's Proto must be initialized in op info");
+    PADDLE_ENFORCE_NOT_NULL(
+        proto_,
+        platform::errors::NotFound("Operator's Proto has not been registered"));
+    PADDLE_ENFORCE_EQ(proto_->IsInitialized(), true,
+                      platform::errors::InvalidArgument(
+                          "Operator's Proto in op info is not initialized."));
     return *proto_;
   }
 
@@ -80,6 +84,24 @@ struct OpInfo {
 
   // some op has no grad_op_maker, add check before use GradOpMaker()
   bool HasGradOpMaker() const { return grad_op_maker_ != nullptr; }
+
+  const DygraphGradOpMakerFN& DygraphGradOpMaker() const {
+    // Normally, proto_ should not be null, except some special operators, such
+    // as LeaklyReluDoubleGrad op.
+    std::string type = proto_ ? proto_->type() : "unknown";
+    PADDLE_ENFORCE_NOT_NULL(
+        dygraph_grad_op_maker_,
+        "Operator %s's DygraphGradOpMaker has not been "
+        "registered.\nPlease check whether %s_op has "
+        "grad_op.\nIf not, please set stop_gradient to True "
+        "for its input and output variables using var.stop_gradient=True.",
+        type.c_str(), type.c_str());
+    return dygraph_grad_op_maker_;
+  }
+
+  bool HasDygraphGradOpMaker() const {
+    return dygraph_grad_op_maker_ != nullptr ? true : false;
+  }
 
   bool HasInferInplace() const { return infer_inplace_ != nullptr; }
 

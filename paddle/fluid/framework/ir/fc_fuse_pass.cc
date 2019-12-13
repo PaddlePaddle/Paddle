@@ -89,6 +89,35 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     std::string activation_type = with_relu ? "relu" : "";
     desc.SetAttr("activation_type", activation_type);
 
+    // This is to add padding for dimension 128 on concern of MKL performance
+    auto* scope = param_scope();
+    auto* weight = scope->FindVar(w->Name())->GetMutable<LoDTensor>();
+    auto place = weight->place();
+    bool use_gpu = Get<bool>("use_gpu");
+    auto* weight_data = weight->data<float>();
+    auto weight_dims = weight->dims();
+    int weight_num = product(weight_dims);
+    int w_h = weight_dims[0];
+    int w_w = weight_dims[1];
+    if (!use_gpu) {
+      if (w_h % 128 == 0 && w_w % 128 == 0) {
+        auto* weight_data_tmp = new float[weight_num];
+        for (int i = 0; i < w_h; i++) {
+          memcpy(weight_data_tmp + i * w_w, weight_data + i * w_w,
+                 w_w * sizeof(float));
+        }
+        weight->Resize(DDim{weight_dims[0] + 4, weight_dims[1] + 4});
+        auto* weight_data_new =
+            weight->mutable_data<float>(platform::CPUPlace());
+        for (int i = 0; i < w_h; i++) {
+          memcpy(weight_data_new + i * (w_w + 4), weight_data_tmp + i * w_w,
+                 w_w * sizeof(float));
+        }
+        delete[] weight_data_tmp;
+        desc.SetAttr("padding_weights", true);
+      }
+    }
+
     // For anakin subgraph int8
     // When in anakin subgraph int8 mode, the pattern like "fake_quant + mul +
     // fake_dequant" can be detected by the quant_dequant_fuse_pass. This pass
@@ -99,7 +128,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     auto* mul_op_desc = mul->Op();
     if (mul_op_desc->HasAttr("enable_int8")) {
       desc.SetAttr("enable_int8", mul_op_desc->GetAttr("enable_int8"));
-      desc.SetAttr("input_scale", mul_op_desc->GetAttr("input_scale"));
+      desc.SetAttr("Input_scale", mul_op_desc->GetAttr("X_scale"));
       desc.SetAttr("weight_scale", mul_op_desc->GetAttr("weight_scale"));
       if (mul_op_desc->HasAttr("out_scale"))
         desc.SetAttr("out_scale", mul_op_desc->GetAttr("out_scale"));

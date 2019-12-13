@@ -20,6 +20,7 @@ import os
 import six
 from six.moves import zip, range, xrange
 import multiprocessing
+import warnings
 
 from .framework import Variable, default_main_program, _current_expected_place
 from .framework import _cpu_num, _cuda_ids
@@ -27,13 +28,7 @@ __all__ = ['DataFeeder']
 
 
 def convert_dtype(dtype):
-    if isinstance(dtype, str):
-        if dtype in [
-                'bool', 'float16', 'float32', 'float64', 'int8', 'int16',
-                'int32', 'int64', 'uint8'
-        ]:
-            return dtype
-    else:
+    if isinstance(dtype, core.VarDesc.VarType):
         if dtype == core.VarDesc.VarType.BOOL:
             return 'bool'
         elif dtype == core.VarDesc.VarType.FP16:
@@ -52,9 +47,55 @@ def convert_dtype(dtype):
             return 'int64'
         elif dtype == core.VarDesc.VarType.UINT8:
             return 'uint8'
+    else:
+        if dtype in [
+                'bool', 'float16', 'float32', 'float64', 'int8', 'int16',
+                'int32', 'int64', 'uint8', u'bool', u'float16', u'float32',
+                u'float64', u'int8', u'int16', u'int32', u'int64', u'uint8'
+        ]:
+            # this code is a little bit dangerous, since error could happen
+            # when casting no-asci code to str in python2.
+            # but since the set itself is limited, so currently, it is good.
+            # however, jointly supporting python2 and python3, (as well as python4 maybe)
+            # may still be a long-lasting problem.
+            return str(dtype)
+
     raise ValueError(
         "dtype must be any of [bool, float16, float32, float64, int8, int16, "
         "int32, int64, uint8]")
+
+
+def check_type_and_dtype(input,
+                         input_name,
+                         expected_type,
+                         expected_dtype,
+                         op_name,
+                         extra_message=''):
+    check_type(input, input_name, expected_type, op_name, extra_message)
+    check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
+
+
+def check_type(input, input_name, expected_type, op_name, extra_message=''):
+    if not isinstance(input, expected_type):
+        raise TypeError(
+            "The type of '%s' in %s must be %s, but received %s. %s" %
+            (input_name, op_name, expected_type, type(input), extra_message))
+
+
+def check_dtype(input_dtype,
+                input_name,
+                expected_dtype,
+                op_name,
+                extra_message=''):
+    if convert_dtype(input_dtype) in ['float16']:
+        warnings.warn(
+            "The data type of '%s' in %s only support float16 in GPU now. %s" %
+            (input_name, op_name, extra_message))
+    if convert_dtype(input_dtype) not in expected_dtype:
+        raise TypeError(
+            "The data type of '%s' in %s must be %s, but received %s. %s" %
+            (input_name, op_name, expected_dtype, convert_dtype(input_dtype),
+             extra_message))
 
 
 class DataToLoDTensorConverter(object):
@@ -483,41 +524,29 @@ class NumpyToLoDTensorConverter(object):
         return t
 
 
-class ListTensorProvider(object):
-    def __init__(self, generator, places):
+class DygraphListTensorProvider(object):
+    def __init__(self, generator, place):
         self.generator = generator
         self.converters = []
-        self.places = []
-        if places:
-            if not isinstance(places, (list, tuple)):
-                places = [places]
-            assert len(
-                places) == 1, "dygraph mode CAN NOT specify multiple places."
-            for place in places:
-                if isinstance(place, (core.CUDAPlace, core.CPUPlace)):
-                    self.places.append(place)
-                else:
-                    raise ValueError(
-                        "Please specify a valid place values such as core.CPUPlace or core.CUDAPlace"
-                    )
-        if len(self.places) == 0:
-            self.places.append(_current_expected_place())
+        if place:
+            if isinstance(place, (core.CUDAPlace, core.CPUPlace)):
+                self.place = place
+            else:
+                raise ValueError("Please specify a valid place values \
+                    such as core.CPUPlace or core.CUDAPlace")
+        else:
+            self.place = _current_expected_place()
 
-    def _readData(self, iterable, places):
-        for place, each_sample in six.moves.zip(places, iterable):
-            for item in each_sample:
-                if len(self.converters) < len(item):
-                    for i in item:
-                        self.converters.append(NumpyToLoDTensorConverter(place))
-                for each_converter, each_slot in six.moves.zip(self.converters,
-                                                               item):
-                    each_converter.feed(each_slot)
-            yield [c.done() for c in self.converters]
+    def _read_data(self, iterable, place):
+        for items in iterable:
+            if len(self.converters) < len(items):
+                for _ in items:
+                    self.converters.append(NumpyToLoDTensorConverter(place))
+            for each_converter, each_slot in six.moves.zip(self.converters,
+                                                           items):
+                each_converter.feed(each_slot)
+        yield [c.done() for c in self.converters]
 
     def __call__(self):
-        item = []
         for batch in self.generator():
-            item.append(batch)
-            if len(item) == len(self.places):
-                yield list(self._readData(item, self.places))
-                item = []
+            yield list(self._read_data(batch, self.place))

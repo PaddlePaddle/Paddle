@@ -252,8 +252,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return the current number of worker
         """
         if self._check_role_generation():
-            if self.is_worker():
-                return self._get_size() / self._proc_per_node
+            return self._get_size() / self._proc_per_node
         return 0
 
     def _server_num(self):
@@ -335,18 +334,13 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         if not self._role_is_generated:
             if not self._is_collective:
                 try:
-                    port = os.environ["PADDLE_PORT"]
-                    pserver_ips = os.environ["PADDLE_PSERVERS"].split(",")
-                    if "," in port:
-                        ports = port.split(",")
-                    else:
-                        ports = [port] * len(pserver_ips)
-                    eplist = []
+                    # Environment variable PADDLE_PSERVERS_IP_PORT_LIST must be set
+                    # format: string(ip:port), eg. 127.0.0.1:6001
+                    eplist = os.environ["PADDLE_PSERVERS_IP_PORT_LIST"].split(
+                        ",")
                     # note that, we usually assign the same port to different ips
                     # if we run parameter server training in local mode
                     # port should be different in environment variables
-                    for i, ip in enumerate(pserver_ips):
-                        eplist.append(':'.join([ip, ports[i]]))
 
                     trainers_num = int(os.environ["PADDLE_TRAINERS_NUM"])
                     training_role = os.environ["TRAINING_ROLE"]
@@ -361,9 +355,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                     elif training_role == "PSERVER":
                         role = Role.SERVER
                         cur_ip = os.environ["POD_IP"]
-                        cur_idx = pserver_ips.index(cur_ip)
-                        current_id = eplist.index(":".join(
-                            [cur_ip, ports[cur_idx]]))
+                        curr_port = os.environ["PADDLE_PORT"]
+                        curr_endpoint = ":".join([cur_ip, curr_port])
+                        current_id = eplist.index(curr_endpoint)
                     else:
                         raise ValueError(
                             "TRAINING_ROLE must be PSERVER or TRAINER")

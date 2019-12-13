@@ -56,6 +56,8 @@ else()
   cc_test(tensor_util_test SRCS tensor_util_test.cc DEPS tensor dlpack_tensor)
 endif()
 
+cc_test(copy_same_tensor_test SRCS copy_same_tensor_test.cc DEPS tensor)
+
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
 if(WITH_GPU)
@@ -83,6 +85,7 @@ endif()
 cc_test(var_type_traits_test SRCS var_type_traits_test.cc DEPS var_type_traits)
 
 cc_library(scope SRCS scope.cc DEPS glog threadpool xxhash var_type_traits)
+
 cc_library(scope_pool SRCS scope_pool.cc DEPS scope)
 cc_test(scope_test SRCS scope_test.cc DEPS scope)
 cc_test(variable_test SRCS variable_test.cc DEPS tensor var_type_traits)
@@ -118,15 +121,22 @@ cc_test(program_desc_test SRCS program_desc_test.cc DEPS proto_desc
 device_context)
 cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute glog)
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
-cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
+cc_library(no_need_buffer_vars_inference SRCS no_need_buffer_vars_inference.cc DEPS attribute device_context)
+cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto no_need_buffer_vars_inference)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
+
+cc_test(no_need_buffer_vars_inference_test SRCS no_need_buffer_vars_inference_test.cc DEPS no_need_buffer_vars_inference layer)
 
 cc_library(transfer_scope_cache SRCS transfer_scope_cache.cc DEPS scope framework_proto device_context)
 cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
+
+cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_vars_inference)
+
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
-    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack)
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
+cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op_registry device_context)
 
 cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)
@@ -139,26 +149,28 @@ cc_library(op_call_stack SRCS op_call_stack.cc DEPS op_proto_maker enforce)
 
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
-py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
-py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
+if(WITH_PYTHON)
+  py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
+  py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
-add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
-add_dependencies(framework_py_proto framework_py_proto_init)
-if (NOT WIN32)
-  add_custom_command(TARGET framework_py_proto POST_BUILD
+  add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
+  add_dependencies(framework_py_proto framework_py_proto_init)
+  if (NOT WIN32)
+    add_custom_command(TARGET framework_py_proto POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
       COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-else(NOT WIN32)
-  string(REPLACE "/" "\\" proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
-  add_custom_command(TARGET framework_py_proto POST_BUILD
+  else(NOT WIN32)
+    string(REPLACE "/" "\\" proto_dstpath "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
+    add_custom_command(TARGET framework_py_proto POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E make_directory ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
           COMMAND copy /Y *.py ${proto_dstpath}
           COMMENT "Copy generated python proto into directory paddle/fluid/proto."
           WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-endif(NOT WIN32)
+  endif(NOT WIN32)
+endif()
 
 cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 

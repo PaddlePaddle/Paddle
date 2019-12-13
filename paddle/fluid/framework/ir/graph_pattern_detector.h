@@ -517,6 +517,7 @@ struct FCMKLDNN : public PatternBase {
   // declare operator node's name
   PATTERN_DECL_NODE(fc);
   // declare variable node's name
+  PATTERN_DECL_NODE(input);
   PATTERN_DECL_NODE(weights);
   PATTERN_DECL_NODE(bias);
   PATTERN_DECL_NODE(output);
@@ -731,6 +732,36 @@ struct ElementwiseAdd : public PatternBase {
   PATTERN_DECL_NODE(elementwise_add_x);
   PATTERN_DECL_NODE(elementwise_add_y);
   PATTERN_DECL_NODE(elementwise_add_out);
+};
+
+// Transpose op
+// Forward pass for transpose.
+// transpose_out is a result of the operator.
+struct Transpose : public PatternBase {
+  Transpose(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "transpose2") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(transpose_in);
+  PATTERN_DECL_NODE(transpose_op);
+  PATTERN_DECL_NODE(transpose_out);
+  PATTERN_DECL_NODE(next_op);
+};
+
+// Reshape op
+// Forward pass for reshape.
+// reshape_out is a result of the operator.
+struct Reshape : public PatternBase {
+  Reshape(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "reshape2") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(reshape_in);
+  PATTERN_DECL_NODE(reshape_op);
+  PATTERN_DECL_NODE(reshape_out);
+  PATTERN_DECL_NODE(next_op);
 };
 
 // Concat op

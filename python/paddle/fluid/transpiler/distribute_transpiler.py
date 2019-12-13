@@ -41,7 +41,7 @@ import logging
 import numpy as np
 
 from .ps_dispatcher import RoundRobin, PSDispatcher
-from .. import core, framework, unique_name
+from .. import core, framework, unique_name, initializer
 from ..framework import Program, default_main_program, \
     default_startup_program, Block, Parameter, grad_var_name
 from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
@@ -304,6 +304,7 @@ class DistributeTranspiler(object):
             PRINT_LOG = True
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
+        self.counter_var = None
 
     def _transpile_nccl2(self,
                          trainer_id,
@@ -369,10 +370,11 @@ class DistributeTranspiler(object):
             endpoints = trainers.split(",")
         elif isinstance(trainers, list):
             endpoints = trainers
-        else:
+        elif collective_mode != "single_process_multi_thread":
             raise ValueError('invalid trainers config: ' + str(trainers))
 
-        if len(endpoints) == 1:
+        if len(endpoints
+               ) == 1 and collective_mode != "single_process_multi_thread":
             raise ValueError('invalid trainer number in distributed: 1')
 
         if startup_program is None:
@@ -386,6 +388,8 @@ class DistributeTranspiler(object):
             transpiler = collective.GradAllReduce(self.config.nccl_comm_num)
         elif collective_mode == 'local_sgd':
             transpiler = collective.LocalSGD(self.config.nccl_comm_num)
+        elif collective_mode == "single_process_multi_thread":
+            transpiler = collective.SingleProcessMultiThread()
         else:
             raise ValueError('invalid collective_mode: %s' % collective_mode)
 
@@ -399,7 +403,7 @@ class DistributeTranspiler(object):
 
     def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []
-        sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
+        sparse_update_op_types = ["lookup_table", "nce"]
         for op in main_program.global_block().ops:
             if op.type in sparse_update_op_types and op.attr(
                     'remote_prefetch') is True:
@@ -603,6 +607,7 @@ class DistributeTranspiler(object):
             self.origin_program)
         # use_sparse_update_param_name -> split_height_section
         self.sparse_param_to_height_sections = dict()
+        self.need_delete_optimize_vars = []
 
         # add distributed attrs to program
         self.origin_program._is_distributed = True
@@ -631,6 +636,7 @@ class DistributeTranspiler(object):
             np.random.shuffle(grad_var_mapping_items)
 
         self.grad_name_to_send_dummy_out = dict()
+
         for grad_varname, splited_vars in grad_var_mapping_items:
             eplist = ps_dispatcher.dispatch(splited_vars)
 
@@ -720,6 +726,31 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
             fetch_barrier_input.append(send_barrier_out)
+        else:
+            lr_ops = self._get_lr_ops()
+            if len(lr_ops) > 0 and self.counter_var:
+                decay_dummy_output = program.global_block().create_var(
+                    name=framework.generate_control_dev_var_name())
+                if self.config.runtime_split_send_recv:
+                    ## async mode, using communicator to merge and send
+                    send_varnames = [self.counter_var.name]
+                else:
+                    send_varnames = []
+                sections = []
+                program.global_block().append_op(
+                    type="send",
+                    inputs={"X": self.counter_var},
+                    outputs={"Out": decay_dummy_output},
+                    attrs={
+                        "epmap": pserver_endpoints,
+                        "sections": sections,
+                        "send_varnames": send_varnames,
+                        "merge_add": True,
+                        "use_send_handler": False,
+                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                        OP_ROLE_VAR_ATTR_NAME:
+                        [self.counter_var.name, self.counter_var.name]
+                    })
 
         # step 3: insert recv op to receive parameters from parameter server
         recv_vars = []
@@ -821,19 +852,6 @@ class DistributeTranspiler(object):
                             RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
                         })
 
-        if not self.sync_mode:
-            lr_ops = self._get_lr_ops()
-            if len(lr_ops) > 0:
-                program.global_block().append_op(
-                    type="distributed_notify",
-                    inputs={},
-                    outputs={},
-                    attrs={
-                        "epmap": pserver_endpoints,
-                        "trainer_id": self.trainer_id,
-                        "type": "LRDECAY@RECV"
-                    })
-
         self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
 
         if self.has_distributed_lookup_table:
@@ -843,6 +861,78 @@ class DistributeTranspiler(object):
 
         self._get_distributed_optimizer_vars()
         self.origin_program._parameters_on_pservers = self.vars_overview
+
+    def _get_sparse_table_names(self):
+        sparse_update_op_types = ["lookup_table", "nce"]
+
+        sparse_table_names = []
+        for op in self.origin_program.global_block().ops:
+            if op.type in sparse_update_op_types and op.attr(
+                    'is_sparse') is True:
+                sparse_table_names.append(op.input("W")[0])
+            if op.type == "distributed_lookup_table":
+                sparse_table_names.append(op.input("W")[0])
+
+        if self.has_distributed_lookup_table:
+            sparse_table_names.append(self.table_name)
+
+        return list(set(sparse_table_names))
+
+    def _fake_init_sparsetable(self, sparse_table_names):
+        # delete table init op
+        for table_name in sparse_table_names:
+            table_var = self.startup_program.global_block().vars[table_name]
+            table_param_init_op = []
+            for op in self.startup_program.global_block().ops:
+                if table_name in op.output_arg_names:
+                    table_param_init_op.append(op)
+            init_op_num = len(table_param_init_op)
+            if init_op_num != 1:
+                raise ValueError("table init op num should be 1, now is " + str(
+                    init_op_num))
+            table_init_op = table_param_init_op[0]
+            self.startup_program.global_block().append_op(
+                type="fake_init",
+                inputs={},
+                outputs={"Out": table_var},
+                attrs={"shape": table_init_op.attr('shape')})
+            delete_ops(self.startup_program.global_block(), table_param_init_op)
+
+    def _delete_trainer_optimizer(self, is_startup):
+        optimize_vars = []
+        optimize_op_role_vars = []
+        optimize_need_delete_vars = []
+
+        for op in self.optimize_ops:
+            optimize_vars.extend(op.input_arg_names)
+            optimize_op_role_vars.extend(op.attr("op_role_var"))
+
+        optimize_vars = list(set(optimize_vars))
+        optimize_op_role_vars = list(set(optimize_op_role_vars))
+
+        for var in optimize_vars:
+            if var not in optimize_op_role_vars:
+                optimize_need_delete_vars.append(var)
+        need_delete_optimize_vars = list(set(optimize_need_delete_vars))
+
+        if is_startup:
+            init_ops = []
+            for var in need_delete_optimize_vars:
+                param_init_op = []
+                for op in self.startup_program.global_block().ops:
+                    if var in op.output_arg_names:
+                        param_init_op.append(op)
+                init_ops.extend(param_init_op)
+            delete_ops(self.startup_program.global_block(), init_ops)
+
+            for var in need_delete_optimize_vars:
+                if self.startup_program.global_block().has_var(var):
+                    self.startup_program.global_block()._remove_var(var)
+        else:
+            delete_ops(self.origin_program.global_block(), self.optimize_ops)
+            for var in need_delete_optimize_vars:
+                if self.origin_program.global_block().has_var(var):
+                    self.origin_program.global_block()._remove_var(var)
 
     def get_trainer_program(self, wait_port=True):
         """
@@ -874,31 +964,16 @@ class DistributeTranspiler(object):
         # remove optimize ops and add a send op to main_program
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
 
-        lr_ops = self._get_lr_ops()
-        delete_ops(self.origin_program.global_block(), self.optimize_ops)
-        delete_ops(self.origin_program.global_block(), lr_ops)
+        self._delete_trainer_optimizer(is_startup=True)
+        sparse_table_names = self._get_sparse_table_names()
+        self._fake_init_sparsetable(sparse_table_names)
 
-        # delete table init op
-        if self.has_distributed_lookup_table:
-            table_var = self.startup_program.global_block().vars[
-                self.table_name]
-            table_param_init_op = []
-            for op in self.startup_program.global_block().ops:
-                if self.table_name in op.output_arg_names:
-                    table_param_init_op.append(op)
-            init_op_num = len(table_param_init_op)
-            if init_op_num != 1:
-                raise ValueError("table init op num should be 1, now is " + str(
-                    init_op_num))
-            table_init_op = table_param_init_op[0]
-            self.startup_program.global_block().append_op(
-                type="fake_init",
-                inputs={},
-                outputs={"Out": table_var},
-                attrs={"shape": table_init_op.attr('shape')})
-            delete_ops(self.startup_program.global_block(), table_param_init_op)
+        lr_ops = self._get_lr_ops()
+        delete_ops(self.origin_program.global_block(), lr_ops)
+        self._delete_trainer_optimizer(is_startup=False)
 
         self.origin_program.__str__()
+        self.startup_program.__str__()
 
         if wait_port:
             wait_server_ready(self.pserver_endpoints)
@@ -920,8 +995,14 @@ class DistributeTranspiler(object):
 
         # FIXME(gongwb): delete not need ops.
         # note that: some parameter is not trainable and those ops can't be deleted.
+        sparse_table_names = self._get_sparse_table_names()
+
+        # self._fake_init_sparsetable(sparse_table_names)
+        #self._delete_trainer_optimizer(is_startup=True)
 
         for varname, splited_var in six.iteritems(self.param_var_mapping):
+            if varname in sparse_table_names:
+                continue
             # Get the eplist of recv vars
             eps = []
             for var in splited_var:
@@ -963,6 +1044,8 @@ class DistributeTranspiler(object):
             })
 
         for varname, splited_var in six.iteritems(self.param_var_mapping):
+            if varname in sparse_table_names:
+                continue
             # add concat ops to merge splited parameters received from parameter servers.
             if len(splited_var) <= 1:
                 continue
@@ -1426,7 +1509,10 @@ class DistributeTranspiler(object):
                             param_name, endpoint)
                         break
                 for key in opt_op.input_names:
-                    if key in ["Param", "Grad", "LearningRate"]:
+                    if key in [
+                            "Param", "Grad", "LearningRate", "Beta1Tensor",
+                            "Beta2Tensor"
+                    ]:
                         continue
                     origin_var = self.origin_program.global_block().vars[
                         opt_op.input(key)[0]]
@@ -2190,7 +2276,10 @@ class DistributeTranspiler(object):
 
         for key in opt_op.input_names:
             new_shape = None
-            if key in ["Param", "Grad", "LearningRate"]:
+            if key in [
+                    "Param", "Grad", "LearningRate", "Beta1Tensor",
+                    "Beta2Tensor"
+            ]:
                 continue
             var = self.origin_program.global_block().vars[opt_op.input(key)[0]]
             param_var = new_inputs["Param"]
@@ -2380,11 +2469,57 @@ class DistributeTranspiler(object):
     def _get_lr_ops(self):
         lr_ops = []
         block = self.origin_program.global_block()
-        for op in block.ops:
+        for index, op in enumerate(block.ops):
             role_id = int(op.attr(RPC_OP_ROLE_ATTR_NAME))
             if role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) or \
                 role_id == int(LR_SCHED_OP_ROLE_ATTR_VALUE) | \
                     int(OPT_OP_ROLE_ATTR_VALUE):
+                if self.sync_mode == False and op.type == 'increment':
+                    inputs = self._get_input_map_from_op(
+                        self.origin_program.global_block().vars, op)
+                    outputs = self._get_output_map_from_op(
+                        self.origin_program.global_block().vars, op)
+                    for key in outputs:
+                        counter_var = outputs[key]
+                    all_trainer_counter_inputs = [
+                        self.origin_program.global_block().create_var(
+                            name="%s.trainer_%d" % (counter_var.name, id_),
+                            type=counter_var.type,
+                            shape=counter_var.shape,
+                            dtype=counter_var.dtype,
+                            persistable=counter_var.persistable)
+                        for id_ in range(self.trainer_num)
+                    ]
+                    for i, op in enumerate(self.startup_program.global_block()
+                                           .ops):
+                        if op.type == 'fill_constant':
+                            for key in op.output_names:
+                                if len(op.output(key)) == 1 and op.output(key)[
+                                        0] == counter_var.name:
+                                    self.startup_program.global_block().ops[
+                                        i]._set_attr(
+                                            'value',
+                                            float(0.0 - self.trainer_num))
+                    for var in all_trainer_counter_inputs:
+                        if var.name == "%s.trainer_%d" % (counter_var.name,
+                                                          self.trainer_id):
+                            self.counter_var = var
+                        self.startup_program.global_block().create_var(
+                            name=var.name,
+                            type=var.type,
+                            dtype=var.dtype,
+                            shape=var.shape,
+                            persistable=var.persistable,
+                            initializer=initializer.Constant(1))
+                    op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
+                    )
+                    block._remove_op(index)
+                    op = block._insert_op(
+                        index,
+                        type='sum',
+                        inputs={'X': all_trainer_counter_inputs},
+                        outputs=outputs,
+                        attrs={op_role_attr_name: LR_SCHED_OP_ROLE_ATTR_VALUE})
                 lr_ops.append(op)
                 log("append lr op: ", op.type)
         return lr_ops

@@ -178,7 +178,7 @@ class CTCForward(object):
 class TestWarpCTCOp(OpTest):
     def config(self):
         self.batch_size = 4
-        self.num_classes = 8
+        self.num_classes = 12
         self.logits_lod = [[4, 1, 3, 3]]
         self.labels_lod = [[3, 1, 4, 4]]
         self.blank = self.num_classes - 1
@@ -221,11 +221,12 @@ class TestWarpCTCOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss", max_relative_error=0.007)
+        self.check_grad(
+            ["Logits"], "Loss", max_relative_error=0.007, check_dygraph=False)
 
 
 class TestWarpCTCOpCase1(TestWarpCTCOp):
@@ -303,7 +304,7 @@ class TestWarpCTCOpWithPadding(OpTest):
 
         self.inputs = {
             "Logits": new_logits,
-            "Label": labels,
+            "Label": new_labels,
             "LogitsLength": self.logits_length,
             "LabelLength": self.labels_length
         }
@@ -314,11 +315,12 @@ class TestWarpCTCOpWithPadding(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss", max_relative_error=0.007)
+        self.check_grad(
+            ["Logits"], "Loss", max_relative_error=0.007, check_dygraph=False)
 
 
 class TestWarpCTCOpWithPaddingCase1(TestWarpCTCOpWithPadding):

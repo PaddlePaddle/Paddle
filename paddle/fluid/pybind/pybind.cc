@@ -22,7 +22,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -43,6 +42,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope_pool.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/trainer.h"
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
@@ -61,9 +61,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/data_set_py.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
+#include "paddle/fluid/pybind/global_value_getter_setter.h"
 #include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 #ifndef _WIN32
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
@@ -193,14 +195,8 @@ static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
     if (!py_obj || py_obj == Py_None) {
       PADDLE_THROW("Save parameter [%s] is None", para.first);
     }
-
-    const char *kIVarField = "_ivar";
-    PyObject *py_ivar = GetPythonAttribute(py_obj, kIVarField);
-    PADDLE_ENFORCE_NOT_NULL(py_ivar, "Can not find  ivar in Variable");
-
     vec_res.emplace_back(
-        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_ivar));
-    Py_DECREF(py_ivar);
+        PyObjectCast<std::shared_ptr<imperative::VarBase>>(py_obj));
   }
 
   return vec_res;
@@ -237,6 +233,80 @@ static std::vector<std::string> inline GetNameList(
   return vec_res;
 }
 
+static void inline CreateVariableIfNotExit(
+    const py::handle &py_handle, const framework::Scope &scope,
+    const framework::Executor *exe = nullptr) {
+  std::vector<std::string> vec_res;
+
+  PyObject *py_obj = py_handle.ptr();  // get underlying PyObject
+  // Python None is not nullptr in C++!
+  if (!py_obj || py_obj == Py_None) {
+    PADDLE_THROW("Save parameter list is None");
+  }
+
+  if (PyList_Check(py_obj)) {
+    size_t len = PyList_GET_SIZE(py_obj);
+
+    vec_res.reserve(len);
+
+    const char *kNameField = "name";
+    const char *kVarDescField = "desc";
+
+    for (size_t i = 0; i < len; ++i) {
+      PyObject *py_name =
+          PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kNameField);
+      PADDLE_ENFORCE_NOT_NULL(py_name);
+      auto para_name = PyObjectCast<std::string>(py_name);
+      Py_DECREF(py_name);
+
+      auto var = scope.FindVar(para_name);
+      if (var == nullptr) {
+        PADDLE_ENFORCE_NE(exe, nullptr,
+                          "Parameter not Initialized, "
+                          "Please set argument [executor] not None "
+                          "or run startup program first");
+        PyObject *py_var_desc =
+            PyObject_GetAttrString(PyList_GET_ITEM(py_obj, i), kVarDescField);
+        PADDLE_ENFORCE_NOT_NULL(py_var_desc);
+        auto var_desc = PyObjectCast<framework::VarDesc>(py_var_desc);
+        Py_DECREF(py_var_desc);
+        var = const_cast<framework::Scope *>(&scope)->Var(para_name);
+        auto *tensor_temp = var->GetMutable<framework::LoDTensor>();
+        tensor_temp->Resize(framework::make_ddim(var_desc.GetShape()));
+        tensor_temp->mutable_data(exe->GetPlace(), var_desc.GetDataType());
+      }
+    }
+  } else {
+    PADDLE_THROW("Set parameter should be a list");
+  }
+
+  return;
+}
+
+static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
+  std::set<std::string> ops;
+  for (auto &pair : framework::OpInfoMap::Instance().map()) {
+    bool has_static_grad_maker = (pair.second.grad_op_maker_ != nullptr);
+    bool has_dygraph_grad_maker =
+        (pair.second.dygraph_grad_op_maker_ != nullptr);
+    if (has_static_grad_maker ^ has_dygraph_grad_maker) {
+      bool has_kernel =
+          (framework::OperatorWithKernel::AllOpKernels().count(pair.first) > 0);
+      if (has_kernel) {
+        ops.insert(pair.first);
+      } else {
+        VLOG(5) << pair.first << " has no kernels, skip";
+      }
+    }
+  }
+  PADDLE_ENFORCE_EQ(ops.empty(), true,
+                    platform::errors::Unimplemented(
+                        "OperatorWithKernel [%s] have only static graph grad "
+                        "maker or have only dygraph grad maker, which is not "
+                        "allowed",
+                        string::join_strings(ops, ',')));
+}
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -247,6 +317,8 @@ PYBIND11_MODULE(core_noavx, m) {
   paddle::platform::CpuTotalPhysicalMemory();
 
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
+
+  AssertStaticGraphAndDygraphGradMakerNoDiff();
 
   m.doc() = "C++ core of PaddlePaddle";
 
@@ -285,9 +357,16 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_load_static_dict",
         [](const std::string &str_file_name, const py::handle &vec_var_list,
-           const Scope &scope) {
+           const Scope &scope, const Executor *executor) {
           std::vector<std::string> vec_name_list = GetNameList(vec_var_list);
+          CreateVariableIfNotExit(vec_var_list, scope, executor);
           LoadStaticNameListFromDisk(str_file_name, vec_name_list, scope);
+        });
+
+  m.def("_create_loaded_parameter",
+        [](const py::handle &vec_var_list, const Scope &scope,
+           const Executor *executor) {
+          CreateVariableIfNotExit(vec_var_list, scope, executor);
         });
 
   m.def("_save_dygraph_dict", [](const std::string &str_file_name,
@@ -324,6 +403,22 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("_get_use_default_grad_op_desc_maker_ops",
         [] { return OpInfoMap::Instance().GetUseDefaultGradOpDescMakerOps(); });
+
+  m.def("_get_all_register_op_kernels", [] {
+    auto &all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
+    std::unordered_map<std::string, std::vector<std::string>> all_kernels_info;
+    for (auto &kernel_pair : all_kernels) {
+      auto op_type = kernel_pair.first;
+      std::vector<std::string> kernel_types;
+      for (auto &info_pair : kernel_pair.second) {
+        paddle::framework::OpKernelType kernel_type = info_pair.first;
+        kernel_types.push_back(
+            paddle::framework::KernelTypeToString(kernel_type));
+      }
+      all_kernels_info.emplace(op_type, kernel_types);
+    }
+    return all_kernels_info;
+  });
 
   // NOTE(zjl): ctest would load environment variables at the beginning even
   // though we have not `import paddle.fluid as fluid`. So we add this API
@@ -400,61 +495,21 @@ PYBIND11_MODULE(core_noavx, m) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_clear", &Tensor::clear)
-      .def("set", PyCPUTensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCPUTensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"))
-#ifdef PADDLE_WITH_CUDA
-      .def("set", PyCUDATensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDATensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<float>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<double>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int64_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<bool>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>, py::arg("array"),
-           py::arg("place"))
-      .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>, py::arg("array"),
-           py::arg("place"), R"DOC(
+      .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+      .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
+           R"DOC(
         Set the data of LoDTensor on place with given numpy array.
         
         Args:
           lod (numpy.ndarray): The data to set.
           place (CPUPlace|CUDAPlace|CUDAPinnedPlace): The place where the 
           LoDTensor is to be set.
+          zero_copy (bool, optional): Whether to share memory with the input numpy array.
+          This parameter only works with CPUPlace. Default: False.
 
         Returns:
             None.
@@ -468,7 +523,7 @@ PYBIND11_MODULE(core_noavx, m) {
                 t = fluid.LoDTensor()
                 t.set(np.ndarray([5, 30]), fluid.CPUPlace())
           )DOC")
-#endif
+
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); }, R"DOC(
            Return the shape of LoDTensor.
 
@@ -514,6 +569,7 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_get_double_element", TensorGetElement<double>)
       .def("_place", [](Tensor &self) { return self.place(); })
       .def("_dtype", [](Tensor &self) { return self.type(); })
+      .def("_share_data_with", &Tensor::ShareDataWith)
       .def("__getitem__", PySliceTensor, py::return_value_policy::reference)
       .def("__str__", [](const Tensor &self) {
         std::stringstream ostr;
@@ -1012,6 +1068,19 @@ All parameter, weight, gradient are variables in Paddle.
     }
     return ret_values;
   });
+  m.def("get_op_attrs_default_value",
+        [](py::bytes byte_name) -> paddle::framework::AttributeMap {
+          std::string op_type = byte_name;
+          paddle::framework::AttributeMap res;
+          auto info = OpInfoMap::Instance().GetNullable(op_type);
+          if (info != nullptr) {
+            if (info->HasOpProtoAndChecker()) {
+              auto op_checker = info->Checker();
+              res = op_checker->GetAttrsDefaultValuesMap();
+            }
+          }
+          return res;
+        });
   m.def(
       "get_grad_op_desc", [](const OpDesc &op_desc,
                              const std::unordered_set<std::string> &no_grad_set,
@@ -1034,11 +1103,20 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("has_infer_inplace", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
   });
-  m.def("get_flags_use_mkldnn", []() { return FLAGS_use_mkldnn; });
-#ifdef PADDLE_WITH_NGRAPH
-  m.def("get_flags_use_ngraph", []() { return FLAGS_use_ngraph; });
-#endif
-
+  m.def("infer_no_need_buffer_slots",
+        [](const std::string op_type, const framework::VariableNameMap &inputs,
+           const framework::VariableNameMap &outputs,
+           const framework::AttributeMap &attrs) {
+          auto infer_func = framework::OpInfoMap::Instance()
+                                .Get(op_type)
+                                .NoNeedBufferVarsInferer();
+          if (infer_func) {
+            return infer_func(inputs, outputs, attrs);
+          } else {
+            std::unordered_set<std::string> empty = {};
+            return empty;
+          }
+        });
   m.def("prune", [](const ProgramDesc &origin,
                     const std::set<std::string> &feeded_var_names,
                     const std::vector<std::array<size_t, 2>> &targets) {
@@ -1309,10 +1387,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("close", &Executor::Close)
       .def("run_from_dataset", &Executor::RunFromDataset,
            py::call_guard<py::gil_scoped_release>())
+      .def("release_trainer", &Executor::ReleaseTrainer,
+           py::call_guard<py::gil_scoped_release>())
       .def("init_for_dataset",
            [](Executor &self, const ProgramDesc &prog,
               const std::string &trainer_desc, Scope *scope,
               Dataset *dataset) -> std::shared_ptr<TrainerBase> {
+             pybind11::gil_scoped_release release;
              return self.InitForDataset(prog, trainer_desc, scope, dataset);
            })
       .def("run_from_dataset",
@@ -1332,7 +1413,7 @@ All parameter, weight, gradient are variables in Paddle.
                                      create_local_scope, create_vars,
                                      feed_holder_name, fetch_holder_name);
            })
-      .def("run_cached_prepared_ctx",
+      .def("run_prepared_ctx",
            [](Executor &self, ExecutorPrepareContext *ctx, Scope *scope,
               bool create_local_scope = true, bool create_vars = true,
               bool keep_kids = false) {
@@ -1340,10 +1421,16 @@ All parameter, weight, gradient are variables in Paddle.
              self.RunPreparedContext(ctx, scope, create_local_scope,
                                      create_vars, keep_kids);
            })
-      .def("prepare_ctx_cache", &Executor::PrepareCtxCache,
-           py::call_guard<py::gil_scoped_release>())
-      .def("create_variables", &Executor::CreateVariables,
-           py::call_guard<py::gil_scoped_release>())
+      .def("prepare",
+           [](Executor &self, const ProgramDesc &program, int block_id,
+              const std::vector<std::string> &skip_ref_cnt_vars =
+                  std::vector<std::string>(),
+              bool force_disable_gc = false) {
+             pybind11::gil_scoped_release release;
+             return self.Prepare(program, block_id, skip_ref_cnt_vars,
+                                 force_disable_gc);
+           })
+      .def("create_variables", &Executor::CreateVariables)
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
                      int block_id, bool create_local_scope, bool create_vars,
                      const std::vector<std::string> &fetch_vars) {
@@ -1381,6 +1468,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindVarDsec(&m);
   BindOpDesc(&m);
   BindConstValue(&m);
+  BindGlobalValueGetterSetter(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {
