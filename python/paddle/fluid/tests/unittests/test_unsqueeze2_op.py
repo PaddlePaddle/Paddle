@@ -39,9 +39,9 @@ class TestUnsqueezeOp(OpTest):
         self.check_grad(["X"], "Out")
 
     def init_test_case(self):
-        self.ori_shape = (3, 5)
+        self.ori_shape = (3, 40)
         self.axes = (1, 2)
-        self.new_shape = (3, 1, 1, 5)
+        self.new_shape = (3, 1, 1, 40)
 
     def init_attrs(self):
         self.attrs = {"axes": self.axes}

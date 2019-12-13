@@ -19,7 +19,7 @@ from op_test import OpTest
 
 class TestSequencePadOp(OpTest):
     def set_attr(self):
-        self.x_shape = [12, 4]
+        self.x_shape = [12, 10]
         self.x_len_lod = [[2, 3, 4, 3]]
         self.pad_value = [1.0]
         self.padded_length = -1
