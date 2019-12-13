@@ -128,10 +128,10 @@ def check_op_validation(ops, idx, cur_op):
         idx (int): index of cur_op in ops.
         cur_op (Operator): Current operator.
     """
-    BACKWARD = core.op_proto_and_checker_maker.OpRole.Backward
+    OPTIMIZE = core.op_proto_and_checker_maker.OpRole.Optimize
     for i in range(idx + 1, len(ops)):
         op = ops[i]
-        if op.attr('op_role') & int(BACKWARD):
+        if not op.attr('op_role') & int(OPTIMIZE):
             for input_name in op.input_arg_names:
                 if input_name in cur_op.output_arg_names:
                     raise ValueError("There must be no next op that inputs {0} "
