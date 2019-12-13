@@ -724,7 +724,7 @@ class TestCase5_Max(TestCase2):
             self.check_grad_with_place(
                 place, set(['X']), 'Out', max_relative_error=1.00)
         elif self.pool_type == "max":
-            self.check_grad(set(['X']), 'Out', max_relative_error=1.00)
+            self.check_grad(set(['X']), 'Out')
 
 
 class TestCase5_channel_last_Max(TestCase5_Max):

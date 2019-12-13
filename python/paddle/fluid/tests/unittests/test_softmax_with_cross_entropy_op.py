@@ -93,7 +93,7 @@ class TestSoftmaxWithCrossEntropyOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["Logits"], "Loss", max_relative_error=0.05)
+        self.check_grad(["Logits"], "Loss")
 
 
 class TestSoftmaxWithCrossEntropyOpNoCudnn(TestSoftmaxWithCrossEntropyOp):
@@ -151,7 +151,7 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
         self.check_output(atol=1e-2)
 
     def test_check_grad(self):
-        self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
+        self.check_grad(["Logits"], "Loss")
 
 
 class TestSoftmaxWithCrossEntropyOpNoCudnnFp16(
@@ -166,7 +166,7 @@ class TestSoftmaxWithCrossEntropyOpNoCudnnFp16(
         self.dtype = np.float16
 
     def test_check_grad(self):
-        self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
+        self.check_grad(["Logits"], "Loss")
 
 
 class TestSoftmaxWithCrossEntropyOp2(TestSoftmaxWithCrossEntropyOp):

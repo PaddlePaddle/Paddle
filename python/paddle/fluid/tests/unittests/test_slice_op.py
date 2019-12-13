@@ -48,7 +48,7 @@ class TestSliceOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 class TestCase1(TestSliceOp):
@@ -99,7 +99,7 @@ class TestSliceOp_decs_dim(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 class TestSliceOp_decs_dim_2(TestSliceOp_decs_dim):
@@ -192,7 +192,7 @@ class TestSliceOp_starts_ListTensor(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 # Situation 2: starts(list, have tensor), ends(list, no tensor)
@@ -233,7 +233,7 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 class TestSliceOp_decs_dim_5_starts_ListTensor(
@@ -283,7 +283,7 @@ class TestSliceOp_decs_dim_starts_OneTensor(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 # Situation 4: starts(tensor), ends(tensor)
@@ -320,7 +320,7 @@ class TestSliceOp_starts_OneTensor_ends_OneTensor(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 # Situation 5: starts(tensor), ends(tensor)
@@ -358,7 +358,7 @@ class TestSliceOp_decs_dim_starts_and_ends_OneTensor(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 # Situation 6: starts(tensor), ends(list, have tensor)
@@ -401,7 +401,7 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 # Test CUDA float16
@@ -437,8 +437,7 @@ class TestFP16(OpTest):
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place, ['Input'], 'Out', max_relative_error=0.006)
+            self.check_grad_with_place(place, ['Input'], 'Out')
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -474,10 +473,7 @@ class TestFP16_2(OpTest):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
             self.check_grad_with_place(
-                place, ['Input'],
-                'Out',
-                max_relative_error=0.006,
-                numeric_grad_delta=0.5)
+                place, ['Input'], 'Out', numeric_grad_delta=0.5)
 
 
 # Test python API
