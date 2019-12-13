@@ -147,6 +147,92 @@ class TestPipeline(unittest.TestCase):
         for f in filelist:
             os.remove(f)
 
+    def test_pipeline_single_section(self):
+        program = fluid.Program()
+        with fluid.program_guard(program):
+            x = fluid.layers.data(
+                name='x', shape=[1], dtype='int64', lod_level=0)
+            y = fluid.layers.data(
+                name='y', shape=[1], dtype='int64', lod_level=0)
+            emb_x = layers.embedding(
+                input=x,
+                param_attr=fluid.ParamAttr(name="embx"),
+                size=[10, 2],
+                is_sparse=False)
+            emb_y = layers.embedding(
+                input=y,
+                param_attr=fluid.ParamAttr(
+                    name="emby", learning_rate=0.9),
+                size=[10, 2],
+                is_sparse=False)
+
+            concat = layers.concat([emb_x, emb_y], axis=1)
+
+            fc = layers.fc(input=concat,
+                           name="fc",
+                           size=1,
+                           num_flatten_dims=1,
+                           bias_attr=False)
+            loss = layers.reduce_mean(fc)
+
+            optimizer = fluid.optimizer.SGD(learning_rate=0.5)
+            optimizer = fluid.optimizer.PipelineOptimizer(
+                optimizer,
+                cut_list=[],
+                place_list=[fluid.CUDAPlace(0)],
+                concurrency_list=[1],
+                queue_size=1,
+                sync_steps=-1)
+            optimizer.minimize(loss)
+            place = fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            #prepare data
+            batch_size = 100
+
+            def binary_print(slot, fout):
+                num = np.int16(len(slot) + 1)
+                num.tofile(fout)
+                a = np.int64(batch_size)
+                a.tofile(fout)
+                slot.tofile(fout)
+
+            #batch1 = np.array([[0,1], [1,2], [2,3]]).astype("int64").reshape(batch_size,2,1)
+            #batch2 = np.array([[1,2], [2,3], [3,4]]).astype("int64").reshape(batch_size,2,1)
+            batch1 = np.ones(
+                (batch_size, 2, 1)).astype("int64").reshape(batch_size, 2, 1)
+            batch2 = np.ones(
+                (batch_size, 2, 1)).astype("int64").reshape(batch_size, 2, 1)
+            data = [batch1, batch2]
+            filelist = []
+            for i in range(2):
+                filelist.append("test_pipeline_input_" + str(i))
+            for f in filelist:
+                with open(f, "wb") as fout:
+                    for batch_data in data:
+                        for ins in batch_data:
+                            for slot in ins:
+                                binary_print(slot, fout)
+
+            dataset = fluid.DatasetFactory().create_dataset(
+                "FileInstantDataset")
+            dataset.set_use_var([x, y])
+            dataset.set_batch_size(batch_size)
+            dataset.set_filelist(filelist)
+
+            for epoch in range(1):
+                exe.train_from_dataset(
+                    fluid.default_main_program(),
+                    dataset,
+                    thread=1,
+                    debug=False,
+                    fetch_list=[],
+                    fetch_info=[],
+                    print_period=1)
+
+            for f in filelist:
+                os.remove(f)
+
 
 if __name__ == '__main__':
     unittest.main()

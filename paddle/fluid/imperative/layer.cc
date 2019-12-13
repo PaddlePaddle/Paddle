@@ -236,11 +236,13 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
 
     // TODO(Jiabin): change this after move unique_name generator to CXX
     auto new_var = std::make_shared<VarBase>(
-        false, "Itmp" + std::to_string(copied_counter_++));
+        true, Name() + std::to_string(copied_counter_++));
 
     auto* dst_tensor = new_var->var_.GetMutable<framework::LoDTensor>();
     dst_tensor->set_lod(src_tensor.lod());
-
+    new_var->SetPersistable(Persistable());
+    new_var->SetDataType(DataType());
+    new_var->SetType(Type());
     framework::TensorCopy(src_tensor, dst_place, dst_tensor);
     if (blocking) {
       platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
@@ -253,7 +255,6 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     if (platform::is_gpu_place(dst_place)) {
       VLOG(3) << "copy tensor " << Name() << " from gpu";
     }
-
     return new_var;
   } else {
     auto& src_selected_rows = var_.Get<framework::SelectedRows>();

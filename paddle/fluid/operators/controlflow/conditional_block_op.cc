@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
+
 #include "paddle/fluid/operators/assign_op.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -94,11 +96,10 @@ class ConditionalBlockGradOp : public ConditionalOp {
           [](const framework::LoDTensor *t) { return t->numel() != 0; });
     }
 
+    const auto &inputs = Inputs(ConditionalOp::kInputs);
+    const auto &outside_grads =
+        Outputs(framework::GradVarName(ConditionalOp::kInputs));
     if (need_run) {
-      const auto &inputs = Inputs(ConditionalOp::kInputs);
-      const auto &outside_grads =
-          Outputs(framework::GradVarName(ConditionalOp::kInputs));
-
       std::vector<std::string> inside_grads;
       inside_grads.reserve(inputs.size());
       for (auto &in : inputs) {
@@ -126,7 +127,10 @@ class ConditionalBlockGradOp : public ConditionalOp {
 
       AssignLocalGradientToParentScope(dev_place, cur_scope, scope,
                                        inside_grads, outside_grads);
+      return;
     }
+
+    AssignZeroToParentScope(dev_place, scope, inputs, outside_grads);
   }
 
  private:
@@ -155,6 +159,77 @@ class ConditionalBlockGradOp : public ConditionalOp {
       framework::VisitVarType(*inside_var,
                               AssignFunctor(outside_var, *dev_ctx));
     }
+  }
+
+  void AssignZeroToParentScope(
+      const platform::Place &place, const framework::Scope &scope,
+      const std::vector<std::string> &inputs,
+      const std::vector<std::string> &outside_grads) const {
+    for (size_t i = 0; i < outside_grads.size(); ++i) {
+      const std::string &outside_grad_name = outside_grads[i];
+      const std::string &input_name = inputs[i];
+      VLOG(4) << "input_name = " << input_name
+              << ", outside_grad_name = " << outside_grad_name;
+      framework::Variable *input_var = scope.FindVar(input_name);
+      if (input_var == nullptr) {
+        continue;
+      }
+      framework::Variable *outside_var = scope.FindVar(outside_grad_name);
+      if (outside_var == nullptr) {
+        continue;
+      }
+
+      if (input_var->IsType<framework::LoDTensor>()) {
+        PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensor>(), true,
+                          platform::errors::InvalidArgument(
+                              "Type of outside_var %s is NOT LoDTensor, which "
+                              "doesn't match input_var %s",
+                              outside_grad_name, input_name));
+        AssignZeroToOutsideTensor(
+            place, scope, input_var->Get<framework::LoDTensor>(),
+            outside_var->GetMutable<framework::LoDTensor>());
+      } else if (input_var->IsType<framework::LoDTensorArray>()) {
+        PADDLE_ENFORCE_EQ(outside_var->IsType<framework::LoDTensorArray>(),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Type of outside_var %s is NOT LoDTensorArray, "
+                              "which doesn't match input_var %s",
+                              outside_grad_name, input_name));
+        const auto &input_tensors = input_var->Get<framework::LoDTensorArray>();
+        auto *outside_tensors =
+            outside_var->GetMutable<framework::LoDTensorArray>();
+        PADDLE_ENFORCE_EQ(input_tensors.size(), outside_tensors->size(),
+                          platform::errors::InvalidArgument(
+                              "LoDTensorArray outside_var %s doen't have same "
+                              "size as input_var %s",
+                              outside_grad_name, input_name));
+        for (size_t j = 0; j < input_tensors.size(); ++j) {
+          AssignZeroToOutsideTensor(place, scope, input_tensors[j],
+                                    &((*outside_tensors)[j]));
+        }
+      } else {
+        // TODO(huihuangzheng): add support for SelectedRows
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Conditional block grad op doesn't support non-LoDTensor output "
+            "now"));
+      }
+    }
+  }
+
+  void AssignZeroToOutsideTensor(const platform::Place &place,
+                                 const framework::Scope &cur_scope,
+                                 const framework::LoDTensor &input_tensor,
+                                 framework::LoDTensor *outside_tensor) const {
+    if (!input_tensor.IsInitialized() || input_tensor.numel() == 0) {
+      return;
+    }
+    VLOG(4) << "Assigning zero to " << outside_tensor;
+    outside_tensor->Resize(input_tensor.dims());
+    outside_tensor->mutable_data(place, input_tensor.type());
+    const platform::DeviceContext *dev_ctx =
+        platform::DeviceContextPool::Instance().Get(place);
+    math::set_constant(*dev_ctx, outside_tensor, 0.0f);
+    outside_tensor->set_lod(input_tensor.lod());
   }
 };
 

@@ -25,7 +25,7 @@ class TestCenterLossOp(OpTest):
         self.op_type = "center_loss"
         self.dtype = np.float32
         self.init_dtype_type()
-        batch_size = 6
+        batch_size = 12
         feet_dim = 10
         cluster_num = 8
         self.attrs = {}

@@ -370,10 +370,11 @@ class DistributeTranspiler(object):
             endpoints = trainers.split(",")
         elif isinstance(trainers, list):
             endpoints = trainers
-        else:
+        elif collective_mode != "single_process_multi_thread":
             raise ValueError('invalid trainers config: ' + str(trainers))
 
-        if len(endpoints) == 1:
+        if len(endpoints
+               ) == 1 and collective_mode != "single_process_multi_thread":
             raise ValueError('invalid trainer number in distributed: 1')
 
         if startup_program is None:
@@ -387,6 +388,8 @@ class DistributeTranspiler(object):
             transpiler = collective.GradAllReduce(self.config.nccl_comm_num)
         elif collective_mode == 'local_sgd':
             transpiler = collective.LocalSGD(self.config.nccl_comm_num)
+        elif collective_mode == "single_process_multi_thread":
+            transpiler = collective.SingleProcessMultiThread()
         else:
             raise ValueError('invalid collective_mode: %s' % collective_mode)
 
@@ -400,7 +403,7 @@ class DistributeTranspiler(object):
 
     def _get_all_remote_sparse_update_op(self, main_program):
         sparse_update_ops = []
-        sparse_update_op_types = ["lookup_table", "nce", "hierarchical_sigmoid"]
+        sparse_update_op_types = ["lookup_table", "nce"]
         for op in main_program.global_block().ops:
             if op.type in sparse_update_op_types and op.attr(
                     'remote_prefetch') is True:
@@ -604,6 +607,7 @@ class DistributeTranspiler(object):
             self.origin_program)
         # use_sparse_update_param_name -> split_height_section
         self.sparse_param_to_height_sections = dict()
+        self.need_delete_optimize_vars = []
 
         # add distributed attrs to program
         self.origin_program._is_distributed = True
@@ -858,6 +862,78 @@ class DistributeTranspiler(object):
         self._get_distributed_optimizer_vars()
         self.origin_program._parameters_on_pservers = self.vars_overview
 
+    def _get_sparse_table_names(self):
+        sparse_update_op_types = ["lookup_table", "nce"]
+
+        sparse_table_names = []
+        for op in self.origin_program.global_block().ops:
+            if op.type in sparse_update_op_types and op.attr(
+                    'is_sparse') is True:
+                sparse_table_names.append(op.input("W")[0])
+            if op.type == "distributed_lookup_table":
+                sparse_table_names.append(op.input("W")[0])
+
+        if self.has_distributed_lookup_table:
+            sparse_table_names.append(self.table_name)
+
+        return list(set(sparse_table_names))
+
+    def _fake_init_sparsetable(self, sparse_table_names):
+        # delete table init op
+        for table_name in sparse_table_names:
+            table_var = self.startup_program.global_block().vars[table_name]
+            table_param_init_op = []
+            for op in self.startup_program.global_block().ops:
+                if table_name in op.output_arg_names:
+                    table_param_init_op.append(op)
+            init_op_num = len(table_param_init_op)
+            if init_op_num != 1:
+                raise ValueError("table init op num should be 1, now is " + str(
+                    init_op_num))
+            table_init_op = table_param_init_op[0]
+            self.startup_program.global_block().append_op(
+                type="fake_init",
+                inputs={},
+                outputs={"Out": table_var},
+                attrs={"shape": table_init_op.attr('shape')})
+            delete_ops(self.startup_program.global_block(), table_param_init_op)
+
+    def _delete_trainer_optimizer(self, is_startup):
+        optimize_vars = []
+        optimize_op_role_vars = []
+        optimize_need_delete_vars = []
+
+        for op in self.optimize_ops:
+            optimize_vars.extend(op.input_arg_names)
+            optimize_op_role_vars.extend(op.attr("op_role_var"))
+
+        optimize_vars = list(set(optimize_vars))
+        optimize_op_role_vars = list(set(optimize_op_role_vars))
+
+        for var in optimize_vars:
+            if var not in optimize_op_role_vars:
+                optimize_need_delete_vars.append(var)
+        need_delete_optimize_vars = list(set(optimize_need_delete_vars))
+
+        if is_startup:
+            init_ops = []
+            for var in need_delete_optimize_vars:
+                param_init_op = []
+                for op in self.startup_program.global_block().ops:
+                    if var in op.output_arg_names:
+                        param_init_op.append(op)
+                init_ops.extend(param_init_op)
+            delete_ops(self.startup_program.global_block(), init_ops)
+
+            for var in need_delete_optimize_vars:
+                if self.startup_program.global_block().has_var(var):
+                    self.startup_program.global_block()._remove_var(var)
+        else:
+            delete_ops(self.origin_program.global_block(), self.optimize_ops)
+            for var in need_delete_optimize_vars:
+                if self.origin_program.global_block().has_var(var):
+                    self.origin_program.global_block()._remove_var(var)
+
     def get_trainer_program(self, wait_port=True):
         """
         Get transpiled trainer side program. The program on trainer side compared with origin program 
@@ -888,31 +964,16 @@ class DistributeTranspiler(object):
         # remove optimize ops and add a send op to main_program
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
 
-        lr_ops = self._get_lr_ops()
-        delete_ops(self.origin_program.global_block(), self.optimize_ops)
-        delete_ops(self.origin_program.global_block(), lr_ops)
+        self._delete_trainer_optimizer(is_startup=True)
+        sparse_table_names = self._get_sparse_table_names()
+        self._fake_init_sparsetable(sparse_table_names)
 
-        # delete table init op
-        if self.has_distributed_lookup_table:
-            table_var = self.startup_program.global_block().vars[
-                self.table_name]
-            table_param_init_op = []
-            for op in self.startup_program.global_block().ops:
-                if self.table_name in op.output_arg_names:
-                    table_param_init_op.append(op)
-            init_op_num = len(table_param_init_op)
-            if init_op_num != 1:
-                raise ValueError("table init op num should be 1, now is " + str(
-                    init_op_num))
-            table_init_op = table_param_init_op[0]
-            self.startup_program.global_block().append_op(
-                type="fake_init",
-                inputs={},
-                outputs={"Out": table_var},
-                attrs={"shape": table_init_op.attr('shape')})
-            delete_ops(self.startup_program.global_block(), table_param_init_op)
+        lr_ops = self._get_lr_ops()
+        delete_ops(self.origin_program.global_block(), lr_ops)
+        self._delete_trainer_optimizer(is_startup=False)
 
         self.origin_program.__str__()
+        self.startup_program.__str__()
 
         if wait_port:
             wait_server_ready(self.pserver_endpoints)
@@ -934,8 +995,14 @@ class DistributeTranspiler(object):
 
         # FIXME(gongwb): delete not need ops.
         # note that: some parameter is not trainable and those ops can't be deleted.
+        sparse_table_names = self._get_sparse_table_names()
+
+        # self._fake_init_sparsetable(sparse_table_names)
+        #self._delete_trainer_optimizer(is_startup=True)
 
         for varname, splited_var in six.iteritems(self.param_var_mapping):
+            if varname in sparse_table_names:
+                continue
             # Get the eplist of recv vars
             eps = []
             for var in splited_var:
@@ -977,6 +1044,8 @@ class DistributeTranspiler(object):
             })
 
         for varname, splited_var in six.iteritems(self.param_var_mapping):
+            if varname in sparse_table_names:
+                continue
             # add concat ops to merge splited parameters received from parameter servers.
             if len(splited_var) <= 1:
                 continue

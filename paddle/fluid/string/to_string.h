@@ -15,7 +15,9 @@ limitations under the License. */
 #pragma once
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <typeindex>
+#include <vector>
 
 namespace paddle {
 namespace string {
@@ -24,11 +26,18 @@ inline std::ostream& operator<<(std::ostream& s, const std::type_index& t) {
   return s;
 }
 
-template <typename T>
+template <typename T,
+          typename std::enable_if<!std::is_enum<T>::value, int>::type = 0>
 inline std::string to_string(T v) {
   std::ostringstream sout;
   sout << v;
   return sout.str();
+}
+
+template <typename T,
+          typename std::enable_if<std::is_enum<T>::value, int>::type = 0>
+inline std::string to_string(T v) {
+  return std::to_string(static_cast<int>(v));
 }
 
 template <>

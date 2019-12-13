@@ -280,7 +280,7 @@ class OpTest(unittest.TestCase):
             data = value[0]
             lod = value[1]
             v = fluid.dygraph.base.to_variable(value=data)
-            v._ivar.value().get_tensor().set_recursive_sequence_lengths(lod)
+            v.value().get_tensor().set_recursive_sequence_lengths(lod)
             return v
         else:
             return fluid.dygraph.base.to_variable(value)
@@ -301,7 +301,7 @@ class OpTest(unittest.TestCase):
                 if if_return_inputs_grad_dict:
                     v.stop_gradient = False
                 if has_lod:
-                    v._ivar.value().get_tensor().set_recursive_sequence_lengths(
+                    v.value().get_tensor().set_recursive_sequence_lengths(
                         lod_temp)
             else:
                 v = block.create_var(
@@ -852,8 +852,8 @@ class OpTest(unittest.TestCase):
                     if check_dygraph:
                         imperative_actual = find_imperative_actual(
                             sub_out_name, dygraph_outs, place)
-                        imperative_actual_t = np.array(
-                            imperative_actual._ivar.value().get_tensor())
+                        imperative_actual_t = np.array(imperative_actual.value()
+                                                       .get_tensor())
                     idx = find_actual(sub_out_name, fetch_list)
                     actual = outs[idx]
                     actual_t = np.array(actual)
@@ -880,7 +880,7 @@ class OpTest(unittest.TestCase):
                             ") has different lod at " + str(place))
                         if check_dygraph:
                             self.assertListEqual(
-                                imperative_actual._ivar.value().get_tensor()
+                                imperative_actual.value().get_tensor()
                                 .recursive_sequence_lengths(), expect[1],
                                 "Output (" + out_name +
                                 ") has different lod at " + str(place) +
@@ -889,8 +889,8 @@ class OpTest(unittest.TestCase):
                 if check_dygraph:
                     imperative_actual = find_imperative_actual(
                         out_name, dygraph_outs, place)
-                    imperative_actual_t = np.array(
-                        imperative_actual._ivar.value().get_tensor())
+                    imperative_actual_t = np.array(imperative_actual.value()
+                                                   .get_tensor())
                 idx = find_actual(out_name, fetch_list)
                 actual = outs[idx]
                 actual_t = np.array(actual)
@@ -925,7 +925,7 @@ class OpTest(unittest.TestCase):
                                          ") has different lod at " + str(place))
                     if check_dygraph:
                         self.assertListEqual(
-                            imperative_actual._ivar.value().get_tensor()
+                            imperative_actual.value().get_tensor()
                             .recursive_sequence_lengths(), expect[1],
                             "Output (" + out_name + ") has different lod at " +
                             str(place) + " in dygraph mode")
