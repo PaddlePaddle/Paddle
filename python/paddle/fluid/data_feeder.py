@@ -524,41 +524,29 @@ class NumpyToLoDTensorConverter(object):
         return t
 
 
-class ListTensorProvider(object):
-    def __init__(self, generator, places):
+class DygraphListTensorProvider(object):
+    def __init__(self, generator, place):
         self.generator = generator
         self.converters = []
-        self.places = []
-        if places:
-            if not isinstance(places, (list, tuple)):
-                places = [places]
-            assert len(
-                places) == 1, "dygraph mode CAN NOT specify multiple places."
-            for place in places:
-                if isinstance(place, (core.CUDAPlace, core.CPUPlace)):
-                    self.places.append(place)
-                else:
-                    raise ValueError(
-                        "Please specify a valid place values such as core.CPUPlace or core.CUDAPlace"
-                    )
-        if len(self.places) == 0:
-            self.places.append(_current_expected_place())
+        if place:
+            if isinstance(place, (core.CUDAPlace, core.CPUPlace)):
+                self.place = place
+            else:
+                raise ValueError("Please specify a valid place values \
+                    such as core.CPUPlace or core.CUDAPlace")
+        else:
+            self.place = _current_expected_place()
 
-    def _readData(self, iterable, places):
-        for place, each_sample in six.moves.zip(places, iterable):
-            for item in each_sample:
-                if len(self.converters) < len(item):
-                    for i in item:
-                        self.converters.append(NumpyToLoDTensorConverter(place))
-                for each_converter, each_slot in six.moves.zip(self.converters,
-                                                               item):
-                    each_converter.feed(each_slot)
-            yield [c.done() for c in self.converters]
+    def _read_data(self, iterable, place):
+        for items in iterable:
+            if len(self.converters) < len(items):
+                for _ in items:
+                    self.converters.append(NumpyToLoDTensorConverter(place))
+            for each_converter, each_slot in six.moves.zip(self.converters,
+                                                           items):
+                each_converter.feed(each_slot)
+        yield [c.done() for c in self.converters]
 
     def __call__(self):
-        item = []
         for batch in self.generator():
-            item.append(batch)
-            if len(item) == len(self.places):
-                yield list(self._readData(item, self.places))
-                item = []
+            yield list(self._read_data(batch, self.place))

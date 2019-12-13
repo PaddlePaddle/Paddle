@@ -905,15 +905,17 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
 
   auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
   // Create variables
+  // Input
+  auto *input_var = pattern->NewNode(input_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("fc", "Input");
   // Filter
   auto *fc_weight_var = pattern->NewNode(weights_repr())
                             ->AsInput()
-                            ->assert_is_persistable_var()
                             ->assert_is_op_input("fc", "W");
   // Bias
   auto *fc_bias_var = pattern->NewNode(bias_repr())
                           ->AsInput()
-                          ->assert_is_persistable_var()
                           ->assert_is_op_input("fc", "Bias");
   // Output
   auto *fc_out_var = pattern->NewNode(output_repr())
@@ -921,7 +923,8 @@ PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
                          ->assert_is_op_output("fc", "Out")
                          ->assert_is_only_output_of_op("fc");
 
-  fc_op->LinksFrom({x, fc_weight_var, fc_bias_var}).LinksTo({fc_out_var});
+  fc_op->LinksFrom({input_var, fc_weight_var, fc_bias_var})
+      .LinksTo({fc_out_var});
   return fc_out_var;
 }
 
@@ -1163,6 +1166,27 @@ PDNode *patterns::Transpose::operator()() {
   transpose_op->LinksFrom({transpose_in}).LinksTo({transpose_out});
   next_op->LinksFrom({transpose_out});
   return transpose_out;
+}
+
+PDNode *patterns::Reshape::operator()() {
+  auto prev_op = pattern->NewNode(prev_op_repr())->assert_is_op();
+
+  auto reshape_op =
+      pattern->NewNode(reshape_op_repr())->assert_is_op("reshape2");
+
+  auto reshape_in = pattern->NewNode(reshape_in_repr())
+                        ->AsInput()
+                        ->assert_is_op_input("reshape2", "X");
+  auto reshape_out = pattern->NewNode(reshape_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("reshape2", "Out");
+
+  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+
+  prev_op->LinksTo({reshape_in});
+  reshape_op->LinksFrom({reshape_in}).LinksTo({reshape_out});
+  next_op->LinksFrom({reshape_out});
+  return reshape_out;
 }
 
 PDNode *patterns::ConvResidual::operator()(bool with_residual_data) {

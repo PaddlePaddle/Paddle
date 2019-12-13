@@ -13,8 +13,9 @@
 # limitations under the License.
 from __future__ import print_function
 
-import unittest
-from paddle.fluid.tests.unittests.test_fill_zeros_like_op import TestFillZerosLikeOp
+import unittest, sys
+sys.path.append("../")
+from test_fill_zeros_like_op import TestFillZerosLikeOp
 
 if __name__ == "__main__":
     unittest.main()

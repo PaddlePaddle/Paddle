@@ -69,7 +69,7 @@ class NCCLGroupGuard {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupStart());
   }
 
-  inline ~NCCLGroupGuard() {
+  inline ~NCCLGroupGuard() PADDLE_MAY_THROW {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupEnd());
     NCCLMutex().unlock();
   }
@@ -348,6 +348,9 @@ class NCCLCommunicator {
  public:
   NCCLCommunicator() {}
   virtual ~NCCLCommunicator() PADDLE_MAY_THROW {}
+
+
+
   NCCLContextMap *DefaultFlatCtx() const {
     auto &flat_rings = NCCLReference::Instance().flat_rings_;
     if (flat_rings.size() == 0) {

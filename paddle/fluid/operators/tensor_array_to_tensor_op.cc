@@ -273,6 +273,23 @@ class LoDTensorArray2TensorGradOp : public framework::OperatorBase {
   }
 };
 
+template <typename T>
+class TensorArrayToTensorGradOpMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  std::unique_ptr<T> Apply() const override {
+    std::unique_ptr<T> op(new T());
+    op->SetType("tensor_array_to_tensor_grad");
+    op->SetAttrMap(this->Attrs());
+    op->SetInput("X", this->Input("X"));
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    return op;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 USE_OP(concat);
@@ -281,8 +298,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(
     tensor_array_to_tensor, ops::LoDTensorArray2TensorOp,
     ops::LoDTensorArray2TensorOpMaker, ops::LoDTensorArray2TensorOpInferShape,
-    paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
-    paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
+    ops::TensorArrayToTensorGradOpMaker<paddle::framework::OpDesc>,
+    ops::TensorArrayToTensorGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(tensor_array_to_tensor_grad, ops::LoDTensorArray2TensorGradOp,
                   ops::LoDTensorArray2TensorGradInferShape,
                   ops::LoDTensorArray2TensorGradInferVarType);

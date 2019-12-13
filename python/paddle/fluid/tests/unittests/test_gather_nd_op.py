@@ -27,8 +27,7 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
-        xnp = np.array(
-            [[65, 17, 2], [-14, -25, -1], [76, 22, 3]]).astype("float32")
+        xnp = np.random.random((5, 20)).astype("float32")
         self.inputs = {'X': xnp, 'Index': np.array([[], []]).astype("int32")}
         self.outputs = {
             'Out': np.vstack((xnp[np.newaxis, :], xnp[np.newaxis, :]))
@@ -128,7 +127,7 @@ class TestGatherNdOpWithHighRankDiff(OpTest):
 
 
 #Test Python API
-class TestGatherNdOpAPI(OpTest):
+class TestGatherNdOpAPI(unittest.TestCase):
     def test_case1(self):
         x1 = fluid.layers.data(
             name='x1', shape=[30, 40, 50, 60], dtype='float32')
@@ -147,7 +146,7 @@ class TestGatherNdOpAPI(OpTest):
 
 
 #Test Raise Index Error
-class TestGatherNdOpRaise(OpTest):
+class TestGatherNdOpRaise(unittest.TestCase):
     def test_check_raise(self):
         def check_raise_is_test():
             try:

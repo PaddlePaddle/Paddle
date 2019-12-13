@@ -200,7 +200,7 @@ template <typename T>
 void DatasetImpl<T>::PreLoadIntoMemory() {
   VLOG(3) << "DatasetImpl<T>::PreLoadIntoMemory() begin";
   if (preload_thread_num_ != 0) {
-    CHECK(preload_thread_num_ == preload_readers_.size());
+    CHECK(static_cast<size_t>(preload_thread_num_) == preload_readers_.size());
     preload_threads_.clear();
     for (int64_t i = 0; i < preload_thread_num_; ++i) {
       preload_threads_.push_back(
@@ -208,7 +208,7 @@ void DatasetImpl<T>::PreLoadIntoMemory() {
                       preload_readers_[i].get()));
     }
   } else {
-    CHECK(thread_num_ == readers_.size());
+    CHECK(static_cast<size_t>(thread_num_) == readers_.size());
     preload_threads_.clear();
     for (int64_t i = 0; i < thread_num_; ++i) {
       preload_threads_.push_back(std::thread(
@@ -337,7 +337,7 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
       }
       std::shuffle(send_index.begin(), send_index.end(),
                    fleet_ptr->LocalRandomEngine());
-      for (auto index = 0u; index < this->trainer_num_; ++index) {
+      for (int index = 0; index < this->trainer_num_; ++index) {
         int i = send_index[index];
         if (ars[i].Length() == 0) {
           continue;
@@ -398,7 +398,7 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num) {
   uint64_t output_channels_data_size = 0;
   uint64_t consume_channels_data_size = 0;
   CHECK(multi_output_channel_.size() == multi_consume_channel_.size());
-  for (int i = 0; i < multi_output_channel_.size(); ++i) {
+  for (size_t i = 0; i < multi_output_channel_.size(); ++i) {
     output_channels_data_size += multi_output_channel_[i]->Size();
     consume_channels_data_size += multi_consume_channel_[i]->Size();
   }
@@ -424,7 +424,7 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num) {
   std::vector<paddle::framework::Channel<T>> new_channels;
   std::vector<paddle::framework::Channel<T>> new_other_channels;
   std::vector<T> local_vec;
-  for (int i = 0; i < origin_channels->size(); ++i) {
+  for (size_t i = 0; i < origin_channels->size(); ++i) {
     local_vec.clear();
     (*origin_channels)[i]->Close();
     (*origin_channels)[i]->ReadAll(local_vec);
@@ -433,6 +433,12 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num) {
   total_data_channel->Close();
   total_data_channel->SetBlockSize(total_data_channel->Size() / channel_num +
                                    1);
+  // will discard the remaining instances,
+  // TODO(hutuxian): should add a config here to choose how to deal with
+  // remaining instances
+  if (static_cast<int>(input_channel_->Size()) >= channel_num) {
+    input_channel_->SetBlockSize(input_channel_->Size() / channel_num);
+  }
 
   for (int i = 0; i < channel_num; ++i) {
     local_vec.clear();
@@ -506,10 +512,12 @@ void DatasetImpl<T>::CreateReaders() {
     if (input_channel_ != nullptr) {
       readers_[i]->SetInputChannel(input_channel_.get());
     }
-    if (cur_channel_ == 0 && channel_idx < multi_output_channel_.size()) {
+    if (cur_channel_ == 0 &&
+        static_cast<size_t>(channel_idx) < multi_output_channel_.size()) {
       readers_[i]->SetOutputChannel(multi_output_channel_[channel_idx].get());
       readers_[i]->SetConsumeChannel(multi_consume_channel_[channel_idx].get());
-    } else if (channel_idx < multi_output_channel_.size()) {
+    } else if (static_cast<size_t>(channel_idx) <
+               multi_output_channel_.size()) {
       readers_[i]->SetOutputChannel(multi_consume_channel_[channel_idx].get());
       readers_[i]->SetConsumeChannel(multi_output_channel_[channel_idx].get());
     }
@@ -638,10 +646,12 @@ void MultiSlotDataset::MergeByInsId() {
   }
   auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
   std::vector<std::string> use_slots;
-  for (size_t i = 0; i < multi_slot_desc.slots_size(); ++i) {
+  std::vector<bool> use_slots_is_dense;
+  for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
     const auto& slot = multi_slot_desc.slots(i);
     if (slot.is_used()) {
       use_slots.push_back(slot.name());
+      use_slots_is_dense.push_back(slot.is_dense());
     }
   }
   CHECK(multi_output_channel_.size() != 0);  // NOLINT
@@ -671,6 +681,11 @@ void MultiSlotDataset::MergeByInsId() {
   std::unordered_set<uint16_t> all_float;
   std::unordered_set<uint16_t> local_uint64;
   std::unordered_set<uint16_t> local_float;
+  std::unordered_map<uint16_t, std::vector<FeatureItem>> all_dense_uint64;
+  std::unordered_map<uint16_t, std::vector<FeatureItem>> all_dense_float;
+  std::unordered_map<uint16_t, std::vector<FeatureItem>> local_dense_uint64;
+  std::unordered_map<uint16_t, std::vector<FeatureItem>> local_dense_float;
+  std::unordered_map<uint16_t, bool> dense_empty;
 
   VLOG(3) << "recs.size() " << recs.size();
   for (size_t i = 0; i < recs.size();) {
@@ -688,6 +703,8 @@ void MultiSlotDataset::MergeByInsId() {
 
     all_int64.clear();
     all_float.clear();
+    all_dense_uint64.clear();
+    all_dense_float.clear();
     bool has_conflict_slot = false;
     uint16_t conflict_slot = 0;
 
@@ -696,11 +713,60 @@ void MultiSlotDataset::MergeByInsId() {
     rec.content_ = recs[i].content_;
 
     for (size_t k = i; k < j; k++) {
+      dense_empty.clear();
+      local_dense_uint64.clear();
+      local_dense_float.clear();
+      for (auto& feature : recs[k].uint64_feasigns_) {
+        uint16_t slot = feature.slot();
+        if (!use_slots_is_dense[slot]) {
+          continue;
+        }
+        local_dense_uint64[slot].push_back(feature);
+        if (feature.sign().uint64_feasign_ != 0) {
+          dense_empty[slot] = false;
+        } else if (dense_empty.find(slot) == dense_empty.end() &&
+                   all_dense_uint64.find(slot) == all_dense_uint64.end()) {
+          dense_empty[slot] = true;
+        }
+      }
+      for (auto& feature : recs[k].float_feasigns_) {
+        uint16_t slot = feature.slot();
+        if (!use_slots_is_dense[slot]) {
+          continue;
+        }
+        local_dense_float[slot].push_back(feature);
+        if (fabs(feature.sign().float_feasign_) >= 1e-6) {
+          dense_empty[slot] = false;
+        } else if (dense_empty.find(slot) == dense_empty.end() &&
+                   all_dense_float.find(slot) == all_dense_float.end()) {
+          dense_empty[slot] = true;
+        }
+      }
+      for (auto& p : dense_empty) {
+        if (local_dense_uint64.find(p.first) != local_dense_uint64.end()) {
+          all_dense_uint64[p.first] = std::move(local_dense_uint64[p.first]);
+        } else if (local_dense_float.find(p.first) != local_dense_float.end()) {
+          all_dense_float[p.first] = std::move(local_dense_float[p.first]);
+        }
+      }
+    }
+    for (auto& f : all_dense_uint64) {
+      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(), f.second.begin(),
+                                  f.second.end());
+    }
+    for (auto& f : all_dense_float) {
+      rec.float_feasigns_.insert(rec.float_feasigns_.end(), f.second.begin(),
+                                 f.second.end());
+    }
+
+    for (size_t k = i; k < j; k++) {
       local_uint64.clear();
       local_float.clear();
       for (auto& feature : recs[k].uint64_feasigns_) {
         uint16_t slot = feature.slot();
-        if (all_int64.find(slot) != all_int64.end()) {
+        if (use_slots_is_dense[slot]) {
+          continue;
+        } else if (all_int64.find(slot) != all_int64.end()) {
           has_conflict_slot = true;
           conflict_slot = slot;
           break;
@@ -715,7 +781,9 @@ void MultiSlotDataset::MergeByInsId() {
 
       for (auto& feature : recs[k].float_feasigns_) {
         uint16_t slot = feature.slot();
-        if (all_float.find(slot) != all_float.end()) {
+        if (use_slots_is_dense[slot]) {
+          continue;
+        } else if (all_float.find(slot) != all_float.end()) {
           has_conflict_slot = true;
           conflict_slot = slot;
           break;
@@ -828,7 +896,7 @@ void MultiSlotDataset::SlotsShuffle(
   timeline.Start();
   auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
   std::set<uint16_t> index_slots;
-  for (size_t i = 0; i < multi_slot_desc.slots_size(); ++i) {
+  for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
     std::string cur_slot = multi_slot_desc.slots(i).name();
     if (slots_to_replace.find(cur_slot) != slots_to_replace.end()) {
       index_slots.insert(i);

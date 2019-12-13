@@ -419,6 +419,13 @@ class Reshape2OpMaker : public ReshapeOpMaker {
               "XShape is just used to store the shape and lod of X, which will "
               "be used in FlattenGradOp.")
         .AsIntermediate();
+    /* int8 parameters */
+    AddAttr<bool>("use_quantizer",
+                  "(bool, default false) "
+                  "Set to true for operators that should be quantized and use "
+                  "int8 kernel. "
+                  "Used only on CPU.")
+        .SetDefault(false);
   }
 };
 
@@ -431,7 +438,9 @@ class Reshape2GradMaker : public framework::SingleGradOpMaker<T> {
     auto *grad_op = new T();
     grad_op->SetType("reshape2_grad");
     grad_op->SetInput("XShape", this->Output("XShape"));
-    grad_op->SetInput("ShapeTensor", this->Input("ShapeTensor"));
+    if (this->HasInput("ShapeTensor")) {
+      grad_op->SetInput("ShapeTensor", this->Input("ShapeTensor"));
+    }
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     grad_op->SetAttrMap(this->Attrs());
@@ -570,8 +579,9 @@ REGISTER_OPERATOR(reshape2_grad_grad, ops::Reshape2DoubleGradOp,
                   ops::ReshapeDoubleGradInplaceInToOut);
 
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2, float, ops::ReshapeKernel, double,
-                               ops::ReshapeKernel, int, ops::ReshapeKernel,
-                               int64_t, ops::ReshapeKernel);
+                               ops::ReshapeKernel, int8_t, ops::ReshapeKernel,
+                               uint8_t, ops::ReshapeKernel, int,
+                               ops::ReshapeKernel, int64_t, ops::ReshapeKernel);
 REGISTER_OP_CPU_KERNEL_FUNCTOR(reshape2_grad, float, ops::ReshapeGradKernel,
                                double, ops::ReshapeGradKernel, int,
                                ops::ReshapeGradKernel, int64_t,

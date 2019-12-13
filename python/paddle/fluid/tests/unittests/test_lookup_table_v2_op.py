@@ -84,7 +84,7 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
         pass
 
 
-class TestLookupTableWIsSelectedRows(OpTest):
+class TestLookupTableWIsSelectedRows(unittest.TestCase):
     def prepare_ids(self, scope, place):
         ids_tensor = scope.var('Ids').get_tensor()
         ids_array = np.array([0, 4, 3, 5]).astype("int64")
@@ -214,7 +214,7 @@ class TestLookupTableApi(unittest.TestCase):
                       return_numpy=False)
 
 
-class TestEmbedOpError(OpTest):
+class TestEmbedOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             input_data = np.random.randint(0, 10, (4, 6)).astype("int64")

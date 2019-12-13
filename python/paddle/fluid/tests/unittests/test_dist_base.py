@@ -162,6 +162,13 @@ class TestDistRunnerBase(object):
             if var.is_data
         ]
 
+        eprint("feed_var_list:", feed_var_list)
+
+        # tmp add this code to pass python35 gcc8 CI
+        # Fixme(gongweibao, wangxi), need fix fleet api program order
+        if feed_var_list[0].name == 'label':
+            feed_var_list = feed_var_list[::-1]
+
         feeder = fluid.DataFeeder(feed_var_list, place)
         reader_generator = train_reader()
 

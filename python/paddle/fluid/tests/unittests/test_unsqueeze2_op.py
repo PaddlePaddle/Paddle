@@ -39,9 +39,9 @@ class TestUnsqueezeOp(OpTest):
         self.check_grad(["X"], "Out")
 
     def init_test_case(self):
-        self.ori_shape = (3, 5)
+        self.ori_shape = (3, 40)
         self.axes = (1, 2)
-        self.new_shape = (3, 1, 1, 5)
+        self.new_shape = (3, 1, 1, 40)
 
     def init_attrs(self):
         self.attrs = {"axes": self.axes}
@@ -203,7 +203,7 @@ class TestUnsqueezeOp4_AxesTensor(TestUnsqueezeOp_AxesTensor):
 
 
 # test api
-class TestUnsqueezeAPI(OpTest):
+class TestUnsqueezeAPI(unittest.TestCase):
     def test_api(self):
         input = np.random.random([3, 2, 5]).astype("float32")
         x = fluid.data(name='x', shape=[3, 2, 5], dtype="float32")

@@ -23,7 +23,7 @@ class TestLabelSmoothOp(OpTest):
     def config(self):
         self.op_type = "label_smooth"
         self.epsilon = 0.1
-        batch_size, self.label_dim = 5, 10
+        batch_size, self.label_dim = 10, 12
         self.label = np.zeros((batch_size, self.label_dim)).astype("float64")
         nonzero_index = np.random.randint(self.label_dim, size=(batch_size))
         self.label[np.arange(batch_size), nonzero_index] = 1

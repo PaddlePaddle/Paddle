@@ -40,7 +40,7 @@ class TestMeanOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestMeanOpError(OpTest):
+class TestMeanOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of mean_op must be Variable.

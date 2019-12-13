@@ -70,11 +70,11 @@ class CUDAPReluKernel : public framework::OpKernel<T> {
 enum PRELU_MODE { Element, Channel, Scalar };
 
 template <typename T>
-__global__ void PReluOpGradKernel(const T* x_ptr, const T* y_ptr,
-                                  const T* alpha_ptr, const T* dy_ptr,
-                                  T* dx_ptr, T* dalpha_ptr, size_t channel_num,
-                                  size_t plane_size, size_t spatial_size,
-                                  size_t numel, PRELU_MODE mode) {
+__global__ void PReluOpGradKernel(const T* x_ptr, const T* alpha_ptr,
+                                  const T* dy_ptr, T* dx_ptr, T* dalpha_ptr,
+                                  size_t channel_num, size_t plane_size,
+                                  size_t spatial_size, size_t numel,
+                                  PRELU_MODE mode) {
   size_t index;
   CUDA_KERNEL_LOOP(index, numel) {
     T scale;
@@ -98,15 +98,15 @@ __global__ void PReluOpGradKernel(const T* x_ptr, const T* y_ptr,
 template <typename T>
 class PreluOpGradFunctor {
  public:
-  void operator()(cudaStream_t stream, const T* x, const T* y, const T* alpha,
-                  const T* dy, T* dx, T* dalpha, std::vector<int> input_shape,
+  void operator()(cudaStream_t stream, const T* x, const T* alpha, const T* dy,
+                  T* dx, T* dalpha, std::vector<int> input_shape,
                   PRELU_MODE mode) {
     size_t plane_size = input_shape[2] * input_shape[3];
     size_t spatial_size = plane_size * input_shape[1];
     size_t numel = spatial_size * input_shape[0];
     PReluOpGradKernel<
         T><<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
-        x, y, alpha, dy, dx, dalpha, input_shape[1], plane_size, spatial_size,
+        x, alpha, dy, dx, dalpha, input_shape[1], plane_size, spatial_size,
         numel, mode);
   }
 };
@@ -121,14 +121,12 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
-    auto* y = context.Input<Tensor>("Out");
     auto* alpha = context.Input<Tensor>("Alpha");
     auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* dalpha = context.Output<Tensor>(framework::GradVarName("Alpha"));
 
     const T* x_ptr = x->data<T>();
-    const T* y_ptr = y->data<T>();
     const T* alpha_ptr = alpha->data<T>();
     const T* dy_ptr = dy->data<T>();
     T* dx_ptr = dx ? dx->mutable_data<T>(context.GetPlace()) : nullptr;
@@ -163,7 +161,7 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       m = Scalar;
     }
     PreluOpGradFunctor<T> prelu_grad;
-    prelu_grad(stream, x_ptr, y_ptr, alpha_ptr, dy_ptr, dx_ptr, dalpha_tmp_ptr,
+    prelu_grad(stream, x_ptr, alpha_ptr, dy_ptr, dx_ptr, dalpha_tmp_ptr,
                input_shape, m);
 
     if (dalpha_tmp_ptr == nullptr) return;

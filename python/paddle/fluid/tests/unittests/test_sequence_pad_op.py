@@ -19,7 +19,7 @@ from op_test import OpTest
 
 class TestSequencePadOp(OpTest):
     def set_attr(self):
-        self.x_shape = [12, 4]
+        self.x_shape = [12, 10]
         self.x_len_lod = [[2, 3, 4, 3]]
         self.pad_value = [1.0]
         self.padded_length = -1
@@ -72,10 +72,10 @@ class TestSequencePadOp(OpTest):
         self.compute()
 
     def test_check_output(self):
-        self.check_output(check_compile_vs_runtime=True)
+        self.check_output(check_compile_vs_runtime=True, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_dygraph=False)
 
 
 class TestSequencePadOp2(TestSequencePadOp):

@@ -75,7 +75,7 @@ class TestStrideSliceOp(OpTest):
         self.check_grad(set(['Input']), 'Out')
 
     def initTestCase(self):
-        self.input = np.random.rand(6)
+        self.input = np.random.rand(100)
         self.axes = [0]
         self.starts = [-4]
         self.ends = [-3]
@@ -438,7 +438,7 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
 
 
 # Test python API
-class TestStridedSliceAPI(OpTest):
+class TestStridedSliceAPI(unittest.TestCase):
     def test_1(self):
         input = np.random.random([3, 4, 5, 6]).astype("float32")
         minus_1 = fluid.layers.fill_constant([1], "int32", -1)
