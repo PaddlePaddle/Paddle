@@ -39,6 +39,7 @@ inline void GetWeightsTz(std::vector<int64_t>& weights_tz,  // NOLINT
       int height = weights_tz[3];
       int width = weights_tz[4];
       weights_tz.resize(6);
+
       weights_tz[0] = groups;
       weights_tz[1] = output / groups;
       weights_tz[2] = input;

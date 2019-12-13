@@ -197,6 +197,21 @@ ProgramDesc BuildFcDequantConcatProgramDesc(bool use_mkldnn, float scale_out,
   return prog;
 }
 
+// a->fc->b
+// b->Dequant1->c
+// b->concat->d
+ProgramDesc BuildFcDequantFcProgramDesc(bool use_mkldnn, float scale_out,
+                                        float scale) {
+  ProgramDesc prog;
+  for (auto& v : variable_names) {
+    prog.MutableBlock(0)->Var(v);
+  }
+  SetOp(&prog, "fc", "Fc1", {"a", "w1"}, {"b"}, use_mkldnn, scale_out);
+  SetOp(&prog, "dequantize", "Dequant1", {"b"}, {"c"}, use_mkldnn, scale);
+  SetOp(&prog, "concat", "Concat1", {"b"}, {"d"}, use_mkldnn);
+  return prog;
+}
+
 // a->Conv1->b
 // b->Dequant1(Scale1)->c
 // b->Conv2->d
@@ -293,7 +308,7 @@ void IsForceFp32OutputTest(const ProgramDesc& prog, std::string op_type,
   for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()->Type() == op_type) {
       bool is_force_fp32_output =
-          boost::get<bool>(node->Op()->GetAttr("force_fp32_output"));
+          node->Op()->GetAttrIfExists<bool>("force_fp32_output");
       EXPECT_EQ(is_force_fp32_output, target_is_force_fp32_output);
     }
   }
@@ -405,6 +420,7 @@ TEST(CpuQuantizeSquashPass, conv_dequant_only_one_output) {
       true);
 }
 
+// If there are more than one op after conv->dequantize, do not fuse
 TEST(CpuQuantizeSquashPass, conv_dequant_more_than_one_op_after_conv) {
   auto scale_out = 1.0f;
   auto scale = 1.2345f;
@@ -413,6 +429,9 @@ TEST(CpuQuantizeSquashPass, conv_dequant_more_than_one_op_after_conv) {
   auto remove_nodes = 0;
   CountNodeTest(BuildConvDequantConvProgramDesc(use_mkldnn, scale_out, scale),
                 remove_nodes);
+  IsForceFp32OutputTest(
+      BuildConvDequantConvProgramDesc(use_mkldnn, scale_out, scale), "conv2d",
+      false);
 }
 
 // from
@@ -430,6 +449,19 @@ TEST(CpuQuantizeSquashPass, fc_dequant_only_one_output) {
   IsForceFp32OutputTest(
       BuildFcDequantConcatProgramDesc(use_mkldnn, scale_out, scale), "fc",
       true);
+}
+
+// If there are more than one op after fc->dequantize, do not fuse
+TEST(CpuQuantizeSquashPass, fc_dequant_more_than_one_op_after_dequant) {
+  auto scale_out = 1.0f;
+  auto scale = 1.2345f;
+  auto use_mkldnn = true;
+  // nothing change
+  auto remove_nodes = 0;
+  CountNodeTest(BuildFcDequantFcProgramDesc(use_mkldnn, scale_out, scale),
+                remove_nodes);
+  IsForceFp32OutputTest(
+      BuildFcDequantFcProgramDesc(use_mkldnn, scale_out, scale), "fc", false);
 }
 
 }  // namespace ir
