@@ -63,7 +63,7 @@ class TestSppOp(OpTest):
 
     def test_check_grad(self):
         if self.pool_type != "avg":
-            self.check_grad(['X'], 'Out', max_relative_error=0.05)
+            self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
         self.shape = [4, 2, 4, 4]

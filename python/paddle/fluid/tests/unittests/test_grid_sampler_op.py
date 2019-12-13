@@ -111,7 +111,7 @@ class TestGridSamplerOp(OpTest):
         self.check_output(atol=1e-3)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Grid'], 'Output', max_relative_error=0.61)
+        self.check_grad(['X', 'Grid'], 'Output')
 
     def initTestCase(self):
         self.x_shape = (2, 5, 7, 3)

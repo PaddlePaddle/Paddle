@@ -103,7 +103,7 @@ class Generator(object):
         self.check_output(atol=1e-3)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-3)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ignore_x(self):
         self.check_grad(
