@@ -165,8 +165,8 @@ class PostTrainingQuantization(object):
 
         self._op_real_in_out_name = _op_real_in_out_name
         self._bit_length = 8
-        self._quantized_weight_var_name = []
-        self._quantized_act_var_name = []
+        self._quantized_weight_var_name = set()
+        self._quantized_act_var_name = set()
         self._sampling_data = {}
         self._quantized_var_scale_factor = {}
 
@@ -254,10 +254,9 @@ class PostTrainingQuantization(object):
             op_type = op.type
             if op_type in self._quantizable_op_type:
                 if op_type in ("conv2d", "depthwise_conv2d"):
-                    self._quantized_act_var_name.append(op.input("Input")[0])
-                    self._quantized_weight_var_name.append(
-                        op.input("Filter")[0])
-                    self._quantized_act_var_name.append(op.output("Output")[0])
+                    self._quantized_act_var_name.add(op.input("Input")[0])
+                    self._quantized_weight_var_name.add(op.input("Filter")[0])
+                    self._quantized_act_var_name.add(op.output("Output")[0])
                 elif op_type == "mul":
                     if self._is_input_all_not_persistable(
                             op, persistable_var_names):
@@ -265,9 +264,9 @@ class PostTrainingQuantization(object):
                         _logger.warning("Skip quant a mul op for two "
                                         "input variables are not persistable")
                     else:
-                        self._quantized_act_var_name.append(op.input("X")[0])
-                        self._quantized_weight_var_name.append(op.input("Y")[0])
-                        self._quantized_act_var_name.append(op.output("Out")[0])
+                        self._quantized_act_var_name.add(op.input("X")[0])
+                        self._quantized_weight_var_name.add(op.input("Y")[0])
+                        self._quantized_act_var_name.add(op.output("Out")[0])
                 else:
                     # process other quantizable op type, the input must all not persistable
                     if self._is_input_all_not_persistable(
@@ -276,10 +275,10 @@ class PostTrainingQuantization(object):
                             op_type]
                         for input_name in input_output_name_list[0]:
                             for var_name in op.input(input_name):
-                                self._quantized_act_var_name.append(var_name)
+                                self._quantized_act_var_name.add(var_name)
                         for output_name in input_output_name_list[1]:
                             for var_name in op.output(output_name):
-                                self._quantized_act_var_name.append(var_name)
+                                self._quantized_act_var_name.add(var_name)
 
         # set activation variables to be persistable, so can obtain 
         # the tensor data in sample_data
@@ -306,13 +305,11 @@ class PostTrainingQuantization(object):
                 np.save(save_path, var_tensor)
         else:
             for var_name in self._quantized_act_var_name:
+                if var_name not in self._sampling_data:
+                    self._sampling_data[var_name] = []
                 var_tensor = self._load_var_value(var_name)
                 var_tensor = var_tensor.ravel()
-                if var_name not in self._sampling_data:
-                    self._sampling_data[var_name] = var_tensor
-                else:
-                    self._sampling_data[var_name] = np.concatenate(
-                        (self._sampling_data[var_name], var_tensor))
+                self._sampling_data[var_name].append(var_tensor)
 
     def _calculate_scale_factor(self):
         '''
@@ -331,21 +328,25 @@ class PostTrainingQuantization(object):
         # apply kl quantization for activation
         if self._is_memory_constrained:
             for var_name in self._quantized_act_var_name:
-                var_data = np.array([])
+                sampling_data = []
                 filenames = [f for f in os.listdir(self._temp_dir) \
                     if re.match(var_name + '_[0-9]+.npy', f)]
                 for filename in filenames:
-                    load_path = os.path.join(self._temp_dir, filename)
-                    var_data = np.concatenate((var_data, np.load(load_path)))
+                    file_path = os.path.join(self._temp_dir, filename)
+                    sampling_data.append(np.load(file_path))
+                    os.remove(file_path)
+                sampling_data = np.concatenate(sampling_data)
 
                 if self._algo == "KL":
                     self._quantized_var_scale_factor[var_name] = \
-                        self._get_kl_scaling_factor(np.abs(var_data))
+                        self._get_kl_scaling_factor(np.abs(sampling_data))
                 else:
                     self._quantized_var_scale_factor[var_name] = \
-                        np.max(np.abs(var_data))
+                        np.max(np.abs(sampling_data))
         else:
             for var_name in self._quantized_act_var_name:
+                self._sampling_data[var_name] = np.concatenate(
+                    self._sampling_data[var_name])
                 if self._algo == "KL":
                     self._quantized_var_scale_factor[var_name] = \
                         self._get_kl_scaling_factor(np.abs(self._sampling_data[var_name]))
