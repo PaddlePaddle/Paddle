@@ -100,8 +100,10 @@ void Communicator::SetEnvFlagsDefault() {
 Communicator::Communicator() { SetEnvFlagsDefault(); }
 
 Communicator::Communicator(const std::map<std::string, int> &env_flags) {
-  for (auto iter = env_flags.begin(); iter != env_flags.end(); iter++) {
-    env_flags_dict.insert(std::pair<std::string, int>(iter.first, iter.second));
+  for (auto &iter : env_flags) {
+    std::string flag_name = iter.first;
+    int val_ = iter.second;
+    env_flags_dict.insert(std::pair<std::string, int>(flag_name, val_));
   }
   SetEnvFlagsDefault();
   return;

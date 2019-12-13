@@ -225,7 +225,7 @@ class Communicator {
   template <typename T>
   static Communicator* InitInstance(
       const paddle::framework::ProgramDesc& program, Scope* recv_scope,
-      const std::map<std::string, std::string>& env_flags) {
+      const std::map<std::string, int>& env_flags) {
     std::call_once(init_flag_, &Communicator::InitWithProgram<T>, program,
                    recv_scope, std::ref(env_flags));
     return communicator_.get();
@@ -237,7 +237,7 @@ class Communicator {
       std::map<std::string, std::map<std::string, std::vector<std::string>>>&
           vars_info,
       const int& trainers, const int& geo_need_push_nums,
-      const std::map<std::string, std::string>& env_flags) {
+      const std::map<std::string, int>& env_flags) {
     std::call_once(init_flag_, &Communicator::InitWithTranspilerInfo<T>,
                    program, training_scope, std::ref(vars_info),
                    std::ref(trainers), std::ref(geo_need_push_nums),
@@ -293,7 +293,7 @@ using SparseIdsMap =
 
 class AsyncCommunicator : public Communicator {
  public:
-  AsyncCommunicator() Communicator() {}
+  AsyncCommunicator() : Communicator() {};
   explicit AsyncCommunicator(const std::map<std::string, int>& env_flags)
       : Communicator(env_flags) {}
   ~AsyncCommunicator();
@@ -342,7 +342,7 @@ class AsyncCommunicator : public Communicator {
 
 class GeoSgdCommunicator : public Communicator {
  public:
-  GeoSgdCommunicator() : Communicator() {}
+  GeoSgdCommunicator() : Communicator() {};
   explicit GeoSgdCommunicator(const std::map<std::string, int>& env_flags)
       : Communicator(env_flags) {}
   ~GeoSgdCommunicator();
