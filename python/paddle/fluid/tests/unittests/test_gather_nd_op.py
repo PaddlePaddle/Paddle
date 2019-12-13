@@ -27,8 +27,7 @@ class TestGatherNdOpWithEmptyIndex(OpTest):
 
     def setUp(self):
         self.op_type = "gather_nd"
-        xnp = np.array(
-            [[65, 17, 2], [-14, -25, -1], [76, 22, 3]]).astype("float32")
+        xnp = np.random.random((5, 20)).astype("float32")
         self.inputs = {'X': xnp, 'Index': np.array([[], []]).astype("int32")}
         self.outputs = {
             'Out': np.vstack((xnp[np.newaxis, :], xnp[np.newaxis, :]))
