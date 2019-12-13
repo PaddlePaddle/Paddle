@@ -93,13 +93,13 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     T* output_data = nullptr;
     if (channel_last && compute_format == DataLayout::kNCHW) {
       VLOG(3) << "Transform input tensor from NHWC to NCHW.";
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+      math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, input, &transformed_input_channel);
-      TransToChannelFirst<platform::CUDADeviceContext, T>(
+      math::TransToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, input, &transformed_input_channel);
 
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, output,
-                                                           &transformed_output);
+      math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+          ctx, output, &transformed_output);
 
     } else {
       transformed_input_channel.ShareDataWith(*input);
@@ -107,9 +107,9 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     }
     if (compute_format == DataLayout::kNHWC) {
       VLOG(3) << "Transform filter tensor from NCHW to NHWC.";
-      ResizeToChannelLast<platform::CUDADeviceContext, T>(
+      math::ResizeToChannelLast<platform::CUDADeviceContext, T>(
           ctx, filter, &transformed_filter_channel);
-      TransToChannelLast<platform::CUDADeviceContext, T>(
+      math::TransToChannelLast<platform::CUDADeviceContext, T>(
           ctx, filter, &transformed_filter_channel);
     } else {
       transformed_filter_channel.ShareDataWith(*filter);
@@ -287,7 +287,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     }
 
     if (channel_last && compute_format == DataLayout::kNCHW) {
-      TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
+      math::TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
           ctx, &transformed_output, output);
     }
   }
@@ -348,18 +348,18 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     if (channel_last && compute_format == DataLayout::kNCHW) {
       VLOG(3) << "Transform input, output_grad, input_grad and tensor from "
                  "NHWC to NCHW.";
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+      math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, input, &transformed_input_channel);
-      TransToChannelFirst<platform::CUDADeviceContext, T>(
+      math::TransToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, input, &transformed_input_channel);
 
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+      math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, output_grad, &transformed_output_grad_channel);
-      TransToChannelFirst<platform::CUDADeviceContext, T>(
+      math::TransToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, output_grad, &transformed_output_grad_channel);
 
       if (input_grad) {
-        ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+        math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
             ctx, input_grad, &transformed_input_grad_channel);
       }
     } else {
@@ -372,13 +372,13 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
 
     if (compute_format == DataLayout::kNHWC) {
       VLOG(3) << "Transform filter and filter_grad tensor from NCHW to NHWC.";
-      ResizeToChannelLast<platform::CUDADeviceContext, T>(
+      math::ResizeToChannelLast<platform::CUDADeviceContext, T>(
           ctx, filter, &transformed_filter_channel);
-      TransToChannelLast<platform::CUDADeviceContext, T>(
+      math::TransToChannelLast<platform::CUDADeviceContext, T>(
           ctx, filter, &transformed_filter_channel);
 
       if (filter_grad) {
-        ResizeToChannelLast<platform::CUDADeviceContext, T>(
+        math::ResizeToChannelLast<platform::CUDADeviceContext, T>(
             ctx, filter_grad, &transformed_filter_grad_channel);
       }
     } else {
@@ -629,7 +629,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       }
 
       if (channel_last && compute_format == DataLayout::kNCHW) {
-        TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
+        math::TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
             ctx, &transformed_input_grad_channel, input_grad);
       }
     }
@@ -651,7 +651,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       }
 
       if (compute_format == DataLayout::kNHWC) {
-        TransToChannelFirst<paddle::platform::CUDADeviceContext, T>(
+        math::TransToChannelFirst<paddle::platform::CUDADeviceContext, T>(
             ctx, &transformed_filter_grad_channel, filter_grad);
       }
     }
@@ -728,29 +728,29 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
     Tensor transformed_dX_channel(X->type());
 
     if (channel_last) {
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+      math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, X, &transformed_X_channel);
-      TransToChannelFirst<platform::CUDADeviceContext, T>(
+      math::TransToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, X, &transformed_X_channel);
 
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+      math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, dO, &transformed_dO_channel);
-      TransToChannelFirst<platform::CUDADeviceContext, T>(
+      math::TransToChannelFirst<platform::CUDADeviceContext, T>(
           ctx, dO, &transformed_dO_channel);
 
       if (ddX) {
-        ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+        math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
             ctx, ddX, &transformed_ddX_channel);
-        TransToChannelFirst<platform::CUDADeviceContext, T>(
+        math::TransToChannelFirst<platform::CUDADeviceContext, T>(
             ctx, ddX, &transformed_ddX_channel);
       }
 
       if (ddO) {
-        ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+        math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
             ctx, ddO, &transformed_ddO_channel);
       }
       if (dX) {
-        ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+        math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
             ctx, dX, &transformed_dX_channel);
         transformed_dX_channel.mutable_data<T>(ctx.GetPlace());
       }
@@ -1018,7 +1018,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
         }
       }
       if (channel_last) {
-        TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
+        math::TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
             ctx, &transformed_ddO_channel, ddO);
       }
     }
@@ -1074,7 +1074,7 @@ class CUDNNConvDoubleGradOpKernel : public framework::OpKernel<T> {
         }
       }
       if (channel_last) {
-        TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
+        math::TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
             ctx, &transformed_dX_channel, dX);
       }
     }

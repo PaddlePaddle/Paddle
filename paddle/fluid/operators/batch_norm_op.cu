@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/transform.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -78,12 +79,12 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     if (data_layout == DataLayout::kNHWC &&
         compute_format == DataLayout::kNCHW && x_dims.size() > 2) {
       VLOG(3) << "Transform input tensor from NHWC to NCHW.";
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
-                                                           &transformed_x);
-      TransToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
-                                                          &transformed_x);
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, y,
-                                                           &transformed_y);
+      math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+          ctx, x, &transformed_x);
+      math::TransToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
+                                                                &transformed_x);
+      math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+          ctx, y, &transformed_y);
     } else {
       transformed_x.ShareDataWith(*x);
       transformed_y.ShareDataWith(*y);
@@ -288,7 +289,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     if (data_layout == DataLayout::kNHWC &&
         compute_format == DataLayout::kNCHW && x_dims.size() > 2) {
       VLOG(3) << "Transform batchnorm output from NCHW to NHWC";
-      TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
+      math::TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
           ctx, &transformed_y, y);
     }
     // clean when exit.
@@ -460,16 +461,16 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     if (data_layout == DataLayout::kNHWC &&
         compute_format == DataLayout::kNCHW && x_dims.size() > 2) {
       VLOG(3) << "Transform input tensor from NHWC to NCHW.";
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
-                                                           &transformed_x);
-      TransToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
-                                                          &transformed_x);
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, d_y,
-                                                           &transformed_d_y);
-      TransToChannelFirst<platform::CUDADeviceContext, T>(ctx, d_y,
-                                                          &transformed_d_y);
-      ResizeToChannelFirst<platform::CUDADeviceContext, T>(ctx, d_x,
-                                                           &transformed_d_x);
+      math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+          ctx, x, &transformed_x);
+      math::TransToChannelFirst<platform::CUDADeviceContext, T>(ctx, x,
+                                                                &transformed_x);
+      math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+          ctx, d_y, &transformed_d_y);
+      math::TransToChannelFirst<platform::CUDADeviceContext, T>(
+          ctx, d_y, &transformed_d_y);
+      math::ResizeToChannelFirst<platform::CUDADeviceContext, T>(
+          ctx, d_x, &transformed_d_x);
     } else {
       transformed_x.ShareDataWith(*x);
       transformed_d_y.ShareDataWith(*d_y);
@@ -627,7 +628,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         if (data_layout == DataLayout::kNHWC &&
             compute_format == DataLayout::kNCHW) {
           VLOG(3) << "Transform batchnorm output from NCHW to NHWC";
-          TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
+          math::TransToChannelLast<paddle::platform::CUDADeviceContext, T>(
               ctx, &transformed_d_x, d_x);
         }
       } else {
