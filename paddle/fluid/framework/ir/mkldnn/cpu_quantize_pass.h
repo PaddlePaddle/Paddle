@@ -56,6 +56,8 @@ class CPUQuantizePass : public FusePassBase {
 
   void QuantizeTranspose(Graph* graph) const;
 
+  void QuantizeReshape(Graph* graph) const;
+
   void QuantizeInput(Graph* g, Node* op, Node* input, std::string input_name,
                      double scale_to_one, bool is_unsigned,
                      std::string scale_attr_name = "") const;

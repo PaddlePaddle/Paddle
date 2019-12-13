@@ -65,7 +65,7 @@ class TestCase3(TestClipByNormOp):
         self.max_norm = 1.0
 
 
-class TestClipByNormOpWithSelectedRows(OpTest):
+class TestClipByNormOpWithSelectedRows(unittest.TestCase):
     def check_with_place(self, place):
         self.config_test_case()
         scope = core.Scope()

@@ -88,7 +88,7 @@ class TestNCE(OpTest):
         }
 
     def set_data(self):
-        self.generate_data(5, 5, 4, 1, 2, False)
+        self.generate_data(5, 25, 4, 1, 2, False)
 
     def compute(self):
         out = nce(self.inputs['Input'], self.inputs['Weight'],
