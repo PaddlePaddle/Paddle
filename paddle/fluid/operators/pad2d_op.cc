@@ -665,6 +665,4 @@ REGISTER_OP_CPU_KERNEL(pad2d, ops::Pad2dCPUKernel<float>,
                        ops::Pad2dCPUKernel<double>, ops::Pad2dCPUKernel<int>,
                        ops::Pad2dCPUKernel<int64_t>);
 REGISTER_OP_CPU_KERNEL(pad2d_grad, ops::Pad2dGradCPUKernel<float>,
-                       ops::Pad2dGradCPUKernel<double>,
-                       ops::Pad2dGradCPUKernel<int>,
-                       ops::Pad2dGradCPUKernel<int64_t>);
+                       ops::Pad2dGradCPUKernel<double>);
