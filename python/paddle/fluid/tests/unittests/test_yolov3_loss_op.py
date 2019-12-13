@@ -207,7 +207,7 @@ class TestYolov3LossOp(OpTest):
 
     def test_check_grad_ignore_gtbox(self):
         place = core.CPUPlace()
-        self.check_grad_with_place(place, ['X'], 'Loss', max_relative_error=0.2)
+        self.check_grad_with_place(place, ['X'], 'Loss')
 
     def initTestCase(self):
         self.anchors = [

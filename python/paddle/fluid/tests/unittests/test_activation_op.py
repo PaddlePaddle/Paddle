@@ -58,7 +58,7 @@ class TestActivation(OpTest):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -81,7 +81,7 @@ class TestSigmoid(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
+        self.check_grad(['X'], 'Out')
 
 
 class TestLogSigmoid(TestActivation):
@@ -98,7 +98,7 @@ class TestLogSigmoid(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.008)
+        self.check_grad(['X'], 'Out')
 
 
 class TestTanh(TestActivation):
@@ -115,7 +115,7 @@ class TestTanh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestAtan(TestActivation):
@@ -132,7 +132,7 @@ class TestAtan(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestTanhShrink(TestActivation):
@@ -149,7 +149,7 @@ class TestTanhShrink(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.008)
+        self.check_grad(['X'], 'Out')
 
 
 class TestHardShrink(TestActivation):
@@ -169,7 +169,7 @@ class TestHardShrink(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.005)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSoftShrink(TestActivation):
@@ -190,7 +190,7 @@ class TestSoftShrink(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSqrt(TestActivation):
@@ -207,7 +207,7 @@ class TestSqrt(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestRsqrt(TestActivation):
@@ -224,7 +224,7 @@ class TestRsqrt(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.0005)
+        self.check_grad(['X'], 'Out')
 
 
 class TestAbs(TestActivation):
@@ -246,7 +246,7 @@ class TestAbs(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestCeil(TestActivation):
@@ -297,7 +297,7 @@ class TestCos(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestAcos(TestActivation):
@@ -314,7 +314,7 @@ class TestAcos(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSin(TestActivation):
@@ -331,7 +331,7 @@ class TestSin(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestAsin(TestActivation):
@@ -348,7 +348,7 @@ class TestAsin(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestRound(TestActivation):
@@ -382,7 +382,7 @@ class TestRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestLeakyRelu(TestActivation):
@@ -401,7 +401,7 @@ class TestLeakyRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestGelu(TestActivation):
@@ -418,7 +418,7 @@ class TestGelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestBRelu(TestActivation):
@@ -443,7 +443,7 @@ class TestBRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+        self.check_grad(['X'], 'Out')
 
 
 class TestRelu6(TestActivation):
@@ -465,7 +465,7 @@ class TestRelu6(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+        self.check_grad(['X'], 'Out')
 
 
 class TestHardSwish(TestActivation):
@@ -489,7 +489,7 @@ class TestHardSwish(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSoftRelu(TestActivation):
@@ -514,7 +514,7 @@ class TestSoftRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+        self.check_grad(['X'], 'Out')
 
 
 class TestELU(TestActivation):
@@ -534,7 +534,7 @@ class TestELU(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+        self.check_grad(['X'], 'Out')
 
 
 class TestELUOpError(unittest.TestCase):
@@ -563,7 +563,7 @@ class TestReciprocal(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.01)
+        self.check_grad(['X'], 'Out')
 
 
 class TestLog(TestActivation):
@@ -580,7 +580,7 @@ class TestLog(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSquare(TestActivation):
@@ -597,7 +597,7 @@ class TestSquare(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestPow(TestActivation):
@@ -615,7 +615,7 @@ class TestPow(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+        self.check_grad(['X'], 'Out')
 
 
 class TestPow_factor_tensor(TestActivation):
@@ -640,7 +640,7 @@ class TestPow_factor_tensor(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.02)
+        self.check_grad(['X'], 'Out')
 
     def test_api(self):
         import paddle.fluid as fluid
@@ -680,7 +680,7 @@ class TestSTanh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSoftplus(TestActivation):
@@ -698,7 +698,7 @@ class TestSoftplus(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestSoftsign(TestActivation):
@@ -715,7 +715,7 @@ class TestSoftsign(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out')
 
 
 class TestThresholdedRelu(TestActivation):
@@ -738,7 +738,7 @@ class TestThresholdedRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=self.relative_error)
+        self.check_grad(['X'], 'Out')
 
 
 class TestHardSigmoid(TestActivation):
