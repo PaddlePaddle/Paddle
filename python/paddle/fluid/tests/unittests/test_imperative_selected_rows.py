@@ -70,7 +70,9 @@ class TestSimpleNet(unittest.TestCase):
                             pass
 
                         input_emb.backward(backward_strategy)
-                        adam.minimize(input_emb)  # grad_clip=grad_clip
+                        adam.minimize(
+                            input_emb, parameter_list=simplenet.parameters(
+                            ))  # grad_clip=grad_clip
                         emb._w.gradient()
 
                         emb.clear_gradients()
@@ -116,7 +118,10 @@ class TestSimpleNet(unittest.TestCase):
                         pass
 
                     input_emb.backward(backward_strategy)
-                    adam.minimize(input_emb, grad_clip=grad_clip)
+                    adam.minimize(
+                        input_emb,
+                        grad_clip=grad_clip,
+                        parameter_list=simplenet.parameters())
                     emb._w.gradient()
 
                     emb.clear_gradients()

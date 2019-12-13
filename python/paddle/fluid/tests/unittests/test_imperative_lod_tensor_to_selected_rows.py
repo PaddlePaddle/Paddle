@@ -131,7 +131,8 @@ class TestDygraphSimpleNet(unittest.TestCase):
                             for param in simple_net.parameters():
                                 dy_param_init[param.name] = param.numpy()
                         dy_loss.backward(backward_strategy)
-                        sgd.minimize(dy_loss)
+                        sgd.minimize(
+                            dy_loss, parameter_list=simple_net.parameters())
                         simple_net.clear_gradients()
                         if i == batch_num - 1:
                             for param in simple_net.parameters():
