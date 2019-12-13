@@ -76,8 +76,14 @@ if(WITH_DISTRIBUTE)
 endif()
 cc_library(async_ssa_graph_executor SRCS async_ssa_graph_executor.cc DEPS ${ASYNC_SSA_GRAPH_EXECUTOR_DEPS})
 
-cc_test(broadcast_op_test SRCS broadcast_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
-        device_context broadcast_op_handle nccl_helper)
+if (NOT WIN32)
+  cc_test(broadcast_op_test SRCS broadcast_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
+          device_context broadcast_op_handle nccl_helper)
+else()
+  cc_test(broadcast_op_test SRCS broadcast_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
+          device_context broadcast_op_handle)
+endif()
+
 cc_test(gather_op_test SRCS gather_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
         device_context gather_op_handle)
 
@@ -87,8 +93,13 @@ cc_library(scope_buffered_ssa_graph_executor SRCS scope_buffered_ssa_graph_execu
 #        device_context reduce_op_handle )
 cc_library(fast_threaded_ssa_graph_executor SRCS fast_threaded_ssa_graph_executor.cc
         DEPS fetch_op_handle ssa_graph_executor scope simple_threadpool device_context)
-cc_test(fused_broadcast_op_test SRCS fused_broadcast_op_handle_test.cc DEPS
-  fused_broadcast_op_handle nccl_helper)
+if (NOT WIN32)
+  cc_test(fused_broadcast_op_test SRCS fused_broadcast_op_handle_test.cc DEPS
+    fused_broadcast_op_handle nccl_helper)
+else()
+  cc_test(fused_broadcast_op_test SRCS fused_broadcast_op_handle_test.cc DEPS
+    fused_broadcast_op_handle)
+endif()
 
 if(WITH_NGRAPH) 
   set(NGRAPH_BS_DEPS ngraph)
