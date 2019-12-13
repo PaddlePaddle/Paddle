@@ -86,7 +86,7 @@ class PostTrainingQuantization(object):
                 is_full_quantized as False, only apply quantization to the op type 
                 according to the input quantizable_op_type.
             is_memory_constrained(bool, optional): If set is_memory_constrained as False,
-                all temp data will save in memory. If set is_save_sample_data as True,
+                all temp data will be saved in memory. If set is_save_sample_data as True,
                 it will save temp data to disk. When the fp32 model is complex or
                 the number of calibrate data is large, we should set is_save_sample_data
                 as True. Defalut is False.
