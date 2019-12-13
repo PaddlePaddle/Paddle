@@ -165,14 +165,19 @@ fi
 
 OP_FILE_CHANGED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE ".+_op..*" || true`
 if [ "${OP_FILE_CHANGED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    CHECK_OBJECT_FLAGS=`git diff -U0 --diff-filter=AMR upstream/$BRANCH |grep "+" |grep -E "ShareDataWith[(]|ShareBufferWith[(]" || true`
-    if [ "${CHECK_OBJECT_FLAGS}" != "" ]; then
-        ERROR_LINES=${CHECK_OBJECT_FLAGS//+/'\n+'}
-        echo_line="Using ShareDataWith or ShareBufferWith is not recommended. You must have one RD's (zhhsplendid (Recommend), sneaxiy or luotao1 or lanxianghit) approval to use these methods. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/ShareDataWith-is-prohibited-in-OP. The error lines are as follows:${ERROR_LINES}\n"
+    for OP_FILE in ${OP_FILE_CHANGED};
+    do
+        CHECK_OBJECT_FLAGS=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${OP_FILE} |grep "+" |grep -E "ShareDataWith[(]|ShareBufferWith[(]" || true`
+        if [ "${CHECK_OBJECT_FLAGS}" != "" ]; then
+            ERROR_LINES="${ERROR_LINES}\n${OP_FILE}${CHECK_OBJECT_FLAGS}\n"
+        fi
+    done
+    if [ "${ERROR_LINES}" != "" ]; then
+        ERROR_LINES=${ERROR_LINES//+/'\n+\t'}
+        echo_line="Using ShareDataWith or ShareBufferWith is not recommended. You must have one RD's (zhhsplendid (Recommend), sneaxiy or luotao1 or lanxianghit) approval to use these methods. For more information, please refer to https://github.com/PaddlePaddle/Paddle/wiki/ShareDataWith-is-prohibited-in-OP. The error lines are as follows:${ERROR_LINES}"
         check_approval 1 6836917 32832641 47554610 7913861
     fi
 fi
-
 
 NEW_OP_TEST_ADDED=`git diff --name-only --diff-filter=AMR upstream/$BRANCH |grep -oE "test_.*.\.py" || true`
 if [ "${NEW_OP_TEST_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
