@@ -55,7 +55,7 @@ class TestFSPOp(OpTest):
 
     @unittest.skip("Disable temporarily.")
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.05)
+        self.check_grad(['X', 'Y'], 'Out')
 
 
 if __name__ == '__main__':

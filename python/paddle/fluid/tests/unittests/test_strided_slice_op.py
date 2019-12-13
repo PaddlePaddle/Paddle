@@ -249,7 +249,7 @@ class TestStridedSliceOp_starts_ListTensor(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 class TestStridedSliceOp_ends_ListTensor(OpTest):
@@ -288,7 +288,7 @@ class TestStridedSliceOp_ends_ListTensor(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 class TestStridedSliceOp_starts_Tensor(OpTest):
@@ -323,7 +323,7 @@ class TestStridedSliceOp_starts_Tensor(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 class TestStridedSliceOp_ends_Tensor(OpTest):
@@ -358,7 +358,7 @@ class TestStridedSliceOp_ends_Tensor(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 class TestStridedSliceOp_listTensor_Tensor(OpTest):
@@ -399,7 +399,7 @@ class TestStridedSliceOp_listTensor_Tensor(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 class TestStridedSliceOp_strides_Tensor(OpTest):
@@ -434,7 +434,7 @@ class TestStridedSliceOp_strides_Tensor(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+        self.check_grad(['Input'], 'Out')
 
 
 # Test python API

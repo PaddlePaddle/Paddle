@@ -37,7 +37,7 @@ class TestHingeLossOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Logits'], 'Loss', max_relative_error=0.008)
+        self.check_grad(['Logits'], 'Loss')
 
 
 if __name__ == '__main__':
