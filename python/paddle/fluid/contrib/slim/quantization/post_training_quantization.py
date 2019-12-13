@@ -336,9 +336,7 @@ class PostTrainingQuantization(object):
                     if re.match(var_name + '_[0-9]+.npy', f)]
                 for filename in filenames:
                     load_path = os.path.join(self._temp_dir, filename)
-                    print(load_path)
                     var_data = np.concatenate((var_data, np.load(load_path)))
-                    print(var_data.shape)
 
                 if self._algo == "KL":
                     self._quantized_var_scale_factor[var_name] = \
