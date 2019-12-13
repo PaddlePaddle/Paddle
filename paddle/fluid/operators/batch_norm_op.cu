@@ -443,6 +443,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     const auto *y = ctx.Input<Tensor>("Y");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
+    const auto *bias = ctx.Input<Tensor>("Bias");
 
     const auto &x_dims = x->dims();
 
@@ -586,10 +587,6 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           cudnnActivationDescriptor_t activation_desc_ =
               fuse_with_relu ? scope_act_desc.descriptor<T>(activation)
                              : nullptr;
-          cudnnTensorDescriptor_t y_desc_ =
-              fuse_with_relu ? data_desc_ : nullptr;
-          T *y_data_ =
-              fuse_with_relu ? transformed_y.template data<T>() : nullptr;
 
           size_t workspace_size = 0;
           void *workspace_ptr = nullptr;
@@ -622,8 +619,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
               /*betaParamDiff=*/CudnnDataType<T>::kZero(),
               /*xDesc=*/data_desc_,
               /*xData=*/transformed_x.template data<T>(),
-              /*yDesc=*/y_desc_,
-              /*yData=*/y_data_,
+              /*yDesc=*/data_desc_,
+              /*yData=*/transformed_y.template data<T>(),
               /*dyDesc=*/data_desc_,
               /*dyData=*/transformed_d_y.template data<T>(),
               /*dzDesc=*/nullptr,
@@ -633,7 +630,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
                   ctx.GetPlace()),
               /*dBnScaleBiasDesc=*/bn_param_desc_,
               /*bnScaleData=*/scale->template data<BatchNormParamType<T>>(),
-              /*bnBiasData=*/nullptr,
+              /*bnBiasData=*/bias->template data<BatchNormParamType<T>>(),
               /*dBnScaleData=*/d_scale
                   ->template mutable_data<BatchNormParamType<T>>(
                       ctx.GetPlace()),
