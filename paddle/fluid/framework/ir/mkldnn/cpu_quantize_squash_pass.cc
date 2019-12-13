@@ -71,8 +71,9 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     auto* next_op_desc = next_op->Op();
     float dequant_scale = boost::get<float>(dequant_op->Op()->GetAttr("Scale"));
     float quant_scale = boost::get<float>(quant_op->Op()->GetAttr("Scale"));
-    PADDLE_ENFORCE(nodes_keep_counter->find(dequant_out) !=
-                   nodes_keep_counter->end());
+    PADDLE_ENFORCE_NE(
+        nodes_keep_counter->find(dequant_out), nodes_keep_counter->end(),
+        platform::errors::NotFound("The dequant output node is not found"));
 
     // check if dequantize op should be kept or removed, decrease the counter
     bool keep_dequant = (*nodes_keep_counter)[dequant_out]-- > 1;
