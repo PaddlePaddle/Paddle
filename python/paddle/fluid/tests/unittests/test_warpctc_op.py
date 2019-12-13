@@ -178,7 +178,7 @@ class CTCForward(object):
 class TestWarpCTCOp(OpTest):
     def config(self):
         self.batch_size = 4
-        self.num_classes = 8
+        self.num_classes = 12
         self.logits_lod = [[4, 1, 3, 3]]
         self.labels_lod = [[3, 1, 4, 4]]
         self.blank = self.num_classes - 1
