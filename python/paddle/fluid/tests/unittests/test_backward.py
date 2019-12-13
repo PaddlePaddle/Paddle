@@ -24,7 +24,7 @@ class BackwardNet(object):
     Abstract Base Class.
     All Net inherited this Class should implement two functions:
         build_model: build net to test the logic of backward
-        init_data: fake input data to test all program.
+        init_data: fake input data to test all programs.
     """
 
     def __init__(self):
@@ -42,7 +42,7 @@ class BackwardNet(object):
 
     def init_data(self):
         """
-        Fake input data to test all program.
+        Fake input data to test all programs.
         :return: dict, {'var_name': var_data}
         """
         raise NotImplementedError
