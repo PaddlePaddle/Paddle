@@ -47,7 +47,7 @@ class TestSequenceReverseBase(OpTest):
         return np.reshape(tmp_y, newshape=self.x.shape).astype(self.dtype)
 
     def test_output(self):
-        self.check_output(0, check_dygraph=False)
+        self.check_output(check_dygraph=False)
 
     def test_grad(self):
         self.check_grad(['X'], 'Y', check_dygraph=False)

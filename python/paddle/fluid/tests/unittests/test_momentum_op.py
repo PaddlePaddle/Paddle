@@ -64,7 +64,7 @@ class TestMomentumOpFp16(TestMomentumOp1):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output()
 
 
 class TestMomentumOp2(OpTest):

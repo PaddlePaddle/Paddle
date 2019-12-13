@@ -52,7 +52,7 @@ class TestCastOp2(op_test.OpTest):
         self.op_type = 'cast'
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output()
 
 
 class TestCastOp3(op_test.OpTest):
@@ -67,7 +67,7 @@ class TestCastOp3(op_test.OpTest):
         self.op_type = 'cast'
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output()
 
 
 class TestCastOpError(unittest.TestCase):

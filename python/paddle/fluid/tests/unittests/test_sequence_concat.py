@@ -40,7 +40,7 @@ class TestSequenceConcat(OpTest):
         self.outputs = {"Out": (out, [self.out_lod])}
 
     def test_output(self):
-        self.check_output(1e-3)
+        self.check_output()
 
     def test_dx(self):
         self.check_grad(inputs_to_check=['x1', 'x2'], output_names="Out")

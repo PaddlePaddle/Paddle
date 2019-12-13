@@ -21,7 +21,7 @@ from test_lrn_op import TestLRNOp
 
 class TestLRNNGRAPHOp(TestLRNOp):
     def test_check_output(self):
-        self.check_output(atol=0.002)
+        self.check_output()
 
 
 del TestLRNOp

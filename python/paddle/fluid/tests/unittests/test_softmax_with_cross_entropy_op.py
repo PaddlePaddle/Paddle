@@ -148,7 +148,7 @@ class TestSoftmaxWithCrossEntropyOpFp16(TestSoftmaxWithCrossEntropyOp):
             self.attrs['axis'] = self.axis
 
     def test_check_output(self):
-        self.check_output(atol=1e-2)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(["Logits"], "Loss", max_relative_error=0.1)
