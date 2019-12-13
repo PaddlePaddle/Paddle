@@ -121,7 +121,7 @@ class TestNearestInterpOp(OpTest):
 
     def init_test_case(self):
         self.interp_method = 'nearest'
-        self.input_shape = [2, 3, 4, 4]
+        self.input_shape = [2, 3, 4, 5]
         self.out_h = 2
         self.out_w = 2
         self.scale = 0.

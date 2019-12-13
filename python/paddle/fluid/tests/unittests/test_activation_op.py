@@ -232,7 +232,7 @@ class TestAbs(TestActivation):
         self.op_type = "abs"
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, [4, 25]).astype(self.dtype)
         # Because we set delta = 0.005 in calculating numeric gradient,
         # if x is too small, such as 0.002, x_neg will be -0.003
         # x_pos will be 0.007, so the numeric gradient is inaccurate.
