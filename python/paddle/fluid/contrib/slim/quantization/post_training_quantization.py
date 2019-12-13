@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import math
+import os
+import re
 import logging
 import numpy as np
 from ....executor import global_scope
@@ -43,7 +45,9 @@ class PostTrainingQuantization(object):
                  scope=None,
                  algo="KL",
                  quantizable_op_type=["conv2d", "depthwise_conv2d", "mul"],
-                 is_full_quantize=False):
+                 is_full_quantize=False,
+                 is_memory_constrained=False,
+                 temp_dir="./temp_post_training"):
         '''
         The class utilizes post training quantization methon to quantize the 
         fp32 model. It uses calibrate data to calculate the scale factor of 
@@ -78,9 +82,16 @@ class PostTrainingQuantization(object):
                 that will be quantized. Default is ["conv2d", "depthwise_conv2d", 
                 "mul"].
             is_full_quantized(bool, optional): If set is_full_quantized as True, 
-                apply quantization to all supported quantizable op type. If set 
+                apply quantization to all supported quantizable op type. If set
                 is_full_quantized as False, only apply quantization to the op type 
                 according to the input quantizable_op_type.
+            is_memory_constrained(bool, optional): If set is_memory_constrained as False,
+                all temp data will save in memory. If set is_save_sample_data as True,
+                it will save temp data to disk. When the fp32 model is complex or
+                the number of calibrate data is large, we should set is_save_sample_data
+                as True. Defalut is False.
+            temp_dir(str, optional): When is_memory_constrained is True, set temp_dir as
+                the directory for saving temp data. Default is ./temp_post_training.
         Returns:
             None
 
@@ -129,6 +140,10 @@ class PostTrainingQuantization(object):
         self._batch_nums = batch_nums
         self._scope = global_scope() if scope == None else scope
         self._algo = algo
+        self._is_memory_constrained = is_memory_constrained
+        self._temp_dir = temp_dir
+        if self._is_memory_constrained and not os.path.exists(self._temp_dir):
+            os.mkdir(self._temp_dir)
 
         supported_quantizable_op_type = \
             QuantizationTransformPass._supported_quantizable_op_type + \
@@ -174,7 +189,8 @@ class PostTrainingQuantization(object):
                                feed=data,
                                fetch_list=self._fetch_list,
                                return_numpy=False)
-            self._sample_data()
+            self._sample_data(batch_id)
+
             if batch_id % 5 == 0:
                 _logger.info("run batch: " + str(batch_id))
             batch_id += 1
@@ -271,7 +287,7 @@ class PostTrainingQuantization(object):
             if var.name in self._quantized_act_var_name:
                 var.persistable = True
 
-    def _sample_data(self):
+    def _sample_data(self, iter):
         '''
         Sample the tensor data of quantized variables, 
         applied in every iteration.
@@ -281,11 +297,22 @@ class PostTrainingQuantization(object):
                 var_tensor = self._load_var_value(var_name)
                 self._sampling_data[var_name] = var_tensor
 
-        for var_name in self._quantized_act_var_name:
-            if var_name not in self._sampling_data:
-                self._sampling_data[var_name] = []
-            var_tensor = self._load_var_value(var_name)
-            self._sampling_data[var_name].append(var_tensor)
+        if self._is_memory_constrained:
+            for var_name in self._quantized_act_var_name:
+                var_tensor = self._load_var_value(var_name)
+                var_tensor = var_tensor.ravel()
+                save_path = os.path.join(self._temp_dir,
+                                         var_name + "_" + str(iter) + ".npy")
+                np.save(save_path, var_tensor)
+        else:
+            for var_name in self._quantized_act_var_name:
+                var_tensor = self._load_var_value(var_name)
+                var_tensor = var_tensor.ravel()
+                if var_name not in self._sampling_data:
+                    self._sampling_data[var_name] = var_tensor
+                else:
+                    self._sampling_data[var_name] = np.concatenate(
+                        (self._sampling_data[var_name], var_tensor))
 
     def _calculate_scale_factor(self):
         '''
@@ -302,13 +329,31 @@ class PostTrainingQuantization(object):
                 var_name] = scale_factor_per_channel
 
         # apply kl quantization for activation
-        for var_name in self._quantized_act_var_name:
-            if self._algo == "KL":
-                self._quantized_var_scale_factor[var_name] = \
-                    self._get_kl_scaling_factor(np.abs(self._sampling_data[var_name]))
-            else:
-                self._quantized_var_scale_factor[var_name] = \
-                    np.max(np.abs(self._sampling_data[var_name]))
+        if self._is_memory_constrained:
+            for var_name in self._quantized_act_var_name:
+                var_data = np.array([])
+                filenames = [f for f in os.listdir(self._temp_dir) \
+                    if re.match(var_name + '_[0-9]+.npy', f)]
+                for filename in filenames:
+                    load_path = os.path.join(self._temp_dir, filename)
+                    print(load_path)
+                    var_data = np.concatenate((var_data, np.load(load_path)))
+                    print(var_data.shape)
+
+                if self._algo == "KL":
+                    self._quantized_var_scale_factor[var_name] = \
+                        self._get_kl_scaling_factor(np.abs(var_data))
+                else:
+                    self._quantized_var_scale_factor[var_name] = \
+                        np.max(np.abs(var_data))
+        else:
+            for var_name in self._quantized_act_var_name:
+                if self._algo == "KL":
+                    self._quantized_var_scale_factor[var_name] = \
+                        self._get_kl_scaling_factor(np.abs(self._sampling_data[var_name]))
+                else:
+                    self._quantized_var_scale_factor[var_name] = \
+                        np.max(np.abs(self._sampling_data[var_name]))
 
     def _update_program(self):
         '''
