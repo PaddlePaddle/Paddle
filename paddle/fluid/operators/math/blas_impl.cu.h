@@ -187,6 +187,34 @@ struct CUBlas<platform::float16> {
 };
 
 template <>
+struct CUBlas<int8_t> {
+  template <typename... ARGS>
+  static void GEMM_EX(platform::CUDADeviceContext *dev_ctx,
+                      cublasOperation_t transa, cublasOperation_t transb, int m,
+                      int n, int k, const void *alpha, const void *A,
+                      cudaDataType_t Atype, int lda, const void *B,
+                      cudaDataType_t Btype, int ldb, const void *beta, void *C,
+                      cudaDataType_t Ctype, int ldc,
+                      cudaDataType_t computeType) {
+#if CUDA_VERSION >= 9000
+    dev_ctx->CublasCall([&](cublasHandle_t handle) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasGemmEx(
+          handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
+          beta, C, Ctype, ldc, computeType, CUBLAS_GEMM_DEFAULT));
+    });
+
+#else
+    dev_ctx->CublasCall([&](cublasHandle_t handle) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cublasSgemmEx(
+          handle, transa, transb, m, n, k, alpha, A, Atype, lda, B, Btype, ldb,
+          beta, C, Ctype, ldc));
+    });
+
+#endif
+  }
+};
+
+template <>
 template <typename T>
 void Blas<platform::CUDADeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
                                              CBLAS_TRANSPOSE transB, int M,
@@ -375,6 +403,22 @@ void Blas<platform::CUDADeviceContext>::BatchedGEMM(
 #if CUDA_VERSION >= 9010
   }
 #endif  // CUDA_VERSION >= 9010
+}
+
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::GEMM(bool transA, bool transB, int M,
+                                             int N, int K, T alpha,
+                                             const int8_t *A, int lda,
+                                             const int8_t *B, int ldb, T beta,
+                                             T *C, int ldc) const {
+  cublasOperation_t cuTransA = transA ? CUBLAS_OP_T : CUBLAS_OP_N;
+  cublasOperation_t cuTransB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
+  auto &cuda_ctx = const_cast<platform::CUDADeviceContext &>(context_);
+
+  CUBlas<int8_t>::GEMM_EX(&cuda_ctx, cuTransB, cuTransA, N, M, K, &alpha, B,
+                          CUDA_R_8I, ldb, A, CUDA_R_8I, lda, &beta, C,
+                          CUDA_R_32F, N, CUDA_R_32F);
 }
 
 }  // namespace math

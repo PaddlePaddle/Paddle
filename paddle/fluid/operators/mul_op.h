@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/math/blas.h"
@@ -21,6 +22,14 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+template <typename DeviceContext>
+struct QuantFp32ToInt8Functor {
+  void operator()(const DeviceContext& ctx, const framework::Tensor& in,
+                  const float scale, framework::Tensor* out) {}
+};
+
+template class QuantFp32ToInt8Functor<platform::CPUDeviceContext>;
 
 using Tensor = framework::Tensor;
 
@@ -48,6 +57,41 @@ class MulKernel : public framework::OpKernel<T> {
     auto z_dim = z->dims();
     if (z_dim.size() != 2) {
       z->Resize({x_matrix.dims()[0], y_matrix.dims()[1]});
+    }
+
+    if (context.HasAttr("enable_int8") && context.Attr<bool>("enable_int8")) {
+      int M, N, K;
+      float in_scale = context.Attr<float>("X_scale");
+      std::vector<float> weight_scale =
+          context.Attr<std::vector<float>>("weight_scale");
+
+      PADDLE_ENFORCE_EQ(weight_scale.size(), 1,
+                        "weight scale size shoud be equal to 1");
+      auto& dev_ctx = context.template device_context<DeviceContext>();
+
+      Tensor x_int8;
+      x_int8.Resize(x->dims());
+      x_int8.mutable_data<int8_t>(context.GetPlace());
+
+      QuantFp32ToInt8Functor<DeviceContext> quant_func;
+      quant_func(dev_ctx, *x, in_scale / 127., &x_int8);
+      auto blas = math::GetBlas<DeviceContext, T>(context);
+
+      // the float here represents the output type
+      M = x_matrix.dims()[0];
+      N = x_matrix.dims()[1];
+      K = y_matrix.dims()[1];
+      const int8_t* x_int8_data = x_int8.data<int8_t>();
+      const int8_t* y_int8_data = y->data<int8_t>();
+      T* z_data = z->mutable_data<T>(context.GetPlace());
+      T alpha = static_cast<T>(in_scale * weight_scale[0] / 127. / 127.);
+      T beta = T(0.0);
+      blas.GEMM(false, false, M, N, K, alpha, x_int8_data, K, y_int8_data, N,
+                beta, z_data, N);
+      if (z_dim.size() != 2) {
+        z->Resize(z_dim);
+      }
+      return;
     }
 
     auto blas = math::GetBlas<DeviceContext, T>(context);

@@ -106,6 +106,7 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)
 
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COMMON_OP_DEPS})
 set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
+message(STATUS ${GLOB_OPERATOR_DEPS})
 
 cc_test(assign_op_test SRCS assign_op_test.cc DEPS assign_op)
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)

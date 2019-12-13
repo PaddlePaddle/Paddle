@@ -27,6 +27,11 @@ struct CBlas;
 template <>
 struct CBlas<int8_t> {
   template <typename... ARGS>
+  static void GEMM(ARGS... args) {
+    PADDLE_THROW("Blas GEMM don't support int8_t");
+  }
+
+  template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     PADDLE_THROW("Blas VCOPY don't support int8_t");
   }
@@ -453,6 +458,17 @@ template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::VCOPY(int n, const T *x, T *y) const {
   CBlas<T>::VCOPY(n, x, 1, y, 1);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::GEMM(bool transA, bool transB, int M,
+                                            int N, int K, T alpha,
+                                            const int8_t *A, int lda,
+                                            const int8_t *B, int ldb, T beta,
+                                            T *C, int ldc) const {
+  CBlas<int8_t>::GEMM(transA, transB, M, N, K, alpha, A, lda, B, ldb, beta, C,
+                      ldc);
 }
 
 template <>

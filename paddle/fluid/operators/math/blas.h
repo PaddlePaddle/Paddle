@@ -95,6 +95,12 @@ class Blas {
             T alpha, const T* A, int lda, const T* B, int ldb, T beta, T* C,
             int ldc) const;
 
+  // T here represents the return type.
+  template <typename T>
+  void GEMM(bool transA, bool transB, int M, int N, int K, T alpha,
+            const int8_t* A, int lda, const int8_t* B, int ldb, T beta, T* C,
+            int ldc) const;
+
 #ifdef PADDLE_WITH_MKLML
   template <typename T>
   T* GEMM_ALLOC(const CBLAS_IDENTIFIER id, const int M, const int N,
