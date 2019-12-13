@@ -27,7 +27,7 @@ import paddle.fluid as fluid
 import paddle.fluid.dygraph as dygraph
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC, LayerNorm
+from paddle.fluid.dygraph.nn import Conv2D, Pool2D, FC, BatchNorm
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.layer_helper import LayerHelper
 import math
@@ -77,16 +77,16 @@ def optimizer_setting(params):
 
 class ConvBNLayer(fluid.dygraph.Layer):
     def __init__(self,
-                 name_scope,
+                 num_channels,
                  num_filters,
                  filter_size,
                  stride=1,
                  groups=1,
                  act=None):
-        super(ConvBNLayer, self).__init__(name_scope)
+        super(ConvBNLayer, self).__init__()
 
         self._conv = Conv2D(
-            "conv2d",
+            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=stride,
@@ -96,11 +96,12 @@ class ConvBNLayer(fluid.dygraph.Layer):
             bias_attr=False,
             param_attr=fluid.ParamAttr(name="weights"))
 
-        self._layer_norm = LayerNorm(self.full_name(), begin_norm_axis=1)
+        # disable BatchNorm in multi-card. disable LayerNorm because of complex input_shape
+        # self._batch_norm = BatchNorm(num_filters, act=act)
 
     def forward(self, inputs):
         y = self._conv(inputs)
-        y = self._layer_norm(y)
+        # y = self._batch_norm(y)
 
         return y
 
@@ -109,8 +110,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
     def __init__(self, name_scope, num_channels, reduction_ratio):
 
         super(SqueezeExcitation, self).__init__(name_scope)
-        self._pool = Pool2D(
-            self.full_name(), pool_size=0, pool_type='avg', global_pooling=True)
+        self._pool = Pool2D(pool_size=0, pool_type='avg', global_pooling=True)
         stdv = 1.0 / math.sqrt(num_channels * 1.0)
         self._squeeze = FC(
             self.full_name(),
@@ -136,29 +136,28 @@ class SqueezeExcitation(fluid.dygraph.Layer):
 
 class BottleneckBlock(fluid.dygraph.Layer):
     def __init__(self,
-                 name_scope,
                  num_channels,
                  num_filters,
                  stride,
                  cardinality,
                  reduction_ratio,
                  shortcut=True):
-        super(BottleneckBlock, self).__init__(name_scope)
+        super(BottleneckBlock, self).__init__()
 
         self.conv0 = ConvBNLayer(
-            self.full_name(),
+            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=1,
             act="relu")
         self.conv1 = ConvBNLayer(
-            self.full_name(),
+            num_channels=num_filters,
             num_filters=num_filters,
             filter_size=3,
             stride=stride,
             groups=cardinality,
             act="relu")
         self.conv2 = ConvBNLayer(
-            self.full_name(),
+            num_channels=num_filters,
             num_filters=num_filters * 2,
             filter_size=1,
             act=None)
@@ -170,7 +169,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
 
         if not shortcut:
             self.short = ConvBNLayer(
-                self.full_name(),
+                num_channels=num_channels,
                 num_filters=num_filters * 2,
                 filter_size=1,
                 stride=stride)
@@ -209,63 +208,51 @@ class SeResNeXt(fluid.dygraph.Layer):
             depth = [3, 4, 6, 3]
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
-                self.full_name(),
+                num_channels=3,
                 num_filters=64,
                 filter_size=7,
                 stride=2,
                 act='relu')
             self.pool = Pool2D(
-                self.full_name(),
-                pool_size=3,
-                pool_stride=2,
-                pool_padding=1,
-                pool_type='max')
+                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
         elif layers == 101:
             cardinality = 32
             reduction_ratio = 16
             depth = [3, 4, 23, 3]
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
-                self.full_name(),
+                num_channels=3,
                 num_filters=64,
                 filter_size=7,
                 stride=2,
                 act='relu')
             self.pool = Pool2D(
-                self.full_name(),
-                pool_size=3,
-                pool_stride=2,
-                pool_padding=1,
-                pool_type='max')
+                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
         elif layers == 152:
             cardinality = 64
             reduction_ratio = 16
             depth = [3, 8, 36, 3]
             num_filters = [128, 256, 512, 1024]
             self.conv0 = ConvBNLayer(
-                self.full_name(),
+                num_channels=3,
                 num_filters=64,
                 filter_size=3,
                 stride=2,
                 act='relu')
             self.conv1 = ConvBNLayer(
-                self.full_name(),
+                num_channels=64,
                 num_filters=64,
                 filter_size=3,
                 stride=1,
                 act='relu')
             self.conv2 = ConvBNLayer(
-                self.full_name(),
+                num_channels=64,
                 num_filters=128,
                 filter_size=3,
                 stride=1,
                 act='relu')
             self.pool = Pool2D(
-                self.full_name(),
-                pool_size=3,
-                pool_stride=2,
-                pool_padding=1,
-                pool_type='max')
+                pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
 
         self.bottleneck_block_list = []
         num_channels = 64
@@ -275,7 +262,6 @@ class SeResNeXt(fluid.dygraph.Layer):
                 bottleneck_block = self.add_sublayer(
                     'bb_%d_%d' % (block, i),
                     BottleneckBlock(
-                        self.full_name(),
                         num_channels=num_channels,
                         num_filters=num_filters[block],
                         stride=2 if i == 0 and block != 0 else 1,
@@ -287,7 +273,7 @@ class SeResNeXt(fluid.dygraph.Layer):
                 shortcut = True
 
         self.pool2d_avg = Pool2D(
-            self.full_name(), pool_size=7, pool_type='avg', global_pooling=True)
+            pool_size=7, pool_type='avg', global_pooling=True)
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
         self.out = FC(self.full_name(),
