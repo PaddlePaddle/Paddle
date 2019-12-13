@@ -24,7 +24,6 @@ from paddle.fluid.incubate.fleet.base.role_maker import MPISymetricRoleMaker
 from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
 from paddle.fluid.incubate.fleet.base.role_maker import UserDefinedRoleMaker
 from paddle.fluid.incubate.fleet.utils.hdfs import HDFSClient
-from paddle.fluid.contrib.mixed_precision.decorator import OptimizerWithMixedPrecison
 
 HDFS_PREFIX = 'hdfs:'
 

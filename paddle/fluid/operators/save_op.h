@@ -38,7 +38,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
     auto place = ctx.GetPlace();
 
     auto *input_var = ctx.InputVar("X");
-    auto iname = ctx.InputNames("X").data();
+    auto iname = ctx.InputNames("X")[0];
     PADDLE_ENFORCE(input_var != nullptr, "Cannot find variable %s for save_op",
                    iname);
 
@@ -51,8 +51,7 @@ class SaveOpKernel : public framework::OpKernel<T> {
     if (out_put_var != nullptr) {
       auto *lt_var = out_put_var->GetMutable<std::string>();
       if (lt_var->length() > 0) {
-        filename = *lt_var;
-        filename = string::Sprintf("%s/%s", filename, iname);
+        filename = string::Sprintf("%s/%s", *lt_var, iname);
       }
     }
 
