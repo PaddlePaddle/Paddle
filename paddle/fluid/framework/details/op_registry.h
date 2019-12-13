@@ -170,11 +170,8 @@ struct OpInfoFiller<T, kOperator> {
           platform::errors::AlreadyExists(
               "Duplicate InferShapeFN of %s has been registered", op_type));
 
-      const VariableNameMap t_in = {};
-      const VariableNameMap t_out = {};
-      const AttributeMap t_attr = {};
-      OperatorWithKernel* op = dynamic_cast<OperatorWithKernel*>(
-          info->creator_(std::string(""), t_in, t_out, t_attr));
+      OperatorWithKernel* op = dynamic_cast<OperatorWithKernel*>(info->creator_(
+          std::string{}, VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
       PADDLE_ENFORCE_NOT_NULL(op, platform::errors::InvalidArgument(
                                       "%s should have kernels", op_type));
       info->infer_shape_ = [op](InferShapeContext* ctx) {

@@ -27,9 +27,9 @@ class TestSumOp(OpTest):
         self.init_kernel_type()
         self.use_mkldnn = False
         self.init_kernel_type()
-        x0 = np.random.random((3, 4)).astype(self.dtype)
-        x1 = np.random.random((3, 4)).astype(self.dtype)
-        x2 = np.random.random((3, 4)).astype(self.dtype)
+        x0 = np.random.random((3, 40)).astype(self.dtype)
+        x1 = np.random.random((3, 40)).astype(self.dtype)
+        x2 = np.random.random((3, 40)).astype(self.dtype)
         self.inputs = {"X": [("x0", x0), ("x1", x1), ("x2", x2)]}
         y = x0 + x1 + x2
         self.outputs = {'Out': y}
@@ -48,7 +48,7 @@ class TestSumOp(OpTest):
         pass
 
 
-class TestSelectedRowsSumOp(OpTest):
+class TestSelectedRowsSumOp(unittest.TestCase):
     def setUp(self):
         self.height = 10
         self.row_numel = 12
@@ -144,6 +144,7 @@ class TestLoDTensorAndSelectedRowsOp(TestSelectedRowsSumOp):
         self.height = 10
         self.row_numel = 12
         self.rows = [0, 1, 2, 2, 4, 5, 6]
+        self.dtype = np.float32
 
     def check_with_place(self, place, inplace):
         scope = core.Scope()

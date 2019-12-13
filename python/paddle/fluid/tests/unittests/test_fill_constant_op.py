@@ -81,7 +81,7 @@ class TestFillConstantOp4(OpTest):
         self.check_output()
 
 
-class TestFillConstantOpWithSelectedRows(OpTest):
+class TestFillConstantOpWithSelectedRows(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
         # create Out Variable

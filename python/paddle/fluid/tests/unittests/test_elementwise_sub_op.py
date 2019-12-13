@@ -22,8 +22,8 @@ class TestElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [2, 3]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [2, 3]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype("float32")
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 

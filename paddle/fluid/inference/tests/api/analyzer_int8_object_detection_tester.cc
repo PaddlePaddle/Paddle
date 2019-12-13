@@ -269,7 +269,7 @@ TEST(Analyzer_int8_mobilenet_ssd, quantization) {
   q_cfg.EnableMkldnnQuantizer();
   q_cfg.mkldnn_quantizer_config();
   std::unordered_set<std::string> quantize_operators(
-      {"conv2d", "depthwise_conv2d", "prior_box", "transpose2"});
+      {"conv2d", "depthwise_conv2d", "prior_box", "transpose2", "reshape2"});
   q_cfg.mkldnn_quantizer_config()->SetEnabledOpTypes(quantize_operators);
   q_cfg.mkldnn_quantizer_config()->SetWarmupData(warmup_data);
   q_cfg.mkldnn_quantizer_config()->SetWarmupBatchSize(FLAGS_warmup_batch_size);
