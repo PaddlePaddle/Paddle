@@ -52,8 +52,11 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
     op->SetOutput("Out", outputs);
   } else if (type == "fc") {
     op->SetInput("Input", {inputs[0]});
-    PADDLE_ENFORCE_EQ(inputs.size(), 2,
-                      "The fc inputs should have input and weights.");
+    PADDLE_ENFORCE_EQ(inputs.size(), 2UL,
+                      platform::errors::InvalidArgument(
+                          "The fc inputs should contain input and weights, but "
+                          "now the size of inputs is %d",
+                          inputs.size()));
     op->SetInput("W", {inputs[1]});
     op->SetOutput("Out", outputs);
   }
