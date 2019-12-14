@@ -229,7 +229,10 @@ void CPUQuantizeSquashPass::FcDequantSquash(Graph* graph) const {
 }
 
 void CPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE(graph);
+  PADDLE_ENFORCE_NOT_NULL(
+      graph,
+      platform::errors::NotFound(
+          "The graph in function CPUQuantizeSquashPass::ApplyImpl is null"));
   FusePassBase::Init("cpu_quantize_squash_pass", graph);
 
   std::unordered_map<const Node*, int> nodes_keep_counter;

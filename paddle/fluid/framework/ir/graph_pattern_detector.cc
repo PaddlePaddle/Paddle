@@ -77,8 +77,10 @@ PDNode *PDPattern::RetrieveNode(const std::string &id) const {
 }
 
 void PDPattern::AddEdge(PDNode *a, PDNode *b) {
-  PADDLE_ENFORCE(a);
-  PADDLE_ENFORCE(b);
+  PADDLE_ENFORCE_NOT_NULL(
+      a, platform::errors::NotFound("PDNode %s is not found.", a->name()));
+  PADDLE_ENFORCE_NOT_NULL(
+      b, platform::errors::NotFound("PDNode %s is not found.", b->name()));
   PADDLE_ENFORCE_NE(a, b, platform::errors::PermissionDenied(
                               "Cannot connect the same node in the graph."));
   edges_.emplace_back(a, b);
@@ -612,15 +614,24 @@ bool VarLinksToOp(Node *node, const std::string &op_type) {
 }
 
 bool IsNthInput(Node *var, Node *op, const std::string &argument, size_t nth) {
-  PADDLE_ENFORCE(var->IsVar());
-  PADDLE_ENFORCE(op->IsOp());
+  PADDLE_ENFORCE_EQ(
+      var->IsVar(), true,
+      platform::errors::InvalidArgument(
+          "First parameter of function IsNthInput must be Node::Var"));
+  PADDLE_ENFORCE_EQ(
+      op->IsOp(), true,
+      platform::errors::InvalidArgument(
+          "Second parameter of function IsNthInput must be Node::Op"));
   if (!HasInput(op, argument) || op->Op()->Input(argument).size() <= nth)
     return false;
   return var->Name() == op->Op()->Input(argument)[nth];
 }
 
 bool HasInput(Node *op, const std::string &argument) {
-  PADDLE_ENFORCE(op->IsOp());
+  PADDLE_ENFORCE_EQ(
+      op->IsOp(), true,
+      platform::errors::InvalidArgument(
+          "First parameter of function HasInput must be Node::Op"));
   auto const &names = op->Op()->InputNames();
   if (std::find(names.begin(), names.end(), argument) == names.end())
     return false;
@@ -628,8 +639,14 @@ bool HasInput(Node *op, const std::string &argument) {
 }
 
 bool IsNthOutput(Node *var, Node *op, const std::string &argument, size_t nth) {
-  PADDLE_ENFORCE(var->IsVar());
-  PADDLE_ENFORCE(op->IsOp());
+  PADDLE_ENFORCE_EQ(
+      var->IsVar(), true,
+      platform::errors::InvalidArgument(
+          "First parameter of function IsNthOutput must be Node::Var"));
+  PADDLE_ENFORCE_EQ(
+      op->IsOp(), true,
+      platform::errors::InvalidArgument(
+          "Second parameter of function IsNthOutput must be Node::Op"));
   if (op->Op()->Output(argument).size() <= nth) return false;
   return var->Name() == op->Op()->Output(argument)[nth];
 }
