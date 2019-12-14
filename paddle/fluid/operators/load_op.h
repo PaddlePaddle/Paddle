@@ -96,7 +96,6 @@ class LoadOpKernel : public framework::OpKernel<T> {
       tensor = var->GetMutable<framework::LoDTensor>();
       tensor->set_lod(fp16_tensor.lod());
       tensor->ShareDataWith(fp16_tensor);
-      tensor->ShareDataWith(fp16_tensor);
     }
   }
 
