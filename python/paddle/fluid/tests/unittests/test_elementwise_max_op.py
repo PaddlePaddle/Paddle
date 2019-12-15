@@ -49,7 +49,7 @@ class TestElementwiseOp(OpTest):
 class TestElementwiseMaxOp_scalar(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
-        x = np.random.random_integers(-5, 5, [2, 3, 4]).astype("float32")
+        x = np.random.random_integers(-5, 5, [2, 3, 20]).astype("float32")
         y = np.array([0.5]).astype("float32")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
@@ -58,9 +58,9 @@ class TestElementwiseMaxOp_scalar(TestElementwiseOp):
 class TestElementwiseMaxOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
-        x = np.random.random((32, )).astype("float32")
-        sgn = np.random.choice([-1, 1], (32, )).astype("float32")
-        y = x + sgn * np.random.uniform(0.1, 1, (32, )).astype("float32")
+        x = np.random.random((100, )).astype("float32")
+        sgn = np.random.choice([-1, 1], (100, )).astype("float32")
+        y = x + sgn * np.random.uniform(0.1, 1, (100, )).astype("float32")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.maximum(self.inputs['X'], self.inputs['Y'])}
 
@@ -68,7 +68,7 @@ class TestElementwiseMaxOp_Vector(TestElementwiseOp):
 class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
-        x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
+        x = np.random.uniform(0.5, 1, (2, 3, 20)).astype(np.float32)
         sgn = np.random.choice([-1, 1], (2, )).astype(np.float32)
         y = x[:, 0, 0] + sgn * \
             np.random.uniform(1, 2, (2, )).astype(np.float32)
@@ -84,7 +84,7 @@ class TestElementwiseMaxOp_broadcast_0(TestElementwiseOp):
 class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
-        x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
+        x = np.random.uniform(0.5, 1, (2, 3, 20)).astype(np.float32)
         sgn = np.random.choice([-1, 1], (3, )).astype(np.float32)
         y = x[0, :, 0] + sgn * \
             np.random.uniform(1, 2, (3, )).astype(np.float32)
@@ -100,7 +100,7 @@ class TestElementwiseMaxOp_broadcast_1(TestElementwiseOp):
 class TestElementwiseMaxOp_broadcast_2(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_max"
-        x = np.random.uniform(0.5, 1, (2, 3, 4)).astype(np.float32)
+        x = np.random.uniform(0.5, 1, (10, 3, 4)).astype(np.float32)
         sgn = np.random.choice([-1, 1], (4, )).astype(np.float32)
         y = x[0, 0, :] + sgn * \
             np.random.uniform(1, 2, (4, )).astype(np.float32)

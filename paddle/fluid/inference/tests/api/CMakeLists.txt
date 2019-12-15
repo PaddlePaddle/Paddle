@@ -248,19 +248,22 @@ if(WITH_MKLDNN)
   inference_analysis_api_int8_test_run(test_analyzer_int8_mobilenetv2 ${INT8_IMG_CLASS_TEST_APP} ${INT8_MOBILENETV2_MODEL_DIR} ${IMAGENET_DATA_PATH})
  
   # resnet101 int8
-  set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
-  download_int8_data(${INT8_RESNET101_MODEL_DIR} "Res101_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_resnet101 ${INT8_IMG_CLASS_TEST_APP} ${INT8_RESNET101_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  # TODO(grygielski) Enable after MKL-DNN 1.0 merge
+#   set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
+#   download_int8_data(${INT8_RESNET101_MODEL_DIR} "Res101_int8_model.tar.gz" )
+#   inference_analysis_api_int8_test_run(test_analyzer_int8_resnet101 ${INT8_IMG_CLASS_TEST_APP} ${INT8_RESNET101_MODEL_DIR} ${IMAGENET_DATA_PATH})
  
   # vgg16 int8
-  set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
-  download_int8_data(${INT8_VGG16_MODEL_DIR} "VGG16_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  # TODO(grygielski) Enable after MKL-DNN 1.0 merge
+#   set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
+#   download_int8_data(${INT8_VGG16_MODEL_DIR} "VGG16_int8_model.tar.gz" )
+#   inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
  
   # vgg19 int8
-  set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
-  download_int8_data(${INT8_VGG19_MODEL_DIR} "VGG19_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_vgg19 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG19_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  # TODO(grygielski) Enable after MKL-DNN 1.0 merge
+#   set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
+#   download_int8_data(${INT8_VGG19_MODEL_DIR} "VGG19_int8_model.tar.gz" )
+#   inference_analysis_api_int8_test_run(test_analyzer_int8_vgg19 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG19_MODEL_DIR} ${IMAGENET_DATA_PATH})
 
   # googlenet int8
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")

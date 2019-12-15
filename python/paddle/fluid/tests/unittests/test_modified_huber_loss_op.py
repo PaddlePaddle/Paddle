@@ -31,7 +31,7 @@ def modified_huber_loss_forward(val):
 class TestModifiedHuberLossOp(OpTest):
     def setUp(self):
         self.op_type = 'modified_huber_loss'
-        samples_num = 32
+        samples_num = 100
 
         x_np = np.random.uniform(-2., 2., (samples_num, 1)).astype('float32')
         y_np = np.random.choice([0, 1], samples_num).reshape(

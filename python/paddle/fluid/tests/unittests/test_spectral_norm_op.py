@@ -73,9 +73,9 @@ class TestSpectralNormOpNoGrad(OpTest):
         self.check_output()
 
     def initTestCase(self):
-        self.weight_shape = (2, 3)
-        self.u_shape = (2, )
-        self.v_shape = (3, )
+        self.weight_shape = (10, 12)
+        self.u_shape = (10, )
+        self.v_shape = (12, )
         self.dim = 0
         self.power_iters = 5
         self.eps = 1e-12
@@ -100,9 +100,9 @@ class TestSpectralNormOp(TestSpectralNormOpNoGrad):
             max_relative_error=0.1)
 
     def initTestCase(self):
-        self.weight_shape = (2, 3)
-        self.u_shape = (2, )
-        self.v_shape = (3, )
+        self.weight_shape = (10, 12)
+        self.u_shape = (10, )
+        self.v_shape = (12, )
         self.dim = 0
         self.power_iters = 0
         self.eps = 1e-12

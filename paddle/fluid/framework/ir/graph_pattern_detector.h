@@ -749,6 +749,21 @@ struct Transpose : public PatternBase {
   PATTERN_DECL_NODE(next_op);
 };
 
+// Reshape op
+// Forward pass for reshape.
+// reshape_out is a result of the operator.
+struct Reshape : public PatternBase {
+  Reshape(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "reshape2") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(reshape_in);
+  PATTERN_DECL_NODE(reshape_op);
+  PATTERN_DECL_NODE(reshape_out);
+  PATTERN_DECL_NODE(next_op);
+};
+
 // Concat op
 // Forward pass for concat.
 // concat_out is a result of the operator.

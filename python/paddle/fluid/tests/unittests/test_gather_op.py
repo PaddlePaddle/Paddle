@@ -51,7 +51,7 @@ class TestCase1(TestGatherOp):
         """
         For one dimension input
         """
-        self.x_shape = (10)
+        self.x_shape = (100)
         self.x_type = "float32"
         self.index = [1, 3, 5]
         self.index_type = "int32"

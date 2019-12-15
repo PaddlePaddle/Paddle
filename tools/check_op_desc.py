@@ -110,7 +110,7 @@ def diff_attr(ori_attrs, new_attrs):
         attr_deleted_error_massage.append(attr_name)
 
     for attr_name in attrs_only_in_new:
-        if not new_attrs.get(attr_name).get(DEFAULT_VALUE):
+        if new_attrs.get(attr_name).get(DEFAULT_VALUE) == None:
             error, attr_error = True, True
             attr_added_error_massage.append(attr_name)
 

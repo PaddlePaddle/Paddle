@@ -33,7 +33,7 @@ class TestExpandOpRank1(OpTest):
         self.outputs = {'Out': output}
 
     def init_data(self):
-        self.ori_shape = [12]
+        self.ori_shape = [100]
         self.expand_times = [2]
 
     def test_check_output(self):

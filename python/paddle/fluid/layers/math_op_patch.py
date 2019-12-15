@@ -42,8 +42,7 @@ def monkey_patch_variable():
     def current_block(var):
         if in_dygraph_mode():
             return default_main_program().global_block()
-        else:
-            return var.block
+        return var.block.program.current_block()
 
     def create_new_tmp_var(block, dtype):
         tmp_name = unique_tmp_name()

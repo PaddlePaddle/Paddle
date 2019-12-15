@@ -21,7 +21,7 @@ from op_test import OpTest
 class TestSequenceUnpadOp(OpTest):
     def init(self):
         self.length = [2, 3, 4]
-        self.x_shape = (3, 5)
+        self.x_shape = (3, 40)
         self.dtype = "float32"
 
     def compute(self):
