@@ -167,7 +167,9 @@ void TensorCheckerVisitor<platform::CUDADeviceContext>::apply(
   }
 
   const size_t threads = 1024;
-  size_t blocks = std::min(128ul, (tensor_.numel() + threads - 1) / threads);
+  size_t blocks =
+      std::min(static_cast<size_t>(128),
+               static_cast<size_t>((tensor_.numel() + threads - 1) / threads));
   CheckNanInfKernel<<<blocks, threads, 0, dev_ctx->stream()>>>(
       tensor_.data<T>(), tensor_.numel(), print_num, gpu_str_ptr);
 }
