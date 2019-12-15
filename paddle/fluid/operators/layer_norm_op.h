@@ -239,6 +239,8 @@ class LayerNormKernel : public framework::OpKernel<T> {
     ker(x.data<T>(), out.data<T>(), mean->data<T>(), var->data<T>(),
         scale ? scale->data<T>() : nullptr, bias ? bias->data<T>() : nullptr,
         static_cast<int>(left), static_cast<const float>(epsilon), right);
+    out.set_layout(DataLayout::kMKLDNN);
+    out.set_format(mkldnn::memory::format_tag::nwc);
 #endif
   }
 };
