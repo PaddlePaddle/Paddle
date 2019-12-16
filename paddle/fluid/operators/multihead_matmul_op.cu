@@ -196,15 +196,14 @@ __global__ void softmax_kernel_with_eltadd(T *qk_buf_, const T *bias_qk_,
                                            const int head_num,
                                            const int seq_len,
                                            const unsigned mask) {
-  int seq_id = blockIdx.x % seq_len;
   int qk_offset = blockIdx.x * seq_len;
-  int bias_offset = blockIdx.x % (head_num * seq_len) * seq_len;
+  assert(blockDim.x % 32 == 0);
 
   __shared__ float s_sum, s_max;
 
   float qk = threadIdx.x < seq_len
                  ? static_cast<float>((qk_buf_[threadIdx.x + qk_offset] +
-                                       bias_qk_[threadIdx.x + bias_offset]))
+                                       bias_qk_[threadIdx.x + qk_offset]))
                  : 0.0f;
   float tmp = threadIdx.x < seq_len ? static_cast<float>(qk) : -1e20f;
 
@@ -259,15 +258,29 @@ void MatMulWithHeadQK(const platform::CUDADeviceContext &context, int head_num,
                    q_buf_, k_buf_, beta, qk_buf_, batch_size * head_num,
                    seq_len * size_per_head, seq_len * size_per_head);
 
-  int m = batch_size * head_num * seq_len;
-  int k = seq_len;
+  int grid = batch_size * head_num * seq_len;
+  int block = seq_len;
 
-  int grid = m;
-  int block = k;
+  // Align block to 32, also limit seq_len to max block size.
+  PADDLE_ENFORCE_LE(seq_len, 1024, platform::errors::InvalidArgument(
+                                       "seq_len should <= 1024, "
+                                       "but received seq_len is:%d",
+                                       seq_len));
+  if (seq_len <= 32)
+    block = 32;
+  else if (seq_len > 32 && seq_len <= 64)
+    block = 64;
+  else if (seq_len > 64 && seq_len <= 128)
+    block = 128;
+  else if (seq_len > 128 && seq_len <= 256)
+    block = 256;
+  else if (seq_len > 256 && seq_len <= 512)
+    block = 512;
+  else
+    block = 1024;
 
-  unsigned mask = block < 32 ? (((unsigned)1 << block) - 1) : FINAL_MASK;
   softmax_kernel_with_eltadd<T><<<grid, block, 0, stream>>>(
-      qk_buf_, bias_qk, batch_size, head_num, seq_len, mask);
+      qk_buf_, bias_qk, batch_size, head_num, seq_len, FINAL_MASK);
 }
 
 template <typename T>
