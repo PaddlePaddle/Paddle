@@ -25,7 +25,10 @@ class TestPostTrainingForResnet50(TestPostTrainingQuantization):
             'http://paddle-inference-dist.bj.bcebos.com/int8/resnet50_int8_model.tar.gz'
         ]
         data_md5s = ['4a5194524823d9b76da6e738e1367881']
-        self.run_test(model, algo, data_urls, data_md5s)
+        is_full_quantize = False
+        is_memory_constrained = True
+        self.run_test(model, algo, data_urls, data_md5s, is_full_quantize,
+                      is_memory_constrained)
 
 
 if __name__ == '__main__':
