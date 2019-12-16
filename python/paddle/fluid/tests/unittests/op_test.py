@@ -33,7 +33,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
-from check_white_list import compile_vs_runtime_white_list
+from white_list import compile_vs_runtime_white_list
 from white_list import op_accuracy_white_list
 
 
