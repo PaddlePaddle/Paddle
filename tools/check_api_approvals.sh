@@ -26,7 +26,8 @@ API_FILES=("CMakeLists.txt"
            "python/paddle/fluid/framework.py"
            "python/paddle/fluid/backward.py"
            "paddle/fluid/operators/distributed/send_recv.proto.in"
-           "paddle/fluid/framework/unused_var_check.cc")
+           "paddle/fluid/framework/unused_var_check.cc"
+           "python/paddle/fluid/tests/unittests/white_list/op_check_grad_white_list.py")
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
 git_files=`git diff --numstat upstream/$BRANCH| wc -l`
@@ -102,6 +103,9 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "paddle/fluid/framework/unused_var_check.cc" ];then
           echo_line="You must have one RD (zhiqiu (Recommend) , sneaxiy or luotao1) approval for the paddle/fluid/framework/unused_var_check.cc, which manages the white list of operators that have unused input variables. Before change the white list, please read the spicification [https://github.com/PaddlePaddle/Paddle/wiki/OP-Should-Not-Have-Unused-Input] and try to refine code first. \n"
           check_approval 1 6888866 32832641 6836917
+      elif [ "${API_FILE}" == "python/paddle/fluid/tests/unittests/white_list/op_check_grad_white_list.py" ];then
+          echo_line="You must have one RD (zhangting2020 (Recommend), luotao1 or phlrain) approval for the python/paddle/fluid/tests/unittests/white_list/op_check_grad_white_list.py, which manages the white list of operators without gradient. For more information, please refer to: https://github.com/PaddlePaddle/Paddle/wiki/Gradient-Check-Is-Required-for-Op-Test. \n"
+          check_approval 1 26615455 6836917 43953930
       else
           echo_line="You must have one RD (XiaoguangHu01,Xreki,luotao1,sneaxiy) approval for ${API_FILE}, which manages the underlying code for fluid.\n"
           check_approval 1 3048612 46782768 12538138 6836917 32832641
