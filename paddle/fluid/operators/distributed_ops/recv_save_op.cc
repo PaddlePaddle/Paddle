@@ -165,9 +165,8 @@ class RecvSaveOpKernel : public framework::OpKernel<T> {
     auto overwrite = ctx.Attr<bool>("overwrite");
 
     if (FileExists(filename) && !overwrite) {
-      PADDLE_THROW_ERROR(
-          "%s is existed, cannot save to it when overwrite=false", filename,
-          overwrite);
+      PADDLE_THROW(platform::errors::AlreadyExists(
+          "%s is existed, cannot save to it when overwrite=false", filename));
     }
 
     MkDirRecursively(DirName(filename).c_str());

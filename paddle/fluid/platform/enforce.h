@@ -223,6 +223,13 @@ inline void throw_on_error(const platform::ErrorSummary& error) {
 #endif
 }
 
+// Note: This Macro can only be used within enforce.h
+#define __THROW_ERROR_INTERNAL__(...)                                \
+  do {                                                               \
+    throw ::paddle::platform::EnforceNotMet(                         \
+        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
+  } while (0)
+
 /** ENFORCE EXCEPTION AND MACROS **/
 
 struct EnforceNotMet : public std::exception {
@@ -249,12 +256,6 @@ struct EnforceNotMet : public std::exception {
   do {                                                                      \
     throw ::paddle::platform::EnforceNotMet(                                \
         ::paddle::platform::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
-  } while (0)
-
-#define PADDLE_THROW_ERROR(...)                                      \
-  do {                                                               \
-    throw ::paddle::platform::EnforceNotMet(                         \
-        ::paddle::string::Sprintf(__VA_ARGS__), __FILE__, __LINE__); \
   } while (0)
 
 #if defined(__CUDA_ARCH__)
@@ -298,10 +299,11 @@ struct EnforceNotMet : public std::exception {
  *    extra messages is also supported, for example:
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
+
 #define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                          \
   do {                                                               \
     if (UNLIKELY(nullptr == (__VAL))) {                              \
-      PADDLE_THROW_ERROR(                                            \
+      __THROW_ERROR_INTERNAL__(                                      \
           "%s\n  [Hint: " #__VAL " should not be null.]",            \
           ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString()); \
     }                                                                \
@@ -323,7 +325,7 @@ struct EnforceNotMet : public std::exception {
       constexpr bool __kCanToString__ =                                        \
           ::paddle::platform::details::CanToString<__TYPE1__>::kValue &&       \
           ::paddle::platform::details::CanToString<__TYPE2__>::kValue;         \
-      PADDLE_THROW_ERROR(                                                      \
+      __THROW_ERROR_INTERNAL__(                                                \
           "%s\n  [Hint: Expected %s " #__CMP                                   \
           " %s, but received %s " #__INV_CMP " %s.]",                          \
           ::paddle::platform::ErrorSummary(__VA_ARGS__).ToString(), #__VAL1,   \
