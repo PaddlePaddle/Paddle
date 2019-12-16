@@ -32,21 +32,28 @@ BuddyAllocator::BuddyAllocator(
     size_t max_chunk_size)
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
-      cache_(system_allocator->UseGpu()),
-      system_allocator_(std::move(system_allocator)) {}
+      system_allocator_(std::move(system_allocator)) {
+  ptr_to_block_.reserve(1000);
+}
 
 BuddyAllocator::~BuddyAllocator() {
   VLOG(10) << "BuddyAllocator Disconstructor makes sure that all of these "
               "have actually been freed";
-  while (!pool_.empty()) {
-    auto block = static_cast<MemoryBlock*>(std::get<2>(*pool_.begin()));
-    auto desc = cache_.LoadDesc(block);
-    VLOG(10) << "Free from block (" << block << ", " << desc->get_size() << ")";
-
-    system_allocator_->Free(block, desc->get_size(), desc->get_index());
-    cache_.Invalidate(block);
-    pool_.erase(pool_.begin());
+  // free unmerged blocks
+  for (auto it = ptr_to_block_.begin(); it != ptr_to_block_.end(); ++it) {
+    Free(it->first);
   }
+
+  for (auto& pool : pools_)
+    while (!pool.empty()) {
+      auto block = *pool.begin();
+      VLOG(10) << "Free from block (" << block->get_data() << ", "
+               << block->get_size() << ")";
+
+      system_allocator_->Free(block->get_data(), block->get_size(),
+                              block->get_index());
+      pool.erase(pool.begin());
+    }
 }
 
 inline size_t align(size_t size, size_t alignment) {
@@ -56,8 +63,7 @@ inline size_t align(size_t size, size_t alignment) {
 
 void* BuddyAllocator::Alloc(size_t unaligned_size) {
   // adjust allocation alignment
-  size_t size =
-      align(unaligned_size + sizeof(MemoryBlock::Desc), min_chunk_size_);
+  size_t size = align(unaligned_size, min_chunk_size_);
 
   // acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
@@ -72,95 +78,80 @@ void* BuddyAllocator::Alloc(size_t unaligned_size) {
   }
 
   // query and allocate from the existing chunk
-  auto it = FindExistChunk(size);
+  auto ptr = FindExistChunk(size);
 
-  // refill the pool if failure
-  if (it == pool_.end()) {
-    it = RefillPool(size);
-    // if still failure, fail fatally
-    if (it == pool_.end()) {
-      return nullptr;
-    }
-  } else {
-    VLOG(10) << "Allocation from existing memory block " << std::get<2>(*it)
-             << " at address "
-             << reinterpret_cast<MemoryBlock*>(std::get<2>(*it))->Data();
-  }
+  if (!ptr) return nullptr;
+
+  VLOG(10) << "Allocation from existing memory block " << ptr << " at address "
+           << ptr->get_data();
 
   total_used_ += size;
   total_free_ -= size;
 
   // split the allocation and return data for use
-  return reinterpret_cast<MemoryBlock*>(SplitToAlloc(it, size))->Data();
+  return SplitToAlloc(ptr, size)->get_data();
 }
 
 void BuddyAllocator::Free(void* p) {
   // Point back to metadata
-  auto block = static_cast<MemoryBlock*>(p)->Metadata();
+  auto block = ptr_to_block_.at(p);
+  ptr_to_block_.erase(p);
 
   // Acquire the allocator lock
   std::lock_guard<std::mutex> lock(mutex_);
 
   VLOG(10) << "Free from address " << block;
 
-  auto* desc = cache_.LoadDesc(block);
-  if (desc->get_type() == MemoryBlock::HUGE_CHUNK) {
+  if (block->get_type() == MemoryBlock::HUGE_CHUNK) {
     VLOG(10) << "Free directly from system allocator";
-    system_allocator_->Free(block, desc->get_total_size(), desc->get_index());
+    system_allocator_->Free(block->get_data(), block->get_size(),
+                            block->get_index());
 
-    // Invalidate GPU allocation from cache
-    cache_.Invalidate(block);
+    mb_pool_.Push(block);
 
     return;
   }
 
-  block->MarkAsFree(&cache_);
+  block->MarkAsFree();
 
-  total_used_ -= desc->get_total_size();
-  total_free_ += desc->get_total_size();
+  total_used_ -= block->get_size();
+  total_free_ += block->get_size();
 
   // Trying to merge the right buddy
-  MemoryBlock* right_buddy = block->GetRightBuddy(&cache_);
+  MemoryBlock* right_buddy = block->get_right_buddy();
   if (right_buddy) {
-    VLOG(10) << "Merging this block " << block << " with its right buddy "
-             << right_buddy;
+    VLOG(10) << "Merging this block " << block->get_data()
+             << " with its right buddy " << right_buddy->get_data();
 
-    auto rb_desc = cache_.LoadDesc(right_buddy);
-    if (rb_desc->get_type() == MemoryBlock::FREE_CHUNK) {
+    if (right_buddy->get_type() == MemoryBlock::FREE_CHUNK) {
       // Take away right buddy from pool
-      pool_.erase(IndexSizeAddress(rb_desc->get_index(),
-                                   rb_desc->get_total_size(), right_buddy));
+      pools_[right_buddy->get_index()].erase(right_buddy);
 
       // merge its right buddy to the block
-      block->Merge(&cache_, right_buddy);
+      block->Merge(right_buddy, &mb_pool_);
     }
   }
 
   // Trying to merge the left buddy
-  MemoryBlock* left_buddy = block->GetLeftBuddy(&cache_);
+  MemoryBlock* left_buddy = block->get_left_buddy();
   if (left_buddy) {
-    VLOG(10) << "Merging this block " << block << " with its left buddy "
-             << left_buddy;
+    VLOG(10) << "Merging this block " << block->get_data()
+             << " with its left buddy " << left_buddy->get_data();
 
-    // auto left_buddy = block->left_buddy(cache_);
-    auto* lb_desc = cache_.LoadDesc(left_buddy);
-    if (lb_desc->get_type() == MemoryBlock::FREE_CHUNK) {
-      // Take away right buddy from pool
-      pool_.erase(IndexSizeAddress(lb_desc->get_index(),
-                                   lb_desc->get_total_size(), left_buddy));
+    if (left_buddy->get_type() == MemoryBlock::FREE_CHUNK) {
+      // Take away left buddy from pool
+      pools_[left_buddy->get_index()].erase(left_buddy);
 
       // merge the block to its left buddy
-      left_buddy->Merge(&cache_, block);
+      left_buddy->Merge(block, &mb_pool_);
       block = left_buddy;
-      desc = lb_desc;
     }
   }
 
   // Dumping this block into pool
-  VLOG(10) << "Inserting free block (" << block << ", "
-           << desc->get_total_size() << ")";
-  pool_.insert(
-      IndexSizeAddress(desc->get_index(), desc->get_total_size(), block));
+  VLOG(10) << "Inserting free block (" << block->get_data() << ", "
+           << block->get_size() << ")";
+  pools_[block->get_index()].insert(block);
 }
 
 size_t BuddyAllocator::Used() { return total_used_; }
@@ -175,14 +166,16 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
 
   if (p == nullptr) return nullptr;
 
-  static_cast<MemoryBlock*>(p)->Init(&cache_, MemoryBlock::HUGE_CHUNK, index,
-                                     size, nullptr, nullptr);
+  // auto block = new MemoryBlock(p, MemoryBlock::HUGE_CHUNK, index, size,
+  // nullptr, nullptr);
+  auto block = mb_pool_.Get();
+  block->Init(p, MemoryBlock::HUGE_CHUNK, index, size, nullptr, nullptr);
+  ptr_to_block_.insert({p, block});
 
-  return static_cast<MemoryBlock*>(p)->Data();
+  return p;
 }
 
-BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
-    size_t request_bytes) {
+MemoryBlock* BuddyAllocator::RefillPool(size_t request_bytes) {
   size_t allocate_bytes = max_chunk_size_;
   size_t index = 0;
 
@@ -205,68 +198,67 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
   // Allocate a new block
   void* p = system_allocator_->Alloc(&index, allocate_bytes);
 
-  if (p == nullptr) return pool_.end();
+  // return nullptr if system_allocator failed to allocate new memory
+  if (p == nullptr) return nullptr;
 
   VLOG(10) << "Creating and inserting new block " << p
            << " from system allocator";
 
-  static_cast<MemoryBlock*>(p)->Init(&cache_, MemoryBlock::FREE_CHUNK, index,
-                                     allocate_bytes, nullptr, nullptr);
+  // auto block = new MemoryBlock(p, MemoryBlock::FREE_CHUNK, index,
+  // allocate_bytes, nullptr, nullptr);
+  auto block = mb_pool_.Get();
+  block->Init(p, MemoryBlock::FREE_CHUNK, index, allocate_bytes, nullptr,
+              nullptr);
 
   total_free_ += allocate_bytes;
 
-  // dump the block into pool
-  return pool_.insert(IndexSizeAddress(index, allocate_bytes, p)).first;
+  return block;
 }
 
-BuddyAllocator::PoolSet::iterator BuddyAllocator::FindExistChunk(size_t size) {
-  size_t index = 0;
+MemoryBlock* BuddyAllocator::FindExistChunk(size_t size) {
+  // search in pools
+  MemoryBlock key_block(size);
+  for (auto& pool : pools_) {
+    auto it = pool.lower_bound(&key_block);
+    if (it != pool.end()) {
+      auto ptr = *it;
 
-  while (1) {
-    auto it = pool_.lower_bound(IndexSizeAddress(index, size, nullptr));
-
-    // no match chunk memory
-    if (it == pool_.end()) return it;
-
-    if (std::get<0>(*it) > index) {
-      // find suitable one
-      if (std::get<1>(*it) >= size) {
-        return it;
-      }
-      // update and continue
-      index = std::get<0>(*it);
-      continue;
+      // erase the block from pools
+      pool.erase(it);
+      return ptr;
     }
-    return it;
   }
+
+  // try refill pools_[0]
+  auto block = RefillPool(size);
+
+  return block;
 }
 
-void* BuddyAllocator::SplitToAlloc(BuddyAllocator::PoolSet::iterator it,
-                                   size_t size) {
-  auto block = static_cast<MemoryBlock*>(std::get<2>(*it));
-  auto desc = cache_.LoadDesc(block);
-  pool_.erase(it);
+MemoryBlock* BuddyAllocator::SplitToAlloc(MemoryBlock* block, size_t size) {
+  // pool_.erase(it);
+  ptr_to_block_.insert({block->get_data(), block});
 
-  VLOG(10) << "Split block (" << block << ", " << desc->get_total_size()
+  VLOG(10) << "Split block (" << block->get_data() << ", " << block->get_size()
            << ") into";
-  block->Split(&cache_, size);
+  // split_flag == false means size equal to the block size
+  // so no split action happened in the Split function
+  bool split_flag = block->Split(size, &mb_pool_);
 
-  VLOG(10) << "Left block (" << block << ", " << desc->get_total_size() << ")";
-  desc->set_type(MemoryBlock::ARENA_CHUNK);
+  VLOG(10) << "Left block (" << block->get_data() << ", " << block->get_size()
+           << ")";
+  block->set_type(MemoryBlock::ARENA_CHUNK);
 
   // the rest of memory if exist
-  MemoryBlock* right_buddy = block->GetRightBuddy(&cache_);
-  if (right_buddy) {
-    auto* rb_desc = cache_.LoadDesc(right_buddy);
-    if (rb_desc->get_type() == MemoryBlock::FREE_CHUNK) {
-      VLOG(10) << "Insert right block (" << right_buddy << ", "
-               << rb_desc->get_total_size() << ")";
+  // if split_flag is true, then a new block is created inside Split function
+  MemoryBlock* right_buddy = block->get_right_buddy();
+  if (split_flag && right_buddy &&
+      right_buddy->get_type() == MemoryBlock::FREE_CHUNK) {
+    VLOG(10) << "Insert right block (" << right_buddy->get_data() << ", "
+             << right_buddy->get_size() << ")";
 
-      pool_.insert(IndexSizeAddress(rb_desc->get_index(),
-                                    rb_desc->get_total_size(), right_buddy));
-    }
+    pools_[right_buddy->get_index()].insert(right_buddy);
   }
-
   return block;
 }
 

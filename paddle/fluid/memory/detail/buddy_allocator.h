@@ -14,11 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <array>
 #include <memory>
 #include <mutex>  // NOLINT
-#include <set>
 #include <tuple>
-#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/memory/detail/memory_block.h"
@@ -26,18 +25,23 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
+#include "absl/container/btree_set.h"
+#include "absl/container/flat_hash_map.h"
+
 namespace paddle {
 namespace memory {
 namespace detail {
 
 class BuddyAllocator {
  public:
+  BuddyAllocator();
   BuddyAllocator(std::unique_ptr<SystemAllocator> system_allocator,
                  size_t min_chunk_size, size_t max_chunk_size);
-
   ~BuddyAllocator();
 
  public:
+  void Init(std::unique_ptr<SystemAllocator> system_allocator,
+            size_t min_chunk_size, size_t max_chunk_size);
   void* Alloc(size_t unaligned_size);
   void Free(void* ptr);
   size_t Used();
@@ -50,16 +54,14 @@ class BuddyAllocator {
   BuddyAllocator& operator=(const BuddyAllocator&) = delete;
 
  private:
-  // Tuple (allocator index, memory size, memory address)
-  using IndexSizeAddress = std::tuple<size_t, size_t, void*>;
   // Each element in PoolSet is a free allocation
-  using PoolSet = std::set<IndexSizeAddress>;
+  using Pool = absl::btree_set<MemoryBlock*, MemoryBlockComparator>;
 
   /*! \brief Allocate fixed-size memory from system */
   void* SystemAlloc(size_t size);
 
   /*! \brief If existing chunks are not suitable, refill pool */
-  PoolSet::iterator RefillPool(size_t request_bytes);
+  MemoryBlock* RefillPool(size_t request_bytes);
 
   /**
    *  \brief   Find the suitable chunk from existing pool and split
@@ -70,10 +72,11 @@ class BuddyAllocator {
    *
    *  \return  the left buddy address
    */
-  void* SplitToAlloc(PoolSet::iterator it, size_t size);
+  MemoryBlock* SplitToAlloc(MemoryBlock*, size_t size);
 
   /*! \brief Find the existing chunk which used to allocation */
-  PoolSet::iterator FindExistChunk(size_t size);
+  // Pool::iterator FindExistChunk(size_t size);
+  MemoryBlock* FindExistChunk(size_t size);
 
  private:
   size_t total_used_ = 0;  // the total size of used memory
@@ -90,11 +93,11 @@ class BuddyAllocator {
    *
    * \note  Only store free chunk memory in pool
    */
-  PoolSet pool_;
+  std::array<Pool, 2> pools_;
 
  private:
-  /*! Unify the metadata format between GPU and CPU allocations */
-  MetadataCache cache_;
+  absl::flat_hash_map<void*, MemoryBlock*> ptr_to_block_;
+  MemoryBlockPool mb_pool_;
 
  private:
   /*! Allocate CPU/GPU memory from system */

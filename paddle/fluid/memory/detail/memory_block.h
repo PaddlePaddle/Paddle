@@ -13,19 +13,24 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
-#include <unordered_map>
+#include <queue>
+#include <vector>
 
 namespace paddle {
 namespace memory {
 namespace detail {
 
-// Forward declaration.
-class MetadataCache;
+class MemoryBlockPool;
 
 // MemoryBlock represents Each allocated memory block, which contains
 // MemoryBlock::Desc and the payload.
-struct MemoryBlock {
+class MemoryBlock {
+ public:
+  friend struct MemoryBlockComparator;
+
+ public:
   enum Type {
     FREE_CHUNK,    // memory is free and idle
     ARENA_CHUNK,   // memory is being occupied
@@ -33,102 +38,104 @@ struct MemoryBlock {
     INVALID_CHUNK  // memory is invalid
   };
 
-  // init saves the MemoryBlock::Desc of the memory block in a MetadataCache.
-  // If it is a CPU memory block, the MetadataCache writes the
-  // MemoryBlock::Desc to the beginning of the block; or, if it is a GPU memory
-  // block, the MetadataCache writes the Meatadata to a std::map in
-  // the CPU.
-  void Init(MetadataCache* cache, Type t, size_t index, size_t size,
-            void* left_buddy, void* right_buddy);
+  MemoryBlock() {}
 
-  MemoryBlock* GetLeftBuddy(MetadataCache* cache);
-  MemoryBlock* GetRightBuddy(MetadataCache* cache);
+  explicit MemoryBlock(size_t size)
+      : data_(nullptr),
+        type_(Type::INVALID_CHUNK),
+        index_(-1),
+        size_(size),
+        left_buddy_(nullptr),
+        right_buddy_(nullptr) {}
+
+  MemoryBlock(void* data, Type t, size_t index, size_t size,
+              MemoryBlock* left_buddy, MemoryBlock* right_buddy)
+      : data_(data),
+        type_(t),
+        index_(index),
+        size_(size),
+        left_buddy_(left_buddy),
+        right_buddy_(right_buddy) {}
+
+  void Init(void* data, Type type, size_t index, size_t size,
+            MemoryBlock* left_buddy, MemoryBlock* right_buddy);
 
   // Split the allocation into left/right blocks.
-  void Split(MetadataCache* cache, size_t size);
+  // return false if the request size equal to the block size
+  bool Split(size_t size, MemoryBlockPool* pool);
 
   // Merge left and right blocks together.
-  void Merge(MetadataCache* cache, MemoryBlock* right_buddy);
+  void Merge(MemoryBlock* right_buddy, MemoryBlockPool* pool);
 
   // Mark the allocation as free.
-  void MarkAsFree(MetadataCache* cache);
+  inline void MarkAsFree() {
+    this->type_ = FREE_CHUNK;
+    this->UpdateGuards();
+  }
 
-  void* Data() const;
-  MemoryBlock* Metadata() const;
+  // mutator for type
+  inline void set_type(const MemoryBlock::Type& type) {
+    this->type_ = type;
+    this->UpdateGuards();
+  }
 
-  // MemoryBlock::Desc describes a MemoryBlock.
-  struct Desc {
-    Desc(MemoryBlock::Type t, size_t i, size_t s, size_t ts, MemoryBlock* l,
-         MemoryBlock* r);
-    Desc();
+  // accessor for data_
+  void* get_data() const { return this->data_; }
 
-    // mutator for type
-    inline void set_type(const MemoryBlock::Type& type) {
-      this->type = type;
-      this->UpdateGuards();
-    }
+  // accessor for type_
+  inline const MemoryBlock::Type& get_type() const { return this->type_; }
 
-    // accessor for type
-    inline const MemoryBlock::Type& get_type() const { return this->type; }
+  // accessor for index_
+  inline const size_t& get_index() const { return this->index_; }
 
-    // accessor for index
-    inline const size_t& get_index() const { return this->index; }
+  // accessor for size_
+  inline const size_t& get_size() const { return this->size_; }
 
-    // accessor for size
-    inline const size_t& get_size() const { return this->size; }
+  // accessor for left_buddy_
+  inline MemoryBlock* get_left_buddy() const { return this->left_buddy_; }
 
-    // accessor for total_size
-    inline const size_t& get_total_size() const { return this->total_size; }
+  // accessor for right_buddy_
+  inline MemoryBlock* get_right_buddy() const { return this->right_buddy_; }
 
-    // Updates guard_begin and guard_end by hashes of the Metadata object.
-    void UpdateGuards();
+  // Updates guard_begin and guard_end by hashes of the Metadata object.
+  void UpdateGuards();
 
-    // Checks that guard_begin and guard_end are hashes of the Metadata object.
-    bool CheckGuards() const;
-
-    // TODO(gangliao): compress this
-    size_t guard_begin = 0;
-    MemoryBlock::Type type = MemoryBlock::INVALID_CHUNK;
-    size_t index = 0;
-    size_t size = 0;
-    size_t total_size = 0;
-    MemoryBlock* left_buddy = nullptr;
-    MemoryBlock* right_buddy = nullptr;
-    size_t guard_end = 0;
-  };
-};
-
-// A cache for accessing memory block meta-data that may be expensive
-// to access directly.  This class exists to unify the
-// MemoryBlock::Desc format between GPU and CPU allocations. It should
-// be removed when the CPU can access all GPU allocations directly via
-// UVM.
-class MetadataCache {
- public:
-  explicit MetadataCache(bool uses_gpu);
-
-  // Disable copying and assignment.
-  MetadataCache(const MetadataCache&) = delete;
-  MetadataCache& operator=(const MetadataCache&) = delete;
-
-  // Returns the MemoryBlock::Desc for a memory block.  When MetadataCache is
-  // used to manage CPU memory, the MemoryBlock::Desc resides at the beginning
-  // of the memory block; when used to manage GPU memory, the
-  // Meatadata resides in CPU memory indexed by cache_.
-  MemoryBlock::Desc* LoadDesc(MemoryBlock* memory_block);
-
-  // Saves the MemoryBlock::Desc of a memory block into the cache.  For CPU
-  // memory block, writes the MemoryBlock::Desc to the beginning of the memory
-  // block; whereas for GPU memory, writes it to cache_.
-  void Save(MemoryBlock* memory_block, const MemoryBlock::Desc& meta_data);
-
-  // For GPU memory block, erases its MemoryBlock::Desc from cache_.
-  void Invalidate(MemoryBlock* memory_block);
+  // Checks that guard_begin and guard_end are hashes of the Metadata object.
+  bool CheckGuards() const;
 
  private:
-  typedef std::unordered_map<const MemoryBlock*, MemoryBlock::Desc> MetadataMap;
-  MetadataMap cache_;
-  bool uses_gpu_;
+  size_t guard_begin = 0;
+  void* data_ = nullptr;
+  MemoryBlock::Type type_ = MemoryBlock::INVALID_CHUNK;
+  size_t index_ = 0;
+  size_t size_ = 0;
+  MemoryBlock* left_buddy_ = nullptr;
+  MemoryBlock* right_buddy_ = nullptr;
+  size_t guard_end = 0;
+};
+
+class MemoryBlockPool {
+ public:
+  explicit MemoryBlockPool(const int inc_size = 100) : inc_size_(inc_size) {}
+  ~MemoryBlockPool();
+
+ public:
+  // pop a free MemoryBlock pointer from queue
+  MemoryBlock* Get();
+
+  // return the pointer back to queue
+  void Push(MemoryBlock*);
+
+ private:
+  int inc_size_;
+  std::queue<MemoryBlock*> pool_;
+  std::vector<MemoryBlock*> raw_pointers_;
+};
+
+struct MemoryBlockComparator {
+  bool operator()(const MemoryBlock* a, const MemoryBlock* b) const {
+    return (a->size_ == b->size_) ? a->data_ < b->data_ : a->size_ < b->size_;
+  }
 };
 
 }  // namespace detail

@@ -179,6 +179,7 @@ endif()
 ########################### include third_party accoring to flags ###############################
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
+include(external/abseil)    # download, build, install abseil
 include(external/glog)      # download, build, install glog
 include(external/boost)     # download boost
 include(external/eigen)     # download eigen3
@@ -189,7 +190,7 @@ include(external/warpctc)   # download, build, install warpctc
 
 set(third_party_deps)
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
-list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
+list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool extern_abseil)
 
 if(WITH_AMD_GPU)
     include(external/rocprim)   # download, build, install rocprim
