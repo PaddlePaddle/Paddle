@@ -28,9 +28,7 @@ from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
 from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
-from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy_factory import DistributedStrategy
-from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy_factory import TrainerRuntimeConfig
-from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy_factory import ServerRuntimeConfig
+from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy_factory import DistributedStrategy, TrainerRuntimeConfig, ServerRuntimeConfig
 
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet

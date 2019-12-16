@@ -48,7 +48,7 @@ from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
 from .details import delete_ops, find_op_by_output_arg
 from ..distribute_lookup_table import find_distributed_lookup_table
 from . import collective
-from paddle.fluid.incubate.fleet.parameter_server.distributed_strategy_factory import DistributedStrategy, ServerRuntimeConfig
+from ..incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy_factory import DistributedStrategy, ServerRuntimeConfig
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
