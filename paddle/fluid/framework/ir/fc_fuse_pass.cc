@@ -93,13 +93,14 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     auto* scope = param_scope();
     auto* weight = scope->FindVar(w->Name())->GetMutable<LoDTensor>();
     auto place = weight->place();
-    bool use_gpu = Get<bool>("use_gpu");
+    bool use_gpu = Has("use_gpu") ? Get<bool>("use_gpu") : false;
+    bool use_mkldnn = mul->Op()->GetAttrIfExists<bool>("use_mkldnn");
     auto* weight_data = weight->data<float>();
     auto weight_dims = weight->dims();
     int weight_num = product(weight_dims);
     int w_h = weight_dims[0];
     int w_w = weight_dims[1];
-    if (!use_gpu) {
+    if (!use_gpu && !use_mkldnn) {
       if (w_h % 128 == 0 && w_w % 128 == 0) {
         auto* weight_data_tmp = new float[weight_num];
         for (int i = 0; i < w_h; i++) {
