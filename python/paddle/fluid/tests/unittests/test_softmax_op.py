@@ -88,7 +88,7 @@ class TestSoftmaxOp(OpTest):
                 check_dygraph=(self.use_mkldnn == False))
 
 
-class TestSoftmaxOpError(OpTest):
+class TestSoftmaxOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of softmax_op must be Variable.

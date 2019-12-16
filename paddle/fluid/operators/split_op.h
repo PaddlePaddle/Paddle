@@ -94,7 +94,7 @@ static inline std::vector<framework::DDim> UpdateOutsDims(
             framework::make_ddim(sections), in_dims, axis);
       }
     }
-    for (size_t i = 0; i < outs_number; ++i) {
+    for (int i = 0; i < outs_number; ++i) {
       outs_dims[i][axis] = sections[i];
     }
   }
@@ -163,7 +163,9 @@ class SplitGradMaker : public framework::SingleGradOpMaker<T> {
     auto op = new T();
     op->SetType("concat");
     op->SetInput("X", this->OutputGrad("Out"));
-    op->SetInput("AxisTensor", this->Input("AxisTensor"));
+    if (this->HasInput("AxisTensor")) {
+      op->SetInput("AxisTensor", this->Input("AxisTensor"));
+    }
     op->SetOutput("Out", this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
     return std::unique_ptr<T>(op);

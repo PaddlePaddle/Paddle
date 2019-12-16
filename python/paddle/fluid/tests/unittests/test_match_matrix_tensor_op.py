@@ -30,7 +30,7 @@ class TestMatchMatrixTensorOp(OpTest):
         self.op_type = "match_matrix_tensor"
 
     def set_data(self):
-        ix, iy, h, dim_t = [5, 8, 3, 4]
+        ix, iy, h, dim_t = [5, 8, 20, 4]
         x_lod = [[1, 2, 2]]
         y_lod = [[3, 1, 4]]
         self.init_data(ix, x_lod, iy, y_lod, h, dim_t)
@@ -71,10 +71,11 @@ class TestMatchMatrixTensorOp(OpTest):
         self.outputs = {'Out': (out, out_lod), 'Tmp': tmp}
 
     def test_check_output(self):
-        self.check_output(check_compile_vs_runtime=True)
+        self.check_output(check_compile_vs_runtime=True, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
+        self.check_grad(
+            ['X', 'Y'], 'Out', max_relative_error=0.005, check_dygraph=False)
 
 
 class TestMatchMatrixTensorOpCase1(TestMatchMatrixTensorOp):

@@ -68,5 +68,47 @@ class TestRandom(TestUniqueOp):
         self.outputs = {'Out': target_out, 'Index': target_index}
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestOneGPU(TestUniqueOp):
+    def init_config(self):
+        self.inputs = {'X': np.array([2], dtype='int64'), }
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
+        self.outputs = {
+            'Out': np.array(
+                [2], dtype='int64'),
+            'Index': np.array(
+                [0], dtype='int32')
+        }
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+
+
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestRandomGPU(TestUniqueOp):
+    def init_config(self):
+        self.inputs = {'X': np.random.randint(0, 100, (150, ), dtype='int64')}
+        self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
+        np_unique, np_index, reverse_index = np.unique(self.inputs['X'], True,
+                                                       True)
+        np_tuple = [(np_unique[i], np_index[i]) for i in range(len(np_unique))]
+        np_tuple.sort(key=lambda x: x[1])
+        target_out = np.array([i[0] for i in np_tuple], dtype='int64')
+        target_index = np.array(
+            [list(target_out).index(i) for i in self.inputs['X']],
+            dtype='int64')
+
+        self.outputs = {'Out': target_out, 'Index': target_index}
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+
+
 if __name__ == "__main__":
     unittest.main()

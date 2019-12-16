@@ -23,7 +23,7 @@ import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard
 
 
-class TestSqrtOpError(OpTest):
+class TestSqrtOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of sqrt op must be Variable or numpy.ndarray.
@@ -232,7 +232,7 @@ class TestAbs(TestActivation):
         self.op_type = "abs"
         self.init_dtype()
 
-        x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
+        x = np.random.uniform(-1, 1, [4, 25]).astype(self.dtype)
         # Because we set delta = 0.005 in calculating numeric gradient,
         # if x is too small, such as 0.002, x_neg will be -0.003
         # x_pos will be 0.007, so the numeric gradient is inaccurate.
@@ -537,7 +537,7 @@ class TestELU(TestActivation):
         self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
 
-class TestELUOpError(OpTest):
+class TestELUOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # The input type of elu_op must be Variable.

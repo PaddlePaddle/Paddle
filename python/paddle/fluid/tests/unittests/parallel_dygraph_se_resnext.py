@@ -33,8 +33,25 @@ from paddle.fluid.layer_helper import LayerHelper
 import math
 from test_dist_base import runtime_main, TestParallelDyGraphRunnerBase
 
+batch_size = 64
 momentum_rate = 0.9
 l2_decay = 1.2e-4
+
+train_parameters = {
+    "input_size": [3, 224, 224],
+    "input_mean": [0.485, 0.456, 0.406],
+    "input_std": [0.229, 0.224, 0.225],
+    "learning_strategy": {
+        "name": "cosine_decay",
+        "batch_size": batch_size,
+        "epochs": [40, 80, 100],
+        "steps": [0.1, 0.01, 0.001, 0.0001]
+    },
+    "batch_size": batch_size,
+    "lr": 0.0125,
+    "total_images": 6149,
+    "num_epochs": 200
+}
 
 
 def optimizer_setting(params):
@@ -300,11 +317,10 @@ class TestSeResNeXt(TestParallelDyGraphRunnerBase):
         model = SeResNeXt("se-resnext")
         train_reader = paddle.batch(
             paddle.dataset.flowers.test(use_xmap=False),
-            batch_size=4,
+            batch_size=train_parameters["batch_size"],
             drop_last=True)
-
-        opt = fluid.optimizer.SGD(learning_rate=1e-3)
-        return model, train_reader, opt
+        optimizer = optimizer_setting(train_parameters)
+        return model, train_reader, optimizer
 
     def run_one_loop(self, model, opt, data):
         bs = len(data)

@@ -130,21 +130,10 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
         .EqualGreaterThan(-1);
     AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
         .SetDefault(false);
-    AddAttr<std::string>(
-        "x_data_format",
-        "(string, default NCHW) Only used in mkldnn"
-        "An optional string from: \"NHWC\", \"NCHW\", \"NCHW16C\", \"NCHW8C\". "
-        "Defaults to \"\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
+    AddAttr<std::string>("x_data_format", "This parameter is no longer used.")
         .SetDefault("");
-    AddAttr<std::string>(
-        "y_data_format",
-        "(string, default \"\") Only used in mkldnn"
-        "An optional string from: \"NHWC\", \"NCHW\", \"NCHW16C\", \"NCHW8C\". "
-        "Defaults to \"\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
+    AddAttr<std::string>("y_data_format", "This parameter is no longer used.")
         .SetDefault("");
-
     AddOpComment();
   }
 

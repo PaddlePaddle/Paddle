@@ -180,7 +180,7 @@ std::pair<int64_t, int64_t> GetTensorBound(LoDTensor* tensor, int index) {
   }
 }
 
-bool CheckValidOutput(LoDTensor* tensor, int batch_size) {
+bool CheckValidOutput(LoDTensor* tensor, size_t batch_size) {
   auto& dims = tensor->dims();
   if (dims.size() != 2) return false;
   if (tensor->lod().size() != 0) {
@@ -189,7 +189,7 @@ bool CheckValidOutput(LoDTensor* tensor, int batch_size) {
       return false;
     }
   } else {
-    if (dims[0] != batch_size) {
+    if (dims[0] != static_cast<int>(batch_size)) {
       return false;
     }
   }
@@ -329,7 +329,8 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
         }
         memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data(),
                sizeof(float) * table.emb_dim());
-        if (is_nid && index == tensor->lod()[0][nid_ins_index]) {
+        if (is_nid &&
+            static_cast<size_t>(index) == tensor->lod()[0][nid_ins_index]) {
           nid_show_.push_back(fea_value[fea_idx][0]);
           ++nid_ins_index;
         }
@@ -346,7 +347,8 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
         }
         memcpy(ptr + table.emb_dim() * index, fea_value[fea_idx].data() + 2,
                sizeof(float) * table.emb_dim());
-        if (is_nid && index == tensor->lod()[0][nid_ins_index]) {
+        if (is_nid &&
+            static_cast<size_t>(index) == tensor->lod()[0][nid_ins_index]) {
           nid_show_.push_back(fea_value[fea_idx][0]);
           ++nid_ins_index;
         }
@@ -402,7 +404,7 @@ void DownpourWorker::AdjustInsWeight() {
   int64_t nid_adjw_num = 0;
   double nid_adjw_weight = 0.0;
   size_t ins_index = 0;
-  for (int i = 0; i < len; ++i) {
+  for (size_t i = 0; i < len; ++i) {
     float nid_show = nid_show_[i];
     VLOG(3) << "nid_show " << nid_show;
     if (nid_show < 0) {
@@ -970,7 +972,7 @@ void DownpourWorker::TrainFiles() {
       }
     }
     if (need_dump_field_) {
-      int batch_size = device_reader_->GetCurBatchSize();
+      size_t batch_size = device_reader_->GetCurBatchSize();
       std::vector<std::string> ars(batch_size);
       for (auto& ar : ars) {
         ar.clear();
@@ -990,7 +992,7 @@ void DownpourWorker::TrainFiles() {
         if (!CheckValidOutput(tensor, batch_size)) {
           continue;
         }
-        for (int i = 0; i < batch_size; ++i) {
+        for (size_t i = 0; i < batch_size; ++i) {
           auto output_dim = tensor->dims()[1];
           std::string output_dimstr =
               boost::lexical_cast<std::string>(output_dim);

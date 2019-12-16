@@ -21,11 +21,15 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.layers as layers
 import paddle.fluid.framework as framework
+from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
+from simple_nets import simple_fc_net_with_inputs, batchnorm_fc_with_inputs
+
+np.random.seed(123)
 
 
-class TestCond(unittest.TestCase):
+class TestCondInputOutput(unittest.TestCase):
     def test_return_single_var(self):
         """
         pseudocode:
@@ -218,6 +222,189 @@ class TestCond(unittest.TestCase):
             self.assertTrue(
                 "Incompatible return values of true_fn and false_fn in cond" in
                 str(e.exception))
+
+
+class TestCondNestedControlFlow(unittest.TestCase):
+    def test_cond_inside_cond(self):
+        """
+        pseudocode:
+        for i in range(1, 10):
+            a = 2 * i
+            if i < 5:
+                if i >= 3:
+                    return a + a 
+                else:
+                    return a - a
+            else:
+                if i < 8:
+                    return a * a
+                else:
+                    return a / a
+        """
+
+        def less_than_branch(i, a):
+            return layers.cond(i >= 3.0, lambda: layers.elementwise_add(a, a),
+                               lambda: layers.elementwise_sub(a, a))
+
+        def greater_equal_branch(i, a):
+            return layers.cond(i < 8.0, lambda: layers.elementwise_mul(a, a),
+                               lambda: layers.elementwise_div(a, a))
+
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            i = fluid.data(name="i", shape=[1], dtype='float32')
+            a = 2.0 * i
+            out = layers.cond(i < 5.0, lambda: less_than_branch(i, a),
+                              lambda: greater_equal_branch(i, a))
+            mean = layers.mean(out)
+            append_backward(mean)
+
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        for feed_i in range(0, 10):
+            expected_a = 2.0 * feed_i
+            if feed_i < 5:
+                expected_ret = expected_a + expected_a if feed_i >= 3 else 0.0
+                expected_a_grad = 2.0 if feed_i >= 3 else 0.0
+            else:
+                expected_ret = expected_a * expected_a if feed_i < 8 else 1.0
+                expected_a_grad = 2.0 * expected_a if feed_i < 8 else 0.0
+            ret = exe.run(main_program,
+                          feed={'i': np.full((1), feed_i, np.float32)},
+                          fetch_list=[out.name, a.grad_name])
+            self.assertEqual(ret[0][0], expected_ret)
+            self.assertEqual(ret[1][0], expected_a_grad)
+
+
+class TestCondBackward(unittest.TestCase):
+    def backward_value_helper(self, cond_func):
+        """
+        Helper function that compares calculated backward value is close to dy/dx
+        """
+        main_program = Program()
+        main_program.random_seed = 123
+        startup_program = Program()
+        startup_program.random_seed = 123
+        with program_guard(main_program, startup_program):
+            img = fluid.data(name='image', shape=[-1, 9], dtype='float32')
+            img.stop_gradient = False
+            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
+            i = fluid.data(name="i", shape=[1], dtype='int32')
+            loss = cond_func(i, img, label)
+            append_backward(loss)
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(startup_program)
+
+        delta = 0.005
+        for feed_i in range(0, 10):
+            feed_img = np.random.random(size=[1, 9]).astype(np.float32)
+            feed_label = np.random.randint(
+                low=0, high=10, size=[1, 1], dtype=np.int64)
+            img_grad, loss_value = exe.run(
+                main_program,
+                feed={
+                    'i': np.full((1), feed_i, np.int32),
+                    'image': feed_img,
+                    'label': feed_label
+                },
+                fetch_list=[img.grad_name, loss.name])
+
+            numerical_grad = np.zeros(shape=[1, 9], dtype=np.float32)
+            feed_img_delta = np.copy(feed_img)
+            for j in range(9):
+                feed_img_delta[0][j] = feed_img[0][j] + delta
+                loss_delta = exe.run(main_program,
+                                     feed={
+                                         'i': np.full((1), feed_i, np.int32),
+                                         'image': feed_img_delta,
+                                         'label': feed_label
+                                     },
+                                     fetch_list=[loss.name])
+                numerical_grad[0][j] = (loss_delta[0] - loss_value[0]) / delta
+                feed_img_delta[0][j] = feed_img[0][j]
+            self.assertTrue(
+                np.isclose(
+                    img_grad, numerical_grad, atol=0.05, rtol=0.05).all())
+
+    def add_optimizer_helper(self, cond_func):
+        """
+        Test that program is runnable when add optimizer
+        """
+        main_program = Program()
+        startup_program = Program()
+        with program_guard(main_program, startup_program):
+            img = fluid.data(name='image', shape=[-1, 784], dtype='float32')
+            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
+            i = fluid.data(name="i", shape=[1], dtype='int32')
+            loss = cond_func(i, img, label)
+            optimizer = fluid.optimizer.SGD(learning_rate=0.1)
+            optimizer.minimize(loss)
+
+        place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(startup_program)
+
+        for feed_i in range(0, 10):
+            feed_img = np.random.random(size=[16, 784]).astype(np.float32)
+            feed_label = np.random.randint(
+                low=0, high=10, size=[16, 1], dtype=np.int64)
+            exe.run(main_program,
+                    feed={
+                        'i': np.full((1), feed_i, np.int32),
+                        'image': feed_img,
+                        'label': feed_label
+                    },
+                    fetch_list=[loss])
+
+    def test_cond_backward(self):
+        def cond_func(i, img, label):
+            predicate = ((i % 2) == 0)
+            return layers.cond(predicate,
+                               lambda: simple_fc_net_with_inputs(img, label, class_num=10),
+                               lambda: batchnorm_fc_with_inputs(img, label, class_num=10))
+
+        self.backward_value_helper(cond_func)
+        self.add_optimizer_helper(cond_func)
+
+    def test_half_nested_cond_backward(self):
+        def branch(i, img, label):
+            return layers.cond((i % 2) == 0, lambda: simple_fc_net_with_inputs(img, label, class_num=10),
+                               lambda: batchnorm_fc_with_inputs(img, label, class_num=10))
+
+        def cond_func_simple_net_at_true(i, img, label):
+            return layers.cond(i < 5, lambda: branch(i, img, label),
+                               lambda: layers.mean(img))
+
+        def cond_func_simple_net_at_false(i, img, label):
+            return layers.cond(i < 5, lambda: layers.mean(img),
+                               lambda: branch(i, img, label))
+
+        self.backward_value_helper(cond_func_simple_net_at_true)
+        self.add_optimizer_helper(cond_func_simple_net_at_true)
+        self.backward_value_helper(cond_func_simple_net_at_false)
+        self.add_optimizer_helper(cond_func_simple_net_at_false)
+
+    def test_nested_cond_backward(self):
+        def branch(i, img, label, mod_two):
+
+            if mod_two:
+                predicate = ((i % 2) == 0)
+            else:
+                predicate = ((i % 2) != 0)
+            return layers.cond(predicate, lambda: simple_fc_net_with_inputs(img, label, class_num=10),
+                               lambda: batchnorm_fc_with_inputs(img, label, class_num=10))
+
+        def cond_func(i, img, label):
+            return layers.cond(i < 5, lambda: branch(i, img, label, True),
+                               lambda: branch(i, img, label, False))
+
+        self.backward_value_helper(cond_func)
+        self.add_optimizer_helper(cond_func)
 
 
 if __name__ == '__main__':

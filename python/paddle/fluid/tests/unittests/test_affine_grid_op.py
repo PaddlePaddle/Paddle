@@ -63,8 +63,8 @@ class TestAffineGridOp(OpTest):
             max_relative_error=0.006)
 
     def initTestCase(self):
-        self.theta_shape = (3, 2, 3)
-        self.output_shape = np.array([3, 2, 5, 7]).astype("int32")
+        self.theta_shape = (17, 2, 3)
+        self.output_shape = np.array([17, 2, 5, 7]).astype("int32")
         self.dynamic_shape = False
 
 

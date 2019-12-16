@@ -75,7 +75,7 @@ TEST(communicator, merge_selected_rows) {
     auto dims =
         framework::make_ddim({static_cast<int64_t>(rows.size()), width});
     auto *data = slr->mutable_value()->mutable_data<float>(dims, cpu_place);
-    for (auto i = 0; i < rows.size(); ++i) {
+    for (size_t i = 0; i < rows.size(); ++i) {
       for (auto j = 0; j < width; ++j) {
         data[i * width + j] = static_cast<float>(rows[i]);
       }
@@ -97,8 +97,8 @@ TEST(communicator, merge_selected_rows) {
   for (auto i = 0; i < 10; ++i) {
     out_values.push_back(static_cast<float>(i * (10 - i)));
   }
-  for (auto i = 0; i < out_slr.rows().size(); ++i) {
-    ASSERT_EQ(out_slr.rows()[i], i);
+  for (size_t i = 0; i < out_slr.rows().size(); ++i) {
+    ASSERT_EQ(out_slr.rows()[i], static_cast<int>(i));
     for (auto j = 0; j < width; ++j) {
       ASSERT_EQ(out_data[i * width + j], out_values[i]);
     }

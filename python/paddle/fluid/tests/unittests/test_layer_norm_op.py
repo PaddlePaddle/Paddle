@@ -20,8 +20,11 @@ from operator import mul
 import paddle.fluid.core as core
 import paddle.fluid as fluid
 from functools import reduce
+from op_test import _set_use_system_allocator
 
 np.random.random(123)
+
+_set_use_system_allocator(True)
 
 
 def _reference_layer_norm_naive(x, scale, beta, epsilon, begin_norm_axis=1):

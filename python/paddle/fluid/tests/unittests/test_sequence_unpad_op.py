@@ -21,7 +21,7 @@ from op_test import OpTest
 class TestSequenceUnpadOp(OpTest):
     def init(self):
         self.length = [2, 3, 4]
-        self.x_shape = (3, 5)
+        self.x_shape = (3, 40)
         self.dtype = "float32"
 
     def compute(self):
@@ -48,10 +48,10 @@ class TestSequenceUnpadOp(OpTest):
         self.compute()
 
     def test_check_output(self):
-        self.check_output(check_compile_vs_runtime=True)
+        self.check_output(check_compile_vs_runtime=True, check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_dygraph=False)
 
 
 class TestSequenceUnpadOp2(TestSequenceUnpadOp):

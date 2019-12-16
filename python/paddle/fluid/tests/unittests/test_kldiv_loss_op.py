@@ -56,7 +56,7 @@ class TestKLDivLossOp(OpTest):
             ['X'], 'Loss', no_grad_set=set(["Target"]), max_relative_error=0.06)
 
     def initTestCase(self):
-        self.x_shape = (2, 5, 5)
+        self.x_shape = (4, 5, 5)
         self.reduction = 'batchmean'
 
 

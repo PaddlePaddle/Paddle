@@ -718,7 +718,7 @@ class TestDepthwiseConvTransposeAsymmetricPad_NHWC(TestConv2dTransposeOp):
         self.data_format = 'NHWC'
 
 
-class TestConv2dTransposeAPI(OpTest):
+class TestConv2dTransposeAPI(unittest.TestCase):
     def test_case1(self):
         data1 = fluid.layers.data(
             name='data1', shape=[3, 5, 5], dtype='float32')
@@ -796,7 +796,7 @@ class TestConv2dTransposeAPI(OpTest):
         self.assertIsNotNone(results[6])
 
 
-class TestConv2dTransposeOpException(OpTest):
+class TestConv2dTransposeOpException(unittest.TestCase):
     def test_exception(self):
         data = fluid.layers.data(name='data', shape=[3, 5, 5], dtype="float32")
 

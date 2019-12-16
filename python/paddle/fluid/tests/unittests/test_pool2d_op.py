@@ -985,7 +985,7 @@ create_test_cudnn_padding_SAME_class(TestCase1_strides)
 
 
 # ----- test API
-class TestPool2dAPI(OpTest):
+class TestPool2dAPI(unittest.TestCase):
     def test_api(self):
         x_NHWC = np.random.random([2, 5, 5, 3]).astype("float32")
         x_NCHW = np.random.random([2, 3, 5, 5]).astype("float32")
@@ -1204,7 +1204,7 @@ class TestPool2dAPI(OpTest):
                 data_format="NHWC"))
 
 
-class TestPool2dAPI_Error(OpTest):
+class TestPool2dAPI_Error(unittest.TestCase):
     def test_api(self):
         input_NHWC = fluid.layers.data(
             name="input_NHWC",

@@ -26,7 +26,7 @@ class TestSequenceExpandAs(OpTest):
         self.compute()
 
     def set_data(self):
-        x_data = np.random.uniform(0.1, 1, [3, 1]).astype('float32')
+        x_data = np.random.uniform(0.1, 1, [3, 40]).astype('float32')
         y_data = np.random.uniform(0.1, 1, [8, 1]).astype('float32')
         y_lod = [[1, 3, 4]]
         self.inputs = {'X': x_data, 'Y': (y_data, y_lod)}
@@ -49,10 +49,10 @@ class TestSequenceExpandAs(OpTest):
         self.outputs = {'Out': (out_data, y_lod)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_dygraph=False)
 
 
 class TestSequenceExpandAsCase1(TestSequenceExpandAs):

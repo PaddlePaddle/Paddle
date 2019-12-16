@@ -106,7 +106,7 @@ class TestLRNOpAttrDataFormat(TestLRNOp):
         self.data_format = 'NHWC'
 
 
-class TestLRNAPI(OpTest):
+class TestLRNAPI(unittest.TestCase):
     def test_case(self):
         data1 = fluid.data(name='data1', shape=[2, 4, 5, 5], dtype='float32')
         data2 = fluid.data(name='data2', shape=[2, 5, 5, 4], dtype='float32')

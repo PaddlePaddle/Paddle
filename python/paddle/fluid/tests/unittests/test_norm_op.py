@@ -44,7 +44,7 @@ class TestNormOp(OpTest):
         self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
-        self.shape = [2, 3, 4, 4]
+        self.shape = [2, 3, 4, 5]
         self.axis = 1
         self.epsilon = 1e-8
 

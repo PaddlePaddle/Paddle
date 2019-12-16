@@ -28,7 +28,7 @@ import paddle.version as ver
 class TestFusedEmbeddingSeqPoolOp(OpTest):
     def setUp(self):
         self.op_type = "fused_embedding_seq_pool"
-        self.emb_size = 2
+        self.emb_size = 6
         self.table = np.random.random((17, self.emb_size)).astype("float32")
         self.ids = np.array([[[4], [3]], [[4], [3]], [[2], [1]],
                              [[16], [1]]]).astype("int64")

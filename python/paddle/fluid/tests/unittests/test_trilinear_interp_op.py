@@ -428,8 +428,8 @@ class TestTrilinearInterpScale2(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 9]
-        self.out_d = 82
-        self.out_h = 60
+        self.out_d = 60
+        self.out_h = 40
         self.out_w = 25
         self.scale = 1.
         self.align_corners = True
@@ -440,8 +440,8 @@ class TestTrilinearInterpScale3(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 9]
-        self.out_d = 82
-        self.out_h = 60
+        self.out_d = 60
+        self.out_h = 40
         self.out_w = 25
         self.scale = 1.5
         self.align_corners = True
@@ -452,8 +452,8 @@ class TestTrilinearInterpZero(TestTrilinearInterpOp):
     def init_test_case(self):
         self.interp_method = 'trilinear'
         self.input_shape = [2, 3, 5, 7, 11]
-        self.out_d = 82
-        self.out_h = 60
+        self.out_d = 60
+        self.out_h = 40
         self.out_w = 25
         self.scale = 0.2
         self.align_corners = False
@@ -568,7 +568,7 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
         self.scale_by_1Dtensor = True
 
 
-class TestTrilinearInterpAPI(OpTest):
+class TestTrilinearInterpAPI(unittest.TestCase):
     def test_case(self):
         x = fluid.data(name="x", shape=[2, 3, 6, 9, 4], dtype="float32")
         y = fluid.data(name="y", shape=[2, 6, 9, 4, 3], dtype="float32")
@@ -619,7 +619,7 @@ class TestTrilinearInterpAPI(OpTest):
             self.assertTrue(np.allclose(results[i + 1], expect_res))
 
 
-class TestTrilinearInterpOpException(OpTest):
+class TestTrilinearInterpOpException(unittest.TestCase):
     def test_exception(self):
         input = fluid.data(name="input", shape=[2, 3, 6, 9, 4], dtype="float32")
 

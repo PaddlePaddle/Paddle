@@ -26,8 +26,8 @@ class TestSequenceConcat(OpTest):
         self.out_lod = [19, 11]
 
     def setUp(self):
-        x1 = np.random.random(size=(10, 80))
-        x2 = np.random.random(size=(20, 80))
+        x1 = np.random.random(size=(10, 80)).astype('float32')
+        x2 = np.random.random(size=(20, 80)).astype('float32')
         self.setLoD()
 
         out = np.concatenate((x1[0:self.lod1[0]], x2[0:self.lod2[0]],
