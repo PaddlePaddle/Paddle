@@ -81,8 +81,8 @@ class FCPrimitiveFactory {
         usr_weights_desc = Create4DUserWeightsDesc(input, weights);
         break;
       default:
-        PADDLE_THROW(
-            "DNNL FC doesn't support input dims different than 2, 3, 4.");
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "DNNL FC doesn't support input dims different than 2, 3, 4."));
         break;
     }
     input_ = CreateMemory<T_in>(fc_prim_desc->src_desc(), input);
