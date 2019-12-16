@@ -1,4 +1,5 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyrightcmd_str = hadoop_cmd + " -put " + out_local_file_name + " " + hdfs_out_path
+        ret = os.system(cmd_str) (c) 2018 PaddlePaddle Authors. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.

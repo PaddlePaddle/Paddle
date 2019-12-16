@@ -124,6 +124,12 @@ void DatasetImpl<T>::SetMergeByInsId(int merge_size) {
 }
 
 template <typename T>
+void DatasetImpl<T>::SetGenerateUniqueFeasign(bool gen_uni_feasigns) {
+  gen_uni_feasigns_ = gen_uni_feasigns;
+  VLOG(3) << "Set generate unique feasigns: " << gen_uni_feasigns;
+}
+
+template <typename T>
 void DatasetImpl<T>::SetFeaEval(bool fea_eval, int record_candidate_size) {
   slots_shuffle_fea_eval_ = fea_eval;
   slots_shuffle_rclist_.ReSize(record_candidate_size);

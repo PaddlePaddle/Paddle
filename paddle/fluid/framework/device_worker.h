@@ -255,6 +255,18 @@ class DownpourWorker : public HogwildWorker {
   std::unordered_map<uint64_t, std::unordered_set<uint64_t>> feasign_set_;
 };
 
+class DownpourWorkerOpt : public DownpourWorker {
+  public:
+    DownpourWorkerOpt() {}
+    virtual ~DownpourWorkerOpt() {}
+    virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
+
+  protected:
+    void CreateThreadOperatorsWithRerank(const ProgramDesc& program);
+    std::vector<std::vector<OperatorBase*>> loss_ops_;
+
+}
+
 #if defined(PADDLE_WITH_CUDA) && !defined(_WIN32)
 using ScopeQueue = operators::reader::BlockingQueue<Scope*>;
 

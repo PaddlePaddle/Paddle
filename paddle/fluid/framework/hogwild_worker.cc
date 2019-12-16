@@ -33,7 +33,20 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
 
 void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
   auto &block = program.Block(0);
+  auto* ops = block.AllOps();
+  int i = 0;
+  //for (auto &op_desc : block.AllOps()) {
+  //  std::cout << i << " th: " << op_desc->Type() << std::endl;
+  //  i++;
+  //  continue;
+  //}
+  for (auto op_iter = ops->rbegin(); op_iter != ops->rend(); ++op_iter) {
+    auto &op_desc = *op_iter;
+    std::cout << i << " th: " << op_desc->Type() << std::endl;
+    i++;
+  }
   op_names_.clear();
+  
   for (auto &op_desc : block.AllOps()) {
     std::unique_ptr<OperatorBase> local_op = OpRegistry::CreateOp(*op_desc);
     op_names_.push_back(op_desc->Type());

@@ -83,6 +83,10 @@ void DownpourWorker::Initialize(const TrainerDesc& desc) {
   for (int i = 0; i < desc.dump_fields_size(); ++i) {
     dump_fields_[i] = desc.dump_fields(i);
   }
+  loss_names_.resize(desc.loss_names_size());
+  for (int i = 0; i < desc.loss_names_size(); ++i) {
+    loss_names_[i] = desc.loss_names(i);
+  }
   adjust_ins_weight_config_ = desc.adjust_ins_weight_config();
   need_dump_param_ = false;
   dump_param_.resize(desc.dump_param_size());
