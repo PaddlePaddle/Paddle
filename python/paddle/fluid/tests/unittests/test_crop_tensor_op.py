@@ -52,13 +52,13 @@ class TestCropTensorOp(OpTest):
 
         if self.shape_by_input:
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
                 'Shape': np.array(self.crop_shape).astype("int32")
             }
         else:
             self.attrs['shape'] = self.crop_shape
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
             }
         if self.offset_by_input:
             self.inputs['Offsets'] = np.array(self.offsets).astype('int32')
@@ -144,7 +144,7 @@ class TestCropTensorOpTensorAttr(OpTest):
                 shape_tensor.append(("x" + str(index), np.ones(
                     (1)).astype('int32') * ele))
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
                 'ShapeTensor': shape_tensor
             }
             self.attrs['shape'] = self.shape_attr
@@ -155,7 +155,7 @@ class TestCropTensorOpTensorAttr(OpTest):
                 offsets_tensor.append(("x" + str(index), np.ones(
                     (1)).astype('int32') * ele))
             self.inputs = {
-                'X': np.random.random(self.x_shape).astype("float32"),
+                'X': np.random.random(self.x_shape).astype("float64"),
                 'OffsetsTensor': offsets_tensor
             }
             self.attrs['offsets'] = self.offsets_attr

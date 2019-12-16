@@ -42,7 +42,6 @@ class TestSqrtOpError(unittest.TestCase):
 class TestActivation(OpTest):
     def setUp(self):
         self.op_type = "exp"
-        self.dtype = np.float32
         self.init_dtype()
         self.init_kernel_type()
 
@@ -61,7 +60,7 @@ class TestActivation(OpTest):
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
     def init_dtype(self):
-        self.dtype = np.float32
+        self.dtype = np.float64
 
     def init_kernel_type(self):
         pass

@@ -28,7 +28,7 @@ class TestAddPositionEncodingTensorOp(OpTest):
         the prepared section for add position encoding op
         """
         self.op_type = "add_position_encoding"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_input_output()
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x), }
@@ -83,7 +83,7 @@ class TestAddPositionEncodingLoDTensorOp(OpTest):
         the prepared section for add position encoding LoDTensor op
         """
         self.op_type = "add_position_encoding"
-        self.dtype = np.float32
+        self.dtype = np.float64
         self.init_input_output()
 
         self.inputs = {'X': (self.x, self.lod), }
