@@ -1215,10 +1215,8 @@ Scope* OperatorWithKernel::PrepareData(
       // The reason is that if a gpu tensor is the input of a cpu kernel,
       // we will create a new cpu tensor in new scope.
       // However, if enable_cache_runtime_context_, we get the cpu tensor each
-      // time, not the gpu tensor.
-      // Thus, we set pre_scope_ = nullptr to trigger `new RuntimeContext()`
-      // in
-      // RunImpl().
+      // time, not the gpu tensor. Thus, we set pre_scope_ = nullptr
+      // to trigger `new RuntimeContext()` in RunImpl().
       if (enable_cache_runtime_context_) {
         pre_scope_ = nullptr;
       }

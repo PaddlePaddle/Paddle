@@ -74,6 +74,11 @@ tf_pd<Type> MKLDNNBwdPrimitiveDesc(const Engine& e, const Primitive& p,
 inline void MatchShapeToLayout(framework::Tensor* tensor_in,
                                framework::DataLayout from,
                                framework::DataLayout to) {
+  // Shape changing makes sense for 3+ dims Tensors
+  if (tensor_in->dims().size() < 3) {
+    return;
+  }
+
   switch (from) {
     case framework::DataLayout::kMKLDNN:
       if (to == framework::DataLayout::kNHWC) {
