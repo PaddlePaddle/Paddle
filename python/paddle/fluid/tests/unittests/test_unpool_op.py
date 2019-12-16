@@ -89,7 +89,7 @@ class TestUnpoolOp(OpTest):
     def init_test_case(self):
         self.unpool2d_forward_naive = unpool2dmax_forward_naive
         self.unpooling_type = "max"
-        self.shape = [6, 4, 5, 5]
+        self.shape = [6, 4, 7, 7]
         self.ksize = [3, 3]
         self.strides = [2, 2]
         self.paddings = [0, 0]

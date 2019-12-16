@@ -38,9 +38,9 @@ class TestFlattenOp(OpTest):
         self.check_grad(["X"], "Out")
 
     def init_test_case(self):
-        self.in_shape = (3, 2, 2, 5)
+        self.in_shape = (3, 2, 4, 5)
         self.axis = 1
-        self.new_shape = (3, 20)
+        self.new_shape = (3, 40)
 
     def init_attrs(self):
         self.attrs = {"axis": self.axis}
@@ -48,9 +48,9 @@ class TestFlattenOp(OpTest):
 
 class TestFlattenOp(TestFlattenOp):
     def init_test_case(self):
-        self.in_shape = (3, 2, 2, 3)
+        self.in_shape = (3, 2, 5, 4)
         self.axis = 0
-        self.new_shape = (1, 36)
+        self.new_shape = (1, 120)
 
 
 class TestFlattenOpWithDefaultAxis(TestFlattenOp):

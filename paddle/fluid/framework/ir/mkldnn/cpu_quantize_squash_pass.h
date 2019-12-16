@@ -60,6 +60,11 @@ class CPUQuantizeSquashPass : public FusePassBase {
   */
   void ConvDequantSquash(Graph* graph) const;
 
+  /*
+  *  Squash fc with dequant when dequant is the next op after fc
+  */
+  void FcDequantSquash(Graph* graph) const;
+
   const std::string name_scope_{"squash"};
 };
 

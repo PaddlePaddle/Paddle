@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+__all__ = ["ServerRuntimeConfig", "TrainerRuntimeConfig", "DistributedStrategy", "DistributedStrategyFactory"]
 import os
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig

@@ -51,8 +51,8 @@ class TestPadOp(OpTest):
 
 class TestCase1(TestPadOp):
     def initTestCase(self):
-        self.x_shape = (4, 3, 4, 4)
-        self.y_shape = (2, 3, 4, 4)
+        self.x_shape = (4, 3, 4, 5)
+        self.y_shape = (2, 3, 4, 5)
         self.paddings = [(0, 2), (0, 0), (0, 0), (0, 0)]
         self.pad_value = 0.5
 

@@ -34,9 +34,9 @@ class TestConvShiftOp(OpTest):
     def setUp(self):
         self.op_type = "conv_shift"
 
-        batch_size = 4
+        batch_size = 10
         x_dim = 17
-        y_dim = 3  # must be odd and <= x_dim
+        y_dim = 11  # must be odd and <= x_dim
         x = np.random.random((batch_size, x_dim)).astype("float32")
         y = np.random.random((batch_size, y_dim)).astype("float32")
         self.inputs = {'X': x, 'Y': y}

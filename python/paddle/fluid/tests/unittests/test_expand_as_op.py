@@ -33,8 +33,8 @@ def bcast(x, target_tensor):
 class TestExpandAsOpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand_as"
-        x = np.random.rand(12).astype("float64")
-        target_tensor = np.random.rand(24).astype("float64")
+        x = np.random.rand(100).astype("float64")
+        target_tensor = np.random.rand(200).astype("float64")
         self.inputs = {'X': x, 'target_tensor': target_tensor}
         self.attrs = {}
         bcast_dims = bcast(x, target_tensor)

@@ -30,7 +30,7 @@ class TestMatchMatrixTensorOp(OpTest):
         self.op_type = "match_matrix_tensor"
 
     def set_data(self):
-        ix, iy, h, dim_t = [5, 8, 3, 4]
+        ix, iy, h, dim_t = [5, 8, 20, 4]
         x_lod = [[1, 2, 2]]
         y_lod = [[3, 1, 4]]
         self.init_data(ix, x_lod, iy, y_lod, h, dim_t)
