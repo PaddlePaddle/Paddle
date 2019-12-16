@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-No_Grad_Op_List = [
+# Grad op is not registered for Ops in EMPTY_GRAD_OP_LIST, so check grad 
+# will not be required.
+EMPTY_GRAD_OP_LIST = [
     'fill_zeros_like2', 'gaussian_random_batch_size_like',
     'fill_constant_batch_size_like', 'iou_similarity', 'where',
     'uniform_random_batch_size_like', 'box_coder', 'equal', 'greater_equal',
@@ -44,15 +46,16 @@ No_Grad_Op_List = [
     'clip_by_norm', 'diag', 'yolo_box', 'adam', 'fusion_gru',
     'locality_aware_nms', 'ref_by_trainer_id', 'linspace', 'box_clip',
     'similarity_focus', 'detection_map', 'sequence_mask', 'coalesce_tensor',
-    'ref_by_trainer_id', 'arg_min', 'arg_max', 'split_ids', 'adagrad', 'fill',
-    'argsort', 'dequantize', 'merge_ids', 'fused_fc_elementwise_layernorm',
+    'arg_min', 'arg_max', 'split_ids', 'adagrad', 'fill', 'argsort',
+    'dequantize', 'merge_ids', 'fused_fc_elementwise_layernorm',
     'retinanet_target_assign', 'rpn_target_assign', 'requantize',
     'distribute_fpn_proposals', 'auc', 'quantize', 'positive_negative_pair',
     'hash', 'less_than', 'not_equal', 'eye', 'chunk_eval', 'is_empty',
     'proximal_gd', 'collect_fpn_proposals', 'unique_with_counts'
 ]
 
-No_Need_Check_Grad_Cases = [
+# Special cases do not need to check grad
+NO_NEED_CHECK_GRAD_CASES = [
     'TestLookupTableOpWithPadding',
     'TestLookupTableOpWithTensorIdsAndPadding',
     'TestLookupTableOpWithPadding',
@@ -82,15 +85,4 @@ No_Need_Check_Grad_Cases = [
     'TestMKLDNNWithSamePad',
     'TestMKLDNNWithValidPad',
     'TestMKLDNNWithValidPad_NHWC',
-]
-
-Need_To_Fix_Check_Grad_Op_List = [
-    'concat', 'elementwise_add', 'lookup_table', 'sequence_pool', 'prroi_pool',
-    'norm', 'split', 'pool3d', 'conv3d', 'conv2d', 'trilinear_interp',
-    'softmax', 'dropout', 'reduce_max', 'reduce_min', 'hierarchical_sigmoid',
-    'iou_similarity', 'pool2d', 'fused_elemwise_activation',
-    'max_pool3d_with_index', 'max_pool2d_with_index', 'lookup_table_v2',
-    'expand', 'group_norm', 'spectral_norm', 'spp', 'im2sequence',
-    'bilinear_interp', 'nearest_interp', 'pad', 'softmax_with_cross_entropy',
-    'fsp'
 ]

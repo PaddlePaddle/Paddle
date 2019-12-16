@@ -33,7 +33,7 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list
+from white_list import op_accuracy_white_list, op_check_grad_white_list
 
 
 def _set_use_system_allocator(value=None):
@@ -151,8 +151,6 @@ class OpTestBase(unittest.TestCase):
         cls.call_once = False
         cls.dtype = "float32"
         cls.outputs = {}
-        cls.check_grad_times = 0
-        cls.op_type = None
 
         np.random.seed(123)
         random.seed(124)
@@ -166,11 +164,6 @@ class OpTestBase(unittest.TestCase):
         random.setstate(cls._py_rand_state)
 
         _set_use_system_allocator(cls._use_system_allocator)
-
-        if cls.check_grad_times == 0:
-            if OpTest.op_type not in No_Grad_Op_List and cls.__name__ not in No_Need_Check_Grad_Cases:
-                raise AssertionError("check_grad is required for " +
-                                     OpTest.op_type + " Op.")
 
     def try_call_once(self, data_type):
         if not self.call_once:
@@ -1101,7 +1094,6 @@ class OpTestBase(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               check_dygraph=True):
-        self.__class__.check_grad_times += 1
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -1370,9 +1362,9 @@ class OpTestFp16(OpTestBase):
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
-        if cls.__name__ not in op_accuracy_white_list.NO_NEED_FP16_CHECK_GRAD_CASES \
-            and not hasattr(cls, "exist_check_grad") \
-            and cls.op_type not in op_accuracy_white_list.NO_FP16_CHECK_GRAD_OP_LIST:
+        if not hasattr(cls, "exist_check_grad") \
+            and cls.__name__ not in op_check_grad_white_list.NO_NEED_CHECK_GRAD_CASES \
+            and cls.op_type not in op_check_grad_white_list.EMPTY_GRAD_OP_LIST:
             raise AssertionError("This test of %s op needs check_grad." %
                                  cls.op_type)
 
@@ -1446,8 +1438,12 @@ class OpTest(OpTestBase):
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
-        if cls.__name__ not in op_accuracy_white_list.NO_NEED_FP64_CHECK_GRAD_CASES \
+        # only for pass ci, but cases in NO_FP64_CHECK_GRAD_CASES 
+        # and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
+        if cls.__name__ not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_CASES \
             and not hasattr(cls, 'exist_fp64_check_grad') \
+            and cls.__name__ not in op_check_grad_white_list.NO_NEED_CHECK_GRAD_CASES \
+            and cls.op_type not in op_check_grad_white_list.EMPTY_GRAD_OP_LIST \
             and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST:
             raise AssertionError("This test of %s op needs fp64 check_grad." %
                                  cls.op_type)
