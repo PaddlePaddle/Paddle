@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,5 +17,6 @@ compile_vs_runtime_white_list = [
     'generate_proposals', 'mine_hard_examples', 'retinanet_detection_output', 'ctc_align', 'fusion_seqpool_cvm_concat',
     'gru', 'sequence_erase', 'rpn_target_assign', 'filter_by_instag',
     'fusion_seqpool_concat', 'multiclass_nms', 'im2sequence', 'generate_proposal_labels',
-    'distribute_fpn_proposals'
+    'distribute_fpn_proposals', 'detection_map', 'locality_aware_nms', 'multiclass_nms', 'rpn_target_assign',
+    'var_conv_2d'
 ]
