@@ -28,6 +28,8 @@ import warnings
 import six
 from functools import reduce, partial
 from ..data_feeder import convert_dtype, check_type_and_dtype
+from ... import compat as cpt
+from ..backward import _infer_var_data_type_shape_
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -1810,6 +1812,7 @@ class ConditionalBlock(object):
 
         step_scope = parent_block.create_var(
             type=core.VarDesc.VarType.STEP_SCOPES)
+
         parent_block.append_op(
             type='conditional_block',
             inputs={
@@ -1822,6 +1825,55 @@ class ConditionalBlock(object):
                 'sub_block': inside_block,
                 'is_scalar_condition': self.is_scalar_condition
             })
+
+        # todo(doing): if minimize() called in control flow
+
+        conditional_block_op = parent_block.ops[-1]
+        grad_sub_block_idx = inside_block.backward_block_idx
+        if grad_sub_block_idx != -1:
+            grad_sub_block = self.helper.main_program.block(grad_sub_block_idx)
+            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+                conditional_block_op.desc,
+                cpt.to_text(set()), [grad_sub_block.desc])
+
+            # append op_desc in grad_op_descs to target_block
+            op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
+            )
+            backward = core.op_proto_and_checker_maker.OpRole.Backward
+            new_op_desc = parent_block.desc.append_op()
+            new_op_desc.copy_from(grad_op_desc[0])
+            new_op_desc._set_attr(op_role_attr_name, backward)
+
+            #grad_to_var["__current_op_desc__"] = new_op_desc
+
+            # todo()# Clarify logic
+            # if callbacks is not None:
+            #     assert (isinstance(callbacks, list))
+            #     for cb in callbacks:
+            #         cb(block=target_block, context=grad_to_var)
+
+            # todo():append backward vars
+            new_vars = set()
+            for grad_var_name in new_op_desc.output_arg_names():
+                if grad_sub_block.desc.has_var_recursive(
+                        cpt.to_bytes(grad_var_name)
+                ) or grad_var_name == core.empty_var_name():
+                    continue
+                grad_sub_block.desc.var(cpt.to_bytes(grad_var_name))
+                new_vars.add(grad_var_name)
+                if grad_var_name not in op_grad_to_var:
+                    continue
+                # grad_info_map[grad_to_var[grad_var_name]] = (grad_var_name, block)
+
+                # infer_shape and infer_type
+            new_op_desc.infer_var_type(grad_sub_block.desc)
+            new_op_desc.infer_shape(grad_sub_block.desc)
+
+            for arg in new_op_desc.output_arg_names():
+                if arg in new_vars:
+                    _infer_var_data_type_shape_(arg, grad_sub_block)
+
+            self.helper.main_program._sync_with_cpp()
 
 
 def copy_var_to_parent_block(var, layer_helper):
