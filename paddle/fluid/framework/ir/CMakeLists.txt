@@ -96,6 +96,7 @@ if(WITH_MKLDNN)
     pass_library(cpu_quantize_pass inference DIR mkldnn)
     pass_library(cpu_quantize_squash_pass inference DIR mkldnn)
     pass_library(reshape_transpose_scale_pass inference DIR mkldnn)
+    pass_library(dequant_scale_pass inference DIR mkldnn)
 endif()
 
 if(WITH_NGRAPH)

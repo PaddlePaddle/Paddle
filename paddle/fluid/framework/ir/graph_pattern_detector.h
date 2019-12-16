@@ -175,7 +175,8 @@ struct PDNode {
  * A pattern in a graph, which defined with PDNode and edges. Most graph
  * patterns can be divided into PDNodes and link relations between them.
  *
- * For example, the ReshapeTransposeScale fusion need to filter the MUL and ELEMENTWISE_ADD
+ * For example, the ReshapeTransposeScale fusion need to filter the MUL and
+ * ELEMENTWISE_ADD
  * operators from the computation graph, the MUL's output should have only one
  * consumer which is the ELEMENTWISE_ADD.
  * This pattern can be defined as with the following pseudo codes
@@ -875,6 +876,18 @@ struct ReshapeTransposeScale : public PatternBase {
 
   PATTERN_DECL_NODE(transpose_op);
   PATTERN_DECL_NODE(transpose_out);
+
+  PATTERN_DECL_NODE(scale_op);
+  PATTERN_DECL_NODE(scale_out);
+};
+
+struct DequantScale : public PatternBase {
+  DequantScale(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "dequant_scale") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(dequant_op);
+  PATTERN_DECL_NODE(dequant_out);
 
   PATTERN_DECL_NODE(scale_op);
   PATTERN_DECL_NODE(scale_out);

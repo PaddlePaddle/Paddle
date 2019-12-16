@@ -946,6 +946,26 @@ PDNode *patterns::ReshapeTransposeScale::operator()() {
   return scale_out;
 }
 
+PDNode *patterns::DequantScale::operator()() {
+  // Create Operators
+  auto dequant_op =
+      pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize");
+  auto scale_op = pattern->NewNode(scale_op_repr())->assert_is_op("scale");
+
+  auto dequant_out = pattern->NewNode(dequant_out_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("dequantize", "Output");
+  auto scale_out = pattern->NewNode(scale_out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("scale", "Out");
+
+  // reshape_op->reshape_out->transpose_op->transpose_out->scale->scale_out
+  dequant_op->LinksTo({dequant_out});
+  scale_op->LinksFrom({dequant_out}).LinksTo({scale_out});
+
+  return scale_out;
+}
+
 PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
                                        bool with_bias) {
   // Create shared nodes.
