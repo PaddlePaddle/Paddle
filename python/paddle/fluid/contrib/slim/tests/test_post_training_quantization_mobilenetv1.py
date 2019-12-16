@@ -309,7 +309,7 @@ class TestPostTrainingForMobilenetv1(TestPostTrainingQuantization):
         ]
         data_md5s = ['13892b0716d26443a8cdea15b3c6438b']
         is_full_quantize = True
-        is_memory_constrained = True
+        is_memory_constrained = False
         self.run_test(model, algo, data_urls, data_md5s, is_full_quantize,
                       is_memory_constrained)
 
