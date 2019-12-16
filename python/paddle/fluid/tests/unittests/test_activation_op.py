@@ -825,7 +825,7 @@ def create_test_act_fp16_class(parent,
             place = core.CUDAPlace(0)
             support_fp16 = core.is_float16_supported(place)
             if support_fp16:
-                self.check_output_with_place(place, atol=atol)
+                self.check_output_with_place(place)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)

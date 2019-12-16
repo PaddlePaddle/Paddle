@@ -175,7 +175,7 @@ class TestCUDNNLstmOp(OpTest):
     def test_output_with_place(self):
         # depend on the scope structure
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
+        self.check_output_with_place(place, check_dygraph=False)
 
     def test_grad_with_place(self):
         # depend on the scope structure

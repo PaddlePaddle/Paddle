@@ -333,7 +333,7 @@ def create_test_class(parent, cls_name):
         def test_check_output(self):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-1)
+                self.check_output_with_place(place)
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)

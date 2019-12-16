@@ -64,7 +64,7 @@ class TestFP16MeanOp(TestMeanOp):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=2e-3)
+            self.check_output_with_place(place)
 
     def test_checkout_grad(self):
         place = core.CUDAPlace(0)

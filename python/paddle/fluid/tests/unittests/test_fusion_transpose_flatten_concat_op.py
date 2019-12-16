@@ -51,7 +51,7 @@ class TestFusionTransposeFlattenConcationOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, 1e-6)
+        self.check_output_with_place(place)
 
     def init_test_case(self):
         self.shapes = [(3, 4, 17, 17), (3, 8, 7, 7), (3, 12, 5, 5)]

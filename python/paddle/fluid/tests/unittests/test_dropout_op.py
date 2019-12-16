@@ -195,7 +195,7 @@ class TestFP16DropoutOp(OpTest):
         self.fix_seed = True
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), atol=1e-3)
+        self.check_output_with_place(core.CUDAPlace(0))
 
 
 @unittest.skipIf(

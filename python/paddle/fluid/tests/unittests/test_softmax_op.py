@@ -173,7 +173,7 @@ class TestSoftmaxFP16Op(TestSoftmaxOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+                self.check_output_with_place(place)
 
     # FIXME: If the x_shape is [10, 10], gradient failed.
     def test_check_grad(self):
@@ -190,7 +190,7 @@ class TestSoftmaxFP16Op2(TestSoftmaxOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+                self.check_output_with_place(place)
 
     def get_x_shape(self):
         return [2, 3, 4, 5]
@@ -207,7 +207,7 @@ class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+                self.check_output_with_place(place)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),

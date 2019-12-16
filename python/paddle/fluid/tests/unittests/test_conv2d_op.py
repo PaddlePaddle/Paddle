@@ -145,7 +145,7 @@ def create_test_cudnn_fp16_class(parent, grad_check=True):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(place, atol=2e-2)
+                    self.check_output_with_place(place)
 
         def test_check_grad_no_filter(self):
             place = core.CUDAPlace(0)
@@ -215,7 +215,7 @@ def create_test_cudnn_channel_last_fp16_class(parent, grad_check=True):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(place, atol=2e-2)
+                    self.check_output_with_place(place)
 
         def test_check_grad_no_filter(self):
             place = core.CUDAPlace(0)

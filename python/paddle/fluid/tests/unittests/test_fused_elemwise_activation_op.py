@@ -81,7 +81,7 @@ def create_test_class(test_case,
             if self.dtype == np.float16 and core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(place, atol=1e-3)
+                    self.check_output_with_place(place)
             else:
                 self.check_output()
 

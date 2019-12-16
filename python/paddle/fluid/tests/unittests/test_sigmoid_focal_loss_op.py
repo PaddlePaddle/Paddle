@@ -99,7 +99,7 @@ class TestSigmoidFocalLossOp1(OpTest):
 class TestSigmoidFocalLossOp2(TestSigmoidFocalLossOp1):
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=2e-3)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -120,7 +120,7 @@ class TestSigmoidFocalLossOp3(TestSigmoidFocalLossOp1):
 class TestSigmoidFocalLossOp4(TestSigmoidFocalLossOp3):
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=2e-3)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
