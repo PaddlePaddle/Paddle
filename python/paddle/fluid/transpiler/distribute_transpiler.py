@@ -2247,6 +2247,12 @@ class DistributeTranspiler(object):
                             origin_grad_name):
                         new_grad = pserver_block.var(origin_grad_name)
                         new_inputs[key] = new_grad
+                    elif "clip" in opt_op.attr[OP_ROLE_VAR_ATTR_NAME][1]:
+                        # Note! This is for gradient clip.
+                        # because it will create a new tensorfor gradient after clip 
+                        # but not inplace modify the origin one
+                        new_grad = pserver_block.var(origin_grad_name)
+                        new_inputs[key] = new_grad
                     else:
                         new_inputs[key] = merged_var
             elif key == "Param":
