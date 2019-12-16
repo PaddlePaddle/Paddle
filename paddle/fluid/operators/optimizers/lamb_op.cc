@@ -13,10 +13,101 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/lamb_op.h"
-#include "paddle/fluid/operators/optimizers/adam_op.h"
 
 namespace paddle {
 namespace operators {
+
+class LambOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Param"), true,
+                      platform::errors::NotFound(
+                          "Input(Param) of LambOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Grad"), true,
+                      platform::errors::NotFound(
+                          "Input(Grad) of LambOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Moment1"), true,
+                      platform::errors::NotFound(
+                          "Input(Moment1) of LambOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Moment2"), true,
+                      platform::errors::NotFound(
+                          "Input(Moment2) of LambOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("LearningRate"), true,
+                      platform::errors::NotFound(
+                          "Input(LearningRate) of LambOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Beta1Pow"), true,
+                      platform::errors::NotFound(
+                          "Input(Beta1Pow) of LambOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasInput("Beta2Pow"), true,
+                      platform::errors::NotFound(
+                          "Input(Beta2Pow) of LambOp should not be null."));
+
+    if (ctx->IsRuntime() && ctx->HasInput("Beta1Tensor")) {
+      auto beta1 = ctx->Inputs("Beta1Tensor");
+      PADDLE_ENFORCE_EQ(beta1.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(Beta1Tensor) size must be 1"));
+    }
+    if (ctx->IsRuntime() && ctx->HasInput("Beta2Tensor")) {
+      auto beta2 = ctx->Inputs("Beta2Tensor");
+      PADDLE_ENFORCE_EQ(beta2.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(Beta2Tensor) size must be 1"));
+    }
+
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("ParamOut"), true,
+                      platform::errors::NotFound(
+                          "Output(ParamOut) of LambOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment1Out"), true,
+                      platform::errors::NotFound(
+                          "Output(Moment1Out) of LambOp should not be null."));
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Moment2Out"), true,
+                      platform::errors::NotFound(
+                          "Output(Moment2Out) of LambOp should not be null."));
+
+    auto lr_dims = ctx->GetInputDim("LearningRate");
+    PADDLE_ENFORCE_NE(framework::product(lr_dims), 0,
+                      "Maybe the Input variable LearningRate has not "
+                      "been initialized. You may need to confirm "
+                      "if you put exe.run(startup_program) "
+                      "after optimizer.minimize function.");
+    PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
+                      "Learning rate should have 1 dimension");
+    auto beta1_pow_dims = ctx->GetInputDim("Beta1Pow");
+    PADDLE_ENFORCE_EQ(framework::product(beta1_pow_dims), 1,
+                      "Beta1 power accumulator should have 1 dimension");
+    auto beta2_pow_dims = ctx->GetInputDim("Beta2Pow");
+    PADDLE_ENFORCE_EQ(framework::product(beta2_pow_dims), 1,
+                      "Beta2 power accumulator should have 1 dimension");
+
+    auto param_dims = ctx->GetInputDim("Param");
+    if (ctx->GetInputsVarType("Grad")[0] ==
+        framework::proto::VarType::LOD_TENSOR) {
+      PADDLE_ENFORCE_EQ(
+          param_dims, ctx->GetInputDim("Grad"),
+          "Param and Grad input of LambOp should have same dimension");
+    }
+    PADDLE_ENFORCE_EQ(
+        param_dims, ctx->GetInputDim("Moment1"),
+        "Param and Moment1 input of LambOp should have same dimension");
+    PADDLE_ENFORCE_EQ(
+        param_dims, ctx->GetInputDim("Moment2"),
+        "Param and Moment2 input of LambOp should have same dimension");
+
+    ctx->SetOutputDim("ParamOut", param_dims);
+    ctx->SetOutputDim("Moment1Out", param_dims);
+    ctx->SetOutputDim("Moment2Out", param_dims);
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    auto input_data_type =
+        OperatorWithKernel::IndicateVarDataType(ctx, "Param");
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+  }
+};
 
 class LambOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
@@ -79,7 +170,7 @@ learning rate, $\lambda$ the weight decay rate.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(lamb, ops::AdamOp, ops::LambOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(lamb, ops::LambOp, ops::LambOpMaker);
 REGISTER_OP_CPU_KERNEL(
     lamb, ops::LambOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::LambOpKernel<paddle::platform::CPUDeviceContext, double>);

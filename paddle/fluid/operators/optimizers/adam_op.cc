@@ -74,10 +74,12 @@ void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(framework::product(lr_dims), 1,
                     "Learning rate should have 1 dimension");
   auto beta1_pow_dims = ctx->GetInputDim("Beta1Pow");
-  PADDLE_ENFORCE_EQ(framework::product(beta1_pow_dims), 1,
+  VLOG(3) << "dims of Beta1Pow : [" << beta1_pow_dims << "]";
+  PADDLE_ENFORCE_GE(framework::product(beta1_pow_dims), 1,
                     "Beta1 power accumulator should have 1 dimension");
   auto beta2_pow_dims = ctx->GetInputDim("Beta2Pow");
-  PADDLE_ENFORCE_EQ(framework::product(beta2_pow_dims), 1,
+  VLOG(3) << "dims of Beta2Pow : [" << beta2_pow_dims << "]";
+  PADDLE_ENFORCE_GE(framework::product(beta2_pow_dims), 1,
                     "Beta2 power accumulator should have 1 dimension");
 
   auto param_dims = ctx->GetInputDim("Param");
@@ -97,6 +99,8 @@ void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->SetOutputDim("ParamOut", param_dims);
   ctx->SetOutputDim("Moment1Out", param_dims);
   ctx->SetOutputDim("Moment2Out", param_dims);
+  ctx->SetOutputDim("Beta1PowOut", beta1_pow_dims);
+  ctx->SetOutputDim("Beta2PowOut", beta2_pow_dims);
 }
 
 framework::OpKernelType AdamOp::GetExpectedKernelType(
@@ -130,6 +134,8 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("Moment1Out", "(Tensor) Output first moment");
     AddOutput("Moment2Out", "(Tensor) Output second moment");
+    AddOutput("Beta1PowOut", "(Tensor) Output beta1 power accumulator");
+    AddOutput("Beta2PowOut", "(Tensor) Output beta2 power accumulator");
 
     AddAttr<float>("beta1",
                    "(float, default 0.9) "
