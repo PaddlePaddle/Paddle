@@ -28,7 +28,7 @@ from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.optimizer import Optimizer
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspiler as OriginTranspiler
 from paddle.fluid.transpiler.geo_sgd_transpiler import GeoSgdTranspiler
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
 
 from paddle.fluid.incubate.fleet.base.fleet_base import DistributedOptimizer
 from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
@@ -263,9 +263,9 @@ class DistributedTranspiler(Fleet):
         self._origin_program = default_main_program().clone(for_test=False)
 
         if program_config.geo_sgd_mode:
-            self._transpiler = GeoSgdTranspiler(self._transpile_config)
+            self._transpiler = GeoSgdTranspiler(program_config, self._transpile_config.get_server_runtime_config())
         else:
-            self._transpiler = OriginTranspiler(self._transpile_config)
+            self._transpiler = OriginTranspiler(program_config, self._transpile_config.get_server_runtime_config())
 
         if self.is_worker():
             self._transpiler.transpile(

@@ -48,7 +48,6 @@ from .details import wait_server_ready, UnionFind, VarStruct, VarsDistributed
 from .details import delete_ops, find_op_by_output_arg
 from ..distribute_lookup_table import find_distributed_lookup_table
 from . import collective
-from ..incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy_factory import DistributedStrategy, ServerRuntimeConfig
 
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
@@ -228,6 +227,25 @@ class DistributeTranspilerConfig(object):
         self.__sync_mode = value
 
 
+class ServerRuntimeConfig(object):
+    def __init__(self):
+        self._rpc_send_thread_num = int(
+            os.getenv("FLAGS_rpc_send_thread_num", "12"))
+        self._rpc_get_thread_num = int(
+            os.getenv("FLAGS_rpc_get_thread_num", "12"))
+        self._rpc_prefetch_thread_num = int(
+            os.getenv("FLAGS_rpc_prefetch_thread_num", "12"))
+
+    def __str__(self):
+        print_str = "rpc_send_thread_num: {}\nrpc_get_thread_num: {}\nrpc_prefetch_thread_num: {}" % (
+            self._rpc_send_thread_num, self._rpc_get_thread_num,
+            self._rpc_prefetch_thread_num)
+        return print_str
+
+    def __repr__(self):
+        return self.__str__()
+
+
 class DistributeTranspiler(object):
     """
     **DistributeTranspiler**
@@ -291,19 +309,22 @@ class DistributeTranspiler(object):
             )
     """
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, server_config):
         if config is None:
             self.config = DistributeTranspilerConfig()
-            self.server_config = ServerRuntimeConfig()
-        elif isinstance(config, DistributedStrategy):
-            self.config = config.get_program_config()
-            self.server_config = config.get_server_runtime_config()
-        elif isinstance(config, DistributeTranspilerConfig):
+        elif isinstance(config, DistributeTranspilerConfig)::
             self.config = config
-            self.server_config = ServerRuntimeConfig()
         else:
             raise TypeError(
-                "In DistributeTranspiler, config must be an instance of DistributeTranspilerConfig or DistributedStrategy"
+                "In DistributeTranspiler, config must be an instance of DistributeTranspilerConfig"
+            )
+        if server_config is None:
+            self.server_config = ServerRuntimeConfig()
+        elif isinstance(server_config, ServerRuntimeConfig):
+            self.server_config = server_config
+        else:
+            raise TypeError(
+                "In DistributeTranspiler, server_config must be an instance of ServerRuntimeConfig"
             )
 
         if self.config.split_method is None:

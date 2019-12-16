@@ -38,7 +38,7 @@ from ..framework import Program, default_main_program, \
 from .details import wait_server_ready, VarsDistributed
 from .details import delete_ops
 from ..distribute_lookup_table import find_distributed_lookup_table
-from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var
+from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig, slice_variable, same_or_split_var, ServerRuntimeConfig
 from ..incubate.fleet.parameter_server.distribute_transpiler.distributed_strategy_factory import DistributedStrategy, ServerRuntimeConfig
 
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
@@ -50,17 +50,20 @@ class GeoSgdTranspiler(DistributeTranspiler):
     def __init__(self, config=None):
         if config is None:
             self.config = DistributeTranspilerConfig()
-            self.server_config = ServerRuntimeConfig()
-        elif isinstance(config, DistributedStrategy):
-            self.config = config.get_program_config()
-            self.server_config = config.get_server_runtime_config()
-        elif isinstance(config, DistributeTranspilerConfig):
+        elif isinstance(config, DistributeTranspilerConfig)::
             self.config = config
-            self.server_config = ServerRuntimeConfig()
         else:
             raise TypeError(
-                "In GeoSgdTranspiler, config must be an instance of DistributeTranspilerConfig or DistributedStrategy"
+                "In GeoSgdTranspiler, config must be an instance of DistributeTranspilerConfig"
             )
+        if server_config is None:
+            self.server_config = ServerRuntimeConfig()
+        elif isinstance(server_config, ServerRuntimeConfig):
+            self.server_config = server_config
+        else:
+            raise TypeError(
+                "In GeoSgdTranspiler, server_config must be an instance of ServerRuntimeConfig"
+            ) 
 
         if self.config.split_method is None:
             self.config.split_method = RoundRobin

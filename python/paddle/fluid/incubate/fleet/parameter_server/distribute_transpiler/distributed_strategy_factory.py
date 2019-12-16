@@ -12,29 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["ServerRuntimeConfig", "TrainerRuntimeConfig", "DistributedStrategy", "DistributedStrategyFactory"]
+__all__ = ["TrainerRuntimeConfig", "DistributedStrategy", "DistributedStrategyFactory"]
 import os
 import paddle.fluid as fluid
-from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig
-
-
-class ServerRuntimeConfig(object):
-    def __init__(self):
-        self._rpc_send_thread_num = int(
-            os.getenv("FLAGS_rpc_send_thread_num", "12"))
-        self._rpc_get_thread_num = int(
-            os.getenv("FLAGS_rpc_get_thread_num", "12"))
-        self._rpc_prefetch_thread_num = int(
-            os.getenv("FLAGS_rpc_prefetch_thread_num", "12"))
-
-    def __str__(self):
-        print_str = "rpc_send_thread_num: {}\nrpc_get_thread_num: {}\nrpc_prefetch_thread_num: {}" % (
-            self._rpc_send_thread_num, self._rpc_get_thread_num,
-            self._rpc_prefetch_thread_num)
-        return print_str
-
-    def __repr__(self):
-        return self.__str__()
+from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
 
 
 class TrainerRuntimeConfig(object):
