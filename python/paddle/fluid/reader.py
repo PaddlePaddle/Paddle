@@ -17,6 +17,7 @@ import sys
 import six
 import warnings
 import numpy as np
+import multiprocessing
 import threading
 import paddle
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places
@@ -28,6 +29,9 @@ import logging
 from .dataset import DatasetBase, InMemoryDataset
 
 __all__ = ['PyReader', 'DataLoader']
+
+# NOTE: [ avoid hanging ] This value is used in getting data from another process
+MP_CHECK_TIMEOUT = 5.0
 
 data_loader_unique_name_generator = UniqueNameGenerator()
 
@@ -305,7 +309,16 @@ class GeneratorLoader(DataLoaderBase):
         self._tensor_reader = None
         self._places = None
         self._thread = None
+        self._queue = None
         self._feed_list = feed_list
+        # For dygraph
+        if in_dygraph_mode():
+            self._dy_thread = None
+            self._dy_process = None
+            self._data_queue = None
+            self._dy_process_done_event = multiprocessing.Event()
+            self._dy_thread_done_event = threading.Event()
+
         if not capacity:
             raise ValueError("Please give value to capacity.")
         # force to use iterable mode under dygraph mode
@@ -475,7 +488,77 @@ class GeneratorLoader(DataLoaderBase):
                 " to locate the data causes this issue.\n\t* Please consider using "
                 "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."))
 
-    def _start(self):
+    def _start_dygraph_reader_thread(self):
+        def _reader_process_loop(reader, data_queue, done_event):
+            try:
+                for sample in reader():
+                    if done_event.is_set():
+                        break
+                    if sample is None:
+                        raise ValueError("Sample in reader is None.")
+                    data_queue.put(sample)
+                data_queue.put(None)
+            except:
+                data_queue.put("")
+                six.reraise(*sys.exc_info())
+
+        def _reader_thread_loop(in_queue, out_queue, done_event):
+            while not done_event.is_set():
+                try:
+                    # NOTE: [ avoid hanging ] Even with carefully designed data dependencies 
+                    # (i.e., a put() always corresponding to a get()), hanging on get() can 
+                    # still happen when data in queue is corrupted (e.g., due to 
+                    # Queue.cancel_join_thread or unexpected exit). So we set a timeout whenever 
+                    # we try to get data from `data_queue`
+                    sample = in_queue.get(timeout=MP_CHECK_TIMEOUT)
+                except:
+                    raise RuntimeError(
+                        "An error occurred while reading data from the queue.")
+
+                if sample is None:
+                    done_event.set()
+                    out_queue.close()
+                    in_queue.close()
+                elif sample == "":
+                    raise ValueError(
+                        "DataLoader dygraph process raises an exception.")
+                else:
+                    try:
+                        array = core.LoDTensorArray()
+                        for item in sample:
+                            if not isinstance(item, core.LoDTensor):
+                                self._check_input_array(item)
+                                tmp = core.LoDTensor()
+                                tmp.set(item, core.CPUPlace())
+                                item = tmp
+                            array.append(item)
+                        if not out_queue.push(array):
+                            out_queue.close()
+                    except:
+                        out_queue.kill()
+                        logging.warn(
+                            "DataLoader dygraph thread raised an exception.")
+                        six.reraise(*sys.exc_info())
+                del sample  # save memory
+
+        # Set data_queue and reader_process
+        self._data_queue = multiprocessing.Queue(self._capacity)
+        self._dy_process = multiprocessing.Process(
+            target=_reader_process_loop,
+            args=(self._tensor_reader, self._data_queue,
+                  self._dy_process_done_event))
+        self._dy_process.daemon = True
+        self._dy_process.start()
+
+        # Set reader_thread
+        #self._read_done_event = threading.Event()
+        self._dy_thread = threading.Thread(
+            target=_reader_thread_loop,
+            args=(self._data_queue, self._queue, self._dy_thread_done_event))
+        self._dy_thread.daemon = True
+        self._dy_thread.start()
+
+    def _start_reader_thread(self):
         def __thread_main__():
             try:
                 for tensors in self._tensor_reader():
@@ -503,6 +586,26 @@ class GeneratorLoader(DataLoaderBase):
         self._thread = threading.Thread(target=__thread_main__)
         self._thread.daemon = True
         self._thread.start()
+
+    def _start(self):
+        if in_dygraph_mode():
+            self._start_dygraph_reader_thread()
+        else:
+            self._start_reader_thread()
+
+    def __del__(self):
+        if in_dygraph_mode():
+            self._dy_process_done_event.set()
+            self._dy_thread_done_event.set()
+            if self._dy_thread is not None:
+                self._dy_thread.join()
+            if self._queue is not None:
+                self._queue.close()
+            if self._dy_process is not None:
+                self._dy_process.join()
+            if self._data_queue is not None:
+                self._data_queue.cancel_join_thread()
+                self._data_queue.close()
 
     def _reset(self):
         self._reader.reset()
