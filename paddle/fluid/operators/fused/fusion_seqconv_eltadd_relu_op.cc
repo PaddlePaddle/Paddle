@@ -34,9 +34,6 @@ void FusionSeqConvEltAddReluOp::InferShape(
   PADDLE_ENFORCE(
       ctx->HasOutput("Out"),
       "Output(Out) of FusionSeqConvEltAddReluOp should not be null.");
-  PADDLE_ENFORCE(
-      ctx->HasOutput("ColMat"),
-      "Output(ColMat) of FusionSeqConvEltAddReluOp should not be null.");
 
   auto x_dims = ctx->GetInputDim("X");
   auto w_dims = ctx->GetInputDim("Filter");
@@ -55,7 +52,6 @@ void FusionSeqConvEltAddReluOp::InferShape(
                     "contextStart size should be smaller than contextLength.");
 
   ctx->SetOutputDim("Out", {x_dims[0], w_dims[1]});
-  ctx->SetOutputDim("ColMat", {x_dims[0], w_dims[0]});
   ctx->ShareLoD("X", "Out");
 }
 
@@ -86,10 +82,6 @@ void FusionSeqConvEltAddReluOpMaker::Make() {
       "variable-time length output sequence. The underlying tensor in "
       "this LoDTensor is a matrix with shape (T, N), where, T is the "
       "total time steps in this mini-batch, N is the output feature size.");
-  AddOutput("ColMat",
-            "(Tensor) (T, K), where T is where T is the "
-            "total time steps in this mini-batch, K is height of Filter")
-      .AsIntermediate();
   AddAttr<int>("contextLength",
                "(int) the contextLength of FusionSeqConvEltAddReluOp is the "
                "height of the convolution kernel.")
@@ -125,7 +117,7 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
     auto* w = ctx.Input<Tensor>("Filter");
     auto* b = ctx.Input<Tensor>("Bias");
     auto* y = ctx.Output<LoDTensor>("Out");
-    auto* col = ctx.Output<Tensor>("ColMat");
+    framework::Tensor col;
 
     auto x_lod = x->lod();
     auto x_dims = x->dims();
@@ -134,12 +126,13 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
                       "bias size should be equal to output feature size.");
     PADDLE_ENFORCE_EQ(x_lod.size(), 1UL,
                       "Only support one level sequence now.");
+    col.Resize({x_dims[0], w_dims[0]});
 
     const T* x_data = x->data<T>();
     const T* w_data = w->data<T>();
     const T* b_data = b->data<T>();
     T* y_data = y->mutable_data<T>(ctx.GetPlace());
-    T* col_data = col->mutable_data<T>(ctx.GetPlace());
+    T* col_data = col.mutable_data<T>(ctx.GetPlace());
 
     int context_start = ctx.Attr<int>("contextStart");
     int context_length = ctx.Attr<int>("contextLength");
