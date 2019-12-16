@@ -1795,11 +1795,8 @@ class Operator(object):
                         in_proto.name)
                     if found:
                         in_args = inputs[in_proto.name]
-                        if not isinstance(in_args, list):
-                            if isinstance(in_args, tuple):
-                                in_args = list(in_args)
-                            else:
-                                in_args = [in_args]
+                        if not isinstance(in_args, (list, tuple)):
+                            in_args = [in_args]
                         if not in_proto.duplicable and len(in_args) > 1:
                             raise ValueError(
                                 "Input %s expects only one input, but %d are given."
@@ -1835,11 +1832,8 @@ class Operator(object):
                     if out_proto.name not in outputs:
                         continue
                     out_args = outputs[out_proto.name]
-                    if not isinstance(out_args, list):
-                        if isinstance(out_args, tuple):
-                            out_args = list(out_args)
-                        else:
-                            out_args = [out_args]
+                    if not isinstance(out_args, (list, tuple)):
+                        out_args = [out_args]
                     if not out_proto.duplicable and len(out_args) > 1:
                         raise ValueError(
                             "Output %s expects only one output, but %d are given."
