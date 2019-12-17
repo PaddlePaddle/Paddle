@@ -65,9 +65,10 @@ class TestScatterNdAddSimpleOp(OpTest):
 
     def setUp(self):
         self.op_type = "scatter_nd_add"
-        ref_np = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]).astype("float32")
-        index_np = np.array([[1], [2], [3], [5], [1]]).astype("int32")
-        updates_np = np.array([9, 10, 11, 12, 13]).astype("float32")
+        #ref_np = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8]).astype("float32")
+        ref_np = np.random.random([100]).astype("float32")
+        index_np = np.random.randint(0, 100, [100, 1]).astype("int32")
+        updates_np = np.random.random([100]).astype("float32")
         expect_np = numpy_scatter_nd_add(ref_np.copy(), index_np, updates_np)
         #expect_np = [ 0. 23. 12. 14.  4. 17.  6.  7.  8.] 
 

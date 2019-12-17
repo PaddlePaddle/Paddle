@@ -433,6 +433,12 @@ void DatasetImpl<T>::DynamicAdjustChannelNum(int channel_num) {
   total_data_channel->Close();
   total_data_channel->SetBlockSize(total_data_channel->Size() / channel_num +
                                    1);
+  // will discard the remaining instances,
+  // TODO(hutuxian): should add a config here to choose how to deal with
+  // remaining instances
+  if (static_cast<int>(input_channel_->Size()) >= channel_num) {
+    input_channel_->SetBlockSize(input_channel_->Size() / channel_num);
+  }
 
   for (int i = 0; i < channel_num; ++i) {
     local_vec.clear();
@@ -640,10 +646,12 @@ void MultiSlotDataset::MergeByInsId() {
   }
   auto multi_slot_desc = data_feed_desc_.multi_slot_desc();
   std::vector<std::string> use_slots;
+  std::vector<bool> use_slots_is_dense;
   for (int i = 0; i < multi_slot_desc.slots_size(); ++i) {
     const auto& slot = multi_slot_desc.slots(i);
     if (slot.is_used()) {
       use_slots.push_back(slot.name());
+      use_slots_is_dense.push_back(slot.is_dense());
     }
   }
   CHECK(multi_output_channel_.size() != 0);  // NOLINT
@@ -673,6 +681,11 @@ void MultiSlotDataset::MergeByInsId() {
   std::unordered_set<uint16_t> all_float;
   std::unordered_set<uint16_t> local_uint64;
   std::unordered_set<uint16_t> local_float;
+  std::unordered_map<uint16_t, std::vector<FeatureItem>> all_dense_uint64;
+  std::unordered_map<uint16_t, std::vector<FeatureItem>> all_dense_float;
+  std::unordered_map<uint16_t, std::vector<FeatureItem>> local_dense_uint64;
+  std::unordered_map<uint16_t, std::vector<FeatureItem>> local_dense_float;
+  std::unordered_map<uint16_t, bool> dense_empty;
 
   VLOG(3) << "recs.size() " << recs.size();
   for (size_t i = 0; i < recs.size();) {
@@ -690,6 +703,8 @@ void MultiSlotDataset::MergeByInsId() {
 
     all_int64.clear();
     all_float.clear();
+    all_dense_uint64.clear();
+    all_dense_float.clear();
     bool has_conflict_slot = false;
     uint16_t conflict_slot = 0;
 
@@ -698,11 +713,60 @@ void MultiSlotDataset::MergeByInsId() {
     rec.content_ = recs[i].content_;
 
     for (size_t k = i; k < j; k++) {
+      dense_empty.clear();
+      local_dense_uint64.clear();
+      local_dense_float.clear();
+      for (auto& feature : recs[k].uint64_feasigns_) {
+        uint16_t slot = feature.slot();
+        if (!use_slots_is_dense[slot]) {
+          continue;
+        }
+        local_dense_uint64[slot].push_back(feature);
+        if (feature.sign().uint64_feasign_ != 0) {
+          dense_empty[slot] = false;
+        } else if (dense_empty.find(slot) == dense_empty.end() &&
+                   all_dense_uint64.find(slot) == all_dense_uint64.end()) {
+          dense_empty[slot] = true;
+        }
+      }
+      for (auto& feature : recs[k].float_feasigns_) {
+        uint16_t slot = feature.slot();
+        if (!use_slots_is_dense[slot]) {
+          continue;
+        }
+        local_dense_float[slot].push_back(feature);
+        if (fabs(feature.sign().float_feasign_) >= 1e-6) {
+          dense_empty[slot] = false;
+        } else if (dense_empty.find(slot) == dense_empty.end() &&
+                   all_dense_float.find(slot) == all_dense_float.end()) {
+          dense_empty[slot] = true;
+        }
+      }
+      for (auto& p : dense_empty) {
+        if (local_dense_uint64.find(p.first) != local_dense_uint64.end()) {
+          all_dense_uint64[p.first] = std::move(local_dense_uint64[p.first]);
+        } else if (local_dense_float.find(p.first) != local_dense_float.end()) {
+          all_dense_float[p.first] = std::move(local_dense_float[p.first]);
+        }
+      }
+    }
+    for (auto& f : all_dense_uint64) {
+      rec.uint64_feasigns_.insert(rec.uint64_feasigns_.end(), f.second.begin(),
+                                  f.second.end());
+    }
+    for (auto& f : all_dense_float) {
+      rec.float_feasigns_.insert(rec.float_feasigns_.end(), f.second.begin(),
+                                 f.second.end());
+    }
+
+    for (size_t k = i; k < j; k++) {
       local_uint64.clear();
       local_float.clear();
       for (auto& feature : recs[k].uint64_feasigns_) {
         uint16_t slot = feature.slot();
-        if (all_int64.find(slot) != all_int64.end()) {
+        if (use_slots_is_dense[slot]) {
+          continue;
+        } else if (all_int64.find(slot) != all_int64.end()) {
           has_conflict_slot = true;
           conflict_slot = slot;
           break;
@@ -717,7 +781,9 @@ void MultiSlotDataset::MergeByInsId() {
 
       for (auto& feature : recs[k].float_feasigns_) {
         uint16_t slot = feature.slot();
-        if (all_float.find(slot) != all_float.end()) {
+        if (use_slots_is_dense[slot]) {
+          continue;
+        } else if (all_float.find(slot) != all_float.end()) {
           has_conflict_slot = true;
           conflict_slot = slot;
           break;

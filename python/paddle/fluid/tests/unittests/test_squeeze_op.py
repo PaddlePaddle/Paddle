@@ -38,9 +38,9 @@ class TestSqueezeOp(OpTest):
         self.check_grad(["X"], "Out")
 
     def init_test_case(self):
-        self.ori_shape = (1, 3, 1, 5)
+        self.ori_shape = (1, 3, 1, 40)
         self.axes = (0, 2)
-        self.new_shape = (3, 5)
+        self.new_shape = (3, 40)
 
     def init_attrs(self):
         self.attrs = {"axes": self.axes}
@@ -49,9 +49,9 @@ class TestSqueezeOp(OpTest):
 # Correct: There is mins axis.
 class TestSqueezeOp1(TestSqueezeOp):
     def init_test_case(self):
-        self.ori_shape = (1, 3, 1, 5)
+        self.ori_shape = (1, 3, 1, 40)
         self.axes = (0, -2)
-        self.new_shape = (3, 5)
+        self.new_shape = (3, 40)
 
 
 # Correct: No axes input.

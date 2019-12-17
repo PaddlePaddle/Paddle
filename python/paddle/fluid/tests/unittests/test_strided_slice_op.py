@@ -75,7 +75,7 @@ class TestStrideSliceOp(OpTest):
         self.check_grad(set(['Input']), 'Out')
 
     def initTestCase(self):
-        self.input = np.random.rand(6)
+        self.input = np.random.rand(100)
         self.axes = [0]
         self.starts = [-4]
         self.ends = [-3]

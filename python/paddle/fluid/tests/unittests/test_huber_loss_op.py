@@ -47,7 +47,7 @@ class TestHuberLossOp(OpTest):
         }
 
     def set_shape(self):
-        return (64, 1)
+        return (100, 1)
 
     def test_check_output(self):
         self.check_output()

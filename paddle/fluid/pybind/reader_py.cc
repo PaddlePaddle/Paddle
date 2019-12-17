@@ -22,6 +22,8 @@
 #include "Python.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/platform/place.h"
@@ -206,6 +208,31 @@ void BindReader(py::module *module) {
       .def("read_next", &MultiDeviceFeedReader::ReadNext,
            py::call_guard<py::gil_scoped_release>())
       .def("read_next_list", &MultiDeviceFeedReader::ReadNextList,
+           py::call_guard<py::gil_scoped_release>())
+      .def("read_next_var_list",
+           [](MultiDeviceFeedReader &self) {
+             auto result_list = self.ReadNextList();
+             auto &tensor_list = result_list[0];
+             std::vector<std::shared_ptr<imperative::VarBase>> var_list;
+             var_list.reserve(tensor_list.size());
+             auto func = [](framework::LoDTensor &lod_tensor) {
+               std::string act_name =
+                   imperative::GetCurrentTracer()->GenerateUniqueName(
+                       "generated_var");
+               auto new_var = std::make_shared<imperative::VarBase>(act_name);
+               new_var->SetPersistable(false);
+               new_var->SetType(framework::proto::VarType::LOD_TENSOR);
+               new_var->SetDataType(lod_tensor.type());
+               auto *tensor =
+                   new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+               *tensor = std::move(lod_tensor);
+               return new_var;
+             };
+             for (auto &tensor : tensor_list) {
+               var_list.emplace_back(func(tensor));
+             }
+             return var_list;
+           },
            py::call_guard<py::gil_scoped_release>())
       .def("reset", &MultiDeviceFeedReader::Reset,
            py::call_guard<py::gil_scoped_release>());

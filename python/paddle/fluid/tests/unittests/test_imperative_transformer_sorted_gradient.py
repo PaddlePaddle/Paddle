@@ -229,11 +229,11 @@ seq_len = ModelHyperParams.max_length
 # compile time.
 input_descs = {
     # The actual data shape of src_word is:
-    # [batch_size, max_src_len_in_batch, 1]
-    "src_word": [(batch_size, seq_len, 1), "int64", 2],
+    # [batch_size, max_src_len_in_batch]
+    "src_word": [(batch_size, seq_len), "int64", 2],
     # The actual data shape of src_pos is:
-    # [batch_size, max_src_len_in_batch, 1]
-    "src_pos": [(batch_size, seq_len, 1), "int64"],
+    # [batch_size, max_src_len_in_batch]
+    "src_pos": [(batch_size, seq_len), "int64"],
     # This input is used to remove attention weights on paddings in the
     # encoder.
     # The actual data shape of src_slf_attn_bias is:
@@ -241,12 +241,12 @@ input_descs = {
     "src_slf_attn_bias": [(batch_size, ModelHyperParams.n_head, seq_len,
                            seq_len), "float32"],
     # The actual data shape of trg_word is:
-    # [batch_size, max_trg_len_in_batch, 1]
-    "trg_word": [(batch_size, seq_len, 1), "int64",
+    # [batch_size, max_trg_len_in_batch]
+    "trg_word": [(batch_size, seq_len), "int64",
                  2],  # lod_level is only used in fast decoder.
     # The actual data shape of trg_pos is:
-    # [batch_size, max_trg_len_in_batch, 1]
-    "trg_pos": [(batch_size, seq_len, 1), "int64"],
+    # [batch_size, max_trg_len_in_batch]
+    "trg_pos": [(batch_size, seq_len), "int64"],
     # This input is used to remove attention weights on paddings and
     # subsequent words in the decoder.
     # The actual data shape of trg_slf_attn_bias is:
@@ -317,17 +317,17 @@ batch_num = 5
 
 np.random.seed = 90
 src_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
-    [TrainTaskConfig.batch_size, seq_len, 1]).astype('int64')
+    [TrainTaskConfig.batch_size, seq_len]).astype('int64')
 src_pos_np = np.random.randint(
-    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len, 1), dtype='int64')
+    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len), dtype='int64')
 src_slf_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
                                        ModelHyperParams.n_head, seq_len,
                                        seq_len).astype('float32')
 
 trg_word_np = np.arange(1, TrainTaskConfig.batch_size * seq_len + 1).reshape(
-    [TrainTaskConfig.batch_size, seq_len, 1]).astype('int64')
+    [TrainTaskConfig.batch_size, seq_len]).astype('int64')
 trg_pos_np = np.random.randint(
-    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len, 1), dtype='int64')
+    1, seq_len, size=(TrainTaskConfig.batch_size, seq_len), dtype='int64')
 trg_slf_attn_bias_np = np.random.randn(TrainTaskConfig.batch_size,
                                        ModelHyperParams.n_head, seq_len,
                                        seq_len).astype('float32')
@@ -350,13 +350,12 @@ pos_inp2 = position_encoding_init(ModelHyperParams.max_length,
 
 
 class PrePostProcessLayer(Layer):
-    def __init__(self, name_scope, process_cmd, shape_len=None):
-        super(PrePostProcessLayer, self).__init__(name_scope)
+    def __init__(self, d_model, process_cmd, shape_len=None):
+        super(PrePostProcessLayer, self).__init__()
         for cmd in process_cmd:
             if cmd == "n":
                 self._layer_norm = LayerNorm(
-                    name_scope=self.full_name(),
-                    begin_norm_axis=shape_len - 1,
+                    normalized_shape=d_model,
                     param_attr=fluid.ParamAttr(
                         initializer=fluid.initializer.Constant(1.)),
                     bias_attr=fluid.ParamAttr(
@@ -508,19 +507,19 @@ class EncoderSubLayer(Layer):
         self._postprocess_cmd = postprocess_cmd
         self._prepostprocess_dropout = prepostprocess_dropout
 
-        self._preprocess_layer = PrePostProcessLayer(self.full_name(),
+        self._preprocess_layer = PrePostProcessLayer(d_model,
                                                      self._preprocess_cmd, 3)
         self._multihead_attention_layer = MultiHeadAttentionLayer(
             self.full_name(), d_key, d_value, d_model, n_head,
             attention_dropout)
         self._postprocess_layer = PrePostProcessLayer(
-            self.full_name(), self._postprocess_cmd, None)
-        self._preprocess_layer2 = PrePostProcessLayer(self.full_name(),
+            d_model, self._postprocess_cmd, None)
+        self._preprocess_layer2 = PrePostProcessLayer(d_model,
                                                       self._preprocess_cmd, 3)
         self._positionwise_feed_forward = PositionwiseFeedForwardLayer(
             self.full_name(), d_inner_hid, d_model, relu_dropout)
         self._postprocess_layer2 = PrePostProcessLayer(
-            self.full_name(), self._postprocess_cmd, None)
+            d_model, self._postprocess_cmd, None)
 
     def forward(self, enc_input, attn_bias):
         pre_process_multihead = self._preprocess_layer(
@@ -559,7 +558,7 @@ class EncoderLayer(Layer):
         self._encoder_sublayers = list()
         self._prepostprocess_dropout = prepostprocess_dropout
         self._n_layer = n_layer
-        self._preprocess_layer = PrePostProcessLayer(self.full_name(),
+        self._preprocess_layer = PrePostProcessLayer(d_model,
                                                      self._preprocess_cmd, 3)
         for i in range(n_layer):
             self._encoder_sublayers.append(
@@ -595,7 +594,6 @@ class PrepareEncoderDecoderLayer(Layer):
         self._src_vocab_size = src_vocab_size
         self._dropout_rate = dropout_rate
         self._input_emb = Embedding(
-            name_scope=self.full_name(),
             size=[src_vocab_size, src_emb_dim],
             is_sparse=is_sparse,
             padding_idx=0,
@@ -608,7 +606,6 @@ class PrepareEncoderDecoderLayer(Layer):
         else:
             pos_inp = pos_inp2
         self._pos_emb = Embedding(
-            name_scope=self.full_name(),
             size=[self._src_max_len, src_emb_dim],
             is_sparse=is_sparse,
             param_attr=fluid.ParamAttr(
@@ -698,8 +695,8 @@ class DecoderSubLayer(Layer):
         self._postprocess_cmd = postprocess_cmd
         self._preprocess_cmd = preprocess_cmd
         self._prepostprcess_dropout = prepostprocess_dropout
-        self._pre_process_layer = PrePostProcessLayer(self.full_name(),
-                                                      preprocess_cmd, 3)
+        self._pre_process_layer = PrePostProcessLayer(d_model, preprocess_cmd,
+                                                      3)
         self._multihead_attention_layer = MultiHeadAttentionLayer(
             self.full_name(),
             d_key,
@@ -709,10 +706,10 @@ class DecoderSubLayer(Layer):
             attention_dropout,
             cache=cache,
             gather_idx=gather_idx)
-        self._post_process_layer = PrePostProcessLayer(self.full_name(),
-                                                       postprocess_cmd, None)
-        self._pre_process_layer2 = PrePostProcessLayer(self.full_name(),
-                                                       preprocess_cmd, 3)
+        self._post_process_layer = PrePostProcessLayer(d_model, postprocess_cmd,
+                                                       None)
+        self._pre_process_layer2 = PrePostProcessLayer(d_model, preprocess_cmd,
+                                                       3)
         self._multihead_attention_layer2 = MultiHeadAttentionLayer(
             self.full_name(),
             d_key,
@@ -723,13 +720,13 @@ class DecoderSubLayer(Layer):
             cache=cache,
             gather_idx=gather_idx,
             static_kv=True)
-        self._post_process_layer2 = PrePostProcessLayer(self.full_name(),
+        self._post_process_layer2 = PrePostProcessLayer(d_model,
                                                         postprocess_cmd, None)
-        self._pre_process_layer3 = PrePostProcessLayer(self.full_name(),
-                                                       preprocess_cmd, 3)
+        self._pre_process_layer3 = PrePostProcessLayer(d_model, preprocess_cmd,
+                                                       3)
         self._positionwise_feed_forward_layer = PositionwiseFeedForwardLayer(
             self.full_name(), d_inner_hid, d_model, relu_dropout)
-        self._post_process_layer3 = PrePostProcessLayer(self.full_name(),
+        self._post_process_layer3 = PrePostProcessLayer(d_model,
                                                         postprocess_cmd, None)
 
     def forward(self, dec_input, enc_output, slf_attn_bias, dec_enc_attn_bias):
@@ -775,8 +772,8 @@ class DecoderLayer(Layer):
                  caches=None,
                  gather_idx=None):
         super(DecoderLayer, self).__init__(name_scope)
-        self._pre_process_layer = PrePostProcessLayer(self.full_name(),
-                                                      preprocess_cmd, 3)
+        self._pre_process_layer = PrePostProcessLayer(d_model, preprocess_cmd,
+                                                      3)
         self._decoder_sub_layers = list()
         self._n_layer = n_layer
         self._preprocess_cmd = preprocess_cmd

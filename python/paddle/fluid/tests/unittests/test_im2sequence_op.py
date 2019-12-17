@@ -129,7 +129,7 @@ class TestBlockExpandOp(OpTest):
         self.batch_size = 1
         self.img_channels = 3
         self.img_height = 4
-        self.img_width = 4
+        self.img_width = 10
         self.attrs = {
             'kernels': [2, 2],
             'strides': [1, 1],

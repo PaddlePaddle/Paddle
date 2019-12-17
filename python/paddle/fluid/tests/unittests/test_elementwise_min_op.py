@@ -35,7 +35,7 @@ class TestElementwiseOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -49,7 +49,7 @@ class TestElementwiseOp(OpTest):
 class TestElementwiseMinOp_scalar(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
-        x = np.random.random_integers(-5, 5, [2, 3, 4]).astype("float32")
+        x = np.random.random_integers(-5, 5, [10, 3, 4]).astype("float32")
         y = np.array([0.5]).astype("float32")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
@@ -58,9 +58,9 @@ class TestElementwiseMinOp_scalar(TestElementwiseOp):
 class TestElementwiseMinOp_Vector(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
-        x = np.random.random((32, )).astype("float32")
-        sgn = np.random.choice([-1, 1], (32, )).astype("float32")
-        y = x + sgn * np.random.uniform(0.1, 1, (32, )).astype("float32")
+        x = np.random.random((100, )).astype("float32")
+        sgn = np.random.choice([-1, 1], (100, )).astype("float32")
+        y = x + sgn * np.random.uniform(0.1, 1, (100, )).astype("float32")
         self.inputs = {'X': x, 'Y': y}
         self.outputs = {'Out': np.minimum(self.inputs['X'], self.inputs['Y'])}
 

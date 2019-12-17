@@ -87,6 +87,18 @@ class VarBase {
 
   const std::shared_ptr<VarBase>& GradVarBase() const { return grad_var_; }
 
+  void ClearGradVarBase() { grad_var_ = nullptr; }
+
+  const std::shared_ptr<VarBase>& MutableGradVarBase() {
+    if (grad_var_ == nullptr) {
+      grad_var_ = std::make_shared<VarBase>(false, GradVarName());
+      // NOTE(zhiqiu): we should keep grad_var_'s stop_gradient property same as
+      // fwd varbase
+      grad_var_->SetOverridedStopGradient(overrided_stop_gradient_);
+    }
+    return grad_var_;
+  }
+
   const framework::Variable& GradVar() const {
     PADDLE_ENFORCE_NOT_NULL(grad_var_, "Gradient of %s does not exist", name_);
     return grad_var_->var_;
@@ -151,6 +163,7 @@ class VarBase {
     }
     return rlt;
   }
+
   void ClearGradOps() { grad_ops_.clear(); }
 
   const std::string& Name() const { return name_; }
