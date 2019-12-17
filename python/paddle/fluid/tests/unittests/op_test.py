@@ -142,14 +142,14 @@ def get_numeric_gradient(place,
     return gradient_flat.reshape(tensor_to_check.shape())
 
 
-class OpTestBase(unittest.TestCase):
+class OpTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         '''Fix random seeds to remove randomness from tests'''
         cls._np_rand_state = np.random.get_state()
         cls._py_rand_state = random.getstate()
         cls.call_once = False
-        cls.dtype = "float32"
+        cls.dtype = None
         cls.outputs = {}
 
         np.random.seed(123)
@@ -164,6 +164,27 @@ class OpTestBase(unittest.TestCase):
         random.setstate(cls._py_rand_state)
 
         _set_use_system_allocator(cls._use_system_allocator)
+
+        # cases and ops do no need check_grad
+        if cls.__name__ in op_check_grad_white_list.NO_NEED_CHECK_GRAD_CASES \
+            or cls.op_type in op_check_grad_white_list.EMPTY_GRAD_OP_LIST:
+            return
+
+        # In order to pass ci, and case in NO_FP64_CHECK_GRAD_CASES and op in
+        # NO_FP64_CHECK_GRAD_OP_LIST should be fixed
+        if cls.__name__ in op_accuracy_white_list.NO_FP64_CHECK_GRAD_CASES \
+            or cls.op_type in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST:
+            return
+
+        if cls.dtype is None or (cls.dtype in [np.float16, np.int64, np.int32, np.int16] \
+            and not hasattr(cls, "exist_check_grad")):
+            raise AssertionError("This test of %s op needs check_grad." %
+                                 cls.op_type)
+
+        if cls.dtype in [np.float32, np.float64] and \
+            not hasattr(cls, 'exist_fp64_check_grad'):
+            raise AssertionError("This test of %s op needs fp64 check_grad." %
+                                 cls.op_type)
 
     def try_call_once(self, data_type):
         if not self.call_once:
@@ -205,13 +226,15 @@ class OpTestBase(unittest.TestCase):
         dtype_list = [
             np.dtype(np.float64), np.dtype(np.float32), np.dtype(np.float16),
             np.dtype(np.int64), np.dtype(np.int32), np.dtype(np.int16),
-            np.dtype(np.int8)
+            np.dtype(np.int8), np.dtype(np.uint8), np.dtype(np.bool)
         ]
         # check the dtype in dtype_list in order, select the first dtype that in dtype_set
         for dtype in dtype_list:
             if dtype in dtype_set:
                 self.dtype = dtype
                 break
+        # save dtype in class attr
+        self.__class__.dtype = self.dtype
 
     def feed_var(self, input_vars, place):
         feed_map = {}
@@ -1030,6 +1053,7 @@ class OpTestBase(unittest.TestCase):
                      check_dygraph=True,
                      inplace_atol=None,
                      check_compile_vs_runtime=False):
+        self.__class__.op_type = self.op_type
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(place, atol, no_check_set,
@@ -1068,6 +1092,13 @@ class OpTestBase(unittest.TestCase):
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
+    def _check_grad_helper(self):
+        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
+        self.__class__.op_type = self.op_type
+        self.__class__.exist_check_grad = True
+        if self.dtype == np.float64:
+            self.__class__.exist_fp64_check_grad = True
+
     def check_grad(self,
                    inputs_to_check,
                    output_names,
@@ -1077,6 +1108,7 @@ class OpTestBase(unittest.TestCase):
                    max_relative_error=0.005,
                    user_defined_grads=None,
                    check_dygraph=True):
+        self._check_grad_helper()
         places = self._get_places()
         for place in places:
             self.check_grad_with_place(place, inputs_to_check, output_names,
@@ -1098,6 +1130,8 @@ class OpTestBase(unittest.TestCase):
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+
+        self._check_grad_helper()
 
         cache_list = None
         if hasattr(self, "cache_name_list"):
@@ -1289,161 +1323,3 @@ class OpTestBase(unittest.TestCase):
         return list(
             map(np.array,
                 executor.run(prog, feed_dict, fetch_list, return_numpy=False)))
-
-
-'''
-The op test with int8 precision should inherit OpTestInt8.
-'''
-
-
-class OpTestInt8(OpTestBase):
-    pass
-
-
-'''
-The op test with float16 precision should inherit OpTestFp16,
-which requires the test to call check_grad. 
-'''
-
-
-class OpTestFp16(OpTestBase):
-    def check_output(self,
-                     atol=1e-5,
-                     no_check_set=None,
-                     equal_nan=False,
-                     check_dygraph=True,
-                     inplace_atol=None,
-                     check_compile_vs_runtime=False):
-        self.__class__.op_type = self.op_type
-        OpTestBase.check_output(self, atol, no_check_set, equal_nan,
-                                check_dygraph, inplace_atol,
-                                check_compile_vs_runtime)
-
-    def _check_grad_helper(self):
-        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
-        assert self.dtype == np.float16, "The dtype of this test should be float16."
-
-        self.__class__.op_type = self.op_type
-        self.__class__.exist_check_grad = True
-
-    def check_grad(self,
-                   inputs_to_check,
-                   output_names,
-                   no_grad_set=None,
-                   numeric_grad_delta=0.005,
-                   in_place=False,
-                   max_relative_error=0.005,
-                   user_defined_grads=None,
-                   check_dygraph=True):
-        self._check_grad_helper()
-        OpTestBase.check_grad(self, inputs_to_check, output_names, no_grad_set,
-                              numeric_grad_delta, in_place, max_relative_error,
-                              user_defined_grads, check_dygraph)
-
-    def check_grad_with_place(self,
-                              place,
-                              inputs_to_check,
-                              output_names,
-                              no_grad_set=None,
-                              numeric_grad_delta=0.005,
-                              in_place=False,
-                              max_relative_error=0.005,
-                              user_defined_grads=None,
-                              check_dygraph=True):
-        self._check_grad_helper()
-        OpTestBase.check_grad_with_place(
-            self, place, inputs_to_check, output_names, no_grad_set,
-            numeric_grad_delta, in_place, max_relative_error,
-            user_defined_grads, check_dygraph)
-
-    @classmethod
-    def tearDownClass(cls):
-        """Restore random seeds"""
-        np.random.set_state(cls._np_rand_state)
-        random.setstate(cls._py_rand_state)
-
-        if not hasattr(cls, "exist_check_grad") \
-            and cls.__name__ not in op_check_grad_white_list.NO_NEED_CHECK_GRAD_CASES \
-            and cls.op_type not in op_check_grad_white_list.EMPTY_GRAD_OP_LIST:
-            raise AssertionError("This test of %s op needs check_grad." %
-                                 cls.op_type)
-
-
-'''
-The op test with float32/64 precision should inherit OpTest,
-which requires the test to call check_grad with float64 precision. 
-'''
-
-
-class OpTest(OpTestBase):
-    def check_output(self,
-                     atol=1e-5,
-                     no_check_set=None,
-                     equal_nan=False,
-                     check_dygraph=True,
-                     inplace_atol=None,
-                     check_compile_vs_runtime=False):
-        self.__class__.op_type = self.op_type
-        OpTestBase.check_output(self, atol, no_check_set, equal_nan,
-                                check_dygraph, inplace_atol,
-                                check_compile_vs_runtime)
-
-    def _check_grad_helper(self):
-        self.infer_dtype_from_inputs_outputs(self.inputs, self.outputs)
-        assert self.dtype in [np.float16, np.float32, np.float64], \
-            "self.dtype = %s." % self.dtype
-        if self.dtype == np.float16 and \
-            self.op_type not in op_accuracy_white_list.FP16_CHECK_OP_LIST:
-            raise AssertionError("The dtype of this test should be float32 "
-                                 "or float64. op: %s dtype: %s." %
-                                 (self.op_type, self.dtype))
-
-        self.__class__.op_type = self.op_type
-        if self.dtype == np.float64:
-            self.__class__.exist_fp64_check_grad = True
-
-    def check_grad(self,
-                   inputs_to_check,
-                   output_names,
-                   no_grad_set=None,
-                   numeric_grad_delta=0.005,
-                   in_place=False,
-                   max_relative_error=0.005,
-                   user_defined_grads=None,
-                   check_dygraph=True):
-        self._check_grad_helper()
-        OpTestBase.check_grad(self, inputs_to_check, output_names, no_grad_set,
-                              numeric_grad_delta, in_place, max_relative_error,
-                              user_defined_grads, check_dygraph)
-
-    def check_grad_with_place(self,
-                              place,
-                              inputs_to_check,
-                              output_names,
-                              no_grad_set=None,
-                              numeric_grad_delta=0.005,
-                              in_place=False,
-                              max_relative_error=0.005,
-                              user_defined_grads=None,
-                              check_dygraph=True):
-        self._check_grad_helper()
-        OpTestBase.check_grad_with_place(
-            self, place, inputs_to_check, output_names, no_grad_set,
-            numeric_grad_delta, in_place, max_relative_error,
-            user_defined_grads, check_dygraph)
-
-    @classmethod
-    def tearDownClass(cls):
-        """Restore random seeds"""
-        np.random.set_state(cls._np_rand_state)
-        random.setstate(cls._py_rand_state)
-
-        # only for pass ci, but cases in NO_FP64_CHECK_GRAD_CASES 
-        # and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
-        if cls.__name__ not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_CASES \
-            and not hasattr(cls, 'exist_fp64_check_grad') \
-            and cls.__name__ not in op_check_grad_white_list.NO_NEED_CHECK_GRAD_CASES \
-            and cls.op_type not in op_check_grad_white_list.EMPTY_GRAD_OP_LIST \
-            and cls.op_type not in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST:
-            raise AssertionError("This test of %s op needs fp64 check_grad." %
-                                 cls.op_type)
