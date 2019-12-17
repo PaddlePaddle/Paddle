@@ -96,12 +96,12 @@ class TestParallelExecutorBase(unittest.TestCase):
                 os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
 
         begin = time.time()
-        first_loss = run_executor(
-            exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss])
+        first_loss, = run_executor(
+            exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name])
         for _ in range(iter):
             run_executor(exe=exe, binary=binary, feed=feed_dict, fetch_list=[])
-        last_loss = run_executor(
-            exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss])
+        last_loss, = run_executor(
+            exe=exe, binary=binary, feed=feed_dict, fetch_list=[loss.name])
         end = time.time()
 
         if batch_size is not None:
@@ -114,10 +114,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                 float(avg_first_loss_val)):
             sys.exit("got NaN loss, training failed.")
 
-        first_loss = [val[0] for val in first_loss]
-        last_loss = [val[0] for val in last_loss]
-        print("first loss: ", first_loss)
-        print("last loss: ", last_loss)
+        print(first_loss, last_loss)
         # self.assertGreater(first_loss[0], last_loss[0])
         return first_loss, last_loss
 
@@ -141,8 +138,8 @@ class TestParallelExecutorBase(unittest.TestCase):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
-            feed_dict, loss, fetch_list = cls.build_model(
-                feed_dict, get_data_from_feeder, main, method, optimizer)
+            feed_dict, loss = cls.build_model(feed_dict, get_data_from_feeder,
+                                              main, method, optimizer)
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -194,19 +191,11 @@ class TestParallelExecutorBase(unittest.TestCase):
         # We set loss.persistable = False here to verify our memory
         # optimization strategies intentionally.
         loss.persistable = False
-        test_optimizer = None
         if optimizer:
-            test_optimizer = optimizer()
-            test_optimizer.minimize(loss)
+            optimizer().minimize(loss)
 
         if get_data_from_feeder is not None:
             assert feed_dict is None
             feed_dict = get_data_from_feeder()
-        var_list = []
-        if test_optimizer is not None:
-            for k, v in test_optimizer._accumulators.items():
-                # TODO(Aurelius84): FIX ME hard code test for adam and adamMax
-                if k == "beta1_pow_acc" or k == "beta2_pow_acc":
-                    for k1, v1 in v.items():
-                        var_list.append(v1)
-        return feed_dict, loss, var_list
+
+        return feed_dict, loss
