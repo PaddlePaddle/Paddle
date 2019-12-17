@@ -24,9 +24,8 @@ class TestImperativeContainerSequential(unittest.TestCase):
         data = np.random.uniform(-1, 1, [5, 10]).astype('float32')
         with fluid.dygraph.guard():
             data = fluid.dygraph.to_variable(data)
-            model1 = fluid.dygraph.Sequential('model1',
-                                              fluid.FC('fc1', 1),
-                                              fluid.FC('fc2', 2))
+            model1 = fluid.dygraph.Sequential(
+                fluid.FC('fc1', 1), fluid.FC('fc2', 2))
             res1 = model1(data)
             self.assertListEqual(res1.shape, [5, 2])
             self.assertTrue('fc1' in model1[0]._full_name)
@@ -38,8 +37,8 @@ class TestImperativeContainerSequential(unittest.TestCase):
             loss1 = fluid.layers.reduce_mean(res1)
             loss1.backward()
 
-            model2 = fluid.dygraph.Sequential(
-                'model2', ('l1', fluid.FC('l1', 1)), ('l2', fluid.FC('l2', 3)))
+            model2 = fluid.dygraph.Sequential(('l1', fluid.FC('l1', 1)),
+                                              ('l2', fluid.FC('l2', 3)))
             self.assertEqual(len(model2), 2)
             res2 = model2(data)
             self.assertTrue('l1' in model2.l1.full_name())

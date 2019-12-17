@@ -24,7 +24,6 @@ class Sequential(Layer):
     The argument passed to the constructor can be iterable Layers or iterable name Layer pairs.
 
     Parameters:
-        name_scope(str): The name of this class.
         layers(iterable): Iterable Layers or iterable name Layer pairs.
 
     Examples:
@@ -37,7 +36,7 @@ class Sequential(Layer):
             with fluid.dygraph.guard():
                 data = fluid.dygraph.to_variable(data)
                 # create Sequential with iterable Layers
-                model1 = fluid.dygraph.Sequential('model1',
+                model1 = fluid.dygraph.Sequential(
                     fluid.FC('fc1', 2),
                     fluid.FC('fc2', 3)
                 )
@@ -45,7 +44,7 @@ class Sequential(Layer):
                 res1 = model1(data)  # sequential execution
 
                 # create Sequential with name Layer pairs
-                model2 = fluid.dygraph.Sequential('model2',
+                model2 = fluid.dygraph.Sequential(
                     ('l1', fluid.FC('l1', 2)),
                     ('l2', fluid.FC('l2', 3))
                 )
@@ -56,8 +55,8 @@ class Sequential(Layer):
 
     """
 
-    def __init__(self, name_scope, *layers):
-        super(Sequential, self).__init__(name_scope)
+    def __init__(self, *layers):
+        super(Sequential, self).__init__()
         if len(layers) > 0 and isinstance(layers[0], tuple):
             for name, layer in layers:
                 self.add_sublayer(name, layer)
@@ -92,7 +91,6 @@ class ParameterList(Layer):
     This container acts like a Python list, but parameters it contains will be properly added.
 
     Parameters:
-        name_scope(str): The name of this class
         parameters (iterable, optional): Iterable Parameters to be added
 
     Examples:
@@ -102,11 +100,10 @@ class ParameterList(Layer):
             import numpy as np
 
             class MyLayer(fluid.Layer):
-                def __init__(self, name_scope, num_stacked_param):
-                    super(MyLayer, self).__init__(name_scope)
+                def __init__(self, num_stacked_param):
+                    super(MyLayer, self).__init__()
                     # create ParameterList with iterable Parameters
                     self.params = fluid.dygraph.ParameterList(
-                        'params',
                         [fluid.layers.create_parameter(
                             shape=[2, 2], dtype='float32')] * num_stacked_param)
 
@@ -127,7 +124,7 @@ class ParameterList(Layer):
             with fluid.dygraph.guard():
                 x = fluid.dygraph.to_variable(data_np)
                 num_stacked_param = 4
-                model = MyLayer('cust_layer', num_stacked_param)
+                model = MyLayer(num_stacked_param)
                 print(len(model.params))  # 4
                 res = model(x)
                 print(res.shape)  # [5, 2]
@@ -142,8 +139,8 @@ class ParameterList(Layer):
                 print(res.shape)  # [5, 4]
     """
 
-    def __init__(self, name_scope, parameters=None):
-        super(ParameterList, self).__init__(name_scope)
+    def __init__(self, parameters=None):
+        super(ParameterList, self).__init__()
         for idx, param in enumerate(parameters):
             assert isinstance(param, Parameter)
             self.add_parameter(str(idx), param)

@@ -49,7 +49,6 @@ __all__ = [
     'in_dygraph_mode',
     'is_compiled_with_cuda',
     'Variable',
-    'Parameter',
     'load_op_library',
     'require_version',
 ]

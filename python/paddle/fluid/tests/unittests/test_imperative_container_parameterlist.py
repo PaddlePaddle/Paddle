@@ -20,11 +20,10 @@ import numpy as np
 
 
 class MyLayer(fluid.Layer):
-    def __init__(self, name_scope, num_stacked_param):
-        super(MyLayer, self).__init__(name_scope)
+    def __init__(self, num_stacked_param):
+        super(MyLayer, self).__init__()
         # create ParameterList with iterable Parameters
         self.params = fluid.dygraph.ParameterList(
-            'params',
             [fluid.layers.create_parameter(
                 shape=[2, 2], dtype='float32')] * num_stacked_param)
 
@@ -48,7 +47,7 @@ class TestImperativeContainerParameterList(unittest.TestCase):
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(data_np)
             num_stacked_param = 4
-            model = MyLayer('cust_layer', num_stacked_param)
+            model = MyLayer(num_stacked_param)
             self.assertEqual(len(model.params), num_stacked_param)
             res = model(x)
             self.assertListEqual(res.shape, [5, 2])
