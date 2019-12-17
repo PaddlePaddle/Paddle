@@ -82,11 +82,6 @@ class TestSigmoid(TestActivation):
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
-    def init_dtype(self):
-        # TODO If dtype is float64, test_activation_ngraph_op could not 
-        # create a primitive descriptor iterator
-        self.dtype = np.float32
-
 
 class TestLogSigmoid(TestActivation):
     def setUp(self):
