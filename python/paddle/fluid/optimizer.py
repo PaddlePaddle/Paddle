@@ -165,24 +165,24 @@ class Optimizer(object):
 
         if isinstance(self._learning_rate, LearningRateDecay):
             assert 'global_step' in state_dict, \
-                    'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
+                'Global step not in state dict, Dygraph use LearningRateDecay, global_step must in state_dict'
             global_step = state_dict['global_step']
 
             if isinstance(global_step, core.VarBase):
                 step_np = global_step
                 step_np = np.array(step_np.value().get_tensor())
-                assert step_np.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( step_np.shape )
+                assert step_np.shape == (1,), \
+                    "global step shape is (1,), the shape is {}".format( step_np.shape )
 
                 self._learning_rate.step_num = int(step_np[0])
             elif isinstance(global_step, Variable):
                 step_np = global_step.numpy()
-                assert step_np.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( step_np.shape )
+                assert step_np.shape == (1,), \
+                    "global step shape is (1,), the shape is {}".format( step_np.shape )
                 self._learning_rate.step_num = step_np[0]
             elif isinstance(global_step, np.ndarray):
-                assert global_step.shape == (1,),  \
-                        "global step shape is (1,), the shape is {}".format( global_step.shape )
+                assert global_step.shape == (1,), \
+                    "global step shape is (1,), the shape is {}".format( global_step.shape )
                 self._learning_rate.step_num = global_step[0]
             else:
                 raise RuntimeError(
@@ -193,7 +193,7 @@ class Optimizer(object):
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 assert var_tmp.name in state_dict, \
-                        "optimizer variable {} not found".format( var_tmp.name )
+                    "optimizer variable {} not found".format( var_tmp.name )
                 var = var_tmp.value()
                 tensor = var.get_tensor()
                 model_np = np.array(tensor)
@@ -210,13 +210,13 @@ class Optimizer(object):
                     raise RuntimeError("State dict type {} not supprt".format(
                         str(type(load_para))))
 
-                assert model_np.shape == load_para_np.shape,  \
-                                          "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
-                                                 item.name, model_np.shape, load_para_np.shape)
+                assert model_np.shape == load_para_np.shape, \
+                    "Parameter shape not match, Dygraph Parameter [ {} ] need tensor with shape {} but load tensor with shape {}".format(
+                        item.name, model_np.shape, load_para_np.shape)
 
                 assert model_np.dtype == load_para_np.dtype, \
-                                          "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
-                                                item.name, model_np.dtype, load_para_np.dtype)
+                    "Parameter dtype not match, Dygraph Parameter [ {} ] need tensor with dtype {}  but load tensor with dtype {}".format(
+                        item.name, model_np.dtype, load_para_np.dtype)
 
                 tensor.set(load_para_np, framework._current_expected_place())
 
@@ -363,7 +363,7 @@ class Optimizer(object):
         if framework.in_dygraph_mode():
             if len(self._accumulators_holder) > 0:
                 assert var_name in self._accumulators_holder, \
-                        "Optimizer set error, {} should in state dict".format( var_name )
+                    "Optimizer set error, {} should in state dict".format( var_name )
                 var.set_value(self._accumulators_holder[var_name])
 
         self._accumulators[name][param.name] = var
@@ -408,24 +408,22 @@ class Optimizer(object):
         # for parameters and extend _finish_update method to add custom ops.
 
         # Allways called under program_guard use global block as loss block
-        global_block = framework.default_main_program().global_block()
+        # But if current block is in control flow, append optimize op in the
+        # grad block of current block
 
-        # todo(): create optimize op considering control flow
-        # get target block
-        current_block = framework.default_main_program().current_block()
+        global_block = framework.default_main_program().global_block()
         target_block = global_block
-        global_block_idx = global_block.idx  # 0
-        if current_block.idx != global_block_idx:
+        current_block = framework.default_main_program().current_block()
+        if current_block.idx != global_block.idx:
             assert current_block.backward_block_idx != -1, \
-                "current_block is not global_block, but it doesn't have backward block"
+                "current block is not global_block, but it doesn't have backward block."
             target_block = framework.default_main_program().blocks[
                 current_block.backward_block_idx]
-        global_block = target_block
-        # start = len(target_block.ops)
-        start = len(global_block.ops)
+
+        start = len(target_block.ops)
         self.helper = LayerHelper(self.__class__.__name__)
         self._create_accumulators(
-            global_block,
+            target_block,
             [p[0] for p in parameters_and_grads if p[0].trainable])
         self._create_global_learning_rate()
 
@@ -437,7 +435,7 @@ class Optimizer(object):
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad):
                     if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(global_block,
+                        optimize_op = self._append_optimize_op(target_block,
                                                                param_and_grad)
                         optimize_ops.append(optimize_op)
         else:
@@ -447,16 +445,16 @@ class Optimizer(object):
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(global_block,
+                        optimize_op = self._append_optimize_op(target_block,
                                                                param_and_grad)
                         optimize_ops.append(optimize_op)
 
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
-        self._finish_update(global_block, parameters_and_grads)
+        self._finish_update(target_block, parameters_and_grads)
 
-        end = len(global_block.ops)
-        return global_block._slice_ops(start, end)
+        end = len(target_block.ops)
+        return target_block._slice_ops(start, end)
 
     def _process_distribute_lookuptable(self, param_grads):
         """
@@ -487,7 +485,7 @@ class Optimizer(object):
         if table_param is not None:
             param_and_grad = [table_param, table_grad]
             with table_param.block.program._optimized_guard(param_and_grad), \
-                    framework.name_scope("optimizer"):
+                 framework.name_scope("optimizer"):
                 self._create_global_learning_rate()
                 # create the optimize op
                 sgd_op = global_block.append_op(
@@ -1003,9 +1001,9 @@ class DGCMomentumOptimizer(Optimizer):
     def _is_use_dgc(self, param_var, grad_var):
         var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
         if var_numel < 16384 or \
-           param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
-           grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or  \
-               param_var.dtype != core.VarDesc.VarType.FP32 :
+                param_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
+                grad_var.type == core.VarDesc.VarType.SELECTED_ROWS  or \
+                param_var.dtype != core.VarDesc.VarType.FP32 :
             return False
         return True
 
@@ -1481,7 +1479,7 @@ class AdamOptimizer(Optimizer):
     of section 2 of `Adam paper <https://arxiv.org/abs/1412.6980>`_ ,
     it can dynamically adjusts the learning rate of each parameter using
     the 1st moment estimates and the 2nd moment estimates of the gradient.
-    
+
     The parameter ``param_out`` update rule with gradient ``grad``:
 
     .. math::
@@ -1647,13 +1645,13 @@ class AdamOptimizer(Optimizer):
                 name=self._beta1_pow_acc_str,
                 param=p,
                 fill_value=0.9 if isinstance(self._beta1, Variable) \
-                        else self._beta1,
+                    else self._beta1,
                 shape=[1])
             self._add_accumulator(
                 name=self._beta2_pow_acc_str,
                 param=p,
                 fill_value=0.999 if isinstance(self._beta2, Variable) \
-                        else self._beta2,
+                    else self._beta2,
                 shape=[1])
 
     def _append_optimize_op(self, block, param_and_grad):
@@ -1711,7 +1709,6 @@ class AdamOptimizer(Optimizer):
         """Update Beta1 and Beta2 Power accumulators
         """
         assert isinstance(block, framework.Block)
-        main_block = block.program.global_block()
         for param, grad in param_and_grads:
             if grad is None or param.trainable is False:
                 continue
@@ -1727,7 +1724,7 @@ class AdamOptimizer(Optimizer):
                     inputs['ScaleTensor'] = self._beta1
                 else:
                     attrs['scale'] = self._beta1
-                main_block.append_op(
+                block.append_op(
                     type="scale",
                     inputs=inputs,
                     outputs={"Out": beta1_pow_acc},
@@ -1740,7 +1737,7 @@ class AdamOptimizer(Optimizer):
                     inputs['ScaleTensor'] = self._beta2
                 else:
                     attrs['scale'] = self._beta2
-                main_block.append_op(
+                block.append_op(
                     type="scale",
                     inputs=inputs,
                     outputs={"Out": beta2_pow_acc},
@@ -1750,7 +1747,7 @@ class AdamOptimizer(Optimizer):
 
 class AdamaxOptimizer(Optimizer):
     """
-    The Adamax optimizer is implemented based on the Adamax Optimization 
+    The Adamax optimizer is implemented based on the Adamax Optimization
     in Section 7 of `Adam paper <https://arxiv.org/abs/1412.6980>`_.
     The Adamax algorithm is a variant of the Adam algorithm based on the infinite norm,
     which makes the learning rate update algorithm more stable and simple.
@@ -1891,7 +1888,6 @@ class AdamaxOptimizer(Optimizer):
         """Update Beta1 Power accumulator
         """
         assert isinstance(block, framework.Block)
-        main_block = block.program.global_block()
         for param, grad in parameters_and_grads:
             if grad is None or param.trainable is False:
                 continue
@@ -1899,7 +1895,7 @@ class AdamaxOptimizer(Optimizer):
                 [param, grad]), name_scope('adamx'):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
-                main_block.append_op(
+                block.append_op(
                     type="scale",
                     inputs={"X": beta1_pow_acc},
                     outputs={"Out": beta1_pow_acc},
@@ -2609,7 +2605,7 @@ class LambOptimizer(AdamOptimizer):
                                               param_and_grad[0])
 
         if self._exclude_from_weight_decay_fn is not None \
-            and self._exclude_from_weight_decay_fn(param_and_grad[0]):
+                and self._exclude_from_weight_decay_fn(param_and_grad[0]):
             weight_decay = 0.0
         else:
             weight_decay = self._weight_decay
