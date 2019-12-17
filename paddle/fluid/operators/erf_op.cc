@@ -32,9 +32,13 @@ class ErfOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of ErfOp should not be null.");
+    // platform::errors::InvalidArgument("example: %s", str)
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   platform::errors::InvalidArgument(
+                       "Input(%s) of ErfOp should not be null.", "X"));
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of ErfOp should not be null.");
+                   platform::errors::InvalidArgument(
+                       "Output(%s) of ErfOp should not be null.", "Out"));
 
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
