@@ -543,20 +543,9 @@ function check_approvals_of_unittest() {
 
 function check_change_of_unittest() {
     generate_unittest_spec "PR"
-    pwd 
-    ls ${PADDLE_ROOT}
-    ls ${PADDLE_ROOT}/build
-    ls ${PADDLE_ROOT}/python
-    cd ${PADDLE_ROOT}
-    pwd
-    git status
     fetch_upstream_develop_if_not_exist
     git fetch upstream
     git reset --hard upstream/$BRANCH
-    git status
-    ls ${PADDLE_ROOT}
-    ls ${PADDLE_ROOT}/build
-    ls ${PADDLE_ROOT}/python
     cmake_gen $1
     generate_unittest_spec "DEV"
     check_approvals_of_unittest 2
@@ -1203,22 +1192,9 @@ function main() {
         build_mac
         ;;
       cicheck_py35)
-        check_approvals_of_unittest 1
-        ls ${PADDLE_ROOT}
-        ls ${PADDLE_ROOT}/python
         cmake_gen ${PYTHON_ABI:-""}
-        ls ${PADDLE_ROOT}
-        ls ${PADDLE_ROOT}/build
-        ls ${PADDLE_ROOT}/python
         build ${parallel_number}
-        ls ${PADDLE_ROOT}
-        ls ${PADDLE_ROOT}/build
-        ls ${PADDLE_ROOT}/python
         parallel_test
-        ls ${PADDLE_ROOT}
-        ls ${PADDLE_ROOT}/build
-        ls ${PADDLE_ROOT}/python
-        check_change_of_unittest ${PYTHON_ABI:-""}
         ;;
       cmake_gen)
         cmake_gen ${PYTHON_ABI:-""}
