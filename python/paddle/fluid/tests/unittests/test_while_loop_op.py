@@ -62,7 +62,11 @@ class TestApiWhileLoop(unittest.TestCase):
         with program_guard(main_program, startup_program):
             i = layers.zeros(shape=[1], dtype='int64')
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
-            mem = layers.data(name="mem", shape=[10], dtype='float32')
+            mem = layers.data(
+                name='mem',
+                shape=[10],
+                dtype='float32',
+                append_batch_size=False)
             one = layers.fill_constant(shape=[10], dtype='float32', value=1)
             out = layers.while_loop(cond, body, [i, mem])
 
@@ -107,8 +111,16 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
         with program_guard(main_program, startup_program):
             i = layers.zeros(shape=[1], dtype='int64')
             j = layers.zeros(shape=[1], dtype='int64')
-            init = layers.data(name="init", shape=[3, 3], dtype='float32')
-            sums = layers.data(name="sums", shape=[3, 3], dtype='float32')
+            init = layers.data(
+                name='init',
+                shape=[3, 3],
+                dtype='float32',
+                append_batch_size=False)
+            sums = layers.data(
+                name='sums',
+                shape=[3, 3],
+                dtype='float32',
+                append_batch_size=False)
             loop_len1 = layers.fill_constant(shape=[1], dtype='int64', value=2)
             loop_len2 = layers.fill_constant(shape=[1], dtype='int64', value=3)
             ones = layers.fill_constant(shape=[3, 3], dtype='float32', value=1)
@@ -140,16 +152,20 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             return layers.less_than(i, ten)
 
         def body(i, x):
-            x = layers.elementwise_add(x=x, y=one)
+            x = layers.elementwise_mul(x=i, y=i)
             i = layers.increment(i)
             return [i, x]
 
-        program = fluid.Program()
-        with fluid.program_guard(program):
-            i = layers.fill_constant(shape=[1], dtype='int64', value=0)
-            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+        main_program = Program()
+        startup_program = Program()
+        with fluid.program_guard(main_program, startup_program):
+            i = layers.data(
+                name='i', shape=[1], dtype='float32', append_batch_size=False)
+            i.stop_gradient = False
+            ten = layers.fill_constant(shape=[1], dtype='float32', value=11)
             one = layers.fill_constant(shape=[1], dtype='float32', value=1)
-            x = layers.fill_constant(shape=[1], dtype='float32', value=0)
+            x = layers.data(
+                name='x', shape=[1], dtype='float32', append_batch_size=False)
             x.stop_gradient = False
 
             out = layers.while_loop(cond, body, [i, x])
@@ -160,85 +176,104 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
 
-        feed_x = np.asarray([10]).astype('float32')
-        res = exe.run(program, feed={}, fetch_list=[mean.name, mean.grad_name])
-        x_grad = np.ones(1).astype('float32')
-        self.assertTrue(np.allclose(np.asarray(res[0]), feed_x))
-        self.assertTrue(np.allclose(np.asarray(res[1]), x_grad))
+        feed_i = np.ones(1).astype('float32')
+        feed_x = np.ones(1).astype('float32')
+        data = np.asarray([100]).astype('float32')
+        i_grad = np.asarray([110]).astype('float32')
+
+        res = exe.run(main_program,
+                      feed={'i': feed_i,
+                            'x': feed_x},
+                      fetch_list=[mean.name, i.grad_name])
+        self.assertTrue(np.allclose(np.asarray(res[0]), data))
+        self.assertTrue(np.allclose(np.asarray(res[1]), i_grad))
 
 
 class TestApiWhileLoop_NestedWithBackward(unittest.TestCase):
     def test_nested_net_with_backward(self):
-        def cond_outside(i, x):
+        def external_cond(i, x, y):
             return layers.less_than(i, ten)
 
-        def body_outside(i, x):
-            def cond_inside(i, x):
+        def external_body(i, x, y):
+            def internal_cond(i, x, y):
                 return layers.less_than(i, five)
 
-            def body_inside(i, x):
-                x = layers.elementwise_add(x=x, y=one)
+            def internal_body(i, x, y):
+                x = layers.elementwise_add(x=i, y=i)
                 i = layers.increment(i)
-                return [i, x]
+                return [i, x, y]
 
-            temp = layers.while_loop(cond_inside, body_inside, [i, x])
-            x = layers.elementwise_add(x=temp[1], y=two)
+            temp = layers.while_loop(internal_cond, internal_body, [i, x, y])
+            y = layers.elementwise_add(x=temp[1], y=i)
             i = layers.increment(i)
-            return [i, x]
+            return [i, x, y]
 
-        main_program = fluid.default_main_program()
-        startup_program = fluid.default_startup_program()
+        main_program = Program()
+        startup_program = Program()
 
         with fluid.program_guard(main_program, startup_program):
-            i = layers.fill_constant(shape=[1], dtype='int64', value=0)
-            ten = layers.fill_constant(shape=[1], dtype="int64", value=10)
-            five = layers.fill_constant(shape=[1], dtype="int64", value=5)
-            two = layers.fill_constant(shape=[1], dtype="float32", value=2)
-            one = layers.fill_constant(shape=[1], dtype="float32", value=1)
-            x = layers.fill_constant(shape=[1], dtype="float32", value=1)
+            i = layers.data(
+                name='i', shape=[1], dtype='float32', append_batch_size=False)
+            i.stop_gradient = False
+            ten = layers.fill_constant(shape=[1], dtype='float32', value=10)
+            five = layers.fill_constant(shape=[1], dtype='float32', value=5)
+            x = layers.data(
+                name='x', shape=[1], dtype='float32', append_batch_size=False)
             x.stop_gradient = False
-            out = layers.while_loop(cond_outside, body_outside, [i, x])
+            y = layers.data(
+                name='y', shape=[1], dtype='float32', append_batch_size=False)
+            y.stop_gradient = False
+            out = layers.while_loop(external_cond, external_body, [i, x, y])
 
-            mean = layers.mean(out[1])
+            mean = layers.mean(out[2])
             append_backward(mean)
 
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
-        res = exe.run(main_program,
-                      feed={},
-                      fetch_list=[mean.name, mean.grad_name])
 
-        feed_x = np.asarray([16]).astype("float32")
-        x_grad = np.ones(1).astype("int32")
-        self.assertTrue(np.allclose(np.asarray(res[0]), feed_x))
-        self.assertTrue(np.allclose(np.asarray(res[1]), x_grad))
+        data = np.asarray([17]).astype('float32')
+        feed_x = np.zeros(1).astype('float32')
+        feed_i = np.ones(1).astype('float32')
+        feed_y = np.zeros(1).astype('float32')
+        i_grad = np.asarray(13).astype('int32')
+
+        res = exe.run(main_program,
+                      feed={'i': feed_i,
+                            'x': feed_x,
+                            'y': feed_y},
+                      fetch_list=[mean.name, i.grad_name])
+
+        self.assertTrue(np.allclose(np.asarray(res[0]), data))
+        self.assertTrue(np.allclose(np.asarray(res[1]), i_grad))
 
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
-    def test_with_(self):
+    def test_with_switch_case(self):
         def cond(i):
             return layers.less_than(i, ten)
 
         def body(i):
-            def fn_1():
+            def fn_add_three():
                 data_add_three = layers.elementwise_add(x=i, y=three)
                 return data_add_three
 
-            def fn_2():
+            def fn_square():
                 data_mul_data = layers.elementwise_mul(x=i, y=i)
                 return data_mul_data
 
-            def fn_3():
+            def fn_add_one():
                 data_add_one = layers.elementwise_add(x=i, y=one)
                 return data_add_one
 
             return layers.switch_case(
-                branch_index=i, branch_fns={2: fn_1,
-                                            5: fn_2}, default=fn_3)
+                branch_index=i,
+                branch_fns={2: fn_add_three,
+                            5: fn_square},
+                default=fn_add_one)
 
-        main_program = fluid.default_main_program()
-        startup_program = fluid.default_startup_program()
+        main_program = Program()
+        startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
             i = layers.fill_constant(shape=[1], dtype='int64', value=1)
             ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
