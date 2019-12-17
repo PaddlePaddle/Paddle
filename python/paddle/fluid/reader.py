@@ -18,6 +18,7 @@ import six
 import warnings
 import numpy as np
 import multiprocessing
+import queue
 import threading
 import paddle
 from .framework import Program, Variable, program_guard, default_main_program, default_startup_program, in_dygraph_mode, cpu_places
@@ -32,6 +33,9 @@ __all__ = ['PyReader', 'DataLoader']
 
 # NOTE: [ avoid hanging ] This value is used in getting data from another process
 MP_CHECK_TIMEOUT = 5.0
+
+# NOTE: [ avoid hanging ] After a certain number of queue.get timeout, throw error and end
+QUEUE_TIMEOUT_LIMIT = 5
 
 data_loader_unique_name_generator = UniqueNameGenerator()
 
@@ -313,11 +317,8 @@ class GeneratorLoader(DataLoaderBase):
         self._feed_list = feed_list
         # For dygraph
         if in_dygraph_mode():
-            self._dy_thread = None
             self._dy_process = None
             self._data_queue = None
-            self._dy_process_done_event = multiprocessing.Event()
-            self._dy_thread_done_event = threading.Event()
 
         if not capacity:
             raise ValueError("Please give value to capacity.")
@@ -351,9 +352,17 @@ class GeneratorLoader(DataLoaderBase):
             self._queue.close()
             thread.join()
 
+    def _wait_process_ends(self):
+        process = self._dy_process
+        if process is not None:
+            self._data_queue.cancel_join_thread()
+            self._data_queue.close()
+            process.join()
+
     def _init_iterable(self):
         self._wait_thread_ends()
         if in_dygraph_mode():
+            self._wait_process_ends()
             self._var_names = []
             self._shapes = []
             self._dtypes = []
@@ -463,6 +472,7 @@ class GeneratorLoader(DataLoaderBase):
                 else:
                     return self._reader.read_next()
         except StopIteration:
+            logging.info("__next__: catch StopIteration")
             self._queue.close()
             self._reset()
             six.reraise(*sys.exc_info())
@@ -489,20 +499,24 @@ class GeneratorLoader(DataLoaderBase):
                 "'fluid.create_lod_tensor' to convert it to a LoD-Tensor."))
 
     def _start_dygraph_reader_thread(self):
-        def _reader_process_loop(reader, data_queue, done_event):
+        def _reader_process_loop(reader, data_queue):
             try:
+                # TODO: need set signal handler
                 for sample in reader():
-                    if done_event.is_set():
-                        break
                     if sample is None:
-                        raise ValueError("Sample in reader is None.")
+                        raise ValueError(
+                            "Sample in reader is None. Please check whether your dataset is valid."
+                        )
                     data_queue.put(sample)
                 data_queue.put(None)
+            except KeyboardInterrupt:
+                # NOTE: Main process will raise KeyboardInterrupt anyways, ignore it in child process
+                pass
             except:
-                data_queue.put("")
                 six.reraise(*sys.exc_info())
 
         def _reader_thread_loop(in_queue, out_queue, done_event):
+            get_empty_count = 0
             while not done_event.is_set():
                 try:
                     # NOTE: [ avoid hanging ] Even with carefully designed data dependencies 
@@ -511,18 +525,19 @@ class GeneratorLoader(DataLoaderBase):
                     # Queue.cancel_join_thread or unexpected exit). So we set a timeout whenever 
                     # we try to get data from `data_queue`
                     sample = in_queue.get(timeout=MP_CHECK_TIMEOUT)
-                except:
-                    raise RuntimeError(
-                        "An error occurred while reading data from the queue.")
+                except queue.Empty:
+                    if get_empty_count > QUEUE_TIMEOUT_LIMIT:
+                        done_event.set()
+                        #in_queue.cancel_join_thread()
+                        in_queue.close
+                        out_queue.close()
+                        raise RuntimeError(
+                            "The reader has not read data for a long time.")
+                    else:
+                        get_empty_count += 1
+                        continue
 
-                if sample is None:
-                    done_event.set()
-                    out_queue.close()
-                    in_queue.close()
-                elif sample == "":
-                    raise ValueError(
-                        "DataLoader dygraph process raises an exception.")
-                else:
+                if not done_event.is_set() and sample is not None:
                     try:
                         array = core.LoDTensorArray()
                         for item in sample:
@@ -539,24 +554,28 @@ class GeneratorLoader(DataLoaderBase):
                         logging.warn(
                             "DataLoader dygraph thread raised an exception.")
                         six.reraise(*sys.exc_info())
+                else:
+                    done_event.set()
+                    #in_queue.cancel_join_thread()
+                    in_queue.close
+                    out_queue.close()
                 del sample  # save memory
 
         # Set data_queue and reader_process
         self._data_queue = multiprocessing.Queue(self._capacity)
         self._dy_process = multiprocessing.Process(
             target=_reader_process_loop,
-            args=(self._tensor_reader, self._data_queue,
-                  self._dy_process_done_event))
+            args=(self._tensor_reader, self._data_queue))
         self._dy_process.daemon = True
         self._dy_process.start()
 
         # Set reader_thread
-        #self._read_done_event = threading.Event()
-        self._dy_thread = threading.Thread(
+        self._thread_done_event = threading.Event()
+        self._thread = threading.Thread(
             target=_reader_thread_loop,
-            args=(self._data_queue, self._queue, self._dy_thread_done_event))
-        self._dy_thread.daemon = True
-        self._dy_thread.start()
+            args=(self._data_queue, self._queue, self._thread_done_event))
+        self._thread.daemon = True
+        self._thread.start()
 
     def _start_reader_thread(self):
         def __thread_main__():
@@ -593,25 +612,16 @@ class GeneratorLoader(DataLoaderBase):
         else:
             self._start_reader_thread()
 
-    def __del__(self):
-        if in_dygraph_mode():
-            self._dy_process_done_event.set()
-            self._dy_thread_done_event.set()
-            if self._dy_thread is not None:
-                self._dy_thread.join()
-            if self._queue is not None:
-                self._queue.close()
-            if self._dy_process is not None:
-                self._dy_process.join()
-            if self._data_queue is not None:
-                self._data_queue.cancel_join_thread()
-                self._data_queue.close()
-
     def _reset(self):
         self._reader.reset()
         thread = self._thread
         if thread is not None:
             thread.join()
+        if in_dygraph_mode():
+            process = self._dy_process
+            if process is not None:
+                logging.info("_reset: join process")
+                process.join()
 
     def set_sample_generator(self,
                              reader,
