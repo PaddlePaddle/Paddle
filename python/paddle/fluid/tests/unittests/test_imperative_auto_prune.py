@@ -100,8 +100,8 @@ class AutoPruneLayer3(fluid.Layer):
 class MyLayer(fluid.Layer):
     def __init__(self, name_scope, vocab_size, size, dtype="float32"):
         super(MyLayer, self).__init__(name_scope, dtype)
-        self.embed0 = fluid.Embedding(self.full_name(), size=(vocab_size, size))
-        self.embed1 = fluid.Embedding(self.full_name(), size=(vocab_size, size))
+        self.embed0 = fluid.Embedding(size=(vocab_size, size))
+        self.embed1 = fluid.Embedding(size=(vocab_size, size))
         self.fc0 = fluid.FC(self.full_name(), size=size, dtype=dtype)
         self.fc1 = fluid.FC(self.full_name(), size=size, dtype=dtype)
 
@@ -122,8 +122,8 @@ class MyLayer(fluid.Layer):
 class MyLayer2(fluid.Layer):
     def __init__(self, name_scope, vocab_size, size, dtype="float32"):
         super(MyLayer2, self).__init__(name_scope, dtype)
-        self.embed0 = fluid.Embedding(self.full_name(), size=(vocab_size, size))
-        self.embed1 = fluid.Embedding(self.full_name(), size=(vocab_size, size))
+        self.embed0 = fluid.Embedding(size=(vocab_size, size))
+        self.embed1 = fluid.Embedding(size=(vocab_size, size))
         self.fc0 = fluid.FC(self.full_name(), size=size, dtype=dtype)
         self.fc1 = fluid.FC(self.full_name(), size=size, dtype=dtype)
 
