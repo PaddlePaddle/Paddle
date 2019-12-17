@@ -21,7 +21,7 @@ import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
 
 
-class TestGeluOp(unittest.TestCase):
+class TestErfOp(unittest.TestCase):
     def _test_case1_cpu(self):
         x = np.random.uniform(-1, 1, size=(11, 17)).astype(np.float32)
         y_ref = erf(x)

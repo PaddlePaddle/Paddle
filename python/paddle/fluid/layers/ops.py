@@ -333,7 +333,7 @@ def erf(x):
     return _erf_(**kwargs)
 
 
-gelu.__doc__ = """
+erf.__doc__ = """
 :strong:`Erf Operator`
 For more details, see [Error function](https://en.wikipedia.org/wiki/Error_function).
 
