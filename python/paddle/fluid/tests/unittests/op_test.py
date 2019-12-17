@@ -1040,8 +1040,7 @@ class OpTestBase(unittest.TestCase):
                 outs, fetch_list = res
             if check_compile_vs_runtime and (
                     self.op_type not in
-                    compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST
-            ):
+                    compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST):
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker):
