@@ -101,20 +101,20 @@ class LambOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           param_dims, ctx->GetInputDim("Grad"),
           platform::errors::InvalidArgument(
-              "Param and Grad input of AdamOp should have same dimension. But "
+              "Param and Grad input of LambOp should have same dimension. But "
               "received Param dims: [%s], Grad dims: [%s].",
               param_dims, ctx->GetInputDim("Grad")));
     }
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Moment1"),
         platform::errors::InvalidArgument(
-            "Param and Moment1 input of AdamOp should have same dimension. But "
+            "Param and Moment1 input of LambOp should have same dimension. But "
             "received Param dims: [%s], Moment1 dims: [%s].",
             param_dims, ctx->GetInputDim("Moment1")));
     PADDLE_ENFORCE_EQ(
         param_dims, ctx->GetInputDim("Moment2"),
         platform::errors::InvalidArgument(
-            "Param and Moment2 input of AdamOp should have same dimension. But "
+            "Param and Moment2 input of LambOp should have same dimension. But "
             "received Param dims: [%s], Moment2 dims: [%s].",
             param_dims, ctx->GetInputDim("Moment2")));
 
