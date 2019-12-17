@@ -156,7 +156,6 @@ class PtbModel(fluid.Layer):
             init_scale=init_scale,
             dropout=dropout)
         self.embedding = Embedding(
-            self.full_name(),
             size=[vocab_size, hidden_size],
             dtype='float32',
             is_sparse=False,
@@ -882,7 +881,7 @@ class TestDygraphPtbRnn(unittest.TestCase):
 
     def testOnlyLoadParams(self):
         with fluid.dygraph.guard():
-            emb = fluid.dygraph.Embedding("emb", [10, 10])
+            emb = fluid.dygraph.Embedding([10, 10])
             state_dict = emb.state_dict()
             fluid.save_dygraph(state_dict, "emb_dy")
 
