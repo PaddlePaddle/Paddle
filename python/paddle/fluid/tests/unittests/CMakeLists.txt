@@ -257,14 +257,23 @@ if(WITH_DISTRIBUTE)
     py_test_modules(test_recv_save_op MODULES test_recv_save_op ENVS ${dist_ENVS})
     py_test_modules(test_transpiler_ops MODULES test_transpiler_ops ENVS ${dist_ENVS})
     if(WITH_DGC)
+        # if with dgc, test all dgc tests.
+        # NOTE. dist dgc tests is already in DIST_TEST_OPS
         py_test_modules(test_dgc_op MODULES test_dgc_op)
         py_test_modules(test_dgc_momentum_op MODULES test_dgc_momentum_op)
         py_test_modules(test_dgc_optimizer MODULES test_dgc_optimizer)
+    else()
+        # if not with dgc, must close all dgc tests
+        list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_dgc_nccl")
+        list(REMOVE_ITEM DIST_TEST_OPS "test_dist_se_resnext_dgc")
     endif()
     if(NOT APPLE)
         bash_test_modules(test_listen_and_serv_op MODULES test_listen_and_serv.sh)
-        bash_test_modules(test_launch MODULES test_launch.sh)
-	bash_test_modules(test_launch_ps MODULES test_launch_ps.sh)
+        if(WITH_GPU)
+            # NOTE. test_launch only work in gpu collective mode
+            bash_test_modules(test_launch MODULES test_launch.sh)
+        endif()
+        bash_test_modules(test_launch_ps MODULES test_launch_ps.sh)
 
         set(dist_ut_port 1000)
         foreach(TEST_OP ${DIST_TEST_OPS})
