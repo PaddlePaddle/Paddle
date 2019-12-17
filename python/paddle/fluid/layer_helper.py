@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import copy
 import six
+import os
 
 from .framework import Parameter, dtype_is_floating, in_dygraph_mode, OpProtoHolder, Variable
 from . import unique_name
@@ -73,6 +74,11 @@ class LayerHelper(LayerHelperBase):
                 return data_type
 
         path = os.environ.get('API_LOG_PATH')
+        if path is None:
+            print(
+                'Error!!! Please set API_LOG_PATH to save API info, exit program!'
+            )
+            exit(0)
         with open(path, 'a') as f:
             if layer_type in op_alias.keys():
                 layer_type = op_alias[layer_type]
