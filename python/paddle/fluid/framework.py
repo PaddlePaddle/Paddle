@@ -2229,6 +2229,14 @@ class Block(object):
         self.desc._set_forward_block_idx(idx)
 
     @property
+    def backward_block_idx(self):
+        cur_block_idx = self.idx
+        for block in self.program.blocks:
+            if block.forward_block_idx == cur_block_idx:
+                return block.idx
+        return -1
+
+    @property
     def idx(self):
         return self.desc.id
 
