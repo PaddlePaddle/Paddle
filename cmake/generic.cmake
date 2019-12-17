@@ -396,7 +396,7 @@ function(cc_test_run TARGET_NAME)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
     # No unit test should exceed 10 minutes.
-    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 1800)
   endif()
 endfunction()
 
@@ -743,7 +743,7 @@ function(py_test TARGET_NAME)
     endif()
 
     # No unit test should exceed 10 minutes.
-    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600)
+    set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 1800)
   endif()
 endfunction()
 
