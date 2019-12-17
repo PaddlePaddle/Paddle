@@ -19,8 +19,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/erf_op.h"
 
-#define _USE_MATH_DEFINES
-
 namespace paddle {
 namespace operators {
 
