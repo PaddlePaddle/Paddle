@@ -63,4 +63,4 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
 ]
 
 # For cases in NO_FP64_CHECK_GRAD_CASES, the op test requires check_grad with fp64 precision
-NO_FP64_CHECK_GRAD_CASES = ['TestFSPOp']
+NO_FP64_CHECK_GRAD_CASES = []
