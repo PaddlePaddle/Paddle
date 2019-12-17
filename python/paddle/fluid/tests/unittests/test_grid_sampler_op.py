@@ -108,7 +108,7 @@ class TestGridSamplerOp(OpTest):
         self.outputs = {'Output': GridSampler(x, grid)}
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output()
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Grid'], 'Output', max_relative_error=0.61)

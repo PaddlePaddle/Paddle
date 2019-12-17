@@ -61,10 +61,9 @@ class TestSequenceSoftmaxOp(OpTest):
     def test_check_grad(self):
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ["X"], "Out", max_relative_error=0.01)
+            self.check_grad_with_place(place, ["X"], "Out")
         else:
-            self.check_grad(["X"], "Out", max_relative_error=0.01)
+            self.check_grad(["X"], "Out")
 
 
 # ----------------cudnn Sequencesoftmax----------------

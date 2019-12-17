@@ -57,7 +57,6 @@ class Config(object):
 
 class ConvBNPool(fluid.dygraph.Layer):
     def __init__(self,
-                 name_scope,
                  group,
                  out_ch,
                  channels,
@@ -65,7 +64,7 @@ class ConvBNPool(fluid.dygraph.Layer):
                  is_test=False,
                  pool=True,
                  use_cudnn=True):
-        super(ConvBNPool, self).__init__(name_scope)
+        super(ConvBNPool, self).__init__()
         self.group = group
         self.pool = pool
 
@@ -79,7 +78,7 @@ class ConvBNPool(fluid.dygraph.Layer):
             initializer=fluid.initializer.Normal(0.0, conv_std_1))
 
         self.conv_0_layer = Conv2D(
-            self.full_name(),
+            channels[0],
             out_ch[0],
             3,
             padding=1,
@@ -87,10 +86,9 @@ class ConvBNPool(fluid.dygraph.Layer):
             bias_attr=False,
             act=None,
             use_cudnn=use_cudnn)
-        self.bn_0_layer = BatchNorm(
-            self.full_name(), out_ch[0], act=act, is_test=is_test)
+        self.bn_0_layer = BatchNorm(out_ch[0], act=act, is_test=is_test)
         self.conv_1_layer = Conv2D(
-            self.full_name(),
+            out_ch[0],
             num_filters=out_ch[1],
             filter_size=3,
             padding=1,
@@ -98,12 +96,10 @@ class ConvBNPool(fluid.dygraph.Layer):
             bias_attr=False,
             act=None,
             use_cudnn=use_cudnn)
-        self.bn_1_layer = BatchNorm(
-            self.full_name(), out_ch[1], act=act, is_test=is_test)
+        self.bn_1_layer = BatchNorm(out_ch[1], act=act, is_test=is_test)
 
         if self.pool:
             self.pool_layer = Pool2D(
-                self.full_name(),
                 pool_size=2,
                 pool_type='max',
                 pool_stride=2,
@@ -125,22 +121,12 @@ class OCRConv(fluid.dygraph.Layer):
     def __init__(self, name_scope, is_test=False, use_cudnn=True):
         super(OCRConv, self).__init__(name_scope)
         self.conv_bn_pool_1 = ConvBNPool(
-            self.full_name(),
-            2, [16, 16], [1, 16],
-            is_test=is_test,
-            use_cudnn=use_cudnn)
+            2, [16, 16], [1, 16], is_test=is_test, use_cudnn=use_cudnn)
         self.conv_bn_pool_2 = ConvBNPool(
-            self.full_name(),
-            2, [32, 32], [16, 32],
-            is_test=is_test,
-            use_cudnn=use_cudnn)
+            2, [32, 32], [16, 32], is_test=is_test, use_cudnn=use_cudnn)
         self.conv_bn_pool_3 = ConvBNPool(
-            self.full_name(),
-            2, [64, 64], [32, 64],
-            is_test=is_test,
-            use_cudnn=use_cudnn)
+            2, [64, 64], [32, 64], is_test=is_test, use_cudnn=use_cudnn)
         self.conv_bn_pool_4 = ConvBNPool(
-            self.full_name(),
             2, [128, 128], [64, 128],
             is_test=is_test,
             pool=False,
@@ -169,7 +155,6 @@ class DynamicGRU(fluid.dygraph.Layer):
         super(DynamicGRU, self).__init__(scope_name)
 
         self.gru_unit = GRUUnit(
-            self.full_name(),
             size * 3,
             param_attr=param_attr,
             bias_attr=bias_attr,
@@ -337,10 +322,7 @@ class GRUDecoderWithAttention(fluid.dygraph.Layer):
                              size=decoder_size * 3,
                              bias_attr=False)
         self.gru_unit = GRUUnit(
-            self.full_name(),
-            size=decoder_size * 3,
-            param_attr=None,
-            bias_attr=None)
+            size=decoder_size * 3, param_attr=None, bias_attr=None)
         self.out_layer = FC(self.full_name(),
                             size=num_classes + 2,
                             bias_attr=None,
@@ -383,8 +365,7 @@ class OCRAttention(fluid.dygraph.Layer):
                      bias_attr=False,
                      act='relu')
         self.embedding = Embedding(
-            self.full_name(), [Config.num_classes + 2, Config.word_vector_dim],
-            dtype='float32')
+            [Config.num_classes + 2, Config.word_vector_dim], dtype='float32')
         self.gru_decoder_with_attention = GRUDecoderWithAttention(
             self.full_name(), Config.decoder_size, Config.num_classes)
 

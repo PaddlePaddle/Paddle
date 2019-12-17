@@ -72,16 +72,16 @@ def optimizer_setting(params):
 
 class ConvBNLayer(fluid.Layer):
     def __init__(self,
-                 name_scope,
+                 num_channels,
                  num_filters,
                  filter_size,
                  stride=1,
                  groups=1,
                  act=None):
-        super(ConvBNLayer, self).__init__(name_scope)
+        super(ConvBNLayer, self).__init__()
 
         self._conv = Conv2D(
-            self.full_name(),
+            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=filter_size,
             stride=stride,
@@ -91,7 +91,7 @@ class ConvBNLayer(fluid.Layer):
             bias_attr=None,
             use_cudnn=False)
 
-        self._batch_norm = BatchNorm(self.full_name(), num_filters, act=act)
+        self._batch_norm = BatchNorm(num_filters, act=act)
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -101,29 +101,29 @@ class ConvBNLayer(fluid.Layer):
 
 
 class BottleneckBlock(fluid.Layer):
-    def __init__(self, name_scope, num_filters, stride, shortcut=True):
-        super(BottleneckBlock, self).__init__(name_scope)
+    def __init__(self, num_channels, num_filters, stride, shortcut=True):
+        super(BottleneckBlock, self).__init__()
 
         self.conv0 = ConvBNLayer(
-            self.full_name(),
+            num_channels=num_channels,
             num_filters=num_filters,
             filter_size=1,
             act='relu')
         self.conv1 = ConvBNLayer(
-            self.full_name(),
+            num_channels=num_filters,
             num_filters=num_filters,
             filter_size=3,
             stride=stride,
             act='relu')
         self.conv2 = ConvBNLayer(
-            self.full_name(),
+            num_channels=num_filters,
             num_filters=num_filters * 4,
             filter_size=1,
             act=None)
 
         if not shortcut:
             self.short = ConvBNLayer(
-                self.full_name(),
+                num_channels=num_channels,
                 num_filters=num_filters * 4,
                 filter_size=1,
                 stride=stride)
@@ -161,20 +161,13 @@ class ResNet(fluid.Layer):
             depth = [3, 4, 23, 3]
         elif layers == 152:
             depth = [3, 8, 36, 3]
+        num_channels = [64, 256, 512, 1024]
         num_filters = [64, 128, 256, 512]
 
         self.conv = ConvBNLayer(
-            self.full_name(),
-            num_filters=64,
-            filter_size=7,
-            stride=2,
-            act='relu')
+            num_channels=3, num_filters=64, filter_size=7, stride=2, act='relu')
         self.pool2d_max = Pool2D(
-            self.full_name(),
-            pool_size=3,
-            pool_stride=2,
-            pool_padding=1,
-            pool_type='max')
+            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
 
         self.bottleneck_block_list = []
         for block in range(len(depth)):
@@ -183,7 +176,8 @@ class ResNet(fluid.Layer):
                 bottleneck_block = self.add_sublayer(
                     'bb_%d_%d' % (block, i),
                     BottleneckBlock(
-                        self.full_name(),
+                        num_channels=num_channels[block]
+                        if i == 0 else num_filters[block] * 4,
                         num_filters=num_filters[block],
                         stride=2 if i == 0 and block != 0 else 1,
                         shortcut=shortcut))
@@ -191,7 +185,7 @@ class ResNet(fluid.Layer):
                 shortcut = True
 
         self.pool2d_avg = Pool2D(
-            self.full_name(), pool_size=7, pool_type='avg', global_pooling=True)
+            pool_size=7, pool_type='avg', global_pooling=True)
 
         import math
         stdv = 1.0 / math.sqrt(2048 * 1.0)
