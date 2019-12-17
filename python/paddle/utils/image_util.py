@@ -37,7 +37,7 @@ def flip(im):
     im: input image, (H x W x K) ndarrays
     """
     if len(im.shape) == 3:
-        return im[:, :, ::-1]
+        return im[:, ::-1, :]
     else:
         return im[:, ::-1]
 
