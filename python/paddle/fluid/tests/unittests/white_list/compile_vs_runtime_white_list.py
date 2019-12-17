@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-compile_vs_runtime_white_list = [
+COMPILE_RUN_OP_WHITE_LIST = [
     'lod_reset', 'sequence_pool', 'sequence_slice', 'generate_mask_labels',
     'sequence_reshape', 'generate_proposals', 'mine_hard_examples',
     'retinanet_detection_output', 'ctc_align', 'fusion_seqpool_cvm_concat',
