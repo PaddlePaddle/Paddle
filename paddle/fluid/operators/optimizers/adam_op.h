@@ -539,10 +539,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
             mom2.template data<T>(),
             mom2_out.template mutable_data<T>(ctx.GetPlace()),
             lr.template data<T>(), grad_data, param.template data<T>(),
-            param_out.template mutable_data<T>(ctx.GetPlace()),
-            beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
-            beta2_pow_out.template mutable_data<T>(ctx.GetPlace()), rows,
-            row_numel, grad_merge.rows().size(), lazy_mode);
+            param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
+            grad_merge.rows().size(), lazy_mode);
         // update beta1 and beta2
         beta_functor.apply_update(beta2_pow.numel());
         if (lazy_mode) {
@@ -626,10 +624,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
             mom2.template data<T>(),
             mom2_out.template mutable_data<T>(ctx.GetPlace()),
             lr.template data<T>(), grad_data, param.template data<T>(),
-            param_out.template mutable_data<T>(ctx.GetPlace()),
-            beta1_pow_out.template mutable_data<T>(ctx.GetPlace()),
-            beta2_pow_out.template mutable_data<T>(ctx.GetPlace()), rows,
-            row_numel, grad_merge.rows().size(), lazy_mode);
+            param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
+            grad_merge.rows().size(), lazy_mode);
 
         // FIXME(minqiyang): remove BinarySearch in GPU later
         platform::ForRange<DeviceContext> for_range(
