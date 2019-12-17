@@ -82,6 +82,11 @@ class TestSigmoid(TestActivation):
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
+    def init_dtype(self):
+        # TODO If dtype is float64, test_activation_ngraph_op could not 
+        # create a primitive descriptor iterator
+        self.dtype = np.float32
+
 
 class TestLogSigmoid(TestActivation):
     def setUp(self):
@@ -104,11 +109,6 @@ class TestTanh(TestActivation):
     def setUp(self):
         self.op_type = "tanh"
         self.init_dtype()
-        #TODO If dtype is float64, the output (Out) has diff at CPUPlace
-        # when using and not using inplace. Therefore, set dtype as float32
-        # for now.
-        self.dtype = np.float32
-
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         out = np.tanh(x)
 
@@ -119,6 +119,12 @@ class TestTanh(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out', max_relative_error=0.007)
+
+    def init_dtype(self):
+        #TODO If dtype is float64, the output (Out) has diff at CPUPlace
+        # when using and not using inplace. Therefore, set dtype as float32
+        # for now.
+        self.dtype = np.float32
 
 
 class TestAtan(TestActivation):
