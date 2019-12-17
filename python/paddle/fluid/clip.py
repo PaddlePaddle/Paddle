@@ -193,22 +193,22 @@ class GradientClipByNorm(BaseGradientClipAttr):
 
     .. math::
         Out =
-  	\\left \{
-  	\\begin{aligned}
-  	& X & & if (norm(X) \\leq clip\_norm) \\\\
-  	& \\frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\\\
-  	\\end{aligned}
-  	\\right.
+        \\left \{
+        \\begin{aligned}
+        & X & & if (norm(X) \\leq clip\_norm) \\\\
+        & \\frac{clip\_norm*X}{norm(X)} & & if (norm(X) > clip\_norm) \\\\
+        \\end{aligned}
+        \\right.
 
 
     where :math:`norm(X)` represents the L2 norm of :math:`X`.
 
     .. math::
- 	norm(X) = ( \\sum_{i=1}^{n}|x\_i|^2)^{ \\frac{1}{2}}
+        norm(X) = ( \\sum_{i=1}^{n}|x\_i|^2)^{ \\frac{1}{2}}
 
     Args:
         clip_norm(float): The maximum norm value
-    
+
     Examples:
         .. code-block:: python
 
@@ -241,11 +241,11 @@ class GradientClipByNorm(BaseGradientClipAttr):
                 paddle.reader.shuffle(
                     paddle.dataset.mnist.train(), buf_size=8192),
                 batch_size=128)
-  
+
             exe = fluid.Executor(place)
             feeder = fluid.DataFeeder(feed_list=[image, label], place=place)
             exe.run(startup_program)
-  
+
             count = 0
             for data in train_reader():
                 count += 1
@@ -432,7 +432,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle.fluid as fluid
 
             def network():
@@ -497,25 +497,20 @@ def append_gradient_clip_ops(param_grads):
     for p, g in param_grads:
         if g is None:
             continue
-        with p.block.program._optimized_guard(
-            [p, g]), framework.name_scope('append_clip'):
-            clip_attr = getattr(p, 'gradient_clip_attr', NullGradientClipAttr())
-            if clip_attr is None:
-                clip_attr = NullGradientClipAttr()
-            if not isinstance(clip_attr, BaseGradientClipAttr):
-                raise TypeError(
-                    "clip attribute should be an instance of BaseGradientClipAttr"
-                )
+        clip_attr = getattr(p, 'gradient_clip_attr', NullGradientClipAttr())
+        if clip_attr is None:
+            clip_attr = NullGradientClipAttr()
+        if not isinstance(clip_attr, BaseGradientClipAttr):
+            raise TypeError(
+                "clip attribute should be an instance of BaseGradientClipAttr")
 
-            clip_attr._process_context(context=context, param=p, grad=g)
+        clip_attr._process_context(context=context, param=p, grad=g)
 
     res = []
     for p, g in param_grads:
         if g is None:
             continue
-        with p.block.program._optimized_guard(
-            [p, g]), framework.name_scope('append_graident_clip'):
-            res.append(clip_attr._create_operators(param=p, grad=g))
+        res.append(clip_attr._create_operators(param=p, grad=g))
 
     return res
 
