@@ -69,8 +69,8 @@ class TestParallelExecutorBase(unittest.TestCase):
         startup.random_seed = 1
         main.random_seed = 1
         with fluid.program_guard(main, startup):
-            feed_dict, loss, fetch_var_list = cls.build_model(
-                feed_dict, get_data_from_feeder, main, method, optimizer)
+            feed_dict, loss = cls.build_model(feed_dict, get_data_from_feeder,
+                                              main, method, optimizer)
 
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -197,5 +197,4 @@ class TestParallelExecutorBase(unittest.TestCase):
         if get_data_from_feeder is not None:
             assert feed_dict is None
             feed_dict = get_data_from_feeder()
-
         return feed_dict, loss
