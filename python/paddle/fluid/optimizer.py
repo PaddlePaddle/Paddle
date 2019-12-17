@@ -408,11 +408,22 @@ class Optimizer(object):
         # for parameters and extend _finish_update method to add custom ops.
 
         # Allways called under program_guard use global block as loss block
+        # But if current block is in control flow, append optimize op in the
+        # grad block of current block
+
         global_block = framework.default_main_program().global_block()
-        start = len(global_block.ops)
+        target_block = global_block
+        current_block = framework.default_main_program().current_block()
+        if current_block.idx != global_block.idx:
+            assert current_block.backward_block_idx != -1, \
+                "current block is not global_block, but it doesn't have backward block."
+            target_block = framework.default_main_program().blocks[
+                current_block.backward_block_idx]
+
+        start = len(target_block.ops)
         self.helper = LayerHelper(self.__class__.__name__)
         self._create_accumulators(
-            global_block,
+            target_block,
             [p[0] for p in parameters_and_grads if p[0].trainable])
         self._create_global_learning_rate()
 
@@ -424,7 +435,7 @@ class Optimizer(object):
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad):
                     if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(global_block,
+                        optimize_op = self._append_optimize_op(target_block,
                                                                param_and_grad)
                         optimize_ops.append(optimize_op)
         else:
@@ -434,16 +445,16 @@ class Optimizer(object):
                 with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
-                        optimize_op = self._append_optimize_op(global_block,
+                        optimize_op = self._append_optimize_op(target_block,
                                                                param_and_grad)
                         optimize_ops.append(optimize_op)
 
         # Get custom finish ops for subclasses
         # FIXME: Need to fix this once we figure out how to handle dependencies
-        self._finish_update(global_block, parameters_and_grads)
+        self._finish_update(target_block, parameters_and_grads)
 
-        end = len(global_block.ops)
-        return global_block._slice_ops(start, end)
+        end = len(target_block.ops)
+        return target_block._slice_ops(start, end)
 
     def _process_distribute_lookuptable(self, param_grads):
         """
@@ -1698,7 +1709,6 @@ class AdamOptimizer(Optimizer):
         """Update Beta1 and Beta2 Power accumulators
         """
         assert isinstance(block, framework.Block)
-        main_block = block.program.global_block()
         for param, grad in param_and_grads:
             if grad is None or param.trainable is False:
                 continue
@@ -1714,7 +1724,7 @@ class AdamOptimizer(Optimizer):
                     inputs['ScaleTensor'] = self._beta1
                 else:
                     attrs['scale'] = self._beta1
-                main_block.append_op(
+                block.append_op(
                     type="scale",
                     inputs=inputs,
                     outputs={"Out": beta1_pow_acc},
@@ -1727,7 +1737,7 @@ class AdamOptimizer(Optimizer):
                     inputs['ScaleTensor'] = self._beta2
                 else:
                     attrs['scale'] = self._beta2
-                main_block.append_op(
+                block.append_op(
                     type="scale",
                     inputs=inputs,
                     outputs={"Out": beta2_pow_acc},
@@ -1878,7 +1888,6 @@ class AdamaxOptimizer(Optimizer):
         """Update Beta1 Power accumulator
         """
         assert isinstance(block, framework.Block)
-        main_block = block.program.global_block()
         for param, grad in parameters_and_grads:
             if grad is None or param.trainable is False:
                 continue
@@ -1886,7 +1895,7 @@ class AdamaxOptimizer(Optimizer):
                 [param, grad]), name_scope('adamx'):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
-                main_block.append_op(
+                block.append_op(
                     type="scale",
                     inputs={"X": beta1_pow_acc},
                     outputs={"Out": beta1_pow_acc},
