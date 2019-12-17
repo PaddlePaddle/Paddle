@@ -36,7 +36,6 @@ from paddle.fluid import unique_name
 from white_list import op_accuracy_white_list, op_check_grad_white_list, compile_vs_runtime_white_list
 
 
-
 def _set_use_system_allocator(value=None):
     USE_SYSTEM_ALLOCATOR_FLAG = "FLAGS_use_system_allocator"
     old_value = core.globals()[USE_SYSTEM_ALLOCATOR_FLAG]
@@ -1040,7 +1039,9 @@ class OpTestBase(unittest.TestCase):
             else:
                 outs, fetch_list = res
             if check_compile_vs_runtime and (
-                    self.op_type not in compile_vs_runtime_white_list):
+                    self.op_type not in
+                    compile_vs_runtime_white_list.compile_vs_runtime_white_list
+            ):
                 self.check_compile_vs_runtime(fetch_list, outs)
 
     def check_output_customized(self, checker):

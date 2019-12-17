@@ -13,10 +13,11 @@
 # limitations under the License.
 
 compile_vs_runtime_white_list = [
-    'lod_reset', 'sequence_pool', 'sequence_slice', 'generate_mask_labels', 'sequence_reshape',
-    'generate_proposals', 'mine_hard_examples', 'retinanet_detection_output', 'ctc_align', 'fusion_seqpool_cvm_concat',
+    'lod_reset', 'sequence_pool', 'sequence_slice', 'generate_mask_labels',
+    'sequence_reshape', 'generate_proposals', 'mine_hard_examples',
+    'retinanet_detection_output', 'ctc_align', 'fusion_seqpool_cvm_concat',
     'gru', 'sequence_erase', 'rpn_target_assign', 'filter_by_instag',
-    'fusion_seqpool_concat', 'multiclass_nms', 'im2sequence', 'generate_proposal_labels',
-    'distribute_fpn_proposals', 'detection_map', 'locality_aware_nms', 'multiclass_nms', 'rpn_target_assign',
-    'var_conv_2d'
+    'fusion_seqpool_concat', 'multiclass_nms', 'im2sequence',
+    'generate_proposal_labels', 'distribute_fpn_proposals', 'detection_map',
+    'locality_aware_nms', 'multiclass_nms', 'rpn_target_assign', 'var_conv_2d'
 ]
