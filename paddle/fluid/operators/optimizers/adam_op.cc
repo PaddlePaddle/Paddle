@@ -92,8 +92,8 @@ void AdamOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_GE(framework::product(beta2_pow_dims), 1,
                     platform::errors::InvalidArgument(
                         "The size of Beta2 power accumulator should be greater "
-                        "than 0, but received %d."),
-                    framework::product(beta2_pow_dims));
+                        "than 0, but received %d.",
+                        framework::product(beta2_pow_dims)));
 
   auto param_dims = ctx->GetInputDim("Param");
   if (ctx->GetInputsVarType("Grad")[0] ==
