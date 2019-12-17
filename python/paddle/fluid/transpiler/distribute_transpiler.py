@@ -30,6 +30,7 @@ Steps to transpile pserver:
 5. add listen_and_serv op
 """
 
+import os
 import sys
 import math
 from functools import reduce
@@ -309,10 +310,10 @@ class DistributeTranspiler(object):
             )
     """
 
-    def __init__(self, config=None, server_config):
+    def __init__(self, config=None, server_config=None):
         if config is None:
             self.config = DistributeTranspilerConfig()
-        elif isinstance(config, DistributeTranspilerConfig)::
+        elif isinstance(config, DistributeTranspilerConfig):
             self.config = config
         else:
             raise TypeError(

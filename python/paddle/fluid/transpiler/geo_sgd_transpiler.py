@@ -47,10 +47,10 @@ RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 
 
 class GeoSgdTranspiler(DistributeTranspiler):
-    def __init__(self, config=None):
+    def __init__(self, config=None, server_config=None):
         if config is None:
             self.config = DistributeTranspilerConfig()
-        elif isinstance(config, DistributeTranspilerConfig)::
+        elif isinstance(config, DistributeTranspilerConfig):
             self.config = config
         else:
             raise TypeError(

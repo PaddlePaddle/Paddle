@@ -111,6 +111,8 @@ class DistributedStrategy(object):
             for key in config:
                 if hasattr(self._trainer_runtime_config, key):
                     setattr(self._trainer_runtime_config, key, config[key])
+                elif key in self._trainer_runtime_config._communicator_flags:
+                    self._trainer_runtime_config._communicator_flags[key] = int(config[key])
                 else:
                     raise ValueError(
                         "TrainerRuntimeConfig doesn't have key: '%s'", key)
