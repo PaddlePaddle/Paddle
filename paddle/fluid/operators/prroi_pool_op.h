@@ -179,7 +179,7 @@ inline HOSTDEVICE void PrRoIPoolingCoorBackward(
     T win_start_h, T win_end_w, T win_end_h, int pw, int ph,
     const int pooled_width, const int pooled_height, T win_size,
     const float spatial_scale, const T* this_bottom_data,
-    const T* this_top_data, T* this_data_grad, T* this_out_grad,
+    const T* this_top_data, T* this_data_grad, const T* this_out_grad,
     Functor functor, MaxFunctor maxFunctor, MinFunctor minFunctor) {
   T g_x1_y = 0.f;
   T g_x2_y = 0.f;
@@ -232,20 +232,20 @@ inline HOSTDEVICE void PrRoIPoolingCoorBackward(
   partial_y1 = partial_y1 / win_size * spatial_scale;
   partial_y2 = partial_y2 / win_size * spatial_scale;
 
-  this_data_grad[0] = 0;
-  functor(this_data_grad + 1,
+  // this_data_grad[0] = 0;
+  functor(this_data_grad + 0,
           (partial_x1 * (1.0 - static_cast<T>(pw) / pooled_width) +
            partial_x2 * (1.0 - static_cast<T>(pw + 1) / pooled_width)) *
               (*this_out_grad));
-  functor(this_data_grad + 2,
+  functor(this_data_grad + 1,
           (partial_y1 * (1.0 - static_cast<T>(ph) / pooled_height) +
            partial_y2 * (1.0 - static_cast<T>(ph + 1) / pooled_height)) *
               (*this_out_grad));
-  functor(this_data_grad + 3,
+  functor(this_data_grad + 2,
           (partial_x2 * static_cast<T>(pw + 1) / pooled_width +
            partial_x1 * static_cast<T>(pw) / pooled_width) *
               (*this_out_grad));
-  functor(this_data_grad + 4,
+  functor(this_data_grad + 3,
           (partial_y2 * static_cast<T>(ph + 1) / pooled_height +
            partial_y1 * static_cast<T>(ph) / pooled_height) *
               (*this_out_grad));

@@ -185,8 +185,8 @@ __global__ void GPUPRROIPoolBackward(
     PrRoIPoolingCoorBackward(
         s_w, e_w, s_h, e_h, width, height, win_start_w, win_start_h, win_end_w,
         win_end_h, pw, ph, pooled_width, pooled_height, win_size, spatial_scale,
-        offset_in_data, offset_out_data, offset_input_grad_data,
-        offset_input_roi_grad_data, GPUAccumulateRois<T>,
+        offset_in_data, offset_out_data, offset_input_roi_grad_data,
+        offset_output_grad_data, GPUAccumulateRois<T>,
         [](const T x, const T y) { return max(x, y); },
         [](const T x, const T y) { return min(x, y); });
   }
