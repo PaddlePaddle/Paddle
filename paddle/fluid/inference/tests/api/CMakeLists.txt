@@ -53,6 +53,21 @@ function(inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir 
 	     --iterations=2)
 endfunction()
 
+function(debug_inference_analysis_api_int8_test_run TARGET_NAME test_binary model_dir data_path)
+# set_property(TEST ${TARGET_NAME} 
+# PROPERTY 
+#     ENVIRONMENT MKLDNN_VERBOSE=2)
+inference_analysis_test_run(${TARGET_NAME}
+    COMMAND ${test_binary}
+        ARGS --infer_model=${model_dir}/model
+             --infer_data=${data_path}
+             --warmup_batch_size=100
+             --batch_size=50
+             --paddle_num_threads=${CPU_NUM_THREADS_ON_CI}
+         --iterations=2)
+
+endfunction()
+
 function(inference_analysis_api_object_dection_int8_test_run TARGET_NAME test_binary model_dir data_path)
 	inference_analysis_test_run(${TARGET_NAME}
 	COMMAND ${test_binary}
@@ -240,8 +255,8 @@ if(WITH_MKLDNN)
   # mobilenetv1 int8
   set(INT8_MOBILENETV1_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv1")
   download_int8_data(${INT8_MOBILENETV1_MODEL_DIR} "mobilenetv1_int8_model.tar.gz" )
-  inference_analysis_api_int8_test_run(test_analyzer_int8_mobilenetv1 ${INT8_IMG_CLASS_TEST_APP} ${INT8_MOBILENETV1_MODEL_DIR} ${IMAGENET_DATA_PATH})
- 
+  debug_inference_analysis_api_int8_test_run(debug_test_analyzer_int8_mobilenetv1 ${INT8_IMG_CLASS_TEST_APP} ${INT8_MOBILENETV1_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  set_property(TEST debug_test_analyzer_int8_mobilenetv1 PROPERTY ENVIRONMENT MKLDNN_VERBOSE=2)
   # mobilenetv2 int8
   set(INT8_MOBILENETV2_MODEL_DIR "${INT8_DATA_DIR}/mobilenetv2")
   download_int8_data(${INT8_MOBILENETV2_MODEL_DIR} "mobilenet_v2_int8_model.tar.gz" )
@@ -251,20 +266,20 @@ if(WITH_MKLDNN)
   # TODO(grygielski) Enable after MKL-DNN 1.0 merge
   set(INT8_RESNET101_MODEL_DIR "${INT8_DATA_DIR}/resnet101")
   download_int8_data(${INT8_RESNET101_MODEL_DIR} "Res101_int8_model.tar.gz" )
-#   inference_analysis_api_int8_test_run(test_analyzer_int8_resnet101 ${INT8_IMG_CLASS_TEST_APP} ${INT8_RESNET101_MODEL_DIR} ${IMAGENET_DATA_PATH})
- 
+  debug_inference_analysis_api_int8_test_run(debug_test_analyzer_int8_resnet101 ${INT8_IMG_CLASS_TEST_APP} ${INT8_RESNET101_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  set_property(TEST debug_test_analyzer_int8_resnet101 PROPERTY ENVIRONMENT MKLDNN_VERBOSE=2)
   # vgg16 int8
   # TODO(grygielski) Enable after MKL-DNN 1.0 merge
   set(INT8_VGG16_MODEL_DIR "${INT8_DATA_DIR}/vgg16")
   download_int8_data(${INT8_VGG16_MODEL_DIR} "VGG16_int8_model.tar.gz" )
-#   inference_analysis_api_int8_test_run(test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
- 
+  debug_inference_analysis_api_int8_test_run(debug_test_analyzer_int8_vgg16 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG16_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  set_property(TEST debug_test_analyzer_int8_vgg16 PROPERTY ENVIRONMENT MKLDNN_VERBOSE=2)
   # vgg19 int8
   # TODO(grygielski) Enable after MKL-DNN 1.0 merge
   set(INT8_VGG19_MODEL_DIR "${INT8_DATA_DIR}/vgg19")
   download_int8_data(${INT8_VGG19_MODEL_DIR} "VGG19_int8_model.tar.gz" )
-#   inference_analysis_api_int8_test_run(test_analyzer_int8_vgg19 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG19_MODEL_DIR} ${IMAGENET_DATA_PATH})
-
+  debug_inference_analysis_api_int8_test_run(debug_test_analyzer_int8_vgg19 ${INT8_IMG_CLASS_TEST_APP} ${INT8_VGG19_MODEL_DIR} ${IMAGENET_DATA_PATH})
+  set_property(TEST debug_test_analyzer_int8_vgg19 PROPERTY ENVIRONMENT MKLDNN_VERBOSE=2)
   # googlenet int8
   set(INT8_GOOGLENET_MODEL_DIR "${INT8_DATA_DIR}/googlenet")
   download_int8_data(${INT8_GOOGLENET_MODEL_DIR} "GoogleNet_int8_model.tar.gz" )
@@ -287,8 +302,8 @@ if(WITH_MKLDNN)
   # mobilenet-ssd int8
   set(INT8_MOBILENET_SSD_MODEL_DIR "${INT8_DATA_DIR}/mobilenet-ssd")
   download_int8_data(${INT8_MOBILENET_SSD_MODEL_DIR} "mobilenet_ssd_int8_model.tar.gz" )
-  inference_analysis_api_object_dection_int8_test_run(test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
-
+  debug_inference_analysis_api_int8_test_run(debug_test_analyzer_int8_mobilenet_ssd ${INT8_OBJ_DETECT_TEST_APP} ${INT8_MOBILENET_SSD_MODEL_DIR} ${PASCALVOC_DATA_PATH})
+  set_property(TEST debug_test_analyzer_int8_mobilenet_ssd PROPERTY ENVIRONMENT MKLDNN_VERBOSE=2)
   ### optimized FP32 vs. QAT INT8 tests
   
   set(QAT_DATA_DIR "${INFERENCE_DEMO_INSTALL_DIR}/int8v2")

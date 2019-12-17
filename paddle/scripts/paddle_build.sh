@@ -203,6 +203,7 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_GRPC=${grpc_flag}
+        -DSANITIZE_ADDRESS=ON
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -234,8 +235,8 @@ EOF
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
-        -DWITH_GRPC=${grpc_flag}
-
+        -DWITH_GRPC=${grpc_flag} \
+        -DSANITIZE_ADDRESS=ON
 }
 
 function cmake_gen() {
@@ -339,6 +340,7 @@ EOF
         else
             ctest --output-on-failure
         fi
+        dmesg
     fi
 }
 
@@ -725,6 +727,7 @@ set +x
         multiple_card_tests=''    # cases list which would take multiple GPUs, most cases would be two GPUs
         is_exclusive=''           # indicate whether the case is exclusive type
         is_multicard=''           # indicate whether the case is multiple GPUs type
+        ASAN_OPTIONS="halt_on_error=1"
         while read -r line; do
             if [[ "$line" == "" ]]; then
                 continue
@@ -776,6 +779,7 @@ set +x
         if [[ "$EXIT_CODE" != "0" ]]; then
             exit 8;
         fi
+        dmesg
 set -ex
     fi
 }
