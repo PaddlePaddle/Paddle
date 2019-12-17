@@ -172,8 +172,7 @@ class OpTest(unittest.TestCase):
 
         # In order to pass ci, and case in NO_FP64_CHECK_GRAD_CASES and op in
         # NO_FP64_CHECK_GRAD_OP_LIST should be fixed
-        if cls.__name__ in op_accuracy_white_list.NO_FP64_CHECK_GRAD_CASES \
-            or cls.op_type in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST:
+        if cls.op_type in op_accuracy_white_list.NO_FP64_CHECK_GRAD_OP_LIST:
             return
 
         if cls.dtype is None or (cls.dtype in [np.float16, np.int64, np.int32, np.int16] \

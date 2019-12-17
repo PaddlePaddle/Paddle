@@ -61,6 +61,3 @@ NO_FP64_CHECK_GRAD_OP_LIST = [
     'unsqueeze', 'unsqueeze2', 'unstack', 'var_conv_2d', 'warpctc',
     'yolov3_loss'
 ]
-
-# For cases in NO_FP64_CHECK_GRAD_CASES, the op test requires check_grad with fp64 precision
-NO_FP64_CHECK_GRAD_CASES = []
