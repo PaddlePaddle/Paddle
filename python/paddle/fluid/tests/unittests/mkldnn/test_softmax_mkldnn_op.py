@@ -60,7 +60,7 @@ class TestSoftmaxMKLDNNOp(TestSoftmaxOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_dygraph=False)
+            self.check_output_with_place(place, ctol=1e-5, heck_dygraph=False)
         else:
             self.check_output(check_dygraph=False)
 
