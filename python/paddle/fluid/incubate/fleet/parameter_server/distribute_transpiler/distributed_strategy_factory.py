@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["TrainerRuntimeConfig", "DistributedStrategy", "DistributedStrategyFactory"]
+__all__ = [
+    "TrainerRuntimeConfig", "DistributedStrategy", "DistributedStrategyFactory"
+]
 import os
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import DistributeTranspilerConfig, ServerRuntimeConfig
@@ -70,139 +72,157 @@ class TrainerRuntimeConfig(object):
 
 class DistributedStrategy(object):
     def __init__(self):
-        self.__program_config = DistributeTranspilerConfig()
-        self.__trainer_runtime_config = TrainerRuntimeConfig()
-        self.__server_runtime_config = ServerRuntimeConfig()
-        self.__execute_strategy = fluid.ExecutionStrategy()
-        self.__build_strategy = fluid.BuildStrategy()
+        self._program_config = DistributeTranspilerConfig()
+        self._trainer_runtime_config = TrainerRuntimeConfig()
+        self._server_runtime_config = ServerRuntimeConfig()
+        self._execute_strategy = fluid.ExecutionStrategy()
+        self._build_strategy = fluid.BuildStrategy()
         num_threads = int(os.getenv("CPU_NUM", "1"))
-        self.__execute_strategy.num_threads = num_threads
+        self._execute_strategy.num_threads = num_threads
         if num_threads > 1:
-            self.__build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+            self._build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
 
     def get_program_config(self):
-        return self.__program_config
+        return self._program_config
 
     def set_program_config(self, config):
-        assert (isinstance(config, DistributeTranspilerConfig))
-        self.__program_config = config
+        if isinstance(config, DistributeTranspilerConfig):
+            self._program_config = config
+        elif isinstance(config, dict):
+            for key in config:
+                if hasattr(self._program_config, key):
+                    setattr(self._program_config, key, config[key])
+                else:
+                    raise ValueError(
+                        "DistributeTranspilerConfig doesn't have key: '%s'",
+                        key)
+        else:
+            raise TypeError(
+                "program_config only accept input type: dict or DistributeTranspilerConfig"
+            )
 
     def get_trainer_runtime_config(self):
-        return self.__trainer_runtime_config
+        return self._trainer_runtime_config
 
     def set_trainer_runtime_config(self, config):
-        assert (isinstance(config, TrainerRuntimeConfig))
-        self.__trainer_runtime_config = config
+        if isinstance(config, TrainerRuntimeConfig):
+            self._trainer_runtime_config = config
+        elif isinstance(config, dict):
+            for key in config:
+                if hasattr(self._trainer_runtime_config, key):
+                    setattr(self._trainer_runtime_config, key, config[key])
+                else:
+                    raise ValueError(
+                        "TrainerRuntimeConfig doesn't have key: '%s'", key)
+        else:
+            raise TypeError(
+                "trainer_runtime_config only accept input type: dict or TrainerRuntimeConfig"
+            )
 
     def get_server_runtime_config(self):
-        return self.__server_runtime_config
+        return self._server_runtime_config
 
     def set_server_runtime_config(self, config):
-        assert (isinstance(config, ServerRuntimeConfig))
-        self.__server_runtime_config = config
+        if isinstance(config, ServerRuntimeConfig):
+            self._server_runtime_config = config
+        elif isinstance(config, dict):
+            for key in config:
+                if hasattr(self._server_runtime_config, key):
+                    setattr(self._server_runtime_config, key, config[key])
+                else:
+                    raise ValueError(
+                        "ServerRuntimeConfig doesn't have key: '%s'", key)
+        else:
+            raise TypeError(
+                "server_runtime_config only accept input type: dict or ServerRuntimeConfig"
+            )
 
     def get_execute_strategy(self):
-        return self.__execute_strategy
+        return self._execute_strategy
 
     def set_execute_strategy(self, config):
-        assert (isinstance(config, fluid.ExecutionStrategy))
-        self.__execute_strategy = config
+        if isinstance(config, fluid.ExecutionStrategy):
+            self._execute_strategy = config
+        elif isinstance(config, dict):
+            for key in config:
+                if hasattr(self._execute_strategy, key):
+                    setattr(self._execute_strategy, key, config[key])
+                else:
+                    raise ValueError("ExecutionStrategy doesn't have key: '%s'",
+                                     key)
+        else:
+            raise TypeError(
+                "execute_strategy only accept input type: dict or ExecutionStrategy"
+            )
 
     def get_build_trategy(self):
-        return self.__build_strategy
+        return self._build_strategy
 
     def set_build_strategy(self, config):
-        assert (isinstance(config, fluid.BuildStrategy))
-        self.__build_strategy = config
-
-    # def set_program_config(self, **kwargs):
-    #     attr_list = dir(self.__program_config)
-    #     for key, v in kwargs.items():
-    #         if key not in attr_list:
-    #             raise ValueError("TranspilerConfig doesn't have %s attribute" % (key))
-    #         if key == "sync_mode" or key == "runtime_split_send_recv" or key == "geo_sgd_mode":
-    #             raise ValueError("You can't set {} attribute" % key)
-    #         setattr(self.__program_config, key, v)
-
-    # def set_trainer_runtime_config(self, **kwargs):
-    #     attr_list = dir(self.__trainer_runtime_config)
-    #     for key, v in kwargs.items():
-    #         if key not in attr_list:
-    #             raise ValueError("TrainerRuntimeConfig doesn't have %s attribute" % (key))
-    #         setattr(self.__trainer_runtime_config, key, v)
-
-    # def set_server_runtime_config(self, **kwargs):
-    #     attr_list = dir(self.__server_runtime_config)
-    #     for key, v in kwargs.items():
-    #         if key not in attr_list:
-    #             raise ValueError("ServerRuntimeConfig doesn't have %s attribute" % (key))
-    #         setattr(self.__server_runtime_config, key, v)
-
-    # def set_execute_strategy(self, **kwargs):
-    #     attr_list = dir(self.__execute_strategy)
-    #     for key, v in kwargs.items():
-    #         if key not in attr_list:
-    #             raise ValueError("ExecuteStrategy doesn't have %s attribute" % (key))
-    #         setattr(self.__execute_strategy, key, v)
-
-    # def set_build_strategy(self, **kwargs):
-    #     attr_list = dir(self.__build_strategy)
-    #     for key, v in kwargs.items():
-    #         if key not in attr_list:
-    #             raise ValueError("BuildStrategy doesn't have %s attribute" % (key))
-    #         setattr(self.__build_strategy, key, v)
+        if isinstance(config, fluid.BuildStrategy):
+            self._build_strategy = config
+        elif isinstance(config, dict):
+            for key in config:
+                if hasattr(self._build_strategy, key):
+                    setattr(self._build_strategy, key, config[key])
+                else:
+                    raise ValueError("BuildStrategy doesn't have key: '%s'",
+                                     key)
+        else:
+            raise TypeError(
+                "build_strategy only accept input type: dict or BuildStrategy")
 
 
 class SyncStrategy(DistributedStrategy):
     def __init__(self):
         super(SyncStrategy, self).__init__()
-        self.__program_config.sync_mode = True
-        self.__program_config.runtime_split_send_recv = False
-        self.__build_strategy.async_mode = False
+        self._program_config.sync_mode = True
+        self._program_config.runtime_split_send_recv = False
+        self._build_strategy.async_mode = False
 
 
 class AsyncStrategy(DistributedStrategy):
     def __init__(self):
         super(AsyncStrategy, self).__init__()
-        self.__program_config.sync_mode = False
-        self.__program_config.runtime_split_send_recv = True
-        self.__build_strategy.async_mode = True
+        self._program_config.sync_mode = False
+        self._program_config.runtime_split_send_recv = True
+        self._build_strategy.async_mode = True
 
 
 class HalfAsyncStrategy(DistributedStrategy):
     def __init__(self):
         super(HalfAsyncStrategy, self).__init__()
-        self.__program_config.sync_mode = False
-        self.__program_config.runtime_split_send_recv = False
-        self.__build_strategy.async_mode = False
+        self._program_config.sync_mode = False
+        self._program_config.runtime_split_send_recv = False
+        self._build_strategy.async_mode = False
 
 
 class GeoStrategy(DistributedStrategy):
     def __init__(self, update_frequency=100):
         super(GeoStrategy, self).__init__()
-        self.__program_config.sync_mode = False
-        self.__program_config.runtime_split_send_recv = True
-        self.__program_config.geo_sgd_mode = True
-        self.__program_config.geo_sgd_need_push_nums = update_frequency
-        self.__build_strategy.async_mode = True
+        self._program_config.sync_mode = False
+        self._program_config.runtime_split_send_recv = True
+        self._program_config.geo_sgd_mode = True
+        self._program_config.geo_sgd_need_push_nums = update_frequency
+        self._build_strategy.async_mode = True
 
 
 class DistributedStrategyFactory(object):
     def __init_(self):
-        self.__distributed_strategy = None
+        self._distributed_strategy = None
 
     def create_sync_strategy(self):
-        self.__distributed_strategy = SyncStrategy()
-        return self.__distributed_strategy
+        self._distributed_strategy = SyncStrategy()
+        return self._distributed_strategy
 
     def create_half_async_strategy(self):
-        self.__distributed_strategy = HalfAsyncStrategy()
-        return self.__distributed_strategy
+        self._distributed_strategy = HalfAsyncStrategy()
+        return self._distributed_strategy
 
     def create_async_strategy(self):
-        self.__distributed_strategy = AsyncStrategy()
-        return self.__distributed_strategy
+        self._distributed_strategy = AsyncStrategy()
+        return self._distributed_strategy
 
     def create_geo_strategy(self, update_frequency=100):
-        self.__distributed_strategy = GeoStrategy(update_frequency)
-        return self.__distributed_strategy
+        self._distributed_strategy = GeoStrategy(update_frequency)
+        return self._distributed_strategy
