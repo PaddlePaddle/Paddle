@@ -14,42 +14,70 @@
 
 from __future__ import print_function
 
+import numpy as np
 import unittest
+import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
-from paddle.fluid.framework import default_startup_program, default_main_program
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
 from paddle.fluid.layers.control_flow import ConditionalBlock
-import numpy
 
 
 class ConditionalBlockTest(unittest.TestCase):
     def test_forward(self):
-        data = layers.data(name='X', shape=[1], dtype='float32')
-        data.stop_gradient = False
-        cond = ConditionalBlock(inputs=[data])
-        out = layers.create_tensor(dtype='float32')
-        with cond.block():
-            hidden = layers.fc(input=data, size=10)
-            layers.assign(hidden, out)
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            data = layers.data(name='X', shape=[1], dtype='float32')
+            data.stop_gradient = False
+            cond = ConditionalBlock(inputs=[data])
+            out = layers.create_tensor(dtype='float32')
+            with cond.block():
+                hidden = layers.fc(input=data, size=10)
+                layers.assign(hidden, out)
 
-        cpu = core.CPUPlace()
-        exe = Executor(cpu)
-        exe.run(default_startup_program())
+            cpu = core.CPUPlace()
+            exe = Executor(cpu)
+            exe.run(startup_program)
 
-        x = numpy.random.random(size=(10, 1)).astype('float32')
+            x = np.random.random(size=(10, 1)).astype('float32')
 
-        outs = exe.run(feed={'X': x}, fetch_list=[out])[0]
-        print(outs)
-        loss = layers.mean(out)
-        append_backward(loss=loss)
-        outs = exe.run(
-            feed={'X': x},
-            fetch_list=[
-                default_main_program().block(0).var(data.name + "@GRAD")
-            ])[0]
-        print(outs)
+            outs = exe.run(main_program, feed={'X': x}, fetch_list=[out])[0]
+            print(outs)
+            loss = layers.mean(out)
+            append_backward(loss=loss)
+            outs = exe.run(
+                main_program,
+                feed={'X': x},
+                fetch_list=[main_program.block(0).var(data.name + "@GRAD")])[0]
+            print(outs)
+
+
+class TestConditionalBlockOpInferShape(unittest.TestCase):
+    def test_infer_shape(self):
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            global_block = main_program.global_block()
+            sub_block = main_program._create_block()
+            main_program._rollback()
+            step_scope = global_block.create_var(
+                type=core.VarDesc.VarType.STEP_SCOPES)
+            cond_var = layers.fill_constant(
+                shape=[1], dtype='bool', value=False)
+
+            op = global_block.append_op(
+                type='conditional_block',
+                inputs={
+                    'Cond': [cond_var],
+                    'Input': [],
+                },
+                outputs={'Out': [],
+                         'Scope': [step_scope]},
+                attrs={'sub_block': sub_block,
+                       'is_scalar_condition': True})
+            op.desc.infer_shape(global_block.desc)
 
 
 if __name__ == '__main__':

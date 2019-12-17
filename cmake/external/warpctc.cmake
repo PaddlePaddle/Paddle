@@ -18,7 +18,7 @@ SET(WARPCTC_PREFIX_DIR ${THIRD_PARTY_PATH}/warpctc)
 SET(WARPCTC_SOURCE_DIR ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 SET(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
 set(WARPCTC_REPOSITORY https://github.com/baidu-research/warp-ctc)
-set(WARPCTC_TAG        14858fef201244c983f5f965d2166379bf3f11a5)
+set(WARPCTC_TAG        6d5b8fac130638862d97dc48ef43a8d7b5a503bb)
 
 SET(WARPCTC_INCLUDE_DIR "${WARPCTC_INSTALL_DIR}/include"
     CACHE PATH "Warp-ctc Directory" FORCE)
@@ -41,7 +41,7 @@ if(WIN32)
     file(TO_NATIVE_PATH ${WARPCTC_SOURCE_DIR} native_dst)
     set(WARPCTC_PATCH_COMMAND xcopy ${native_src} ${native_dst} /E/Y)
 else()
-    set(WARPCTC_PATCH_COMMAND cp -r ${PADDLE_SOURCE_DIR}/patches/warpctc ${THIRD_PARTY_PATH})
+    set(WARPCTC_PATCH_COMMAND cp -r ${PADDLE_SOURCE_DIR}/patches/warpctc/ ${WARPCTC_SOURCE_DIR})
 endif()
 
 ExternalProject_Add(
