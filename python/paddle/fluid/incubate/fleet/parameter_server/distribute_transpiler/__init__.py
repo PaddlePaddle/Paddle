@@ -77,7 +77,7 @@ class DistributedTranspiler(Fleet):
             self._communicator = Communicator(
                 self.main_program, self.vars_info,
                 fleet.worker_num(),
-                self._transpile_config.geo_sgd_need_push_nums,
+                program_config.geo_sgd_need_push_nums,
                 trainer_communicator_config.get_communicator_flags())
         elif isinstance(self._transpile_config, AsyncStrategy):
             need_communicator_flag = True

@@ -201,24 +201,20 @@ class GeoStrategy(DistributedStrategy):
 
 class DistributedStrategyFactory(object):
     def __init_(self):
-        self._distributed_strategy = None
+        pass
 
     @staticmethod
-    def create_sync_strategy(self):
-        self._distributed_strategy = SyncStrategy()
-        return self._distributed_strategy
+    def create_sync_strategy():
+        return SyncStrategy()
 
     @staticmethod
-    def create_half_async_strategy(self):
-        self._distributed_strategy = HalfAsyncStrategy()
-        return self._distributed_strategy
+    def create_half_async_strategy():
+        return HalfAsyncStrategy()
 
     @staticmethod
-    def create_async_strategy(self):
-        self._distributed_strategy = AsyncStrategy()
-        return self._distributed_strategy
+    def create_async_strategy():
+        return AsyncStrategy()
 
     @staticmethod
-    def create_geo_strategy(self, update_frequency=100):
-        self._distributed_strategy = GeoStrategy(update_frequency)
-        return self._distributed_strategy
+    def create_geo_strategy(update_frequency=100):
+        return GeoStrategy(update_frequency)
