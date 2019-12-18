@@ -81,7 +81,7 @@ class TestSigmoid(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
 
 class TestLogSigmoid(TestActivation):
@@ -98,7 +98,7 @@ class TestLogSigmoid(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
 class TestTanh(TestActivation):
@@ -224,7 +224,7 @@ class TestRsqrt(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', max_relative_error=0.0005)
 
 
 class TestAbs(TestActivation):
@@ -514,7 +514,7 @@ class TestSoftRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', max_relative_error=0.02)
 
 
 class TestELU(TestActivation):
@@ -563,7 +563,7 @@ class TestReciprocal(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', max_relative_error=0.01)
 
 
 class TestLog(TestActivation):
@@ -597,7 +597,7 @@ class TestSquare(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', max_relative_error=0.007)
 
 
 class TestPow(TestActivation):
